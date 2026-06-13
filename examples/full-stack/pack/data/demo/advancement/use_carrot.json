@@ -1,0 +1,20 @@
+{
+  "criteria": {
+    "use_carrot": {
+      "trigger": "minecraft:using_item",
+      "conditions": {
+        "item": {
+          "items": "minecraft:carrot_on_a_stick"
+        }
+      }
+    }
+  },
+  "requirements": [
+    ["use_carrot"]
+  ],
+  "rewards": {
+    "experience": 5,
+    "loot": ["demo:gift"],
+    "function": "demo:reward"
+  }
+}

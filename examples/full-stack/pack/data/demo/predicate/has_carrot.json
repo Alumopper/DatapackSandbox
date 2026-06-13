@@ -1,0 +1,15 @@
+{
+  "condition": "minecraft:entity_properties",
+  "entity": "this",
+  "predicate": {
+    "type_specific": {
+      "type": "minecraft:player",
+      "recipes": {}
+    },
+    "equipment": {
+      "mainhand": {
+        "items": "minecraft:carrot_on_a_stick"
+      }
+    }
+  }
+}

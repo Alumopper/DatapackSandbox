@@ -1,0 +1,57 @@
+{
+  "version": "26.1.2",
+  "packs": ["pack"],
+  "steps": [
+    {
+      "player": {
+        "name": "Steve",
+        "inventory": [
+          {
+            "id": "minecraft:carrot_on_a_stick",
+            "count": 1
+          }
+        ]
+      }
+    },
+    {
+      "event": {
+        "player": "Steve",
+        "type": "item_used",
+        "item": "minecraft:carrot_on_a_stick"
+      }
+    }
+  ],
+  "assertions": [
+    {
+      "player": {
+        "name": "Steve",
+        "xp": 5,
+        "inventoryCount": 2
+      }
+    },
+    {
+      "advancement": {
+        "player": "Steve",
+        "id": "demo:use_carrot",
+        "done": true,
+        "criterion": "use_carrot",
+        "criterionDone": true
+      }
+    },
+    {
+      "loot": {
+        "table": "demo:gift",
+        "context": "minecraft:advancement_reward",
+        "item": "minecraft:diamond",
+        "count": 1
+      }
+    },
+    {
+      "score": {
+        "target": "Steve",
+        "objective": "rewards",
+        "equals": 1
+      }
+    }
+  ]
+}

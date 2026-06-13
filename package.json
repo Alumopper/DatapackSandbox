@@ -1,0 +1,11 @@
+{
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "generate:vanilla-nbt-schemas": "node tools/generate-vanilla-nbt-schemas.mjs"
+  },
+  "devDependencies": {
+    "@spyglassmc/core": "0.4.47",
+    "@spyglassmc/mcdoc": "0.3.51"
+  }
+}

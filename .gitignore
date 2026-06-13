@@ -1,0 +1,12 @@
+.gradle/
+build/
+**/build/
+
+*.class
+*.log
+*.tmp
+
+.idea/
+*.iml
+
+node_modules/
