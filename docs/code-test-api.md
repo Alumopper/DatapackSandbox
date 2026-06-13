@@ -1,4 +1,4 @@
-# Code Test API
+﻿# Code Test API
 
 In addition to the CLI and `.dps.json` manifests, Kotlin/Java projects can call
 the `:core` quick-test API directly. This is useful for local unit tests, plugin
@@ -18,15 +18,15 @@ If the library is published later, use normal Maven coordinates instead:
 
 ```kotlin
 dependencies {
-    testImplementation("net.datapacksandbox:core:<version>")
+    testImplementation("moe.afox.dpsandbox:core:<version>")
 }
 ```
 
 ## Kotlin Example
 
 ```kotlin
-import net.datapacksandbox.core.SandboxQuickTest
-import net.datapacksandbox.core.UnsupportedFeatureMode
+import moe.afox.dpsandbox.core.SandboxQuickTest
+import moe.afox.dpsandbox.core.UnsupportedFeatureMode
 import java.nio.file.Path
 
 class MyDatapackTest {
@@ -54,7 +54,7 @@ The error contains all failures and the final snapshot.
 ## Java Example
 
 ```java
-import net.datapacksandbox.core.SandboxQuickTest;
+import moe.afox.dpsandbox.core.SandboxQuickTest;
 import java.nio.file.Path;
 import java.util.List;
 

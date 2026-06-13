@@ -1,0 +1,537 @@
+﻿package moe.afox.dpsandbox.core
+
+import com.google.gson.JsonArray
+import com.google.gson.JsonElement
+import com.google.gson.JsonObject
+import java.util.UUID
+
+data class BlockPos(val x: Int, val y: Int, val z: Int) : Comparable<BlockPos> {
+    override fun compareTo(other: BlockPos): Int =
+        compareValuesBy(this, other, BlockPos::y, BlockPos::z, BlockPos::x)
+
+    override fun toString(): String = "$x $y $z"
+}
+
+data class SandboxBlock(
+    var id: ResourceLocation,
+    val properties: MutableMap<String, String> = linkedMapOf(),
+    val nbt: JsonObject = JsonObject(),
+) {
+    fun fullNbt(pos: BlockPos, location: SourceLocation? = null): JsonObject =
+        NbtSchemas.blockEntityNbt(this, pos, location)
+
+    fun writeFullNbt(pos: BlockPos, updated: JsonObject, location: SourceLocation? = null) =
+        NbtSchemas.writeBlockEntityNbt(this, pos, updated, location)
+
+    fun toJson(pos: BlockPos): JsonObject {
+        val json = JsonObject()
+        json.addProperty("id", id.toString())
+        json.addProperty("x", pos.x)
+        json.addProperty("y", pos.y)
+        json.addProperty("z", pos.z)
+        val propertiesJson = JsonObject()
+        properties.toSortedMap().forEach { (key, value) -> propertiesJson.addProperty(key, value) }
+        json.add("properties", propertiesJson)
+        json.add("nbt", nbt.deepCopy())
+        return json
+    }
+}
+
+data class ScoreKey(val target: String, val objective: String) : Comparable<ScoreKey> {
+    override fun compareTo(other: ScoreKey): Int =
+        compareValuesBy(this, other, ScoreKey::objective, ScoreKey::target)
+}
+
+data class Position(val x: Double, val y: Double, val z: Double) {
+    companion object {
+        val zero = Position(0.0, 0.0, 0.0)
+    }
+}
+
+data class ItemStack(
+    val id: ResourceLocation,
+    var count: Int = 1,
+    val components: JsonObject = JsonObject(),
+    val nbt: JsonObject = JsonObject(),
+) {
+    fun toJson(): JsonObject {
+        val json = JsonObject()
+        json.addProperty("id", id.toString())
+        json.addProperty("count", count)
+        json.add("components", components.deepCopy())
+        json.add("nbt", nbt.deepCopy())
+        return json
+    }
+}
+
+data class PlayerEffect(
+    val id: ResourceLocation,
+    var durationTicks: Int = -1,
+    var amplifier: Int = 0,
+    var hideParticles: Boolean = false,
+) {
+    fun toJson(): JsonObject =
+        JsonObject().also {
+            it.addProperty("id", id.toString())
+            it.addProperty("duration", durationTicks)
+            it.addProperty("amplifier", amplifier)
+            it.addProperty("hideParticles", hideParticles)
+        }
+}
+
+data class AdvancementProgress(
+    val criteria: MutableMap<String, Boolean> = linkedMapOf(),
+) {
+    fun isDone(requirements: List<List<String>>): Boolean =
+        requirements.isNotEmpty() && requirements.all { group -> group.any { criteria[it] == true } }
+}
+
+open class SandboxEntity(
+    val uuid: String = UUID.randomUUID().toString(),
+    val type: ResourceLocation,
+    var position: Position = Position.zero,
+    val tags: MutableSet<String> = sortedSetOf(),
+    val nbt: JsonObject = JsonObject(),
+    var yaw: Double = 0.0,
+    var pitch: Double = 0.0,
+    var vehicle: String? = null,
+    val passengers: MutableSet<String> = sortedSetOf(),
+) {
+    open val scoreHolder: String get() = uuid
+
+    open fun fullNbt(location: SourceLocation? = null): JsonObject =
+        NbtSchemas.entityNbt(this, location)
+
+    open fun writeFullNbt(updated: JsonObject, location: SourceLocation? = null) =
+        NbtSchemas.writeEntityNbt(this, updated, location)
+}
+
+class SandboxPlayer(
+    val name: String,
+    uuid: String = UUID.randomUUID().toString(),
+    position: Position = Position.zero,
+    var dimension: ResourceLocation = ResourceLocation("minecraft", "overworld"),
+    var gameMode: String = "survival",
+    var xp: Int = 0,
+    var health: Double = 20.0,
+    var food: Int = 20,
+) : SandboxEntity(uuid, ResourceLocation("minecraft", "player"), position) {
+    override val scoreHolder: String get() = name
+
+    val inventory: MutableList<ItemStack> = mutableListOf()
+    var selectedSlot: Int = 0
+    val effects: MutableSet<ResourceLocation> = sortedSetOf()
+    val effectDetails: MutableMap<ResourceLocation, PlayerEffect> = linkedMapOf()
+    val recipes: MutableSet<ResourceLocation> = sortedSetOf()
+    val advancementProgress: MutableMap<ResourceLocation, AdvancementProgress> = linkedMapOf()
+    val stats: MutableMap<ResourceLocation, Int> = linkedMapOf()
+    val inputEvents: MutableList<PlayerInput> = mutableListOf()
+    var lastInput: PlayerInput? = null
+
+    val selectedItem: ItemStack?
+        get() = inventory.getOrNull(selectedSlot)
+
+    override fun fullNbt(location: SourceLocation?): JsonObject {
+        val json = super.fullNbt(location)
+        json.addProperty("Name", name)
+        json.addProperty("Dimension", dimension.toString())
+        json.addProperty("playerGameType", gameMode)
+        json.addProperty("previousPlayerGameType", gameMode)
+        json.addProperty("Health", health)
+        json.addProperty("foodLevel", food)
+        json.addProperty("foodTickTimer", 0)
+        json.addProperty("foodSaturationLevel", 5.0)
+        json.addProperty("foodExhaustionLevel", 0.0)
+        json.addProperty("XpLevel", 0)
+        json.addProperty("XpP", 0.0)
+        json.addProperty("XpTotal", xp)
+        json.addProperty("XpSeed", 0)
+        json.addProperty("SelectedItemSlot", selectedSlot)
+
+        val inventoryJson = JsonArray()
+        inventory.forEachIndexed { index, item ->
+            val itemJson = item.toJson()
+            itemJson.addProperty("Slot", index)
+            inventoryJson.add(itemJson)
+        }
+        json.add("Inventory", inventoryJson)
+
+        val effectsJson = JsonArray()
+        effects.sorted().forEach { effect ->
+            val detail = effectDetails[effect]
+            val effectJson = JsonObject()
+            effectJson.addProperty("id", effect.toString())
+            effectJson.addProperty("amplifier", detail?.amplifier ?: 0)
+            effectJson.addProperty("duration", detail?.durationTicks ?: -1)
+            effectJson.addProperty("show_particles", detail?.hideParticles != true)
+            effectsJson.add(effectJson)
+        }
+        json.add("ActiveEffects", effectsJson)
+
+        json.add("EnderItems", JsonArray())
+        json.add("abilities", JsonObject().also {
+            it.addProperty("invulnerable", false)
+            it.addProperty("flying", false)
+            it.addProperty("mayfly", gameMode == "creative" || gameMode == "spectator")
+            it.addProperty("instabuild", gameMode == "creative")
+            it.addProperty("mayBuild", gameMode != "spectator")
+            it.addProperty("flySpeed", 0.05)
+            it.addProperty("walkSpeed", 0.1)
+        })
+        json.add("recipeBook", JsonObject().also {
+            it.add("recipes", JsonArray().also { array -> recipes.sorted().forEach { recipe -> array.add(recipe.toString()) } })
+            it.add("toBeDisplayed", JsonArray())
+        })
+        json.addProperty("seenCredits", false)
+        return json
+    }
+
+    override fun writeFullNbt(updated: JsonObject, location: SourceLocation?) {
+        throw SandboxException(DiagnosticCode.COMMAND_ERROR, "Player NBT is read-only in this sandbox; use player events or movement commands")
+    }
+
+    fun recordInput(input: PlayerInput) {
+        lastInput = input
+        inputEvents += input
+    }
+}
+
+data class ScheduledFunction(
+    val id: ResourceLocation,
+    val dueTick: Long,
+)
+
+data class SandboxBossbar(
+    val id: ResourceLocation,
+    var name: String,
+    var value: Int = 0,
+    var max: Int = 100,
+    var color: String = "white",
+    var style: String = "progress",
+    var visible: Boolean = true,
+    val players: MutableSet<String> = sortedSetOf(),
+) {
+    fun toJson(): JsonObject =
+        JsonObject().also { json ->
+            json.addProperty("id", id.toString())
+            json.addProperty("name", name)
+            json.addProperty("value", value)
+            json.addProperty("max", max)
+            json.addProperty("color", color)
+            json.addProperty("style", style)
+            json.addProperty("visible", visible)
+            json.add("players", JsonArray().also { array -> players.forEach { array.add(it) } })
+        }
+}
+
+data class SandboxTeam(
+    val name: String,
+    var displayName: String = name,
+    val members: MutableSet<String> = sortedSetOf(),
+    val options: MutableMap<String, String> = linkedMapOf(),
+) {
+    fun toJson(): JsonObject =
+        JsonObject().also { json ->
+            json.addProperty("name", name)
+            json.addProperty("displayName", displayName)
+            json.add("members", JsonArray().also { array -> members.forEach { array.add(it) } })
+            val optionsJson = JsonObject()
+            options.toSortedMap().forEach { (key, value) -> optionsJson.addProperty(key, value) }
+            json.add("options", optionsJson)
+        }
+}
+
+data class OutputTextSegment(
+    val text: String,
+    val color: String? = null,
+    val bold: Boolean = false,
+    val italic: Boolean = false,
+    val underlined: Boolean = false,
+    val strikethrough: Boolean = false,
+    val obfuscated: Boolean = false,
+) {
+    fun toJson(): JsonObject {
+        val json = JsonObject()
+        json.addProperty("text", text)
+        color?.let { json.addProperty("color", it) }
+        if (bold) json.addProperty("bold", true)
+        if (italic) json.addProperty("italic", true)
+        if (underlined) json.addProperty("underlined", true)
+        if (strikethrough) json.addProperty("strikethrough", true)
+        if (obfuscated) json.addProperty("obfuscated", true)
+        return json
+    }
+}
+
+data class OutputEvent(
+    val tick: Long,
+    val command: String,
+    val channel: String,
+    val targets: List<String> = emptyList(),
+    val text: String = "",
+    val payload: JsonElement? = null,
+    val segments: List<OutputTextSegment> = emptyList(),
+) {
+    fun toJson(): JsonObject {
+        val json = JsonObject()
+        json.addProperty("tick", tick)
+        json.addProperty("command", command)
+        json.addProperty("channel", channel)
+        json.addProperty("text", text)
+
+        val targetJson = JsonArray()
+        targets.sorted().forEach { targetJson.add(it) }
+        json.add("targets", targetJson)
+
+        payload?.let { json.add("payload", it.deepCopy()) }
+
+        if (segments.isNotEmpty()) {
+            val segmentJson = JsonArray()
+            segments.forEach { segmentJson.add(it.toJson()) }
+            json.add("segments", segmentJson)
+        }
+        return json
+    }
+}
+
+class SandboxWorld {
+    var gameTime: Long = 0
+        private set
+    var dayTime: Long = 0
+        private set
+    var weather: String = "clear"
+    var weatherDuration: Int = 0
+
+    val objectives: MutableMap<String, String> = linkedMapOf()
+    val scores: MutableMap<ScoreKey, Int> = linkedMapOf()
+    val storages: MutableMap<ResourceLocation, JsonObject> = linkedMapOf()
+    val entities: MutableList<SandboxEntity> = mutableListOf()
+    val players: MutableMap<String, SandboxPlayer> = linkedMapOf()
+    val blocks: MutableMap<BlockPos, SandboxBlock> = linkedMapOf()
+    val scheduledFunctions: MutableList<ScheduledFunction> = mutableListOf()
+    val outputs: MutableList<OutputEvent> = mutableListOf()
+    val bossbars: MutableMap<ResourceLocation, SandboxBossbar> = linkedMapOf()
+    val gamerules: MutableMap<String, String> = linkedMapOf()
+    val teams: MutableMap<String, SandboxTeam> = linkedMapOf()
+    val randomSequences: MutableMap<String, Long> = linkedMapOf()
+
+    fun advanceTick() {
+        gameTime += 1
+        dayTime = (dayTime + 1).floorMod(24000)
+        if (weatherDuration > 0) weatherDuration -= 1
+    }
+
+    fun setGameTime(value: Long) {
+        gameTime = value.coerceAtLeast(0)
+    }
+
+    fun setDayTime(value: Long) {
+        dayTime = value.floorMod(24000)
+    }
+
+    fun addDayTime(delta: Long) {
+        dayTime = (dayTime + delta).floorMod(24000)
+    }
+
+    fun addObjective(name: String, criteria: String) {
+        objectives[name] = criteria
+    }
+
+    fun removeObjective(name: String) {
+        objectives.remove(name)
+        scores.keys.filter { it.objective == name }.forEach { scores.remove(it) }
+    }
+
+    fun getScore(target: String, objective: String): Int =
+        scores[ScoreKey(target, objective)] ?: 0
+
+    fun setScore(target: String, objective: String, value: Int) {
+        ensureObjective(objective)
+        scores[ScoreKey(target, objective)] = value
+    }
+
+    fun addScore(target: String, objective: String, delta: Int) {
+        setScore(target, objective, getScore(target, objective) + delta)
+    }
+
+    fun ensureObjective(objective: String) {
+        if (!objectives.containsKey(objective)) {
+            throw SandboxException(DiagnosticCode.COMMAND_ERROR, "Unknown scoreboard objective '$objective'")
+        }
+    }
+
+    fun storage(id: ResourceLocation): JsonObject =
+        storages.getOrPut(id) { JsonObject() }
+
+    fun createPlayer(name: String): SandboxPlayer =
+        players.getOrPut(name) {
+            SandboxPlayer(name).also { entities += it }
+        }
+
+    fun requirePlayer(name: String): SandboxPlayer =
+        players[name] ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Player '$name' does not exist")
+
+    fun block(pos: BlockPos): SandboxBlock? = blocks[pos]
+
+    fun requireBlock(pos: BlockPos): SandboxBlock =
+        block(pos) ?: throw SandboxException(DiagnosticCode.COMMAND_ERROR, "No block exists at $pos; the initial sandbox world is void")
+
+    fun setBlock(pos: BlockPos, block: SandboxBlock?) {
+        if (block == null || block.id == ResourceLocation("minecraft", "air")) {
+            blocks.remove(pos)
+        } else {
+            blocks[pos] = block
+        }
+    }
+
+    fun recordOutput(
+        command: String,
+        channel: String,
+        targets: List<String> = emptyList(),
+        text: String = "",
+        payload: JsonElement? = null,
+        segments: List<OutputTextSegment> = emptyList(),
+    ) {
+        outputs += OutputEvent(
+            tick = gameTime,
+            command = command,
+            channel = channel,
+            targets = targets,
+            text = text,
+            payload = payload,
+            segments = segments,
+        )
+    }
+
+    fun snapshot(): JsonObject {
+        val root = JsonObject()
+        root.addProperty("gameTime", gameTime)
+        root.addProperty("dayTime", dayTime)
+        root.addProperty("weather", weather)
+        root.addProperty("weatherDuration", weatherDuration)
+
+        val objectivesJson = JsonObject()
+        objectives.toSortedMap().forEach { (name, criteria) ->
+            objectivesJson.addProperty(name, criteria)
+        }
+        root.add("objectives", objectivesJson)
+
+        val scoresJson = JsonObject()
+        scores.toSortedMap().forEach { (key, value) ->
+            val objectiveJson = scoresJson.getAsJsonObject(key.objective) ?: JsonObject().also {
+                scoresJson.add(key.objective, it)
+            }
+            objectiveJson.addProperty(key.target, value)
+        }
+        root.add("scores", scoresJson)
+
+        val storageJson = JsonObject()
+        storages.toSortedMap().forEach { (id, value) ->
+            storageJson.add(id.toString(), value.deepCopy())
+        }
+        root.add("storage", storageJson)
+
+        val entitiesJson = JsonArray()
+        entities.sortedWith(compareBy<SandboxEntity> { it.type.toString() }.thenBy { it.uuid }).forEach { entity ->
+            entitiesJson.add(entity.toJson())
+        }
+        root.add("entities", entitiesJson)
+
+        val blocksJson = JsonArray()
+        blocks.toSortedMap().forEach { (pos, block) -> blocksJson.add(block.toJson(pos)) }
+        root.add("blocks", blocksJson)
+
+        val playersJson = JsonObject()
+        players.toSortedMap().forEach { (name, player) ->
+            playersJson.add(name, player.toPlayerJson())
+        }
+        root.add("players", playersJson)
+
+        val scheduledJson = JsonArray()
+        scheduledFunctions.sortedWith(compareBy<ScheduledFunction> { it.dueTick }.thenBy { it.id.toString() }).forEach {
+            val entry = JsonObject()
+            entry.addProperty("function", it.id.toString())
+            entry.addProperty("dueTick", it.dueTick)
+            scheduledJson.add(entry)
+        }
+        root.add("scheduled", scheduledJson)
+
+        val bossbarJson = JsonObject()
+        bossbars.toSortedMap().forEach { (id, value) -> bossbarJson.add(id.toString(), value.toJson()) }
+        root.add("bossbars", bossbarJson)
+
+        val gameruleJson = JsonObject()
+        gamerules.toSortedMap().forEach { (key, value) -> gameruleJson.addProperty(key, value) }
+        root.add("gamerules", gameruleJson)
+
+        val teamJson = JsonObject()
+        teams.toSortedMap().forEach { (name, team) -> teamJson.add(name, team.toJson()) }
+        root.add("teams", teamJson)
+
+        val outputJson = JsonArray()
+        outputs.forEach { outputJson.add(it.toJson()) }
+        root.add("outputs", outputJson)
+        return root
+    }
+}
+
+fun SandboxEntity.toJson(): JsonElement {
+    val json = JsonObject()
+    json.addProperty("uuid", uuid)
+    json.addProperty("type", type.toString())
+    json.addProperty("x", position.x)
+    json.addProperty("y", position.y)
+    json.addProperty("z", position.z)
+    json.addProperty("yaw", yaw)
+    json.addProperty("pitch", pitch)
+    vehicle?.let { json.addProperty("vehicle", it) }
+    json.add("passengers", JsonArray().also { array -> passengers.forEach { array.add(it) } })
+
+    val tagsJson = JsonArray()
+    tags.sorted().forEach { tagsJson.add(it) }
+    json.add("tags", tagsJson)
+    json.add("nbt", fullNbt())
+    return json
+}
+
+fun SandboxPlayer.toPlayerJson(): JsonElement {
+    val json = toJson().asJsonObject
+    json.addProperty("name", name)
+    json.addProperty("dimension", dimension.toString())
+    json.addProperty("gameMode", gameMode)
+    json.addProperty("xp", xp)
+    json.addProperty("health", health)
+    json.addProperty("food", food)
+    json.addProperty("selectedSlot", selectedSlot)
+
+    val inventoryJson = JsonArray()
+    inventory.forEach { inventoryJson.add(it.toJson()) }
+    json.add("inventory", inventoryJson)
+
+    val effectsJson = JsonArray()
+    effects.sorted().forEach { effect ->
+        effectsJson.add(effectDetails[effect]?.toJson() ?: JsonObject().also { it.addProperty("id", effect.toString()) })
+    }
+    json.add("effects", effectsJson)
+
+    val recipesJson = JsonArray()
+    recipes.sorted().forEach { recipesJson.add(it.toString()) }
+    json.add("recipes", recipesJson)
+
+    val advancementsJson = JsonObject()
+    advancementProgress.toSortedMap().forEach { (id, progress) ->
+        val progressJson = JsonObject()
+        progress.criteria.toSortedMap().forEach { (criterion, done) -> progressJson.addProperty(criterion, done) }
+        advancementsJson.add(id.toString(), progressJson)
+    }
+    json.add("advancements", advancementsJson)
+
+    lastInput?.let { json.add("lastInput", it.toJson()) }
+    val inputEventsJson = JsonArray()
+    inputEvents.forEach { inputEventsJson.add(it.toJson()) }
+    json.add("inputEvents", inputEventsJson)
+    return json
+}
+
+private fun Long.floorMod(modulus: Long): Long =
+    Math.floorMod(this, modulus)

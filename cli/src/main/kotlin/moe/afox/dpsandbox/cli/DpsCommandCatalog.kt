@@ -1,0 +1,108 @@
+﻿package moe.afox.dpsandbox.cli
+
+object DpsCommandCatalog {
+    val rootCommands: List<CompletionSuggestion> = listOf(
+        command("load", "run #minecraft:load"),
+        command("reload", "reload datapack files"),
+        command("tick", "advance sandbox ticks"),
+        command("function", "run a loaded function"),
+        command("player", "create or reuse a player"),
+        command("event", "inject a player event"),
+        command("inspect", "inspect sandbox state"),
+        command("snapshot", "print or write a snapshot"),
+        command("help", "show help"),
+        command("exit", "leave the REPL"),
+        command("quit", "leave the REPL"),
+        command("advancement", "grant, revoke, or test advancement progress"),
+        command("bossbar", "edit stored bossbar state"),
+        command("clear", "remove items from player inventories"),
+        command("clone", "copy sparse sandbox blocks"),
+        command("damage", "apply sandbox health damage"),
+        command("data", "read or mutate storage/entity/block NBT"),
+        command("effect", "give or clear player effects"),
+        command("enchant", "write enchantment components"),
+        command("execute", "run a command in a modified context"),
+        command("experience", "edit player XP"),
+        command("xp", "edit player XP"),
+        command("fill", "fill sparse sandbox blocks"),
+        command("gamerule", "edit stored gamerule values"),
+        command("give", "add items to players"),
+        command("item", "replace entity item slots"),
+        command("kill", "remove entities"),
+        command("random", "generate deterministic random values"),
+        command("recipe", "give or take player recipes"),
+        command("ride", "edit riding relationships"),
+        command("rotate", "edit entity yaw and pitch"),
+        command("schedule", "schedule or clear functions"),
+        command("scoreboard", "edit objectives and player scores"),
+        command("setblock", "place one sparse sandbox block"),
+        command("summon", "create an entity"),
+        command("tag", "edit entity tags"),
+        command("team", "edit team state"),
+        command("teleport", "move entities"),
+        command("tp", "move entities"),
+        command("time", "edit world time state"),
+        command("weather", "edit weather state"),
+        command("tellraw", "record a raw JSON chat output"),
+        command("title", "record title output"),
+        command("say", "record chat output"),
+        command("me", "record chat output"),
+        command("msg", "record private chat output"),
+        command("tell", "record private chat output"),
+        command("w", "record private chat output"),
+        command("teammsg", "record team chat output"),
+        command("tm", "record team chat output"),
+        command("playsound", "record a sound output"),
+        command("stopsound", "record a stop-sound output"),
+        command("particle", "record a visual output"),
+        unsupported("attribute"),
+        unsupported("datapack"),
+        unsupported("debug"),
+        unsupported("defaultgamemode"),
+        unsupported("difficulty"),
+        unsupported("fillbiome"),
+        unsupported("forceload"),
+        unsupported("gamemode"),
+        unsupported("loot"),
+        unsupported("place"),
+        unsupported("seed"),
+        unsupported("spawnpoint"),
+        unsupported("spectate"),
+        unsupported("spreadplayers"),
+        unsupported("trigger"),
+        unsupported("worldborder"),
+    ).distinctBy { it.value }.sortedBy { it.value }
+
+    fun rootNames(): Set<String> = rootCommands.mapTo(sortedSetOf()) { it.value }
+
+    fun usageSuffix(command: String): String =
+        when (command) {
+            "function" -> " <namespace:path>"
+            "tick" -> " [count]"
+            "inspect" -> " <score|storage|entities|blocks|player|loot|predicate|advancement|registry|outputs>"
+            "event" -> " player <name> <type> [id] [action]"
+            "scoreboard" -> " objectives|players ..."
+            "execute" -> " as|at|if|unless|store ... run <command>"
+            "data" -> " <get|modify|merge|remove> <storage|entity|block> ..."
+            "bossbar" -> " <add|remove|list|get|set> ..."
+            "give" -> " <players> <item> [count]"
+            "effect" -> " <give|clear> <players> ..."
+            "advancement" -> " <grant|revoke|test> <players> ..."
+            "schedule" -> " <function|clear> ..."
+            "setblock" -> " <x> <y> <z> <block>"
+            "fill" -> " <from> <to> <block>"
+            "weather" -> " <clear|rain|thunder> [duration]"
+            "time" -> " <set|add|query> ..."
+            else -> rootCommands.firstOrNull { it.value == command }
+                ?.description
+                ?.takeIf { it.isNotBlank() }
+                ?.let { " - $it" }
+                .orEmpty()
+        }
+
+    private fun command(value: String, description: String): CompletionSuggestion =
+        CompletionSuggestion(value, description, "commands", appendSpace = true)
+
+    private fun unsupported(value: String): CompletionSuggestion =
+        CompletionSuggestion(value, "vanilla command: warning unless --unsupported error is set", "vanilla warnings", appendSpace = true)
+}

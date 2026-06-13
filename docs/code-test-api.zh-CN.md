@@ -1,10 +1,9 @@
-# 代码测试 API
+﻿# 浠ｇ爜娴嬭瘯 API
 
-除了 CLI 和 `.dps.json` 清单，其他 Kotlin/Java 项目也可以直接调用 `:core` 暴露的 quick-test API。这个接口适合写本地单元测试、插件测试或构建工具里的快速冒烟测试。
+闄や簡 CLI 鍜?`.dps.json` 娓呭崟锛屽叾浠?Kotlin/Java 椤圭洰涔熷彲浠ョ洿鎺ヨ皟鐢?`:core` 鏆撮湶鐨?quick-test API銆傝繖涓帴鍙ｉ€傚悎鍐欐湰鍦板崟鍏冩祴璇曘€佹彃浠舵祴璇曟垨鏋勫缓宸ュ叿閲岀殑蹇€熷啋鐑熸祴璇曘€?
+## Gradle 渚濊禆
 
-## Gradle 依赖
-
-在同一个多模块工程里：
+鍦ㄥ悓涓€涓妯″潡宸ョ▼閲岋細
 
 ```kotlin
 dependencies {
@@ -12,18 +11,17 @@ dependencies {
 }
 ```
 
-如果后续发布到 Maven，则可以改成普通坐标依赖，例如：
-
+濡傛灉鍚庣画鍙戝竷鍒?Maven锛屽垯鍙互鏀规垚鏅€氬潗鏍囦緷璧栵紝渚嬪锛?
 ```kotlin
 dependencies {
-    testImplementation("net.datapacksandbox:core:<version>")
+    testImplementation("moe.afox.dpsandbox:core:<version>")
 }
 ```
 
-## Kotlin 示例
+## Kotlin 绀轰緥
 
 ```kotlin
-import net.datapacksandbox.core.SandboxQuickTest
+import moe.afox.dpsandbox.core.SandboxQuickTest
 import java.nio.file.Path
 
 class MyDatapackTest {
@@ -39,12 +37,11 @@ class MyDatapackTest {
 }
 ```
 
-`requirePassed()` 会在断言失败时抛出 `SandboxQuickTestAssertionError`，错误里包含所有失败项和最终 snapshot。
-
-## Java 示例
+`requirePassed()` 浼氬湪鏂█澶辫触鏃舵姏鍑?`SandboxQuickTestAssertionError`锛岄敊璇噷鍖呭惈鎵€鏈夊け璐ラ」鍜屾渶缁?snapshot銆?
+## Java 绀轰緥
 
 ```java
-import net.datapacksandbox.core.SandboxQuickTest;
+import moe.afox.dpsandbox.core.SandboxQuickTest;
 import java.nio.file.Path;
 import java.util.List;
 
@@ -60,28 +57,28 @@ class MyDatapackTest {
 }
 ```
 
-## 常用链式方法
+## 甯哥敤閾惧紡鏂规硶
 
-| 方法 | 作用 |
+| 鏂规硶 | 浣滅敤 |
 |---|---|
-| `load()` | 运行 `#minecraft:load` |
-| `ticks(n)` | 推进沙盒 tick |
-| `function(id)` | 运行数据包函数 |
-| `command(raw)` | 执行一条命令 |
-| `player(name)` | 创建或复用玩家 |
-| `event(player, type, id, action)` | 注入玩家事件 |
-| `keyInput(player, key, action)` | 注入键盘输入事件 |
-| `mouseInput(player, button, action, x, y)` | 注入鼠标输入事件 |
-| `assertScore(target, objective, expected)` | 断言 scoreboard |
-| `assertStorageEquals(id, path, expectedJson)` | 断言 storage 路径 |
-| `assertPlayerXp(player, expected)` | 断言玩家 XP |
-| `assertPlayerLastInput(player, device, code, action)` | 断言玩家最后一次输入 |
-| `assertAdvancementDone(player, id, expected)` | 断言进度完成状态 |
-| `assertOutputContains(text)` | 断言输出事件包含文本 |
-| `report()` | 返回 `SandboxQuickTestReport`，不抛异常 |
-| `requirePassed()` | 返回 report；失败时抛 assertion error |
+| `load()` | 杩愯 `#minecraft:load` |
+| `ticks(n)` | 鎺ㄨ繘娌欑洅 tick |
+| `function(id)` | 杩愯鏁版嵁鍖呭嚱鏁?|
+| `command(raw)` | 鎵ц涓€鏉″懡浠?|
+| `player(name)` | 鍒涘缓鎴栧鐢ㄧ帺瀹?|
+| `event(player, type, id, action)` | 娉ㄥ叆鐜╁浜嬩欢 |
+| `keyInput(player, key, action)` | 娉ㄥ叆閿洏杈撳叆浜嬩欢 |
+| `mouseInput(player, button, action, x, y)` | 娉ㄥ叆榧犳爣杈撳叆浜嬩欢 |
+| `assertScore(target, objective, expected)` | 鏂█ scoreboard |
+| `assertStorageEquals(id, path, expectedJson)` | 鏂█ storage 璺緞 |
+| `assertPlayerXp(player, expected)` | 鏂█鐜╁ XP |
+| `assertPlayerLastInput(player, device, code, action)` | 鏂█鐜╁鏈€鍚庝竴娆¤緭鍏?|
+| `assertAdvancementDone(player, id, expected)` | 鏂█杩涘害瀹屾垚鐘舵€?|
+| `assertOutputContains(text)` | 鏂█杈撳嚭浜嬩欢鍖呭惈鏂囨湰 |
+| `report()` | 杩斿洖 `SandboxQuickTestReport`锛屼笉鎶涘紓甯?|
+| `requirePassed()` | 杩斿洖 report锛涘け璐ユ椂鎶?assertion error |
 
-## 键盘/鼠标输入测试
+## 閿洏/榧犳爣杈撳叆娴嬭瘯
 
 ```kotlin
 SandboxQuickTest.create(listOf(Path.of("packs/demo")))
@@ -91,11 +88,10 @@ SandboxQuickTest.create(listOf(Path.of("packs/demo")))
     .requirePassed()
 ```
 
-键鼠输入会记录到玩家的 `lastInput` 和 `inputEvents`，可通过 `snapshot`、`inspect player` 或 `SandboxQuickTestReport.snapshot` 检查。
+閿紶杈撳叆浼氳褰曞埌鐜╁鐨?`lastInput` 鍜?`inputEvents`锛屽彲閫氳繃 `snapshot`銆乣inspect player` 鎴?`SandboxQuickTestReport.snapshot` 妫€鏌ャ€?
+## 浣庡眰 API
 
-## 低层 API
-
-需要完全控制流程时，可以继续直接使用：
+闇€瑕佸畬鍏ㄦ帶鍒舵祦绋嬫椂锛屽彲浠ョ户缁洿鎺ヤ娇鐢細
 
 ```kotlin
 val sandbox = createSandbox("26.1.2", listOf(Path.of("packs/demo")))

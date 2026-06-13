@@ -1,4 +1,4 @@
-import java.net.URI
+﻿import java.net.URI
 import java.util.zip.ZipInputStream
 
 plugins {
@@ -6,7 +6,7 @@ plugins {
 }
 
 allprojects {
-    group = "net.datapacksandbox"
+    group = "moe.afox.dpsandbox"
     version = "0.1.0-SNAPSHOT"
 }
 

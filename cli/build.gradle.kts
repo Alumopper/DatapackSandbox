@@ -1,4 +1,4 @@
-plugins {
+﻿plugins {
     kotlin("jvm")
     application
 }
@@ -24,7 +24,7 @@ dependencies {
 }
 
 application {
-    mainClass.set("net.datapacksandbox.cli.MainKt")
+    mainClass.set("moe.afox.dpsandbox.cli.MainKt")
 }
 
 tasks.register<Jar>("fatJar") {
@@ -34,7 +34,7 @@ tasks.register<Jar>("fatJar") {
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 
     manifest {
-        attributes["Main-Class"] = "net.datapacksandbox.cli.MainKt"
+        attributes["Main-Class"] = "moe.afox.dpsandbox.cli.MainKt"
     }
 
     from(sourceSets.main.get().output)
