@@ -1,4 +1,4 @@
-﻿package moe.afox.dpsandbox.core
+package moe.afox.dpsandbox.core
 
 import com.google.gson.JsonArray
 import com.google.gson.JsonElement
@@ -20,8 +20,14 @@ data class SandboxBlock(
     fun fullNbt(pos: BlockPos, location: SourceLocation? = null): JsonObject =
         NbtSchemas.blockEntityNbt(this, pos, location)
 
+    fun fullNbt(pos: BlockPos, profile: VersionProfile, location: SourceLocation? = null): JsonObject =
+        NbtSchemas.blockEntityNbt(this, pos, profile, location)
+
     fun writeFullNbt(pos: BlockPos, updated: JsonObject, location: SourceLocation? = null) =
         NbtSchemas.writeBlockEntityNbt(this, pos, updated, location)
+
+    fun writeFullNbt(pos: BlockPos, profile: VersionProfile, updated: JsonObject, location: SourceLocation? = null) =
+        NbtSchemas.writeBlockEntityNbt(this, pos, profile, updated, location)
 
     fun toJson(pos: BlockPos): JsonObject {
         val json = JsonObject()
@@ -102,8 +108,14 @@ open class SandboxEntity(
     open fun fullNbt(location: SourceLocation? = null): JsonObject =
         NbtSchemas.entityNbt(this, location)
 
+    open fun fullNbt(profile: VersionProfile, location: SourceLocation? = null): JsonObject =
+        NbtSchemas.entityNbt(this, profile, location)
+
     open fun writeFullNbt(updated: JsonObject, location: SourceLocation? = null) =
         NbtSchemas.writeEntityNbt(this, updated, location)
+
+    open fun writeFullNbt(profile: VersionProfile, updated: JsonObject, location: SourceLocation? = null) =
+        NbtSchemas.writeEntityNbt(this, profile, updated, location)
 }
 
 class SandboxPlayer(
@@ -132,7 +144,11 @@ class SandboxPlayer(
         get() = inventory.getOrNull(selectedSlot)
 
     override fun fullNbt(location: SourceLocation?): JsonObject {
-        val json = super.fullNbt(location)
+        return fullNbt(VersionProfiles.default, location)
+    }
+
+    override fun fullNbt(profile: VersionProfile, location: SourceLocation?): JsonObject {
+        val json = super.fullNbt(profile, location)
         json.addProperty("Name", name)
         json.addProperty("Dimension", dimension.toString())
         json.addProperty("playerGameType", gameMode)
@@ -187,6 +203,10 @@ class SandboxPlayer(
     }
 
     override fun writeFullNbt(updated: JsonObject, location: SourceLocation?) {
+        throw SandboxException(DiagnosticCode.COMMAND_ERROR, "Player NBT is read-only in this sandbox; use player events or movement commands")
+    }
+
+    override fun writeFullNbt(profile: VersionProfile, updated: JsonObject, location: SourceLocation?) {
         throw SandboxException(DiagnosticCode.COMMAND_ERROR, "Player NBT is read-only in this sandbox; use player events or movement commands")
     }
 
@@ -403,7 +423,7 @@ class SandboxWorld {
         )
     }
 
-    fun snapshot(): JsonObject {
+    fun snapshot(profile: VersionProfile = VersionProfiles.default): JsonObject {
         val root = JsonObject()
         root.addProperty("gameTime", gameTime)
         root.addProperty("dayTime", dayTime)
@@ -433,7 +453,7 @@ class SandboxWorld {
 
         val entitiesJson = JsonArray()
         entities.sortedWith(compareBy<SandboxEntity> { it.type.toString() }.thenBy { it.uuid }).forEach { entity ->
-            entitiesJson.add(entity.toJson())
+            entitiesJson.add(entity.toJson(profile))
         }
         root.add("entities", entitiesJson)
 
@@ -443,7 +463,7 @@ class SandboxWorld {
 
         val playersJson = JsonObject()
         players.toSortedMap().forEach { (name, player) ->
-            playersJson.add(name, player.toPlayerJson())
+            playersJson.add(name, player.toPlayerJson(profile))
         }
         root.add("players", playersJson)
 
@@ -475,7 +495,7 @@ class SandboxWorld {
     }
 }
 
-fun SandboxEntity.toJson(): JsonElement {
+fun SandboxEntity.toJson(profile: VersionProfile = VersionProfiles.default): JsonElement {
     val json = JsonObject()
     json.addProperty("uuid", uuid)
     json.addProperty("type", type.toString())
@@ -490,12 +510,12 @@ fun SandboxEntity.toJson(): JsonElement {
     val tagsJson = JsonArray()
     tags.sorted().forEach { tagsJson.add(it) }
     json.add("tags", tagsJson)
-    json.add("nbt", fullNbt())
+    json.add("nbt", fullNbt(profile))
     return json
 }
 
-fun SandboxPlayer.toPlayerJson(): JsonElement {
-    val json = toJson().asJsonObject
+fun SandboxPlayer.toPlayerJson(profile: VersionProfile = VersionProfiles.default): JsonElement {
+    val json = toJson(profile).asJsonObject
     json.addProperty("name", name)
     json.addProperty("dimension", dimension.toString())
     json.addProperty("gameMode", gameMode)

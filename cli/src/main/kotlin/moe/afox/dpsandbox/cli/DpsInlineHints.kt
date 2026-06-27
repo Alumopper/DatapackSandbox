@@ -24,6 +24,7 @@ class DpsInlineHints private constructor(
         })
         addWidget("_dps-accept-line", Widget {
             setTailTip("")
+            clearDescription()
             builtin(LineReader.ACCEPT_LINE)
         })
     }
@@ -60,6 +61,12 @@ class DpsInlineHints private constructor(
 
     private fun refresh(redraw: Boolean = true) {
         setTailTip(completer.inlineHint(buffer().toString()))
+        val description = completer.multilineHints(buffer().toString())
+        if (description.isEmpty()) {
+            clearDescription()
+        } else {
+            setDescription(description)
+        }
         if (redraw && reader.isReading) {
             builtin(LineReader.REDISPLAY)
         }

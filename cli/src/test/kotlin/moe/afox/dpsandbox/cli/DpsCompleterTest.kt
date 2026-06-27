@@ -1,5 +1,8 @@
-﻿package moe.afox.dpsandbox.cli
+package moe.afox.dpsandbox.cli
 
+import moe.afox.dpsandbox.core.Datapack
+import moe.afox.dpsandbox.core.DatapackSandbox
+import moe.afox.dpsandbox.core.VersionProfiles
 import moe.afox.dpsandbox.core.createSandbox
 import java.nio.file.Path
 import kotlin.test.Test
@@ -9,6 +12,14 @@ import kotlin.test.assertTrue
 class DpsCompleterTest {
     private fun completer(): DpsCompleter =
         DpsCompleter { createSandbox("26.1.2", listOf(Path.of("../core/src/test/resources/packs/counter"))) }
+
+    private fun emptyCompleter(version: String): DpsCompleter =
+        DpsCompleter {
+            DatapackSandbox(
+                profile = VersionProfiles.get(version),
+                datapack = Datapack(emptyMap(), emptyList(), emptyList()),
+            )
+        }
 
     @Test
     fun `inline hints are single line and update by context`() {
@@ -46,6 +57,25 @@ class DpsCompleterTest {
         val completer = completer()
 
         assertSuggests(completer, "/fun", "/function")
+    }
+
+    @Test
+    fun `root command suggestions are scoped by version profile`() {
+        val latest = emptyCompleter("26.2")
+        val legacy = emptyCompleter("1.20.4")
+
+        assertSuggests(latest, "tran", "transfer")
+        val legacyValues = legacy.suggestions("tran").map { it.value }
+        assertFalse("transfer" in legacyValues, "transfer should not be suggested for 1.20.4: $legacyValues")
+    }
+
+    @Test
+    fun `multiline hints describe the current command`() {
+        val hint = DpsMultilineHints.describe("fun")
+
+        assertTrue(hint.size >= 2, hint.joinToString("\n"))
+        assertTrue("function <namespace:path>" in hint[0].toString(), hint[0].toString())
+        assertTrue("run one loaded function" in hint[1].toString(), hint[1].toString())
     }
 
     private fun assertSuggests(completer: DpsCompleter, line: String, expected: String) {

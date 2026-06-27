@@ -1,12 +1,16 @@
-﻿package moe.afox.dpsandbox.cli
+package moe.afox.dpsandbox.cli
 
+import moe.afox.dpsandbox.core.VersionProfile
+import moe.afox.dpsandbox.core.VersionProfiles
 import org.jline.reader.Highlighter
 import org.jline.reader.LineReader
 import org.jline.utils.AttributedString
 import org.jline.utils.AttributedStringBuilder
 import org.jline.utils.AttributedStyle
 
-class DpsHighlighter : Highlighter {
+class DpsHighlighter(
+    private val profile: () -> VersionProfile = { VersionProfiles.default },
+) : Highlighter {
     override fun highlight(reader: LineReader, buffer: String): AttributedString =
         highlightLine(buffer)
 
@@ -41,7 +45,7 @@ class DpsHighlighter : Highlighter {
 
     private fun commandStyle(token: String): AttributedStyle {
         val command = token.removePrefix("/")
-        val rootCommands = DpsCommandCatalog.rootNames()
+        val rootCommands = DpsCommandCatalog.rootNames(profile())
         return if (command in rootCommands || rootCommands.any { it.startsWith(command) }) {
             rootCommandStyle
         } else {

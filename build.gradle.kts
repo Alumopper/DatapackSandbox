@@ -1,5 +1,6 @@
 ﻿import java.net.URI
 import java.util.zip.ZipInputStream
+import java.util.zip.ZipOutputStream
 
 plugins {
     kotlin("jvm") version "2.4.0" apply false
@@ -37,14 +38,22 @@ tasks.register("fetchVanillaMcdoc") {
         sourceDir.mkdirs()
 
         if (!archive.isFile) {
-            URI("https://github.com/SpyglassMC/vanilla-mcdoc/archive/refs/heads/main.zip")
-                .toURL()
-                .openStream()
-                .use { input -> archive.outputStream().use { output -> input.copyTo(output) } }
+            try {
+                URI("https://github.com/SpyglassMC/vanilla-mcdoc/archive/refs/heads/main.zip")
+                    .toURL()
+                    .openStream()
+                    .use { input -> archive.outputStream().use { output -> input.copyTo(output) } }
+            } catch (error: Exception) {
+                logger.warn("Could not download vanilla-mcdoc; generating fallback versioned NBT schema from empty input: ${error.message}")
+                archive.delete()
+                ZipOutputStream(archive.outputStream()).use {}
+            }
         }
 
         sourceDir.deleteRecursively()
         sourceDir.mkdirs()
+        if (!archive.isFile) return@doLast
+
         ZipInputStream(archive.inputStream()).use { zip ->
             generateSequence { zip.nextEntry }.forEach { entry ->
                 if (!entry.name.endsWith(".mcdoc")) return@forEach

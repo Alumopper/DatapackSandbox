@@ -14,6 +14,7 @@ object ExitCodes {
             DiagnosticCode.ASSERTION_FAILED -> ASSERTION_FAILED
             DiagnosticCode.INPUT_FORMAT -> INPUT_FORMAT
             DiagnosticCode.UNSUPPORTED_FEATURE,
+            DiagnosticCode.VERSION_MISMATCH,
             DiagnosticCode.RESOURCE_NOT_FOUND,
             DiagnosticCode.COMMAND_ERROR,
             DiagnosticCode.MISSING_CONTEXT -> UNSUPPORTED_OR_VERSION

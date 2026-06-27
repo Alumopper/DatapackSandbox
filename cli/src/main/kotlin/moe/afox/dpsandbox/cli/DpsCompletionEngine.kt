@@ -9,9 +9,10 @@ class DpsCompletionEngine(private val sandbox: () -> DatapackSandbox) {
         val words = context.words
         val first = context.first
         val box = sandbox()
+        val rootCommands = DpsCommandCatalog.rootCommands(box.profile)
         val options = when {
-            first.isBlank() || context.wordIndex == 0 -> DpsCommandCatalog.rootCommands
-            first == "help" -> DpsCommandCatalog.rootCommands
+            first.isBlank() || context.wordIndex == 0 -> rootCommands
+            first == "help" -> rootCommands
             first == "function" && context.wordIndex == 1 -> box.datapack.functions.keys.mapResource("functions")
             first == "inspect" && context.wordIndex == 1 -> inspectTargets.suggest("inspect targets", appendSpace = true)
             first == "inspect" && words.getOrNull(1) == "player" -> playerTargets(includeSelectors = false).suggest("players")
@@ -61,7 +62,7 @@ class DpsCompletionEngine(private val sandbox: () -> DatapackSandbox) {
         }
 
         if (context.wordIndex == 0 && !context.endsWithWhitespace) {
-            val exact = DpsCommandCatalog.rootCommands.firstOrNull {
+            val exact = DpsCommandCatalog.rootCommands(sandbox().profile).firstOrNull {
                 it.value == context.prefix.removePrefix("/")
             }
             if (exact != null) {
@@ -77,6 +78,9 @@ class DpsCompletionEngine(private val sandbox: () -> DatapackSandbox) {
         }
         return values.joinToString(prefix = "[", postfix = "]", separator = " ")
     }
+
+    fun multilineHints(buffer: String, cursor: Int = buffer.length) =
+        DpsMultilineHints.describe(buffer, cursor, sandbox().profile)
 
     private fun eventSuggestions(words: List<String>, context: CompletionContext): List<CompletionSuggestion> =
         when (context.wordIndex) {
@@ -130,7 +134,7 @@ class DpsCompletionEngine(private val sandbox: () -> DatapackSandbox) {
         val beforePrevious = words.getOrNull(context.wordIndex - 2)
         return when {
             previous in setOf("as", "at") -> entityTargets().suggest("entities/selectors", appendSpace = true)
-            previous == "run" -> DpsCommandCatalog.rootCommands
+            previous == "run" -> DpsCommandCatalog.rootCommands(sandbox().profile)
             previous in setOf("if", "unless") -> listOf("entity", "score", "data", "block").suggest("conditions", appendSpace = true)
             beforePrevious in setOf("if", "unless") && previous == "entity" -> entityTargets().suggest("entities/selectors", appendSpace = true)
             previous == "in" -> sandbox().profile.registryView.dimensions.mapResource("dimensions")

@@ -17,7 +17,7 @@ data class LootResult(val items: List<ItemStack>)
 
 class LootEngine(
     private val datapack: Datapack,
-    private val registry: RegistryView = RegistryView.vanilla2612,
+    private val registry: RegistryView = RegistryView.vanilla262,
 ) {
     private val predicates = PredicateEngine(datapack)
 

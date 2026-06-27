@@ -29,4 +29,7 @@ class DpsCompleter(sandbox: () -> DatapackSandbox) : Completer {
 
     fun inlineHint(buffer: String, cursor: Int = buffer.length): String =
         engine.inlineHint(buffer, cursor)
+
+    fun multilineHints(buffer: String, cursor: Int = buffer.length) =
+        engine.multilineHints(buffer, cursor)
 }

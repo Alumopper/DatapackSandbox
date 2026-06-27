@@ -33,9 +33,9 @@ object DatapackLoader {
         paths.forEach { input ->
             withPackRoot(input) { root ->
                 validatePackMetadata(root, input, profile)
-                functions.putAll(readFunctions(root))
-                loadFunctions += readFunctionTag(root, "load")
-                tickFunctions += readFunctionTag(root, "tick")
+                functions.putAll(readFunctions(root, profile))
+                loadFunctions += readFunctionTag(root, profile, "load")
+                tickFunctions += readFunctionTag(root, profile, "tick")
                 lootTables.putAll(readLootTables(root, profile))
                 predicates.putAll(readPredicates(root, profile))
                 advancements.putAll(readAdvancements(root, profile))
@@ -49,6 +49,37 @@ object DatapackLoader {
             lootTables = lootTables.toSortedMap(),
             predicates = predicates.toSortedMap(),
             advancements = advancements.toSortedMap(),
+        )
+    }
+
+    @JvmStatic
+    @JvmOverloads
+    fun loadSingleFunction(
+        functionFile: Path,
+        profile: VersionProfile,
+        functionId: ResourceLocation = SingleFunctionDatapack.defaultId(),
+    ): Datapack {
+        val normalized = functionFile.toAbsolutePath().normalize()
+        if (!normalized.exists()) {
+            throw SandboxException(
+                code = DiagnosticCode.INPUT_FORMAT,
+                message = "mcfunction file does not exist: $normalized",
+                version = profile.id,
+            )
+        }
+        if (!normalized.isRegularFile() || normalized.extension.lowercase() != "mcfunction") {
+            throw SandboxException(
+                code = DiagnosticCode.INPUT_FORMAT,
+                message = "Single function input must be a .mcfunction file: $normalized",
+                version = profile.id,
+            )
+        }
+
+        val function = DatapackFunction(functionId, readFunctionLines(normalized))
+        return Datapack(
+            functions = sortedMapOf(functionId to function),
+            loadFunctions = emptyList(),
+            tickFunctions = emptyList(),
         )
     }
 
@@ -91,7 +122,19 @@ object DatapackLoader {
             if (!element.isJsonObject || !element.asJsonObject.has("pack")) {
                 throw IllegalArgumentException("pack.mcmeta must contain a top-level 'pack' object")
             }
+            val pack = element.asJsonObject.getAsJsonObject("pack")
+                ?: throw IllegalArgumentException("pack.mcmeta must contain a top-level 'pack' object")
+            val declaration = parsePackFormatDeclaration(pack)
+            if (!declaration.matches(profile.dataPackFormat)) {
+                throw SandboxException(
+                    code = DiagnosticCode.VERSION_MISMATCH,
+                    message = "Datapack format ${declaration.describe()} is not compatible with version ${profile.id}; expected ${profile.dataPackFormat}",
+                    location = SourceLocation(file = meta.toString()),
+                    version = profile.id,
+                )
+            }
         } catch (error: Exception) {
+            if (error is SandboxException) throw error
             throw SandboxException(
                 code = DiagnosticCode.INPUT_FORMAT,
                 message = "Invalid pack.mcmeta: ${error.message}",
@@ -102,7 +145,71 @@ object DatapackLoader {
         }
     }
 
-    private fun readFunctions(root: Path): Map<ResourceLocation, DatapackFunction> {
+    private fun parsePackFormatDeclaration(pack: JsonObject): PackFormatDeclaration {
+        val exact = pack.get("pack_format")?.let(DataPackFormat.Companion::parse)
+        val supported = pack.get("supported_formats")?.let(::parseSupportedFormats)
+        val min = pack.get("min_format")?.let(DataPackFormat.Companion::parse)
+        val max = pack.get("max_format")?.let(DataPackFormat.Companion::parse)
+        if (exact == null && supported == null && min == null && max == null) {
+            throw IllegalArgumentException("pack.mcmeta pack object must contain 'pack_format' or a supported format range")
+        }
+        val range = supported ?: if (min != null || max != null) FormatRange(min, max) else null
+        return PackFormatDeclaration(exact, range)
+    }
+
+    private fun parseSupportedFormats(element: JsonElement): FormatRange =
+        when {
+            element.isJsonPrimitive -> {
+                val exact = DataPackFormat.parse(element)
+                FormatRange(exact, exact)
+            }
+            element.isJsonArray -> {
+                val values = element.asJsonArray
+                if (values.size() != 2) {
+                    throw IllegalArgumentException("supported_formats array must contain [min, max]")
+                }
+                FormatRange(DataPackFormat.parse(values[0]), DataPackFormat.parse(values[1]))
+            }
+            element.isJsonObject -> {
+                val obj = element.asJsonObject
+                val range = FormatRange(
+                    min = (obj.get("min_format") ?: obj.get("min") ?: obj.get("min_inclusive"))?.let(DataPackFormat.Companion::parse),
+                    max = (obj.get("max_format") ?: obj.get("max") ?: obj.get("max_inclusive"))?.let(DataPackFormat.Companion::parse),
+                )
+                if (range.min == null && range.max == null) {
+                    throw IllegalArgumentException("supported_formats object must declare a min or max format")
+                }
+                range
+            }
+            else -> throw IllegalArgumentException("supported_formats must be a number, [min, max], or object")
+        }
+
+    private data class PackFormatDeclaration(
+        val exact: DataPackFormat?,
+        val range: FormatRange?,
+    ) {
+        fun matches(expected: DataPackFormat): Boolean =
+            exact?.matches(expected) == true || range?.contains(expected) == true
+
+        fun describe(): String =
+            listOfNotNull(
+                exact?.let { "pack_format $it" },
+                range?.takeIf { it.min != null || it.max != null }?.let { "range ${it.describe()}" },
+            ).joinToString(" or ")
+    }
+
+    private data class FormatRange(
+        val min: DataPackFormat?,
+        val max: DataPackFormat?,
+    ) {
+        fun contains(value: DataPackFormat): Boolean =
+            (min == null || value >= min) && (max == null || value <= max)
+
+        fun describe(): String =
+            "${min?.toString() ?: "-inf"}..${max?.toString() ?: "+inf"}"
+    }
+
+    private fun readFunctions(root: Path, profile: VersionProfile): Map<ResourceLocation, DatapackFunction> {
         val data = root.resolve("data")
         if (!data.exists()) return emptyMap()
 
@@ -110,7 +217,7 @@ object DatapackLoader {
         Files.list(data).use { namespaces ->
             namespaces.filter { it.isDirectory() }.forEach { namespaceDir ->
                 val namespace = namespaceDir.name
-                listOf("function", "functions").forEach { functionDirName ->
+                profile.resourceDirectories.functions.forEach { functionDirName ->
                     val functionRoot = namespaceDir.resolve(functionDirName)
                     if (!functionRoot.exists()) return@forEach
                     Files.walk(functionRoot).use { walk ->
@@ -130,7 +237,7 @@ object DatapackLoader {
 
     private fun readFunctionLines(file: Path): List<FunctionLine> =
         Files.readAllLines(file, StandardCharsets.UTF_8).mapIndexedNotNull { index, raw ->
-            val stripped = raw.trim()
+            val stripped = raw.removePrefix("\uFEFF").trim()
             if (stripped.isEmpty() || stripped.startsWith("#")) {
                 null
             } else {
@@ -139,12 +246,10 @@ object DatapackLoader {
             }
         }
 
-    private fun readFunctionTag(root: Path, tagName: String): List<ResourceLocation> {
+    private fun readFunctionTag(root: Path, profile: VersionProfile, tagName: String): List<ResourceLocation> {
         val tags = root.resolve("data").resolve("minecraft").resolve("tags")
-        val candidates = listOf(
-            tags.resolve("function").resolve("$tagName.json"),
-            tags.resolve("functions").resolve("$tagName.json"),
-        )
+        val candidates = profile.resourceDirectories.functionTags
+            .map { tags.resolve(it).resolve("$tagName.json") }
 
         return candidates.filter { it.exists() }.flatMap { tagPath ->
             val json = try {
@@ -186,18 +291,18 @@ object DatapackLoader {
     }
 
     private fun readLootTables(root: Path, profile: VersionProfile): Map<ResourceLocation, LootTable> =
-        readJsonResources(root, profile, listOf("loot_table", "loot_tables"), "loot table")
+        readJsonResources(root, profile, profile.resourceDirectories.lootTables, "loot table")
             .mapValues { (_, resource) ->
                 val objectRoot = resource.root.asObjectOrError(resource, profile, "Loot table")
                 LootTable(resource.id, resource.file, objectRoot)
             }
 
     private fun readPredicates(root: Path, profile: VersionProfile): Map<ResourceLocation, PredicateDefinition> =
-        readJsonResources(root, profile, listOf("predicate", "predicates"), "predicate")
+        readJsonResources(root, profile, profile.resourceDirectories.predicates, "predicate")
             .mapValues { (_, resource) -> PredicateDefinition(resource.id, resource.file, resource.root) }
 
     private fun readAdvancements(root: Path, profile: VersionProfile): Map<ResourceLocation, AdvancementDefinition> =
-        readJsonResources(root, profile, listOf("advancement", "advancements"), "advancement")
+        readJsonResources(root, profile, profile.resourceDirectories.advancements, "advancement")
             .mapValues { (_, resource) -> parseAdvancement(resource, profile) }
 
     private fun readJsonResources(

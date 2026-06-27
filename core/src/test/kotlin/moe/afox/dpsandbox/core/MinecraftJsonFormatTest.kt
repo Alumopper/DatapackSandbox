@@ -6,7 +6,6 @@ import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.io.path.name
 import kotlin.test.Test
-import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
@@ -34,12 +33,16 @@ class MinecraftJsonFormatTest {
     }
 
     @Test
-    fun `pack mcmeta uses 26_1_2 data pack format`() {
+    fun `pack mcmeta uses a supported data pack format`() {
         minecraftJsonFiles()
             .filter { it.name == "pack.mcmeta" }
             .forEach { file ->
                 val root = JsonParser.parseString(Files.readString(file)).asJsonObject
-                assertEquals(101.1, root.getAsJsonObject("pack").get("pack_format").asDouble, 0.0, file.toString())
+                val actual = DataPackFormat.parse(root.getAsJsonObject("pack").get("pack_format"))
+                assertTrue(
+                    VersionProfiles.all.any { it.dataPackFormat.matches(actual) },
+                    "Unsupported pack_format $actual in $file",
+                )
             }
     }
 

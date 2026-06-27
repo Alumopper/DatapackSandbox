@@ -1,9 +1,11 @@
-# Command Support for 26.1.2
+# Command Support for 26.2
 
-This project targets Minecraft Java `26.1.2`. Command syntax is checked against
-Minecraft Wiki command syntax notes and should be validated against generated
-vanilla reports from the `26.1.2` server jar when extending this table. The
-table compares vanilla root command families with the sandbox implementation.
+This project defaults to Minecraft Java `26.2` and keeps compatibility profiles
+down to `1.20.4`. Command syntax is checked against Minecraft Wiki command
+syntax notes and should be validated against generated vanilla reports from the
+active target version's server jar when extending this table. The table compares
+vanilla root command families in the latest profile with the sandbox
+implementation.
 
 Status meanings:
 
@@ -13,6 +15,9 @@ Status meanings:
   root commands are recorded as warning output events instead of aborting the
   run. Use CLI/manifest/API unsupported mode `error` for strict failures, or
   `ignore` to silence these warnings.
+- `Unknown for profile`: the command root is not present in the active version
+  profile and fails as `INPUT_FORMAT` instead of producing an unsupported
+  warning.
 - `Sandbox-only`: this is not a vanilla command.
 
 ## Vanilla Command Comparison

@@ -19,6 +19,7 @@ import moe.afox.dpsandbox.core.SandboxEntity
 import moe.afox.dpsandbox.core.SandboxBlock
 import moe.afox.dpsandbox.core.Position
 import moe.afox.dpsandbox.core.UnsupportedFeatureMode
+import moe.afox.dpsandbox.core.VersionProfiles
 import moe.afox.dpsandbox.core.createSandbox
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
@@ -33,6 +34,15 @@ data class ManifestResult(
     val passed: Boolean,
     val messages: List<String>,
     val outputs: List<OutputEvent> = emptyList(),
+    val attempts: List<ManifestAttemptResult> = emptyList(),
+)
+
+data class ManifestAttemptResult(
+    val version: String,
+    val packs: List<Path>,
+    val passed: Boolean,
+    val messages: List<String>,
+    val outputs: List<OutputEvent> = emptyList(),
 )
 
 data class ManifestOptions(
@@ -43,6 +53,11 @@ data class ManifestOptions(
 )
 
 object ManifestRunner {
+    private data class ManifestRunConfig(
+        val version: String,
+        val packs: List<Path>,
+    )
+
     fun discover(inputs: List<Path>): List<Path> {
         val manifests = mutableListOf<Path>()
         inputs.forEach { input ->
@@ -71,14 +86,35 @@ object ManifestRunner {
         }
 
         val base = path.parent ?: Path.of(".")
-        val version = json.string("version") ?: "26.1.2"
+        val configs = runConfigs(json, base, path)
         val unsupportedMode = json.string("unsupported")?.let(::unsupportedFeatureMode) ?: options.unsupportedFeatureMode
-        val packs = json.array("packs").map { base.resolve(it.asString).normalize() }
-        if (packs.isEmpty()) {
-            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Manifest must contain at least one pack: $path")
+        val attempts = configs.map { config ->
+            runOne(path, json, config, unsupportedMode, options)
         }
 
-        val sandbox = createSandbox(version, packs, unsupportedFeatureMode = unsupportedMode)
+        val multiVersion = attempts.size > 1
+        val messages = attempts.flatMap { attempt ->
+            attempt.messages.map { message ->
+                if (multiVersion) "[${attempt.version}] $message" else message
+            }
+        }
+        return ManifestResult(
+            path = path,
+            passed = attempts.all { it.passed },
+            messages = messages,
+            outputs = attempts.flatMap { it.outputs },
+            attempts = attempts,
+        )
+    }
+
+    private fun runOne(
+        path: Path,
+        json: JsonObject,
+        config: ManifestRunConfig,
+        unsupportedMode: UnsupportedFeatureMode,
+        options: ManifestOptions,
+    ): ManifestAttemptResult {
+        val sandbox = createSandbox(config.version, config.packs, unsupportedFeatureMode = unsupportedMode)
         json.array("steps").forEachIndexed { index, step ->
             if (!step.isJsonObject) {
                 throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Manifest steps must be objects: $path")
@@ -86,7 +122,7 @@ object ManifestRunner {
             try {
                 runStep(step.asJsonObject, sandbox, options)
             } catch (error: SandboxException) {
-                throw SandboxException(error.code, "Step ${index + 1} failed: ${error.message}", error.location, error.version, error.command, error)
+                throw SandboxException(error.code, "Step ${index + 1} failed for ${config.version}: ${error.message}", error.location, error.version, error.command, error)
             }
         }
 
@@ -102,7 +138,65 @@ object ManifestRunner {
             failures += "snapshot: ${sandbox.snapshotString()}"
         }
 
-        return ManifestResult(path, failures.isEmpty(), failures, sandbox.world.outputs.toList())
+        return ManifestAttemptResult(
+            version = config.version,
+            packs = config.packs,
+            passed = failures.isEmpty(),
+            messages = failures,
+            outputs = sandbox.world.outputs.toList(),
+        )
+    }
+
+    private fun runConfigs(json: JsonObject, base: Path, path: Path): List<ManifestRunConfig> {
+        if (json.has("version") && json.has("versions")) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Manifest must use either 'version' or 'versions', not both: $path")
+        }
+
+        val versions = when {
+            json.has("versions") -> json.stringArray("versions")
+            json.has("version") -> listOf(json.requiredString("version"))
+            else -> listOf(VersionProfiles.default.id)
+        }.distinct()
+
+        if (versions.isEmpty()) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Manifest must contain at least one version: $path")
+        }
+
+        val packsElement = json.get("packs")
+            ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Manifest must contain packs: $path")
+        return versions.map { version ->
+            ManifestRunConfig(
+                version = version,
+                packs = parsePacksForVersion(packsElement, version, base, path),
+            )
+        }
+    }
+
+    private fun parsePacksForVersion(packsElement: JsonElement, version: String, base: Path, path: Path): List<Path> {
+        val packEntries = when {
+            packsElement.isJsonArray -> packsElement.asJsonArray.toList()
+            packsElement.isJsonObject -> {
+                val packsObject = packsElement.asJsonObject
+                val value = packsObject.get(version) ?: packsObject.get("default")
+                    ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Manifest packs object is missing entry for version '$version': $path")
+                if (!value.isJsonArray) {
+                    throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Manifest packs for version '$version' must be an array: $path")
+                }
+                value.asJsonArray.toList()
+            }
+            else -> throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Manifest packs must be an array or object: $path")
+        }
+
+        val packs = packEntries.map { entry ->
+            if (!entry.isJsonPrimitive || !entry.asJsonPrimitive.isString) {
+                throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Manifest pack entries must be strings: $path")
+            }
+            base.resolve(entry.asString).normalize()
+        }
+        if (packs.isEmpty()) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Manifest must contain at least one pack for version '$version': $path")
+        }
+        return packs
     }
 
     private fun runStep(step: JsonObject, sandbox: DatapackSandbox, options: ManifestOptions) {
@@ -147,9 +241,9 @@ object ManifestRunner {
         val nbt = block.get("nbt")?.let { if (it.isJsonObject) it.asJsonObject else JsonValues.parse(it.asString).asJsonObject } ?: JsonObject()
         val sandboxBlock = SandboxBlock(id, properties)
         if (nbt.entrySet().isNotEmpty()) {
-            val updated = sandboxBlock.fullNbt(pos)
+            val updated = sandboxBlock.fullNbt(pos, sandbox.profile)
             JsonPaths.merge(updated, null, nbt)
-            sandboxBlock.writeFullNbt(pos, updated)
+            sandboxBlock.writeFullNbt(pos, sandbox.profile, updated)
         }
         sandbox.world.setBlock(pos, sandboxBlock)
     }
@@ -230,7 +324,7 @@ object ManifestRunner {
                     block.getAsJsonObject("nbt")?.let { expected ->
                         val path = expected.string("path")
                         val expectedValue = expected.get("equals")
-                        val actualValue = actual?.fullNbt(pos)?.let { JsonPaths.get(it, path) }
+                        val actualValue = actual?.fullNbt(pos, sandbox.profile)?.let { JsonPaths.get(it, path) }
                         if (expectedValue != null && actualValue != expectedValue) {
                             failures += "block $pos nbt ${path ?: "<root>"} expected ${JsonValues.render(expectedValue)} but was ${actualValue?.let(JsonValues::render) ?: "<missing>"}"
                         }
@@ -339,6 +433,14 @@ object ManifestRunner {
         }
         return value.asJsonArray.toList()
     }
+
+    private fun JsonObject.stringArray(name: String): List<String> =
+        array(name).map { element ->
+            if (!element.isJsonPrimitive || !element.asJsonPrimitive.isString) {
+                throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Manifest '$name' entries must be strings")
+            }
+            element.asString
+        }
 
     private fun JsonObject.string(name: String): String? =
         get(name)?.takeIf { it.isJsonPrimitive }?.asString

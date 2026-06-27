@@ -17,8 +17,10 @@ import moe.afox.dpsandbox.core.JsonValues
 import moe.afox.dpsandbox.core.PlayerEvents
 import moe.afox.dpsandbox.core.ResourceLocation
 import moe.afox.dpsandbox.core.SandboxException
+import moe.afox.dpsandbox.core.SingleFunctionDatapack
 import moe.afox.dpsandbox.core.UnsupportedFeatureMode
 import moe.afox.dpsandbox.core.VersionProfiles
+import moe.afox.dpsandbox.core.createFunctionSandbox
 import moe.afox.dpsandbox.core.createSandbox
 import moe.afox.dpsandbox.core.toJson
 import moe.afox.dpsandbox.core.toPlayerJson
@@ -74,11 +76,16 @@ class CheckCommand : CliktCommand(name = "check") {
                         unsupportedFeatureMode = unsupportedFeatureMode(unsupported),
                     ),
                 )
+                val versionLabel = result.attempts
+                    .map { it.version }
+                    .takeIf { it.size > 1 }
+                    ?.joinToString(prefix = " [", postfix = "]")
+                    .orEmpty()
                 if (result.passed) {
-                    println(ConsoleStyle.green("PASS ${manifest}"))
+                    println(ConsoleStyle.green("PASS ${manifest}${versionLabel}"))
                 } else {
                     failed = true
-                    println(ConsoleStyle.red("FAIL ${manifest}"))
+                    println(ConsoleStyle.red("FAIL ${manifest}${versionLabel}"))
                     result.messages.forEach { println("  - $it") }
                     if (failFast) exitProcess(ExitCodes.ASSERTION_FAILED)
                 }
@@ -96,7 +103,9 @@ class CheckCommand : CliktCommand(name = "check") {
 
 class RunCommand : CliktCommand(name = "run") {
     private val version by option("--version", "-v").default(VersionProfiles.default.id)
-    private val packs by option("--pack", "-p").path(mustExist = true).multiple(required = true)
+    private val packs by option("--pack", "-p").path(mustExist = true).multiple()
+    private val mcfunction by option("--mcfunction", "--function-file").path(mustExist = true)
+    private val mcfunctionId by option("--mcfunction-id").default(SingleFunctionDatapack.DEFAULT_ID)
     private val shouldLoad by option("--load").flag(default = false)
     private val ticks by option("--ticks").int().default(0)
     private val functions by option("--function", "-f").multiple()
@@ -108,8 +117,29 @@ class RunCommand : CliktCommand(name = "run") {
 
     override fun run() {
         try {
-            val sandbox = createSandbox(version, packs, unsupportedFeatureMode = unsupportedFeatureMode(unsupported))
+            val sandbox = when {
+                mcfunction != null -> {
+                    if (packs.isNotEmpty()) {
+                        throw SandboxException(
+                            DiagnosticCode.INPUT_FORMAT,
+                            "run accepts either --mcfunction for a single file or --pack for datapacks, not both",
+                        )
+                    }
+                    createFunctionSandbox(
+                        version = version,
+                        functionFile = mcfunction!!,
+                        functionId = mcfunctionId,
+                        unsupportedFeatureMode = unsupportedFeatureMode(unsupported),
+                    )
+                }
+                packs.isNotEmpty() -> createSandbox(version, packs, unsupportedFeatureMode = unsupportedFeatureMode(unsupported))
+                else -> throw SandboxException(
+                    DiagnosticCode.INPUT_FORMAT,
+                    "run requires at least one --pack path or one --mcfunction file",
+                )
+            }
             var total = 0
+            if (mcfunction != null) total += sandbox.runFunction(mcfunctionId).commandsExecuted
             if (shouldLoad) total += sandbox.runLoad().commandsExecuted
             if (ticks > 0) total += sandbox.runTicks(ticks).commandsExecuted
             functions.forEach { total += sandbox.runFunction(it).commandsExecuted }
@@ -173,7 +203,7 @@ class AdvancementCommand : CliktCommand(name = "advancement") {
                 "list" -> sandbox.datapack.advancements.keys.forEach { println(it) }
                 "progress" -> {
                     val progress = sandbox.advancements.progress(player, id ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "advancement id is required"))
-                    println(JsonValues.render(player.toPlayerJson()))
+                    println(JsonValues.render(player.toPlayerJson(sandbox.profile)))
                     println(progress.criteria)
                 }
                 "grant" -> sandbox.advancements.grant(player, id ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "advancement id is required"), args.getOrNull(3)).forEach { println(it) }
@@ -222,7 +252,8 @@ class VersionCommand : CliktCommand(name = "version") {
     override fun run() {
         VersionProfiles.all.forEach { profile ->
             val marker = if (profile == VersionProfiles.default) " default" else ""
-            println("${profile.id} java=${profile.javaMajor}$marker - ${profile.description}")
+            val dataVersion = profile.dataVersion?.let { " data=$it" }.orEmpty()
+            println("${profile.id} java=${profile.javaMajor} pack_format=${profile.dataPackFormat}$dataVersion$marker - ${profile.description}")
         }
     }
 }

@@ -3,7 +3,8 @@
 [中文文档](README.zh-CN.md)
 
 A lightweight, clean-room Minecraft Java datapack sandbox focused on local CLI
-debugging. The first bundled version profile targets Minecraft Java `26.1.2`.
+debugging. Built-in version profiles cover every Minecraft Java release from
+`1.20.4` through `26.2`, with `26.2` as the default latest profile.
 
 ## Build
 
@@ -32,7 +33,13 @@ cli/build/libs/datapack-sandbox-cli.jar
 Start a REPL:
 
 ```bash
-java -jar cli/build/libs/datapack-sandbox-cli.jar repl --version 26.1.2 --pack ./my_pack
+java -jar cli/build/libs/datapack-sandbox-cli.jar repl --version 26.2 --pack ./my_pack
+```
+
+List supported version profiles and their data pack formats:
+
+```bash
+java -jar cli/build/libs/datapack-sandbox-cli.jar version
 ```
 
 The REPL supports TAB completion, live tail-tip suggestions while typing,
@@ -51,6 +58,12 @@ Run a quick smoke test:
 java -jar cli/build/libs/datapack-sandbox-cli.jar run --pack ./my_pack --load --ticks 20 --function demo:main --snapshot
 ```
 
+Run a single `.mcfunction` file without creating a full datapack:
+
+```bash
+java -jar cli/build/libs/datapack-sandbox-cli.jar run --version 26.2 --mcfunction ./scratch/test.mcfunction --snapshot
+```
+
 Run JSON check manifests:
 
 ```bash
@@ -61,7 +74,7 @@ Manifest files use the `.dps.json` suffix:
 
 ```json
 {
-  "version": "26.1.2",
+  "version": "26.2",
   "unsupported": "warn",
   "packs": ["./packs/counter"],
   "steps": [
@@ -75,6 +88,33 @@ Manifest files use the `.dps.json` suffix:
         "target": "#clock",
         "objective": "ticks",
         "equals": 20
+      }
+    }
+  ]
+}
+```
+
+The same manifest can also run across multiple version profiles. Use a `packs`
+object when each version needs a different `pack_format` or resource directory
+layout:
+
+```json
+{
+  "versions": ["1.20.4", "26.1.2", "26.2"],
+  "packs": {
+    "1.20.4": ["./packs/demo-1_20_4"],
+    "26.1.2": ["./packs/demo-26_1_2"],
+    "26.2": ["./packs/demo-26_2"]
+  },
+  "steps": [
+    { "load": true }
+  ],
+  "assertions": [
+    {
+      "score": {
+        "target": "#clock",
+        "objective": "ticks",
+        "equals": 0
       }
     }
   ]

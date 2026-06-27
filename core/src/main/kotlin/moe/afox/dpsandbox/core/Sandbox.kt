@@ -88,7 +88,7 @@ class DatapackSandbox(
     }
 
     fun snapshotJson(): JsonObject {
-        val snapshot = world.snapshot()
+        val snapshot = world.snapshot(profile)
         snapshot.addProperty("version", profile.id)
         return snapshot
     }
@@ -169,17 +169,12 @@ class DatapackSandbox(
                 "playsound" -> executePlaySound(tokens, location, context)
                 "stopsound" -> executeStopSound(tokens, location, context)
                 "particle" -> executeParticle(command, tokens, location)
-                else -> unsupportedFeature(
-                    message = "Command '${tokens[0].text}' is not implemented for version ${profile.id}",
-                    version = profile.id,
-                    location = location,
-                    command = command,
-                )
+                else -> handleUnknownCommand(tokens[0].text, command, location)
             }
         } catch (error: SandboxException) {
             if (error.code == DiagnosticCode.UNSUPPORTED_FEATURE &&
                 unsupportedFeatureMode != UnsupportedFeatureMode.ERROR &&
-                tokens.firstOrNull()?.text in vanillaCommandRoots
+                tokens.firstOrNull()?.text?.let(profile.commands::hasRoot) == true
             ) {
                 if (unsupportedFeatureMode == UnsupportedFeatureMode.WARN) {
                     recordUnsupportedWarning(command, error, location)
@@ -191,6 +186,24 @@ class DatapackSandbox(
             }
             throw error
         }
+    }
+
+    private fun handleUnknownCommand(root: String, command: String, location: SourceLocation?) {
+        if (!profile.commands.hasRoot(root)) {
+            throw SandboxException(
+                code = DiagnosticCode.INPUT_FORMAT,
+                message = "Unknown command '$root' for version ${profile.id}",
+                location = location,
+                version = profile.id,
+                command = command,
+            )
+        }
+        unsupportedFeature(
+            message = "Command '$root' is not implemented for version ${profile.id}",
+            version = profile.id,
+            location = location,
+            command = command,
+        )
     }
 
     private fun recordUnsupportedWarning(command: String, error: SandboxException, location: SourceLocation?) {
@@ -657,8 +670,8 @@ class DatapackSandbox(
     private fun dataTargetNbtValues(target: DataTargetSpec, location: SourceLocation?): List<JsonObject> =
         when (target) {
             is DataTargetSpec.Storage -> listOf(world.storage(target.id))
-            is DataTargetSpec.Entities -> target.entities.map { it.fullNbt(location) }
-            is DataTargetSpec.Block -> listOf(world.requireBlock(target.pos).fullNbt(target.pos, location))
+            is DataTargetSpec.Entities -> target.entities.map { it.fullNbt(profile, location) }
+            is DataTargetSpec.Block -> listOf(world.requireBlock(target.pos).fullNbt(target.pos, profile, location))
         }
 
     private fun mutateDataTarget(target: DataTargetSpec, location: SourceLocation?, mutation: (JsonObject) -> Unit) {
@@ -666,17 +679,17 @@ class DatapackSandbox(
             is DataTargetSpec.Storage -> mutation(world.storage(target.id))
             is DataTargetSpec.Block -> {
                 val block = world.requireBlock(target.pos)
-                val updated = block.fullNbt(target.pos, location)
+                val updated = block.fullNbt(target.pos, profile, location)
                 mutation(updated)
-                block.writeFullNbt(target.pos, updated, location)
+                block.writeFullNbt(target.pos, profile, updated, location)
             }
             is DataTargetSpec.Entities -> target.entities.forEach { entity ->
                 if (entity is SandboxPlayer) {
                     throw SandboxException(DiagnosticCode.COMMAND_ERROR, "Player NBT is read-only in this sandbox; use player events or movement commands", location)
                 }
-                val updated = entity.fullNbt(location)
+                val updated = entity.fullNbt(profile, location)
                 mutation(updated)
-                entity.writeFullNbt(updated, location)
+                entity.writeFullNbt(profile, updated, location)
             }
         }
     }
@@ -800,16 +813,16 @@ class DatapackSandbox(
             if (entity is SandboxPlayer) {
                 entity.health = (entity.health - amount).coerceAtLeast(0.0)
             } else {
-                val updated = entity.fullNbt(location)
+                val updated = entity.fullNbt(profile, location)
                 val health = updated.get("Health")?.asDouble ?: 20.0
                 updated.addProperty("Health", (health - amount).coerceAtLeast(0.0))
-                entity.writeFullNbt(updated, location)
+                entity.writeFullNbt(profile, updated, location)
             }
         }
         world.entities.removeIf { entity ->
             when (entity) {
                 is SandboxPlayer -> entity.health <= 0.0
-                else -> entity.fullNbt(location).get("Health")?.asDouble == 0.0
+                else -> entity.fullNbt(profile, location).get("Health")?.asDouble == 0.0
             }
         }
     }
@@ -899,7 +912,7 @@ class DatapackSandbox(
         val nbt = if (tokens.size > nbtStartIndex) parseSummonNbt(CommandTokenizer.tailFrom(command, tokens[nbtStartIndex]), location) else JsonObject()
         val tags = extractTags(nbt).toMutableSet()
         val entity = SandboxEntity(type = type, position = position, tags = tags, nbt = nbt)
-        entity.fullNbt(location)
+        entity.fullNbt(profile, location)
         world.entities += entity
     }
 
@@ -944,8 +957,8 @@ class DatapackSandbox(
         val pos = parseBlockPos(tokens, 1, context.position, location)
         val block = parseBlockArgument(tokens[4].text, location)
         when (val mode = tokens.getOrNull(5)?.text ?: "replace") {
-            "replace", "destroy", "strict" -> world.setBlock(pos, block.toBlock(pos, location))
-            "keep" -> if (world.block(pos) == null) world.setBlock(pos, block.toBlock(pos, location))
+            "replace", "destroy", "strict" -> world.setBlock(pos, block.toBlock(pos, profile, location))
+            "keep" -> if (world.block(pos) == null) world.setBlock(pos, block.toBlock(pos, profile, location))
             else -> unsupportedFeature("Unsupported setblock mode '$mode'", profile.id, location)
         }
     }
@@ -998,7 +1011,7 @@ class DatapackSandbox(
                 mode == "keep" && world.block(pos) != null -> Unit
                 mode == "outline" && !boundary -> Unit
                 mode == "hollow" && !boundary -> world.setBlock(pos, null)
-                else -> world.setBlock(pos, block.toBlock(pos, location))
+                else -> world.setBlock(pos, block.toBlock(pos, profile, location))
             }
         }
     }
@@ -1380,18 +1393,18 @@ class DatapackSandbox(
                 if (target is SandboxPlayer) {
                     throw SandboxException(DiagnosticCode.COMMAND_ERROR, "Player NBT is read-only in this sandbox; use player events or movement commands", location)
                 }
-                val updated = target.fullNbt(location)
+                val updated = target.fullNbt(profile, location)
                 JsonPaths.set(updated, tokens[index + 3].text, scaled)
-                target.writeFullNbt(updated, location)
+                target.writeFullNbt(profile, updated, location)
             }
             "block" -> {
                 requireSizeFrom(tokens, index, 8, "execute store ${tokens[index].text} block <pos> <path> <type> <scale>", location)
                 val pos = parseBlockPos(tokens, index + 2, context.position, location)
                 val block = world.requireBlock(pos)
                 val scaled = scaledStoreValue(valueToStore, tokens[index + 7].text, location)
-                val updated = block.fullNbt(pos, location)
+                val updated = block.fullNbt(pos, profile, location)
                 JsonPaths.set(updated, tokens[index + 5].text, scaled)
-                block.writeFullNbt(pos, updated, location)
+                block.writeFullNbt(pos, profile, updated, location)
             }
             "bossbar" -> {
                 requireSizeFrom(tokens, index, 4, "execute store ${tokens[index].text} bossbar <id> <value|max>", location)
@@ -1508,13 +1521,13 @@ private data class BlockArgument(
     val properties: Map<String, String> = emptyMap(),
     val nbt: JsonObject = JsonObject(),
 ) {
-    fun toBlock(pos: BlockPos, location: SourceLocation?): SandboxBlock? {
+    fun toBlock(pos: BlockPos, profile: VersionProfile, location: SourceLocation?): SandboxBlock? {
         if (id == ResourceLocation("minecraft", "air")) return null
         val block = SandboxBlock(id, properties.toMutableMap())
         if (nbt.entrySet().isNotEmpty()) {
-            val updated = block.fullNbt(pos, location)
+            val updated = block.fullNbt(pos, profile, location)
             JsonPaths.merge(updated, null, nbt)
-            block.writeFullNbt(pos, updated, location)
+            block.writeFullNbt(pos, profile, updated, location)
         }
         return block
     }
@@ -1541,88 +1554,18 @@ fun createSandbox(
     return DatapackSandbox(profile, datapack, world, unsupportedFeatureMode)
 }
 
-private val vanillaCommandRoots = setOf(
-    "advancement",
-    "attribute",
-    "ban",
-    "ban-ip",
-    "banlist",
-    "bossbar",
-    "clear",
-    "clone",
-    "damage",
-    "data",
-    "datapack",
-    "debug",
-    "defaultgamemode",
-    "deop",
-    "difficulty",
-    "effect",
-    "enchant",
-    "execute",
-    "experience",
-    "fill",
-    "fillbiome",
-    "forceload",
-    "function",
-    "gamemode",
-    "gamerule",
-    "give",
-    "help",
-    "item",
-    "jfr",
-    "kick",
-    "kill",
-    "list",
-    "locate",
-    "loot",
-    "me",
-    "msg",
-    "op",
-    "pardon",
-    "pardon-ip",
-    "particle",
-    "perf",
-    "place",
-    "playsound",
-    "publish",
-    "random",
-    "recipe",
-    "reload",
-    "return",
-    "ride",
-    "rotate",
-    "save-all",
-    "save-off",
-    "save-on",
-    "say",
-    "schedule",
-    "scoreboard",
-    "seed",
-    "setblock",
-    "setidletimeout",
-    "setworldspawn",
-    "spawnpoint",
-    "spectate",
-    "spreadplayers",
-    "stop",
-    "stopsound",
-    "summon",
-    "tag",
-    "team",
-    "teammsg",
-    "tell",
-    "tellraw",
-    "tick",
-    "time",
-    "title",
-    "tm",
-    "tp",
-    "transfer",
-    "trigger",
-    "w",
-    "weather",
-    "whitelist",
-    "worldborder",
-    "xp",
-)
+@JvmOverloads
+fun createFunctionSandbox(
+    version: String,
+    functionFile: Path,
+    functionId: String = SingleFunctionDatapack.DEFAULT_ID,
+    world: SandboxWorld = SandboxWorld(),
+    defaultPlayerName: String? = "Steve",
+    unsupportedFeatureMode: UnsupportedFeatureMode = UnsupportedFeatureMode.WARN,
+): DatapackSandbox {
+    val profile = VersionProfiles.get(version)
+    val id = ResourceLocation.parse(functionId)
+    val datapack = DatapackLoader.loadSingleFunction(functionFile, profile, id)
+    defaultPlayerName?.let { if (world.players.isEmpty()) world.createPlayer(it) }
+    return DatapackSandbox(profile, datapack, world, unsupportedFeatureMode)
+}

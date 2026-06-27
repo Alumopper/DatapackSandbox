@@ -22,7 +22,7 @@ class ExtendedRuntimeTest {
 
     @Test
     fun `loads and evaluates predicate loot and advancement player event`() {
-        val sandbox = createSandbox("26.1.2", listOf(pack()))
+        val sandbox = createSandbox("26.2", listOf(pack()))
         val player = sandbox.createPlayer("Steve")
         player.inventory += ItemStack(ResourceLocation.parse("minecraft:carrot_on_a_stick"))
         player.selectedSlot = 0

@@ -1,0 +1,70 @@
+package moe.afox.dpsandbox.cli
+
+import moe.afox.dpsandbox.core.VersionProfile
+import moe.afox.dpsandbox.core.VersionProfiles
+import org.jline.utils.AttributedString
+import org.jline.utils.AttributedStringBuilder
+import org.jline.utils.AttributedStyle
+
+object DpsMultilineHints {
+    fun describe(buffer: String, cursor: Int = buffer.length, profile: VersionProfile = VersionProfiles.default): List<AttributedString> {
+        val context = CompletionContext.parse(buffer, cursor)
+        val commands = DpsCommandCatalog.rootCommands(profile)
+        val command = commandFor(context, commands) ?: return emptyList()
+        val usage = command + DpsCommandCatalog.usageSuffix(command)
+        val detail = details[command]
+            ?: commands.firstOrNull { it.value == command }?.description
+            ?: return emptyList()
+        return listOf(title(usage), body(detail))
+    }
+
+    private fun commandFor(context: CompletionContext, commands: List<CompletionSuggestion>): String? {
+        val first = context.first
+        val names = commands.mapTo(sortedSetOf()) { it.value }
+        if (first in names) return first
+        if (context.wordIndex == 0) {
+            val prefix = context.prefix.removePrefix("/")
+            return names.singleOrNull { it.startsWith(prefix) }
+        }
+        return null
+    }
+
+    private fun title(text: String): AttributedString =
+        AttributedStringBuilder()
+            .styled(AttributedStyle.DEFAULT.foreground(AttributedStyle.CYAN).bold(), text)
+            .toAttributedString()
+
+    private fun body(text: String): AttributedString =
+        AttributedStringBuilder()
+            .styled(AttributedStyle.DEFAULT.foreground(AttributedStyle.WHITE), text)
+            .toAttributedString()
+
+    private val details = mapOf(
+        "load" to "run #minecraft:load in the current sandbox",
+        "reload" to "reload datapack files from disk while keeping world state",
+        "tick" to "advance scheduled functions, tick functions, world time, and player tick triggers",
+        "function" to "run one loaded function",
+        "player" to "create or reuse a sandbox player with readable vanilla-style NBT",
+        "event" to "inject player actions for advancement triggers, predicates, and rewards",
+        "inspect" to "print sandbox state without mutating it",
+        "snapshot" to "print or write deterministic world JSON",
+        "scoreboard" to "edit objectives and score holders",
+        "execute" to "run a command as/at entities, under conditions, or storing result values",
+        "data" to "read or mutate storage/entity/block NBT with schema validation",
+        "summon" to "create an entity with validated top-level NBT; AI is not ticked",
+        "setblock" to "place one block in the sparse void world without block updates",
+        "fill" to "fill a sparse block region without updates, physics, or drops",
+        "clone" to "copy sparse block state and block entity NBT",
+        "bossbar" to "edit stored bossbar state; no real client UI is simulated",
+        "give" to "add item stacks to sandbox player inventories",
+        "effect" to "give or clear stored player effects",
+        "item" to "replace sandbox entity item slots",
+        "advancement" to "inspect, grant, or revoke per-player advancement progress",
+        "schedule" to "schedule or clear function execution by game tick",
+        "weather" to "edit stored weather state only",
+        "time" to "edit or query sandbox time state",
+        "help" to "show detailed help for a command",
+        "exit" to "leave the REPL",
+        "quit" to "leave the REPL",
+    )
+}

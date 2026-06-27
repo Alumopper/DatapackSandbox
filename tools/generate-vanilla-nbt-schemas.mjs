@@ -85,15 +85,33 @@ for (const dispatch of dispatches.filter((entry) => entry.registry === 'block'))
   }
 }
 
+const supportedVersions = [
+  '1.20.4',
+  '1.20.5',
+  '1.20.6',
+  '1.21',
+  '1.21.1',
+  '1.21.2',
+  '1.21.3',
+  '1.21.4',
+  '1.21.5',
+  '1.21.6',
+  '1.21.7',
+  '1.21.8',
+  '1.21.9',
+  '1.21.10',
+  '1.21.11',
+  '26.1',
+  '26.1.1',
+  '26.1.2',
+  '26.2',
+]
 const output = {
   source: 'https://github.com/SpyglassMC/vanilla-mcdoc',
   parser: '@spyglassmc/mcdoc',
-  format: 'mcdoc-nbt-schema-v1',
+  format: 'mcdoc-nbt-schema-v2',
   fileCount: files.length,
-  itemStackFields: sorted(itemStackFields),
-  entitySchemas: sortedObject(entitySchemas),
-  blockEntitySchemas: sortedObject(blockEntitySchemas),
-  blockToBlockEntity: sortedStringObject(blockToBlockEntity),
+  versions: Object.fromEntries(supportedVersions.map((version) => [version, schemaPayload(version)])),
 }
 
 fs.mkdirSync(path.dirname(outputFile), { recursive: true })
@@ -102,6 +120,16 @@ console.log(
   `Generated ${outputFile} from ${files.length} mcdoc files ` +
   `(entities=${entitySchemas.size}, blockEntities=${blockEntitySchemas.size}, blockMappings=${blockToBlockEntity.size})`,
 )
+
+function schemaPayload(sourceVersion) {
+  return {
+    sourceVersion,
+    itemStackFields: sorted(itemStackFields),
+    entitySchemas: sortedObject(entitySchemas),
+    blockEntitySchemas: sortedObject(blockEntitySchemas),
+    blockToBlockEntity: sortedStringObject(blockToBlockEntity),
+  }
+}
 
 function collectTopLevel(moduleNode) {
   for (const node of moduleNode.children ?? []) {

@@ -51,6 +51,51 @@ The error contains all failures and the final snapshot.
 `unsupportedFeatureMode` can be `WARN` (default), `IGNORE`, or `ERROR`. Use
 `ERROR` when you want unsupported vanilla commands to fail the test immediately.
 
+## Single Mcfunction Tests
+
+You can test one `.mcfunction` file without creating a datapack directory. The
+Minecraft version is explicit in the API call, and the temporary function id
+defaults to `sandbox:main`.
+
+```kotlin
+SandboxQuickTest.singleFunction(
+    functionFile = Path.of("scratch/test.mcfunction"),
+    version = "26.2",
+)
+    .function()
+    .assertScore("#single", "runs", 1)
+    .requirePassed()
+```
+
+For lower-level access:
+
+```kotlin
+val sandbox = createFunctionSandbox(
+    version = "26.2",
+    functionFile = Path.of("scratch/test.mcfunction"),
+)
+sandbox.runFunction("sandbox:main")
+```
+
+## Multi-Version Matrix Tests
+
+Use `SandboxQuickTest.matrix(...)` when the same behavior should pass on
+multiple Minecraft versions. Each version can point at its own datapack so the
+`pack_format` and resource directory layout stay correct.
+
+```kotlin
+SandboxQuickTest.matrix(
+    mapOf(
+        "1.20.4" to listOf(Path.of("packs/demo-1_20_4")),
+        "26.1.2" to listOf(Path.of("packs/demo-26_1_2")),
+        "26.2" to listOf(Path.of("packs/demo-26_2")),
+    ),
+)
+    .load()
+    .assertScore("#clock", "ticks", 0)
+    .requirePassed()
+```
+
 ## Java Example
 
 ```java
@@ -77,6 +122,8 @@ class MyDatapackTest {
 | `load()` | Run `#minecraft:load` |
 | `ticks(n)` | Advance sandbox ticks |
 | `function(id)` | Run a datapack function |
+| `function()` | Run the default single-file function created by `singleFunction(...)` |
+| `matrix(packsByVersion)` | Create a multi-version quick-test matrix |
 | `command(raw)` | Execute one command |
 | `player(name)` | Create or reuse a player |
 | `event(player, type, id, action)` | Inject a player event |
@@ -110,7 +157,7 @@ For full control, use the runtime directly:
 
 ```kotlin
 val sandbox = createSandbox(
-    version = "26.1.2",
+    version = "26.2",
     packs = listOf(Path.of("packs/demo")),
     unsupportedFeatureMode = UnsupportedFeatureMode.ERROR,
 )

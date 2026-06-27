@@ -1,7 +1,10 @@
-﻿package moe.afox.dpsandbox.cli
+package moe.afox.dpsandbox.cli
+
+import moe.afox.dpsandbox.core.VersionProfile
+import moe.afox.dpsandbox.core.VersionProfiles
 
 object DpsCommandCatalog {
-    val rootCommands: List<CompletionSuggestion> = listOf(
+    private val baseRootCommands: List<CompletionSuggestion> = listOf(
         command("load", "run #minecraft:load"),
         command("reload", "reload datapack files"),
         command("tick", "advance sandbox ticks"),
@@ -73,7 +76,19 @@ object DpsCommandCatalog {
         unsupported("worldborder"),
     ).distinctBy { it.value }.sortedBy { it.value }
 
-    fun rootNames(): Set<String> = rootCommands.mapTo(sortedSetOf()) { it.value }
+    fun rootCommands(profile: VersionProfile = VersionProfiles.default): List<CompletionSuggestion> {
+        val scoped = baseRootCommands.filter { suggestion ->
+            suggestion.value in sandboxOnlyRoots || profile.commands.hasRoot(suggestion.value)
+        }
+        val known = scoped.mapTo(mutableSetOf()) { it.value }
+        val inferredUnsupported = profile.commands.roots
+            .filterNot { it in known }
+            .map(::unsupported)
+        return (scoped + inferredUnsupported).distinctBy { it.value }.sortedBy { it.value }
+    }
+
+    fun rootNames(profile: VersionProfile = VersionProfiles.default): Set<String> =
+        rootCommands(profile).mapTo(sortedSetOf()) { it.value }
 
     fun usageSuffix(command: String): String =
         when (command) {
@@ -93,7 +108,7 @@ object DpsCommandCatalog {
             "fill" -> " <from> <to> <block>"
             "weather" -> " <clear|rain|thunder> [duration]"
             "time" -> " <set|add|query> ..."
-            else -> rootCommands.firstOrNull { it.value == command }
+            else -> baseRootCommands.firstOrNull { it.value == command }
                 ?.description
                 ?.takeIf { it.isNotBlank() }
                 ?.let { " - $it" }
@@ -105,4 +120,14 @@ object DpsCommandCatalog {
 
     private fun unsupported(value: String): CompletionSuggestion =
         CompletionSuggestion(value, "vanilla command: warning unless --unsupported error is set", "vanilla warnings", appendSpace = true)
+
+    private val sandboxOnlyRoots = setOf(
+        "load",
+        "player",
+        "event",
+        "inspect",
+        "snapshot",
+        "exit",
+        "quit",
+    )
 }

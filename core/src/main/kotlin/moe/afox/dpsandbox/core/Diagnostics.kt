@@ -2,6 +2,7 @@
 
 enum class DiagnosticCode {
     INPUT_FORMAT,
+    VERSION_MISMATCH,
     RESOURCE_NOT_FOUND,
     UNSUPPORTED_FEATURE,
     COMMAND_ERROR,

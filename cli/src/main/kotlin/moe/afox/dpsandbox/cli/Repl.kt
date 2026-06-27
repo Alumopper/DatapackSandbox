@@ -53,7 +53,7 @@ class Repl(
         val reader = LineReaderBuilder.builder()
             .terminal(terminal)
             .completer(completer)
-            .highlighter(DpsHighlighter())
+            .highlighter(DpsHighlighter { sandbox.profile })
             .variable(LineReader.HISTORY_FILE, Path.of(".dps_history"))
             .option(LineReader.Option.AUTO_MENU, true)
             .option(LineReader.Option.AUTO_LIST, true)
@@ -238,7 +238,7 @@ class Repl(
             "player" -> {
                 val name = args.getOrNull(1)
                 val players = if (name == null) sandbox.world.players.values else listOf(sandbox.world.requirePlayer(name))
-                players.forEach { println(JsonValues.render(it.toPlayerJson())) }
+                players.forEach { println(JsonValues.render(it.toPlayerJson(sandbox.profile))) }
             }
             "loot" -> sandbox.datapack.lootTables.keys.forEach { println(it) }
             "predicate" -> sandbox.datapack.predicates.keys.forEach { println(it) }

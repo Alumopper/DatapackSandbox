@@ -19,7 +19,7 @@ data class RegistryView(
             id in enchantments || id in effects || id in dimensions
 
     companion object {
-        val vanilla2612 = RegistryView(
+        val vanilla262 = RegistryView(
             items = ids("air", "stone", "diamond", "stick", "carrot_on_a_stick", "apple", "experience_bottle"),
             blocks = ids("air", "stone", "dirt", "grass_block", "diamond_ore", "chest"),
             entityTypes = ids("player", "marker", "zombie", "skeleton", "item", "minecraft:experience_orb"),
@@ -80,14 +80,17 @@ data class RegistryView(
             ),
         )
 
+        val vanilla2612 = vanilla262.copy()
+        val vanilla1204 = vanilla2612.copy()
+
         private fun ids(vararg values: String): Set<ResourceLocation> =
             values.map { ResourceLocation.parse(it) }.toSortedSet()
     }
 }
 
 data class VanillaReference(
-    val targetVersion: String = "26.1.2",
-    val latestRelease: String = "26.1.2",
-    val latestSnapshot: String = "26.2-rc-1",
-    val serverJarUrl: String = "https://piston-data.mojang.com/v1/objects/97ccd4c0ed3f81bbb7bfacddd1090b0c56f9bc51/server.jar",
+    val targetVersion: String = "26.2",
+    val latestRelease: String = "26.2",
+    val latestSnapshot: String = "26.3-snapshot-1",
+    val serverJarUrl: String = "https://piston-data.mojang.com/v1/objects/823e2250d24b3ddac457a60c92a6a941943fcd6a/server.jar",
 )

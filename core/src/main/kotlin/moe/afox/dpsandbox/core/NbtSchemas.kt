@@ -1,4 +1,4 @@
-﻿package moe.afox.dpsandbox.core
+package moe.afox.dpsandbox.core
 
 import com.google.gson.JsonArray
 import com.google.gson.JsonElement
@@ -10,7 +10,7 @@ import java.nio.charset.StandardCharsets
 object NbtSchemas {
     val generatedEntityKeys = setOf("id", "UUID", "Pos", "Tags")
     private val generatedBlockEntityKeys = setOf("id", "x", "y", "z")
-    private val loadedSchema: LoadedNbtSchemas? = loadGeneratedSchema()
+    private val loadedSchemas: Map<String, LoadedNbtSchemas> = loadGeneratedSchemas()
 
     private val commonEntityKeys = generatedEntityKeys + setOf(
         "Motion",
@@ -59,6 +59,7 @@ object NbtSchemas {
         "PickupDelay",
         "Owner",
         "Thrower",
+        "AgeLocked",
     )
 
     private val playerKeys = commonEntityKeys + setOf(
@@ -105,7 +106,7 @@ object NbtSchemas {
     private val containerKeys = commonBlockEntityKeys + setOf("Items")
     private val furnaceKeys = containerKeys + setOf("BurnTime", "CookTime", "CookTimeTotal", "RecipesUsed")
     private val signKeys = commonBlockEntityKeys + setOf("front_text", "back_text", "is_waxed")
-    private val fallbackItemStackKeys = setOf("Slot", "slot", "id", "count", "components")
+    private val fallbackItemStackKeys = setOf("Slot", "slot", "id", "count", "Count", "components")
     private val broadKnownBlockEntityKeys = setOf(
         "Items",
         "BurnTime",
@@ -157,7 +158,7 @@ object NbtSchemas {
     )
 
     private val fallbackBlockEntitySchemas: List<BlockEntitySchema> = listOf(
-        BlockEntitySchema({ it.path == "chest" || it.path == "trapped_chest" }, { ResourceLocation("minecraft", "chest") }, containerKeys) {
+        BlockEntitySchema({ it.path == "chest" || it.path == "trapped_chest" || it.path == "copper_chest" }, { ResourceLocation("minecraft", "chest") }, containerKeys) {
             it.ensureArray("Items")
         },
         BlockEntitySchema({ it.path == "barrel" }, { ResourceLocation("minecraft", "barrel") }, containerKeys) {
@@ -180,9 +181,12 @@ object NbtSchemas {
         BlockEntitySchema({ it.path in setOf("beacon", "bed", "bell", "campfire", "command_block", "comparator", "conduit", "daylight_detector", "enchanting_table", "end_gateway", "end_portal", "ender_chest", "jigsaw", "jukebox", "lectern", "mob_spawner", "piston", "sculk_catalyst", "sculk_sensor", "sculk_shrieker", "skull", "structure_block", "trial_spawner", "vault") }, { id -> ResourceLocation("minecraft", id.path) }, commonBlockEntityKeys + broadKnownBlockEntityKeys),
     )
 
-    fun entityNbt(entity: SandboxEntity, location: SourceLocation? = null): JsonObject {
+    fun entityNbt(entity: SandboxEntity, location: SourceLocation? = null): JsonObject =
+        entityNbt(entity, VersionProfiles.default, location)
+
+    fun entityNbt(entity: SandboxEntity, profile: VersionProfile, location: SourceLocation? = null): JsonObject {
         val json = JsonObject()
-        addEntityDefaults(entity, json)
+        addEntityDefaults(entity, profile, json)
         entity.nbt.entrySet().forEach { (key, value) -> json.add(key, value.deepCopy()) }
         json.addProperty("id", entity.type.toString())
         json.addProperty("UUID", entity.uuid)
@@ -192,12 +196,15 @@ object NbtSchemas {
             entity.tags.sorted().forEach { tagsJson.add(it) }
             json.add("Tags", tagsJson)
         }
-        validateEntity(entity, json, location)
+        validateEntity(entity, profile, json, location)
         return json
     }
 
-    fun writeEntityNbt(entity: SandboxEntity, updated: JsonObject, location: SourceLocation? = null) {
-        validateEntity(entity, updated, location)
+    fun writeEntityNbt(entity: SandboxEntity, updated: JsonObject, location: SourceLocation? = null) =
+        writeEntityNbt(entity, VersionProfiles.default, updated, location)
+
+    fun writeEntityNbt(entity: SandboxEntity, profile: VersionProfile, updated: JsonObject, location: SourceLocation? = null) {
+        validateEntity(entity, profile, updated, location)
         updated.getAsJsonArray("Pos")?.let { entity.position = it.toPosition() }
         updated.getAsJsonArray("Tags")?.let { tags ->
             entity.tags.replaceWith(tags.mapNotNull { tag -> tag.takeIf { it.isJsonPrimitive }?.asString })
@@ -210,8 +217,11 @@ object NbtSchemas {
             .forEach { (key, value) -> entity.nbt.add(key, value.deepCopy()) }
     }
 
-    fun validateEntity(entity: SandboxEntity, nbt: JsonObject, location: SourceLocation? = null) {
-        val allowed = allowedEntityKeys(entity)
+    fun validateEntity(entity: SandboxEntity, nbt: JsonObject, location: SourceLocation? = null) =
+        validateEntity(entity, VersionProfiles.default, nbt, location)
+
+    fun validateEntity(entity: SandboxEntity, profile: VersionProfile, nbt: JsonObject, location: SourceLocation? = null) {
+        val allowed = allowedEntityKeys(entity, profile)
         val unknown = nbt.entrySet().map { it.key }.filterNot { it in allowed }.sorted()
         if (unknown.isNotEmpty()) {
             throw SandboxException(
@@ -220,13 +230,16 @@ object NbtSchemas {
                 location,
             )
         }
-        validateItemArray(nbt.get("HandItems"), "entity ${entity.type}.HandItems", location)
-        validateItemArray(nbt.get("ArmorItems"), "entity ${entity.type}.ArmorItems", location)
-        nbt.getAsJsonObject("Item")?.let { validateItemStack(it, "entity ${entity.type}.Item", location) }
+        validateItemArray(profile, nbt.get("HandItems"), "entity ${entity.type}.HandItems", location)
+        validateItemArray(profile, nbt.get("ArmorItems"), "entity ${entity.type}.ArmorItems", location)
+        nbt.getAsJsonObject("Item")?.let { validateItemStack(profile, it, "entity ${entity.type}.Item", location) }
     }
 
-    fun blockEntityNbt(block: SandboxBlock, pos: BlockPos, location: SourceLocation? = null): JsonObject {
-        val schema = requireBlockEntitySchema(block, pos, location)
+    fun blockEntityNbt(block: SandboxBlock, pos: BlockPos, location: SourceLocation? = null): JsonObject =
+        blockEntityNbt(block, pos, VersionProfiles.default, location)
+
+    fun blockEntityNbt(block: SandboxBlock, pos: BlockPos, profile: VersionProfile, location: SourceLocation? = null): JsonObject {
+        val schema = requireBlockEntitySchema(block, pos, profile, location)
         val json = JsonObject()
         json.addProperty("id", schema.blockEntityId(block.id).toString())
         json.addProperty("x", pos.x)
@@ -234,12 +247,15 @@ object NbtSchemas {
         json.addProperty("z", pos.z)
         schema.addDefaults(json)
         block.nbt.entrySet().forEach { (key, value) -> json.add(key, value.deepCopy()) }
-        validateBlockEntity(block, pos, json, location)
+        validateBlockEntity(block, pos, profile, json, location)
         return json
     }
 
-    fun writeBlockEntityNbt(block: SandboxBlock, pos: BlockPos, updated: JsonObject, location: SourceLocation? = null) {
-        validateBlockEntity(block, pos, updated, location)
+    fun writeBlockEntityNbt(block: SandboxBlock, pos: BlockPos, updated: JsonObject, location: SourceLocation? = null) =
+        writeBlockEntityNbt(block, pos, VersionProfiles.default, updated, location)
+
+    fun writeBlockEntityNbt(block: SandboxBlock, pos: BlockPos, profile: VersionProfile, updated: JsonObject, location: SourceLocation? = null) {
+        validateBlockEntity(block, pos, profile, updated, location)
         block.nbt.clearObject()
         updated.entrySet()
             .filterNot { (key, _) -> key in generatedBlockEntityKeys }
@@ -247,8 +263,11 @@ object NbtSchemas {
             .forEach { (key, value) -> block.nbt.add(key, value.deepCopy()) }
     }
 
-    fun validateBlockEntity(block: SandboxBlock, pos: BlockPos, nbt: JsonObject, location: SourceLocation? = null) {
-        val schema = requireBlockEntitySchema(block, pos, location)
+    fun validateBlockEntity(block: SandboxBlock, pos: BlockPos, nbt: JsonObject, location: SourceLocation? = null) =
+        validateBlockEntity(block, pos, VersionProfiles.default, nbt, location)
+
+    fun validateBlockEntity(block: SandboxBlock, pos: BlockPos, profile: VersionProfile, nbt: JsonObject, location: SourceLocation? = null) {
+        val schema = requireBlockEntitySchema(block, pos, profile, location)
         val unknown = nbt.entrySet().map { it.key }.filterNot { it in schema.allowedKeys }.sorted()
         if (unknown.isNotEmpty()) {
             throw SandboxException(
@@ -257,27 +276,29 @@ object NbtSchemas {
                 location,
             )
         }
-        validateItemArray(nbt.get("Items"), "block entity ${schema.blockEntityId(block.id)} at $pos Items", location)
+        validateItemArray(profile, nbt.get("Items"), "block entity ${schema.blockEntityId(block.id)} at $pos Items", location)
     }
 
-    fun hasBlockEntity(block: SandboxBlock): Boolean = schemaForBlock(block.id) != null
+    fun hasBlockEntity(block: SandboxBlock): Boolean = hasBlockEntity(block, VersionProfiles.default)
 
-    private fun requireBlockEntitySchema(block: SandboxBlock, pos: BlockPos, location: SourceLocation?): BlockEntitySchema =
-        schemaForBlock(block.id) ?: throw SandboxException(
+    fun hasBlockEntity(block: SandboxBlock, profile: VersionProfile): Boolean = schemaForBlock(block.id, profile) != null
+
+    private fun requireBlockEntitySchema(block: SandboxBlock, pos: BlockPos, profile: VersionProfile, location: SourceLocation?): BlockEntitySchema =
+        schemaForBlock(block.id, profile) ?: throw SandboxException(
             DiagnosticCode.COMMAND_ERROR,
             "Block ${block.id} at $pos does not expose block entity NBT",
             location,
         )
 
-    private fun schemaForBlock(id: ResourceLocation): BlockEntitySchema? =
+    private fun schemaForBlock(id: ResourceLocation, profile: VersionProfile): BlockEntitySchema? =
         if (id.namespace == "minecraft") {
-            loadedSchema?.blockEntitySchemaForBlock(id) ?: fallbackBlockEntitySchemas.firstOrNull { it.matches(id) }
+            schemaFor(profile)?.blockEntitySchemaForBlock(id) ?: fallbackBlockEntitySchemas.firstOrNull { it.matches(id) }
         } else {
             null
         }
 
-    private fun addEntityDefaults(entity: SandboxEntity, json: JsonObject) {
-        val allowed = allowedEntityKeys(entity)
+    private fun addEntityDefaults(entity: SandboxEntity, profile: VersionProfile, json: JsonObject) {
+        val allowed = allowedEntityKeys(entity, profile)
         json.addIfAllowed(allowed, "Motion", zeroVector())
         json.addIfAllowed(allowed, "Rotation", JsonArray().also {
             it.add(0.0)
@@ -358,7 +379,7 @@ object NbtSchemas {
             else -> false
         }
 
-    private fun validateItemArray(value: JsonElement?, label: String, location: SourceLocation?) {
+    private fun validateItemArray(profile: VersionProfile, value: JsonElement?, label: String, location: SourceLocation?) {
         if (value == null) return
         if (!value.isJsonArray) {
             throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label must be a list of item compounds", location)
@@ -368,12 +389,12 @@ object NbtSchemas {
             if (!element.isJsonObject) {
                 throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label[$index] must be an item compound", location)
             }
-            validateItemStack(element.asJsonObject, "$label[$index]", location)
+            validateItemStack(profile, element.asJsonObject, "$label[$index]", location)
         }
     }
 
-    private fun validateItemStack(item: JsonObject, label: String, location: SourceLocation?) {
-        val itemStackKeys = loadedSchema?.itemStackFields?.let { it + setOf("slot") } ?: fallbackItemStackKeys
+    private fun validateItemStack(profile: VersionProfile, item: JsonObject, label: String, location: SourceLocation?) {
+        val itemStackKeys = schemaFor(profile)?.itemStackFields?.let { it + setOf("slot") } ?: fallbackItemStackKeys
         val unknown = item.entrySet().map { it.key }.filterNot { it in itemStackKeys }.sorted()
         if (unknown.isNotEmpty()) {
             throw SandboxException(
@@ -402,6 +423,7 @@ object NbtSchemas {
         val entitySchemas: Map<ResourceLocation, Set<String>>,
         val blockEntitySchemas: Map<ResourceLocation, Set<String>>,
         val blockToBlockEntity: Map<ResourceLocation, ResourceLocation>,
+        val sourceVersion: String = "default",
     ) {
         fun blockEntitySchemaForBlock(id: ResourceLocation): BlockEntitySchema? {
             val blockEntityId = blockToBlockEntity[id] ?: return null
@@ -418,28 +440,44 @@ object NbtSchemas {
         }
     }
 
-    private fun allowedEntityKeys(entity: SandboxEntity): Set<String> {
+    private fun allowedEntityKeys(entity: SandboxEntity, profile: VersionProfile): Set<String> {
         val schemaId = if (entity is SandboxPlayer) ResourceLocation("minecraft", "player") else entity.type
         val fallback = if (entity is SandboxPlayer) playerKeys else commonEntityKeys
-        val loaded = loadedSchema?.entitySchemas?.get(schemaId)
+        val loaded = schemaFor(profile)?.entitySchemas?.get(schemaId)
         val synthetic = if (entity is SandboxPlayer) setOf("Name") else emptySet()
         return (loaded ?: fallback) + generatedEntityKeys + synthetic
     }
 
-    private fun loadGeneratedSchema(): LoadedNbtSchemas? {
-        val stream = NbtSchemas::class.java.classLoader.getResourceAsStream("vanilla-nbt-schemas.json") ?: return null
+    fun schemaSummary(profile: VersionProfile): String =
+        schemaFor(profile)?.let { "${profile.id}:${it.sourceVersion}" } ?: "fallback:${profile.id}"
+
+    private fun schemaFor(profile: VersionProfile): LoadedNbtSchemas? =
+        loadedSchemas[profile.id] ?: loadedSchemas[VersionProfiles.default.id] ?: loadedSchemas["default"]
+
+    private fun loadGeneratedSchemas(): Map<String, LoadedNbtSchemas> {
+        val stream = NbtSchemas::class.java.classLoader.getResourceAsStream("vanilla-nbt-schemas.json") ?: return emptyMap()
         return runCatching {
             InputStreamReader(stream, StandardCharsets.UTF_8).use { reader ->
                 val root = JsonParser.parseReader(reader).asJsonObject
-                LoadedNbtSchemas(
-                    itemStackFields = root.stringSet("itemStackFields"),
-                    entitySchemas = root.schemaMap("entitySchemas"),
-                    blockEntitySchemas = root.schemaMap("blockEntitySchemas"),
-                    blockToBlockEntity = root.resourceLocationMap("blockToBlockEntity"),
-                )
+                if (root.has("versions") && root.get("versions").isJsonObject) {
+                    root.getAsJsonObject("versions").entrySet().associate { (version, value) ->
+                        version to parseSchema(value.asJsonObject, version)
+                    }
+                } else {
+                    mapOf("default" to parseSchema(root, "default"))
+                }
             }
-        }.getOrNull()
+        }.getOrDefault(emptyMap())
     }
+
+    private fun parseSchema(root: JsonObject, sourceVersion: String): LoadedNbtSchemas =
+        LoadedNbtSchemas(
+            itemStackFields = root.stringSet("itemStackFields"),
+            entitySchemas = root.schemaMap("entitySchemas"),
+            blockEntitySchemas = root.schemaMap("blockEntitySchemas"),
+            blockToBlockEntity = root.resourceLocationMap("blockToBlockEntity"),
+            sourceVersion = root.optionalString("sourceVersion") ?: sourceVersion,
+        )
 
     private fun JsonObject.stringSet(name: String): Set<String> =
         get(name)
@@ -448,6 +486,9 @@ object NbtSchemas {
             ?.mapNotNull { it.takeIf { value -> value.isJsonPrimitive }?.asString }
             ?.toSet()
             .orEmpty()
+
+    private fun JsonObject.optionalString(name: String): String? =
+        get(name)?.takeIf { it.isJsonPrimitive }?.asString
 
     private fun JsonObject.schemaMap(name: String): Map<ResourceLocation, Set<String>> {
         val json = get(name)?.takeIf { it.isJsonObject }?.asJsonObject ?: return emptyMap()

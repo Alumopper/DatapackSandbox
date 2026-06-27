@@ -13,6 +13,13 @@ data class DatapackFunction(
     val lines: List<FunctionLine>,
 )
 
+object SingleFunctionDatapack {
+    const val DEFAULT_ID: String = "sandbox:main"
+
+    @JvmStatic
+    fun defaultId(): ResourceLocation = ResourceLocation.parse(DEFAULT_ID)
+}
+
 data class ResourceJson(
     val id: ResourceLocation,
     val file: String,
