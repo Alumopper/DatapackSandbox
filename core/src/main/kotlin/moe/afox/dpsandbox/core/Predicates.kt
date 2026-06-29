@@ -6,33 +6,78 @@ import com.google.gson.JsonObject
 import com.google.gson.JsonPrimitive
 import kotlin.random.Random
 
+/**
+ * Context available to predicate and loot-condition evaluation.
+ *
+ * Callers should provide the entities, player, origin, tool, block, and damage
+ * source that a predicate may reference. Missing required context throws
+ * [MissingPredicateContext] by default.
+ */
 data class PredicateContext(
+    /** Mutable world state used for scores, time, storage-visible entity data, and player state. */
     val world: SandboxWorld,
+    /** Origin position for distance and location predicates. */
     val origin: Position? = null,
+    /** `this` entity target in predicate JSON. */
     val thisEntity: SandboxEntity? = null,
+    /** Direct attacker entity context. */
     val directEntity: SandboxEntity? = null,
+    /** Attacker entity context. */
     val attacker: SandboxEntity? = null,
+    /** Attacking player context. */
     val attackingPlayer: SandboxPlayer? = null,
+    /** Target entity context. */
     val targetEntity: SandboxEntity? = null,
+    /** Interacting entity context. */
     val interactingEntity: SandboxEntity? = null,
+    /** Killer entity context. */
     val killer: SandboxEntity? = null,
+    /** Player context for player-specific predicates. */
     val player: SandboxPlayer? = null,
+    /** Tool/item context for `match_tool` and related loot behavior. */
     val tool: ItemStack? = null,
+    /** Block id context for block-state predicates. */
     val block: ResourceLocation? = null,
+    /** Damage source id context for damage-source predicates. */
     val damageSource: ResourceLocation? = null,
+    /** Deterministic random source for random-chance predicates. */
     val random: Random = Random(0),
+    /** Weather context used by weather predicates. */
     val weather: WeatherState = WeatherState(),
+    /** Reserved switch for future permissive predicate modes. Current behavior remains strict. */
     val looseMissingContext: Boolean = false,
 )
 
+/**
+ * Minimal weather state exposed to predicate evaluation.
+ */
 data class WeatherState(val raining: Boolean = false, val thundering: Boolean = false)
 
+/**
+ * Exception thrown when a predicate references context that the sandbox caller
+ * did not provide.
+ */
 class MissingPredicateContext(message: String) : SandboxException(DiagnosticCode.MISSING_CONTEXT, message)
 
+/**
+ * Predicate evaluator for loaded datapack predicate resources and inline loot conditions.
+ */
 class PredicateEngine(private val datapack: Datapack) {
+    /**
+     * Evaluates a loaded predicate resource by id.
+     *
+     * @throws SandboxException when the predicate is missing, malformed, needs
+     * missing context, or uses an unsupported condition type.
+     */
     fun test(id: ResourceLocation, context: PredicateContext): Boolean =
         testElement(datapack.predicate(id).root, context)
 
+    /**
+     * Evaluates an inline predicate element.
+     *
+     * Supported roots are object, array, boolean, null. Array roots require all
+     * contained predicates to pass.
+     */
     fun testElement(element: JsonElement?, context: PredicateContext): Boolean {
         if (element == null || element.isJsonNull) return true
         return when {
@@ -43,6 +88,9 @@ class PredicateEngine(private val datapack: Datapack) {
         }
     }
 
+    /**
+     * Evaluates a loot-condition style condition list or object.
+     */
     fun testConditions(conditions: JsonElement?, context: PredicateContext): Boolean =
         when {
             conditions == null || conditions.isJsonNull -> true
@@ -144,6 +192,9 @@ class PredicateEngine(private val datapack: Datapack) {
         return true
     }
 
+    /**
+     * Evaluates an item predicate against [item].
+     */
     fun testItemPredicate(item: ItemStack, predicate: JsonObject): Boolean {
         val ids = predicate.get("items") ?: predicate.get("item")
         if (ids != null && !matchesIdList(item.id, ids)) return false

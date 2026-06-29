@@ -1,6 +1,8 @@
-# Datapack Sandbox
+﻿# Datapack Sandbox
 
-一个轻量级、洁净室实现的 Minecraft Java 数据包沙盒，重点面向本地 CLI 调试。首个内置版本配置目标为 Minecraft Java `26.1.2`。
+一个轻量、洁净室实现的 Minecraft Java 数据包沙盒，重点面向本地 CLI 调试、JSON 清单回归测试和 JVM 项目的代码级快速测试。
+
+内置版本 profile 覆盖 Minecraft Java `1.20.4` 到 `26.2`，默认使用最新 profile `26.2`。项目不嵌入原版服务端运行时，也不分发 Mojang 服务端代码；构建时会使用公开的 `SpyglassMC/vanilla-mcdoc` 资料和官方 `@spyglassmc/mcdoc` 解析器生成 NBT schema，用于运行时校验。
 
 ## 构建
 
@@ -14,9 +16,7 @@ Windows：
 .\gradlew.bat :cli:fatJar
 ```
 
-构建会下载 `SpyglassMC/vanilla-mcdoc`，并安装官方 `@spyglassmc/mcdoc` 解析器来生成运行时 NBT schema。`node_modules/` 只作为本地构建工具使用，不会被打包进 CLI jar。
-
-standalone jar 会输出到：
+standalone jar 输出到：
 
 ```text
 cli/build/libs/datapack-sandbox-cli.jar
@@ -27,10 +27,16 @@ cli/build/libs/datapack-sandbox-cli.jar
 启动 REPL：
 
 ```bash
-java -jar cli/build/libs/datapack-sandbox-cli.jar repl --version 26.1.2 --pack ./my_pack
+java -jar cli/build/libs/datapack-sandbox-cli.jar repl --version 26.2 --pack ./my_pack
 ```
 
-REPL 支持 TAB 自动补全、输入过程中的尾部提示、历史输入提示、彩色输出，以及运行时重载数据包文件：
+查看内置版本 profile：
+
+```bash
+java -jar cli/build/libs/datapack-sandbox-cli.jar version
+```
+
+REPL 支持 TAB 补全、输入过程中的多行候选提示、历史输入提示、彩色输出、Ctrl+C 退出，以及运行时重载数据包文件：
 
 ```bash
 java -jar cli/build/libs/datapack-sandbox-cli.jar repl --pack ./my_pack --watch
@@ -45,19 +51,58 @@ dps> inspect outputs
 java -jar cli/build/libs/datapack-sandbox-cli.jar run --pack ./my_pack --load --ticks 20 --function demo:main --snapshot
 ```
 
+不创建完整数据包，直接运行单个 `.mcfunction` 文件：
+
+```bash
+java -jar cli/build/libs/datapack-sandbox-cli.jar run --version 26.2 --mcfunction ./scratch/test.mcfunction --snapshot
+```
+
+直接运行内联 `.mcfunction` 字符串：
+
+```bash
+java -jar cli/build/libs/datapack-sandbox-cli.jar run --version 26.2 --mcfunction-text "say hello from inline"
+```
+
+一次加载多个轻量函数。函数之间需要互相调用时，使用 `id=path` 或 `id=text` 指定函数 id：
+
+```bash
+java -jar cli/build/libs/datapack-sandbox-cli.jar run --version 26.2 ^
+  --mcfunction-id demo:main ^
+  --mcfunction demo:main=./scratch/main.mcfunction ^
+  --mcfunction demo:helper=./scratch/helper.mcfunction ^
+  --mcfunction-text "demo:inline=scoreboard players add #clock ticks 1"
+```
+
 运行 JSON 检查清单：
 
 ```bash
 java -jar cli/build/libs/datapack-sandbox-cli.jar check ./sandbox-cases
 ```
 
-清单文件使用 `.dps.json` 后缀：
+清单文件固定使用 `.dps.json` 后缀：
 
 ```json
 {
-  "version": "26.1.2",
+  "version": "26.2",
   "unsupported": "warn",
   "packs": ["./packs/counter"],
+  "world": {
+    "blocks": [
+      { "pos": [0, 64, 0], "id": "minecraft:chest", "nbt": { "Items": [] } }
+    ],
+    "entities": [
+      { "type": "minecraft:pig", "pos": [1, 64, 0], "tags": ["fixture"] }
+    ],
+    "players": [
+      { "name": "Alex", "position": [2, 65, 3], "xp": 5 }
+    ],
+    "scores": [
+      { "target": "#fixture", "objective": "ready", "value": 1 }
+    ],
+    "storage": {
+      "demo:env": { "ready": true }
+    }
+  },
   "steps": [
     { "load": true },
     { "ticks": 20 },
@@ -70,16 +115,62 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar check ./sandbox-cases
         "objective": "ticks",
         "equals": 20
       }
+    },
+    {
+      "output": {
+        "command": "tellraw",
+        "channel": "chat",
+        "target": "Steve",
+        "contains": "reward",
+        "segment": {
+          "color": "yellow"
+        },
+        "count": 1
+      }
     }
   ]
 }
 ```
 
-## v1 范围
+同一个清单也可以跨多个版本 profile 运行。不同版本需要不同 `pack_format` 或资源目录布局时，使用按版本分组的 `packs` 对象：
 
-这不是一个嵌入式原版服务端。它实现的是一个小型、确定性的运行时，用于模拟数据包逻辑：函数、load/tick 标签、scoreboard 状态、storage、最小实体、默认可读玩家、包含 `@n` 的简单选择器、根据 generated vanilla mcdoc schema 校验的实体/方块/物品 NBT、谓词、战利品表、进度、玩家事件、可观察输出命令，以及可配置的未支持原版命令处理策略。默认策略是 `warn`：记录 warning 输出并继续运行；需要严格失败时可使用 `--unsupported error`，需要静默跳过时可使用 `--unsupported ignore`。
+```json
+{
+  "versions": ["1.20.4", "26.1.2", "26.2"],
+  "packs": {
+    "1.20.4": ["./packs/demo-1_20_4"],
+    "26.1.2": ["./packs/demo-26_1_2"],
+    "26.2": ["./packs/demo-26_2"]
+  },
+  "steps": [
+    { "load": true }
+  ],
+  "assertions": [
+    {
+      "score": {
+        "target": "#clock",
+        "objective": "ticks",
+        "equals": 0
+      }
+    }
+  ]
+}
+```
 
-`tellraw`、`title`、`say`、`msg`、`playsound`、`stopsound`、`particle` 等偏输出的命令会被记录为沙盒输出事件。它们不会模拟真实客户端 UI，但可以在 REPL、`run`、`check --verbose` 和 snapshot 中查看。
+## 当前范围
+
+这不是一个嵌入式原版服务端。它实现的是确定性的、面向数据包可见状态的运行时：
+
+- 函数、`#minecraft:load`、`#minecraft:tick` 和 `schedule function`。
+- scoreboard、storage、gamerule、time、weather、bossbar、worldborder、强加载 chunk、biome 覆盖、世界/玩家出生点等内存状态。
+- 稀疏虚空世界、显式方块/实体/玩家 fixture，以及选定 Java Anvil 存档区块导入。
+- 默认可读玩家 NBT，非玩家实体和方块实体 NBT 的 schema 校验与读写。
+- selector，包括 `@s`、`@a`、`@p`、`@e`、`@n` 以及常用过滤项。
+- predicate、loot table、advancement、玩家事件、键盘/鼠标输入事件。
+- `tellraw`、`title`、`say`、`msg`、`playsound`、`stopsound`、`particle` 等可观测输出命令。
+- 未支持原版命令的可配置策略：默认 `warn` 记录警告并继续，`error` 严格失败，`ignore` 静默跳过。
+
+沙盒不会模拟网络、客户端 UI、权限系统、区块生成、红石、完整实体 AI、真实战斗规则、物理和服务端线程模型。实体默认不会执行 AI tick，但不会自动写入 `NoAI:1b`，除非测试数据显式写入。
 
 ## 完整链路示例
 
@@ -89,23 +180,23 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar check ./sandbox-cases
 java -jar cli/build/libs/datapack-sandbox-cli.jar check examples
 ```
 
-生成一个战利品表结果：
+直接生成一个 loot table 结果：
 
 ```powershell
 java -jar cli/build/libs/datapack-sandbox-cli.jar loot --pack examples/full-stack/pack --table demo:gift --context minecraft:advancement_reward --seed 42
 ```
 
-触发一个玩家事件：
+触发玩家事件：
 
 ```powershell
 java -jar cli/build/libs/datapack-sandbox-cli.jar event --pack examples/full-stack/pack player Steve item-used minecraft:carrot_on_a_stick
 ```
 
-支持边界见：
+## 文档
 
-- `docs/command-support.zh-CN.md`
-- `docs/code-test-api.zh-CN.md`
-- `docs/resource-formats.zh-CN.md`
-- `docs/player-events.zh-CN.md`
-- `docs/version-profile.zh-CN.md`
-- `docs/runtime-world.zh-CN.md`
+- [命令支持状态](docs/command-support.zh-CN.md)
+- [代码测试 API](docs/code-test-api.zh-CN.md)
+- [资源格式与清单格式](docs/resource-formats.zh-CN.md)
+- [玩家事件](docs/player-events.zh-CN.md)
+- [版本 profile](docs/version-profile.zh-CN.md)
+- [运行时世界模型](docs/runtime-world.zh-CN.md)

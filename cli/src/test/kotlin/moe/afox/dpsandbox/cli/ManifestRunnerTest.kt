@@ -27,6 +27,97 @@ class ManifestRunnerTest {
     }
 
     @Test
+    fun `runs manifest output assertions`() {
+        val dir = Files.createTempDirectory("dps-output-manifest")
+        val pack = Path.of("../examples/full-stack/pack").toAbsolutePath().normalize().toString().replace("\\", "\\\\")
+        val manifest = dir.resolve("outputs.dps.json")
+        Files.writeString(
+            manifest,
+            """
+            {
+              "version": "26.2",
+              "packs": ["$pack"],
+              "steps": [
+                { "command": "say hello from manifest" },
+                { "command": "tellraw Steve {\"text\":\"gold\",\"color\":\"yellow\"}" }
+              ],
+              "assertions": [
+                {
+                  "output": {
+                    "command": "say",
+                    "channel": "chat",
+                    "target": "Steve",
+                    "contains": "hello from manifest",
+                    "count": 1
+                  }
+                },
+                {
+                  "output": {
+                    "command": "tellraw",
+                    "text": "gold",
+                    "segment": {
+                      "text": "gold",
+                      "color": "yellow"
+                    },
+                    "count": 1
+                  }
+                }
+              ]
+            }
+            """.trimIndent(),
+        )
+
+        val result = ManifestRunner.run(manifest)
+
+        assertTrue(result.passed, result.messages.joinToString())
+    }
+
+    @Test
+    fun `runs manifests with predefined world state`() {
+        val dir = Files.createTempDirectory("dps-world-manifest")
+        val pack = Path.of("../core/src/test/resources/packs/counter").toAbsolutePath().normalize().toString().replace("\\", "\\\\")
+        val manifest = dir.resolve("world.dps.json")
+        Files.writeString(
+            manifest,
+            """
+            {
+              "version": "26.1.2",
+              "packs": ["$pack"],
+              "world": {
+                "blocks": [
+                  { "pos": [0, 64, 0], "id": "minecraft:chest", "nbt": { "Items": [] } }
+                ],
+                "entities": [
+                  { "type": "minecraft:pig", "pos": [1, 64, 0], "tags": ["fixture"] }
+                ],
+                "players": [
+                  { "name": "Alex", "position": [2, 65, 3], "xp": 5 }
+                ],
+                "scores": [
+                  { "target": "#fixture", "objective": "ready", "value": 1 }
+                ],
+                "storage": {
+                  "demo:env": { "ready": true }
+                }
+              },
+              "steps": [],
+              "assertions": [
+                { "block": { "pos": [0, 64, 0], "id": "minecraft:chest" } },
+                { "entityCount": { "type": "minecraft:pig", "tag": "fixture", "equals": 1 } },
+                { "player": { "name": "Alex", "xp": 5, "position": [2, 65, 3] } },
+                { "score": { "target": "#fixture", "objective": "ready", "equals": 1 } },
+                { "storage": { "id": "demo:env", "path": "ready", "equals": true } }
+              ]
+            }
+            """.trimIndent(),
+        )
+
+        val result = ManifestRunner.run(manifest)
+
+        assertTrue(result.passed, result.messages.joinToString())
+    }
+
+    @Test
     fun `runs keyboard input events from manifests`() {
         val dir = Files.createTempDirectory("dps-input-manifest")
         val pack = Path.of("../core/src/test/resources/packs/counter").toAbsolutePath().normalize().toString().replace("\\", "\\\\")

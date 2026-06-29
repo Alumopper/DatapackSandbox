@@ -17,7 +17,22 @@ import kotlin.io.path.isRegularFile
 import kotlin.io.path.name
 import kotlin.io.path.relativeTo
 
+/**
+ * Loads datapack resources from directories, zip files, or synthetic function sources.
+ */
 object DatapackLoader {
+    /**
+     * Loads and validates one or more datapacks for [profile].
+     *
+     * Each path must be a datapack directory containing `pack.mcmeta` or a `.zip`
+     * file. Resource directories, pack formats, and legacy aliases are resolved
+     * through [profile]. Later packs override earlier resources with the same id
+     * in maps such as functions, loot tables, predicates, and advancements.
+     *
+     * @param paths Datapack directories or zip files.
+     * @throws SandboxException for missing paths, invalid `pack.mcmeta`,
+     * version mismatch, malformed JSON, or invalid resource ids.
+     */
     fun load(paths: List<Path>, profile: VersionProfile): Datapack {
         if (paths.isEmpty()) {
             throw SandboxException(DiagnosticCode.INPUT_FORMAT, "At least one datapack path is required", version = profile.id)
@@ -52,36 +67,72 @@ object DatapackLoader {
         )
     }
 
+    /**
+     * Loads multiple `.mcfunction` sources as a synthetic datapack.
+     *
+     * Sources can be backed by files or in-memory strings. The resulting
+     * datapack contains exactly the supplied functions and no load/tick tags.
+     *
+     * @throws SandboxException when no sources are provided, a file source is
+     * missing/invalid, or duplicate function ids are supplied.
+     */
+    @JvmStatic
+    fun loadFunctionSources(
+        sources: List<FunctionSource>,
+        profile: VersionProfile,
+    ): Datapack {
+        if (sources.isEmpty()) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "At least one function source is required", version = profile.id)
+        }
+        val functions = linkedMapOf<ResourceLocation, DatapackFunction>()
+        sources.forEach { source ->
+            if (functions.containsKey(source.id)) {
+                throw SandboxException(
+                    code = DiagnosticCode.INPUT_FORMAT,
+                    message = "Duplicate function source id '${source.id}'",
+                    version = profile.id,
+                )
+            }
+            functions[source.id] = DatapackFunction(source.id, readFunctionLines(source, profile))
+        }
+        return Datapack(
+            functions = functions.toSortedMap(),
+            loadFunctions = emptyList(),
+            tickFunctions = emptyList(),
+        )
+    }
+
+    /**
+     * Loads one `.mcfunction` file as a synthetic datapack.
+     *
+     * The resulting datapack contains exactly one function with [functionId] and
+     * no load/tick tags. This is the low-level helper used by
+     * [createFunctionSandbox] and [SandboxQuickTest.singleFunction].
+     *
+     * @throws SandboxException when [functionFile] is missing or not a regular
+     * `.mcfunction` file.
+     */
     @JvmStatic
     @JvmOverloads
     fun loadSingleFunction(
         functionFile: Path,
         profile: VersionProfile,
         functionId: ResourceLocation = SingleFunctionDatapack.defaultId(),
-    ): Datapack {
-        val normalized = functionFile.toAbsolutePath().normalize()
-        if (!normalized.exists()) {
-            throw SandboxException(
-                code = DiagnosticCode.INPUT_FORMAT,
-                message = "mcfunction file does not exist: $normalized",
-                version = profile.id,
-            )
-        }
-        if (!normalized.isRegularFile() || normalized.extension.lowercase() != "mcfunction") {
-            throw SandboxException(
-                code = DiagnosticCode.INPUT_FORMAT,
-                message = "Single function input must be a .mcfunction file: $normalized",
-                version = profile.id,
-            )
-        }
+    ): Datapack =
+        loadFunctionSources(listOf(FunctionSource.file(functionId.toString(), functionFile)), profile)
 
-        val function = DatapackFunction(functionId, readFunctionLines(normalized))
-        return Datapack(
-            functions = sortedMapOf(functionId to function),
-            loadFunctions = emptyList(),
-            tickFunctions = emptyList(),
-        )
-    }
+    /**
+     * Loads one in-memory `.mcfunction` string as a synthetic datapack.
+     */
+    @JvmStatic
+    @JvmOverloads
+    fun loadFunctionText(
+        content: String,
+        profile: VersionProfile,
+        functionId: ResourceLocation = SingleFunctionDatapack.defaultId(),
+        sourceName: String = "<string:${functionId}>",
+    ): Datapack =
+        loadFunctionSources(listOf(FunctionSource.text(functionId.toString(), content, sourceName)), profile)
 
     private fun withPackRoot(input: Path, block: (Path) -> Unit) {
         val normalized = input.toAbsolutePath().normalize()
@@ -226,7 +277,10 @@ object DatapackLoader {
                                 val relative = file.relativeTo(functionRoot).toString().replace('\\', '/')
                                 val idPath = relative.removeSuffix(".mcfunction")
                                 val id = ResourceLocation(namespace, idPath)
-                                functions[id] = DatapackFunction(id, readFunctionLines(file))
+                                functions[id] = DatapackFunction(
+                                    id,
+                                    readFunctionLines(file.toString(), Files.readAllLines(file, StandardCharsets.UTF_8)),
+                                )
                             }
                     }
                 }
@@ -235,14 +289,36 @@ object DatapackLoader {
         return functions
     }
 
-    private fun readFunctionLines(file: Path): List<FunctionLine> =
-        Files.readAllLines(file, StandardCharsets.UTF_8).mapIndexedNotNull { index, raw ->
+    private fun readFunctionLines(source: FunctionSource, profile: VersionProfile): List<FunctionLine> {
+        source.path?.let { path ->
+            val normalized = path.toAbsolutePath().normalize()
+            if (!normalized.exists()) {
+                throw SandboxException(
+                    code = DiagnosticCode.INPUT_FORMAT,
+                    message = "mcfunction file does not exist: $normalized",
+                    version = profile.id,
+                )
+            }
+            if (!normalized.isRegularFile() || normalized.extension.lowercase() != "mcfunction") {
+                throw SandboxException(
+                    code = DiagnosticCode.INPUT_FORMAT,
+                    message = "Function source must be a .mcfunction file: $normalized",
+                    version = profile.id,
+                )
+            }
+            return readFunctionLines(normalized.toString(), Files.readAllLines(normalized, StandardCharsets.UTF_8))
+        }
+        return readFunctionLines(source.sourceName, source.content.orEmpty().lines())
+    }
+
+    private fun readFunctionLines(sourceName: String, lines: List<String>): List<FunctionLine> =
+        lines.mapIndexedNotNull { index, raw ->
             val stripped = raw.removePrefix("\uFEFF").trim()
             if (stripped.isEmpty() || stripped.startsWith("#")) {
                 null
             } else {
                 val command = stripped.removePrefix("/")
-                FunctionLine(command, SourceLocation(file = file.toString(), line = index + 1, command = command))
+                FunctionLine(command, SourceLocation(file = sourceName, line = index + 1, command = command))
             }
         }
 

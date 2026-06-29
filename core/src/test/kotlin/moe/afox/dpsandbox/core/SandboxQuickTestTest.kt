@@ -82,6 +82,106 @@ class SandboxQuickTestTest {
     }
 
     @Test
+    fun `runs single mcfunction strings from api`() {
+        SandboxQuickTest.singleFunctionText(
+            """
+            scoreboard objectives add runs dummy
+            scoreboard players set #string runs 5
+            """.trimIndent(),
+            version = "26.2",
+        )
+            .function()
+            .assertScore("#string", "runs", 5)
+            .requirePassed()
+    }
+
+    @Test
+    fun `loads multiple mcfunction files and strings together`() {
+        val helper = Files.createTempFile("dps-helper-function", ".mcfunction")
+        Files.writeString(
+            helper,
+            """
+            scoreboard players add #multi runs 2
+            function demo:inline
+            """.trimIndent(),
+        )
+
+        SandboxQuickTest.functions(
+            functionSources = listOf(
+                FunctionSource.text(
+                    "demo:main",
+                    """
+                    scoreboard objectives add runs dummy
+                    scoreboard players set #multi runs 1
+                    function demo:helper
+                    """.trimIndent(),
+                ),
+                FunctionSource.file("demo:helper", helper),
+                FunctionSource.text("demo:inline", "scoreboard players add #multi runs 4"),
+            ),
+            version = "26.2",
+            defaultFunctionId = "demo:main",
+        )
+            .function()
+            .assertScore("#multi", "runs", 7)
+            .requirePassed()
+    }
+
+    @Test
+    fun `quick tests can get and assert structured outputs`() {
+        val functionFile = Files.createTempFile("dps-output-function", ".mcfunction")
+        Files.writeString(
+            functionFile,
+            """
+            say hello from test
+            tellraw Steve {"text":"gold","color":"yellow"}
+            """.trimIndent(),
+        )
+
+        val scenario = SandboxQuickTest.singleFunction(functionFile, "26.2")
+            .function()
+            .assertOutput(command = "say", channel = "chat", target = "Steve", contains = "hello from test")
+            .assertOutput(
+                OutputExpectation(
+                    command = "tellraw",
+                    target = "Steve",
+                    text = "gold",
+                    segment = OutputSegmentExpectation(text = "gold", color = "yellow"),
+                    count = 1,
+                ),
+            )
+
+        val outputs = scenario.outputs()
+        val tellraw = scenario.matchingOutputs(command = "tellraw", text = "gold")
+
+        assertEquals(2, outputs.size)
+        assertEquals(1, tellraw.size)
+        scenario.requirePassed()
+    }
+
+    @Test
+    fun `quick tests can predefine world state`() {
+        val report = SandboxQuickTest.create(listOf(fixturePack()), version = "26.1.2", defaultPlayerName = null)
+            .world {
+                block(0, 64, 0, "minecraft:chest", nbt = "{Items:[]}")
+                entity("minecraft:pig", 1.0, 64.0, 0.0, tags = listOf("fixture"))
+                player("Alex", x = 2.0, y = 65.0, z = 3.0, xp = 5, inventory = listOf(item("minecraft:stick", 2)))
+                score("#fixture", "ready", 1)
+                storage("demo:env", "{ready:true}")
+                gamerule("doDaylightCycle", "false")
+            }
+            .assertScore("#fixture", "ready", 1)
+            .assertStorageEquals("demo:env", "ready", "true")
+            .assertPlayerXp("Alex", 5)
+            .requirePassed()
+
+        val snapshot = report.snapshot.asJsonObject
+        assertEquals("minecraft:chest", snapshot.get("blocks").asJsonArray[0].asJsonObject.get("id").asString)
+        assertEquals("false", snapshot.get("gamerules").asJsonObject.get("doDaylightCycle").asString)
+        assertEquals(1, snapshot.get("entities").asJsonArray.count { it.asJsonObject.get("type").asString == "minecraft:pig" })
+    }
+
+    @Test
     fun `runs quick tests across multiple version-specific packs`() {
         val dir = Files.createTempDirectory("dps-quick-matrix")
         val pack1204 = writeVersionPack(dir.resolve("pack-1204"), packFormat = "26", functionDir = "functions")

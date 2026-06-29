@@ -13,6 +13,7 @@ import com.github.ajalt.clikt.parameters.types.int
 import com.github.ajalt.clikt.parameters.types.long
 import com.github.ajalt.clikt.parameters.types.path
 import moe.afox.dpsandbox.core.DiagnosticCode
+import moe.afox.dpsandbox.core.FunctionSource
 import moe.afox.dpsandbox.core.JsonValues
 import moe.afox.dpsandbox.core.PlayerEvents
 import moe.afox.dpsandbox.core.ResourceLocation
@@ -26,6 +27,7 @@ import moe.afox.dpsandbox.core.toJson
 import moe.afox.dpsandbox.core.toPlayerJson
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
+import java.nio.file.Path
 import kotlin.system.exitProcess
 
 fun main(args: Array<String>) = DatapackSandboxCli()
@@ -104,7 +106,8 @@ class CheckCommand : CliktCommand(name = "check") {
 class RunCommand : CliktCommand(name = "run") {
     private val version by option("--version", "-v").default(VersionProfiles.default.id)
     private val packs by option("--pack", "-p").path(mustExist = true).multiple()
-    private val mcfunction by option("--mcfunction", "--function-file").path(mustExist = true)
+    private val mcfunctions by option("--mcfunction", "--function-file").multiple()
+    private val mcfunctionTexts by option("--mcfunction-text", "--function-text").multiple()
     private val mcfunctionId by option("--mcfunction-id").default(SingleFunctionDatapack.DEFAULT_ID)
     private val shouldLoad by option("--load").flag(default = false)
     private val ticks by option("--ticks").int().default(0)
@@ -117,29 +120,29 @@ class RunCommand : CliktCommand(name = "run") {
 
     override fun run() {
         try {
+            val functionSources = parseFunctionSources()
             val sandbox = when {
-                mcfunction != null -> {
+                functionSources.isNotEmpty() -> {
                     if (packs.isNotEmpty()) {
                         throw SandboxException(
                             DiagnosticCode.INPUT_FORMAT,
-                            "run accepts either --mcfunction for a single file or --pack for datapacks, not both",
+                            "run accepts either --mcfunction/--mcfunction-text sources or --pack datapacks, not both",
                         )
                     }
                     createFunctionSandbox(
                         version = version,
-                        functionFile = mcfunction!!,
-                        functionId = mcfunctionId,
+                        functionSources = functionSources,
                         unsupportedFeatureMode = unsupportedFeatureMode(unsupported),
                     )
                 }
                 packs.isNotEmpty() -> createSandbox(version, packs, unsupportedFeatureMode = unsupportedFeatureMode(unsupported))
                 else -> throw SandboxException(
                     DiagnosticCode.INPUT_FORMAT,
-                    "run requires at least one --pack path or one --mcfunction file",
+                    "run requires at least one --pack path, --mcfunction file, or --mcfunction-text string",
                 )
             }
             var total = 0
-            if (mcfunction != null) total += sandbox.runFunction(mcfunctionId).commandsExecuted
+            if (functionSources.isNotEmpty()) total += sandbox.runFunction(mcfunctionId).commandsExecuted
             if (shouldLoad) total += sandbox.runLoad().commandsExecuted
             if (ticks > 0) total += sandbox.runTicks(ticks).commandsExecuted
             functions.forEach { total += sandbox.runFunction(it).commandsExecuted }
@@ -162,6 +165,55 @@ class RunCommand : CliktCommand(name = "run") {
             exitProcess(ExitCodes.forException(error))
         }
     }
+
+    private fun parseFunctionSources(): List<FunctionSource> {
+        val total = mcfunctions.size + mcfunctionTexts.size
+        val fileSources = mcfunctions.mapIndexed { index, raw ->
+            val (explicitId, value) = parseFunctionSourceSpec(raw)
+            FunctionSource.file(explicitId ?: implicitFunctionId(index, total, value), Path.of(value))
+        }
+        val textSources = mcfunctionTexts.mapIndexed { textIndex, raw ->
+            val index = mcfunctions.size + textIndex
+            val (explicitId, value) = parseFunctionSourceSpec(raw)
+            FunctionSource.text(
+                explicitId ?: implicitFunctionId(index, total, "inline"),
+                value,
+                explicitId?.let { "<string:$it>" } ?: "<string:${implicitFunctionId(index, total, "inline")}>",
+            )
+        }
+        return fileSources + textSources
+    }
+
+    private fun implicitFunctionId(index: Int, total: Int, value: String): String =
+        when {
+            total <= 1 -> mcfunctionId
+            index == 0 -> mcfunctionId
+            value != "inline" -> "sandbox:${Path.of(value).fileName.toString().removeSuffix(".mcfunction").sanitizeFunctionPath()}"
+            else -> throw SandboxException(
+                DiagnosticCode.INPUT_FORMAT,
+                "Multiple --mcfunction-text values require explicit ids using <namespace:path>=<content>",
+            )
+        }
+
+    private fun parseFunctionSourceSpec(raw: String): Pair<String?, String> {
+        val splitAt = raw.indexOf('=')
+        if (splitAt <= 0) return null to raw
+        val candidate = raw.substring(0, splitAt)
+        val value = raw.substring(splitAt + 1)
+        return try {
+            ResourceLocation.parse(candidate)
+            candidate to value
+        } catch (_: SandboxException) {
+            null to raw
+        }
+    }
+
+    private fun String.sanitizeFunctionPath(): String =
+        lowercase()
+            .replace('\\', '/')
+            .replace(Regex("[^a-z0-9_./-]"), "_")
+            .trim('/')
+            .ifBlank { "function" }
 }
 
 class LootCommand : CliktCommand(name = "loot") {

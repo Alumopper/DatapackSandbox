@@ -39,21 +39,21 @@ class SandboxBehaviorTest {
     fun `warns for unsupported vanilla commands by default`() {
         val sandbox = createSandbox("26.1.2", listOf(fixturePack()))
 
-        sandbox.executeCommand("worldborder get")
+        sandbox.executeCommand("ban Steve")
 
         assertEquals("warning", sandbox.world.outputs.single().channel)
-        assertTrue(sandbox.world.outputs.single().text.contains("worldborder"))
+        assertTrue(sandbox.world.outputs.single().text.contains("ban"))
     }
 
     @Test
     fun `can ignore or error for unsupported vanilla commands`() {
         val ignored = createSandbox("26.1.2", listOf(fixturePack()), unsupportedFeatureMode = UnsupportedFeatureMode.IGNORE)
-        ignored.executeCommand("worldborder get")
+        ignored.executeCommand("ban Steve")
         assertTrue(ignored.world.outputs.isEmpty())
 
         val strict = createSandbox("26.1.2", listOf(fixturePack()), unsupportedFeatureMode = UnsupportedFeatureMode.ERROR)
         val error = assertFailsWith<SandboxException> {
-            strict.executeCommand("worldborder get")
+            strict.executeCommand("ban Steve")
         }
         assertEquals(DiagnosticCode.UNSUPPORTED_FEATURE, error.code)
     }

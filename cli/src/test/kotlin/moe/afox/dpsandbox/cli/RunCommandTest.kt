@@ -27,6 +27,68 @@ class RunCommandTest {
     }
 
     @Test
+    fun `run executes inline mcfunction text`() {
+        val output = captureStdout {
+            main(
+                arrayOf(
+                    "run",
+                    "--version",
+                    "26.2",
+                    "--mcfunction-text",
+                    "scoreboard objectives add runs dummy\nscoreboard players set #inline runs 6",
+                    "--snapshot",
+                ),
+            )
+        }
+
+        assertTrue("OK version=26.2" in output, output)
+        assertTrue("\"#inline\": 6" in output, output)
+    }
+
+    @Test
+    fun `run loads multiple mcfunction files and strings together`() {
+        val mainFile = Files.createTempFile("dps-cli-main-function", ".mcfunction")
+        val helperFile = Files.createTempFile("dps-cli-helper-function", ".mcfunction")
+        Files.writeString(
+            mainFile,
+            """
+            scoreboard objectives add runs dummy
+            scoreboard players set #cli_multi runs 1
+            function demo:helper
+            """.trimIndent(),
+        )
+        Files.writeString(
+            helperFile,
+            """
+            scoreboard players add #cli_multi runs 2
+            function demo:inline
+            """.trimIndent(),
+        )
+
+        val output = captureStdout {
+            main(
+                arrayOf(
+                    "run",
+                    "--version",
+                    "26.2",
+                    "--mcfunction-id",
+                    "demo:main",
+                    "--mcfunction",
+                    "demo:main=$mainFile",
+                    "--mcfunction",
+                    "demo:helper=$helperFile",
+                    "--mcfunction-text",
+                    "demo:inline=scoreboard players add #cli_multi runs 4",
+                    "--snapshot",
+                ),
+            )
+        }
+
+        assertTrue("OK version=26.2" in output, output)
+        assertTrue("\"#cli_multi\": 7" in output, output)
+    }
+
+    @Test
     fun `version lists supported datapack formats`() {
         val output = captureStdout {
             main(arrayOf("version"))

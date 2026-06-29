@@ -3,6 +3,13 @@
 private val namespacePattern = Regex("[a-z0-9_.-]+")
 private val pathPattern = Regex("[a-z0-9_./-]+")
 
+/**
+ * Minecraft resource location (`namespace:path`).
+ *
+ * The parser follows the datapack-friendly lowercase character set used by
+ * Minecraft resources. Missing namespaces default to `minecraft` unless a
+ * different namespace is supplied to [parse].
+ */
 data class ResourceLocation(val namespace: String, val path: String) : Comparable<ResourceLocation> {
     init {
         require(namespacePattern.matches(namespace)) { "Invalid namespace: $namespace" }
@@ -15,6 +22,13 @@ data class ResourceLocation(val namespace: String, val path: String) : Comparabl
         compareValuesBy(this, other, ResourceLocation::namespace, ResourceLocation::path)
 
     companion object {
+        /**
+         * Parses a string resource location.
+         *
+         * @param value Raw id, either `namespace:path` or `path`.
+         * @param defaultNamespace Namespace used when [value] does not include one.
+         * @throws SandboxException when the id is empty or contains invalid characters.
+         */
         fun parse(value: String, defaultNamespace: String = "minecraft"): ResourceLocation {
             val trimmed = value.trim()
             val split = trimmed.split(":", limit = 2)

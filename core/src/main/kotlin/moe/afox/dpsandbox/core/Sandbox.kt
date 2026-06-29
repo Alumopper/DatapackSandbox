@@ -1,5 +1,6 @@
 ﻿package moe.afox.dpsandbox.core
 
+import com.google.gson.JsonArray
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 import com.google.gson.JsonPrimitive
@@ -8,40 +9,90 @@ import kotlin.math.floor
 import kotlin.math.max
 import kotlin.random.Random
 
+/**
+ * Execution context for one command or function invocation.
+ *
+ * The context provides the current executor entity and base position used by
+ * selectors, relative coordinates, output sender resolution, and `execute`
+ * subcommands.
+ */
 data class ExecutionContext(
+    /** Current executor entity, or null for server context. */
     val entity: SandboxEntity? = null,
+    /** Base position for relative coordinates. Defaults to [entity]'s position or the origin. */
     val position: Position = entity?.position ?: Position.zero,
 )
 
+/**
+ * Summary returned by command/function/tick execution methods.
+ */
 data class ExecutionResult(
+    /** Number of command lines executed by the operation. */
     val commandsExecuted: Int,
 )
 
+/**
+ * Policy for vanilla commands that exist in the active profile but are not
+ * implemented by the sandbox.
+ */
 enum class UnsupportedFeatureMode {
+    /** Record a warning output event and continue. */
     WARN,
+    /** Ignore the unsupported command and continue without an output event. */
     IGNORE,
+    /** Throw a [SandboxException] with [DiagnosticCode.UNSUPPORTED_FEATURE]. */
     ERROR,
 }
 
+/**
+ * Mutable clean-room datapack runtime.
+ *
+ * This class is the lower-level API under [SandboxQuickTest]. It loads one
+ * [Datapack] under a specific [VersionProfile], owns the mutable [world], and
+ * exposes direct methods for load/tick/function/command execution. It is not a
+ * vanilla server: only sandbox-modeled datapack-visible state is updated.
+ */
 class DatapackSandbox(
+    /** Active Minecraft version profile used for resource layout, command roots, and NBT validation. */
     val profile: VersionProfile,
+    /** Loaded datapack resources. */
     val datapack: Datapack,
+    /** Mutable in-memory world state used by this runtime. */
     val world: SandboxWorld = SandboxWorld(),
+    /** Policy for recognized but unimplemented vanilla commands. */
     val unsupportedFeatureMode: UnsupportedFeatureMode = UnsupportedFeatureMode.WARN,
 ) {
+    /** Predicate evaluator bound to the loaded datapack. */
     val predicates = PredicateEngine(datapack)
+    /** Loot table evaluator bound to the loaded datapack and version registry view. */
     val loot = LootEngine(datapack, profile.registryView)
+    /** Advancement runtime bound to this sandbox world. */
     val advancements = AdvancementRuntime(this)
 
     private var commandsExecuted = 0
     private var functionDepth = 0
 
+    /**
+     * Runs every function referenced by `#minecraft:load`.
+     *
+     * @return number of command lines executed by load functions.
+     */
     fun runLoad(): ExecutionResult {
         val before = commandsExecuted
         datapack.loadFunctions.forEach { runFunction(it) }
         return ExecutionResult(commandsExecuted - before)
     }
 
+    /**
+     * Advances the sandbox by [count] ticks.
+     *
+     * Each tick advances world time, runs due scheduled functions, runs
+     * `#minecraft:tick` functions, and dispatches player tick advancement
+     * events. Entity AI, physics, redstone, and block updates are not simulated.
+     *
+     * @throws SandboxException when [count] is negative.
+     * @return number of command lines executed during the ticks.
+     */
     fun runTicks(count: Int): ExecutionResult {
         if (count < 0) {
             throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Tick count must be non-negative")
@@ -58,8 +109,22 @@ class DatapackSandbox(
         return ExecutionResult(commandsExecuted - before)
     }
 
+    /**
+     * Runs a loaded function by string resource location.
+     *
+     * @param id Function id such as `demo:main`.
+     */
     fun runFunction(id: String): ExecutionResult = runFunction(ResourceLocation.parse(id))
 
+    /**
+     * Runs a loaded function by typed resource location.
+     *
+     * Function recursion is capped at depth 64 to avoid runaway test execution.
+     *
+     * @param context Executor and position context for relative command semantics.
+     * @throws SandboxException when the function does not exist or call depth exceeds 64.
+     * @return number of command lines executed inside the function.
+     */
     fun runFunction(id: ResourceLocation, context: ExecutionContext = ExecutionContext()): ExecutionResult {
         val before = commandsExecuted
         val function = datapack.function(id)
@@ -81,22 +146,49 @@ class DatapackSandbox(
         return ExecutionResult(commandsExecuted - before)
     }
 
+    /**
+     * Executes one raw Minecraft command.
+     *
+     * A leading slash is accepted and removed. Blank commands are ignored.
+     * Unsupported command behavior is controlled by [unsupportedFeatureMode].
+     *
+     * @param location Optional source location used in diagnostics.
+     * @param context Executor and position context for selectors and relative coordinates.
+     * @return number of command lines executed, normally 0 or 1 plus nested function calls.
+     */
     fun executeCommand(command: String, location: SourceLocation? = null, context: ExecutionContext = ExecutionContext()): ExecutionResult {
         val before = commandsExecuted
         executeOne(command.trim().removePrefix("/"), location, context)
         return ExecutionResult(commandsExecuted - before)
     }
 
+    /**
+     * Returns a deterministic JSON snapshot of the current sandbox state.
+     */
     fun snapshotJson(): JsonObject {
         val snapshot = world.snapshot(profile)
         snapshot.addProperty("version", profile.id)
         return snapshot
     }
 
+    /**
+     * Returns [snapshotJson] rendered as stable JSON text.
+     */
     fun snapshotString(): String = JsonValues.render(snapshotJson())
 
+    /**
+     * Creates or reuses a sandbox player.
+     */
     fun createPlayer(name: String): SandboxPlayer = world.createPlayer(name)
 
+    /**
+     * Dispatches a high-level player event.
+     *
+     * The event may update player input records and advancement progress. The
+     * player referenced by the event must already exist.
+     *
+     * @return advancement updates caused by the event.
+     */
     fun handlePlayerEvent(event: PlayerEvent): List<AdvancementUpdate> {
         val normalized = event.normalized()
         val player = world.requirePlayer(normalized.playerName)
@@ -104,6 +196,12 @@ class DatapackSandbox(
         return advancements.handle(normalized)
     }
 
+    /**
+     * Generates loot from a loaded loot table using an explicit context type.
+     *
+     * The optional [player] is used as the predicate context entity/player/tool
+     * source. [seed] controls deterministic random output.
+     */
     fun generateLoot(table: ResourceLocation, contextType: ResourceLocation, player: SandboxPlayer? = null, seed: Long = world.gameTime): LootResult =
         loot.generate(
             table,
@@ -132,23 +230,35 @@ class DatapackSandbox(
             when (tokens[0].text) {
                 "function" -> executeFunction(tokens, location, context)
                 "return" -> throw ReturnSignal()
+                "attribute" -> executeAttribute(tokens, location, context)
                 "scoreboard" -> executeScoreboard(tokens, location)
                 "bossbar" -> executeBossbar(command, tokens, location, context)
                 "clear" -> executeClear(tokens, location, context)
                 "clone" -> executeClone(tokens, location, context)
                 "damage" -> executeDamage(tokens, location, context)
+                "datapack" -> executeDatapack(tokens, location)
+                "defaultgamemode" -> executeDefaultGameMode(tokens, location)
+                "difficulty" -> executeDifficulty(tokens, location)
                 "execute" -> executeExecute(command, tokens, location, context)
                 "data" -> executeData(command, tokens, location, context)
                 "effect" -> executeEffect(tokens, location, context)
                 "enchant" -> executeEnchant(tokens, location, context)
                 "experience", "xp" -> executeExperience(tokens, location, context)
+                "fillbiome" -> executeFillBiome(tokens, location, context)
+                "forceload" -> executeForceload(tokens, location, context)
                 "tag" -> executeTag(tokens, location, context)
                 "gamerule" -> executeGamerule(tokens, location)
+                "gamemode" -> executeGameMode(tokens, location, context)
                 "give" -> executeGive(tokens, location, context)
+                "help" -> executeHelp(tokens, location)
                 "item" -> executeItem(tokens, location, context)
                 "summon" -> executeSummon(command, tokens, location, context)
                 "kill" -> executeKill(tokens, location, context)
+                "list" -> executeList(tokens, location)
+                "locate" -> executeLocate(tokens, location)
+                "loot" -> executeLoot(tokens, location, context)
                 "tp", "teleport" -> executeTeleport(tokens, location, context)
+                "reload" -> executeReload(tokens, location)
                 "setblock" -> executeSetBlock(tokens, location, context)
                 "fill" -> executeFill(tokens, location, context)
                 "random" -> executeRandom(tokens, location)
@@ -156,9 +266,17 @@ class DatapackSandbox(
                 "ride" -> executeRide(tokens, location, context)
                 "rotate" -> executeRotate(tokens, location, context)
                 "schedule" -> executeSchedule(tokens, location)
+                "seed" -> executeSeed(tokens, location)
+                "setworldspawn" -> executeSetWorldSpawn(tokens, location, context)
+                "spawnpoint" -> executeSpawnPoint(tokens, location, context)
+                "spectate" -> executeSpectate(tokens, location, context)
+                "spreadplayers" -> executeSpreadPlayers(tokens, location, context)
                 "team" -> executeTeam(command, tokens, location)
                 "time" -> executeTime(tokens, location)
+                "tick" -> executeTick(tokens, location)
+                "trigger" -> executeTrigger(tokens, location, context)
                 "weather" -> executeWeather(tokens, location)
+                "worldborder" -> executeWorldBorder(tokens, location)
                 "advancement" -> executeAdvancement(tokens, location)
                 "tellraw" -> executeTellraw(command, tokens, location, context)
                 "title" -> executeTitle(command, tokens, location, context)
@@ -227,6 +345,273 @@ class DatapackSandbox(
     private fun executeFunction(tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext) {
         requireSize(tokens, 2, "function <id>", location)
         runFunction(ResourceLocation.parse(tokens[1].text), context)
+    }
+
+    private fun executeHelp(tokens: List<CommandToken>, location: SourceLocation?) {
+        requireSize(tokens, 1, "help [command]", location)
+        val topic = tokens.getOrNull(1)?.text
+        val text = if (topic == null) {
+            profile.commands.roots.sorted().joinToString(", ")
+        } else if (profile.commands.hasRoot(topic)) {
+            "$topic: ${commandHelp(topic)}"
+        } else {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Unknown help topic '$topic'", location, version = profile.id)
+        }
+        world.recordOutput("help", "data", text = text)
+    }
+
+    private fun commandHelp(root: String): String =
+        when (root) {
+            "function" -> "function <namespace:path>"
+            "scoreboard" -> "scoreboard objectives|players ..."
+            "execute" -> "execute ... run <command>"
+            "data" -> "data get|merge|modify|remove <target> ..."
+            "gamemode" -> "gamemode <mode> [targets]"
+            "worldborder" -> "worldborder add|center|damage|get|set|warning ..."
+            else -> if (profile.commands.hasRoot(root)) "vanilla root command; sandbox support may be partial" else "unknown"
+        }
+
+    private fun executeList(tokens: List<CommandToken>, location: SourceLocation?) {
+        requireSize(tokens, 1, "list [uuids]", location)
+        val names = world.players.keys.sorted()
+        val payload = JsonObject()
+        payload.addProperty("count", names.size)
+        payload.add("players", JsonArray().also { array -> names.forEach(array::add) })
+        if (tokens.getOrNull(1)?.text == "uuids") {
+            world.players.toSortedMap().forEach { (name, player) -> payload.addProperty(name, player.uuid) }
+        }
+        world.recordOutput("list", "data", text = "There are ${names.size} player(s): ${names.joinToString()}", payload = payload)
+    }
+
+    private fun executeLoot(tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext) {
+        requireSize(tokens, 2, "loot <give|insert|spawn|replace> ...", location)
+        when (tokens[1].text) {
+            "give" -> {
+                requireSize(tokens, 5, "loot give <players> loot <table>", location)
+                val items = parseLootSource(tokens, 3, context, location)
+                resolvePlayers(tokens[2].text, location, context).forEach { player ->
+                    player.inventory += items.map { it.copy(components = it.components.deepCopy(), nbt = it.nbt.deepCopy()) }
+                    items.forEach { advancements.handle(PlayerEvent(player.name, "inventory_changed", item = it)) }
+                }
+            }
+            "insert" -> {
+                requireSize(tokens, 7, "loot insert <pos> loot <table>", location)
+                val pos = parseBlockPos(tokens, 2, context.position, location)
+                insertLootIntoBlock(pos, parseLootSource(tokens, 5, context, location), location)
+            }
+            "spawn" -> {
+                requireSize(tokens, 7, "loot spawn <pos> loot <table>", location)
+                val pos = parsePosition(tokens, 2, context.position, location)
+                spawnLootItems(pos, parseLootSource(tokens, 5, context, location))
+            }
+            "replace" -> executeLootReplace(tokens, location, context)
+            else -> unsupportedFeature("Unsupported loot target '${tokens[1].text}'", profile.id, location)
+        }
+    }
+
+    private fun executeLocate(tokens: List<CommandToken>, location: SourceLocation?) {
+        requireSize(tokens, 3, "locate <biome|structure|poi> <id>", location)
+        if (tokens[1].text !in setOf("biome", "structure", "poi")) {
+            unsupportedFeature("Unsupported locate type '${tokens[1].text}'", profile.id, location)
+        }
+        val payload = JsonObject()
+        payload.addProperty("type", tokens[1].text)
+        payload.addProperty("id", ResourceLocation.parse(tokens[2].text).toString())
+        payload.addProperty("found", false)
+        world.recordOutput("locate", "data", text = "No ${tokens[1].text} result in sandbox void world", payload = payload)
+    }
+
+    private fun executeSpectate(tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext) {
+        val spectator = tokens.getOrNull(2)?.text?.let { resolvePlayers(it, location, context).firstOrNull() }
+            ?: context.entity as? SandboxPlayer
+        val target = tokens.getOrNull(1)?.text?.takeIf { it != "stop" }?.let { EntitySelectors.select(world, it, context, location).firstOrNull() }
+        val payload = JsonObject()
+        spectator?.let {
+            it.gameMode = "spectator"
+            payload.addProperty("spectator", it.name)
+        }
+        target?.let { payload.addProperty("target", it.uuid) }
+        world.recordOutput("spectate", "data", text = if (target == null) "spectate cleared" else "spectating ${target.uuid}", payload = payload)
+    }
+
+    private fun executeSpreadPlayers(tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext) {
+        requireSize(tokens, 7, "spreadplayers <center> <spreadDistance> <maxRange> <respectTeams> <targets>", location)
+        val centerX = parseCoordinate(tokens[1].text, context.position.x, location)
+        val centerZ = parseCoordinate(tokens[2].text, context.position.z, location)
+        val maxRange = parseDouble(tokens[4].text, "spread max range", location).coerceAtLeast(0.0)
+        val targets = tokens.drop(6).flatMap { EntitySelectors.select(world, it.text, context, location) }.distinctBy { it.uuid }
+        if (targets.isEmpty()) return
+        val step = if (targets.size == 1) 0.0 else (maxRange * 2.0) / targets.size
+        targets.forEachIndexed { index, entity ->
+            val x = centerX - maxRange + step * index
+            val z = centerZ + if (index % 2 == 0) maxRange / 2.0 else -maxRange / 2.0
+            entity.position = Position(x, entity.position.y, z)
+            if (entity is SandboxPlayer) advancements.handle(PlayerEvent(entity.name, "moved"))
+        }
+        world.recordOutput("spreadplayers", "data", text = targets.size.toString())
+    }
+
+    private fun executeLootReplace(tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext) {
+        requireSize(tokens, 3, "loot replace <entity|block> ...", location)
+        when (tokens[2].text) {
+            "entity" -> {
+                requireSize(tokens, 7, "loot replace entity <entities> <slot> [count] loot <table>", location)
+                val slot = inventorySlot(tokens[4].text)
+                val sourceIndex = if (tokens[5].text == "loot") 5 else 6
+                val count = if (sourceIndex == 6) parseInt(tokens[5].text, "loot replace count", location) else 1
+                val items = parseLootSource(tokens, sourceIndex, context, location).take(count.coerceAtLeast(0))
+                EntitySelectors.select(world, tokens[3].text, context, location).filterIsInstance<SandboxPlayer>().forEach { player ->
+                    val item = items.firstOrNull() ?: ItemStack(ResourceLocation("minecraft", "air"), 0)
+                    while (player.inventory.size <= slot) player.inventory += ItemStack(ResourceLocation("minecraft", "air"), 0)
+                    player.inventory[slot] = item.copy(components = item.components.deepCopy(), nbt = item.nbt.deepCopy())
+                }
+            }
+            "block" -> {
+                requireSize(tokens, 9, "loot replace block <pos> <slot> [count] loot <table>", location)
+                val pos = parseBlockPos(tokens, 3, context.position, location)
+                val slot = inventorySlot(tokens[6].text)
+                val sourceIndex = if (tokens[7].text == "loot") 7 else 8
+                val count = if (sourceIndex == 8) parseInt(tokens[7].text, "loot replace count", location) else 1
+                val item = parseLootSource(tokens, sourceIndex, context, location).take(count.coerceAtLeast(0)).firstOrNull()
+                replaceBlockItem(pos, slot, item, location)
+            }
+            else -> unsupportedFeature("Unsupported loot replace target '${tokens[2].text}'", profile.id, location)
+        }
+    }
+
+    private fun parseLootSource(tokens: List<CommandToken>, index: Int, context: ExecutionContext, location: SourceLocation?): List<ItemStack> {
+        requireIndex(tokens, index, "loot source", location)
+        return when (tokens[index].text) {
+            "loot" -> {
+                requireIndex(tokens, index + 1, "loot <table>", location)
+                val player = context.entity as? SandboxPlayer
+                generateLoot(ResourceLocation.parse(tokens[index + 1].text), ResourceLocation("minecraft", "command"), player, world.gameTime).items
+            }
+            else -> unsupportedFeature("Only loot source 'loot <table>' is implemented for /loot", profile.id, location)
+        }
+    }
+
+    private fun insertLootIntoBlock(pos: BlockPos, items: List<ItemStack>, location: SourceLocation?) {
+        val block = world.requireBlock(pos)
+        val updated = block.fullNbt(pos, profile, location)
+        val itemsArray = updated.getAsJsonArray("Items") ?: JsonArray().also { updated.add("Items", it) }
+        var nextSlot = itemsArray.size()
+        items.forEach { item ->
+            val itemJson = item.toJson()
+            itemJson.addProperty("Slot", nextSlot++)
+            itemsArray.add(itemJson)
+        }
+        block.writeFullNbt(pos, profile, updated, location)
+    }
+
+    private fun replaceBlockItem(pos: BlockPos, slot: Int, item: ItemStack?, location: SourceLocation?) {
+        val block = world.requireBlock(pos)
+        val updated = block.fullNbt(pos, profile, location)
+        val itemsArray = updated.getAsJsonArray("Items") ?: JsonArray().also { updated.add("Items", it) }
+        val iterator = itemsArray.iterator()
+        while (iterator.hasNext()) {
+            val element = iterator.next()
+            if (element.isJsonObject && element.asJsonObject.get("Slot")?.asInt == slot) iterator.remove()
+        }
+        if (item != null && item.count > 0) {
+            val itemJson = item.toJson()
+            itemJson.addProperty("Slot", slot)
+            itemsArray.add(itemJson)
+        }
+        block.writeFullNbt(pos, profile, updated, location)
+    }
+
+    private fun spawnLootItems(position: Position, items: List<ItemStack>) {
+        items.forEach { item ->
+            world.entities += SandboxEntity(
+                type = ResourceLocation("minecraft", "item"),
+                position = position,
+                nbt = JsonObject().also { it.add("Item", item.toJson()) },
+            )
+        }
+    }
+
+    private fun executeDatapack(tokens: List<CommandToken>, location: SourceLocation?) {
+        requireSize(tokens, 2, "datapack <list|enable|disable> ...", location)
+        when (tokens[1].text) {
+            "list" -> {
+                val payload = JsonObject()
+                payload.addProperty("functions", datapack.functions.size)
+                payload.addProperty("lootTables", datapack.lootTables.size)
+                payload.addProperty("predicates", datapack.predicates.size)
+                payload.addProperty("advancements", datapack.advancements.size)
+                world.recordOutput("datapack list", "data", text = "Loaded datapack resources", payload = payload)
+            }
+            "enable", "disable" -> {
+                requireSize(tokens, 3, "datapack ${tokens[1].text} <name>", location)
+                world.recordOutput("datapack ${tokens[1].text}", "warning", text = "Datapack order is fixed at sandbox creation; '${tokens[1].text}' is accepted as a no-op")
+            }
+            else -> unsupportedFeature("Unsupported datapack action '${tokens[1].text}'", profile.id, location)
+        }
+    }
+
+    private fun executeReload(tokens: List<CommandToken>, location: SourceLocation?) {
+        requireSize(tokens, 1, "reload", location)
+        world.recordOutput("reload", "data", text = "Reload is a no-op inside this immutable sandbox instance")
+    }
+
+    private fun executeSeed(tokens: List<CommandToken>, location: SourceLocation?) {
+        requireSize(tokens, 1, "seed", location)
+        world.recordOutput("seed", "data", text = world.seed.toString())
+    }
+
+    private fun executeDifficulty(tokens: List<CommandToken>, location: SourceLocation?) {
+        requireSize(tokens, 1, "difficulty [peaceful|easy|normal|hard]", location)
+        tokens.getOrNull(1)?.let {
+            val difficulty = normalizeDifficulty(it.text, location)
+            world.difficulty = difficulty
+        }
+        world.recordOutput("difficulty", "data", text = world.difficulty)
+    }
+
+    private fun executeDefaultGameMode(tokens: List<CommandToken>, location: SourceLocation?) {
+        requireSize(tokens, 2, "defaultgamemode <mode>", location)
+        world.defaultGameMode = normalizeGameMode(tokens[1].text, location)
+    }
+
+    private fun executeGameMode(tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext) {
+        requireSize(tokens, 2, "gamemode <mode> [targets]", location)
+        val mode = normalizeGameMode(tokens[1].text, location)
+        val targets = tokens.getOrNull(2)?.text?.let { resolvePlayers(it, location, context) }
+            ?: listOf(context.entity as? SandboxPlayer ?: throw SandboxException(DiagnosticCode.COMMAND_ERROR, "gamemode without targets requires a player execution context", location))
+        targets.forEach { it.gameMode = mode }
+    }
+
+    private fun executeAttribute(tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext) {
+        requireSize(tokens, 4, "attribute <target> <attribute> <get|base|modifier> ...", location)
+        val entity = EntitySelectors.select(world, tokens[1].text, context, location).singleOrNull()
+            ?: throw SandboxException(DiagnosticCode.COMMAND_ERROR, "attribute requires exactly one target", location)
+        val attribute = ResourceLocation.parse(tokens[2].text)
+        when (tokens[3].text) {
+            "get" -> {
+                val scale = tokens.getOrNull(4)?.text?.let { parseDouble(it, "attribute scale", location) } ?: 1.0
+                world.recordOutput("attribute get", "data", text = ((entity.attributes[attribute] ?: defaultAttribute(attribute)) * scale).toString())
+            }
+            "base" -> {
+                requireSize(tokens, 5, "attribute <target> <attribute> base <get|set|reset>", location)
+                when (tokens[4].text) {
+                    "get" -> {
+                        val scale = tokens.getOrNull(5)?.text?.let { parseDouble(it, "attribute scale", location) } ?: 1.0
+                        world.recordOutput("attribute base get", "data", text = ((entity.attributes[attribute] ?: defaultAttribute(attribute)) * scale).toString())
+                    }
+                    "set" -> {
+                        requireSize(tokens, 6, "attribute <target> <attribute> base set <value>", location)
+                        entity.attributes[attribute] = parseDouble(tokens[5].text, "attribute base", location)
+                    }
+                    "reset" -> entity.attributes.remove(attribute)
+                    else -> unsupportedFeature("Unsupported attribute base action '${tokens[4].text}'", profile.id, location)
+                }
+            }
+            "modifier" -> {
+                world.recordOutput("attribute modifier", "warning", text = "Attribute modifiers are accepted as a sandbox no-op; base values are supported")
+            }
+            else -> unsupportedFeature("Unsupported attribute action '${tokens[3].text}'", profile.id, location)
+        }
     }
 
     private fun executeScoreboard(tokens: List<CommandToken>, location: SourceLocation?) {
@@ -805,6 +1190,59 @@ class DatapackSandbox(
         }
     }
 
+    private fun executeForceload(tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext) {
+        requireSize(tokens, 2, "forceload <add|remove|query> ...", location)
+        when (tokens[1].text) {
+            "add", "remove" -> {
+                if (tokens[1].text == "remove" && tokens.getOrNull(2)?.text == "all") {
+                    world.forcedChunks.clear()
+                    return
+                }
+                requireSize(tokens, 4, "forceload ${tokens[1].text} <from> [to]", location)
+                val from = parseColumnPos(tokens, 2, context.position, location)
+                val to = if (tokens.size >= 6) parseColumnPos(tokens, 4, context.position, location) else from
+                chunksInBlockRange(from, to).forEach { chunk ->
+                    if (tokens[1].text == "add") world.forcedChunks += chunk else world.forcedChunks -= chunk
+                }
+            }
+            "query" -> {
+                val payload = JsonArray()
+                world.forcedChunks.sorted().forEach { chunk ->
+                    payload.add(JsonObject().also {
+                        it.addProperty("x", chunk.x)
+                        it.addProperty("z", chunk.z)
+                    })
+                }
+                world.recordOutput("forceload query", "data", text = world.forcedChunks.sorted().joinToString { "${it.x},${it.z}" }, payload = payload)
+            }
+            else -> unsupportedFeature("Unsupported forceload action '${tokens[1].text}'", profile.id, location)
+        }
+    }
+
+    private fun executeFillBiome(tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext) {
+        requireSize(tokens, 8, "fillbiome <from> <to> <biome> [replace <filter>]", location)
+        val from = parseBlockPos(tokens, 1, context.position, location)
+        val to = parseBlockPos(tokens, 4, context.position, location)
+        val biome = ResourceLocation.parse(tokens[7].text)
+        val filter = if (tokens.getOrNull(8)?.text == "replace") tokens.getOrNull(9)?.text?.let(ResourceLocation::parse) else null
+        val xs = minOf(from.x, to.x)..maxOf(from.x, to.x)
+        val ys = minOf(from.y, to.y)..maxOf(from.y, to.y)
+        val zs = minOf(from.z, to.z)..maxOf(from.z, to.z)
+        val volume = xs.count() * ys.count() * zs.count()
+        if (volume > 32768) {
+            throw SandboxException(DiagnosticCode.COMMAND_ERROR, "Fillbiome volume $volume exceeds sandbox limit 32768", location)
+        }
+        var changed = 0
+        for (x in xs) for (y in ys) for (z in zs) {
+            val pos = BlockPos(x, y, z)
+            if (filter == null || world.biomes[pos] == filter) {
+                world.biomes[pos] = biome
+                changed += 1
+            }
+        }
+        world.recordOutput("fillbiome", "data", text = changed.toString())
+    }
+
     private fun executeDamage(tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext) {
         requireSize(tokens, 3, "damage <target> <amount> [damageType] ...", location)
         val amount = tokens[2].text.toDoubleOrNull() ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Invalid damage amount '${tokens[2].text}'", location)
@@ -1154,6 +1592,110 @@ class DatapackSandbox(
         world.scheduledFunctions += ScheduledFunction(id, world.gameTime + delay)
     }
 
+    private fun executeSetWorldSpawn(tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext) {
+        val position = if (tokens.size >= 4) parsePosition(tokens, 1, context.position, location) else context.position
+        val angle = tokens.getOrNull(if (tokens.size >= 4) 4 else 1)?.text?.let { parseDouble(it, "spawn angle", location) }
+        world.worldSpawn = SpawnPoint(position = position, dimension = ResourceLocation("minecraft", "overworld"), angle = angle)
+    }
+
+    private fun executeSpawnPoint(tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext) {
+        val targetToken = tokens.getOrNull(1)?.text
+        val targets = if (targetToken != null && !isCoordinateToken(targetToken)) {
+            resolvePlayers(targetToken, location, context)
+        } else {
+            listOf(context.entity as? SandboxPlayer ?: world.players.values.firstOrNull()
+                ?: throw SandboxException(DiagnosticCode.COMMAND_ERROR, "spawnpoint requires a target player", location))
+        }
+        val posIndex = if (targetToken != null && !isCoordinateToken(targetToken)) 2 else 1
+        val position = if (tokens.size >= posIndex + 3) parsePosition(tokens, posIndex, context.position, location) else context.position
+        val angle = tokens.getOrNull(posIndex + 3)?.text?.let { parseDouble(it, "spawn angle", location) }
+        targets.forEach {
+            it.spawnPoint = SpawnPoint(position = position, dimension = it.dimension, angle = angle)
+        }
+    }
+
+    private fun executeTick(tokens: List<CommandToken>, location: SourceLocation?) {
+        requireSize(tokens, 2, "tick <query|rate|freeze|unfreeze|step|sprint|stop>", location)
+        when (tokens[1].text) {
+            "query" -> {
+                val payload = JsonObject()
+                payload.addProperty("rate", world.tickRate)
+                payload.addProperty("frozen", world.tickFrozen)
+                payload.addProperty("gameTime", world.gameTime)
+                world.recordOutput("tick query", "data", text = "rate=${world.tickRate}, frozen=${world.tickFrozen}, gameTime=${world.gameTime}", payload = payload)
+            }
+            "rate" -> {
+                requireSize(tokens, 3, "tick rate <rate>", location)
+                world.tickRate = parseDouble(tokens[2].text, "tick rate", location).coerceAtLeast(1.0)
+            }
+            "freeze" -> world.tickFrozen = true
+            "unfreeze" -> world.tickFrozen = false
+            "step", "sprint" -> {
+                val ticks = tokens.getOrNull(2)?.text?.let { parseTime(it, location).toInt() } ?: 1
+                runTicks(ticks)
+            }
+            "stop" -> world.recordOutput("tick stop", "data", text = "No active tick sprint")
+            else -> unsupportedFeature("Unsupported tick action '${tokens[1].text}'", profile.id, location)
+        }
+    }
+
+    private fun executeTrigger(tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext) {
+        requireSize(tokens, 2, "trigger <objective> [add|set] [value]", location)
+        val player = context.entity as? SandboxPlayer ?: world.players.values.firstOrNull()
+            ?: throw SandboxException(DiagnosticCode.COMMAND_ERROR, "trigger requires a player", location)
+        val objective = tokens[1].text
+        world.ensureObjective(objective)
+        val action = tokens.getOrNull(2)?.text ?: "add"
+        val value = tokens.getOrNull(3)?.text?.let { parseInt(it, "trigger value", location) } ?: 1
+        when (action) {
+            "add" -> world.addScore(player.name, objective, value)
+            "set" -> world.setScore(player.name, objective, value)
+            else -> unsupportedFeature("Unsupported trigger action '$action'", profile.id, location)
+        }
+    }
+
+    private fun executeWorldBorder(tokens: List<CommandToken>, location: SourceLocation?) {
+        requireSize(tokens, 2, "worldborder <add|center|damage|get|set|warning>", location)
+        val border = world.worldBorder
+        when (tokens[1].text) {
+            "get" -> world.recordOutput("worldborder get", "data", text = border.size.toString(), payload = border.toJson())
+            "set" -> {
+                requireSize(tokens, 3, "worldborder set <distance> [time]", location)
+                border.targetSize = parseDouble(tokens[2].text, "worldborder size", location).coerceAtLeast(1.0)
+                border.size = border.targetSize
+                border.lerpTimeSeconds = tokens.getOrNull(3)?.text?.let { parseLong(it, "worldborder time", location) } ?: 0
+            }
+            "add" -> {
+                requireSize(tokens, 3, "worldborder add <distance> [time]", location)
+                border.targetSize = (border.size + parseDouble(tokens[2].text, "worldborder size delta", location)).coerceAtLeast(1.0)
+                border.size = border.targetSize
+                border.lerpTimeSeconds = tokens.getOrNull(3)?.text?.let { parseLong(it, "worldborder time", location) } ?: 0
+            }
+            "center" -> {
+                requireSize(tokens, 4, "worldborder center <x> <z>", location)
+                border.centerX = parseCoordinate(tokens[2].text, border.centerX, location)
+                border.centerZ = parseCoordinate(tokens[3].text, border.centerZ, location)
+            }
+            "damage" -> {
+                requireSize(tokens, 4, "worldborder damage <amount|buffer> <value>", location)
+                when (tokens[2].text) {
+                    "amount" -> border.damageAmount = parseDouble(tokens[3].text, "worldborder damage amount", location)
+                    "buffer" -> border.damageBuffer = parseDouble(tokens[3].text, "worldborder damage buffer", location)
+                    else -> unsupportedFeature("Unsupported worldborder damage field '${tokens[2].text}'", profile.id, location)
+                }
+            }
+            "warning" -> {
+                requireSize(tokens, 4, "worldborder warning <distance|time> <value>", location)
+                when (tokens[2].text) {
+                    "distance" -> border.warningDistance = parseInt(tokens[3].text, "worldborder warning distance", location)
+                    "time" -> border.warningTime = parseInt(tokens[3].text, "worldborder warning time", location)
+                    else -> unsupportedFeature("Unsupported worldborder warning field '${tokens[2].text}'", profile.id, location)
+                }
+            }
+            else -> unsupportedFeature("Unsupported worldborder action '${tokens[1].text}'", profile.id, location)
+        }
+    }
+
     private fun executeAdvancement(tokens: List<CommandToken>, location: SourceLocation?) {
         requireSize(tokens, 4, "advancement <grant|revoke|test> <targets> <mode> ...", location)
         val action = tokens[1].text
@@ -1280,10 +1822,22 @@ class DatapackSandbox(
         return BlockPos(floor(pos.x).toInt(), floor(pos.y).toInt(), floor(pos.z).toInt())
     }
 
+    private fun parseColumnPos(tokens: List<CommandToken>, index: Int, base: Position, location: SourceLocation?): BlockPos {
+        requireSizeFrom(tokens, index, 2, "<x> <z>", location)
+        return BlockPos(
+            floor(parseCoordinate(tokens[index].text, base.x, location)).toInt(),
+            0,
+            floor(parseCoordinate(tokens[index + 1].text, base.z, location)).toInt(),
+        )
+    }
+
     private fun isCoordinateTriple(tokens: List<CommandToken>, index: Int): Boolean =
         index + 2 < tokens.size && listOf(tokens[index], tokens[index + 1], tokens[index + 2]).all {
             it.text == "~" || it.text.startsWith("~") || it.text.toDoubleOrNull() != null
         }
+
+    private fun isCoordinateToken(raw: String): Boolean =
+        raw == "~" || raw.startsWith("~") || raw.toDoubleOrNull() != null
 
     private fun matchesBlock(pos: BlockPos, rawBlock: String, location: SourceLocation?): Boolean {
         val expected = parseBlockArgument(rawBlock, location)
@@ -1442,6 +1996,10 @@ class DatapackSandbox(
         raw.toLongOrNull()
             ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Invalid $label: '$raw'", location)
 
+    private fun parseDouble(raw: String, label: String, location: SourceLocation?): Double =
+        raw.toDoubleOrNull()
+            ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Invalid $label: '$raw'", location)
+
     private fun parseBoolean(raw: String, label: String, location: SourceLocation?): Boolean =
         when (raw.lowercase()) {
             "true" -> true
@@ -1456,6 +2014,33 @@ class DatapackSandbox(
             "night" -> 13000
             "midnight" -> 18000
             else -> parseLong(raw, "time value", location)
+        }
+
+    private fun normalizeGameMode(raw: String, location: SourceLocation?): String =
+        when (raw.lowercase()) {
+            "survival", "s", "0" -> "survival"
+            "creative", "c", "1" -> "creative"
+            "adventure", "a", "2" -> "adventure"
+            "spectator", "sp", "3" -> "spectator"
+            else -> throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Invalid game mode '$raw'", location)
+        }
+
+    private fun normalizeDifficulty(raw: String, location: SourceLocation?): String =
+        when (raw.lowercase()) {
+            "peaceful", "p", "0" -> "peaceful"
+            "easy", "e", "1" -> "easy"
+            "normal", "n", "2" -> "normal"
+            "hard", "h", "3" -> "hard"
+            else -> throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Invalid difficulty '$raw'", location)
+        }
+
+    private fun defaultAttribute(attribute: ResourceLocation): Double =
+        when (attribute.toString()) {
+            "minecraft:max_health" -> 20.0
+            "minecraft:movement_speed" -> 0.1
+            "minecraft:attack_damage" -> 2.0
+            "minecraft:armor", "minecraft:armor_toughness", "minecraft:knockback_resistance" -> 0.0
+            else -> 0.0
         }
 
     private fun parseIntRange(raw: String, location: SourceLocation?): Pair<Int, Int> {
@@ -1540,6 +2125,18 @@ private fun SandboxBlock.copyForClone(): SandboxBlock =
         nbt = nbt.deepCopy(),
     )
 
+/**
+ * Creates a [DatapackSandbox] from one or more datapack paths.
+ *
+ * @param version Minecraft version profile id.
+ * @param packs Datapack directories or zip files to load, in pack priority order.
+ * @param world Mutable world instance to use. Pass a preconfigured world when
+ * tests need custom fixtures or imported save data.
+ * @param defaultPlayerName Name of the initial player to create when [world]
+ * has no players, or `null` to start without an implicit player.
+ * @param unsupportedFeatureMode Policy for vanilla commands recognized by the
+ * active profile but not implemented by the sandbox.
+ */
 @JvmOverloads
 fun createSandbox(
     version: String,
@@ -1554,6 +2151,48 @@ fun createSandbox(
     return DatapackSandbox(profile, datapack, world, unsupportedFeatureMode)
 }
 
+/**
+ * Creates a [DatapackSandbox] backed by multiple synthetic `.mcfunction` sources.
+ *
+ * This is the recommended low-level factory when tests need several functions
+ * but do not need a full datapack directory.
+ *
+ * @param version Minecraft version profile id.
+ * @param functionSources In-memory or file-backed function sources.
+ * @param world Mutable world instance to use.
+ * @param defaultPlayerName Name of the initial player to create when [world]
+ * has no players, or `null` to start without an implicit player.
+ * @param unsupportedFeatureMode Policy for recognized but unimplemented vanilla commands.
+ */
+@JvmOverloads
+fun createFunctionSandbox(
+    version: String,
+    functionSources: List<FunctionSource>,
+    world: SandboxWorld = SandboxWorld(),
+    defaultPlayerName: String? = "Steve",
+    unsupportedFeatureMode: UnsupportedFeatureMode = UnsupportedFeatureMode.WARN,
+): DatapackSandbox {
+    val profile = VersionProfiles.get(version)
+    val datapack = DatapackLoader.loadFunctionSources(functionSources, profile)
+    defaultPlayerName?.let { if (world.players.isEmpty()) world.createPlayer(it) }
+    return DatapackSandbox(profile, datapack, world, unsupportedFeatureMode)
+}
+
+/**
+ * Creates a [DatapackSandbox] backed by a single `.mcfunction` file.
+ *
+ * This factory is intended for lightweight tests that do not need a full
+ * datapack directory. The file is exposed as [functionId] inside a generated
+ * in-memory datapack.
+ *
+ * @param version Minecraft version profile id.
+ * @param functionFile Path to the `.mcfunction` file.
+ * @param functionId Temporary function id assigned to [functionFile].
+ * @param world Mutable world instance to use.
+ * @param defaultPlayerName Name of the initial player to create when [world]
+ * has no players, or `null` to start without an implicit player.
+ * @param unsupportedFeatureMode Policy for recognized but unimplemented vanilla commands.
+ */
 @JvmOverloads
 fun createFunctionSandbox(
     version: String,
@@ -1562,10 +2201,36 @@ fun createFunctionSandbox(
     world: SandboxWorld = SandboxWorld(),
     defaultPlayerName: String? = "Steve",
     unsupportedFeatureMode: UnsupportedFeatureMode = UnsupportedFeatureMode.WARN,
-): DatapackSandbox {
-    val profile = VersionProfiles.get(version)
-    val id = ResourceLocation.parse(functionId)
-    val datapack = DatapackLoader.loadSingleFunction(functionFile, profile, id)
-    defaultPlayerName?.let { if (world.players.isEmpty()) world.createPlayer(it) }
-    return DatapackSandbox(profile, datapack, world, unsupportedFeatureMode)
-}
+): DatapackSandbox =
+    createFunctionSandbox(
+        version = version,
+        functionSources = listOf(FunctionSource.file(functionId, functionFile)),
+        world = world,
+        defaultPlayerName = defaultPlayerName,
+        unsupportedFeatureMode = unsupportedFeatureMode,
+    )
+
+/**
+ * Creates a [DatapackSandbox] backed by one in-memory `.mcfunction` string.
+ *
+ * @param functionText Raw `.mcfunction` content.
+ * @param functionId Temporary function id assigned to [functionText].
+ * @param sourceName Label used in diagnostics.
+ */
+@JvmOverloads
+fun createFunctionSandboxFromString(
+    version: String,
+    functionText: String,
+    functionId: String = SingleFunctionDatapack.DEFAULT_ID,
+    sourceName: String = "<string:$functionId>",
+    world: SandboxWorld = SandboxWorld(),
+    defaultPlayerName: String? = "Steve",
+    unsupportedFeatureMode: UnsupportedFeatureMode = UnsupportedFeatureMode.WARN,
+): DatapackSandbox =
+    createFunctionSandbox(
+        version = version,
+        functionSources = listOf(FunctionSource.text(functionId, functionText, sourceName)),
+        world = world,
+        defaultPlayerName = defaultPlayerName,
+        unsupportedFeatureMode = unsupportedFeatureMode,
+    )

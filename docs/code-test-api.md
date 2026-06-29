@@ -77,6 +77,78 @@ val sandbox = createFunctionSandbox(
 sandbox.runFunction("sandbox:main")
 ```
 
+You can also pass function text directly without creating a file:
+
+```kotlin
+SandboxQuickTest.singleFunctionText(
+    functionText = """
+        scoreboard objectives add runs dummy
+        scoreboard players set #inline runs 1
+    """.trimIndent(),
+    version = "26.2",
+)
+    .function()
+    .assertScore("#inline", "runs", 1)
+    .requirePassed()
+```
+
+For multiple lightweight functions, mix file-backed and in-memory sources:
+
+```kotlin
+SandboxQuickTest.functions(
+    functionSources = listOf(
+        FunctionSource.text("demo:main", "function demo:helper"),
+        FunctionSource.file("demo:helper", Path.of("scratch/helper.mcfunction")),
+        FunctionSource.text("demo:inline", "say generated in memory"),
+    ),
+    version = "26.2",
+    defaultFunctionId = "demo:main",
+)
+    .function()
+    .requirePassed()
+```
+
+## Predefined World State
+
+Tests can start from an explicit world fixture without issuing setup commands.
+NBT written through this API is still validated against the active version
+profile, so custom top-level entity or block-entity fields are rejected in the
+same way as `data modify`.
+
+```kotlin
+SandboxQuickTest.create(
+    packs = listOf(Path.of("packs/demo")),
+    version = "26.2",
+    defaultPlayerName = null,
+)
+    .world {
+        block(0, 64, 0, "minecraft:chest", nbt = "{Items:[]}")
+        entity("minecraft:pig", 1.0, 64.0, 0.0, tags = listOf("fixture"))
+        player("Alex", x = 2.0, y = 65.0, z = 3.0, xp = 5)
+        score("#fixture", "ready", 1)
+        storage("demo:env", "{ready:true}")
+        gamerule("doDaylightCycle", "false")
+    }
+    .assertScore("#fixture", "ready", 1)
+    .assertPlayerXp("Alex", 5)
+    .requirePassed()
+```
+
+To seed a test from an existing Java Edition save, import an explicit chunk set
+or block range. The importer reads Anvil `.mca` files for block states, block
+entities, and entity regions; it does not load a whole save by default.
+
+```kotlin
+SandboxQuickTest.create(listOf(Path.of("packs/demo")), version = "26.2")
+    .importSave(
+        path = Path.of("saves/MyWorld"),
+        chunks = listOf(ChunkPos(0, 0), ChunkPos(1, 0)),
+        dimension = "minecraft:overworld",
+    )
+    .function("demo:check_loaded_area")
+    .requirePassed()
+```
+
 ## Multi-Version Matrix Tests
 
 Use `SandboxQuickTest.matrix(...)` when the same behavior should pass on
@@ -123,8 +195,13 @@ class MyDatapackTest {
 | `ticks(n)` | Advance sandbox ticks |
 | `function(id)` | Run a datapack function |
 | `function()` | Run the default single-file function created by `singleFunction(...)` |
+| `singleFunctionText(text, version)` | Create a quick-test scenario from one function string |
+| `functions(sources, version)` | Create a quick-test scenario from multiple `FunctionSource` values |
 | `matrix(packsByVersion)` | Create a multi-version quick-test matrix |
 | `command(raw)` | Execute one command |
+| `world { ... }` | Apply an in-memory world fixture before running behavior |
+| `setupWorld(setup)` | Apply a reusable `SandboxWorldSetup` |
+| `importSave(path, chunks, dimension)` | Import selected Java Anvil save chunks |
 | `player(name)` | Create or reuse a player |
 | `event(player, type, id, action)` | Inject a player event |
 | `keyInput(player, key, action)` | Inject keyboard input |
@@ -135,8 +212,30 @@ class MyDatapackTest {
 | `assertPlayerLastInput(player, device, code, action)` | Assert the latest player input |
 | `assertAdvancementDone(player, id, expected)` | Assert advancement completion |
 | `assertOutputContains(text)` | Assert output event text |
+| `assertOutput(...)` | Assert command/channel/target/text/count for output events |
+| `outputs()` | Return recorded output events |
+| `matchingOutputs(...)` | Return output events matching a structured expectation |
 | `report()` | Return `SandboxQuickTestReport` without throwing |
 | `requirePassed()` | Return report or throw an assertion error |
+
+## Output Tests
+
+```kotlin
+val report = SandboxQuickTest.singleFunction(Path.of("scratch/output.mcfunction"), "26.2")
+    .function()
+    .assertOutput(command = "say", channel = "chat", target = "Steve", contains = "hello")
+    .assertOutput(
+        OutputExpectation(
+            command = "tellraw",
+            text = "gold",
+            segment = OutputSegmentExpectation(text = "gold", color = "yellow"),
+            count = 1,
+        ),
+    )
+    .requirePassed()
+
+val tellrawEvents = report.outputs.filter { it.command == "tellraw" }
+```
 
 ## Keyboard/Mouse Input Tests
 

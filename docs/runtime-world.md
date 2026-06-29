@@ -21,6 +21,74 @@ The sandbox world is an in-memory sparse model:
 - Ticks run scheduled functions, tick tags, and sandbox player events. Entity AI
   and gravity are not simulated; `NoAI` is not injected.
 
+## Test World Fixtures
+
+Both `.dps.json` manifests and the quick-test API can define initial world
+state before any `steps` or commands run. Supported fixture inputs include:
+
+- `blocks` with block id, state properties, and validated block entity NBT.
+- `entities` with type, position, tags, rotation, and validated entity NBT.
+- `players` with position, dimension, game mode, inventory, XP, health, and
+  food.
+- `scores`, `storage`, `gamerules`, `gameTime`, `dayTime`, and `weather`.
+
+Example manifest:
+
+```json
+{
+  "version": "26.2",
+  "packs": ["./pack"],
+  "world": {
+    "blocks": [
+      { "pos": [0, 64, 0], "id": "minecraft:chest", "nbt": { "Items": [] } }
+    ],
+    "entities": [
+      { "type": "minecraft:pig", "pos": [1, 64, 0], "tags": ["fixture"] }
+    ],
+    "players": [
+      { "name": "Alex", "position": [2, 65, 3], "xp": 5 }
+    ],
+    "storage": {
+      "demo:env": { "ready": true }
+    }
+  },
+  "steps": [],
+  "assertions": []
+}
+```
+
+## Java Save Imports
+
+World fixtures can also import selected chunks from an existing Minecraft Java
+Edition save:
+
+```json
+{
+  "world": {
+    "save": {
+      "path": "./saves/MyWorld",
+      "dimension": "minecraft:overworld",
+      "chunks": [[0, 0], [1, 0]],
+      "includeBlocks": true,
+      "includeBlockEntities": true,
+      "includeEntities": true
+    }
+  }
+}
+```
+
+Use `"from": [x, y, z]` and `"to": [x, y, z]` instead of `chunks` when a block
+range is more convenient; the sandbox expands that range to chunk coordinates.
+
+The importer reads Java Anvil `.mca` files from `region/` and `entities/`.
+GZip, zlib, uncompressed, and LZ4 chunk compression are supported. Overworld,
+Nether, End, and custom dimension folders under `dimensions/<ns>/<id>` are
+supported. It imports block states, block entities, and entity NBT, then passes
+the NBT through the same version-profile validation used by commands.
+It intentionally does not import lighting, heightmaps, POI, scheduled block
+ticks, chunk tickets, playerdata, region metadata, or full vanilla world
+lifecycle state.
+
 ## Vanilla Data From mcdoc
 
 Run:

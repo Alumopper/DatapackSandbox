@@ -2,36 +2,105 @@
 
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
+import java.nio.file.Path
 
+/**
+ * One executable command line loaded from a `.mcfunction` file.
+ */
 data class FunctionLine(
+    /** Command text without a leading slash. */
     val command: String,
+    /** Source file and line used for diagnostics. */
     val location: SourceLocation,
 )
 
+/**
+ * Loaded datapack function.
+ */
 data class DatapackFunction(
+    /** Function resource id, for example `demo:main`. */
     val id: ResourceLocation,
+    /** Parsed command lines in source order. */
     val lines: List<FunctionLine>,
 )
 
+/**
+ * Synthetic datapack wrapper used by single-file `.mcfunction` tests.
+ */
 object SingleFunctionDatapack {
+    /** Default function id assigned to a single function file. */
     const val DEFAULT_ID: String = "sandbox:main"
 
+    /**
+     * Returns [DEFAULT_ID] as a typed [ResourceLocation].
+     */
     @JvmStatic
     fun defaultId(): ResourceLocation = ResourceLocation.parse(DEFAULT_ID)
 }
 
+/**
+ * Source for a synthetic `.mcfunction` resource.
+ *
+ * A source can be backed by in-memory text or by a file. Multiple sources can
+ * be loaded together through `DatapackLoader.loadFunctionSources(...)`, which
+ * allows lightweight tests without creating a full datapack directory.
+ */
+class FunctionSource private constructor(
+    /** Function id exposed to `function <id>` commands. */
+    val id: ResourceLocation,
+    /** In-memory function content, or null when [path] is used. */
+    val content: String?,
+    /** File path for this function, or null when [content] is used. */
+    val path: Path?,
+    /** Human-readable source label used in diagnostics. */
+    val sourceName: String,
+) {
+    companion object {
+        /**
+         * Creates an in-memory function source.
+         *
+         * @param id Function id such as `demo:main`.
+         * @param content Raw `.mcfunction` text.
+         * @param sourceName Label used in diagnostics; defaults to a synthetic string label.
+         */
+        @JvmStatic
+        @JvmOverloads
+        fun text(id: String, content: String, sourceName: String = "<string:$id>"): FunctionSource =
+            FunctionSource(ResourceLocation.parse(id), content, null, sourceName)
+
+        /**
+         * Creates a file-backed function source.
+         *
+         * The file is validated by the loader so callers receive a structured
+         * [SandboxException] with the active version profile.
+         */
+        @JvmStatic
+        fun file(id: String, path: Path): FunctionSource =
+            FunctionSource(ResourceLocation.parse(id), null, path, path.toAbsolutePath().normalize().toString())
+    }
+}
+
+/**
+ * Loaded raw JSON resource before it is converted to a typed model.
+ */
 data class ResourceJson(
     val id: ResourceLocation,
     val file: String,
     val root: JsonElement,
 )
 
+/**
+ * Loaded loot table resource.
+ */
 data class LootTable(
     val id: ResourceLocation,
     val file: String,
     val root: JsonObject,
 )
 
+/**
+ * Parsed loot pool model used by [LootEngine].
+ */
 data class LootPool(
     val rolls: JsonElement,
     val bonusRolls: JsonElement?,
@@ -40,16 +109,25 @@ data class LootPool(
     val functions: List<LootFunction>,
 )
 
+/** Loot entry with its raw JSON payload. */
 data class LootEntry(val type: String, val root: JsonObject)
+/** Loot condition with its raw JSON payload. */
 data class LootCondition(val type: String, val root: JsonObject)
+/** Loot function with its raw JSON payload. */
 data class LootFunction(val type: String, val root: JsonObject)
 
+/**
+ * Loaded predicate resource.
+ */
 data class PredicateDefinition(
     val id: ResourceLocation,
     val file: String,
     val root: JsonElement,
 )
 
+/**
+ * Loaded advancement definition.
+ */
 data class AdvancementDefinition(
     val id: ResourceLocation,
     val file: String,
@@ -60,12 +138,18 @@ data class AdvancementDefinition(
     val rewards: AdvancementReward,
 )
 
+/**
+ * One advancement criterion.
+ */
 data class Criterion(
     val name: String,
     val trigger: ResourceLocation,
     val conditions: JsonObject?,
 )
 
+/**
+ * Advancement rewards executed when an advancement becomes complete.
+ */
 data class AdvancementReward(
     val experience: Int = 0,
     val loot: List<ResourceLocation> = emptyList(),
@@ -73,6 +157,9 @@ data class AdvancementReward(
     val function: ResourceLocation? = null,
 )
 
+/**
+ * Immutable collection of loaded datapack resources.
+ */
 data class Datapack(
     val functions: Map<ResourceLocation, DatapackFunction>,
     val loadFunctions: List<ResourceLocation>,
@@ -81,6 +168,11 @@ data class Datapack(
     val predicates: Map<ResourceLocation, PredicateDefinition> = emptyMap(),
     val advancements: Map<ResourceLocation, AdvancementDefinition> = emptyMap(),
 ) {
+    /**
+     * Returns a function by id.
+     *
+     * @throws SandboxException with [DiagnosticCode.RESOURCE_NOT_FOUND] when missing.
+     */
     fun function(id: ResourceLocation): DatapackFunction =
         functions[id]
             ?: throw SandboxException(
@@ -88,6 +180,11 @@ data class Datapack(
                 message = "Function '$id' was not found",
             )
 
+    /**
+     * Returns a loot table by id.
+     *
+     * @throws SandboxException with [DiagnosticCode.RESOURCE_NOT_FOUND] when missing.
+     */
     fun lootTable(id: ResourceLocation): LootTable =
         lootTables[id]
             ?: throw SandboxException(
@@ -95,6 +192,11 @@ data class Datapack(
                 message = "Loot table '$id' was not found",
             )
 
+    /**
+     * Returns a predicate by id.
+     *
+     * @throws SandboxException with [DiagnosticCode.RESOURCE_NOT_FOUND] when missing.
+     */
     fun predicate(id: ResourceLocation): PredicateDefinition =
         predicates[id]
             ?: throw SandboxException(
@@ -102,6 +204,11 @@ data class Datapack(
                 message = "Predicate '$id' was not found",
             )
 
+    /**
+     * Returns an advancement by id.
+     *
+     * @throws SandboxException with [DiagnosticCode.RESOURCE_NOT_FOUND] when missing.
+     */
     fun advancement(id: ResourceLocation): AdvancementDefinition =
         advancements[id]
             ?: throw SandboxException(

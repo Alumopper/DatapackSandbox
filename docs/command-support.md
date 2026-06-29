@@ -1,161 +1,149 @@
-# Command Support for 26.2
+# Command Support
 
-This project defaults to Minecraft Java `26.2` and keeps compatibility profiles
-down to `1.20.4`. Command syntax is checked against Minecraft Wiki command
-syntax notes and should be validated against generated vanilla reports from the
-active target version's server jar when extending this table. The table compares
-vanilla root command families in the latest profile with the sandbox
-implementation.
+Default profile: Minecraft Java `26.2`. Compatibility profiles are available
+down to `1.20.4`.
 
-Status meanings:
+This sandbox does not embed a vanilla server. Command support means "the
+datapack-visible state that this clean-room runtime models is updated
+deterministically." Network, permissions, world generation, client UI, redstone,
+entity AI, and full combat systems remain outside the runtime boundary.
 
-- `Supported`: the main sandbox-visible behavior is implemented.
-- `Partial`: the root command exists, but only data-pack test paths are covered.
-- `Unsupported`: the sandbox does not implement the command. By default, vanilla
-  root commands are recorded as warning output events instead of aborting the
-  run. Use CLI/manifest/API unsupported mode `error` for strict failures, or
-  `ignore` to silence these warnings.
-- `Unknown for profile`: the command root is not present in the active version
-  profile and fails as `INPUT_FORMAT` instead of producing an unsupported
-  warning.
-- `Sandbox-only`: this is not a vanilla command.
+Unsupported vanilla root commands do not fail by default. The default
+unsupported policy is `warn`: the command records a warning output event and the
+run continues. Use `--unsupported error`, manifest `"unsupported": "error"`, or
+`UnsupportedFeatureMode.ERROR` when strict validation is required.
 
-## Vanilla Command Comparison
+## Status Meanings
 
-| Vanilla command | Sandbox status | Supported forms / notes |
+| Status | Meaning |
+|---|---|
+| Supported | Main sandbox-visible behavior is implemented. |
+| Partial | Useful datapack test behavior is implemented, but vanilla side effects are incomplete. |
+| No-op | Accepted and recorded, but no mutable vanilla-equivalent state exists in the sandbox. |
+| Unsupported | Not implemented; handled by the unsupported policy. |
+
+## Vanilla Command Matrix
+
+| Command | Status | Supported forms / sandbox behavior |
 |---|---:|---|
-| `advancement` | Partial | `grant|revoke|test`; criteria progress is per player; rewards support function, loot, XP, and recipes |
-| `attribute` | Unsupported | Entity attribute system is not simulated |
-| `ban` / `ban-ip` / `banlist` | Unsupported | Server administration commands |
-| `bossbar` | Partial | `add|remove|list|get|set`; state is stored, no real client UI |
-| `clear` | Partial | Removes matching item stacks from sandbox player inventories |
-| `clone` | Partial | Copies sparse sandbox block state/NBT; no updates, drops, or overlap physics |
-| `damage` | Partial | Applies health reduction to sandbox entities/players; full combat rules are not simulated |
-| `data` | Partial | `get|merge|modify|remove storage|entity|block`; top-level NBT fields are schema-checked |
-| `datapack` | Unsupported | Pack enable/order state is not simulated; use REPL `reload` |
-| `debug` / `jfr` / `perf` | Unsupported | Profiling commands do not apply to the clean-room runtime |
-| `defaultgamemode` / `gamemode` | Unsupported | Player game mode field exists, command is not wired |
-| `deop` / `op` | Unsupported | Permission system is not simulated |
-| `difficulty` | Unsupported | Difficulty does not affect current runtime behavior |
-| `effect` | Partial | `give|clear` updates sandbox player effects and fires advancement events |
-| `enchant` | Partial | Writes enchantment components to the selected item; no enchantability checks |
-| `execute` | Partial | `as|at|positioned|align|anchored|facing|in|rotated|store|if|unless ... run`; conditions support `entity|score|data|block` |
-| `experience` / `xp` | Partial | `add|set|query`; points and levels share the sandbox XP integer |
-| `fill` | Partial | `fill <from> <to> <block[state]{nbt}> [replace|keep|destroy|hollow|outline]`, no updates/drops |
-| `fillbiome` | Unsupported | Biome storage is not simulated |
-| `forceload` | Unsupported | Chunk loading is not simulated |
-| `function` | Supported | `function <id>` |
-| `gamerule` | Partial | Stores arbitrary gamerule string values; rules have no gameplay side effects |
-| `give` | Partial | Adds item stacks to sandbox player inventories and fires inventory advancement events |
-| `help` | Unsupported | REPL has sandbox `help`, but vanilla `/help` is not implemented |
-| `item` | Partial | `item replace entity <targets> <slot> with <item> [count]`; `modify` is accepted as a no-op resource hook |
-| `kick` | Unsupported | Network/login sessions are not simulated |
-| `kill` | Supported | `kill [targets]` removes sandbox entities |
-| `list` | Unsupported | Server player list command is not simulated |
-| `locate` | Unsupported | Worldgen/structure lookup is not simulated |
-| `loot` | Unsupported | Vanilla `/loot` is not implemented; CLI has `loot --table ...` |
-| `me` | Supported | Recorded as sandbox chat output |
-| `msg` / `tell` / `w` | Supported | Recorded as sandbox chat output |
-| `pardon` / `pardon-ip` | Unsupported | Server administration commands |
-| `particle` | Partial | Recorded as sandbox visual output, no client particles |
-| `place` | Unsupported | Structure/feature placement is not simulated |
-| `playsound` | Partial | Recorded as sandbox sound output |
-| `publish` | Unsupported | LAN/networking is not simulated |
-| `random` | Partial | `value|roll <range> [sequence]`, `reset`; deterministic sandbox sequence state |
-| `recipe` | Partial | `give|take <targets> <recipe|*>`, updates sandbox player recipe sets |
-| `reload` | Unsupported | Vanilla reload is not implemented; REPL has sandbox `reload` |
-| `return` | Supported | Stops the current function |
-| `ride` | Partial | Tracks vehicle/passenger relationships; no control or physics |
-| `rotate` | Partial | Updates entity yaw/pitch fields |
-| `save-all` / `save-off` / `save-on` | Unsupported | No real world save exists |
-| `say` | Supported | Recorded as sandbox chat output |
-| `schedule` | Partial | `schedule function <id> <time> [append|replace]`, `schedule clear <id>` |
-| `scoreboard` | Partial | objectives `add|remove|list`; players `set|add|remove|get|reset|list|enable|operation` |
-| `seed` | Unsupported | World seed/generation is not simulated |
-| `setblock` | Partial | `setblock <pos> <block[state]{nbt}> [replace|keep|destroy|strict]`, no neighbor updates |
-| `setidletimeout` | Unsupported | Server administration command |
-| `setworldspawn` / `spawnpoint` | Unsupported | Spawn logic is not simulated |
-| `spectate` | Unsupported | Spectator target/client camera are not simulated |
-| `spreadplayers` | Unsupported | Spatial distribution/collision rules are not implemented |
-| `stop` | Unsupported | Runtime lifecycle is not controlled by commands |
-| `stopsound` | Partial | Recorded as sandbox sound output |
-| `summon` | Partial | `summon <entity> [x y z] [snbt]`, creates no-AI-ticked entities with NBT schema checks |
-| `tag` | Supported | `tag <targets> add|remove|list` |
-| `team` | Partial | `add|remove|list|join|leave|empty|modify`; no collision/nameplate gameplay effects |
-| `teammsg` / `tm` | Supported | Recorded as sandbox chat output |
-| `teleport` / `tp` | Partial | Coordinate and destination teleport; facing/local-coordinate semantics are incomplete |
-| `tellraw` | Supported | JSON text component is resolved into sandbox chat output |
-| `tick` | Unsupported | Vanilla tick command is not implemented; REPL `tick [n]` is sandbox-only |
-| `time` | Partial | `set|add|query daytime|gametime|day`; day time is stored independently from tick count |
-| `title` | Supported | `clear|reset|title|subtitle|actionbar|times` output events |
-| `transfer` | Unsupported | Server transfer/networking is not simulated |
-| `trigger` | Unsupported | Trigger objective workflow is not implemented |
-| `weather` | Partial | `clear|rain|thunder [duration]`; stored state only |
-| `whitelist` | Unsupported | Server administration command |
-| `worldborder` | Unsupported | World border is not simulated |
+| `advancement` | Partial | `grant`, `revoke`, `test`; progress is per player; rewards support functions, loot, XP, and recipes. |
+| `attribute` | Partial | `get`, `base get`, `base set`, `base reset`; modifier subcommands are accepted as no-op warning output. |
+| `ban`, `ban-ip`, `banlist` | Unsupported | Server administration and ban lists are not simulated. |
+| `bossbar` | Partial | `add`, `remove`, `list`, `get`, `set`; state is stored and appears in snapshots, no real client UI. |
+| `clear` | Partial | Removes matching item stacks from sandbox player inventories. |
+| `clone` | Partial | Copies sparse sandbox block state/NBT; no updates, drops, or overlap physics. |
+| `damage` | Partial | Reduces entity/player health; no armor, invulnerability, death loot, or combat rules. |
+| `data` | Partial | `get`, `merge`, `modify`, `remove` for `storage`, `entity`, and `block`; top-level NBT is schema-checked. |
+| `datapack` | Partial | `list` reports loaded resource counts; `enable`/`disable` are accepted as no-op because pack order is fixed at sandbox creation. |
+| `debug`, `jfr`, `perf` | Unsupported | Profiling commands do not apply to this runtime. |
+| `defaultgamemode` | Supported | Stores world default game mode. |
+| `difficulty` | Supported | Stores and reports world difficulty. |
+| `deop`, `op` | Unsupported | Permission system is not simulated. |
+| `effect` | Partial | `give`, `clear`; updates player effect state and advancement events. |
+| `enchant` | Partial | Writes enchantment components to selected item; no enchantability checks. |
+| `execute` | Partial | `as`, `at`, `positioned`, `align`, `anchored`, `facing`, `in`, `rotated`, `store`, `if`, `unless`, `run`; conditions support `entity`, `score`, `data`, `block`. |
+| `experience`, `xp` | Partial | `add`, `set`, `query`; points and levels share the sandbox XP integer. |
+| `fill` | Partial | `fill <from> <to> <block[state]{nbt}> [replace|keep|destroy|hollow|outline]`; no updates/drops. |
+| `fillbiome` | Partial | Stores biome overrides for explicit block ranges; no chunk biome container or generation effects. |
+| `forceload` | Partial | `add`, `remove`, `remove all`, `query`; stores forced chunk coordinates. |
+| `function` | Supported | `function <id>`. |
+| `gamemode` | Supported | `gamemode <mode> [targets]`; updates sandbox player game mode. |
+| `gamerule` | Partial | Stores arbitrary gamerule string values; no gameplay side effects. |
+| `give` | Partial | Adds item stacks to player inventories and fires inventory advancement events. |
+| `help` | Partial | Reports command roots and basic sandbox help text. |
+| `item` | Partial | `replace entity <targets> <slot> with <item> [count]`; `modify` accepted as resource-hook no-op. |
+| `kick` | Unsupported | Network sessions are not simulated. |
+| `kill` | Supported | Removes selected sandbox entities. |
+| `list` | Supported | Reports sandbox players and UUIDs. |
+| `locate` | Partial | Accepts `biome`, `structure`, `poi`; reports no result in the void world instead of querying worldgen. |
+| `loot` | Partial | Supports `give`, `insert`, `spawn`, `replace entity`, `replace block` with source `loot <table>`. Other vanilla loot sources are unsupported. |
+| `me` | Supported | Recorded as chat output. |
+| `msg`, `tell`, `w` | Supported | Recorded as private chat output. |
+| `pardon`, `pardon-ip` | Unsupported | Server administration is not simulated. |
+| `particle` | Partial | Recorded as visual output event; no client particles. |
+| `place` | Unsupported | Structure/feature placement and worldgen are not simulated. |
+| `playsound` | Partial | Recorded as sound output event. |
+| `publish` | Unsupported | LAN/networking is not simulated. |
+| `random` | Partial | `value`, `roll`, `reset`; deterministic sandbox sequence state. |
+| `recipe` | Partial | `give`, `take`; updates per-player recipe sets. |
+| `reload` | No-op | Accepted and recorded; REPL `reload` performs real datapack reload, vanilla command does not mutate this immutable sandbox instance. |
+| `return` | Supported | Stops the current function. |
+| `ride` | Partial | Tracks vehicle/passenger relationships; no physics/control. |
+| `rotate` | Partial | Updates yaw/pitch. |
+| `save-all`, `save-off`, `save-on` | Unsupported | No real world save lifecycle exists. |
+| `say` | Supported | Recorded as chat output. |
+| `schedule` | Partial | `schedule function <id> <time> [append|replace]`, `schedule clear <id>`. |
+| `scoreboard` | Partial | Objectives `add`, `remove`, `list`; players `set`, `add`, `remove`, `get`, `reset`, `list`, `enable`, `operation`. |
+| `seed` | Supported | Reports deterministic sandbox seed. |
+| `setblock` | Partial | Mutates sparse block state/NBT; no neighbor updates. |
+| `setidletimeout` | Unsupported | Server administration command. |
+| `setworldspawn` | Partial | Stores sandbox world spawn position and angle. |
+| `spawnpoint` | Partial | Stores per-player spawn point and angle. |
+| `spectate` | Partial | Sets spectator mode and records target; no camera/client state. |
+| `spreadplayers` | Partial | Deterministically distributes selected entities around a center; no collision/team algorithm. |
+| `stop` | Unsupported | Runtime lifecycle is controlled by the host process, not commands. |
+| `stopsound` | Partial | Recorded as sound output event. |
+| `summon` | Partial | Creates entities with position, tags, and schema-checked NBT; AI does not tick. |
+| `tag` | Supported | `add`, `remove`, `list`. |
+| `team` | Partial | `add`, `remove`, `list`, `join`, `leave`, `empty`, `modify`; no gameplay effects. |
+| `teammsg`, `tm` | Supported | Recorded as team chat output. |
+| `teleport`, `tp` | Partial | Coordinate and destination teleport; local-coordinate/facing semantics remain incomplete. |
+| `tellraw` | Supported | Resolves JSON text components into output events. |
+| `tick` | Partial | `query`, `rate`, `freeze`, `unfreeze`, `step`, `sprint`, `stop`; updates sandbox tick state and can advance ticks. |
+| `time` | Partial | `set`, `add`, `query daytime|gametime|day`. |
+| `title` | Supported | `clear`, `reset`, `title`, `subtitle`, `actionbar`, `times` output events. |
+| `transfer` | Unsupported | Networking/server transfer is not simulated. |
+| `trigger` | Partial | `trigger <objective> [add|set] [value]`; uses current/default sandbox player. |
+| `weather` | Partial | `clear`, `rain`, `thunder`; stored state only. |
+| `whitelist` | Unsupported | Server administration command. |
+| `worldborder` | Partial | `get`, `set`, `add`, `center`, `damage`, `warning`; stored state only. |
 
-Output commands are represented as deterministic sandbox output events rather
-than client UI/network effects. Raw JSON text components are resolved for
-`text`, `score`, `selector`, `translate`, `keybind`, basic `nbt`, `extra`, and
-common formatting flags, then included in snapshots and rendered by the CLI.
+## Text And Output Commands
 
-Selectors currently include `@s`, `@a`, `@p`, `@e`, and `@n`. `@n` selects the
-nearest entity after filters, with a default limit of one.
+Output commands are deterministic `OutputEvent`s. They appear in snapshots,
+REPL output, `run`, `check --verbose`, and the code test API:
+
+- chat: `say`, `me`, `msg`, `tell`, `w`, `teammsg`, `tm`, `tellraw`
+- title: `title`
+- sound: `playsound`, `stopsound`
+- visual: `particle`
+- warning: unsupported or no-op command notices
+
+JSON text components support `text`, `score`, `selector`, `translate`,
+`keybind`, basic `nbt`, `extra`, and common formatting flags. The sandbox stores
+both plain text and segment metadata.
+
+## Selectors
+
+Implemented selectors: `@s`, `@a`, `@p`, `@e`, `@n`.
+
+Common options: `type`, `tag`, `name`, `limit`, `sort`, `distance`, `x`, `y`,
+`z`, `dx`, `dy`, `dz`. Unsupported selector options produce an unsupported
+diagnostic under the active unsupported policy.
 
 ## World/NBT Notes
 
-- The initial world is sparse void: unset block positions have no block entry.
-- `setblock` and `fill` only mutate sandbox block state. They do not run block
-  updates, physics, neighbor updates, scheduled ticks, or loot drops.
-- The sandbox creates a default player named `Steve`, with readable
-  vanilla-style player NBT. Explicit `player Steve` calls are idempotent.
-- Entities do not tick AI or physics. The sandbox also does not inject
-  `NoAI: true`; it simply does not simulate AI.
-- Non-player entity NBT is writable through `data modify|merge|remove entity`,
-  but top-level fields are checked against generated vanilla mcdoc schemas and
-  unknown custom fields fail.
-- Block NBT is exposed for block entities discovered from generated vanilla
-  mcdoc block dispatch mappings. Block entity writes also reject unknown custom
-  top-level fields.
-- Player NBT is readable through `data get entity <player>`, but write attempts
-  fail. Use `tp|teleport`, manifest player steps, or player events to change
-  sandbox-visible player state.
-- Item stack compounds inside entity/block NBT are also validated from the
-  generated mcdoc item stack schema.
+- The initial world is sparse void.
+- Blocks exist only when explicitly placed or imported from a save fixture.
+- Block and entity NBT writes are validated against generated vanilla mcdoc
+  schemas; unknown top-level custom fields fail.
+- Player NBT is readable but not writable through `data`; use commands/events to
+  change player state.
+- Entity AI, gravity, redstone, block updates, loot drops from block breaking,
+  and real combat are not simulated.
 
-## Sandbox-Only Commands
+## Sandbox-Only CLI/REPL Commands
 
-These commands are not vanilla commands; they are CLI/REPL tooling:
+These are tooling commands, not vanilla commands:
 
 | Command | Purpose |
 |---|---|
-| `event player <name> <type> [id] [action]` | Inject a player behavior event for predicates/advancements/rewards; supports `key_input` and `mouse_input` |
-| `player <name>` | Create or reuse a sandbox player |
-| `inspect <...>` | Inspect score, storage, entities, blocks, player, loot, predicate, advancement, registry, outputs |
-| `snapshot [file]` | Print or write deterministic world JSON |
-| `reload` | Reload datapack files in REPL while preserving world state |
-| `load` | Run `#minecraft:load` in REPL |
-| `tick [n]` | Advance sandbox ticks in REPL |
-| CLI `loot --table <id> --context <context>` | Generate a loot table directly |
-| CLI `check <manifest-or-directory>` | Run `.dps.json` manifests |
-
-## Unsupported Command Policy
-
-For vanilla root commands that are not implemented, the default policy is
-`warn`: execution continues and a yellow `warning` output event is recorded.
-This keeps datapack smoke tests from failing only because they contain
-cosmetic/admin commands outside the sandbox boundary.
-
-You can choose the policy per CLI command:
-
-```bash
-java -jar cli/build/libs/datapack-sandbox-cli.jar check examples --unsupported ignore
-java -jar cli/build/libs/datapack-sandbox-cli.jar run --pack ./pack --unsupported error --command "worldborder get"
-```
-
-Manifest files can set the same policy with top-level `"unsupported":
-"warn"`, `"ignore"`, or `"error"`. The Kotlin API exposes
-`UnsupportedFeatureMode.WARN`, `IGNORE`, and `ERROR`.
-
-Worldgen, redstone, full combat AI, networking, and real client input are
-outside the current runtime boundary.
+| `event player <name> <type> ...` | Inject player events for advancements/predicates. |
+| `player <name>` | Create or reuse a sandbox player. |
+| `inspect <...>` | Inspect score, storage, entities, blocks, player, loot, predicate, advancement, registry, outputs. |
+| `snapshot [file]` | Print or write deterministic world JSON. |
+| `reload` | REPL-only datapack reload while preserving world state. |
+| `load` | Run `#minecraft:load` in REPL. |
+| `tick [n]` | Advance sandbox ticks in REPL. |
+| CLI `loot --table <id> --context <context>` | Generate a loot table directly. |
+| CLI `check <manifest-or-directory>` | Run `.dps.json` manifests. |

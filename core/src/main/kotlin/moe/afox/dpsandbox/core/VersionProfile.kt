@@ -3,7 +3,16 @@ package moe.afox.dpsandbox.core
 import com.google.gson.JsonElement
 import java.math.BigDecimal
 
+/**
+ * Data pack format value.
+ *
+ * Recent Minecraft versions use decimal values such as `101.1`; this wrapper
+ * preserves exact decimal comparison and stable string rendering.
+ */
 data class DataPackFormat(val value: BigDecimal) : Comparable<DataPackFormat> {
+    /**
+     * Returns true when this format is numerically equal to [other].
+     */
     fun matches(other: DataPackFormat): Boolean = value.compareTo(other.value) == 0
 
     override fun compareTo(other: DataPackFormat): Int = value.compareTo(other.value)
@@ -11,9 +20,20 @@ data class DataPackFormat(val value: BigDecimal) : Comparable<DataPackFormat> {
     override fun toString(): String = value.stripTrailingZeros().toPlainString()
 
     companion object {
+        /**
+         * Creates a whole-number data pack format.
+         */
         fun of(value: Int): DataPackFormat = DataPackFormat(BigDecimal(value))
+        /**
+         * Creates a data pack format from a decimal string.
+         */
         fun of(value: String): DataPackFormat = DataPackFormat(BigDecimal(value))
 
+        /**
+         * Parses a JSON numeric `pack_format` value.
+         *
+         * @throws SandboxException when [element] is not a number.
+         */
         fun parse(element: JsonElement): DataPackFormat {
             if (!element.isJsonPrimitive || !element.asJsonPrimitive.isNumber) {
                 throw SandboxException(DiagnosticCode.INPUT_FORMAT, "pack_format must be a number")
@@ -23,6 +43,12 @@ data class DataPackFormat(val value: BigDecimal) : Comparable<DataPackFormat> {
     }
 }
 
+/**
+ * Version-specific datapack resource directory names.
+ *
+ * The lists are ordered by lookup priority and may include legacy aliases where
+ * the active profile permits them.
+ */
 data class ResourceDirectoryProfile(
     val functions: List<String>,
     val functionTags: List<String>,
@@ -31,6 +57,7 @@ data class ResourceDirectoryProfile(
     val advancements: List<String>,
 ) {
     companion object {
+        /** Resource directory layout used by older plural-directory packs. */
         val legacyPlural = ResourceDirectoryProfile(
             functions = listOf("functions"),
             functionTags = listOf("functions"),
@@ -39,6 +66,7 @@ data class ResourceDirectoryProfile(
             advancements = listOf("advancements"),
         )
 
+        /** Current singular directory layout plus legacy aliases for compatibility profiles. */
         val currentWithLegacyAliases = ResourceDirectoryProfile(
             functions = listOf("function", "functions"),
             functionTags = listOf("function", "functions"),
@@ -49,9 +77,15 @@ data class ResourceDirectoryProfile(
     }
 }
 
+/**
+ * Set of vanilla command roots known to a version profile.
+ */
 data class CommandProfile(
     val roots: Set<String>,
 ) {
+    /**
+     * Returns whether [command] is a root command recognized by this profile.
+     */
     fun hasRoot(command: String): Boolean = command in roots
 
     companion object {
@@ -147,6 +181,12 @@ data class CommandProfile(
     }
 }
 
+/**
+ * Complete version profile used by the sandbox runtime.
+ *
+ * A profile determines datapack format validation, resource directory lookup,
+ * command-root recognition, registry references, and NBT schema selection.
+ */
 data class VersionProfile(
     val id: String,
     val javaMajor: Int,
@@ -158,6 +198,9 @@ data class VersionProfile(
     val registryView: RegistryView = RegistryView.vanilla262,
 )
 
+/**
+ * Registry of built-in Minecraft Java version profiles.
+ */
 object VersionProfiles {
     val minecraft1204 = profile("1.20.4", java = 17, data = 3700, pack = "26", legacy = true)
     val minecraft1205 = profile("1.20.5", java = 21, data = 3837, pack = "41")
@@ -202,6 +245,11 @@ object VersionProfiles {
         minecraft262,
     )
 
+    /**
+     * Returns a built-in profile by id.
+     *
+     * @throws SandboxException when [id] is unknown.
+     */
     fun get(id: String): VersionProfile =
         all.firstOrNull { it.id == id }
             ?: throw SandboxException(

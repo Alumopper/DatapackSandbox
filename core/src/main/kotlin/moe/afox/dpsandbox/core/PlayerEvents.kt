@@ -2,13 +2,27 @@
 
 import com.google.gson.JsonObject
 
+/**
+ * Recorded keyboard or mouse input for a sandbox player.
+ *
+ * Input events are observable test fixtures. They do not simulate a real client
+ * input loop, physics, or movement by themselves.
+ */
 data class PlayerInput(
+    /** Input device name, usually `keyboard` or `mouse`. */
     val device: String,
+    /** Key or button code, for example `key.jump` or `left`. */
     val code: String,
+    /** Input action such as `press`, `release`, `click`, or `move`. */
     val action: String = "press",
+    /** Optional pointer x coordinate recorded as metadata. */
     val x: Double? = null,
+    /** Optional pointer y coordinate recorded as metadata. */
     val y: Double? = null,
 ) {
+    /**
+     * Serializes this input record into snapshot JSON.
+     */
     fun toJson(): JsonObject =
         JsonObject().also { json ->
             json.addProperty("device", device)
@@ -19,22 +33,52 @@ data class PlayerInput(
         }
 }
 
+/**
+ * Sandbox-visible player behavior event.
+ *
+ * Events feed advancement triggers, predicate contexts, loot contexts, and
+ * snapshots. They represent high-level datapack-visible actions rather than
+ * low-level client packets or vanilla physics.
+ */
 data class PlayerEvent(
+    /** Player that owns the event. The player must exist when the event is handled. */
     val playerName: String,
+    /** Event type. Hyphenated names are normalized to underscores by [normalized]. */
     val type: String,
+    /** Optional item context, used by item and inventory events. */
     val item: ItemStack? = null,
+    /** Optional entity context, used by kill-related events. */
     val entity: SandboxEntity? = null,
+    /** Optional block id context, used by place/break block events. */
     val block: ResourceLocation? = null,
+    /** Optional source dimension for dimension-change events. */
     val fromDimension: ResourceLocation? = null,
+    /** Optional destination dimension for dimension-change events. */
     val toDimension: ResourceLocation? = null,
+    /** Optional recipe id for recipe events. */
     val recipe: ResourceLocation? = null,
+    /** Optional keyboard or mouse input metadata. */
     val input: PlayerInput? = null,
 ) {
+    /**
+     * Returns a copy with [type] normalized from hyphen naming to underscore naming.
+     */
     fun normalized(): PlayerEvent =
         copy(type = type.replace('-', '_'))
 }
 
+/**
+ * Factory helpers for common [PlayerEvent] values.
+ */
 object PlayerEvents {
+    /**
+     * Creates a player event from the compact CLI/REPL shape.
+     *
+     * @param playerName Target player name.
+     * @param type Event type. Hyphen and underscore names are both accepted.
+     * @param id Optional resource id or input code interpreted by [type].
+     * @param action Optional keyboard/mouse action override.
+     */
     @JvmStatic
     @JvmOverloads
     fun shorthand(playerName: String, type: String, id: String? = null, action: String? = null): PlayerEvent {
@@ -46,6 +90,13 @@ object PlayerEvents {
         }
     }
 
+    /**
+     * Creates a keyboard input event.
+     *
+     * The returned event records input metadata and may be consumed by custom
+     * sandbox advancement triggers. It does not move the player or simulate
+     * vanilla client behavior.
+     */
     @JvmStatic
     @JvmOverloads
     fun keyInput(playerName: String, key: String, action: String = "press", type: String = "key_input"): PlayerEvent =
@@ -55,6 +106,11 @@ object PlayerEvents {
             input = PlayerInput(device = "keyboard", code = key, action = action),
         )
 
+    /**
+     * Creates a mouse input event.
+     *
+     * Optional [x] and [y] values are recorded as metadata only.
+     */
     @JvmStatic
     @JvmOverloads
     fun mouseInput(

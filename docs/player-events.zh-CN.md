@@ -1,6 +1,6 @@
-# 玩家事件
+﻿# 玩家事件
 
-`event` 是沙盒命令，不是原版 Minecraft 命令。它的作用是告诉沙盒：“某个玩家刚刚发生了一个数据包能看见的行为”。沙盒不会模拟完整客户端输入、物理或战斗 AI；这些事件会进入谓词上下文、战利品上下文和进度触发器。
+`event` 是沙盒工具命令，不是原版 Minecraft 命令。它用于把“数据包可见的玩家行为”注入运行时。沙盒不模拟完整客户端输入、物理、寻路或战斗 AI；事件只负责喂给 predicate context、loot context 和 advancement trigger。
 
 ## REPL 用法
 
@@ -14,15 +14,29 @@ dps> inspect player Steve
 dps> inspect advancement
 ```
 
-命令格式：
+命令形状：
 
 ```text
-event player <玩家名> <事件类型> [资源ID]
+event player <name> <event-type> [resource-id]
 ```
 
-最后的 `[资源ID]` 会按事件类型解释：`item_used` 把它当物品，`killed_entity` 把它当实体类型，`placed_block`/`broke_block` 把它当方块，`recipe_unlocked` 把它当配方。
+可选 `resource-id` 会按事件类型解释：
 
-对键鼠事件，`[资源ID]` 位置写输入代码：`key_input key.jump`、`key_pressed space`、`mouse_input left`。第五个参数可作为 action，例如 `event player Steve key_input key.jump release`。
+- `item_used`、`item_consumed`、`inventory_changed`、`item_picked_up`：物品 id。
+- `killed_entity`、`entity_killed_player`：实体类型 id。
+- `placed_block`、`broke_block`：方块 id。
+- `recipe_unlocked`：recipe id。
+
+键盘/鼠标事件把输入代码放在 `[resource-id]` 位置：
+
+```text
+event player Steve key_input key.jump
+event player Steve key_input key.jump release
+event player Steve mouse_input left
+event player Steve mouse_input left release
+```
+
+第五个参数可覆盖 action，例如 `press`、`release`、`click`、`move`。
 
 ## CLI 用法
 
@@ -30,9 +44,9 @@ event player <玩家名> <事件类型> [资源ID]
 java -jar cli/build/libs/datapack-sandbox-cli.jar event --pack examples/full-stack/pack player Steve item-used minecraft:carrot_on_a_stick
 ```
 
-CLI 接受连字符或下划线，`item-used` 会被规范化为 `item_used`。
+CLI 接受连字符或下划线；`item-used` 会标准化为 `item_used`。
 
-## Manifest 用法
+## 清单用法
 
 ```json
 {
@@ -58,31 +72,31 @@ CLI 接受连字符或下划线，`item-used` 会被规范化为 `item_used`。
 
 ## 支持的事件
 
-| 事件类型 | 可选字段/ID | 会影响什么 |
+| 事件类型 | 可选字段 / id | 效果 |
 |---|---|---|
-| `tick` | 无 | `minecraft:tick` 进度触发 |
-| `inventory_changed` | `item` | 背包变化类进度条件 |
-| `item_used` | `item` | 使用物品类进度条件，例如 carrot on a stick |
-| `item_consumed` | `item` | 消耗物品类进度条件 |
-| `item_picked_up` | `item` | 作为 `inventory_changed` 的别名路径 |
-| `key_input` / `key_pressed` / `key_released` | `key`、`action` | 记录玩家键盘输入；沙盒自定义 `key_input` advancement trigger 可匹配 |
-| `mouse_input` / `mouse_clicked` / `mouse_released` / `mouse_moved` | `button`、`action`、`x`、`y` | 记录玩家鼠标输入；沙盒自定义 `mouse_input` advancement trigger 可匹配 |
-| `killed_entity` | `entity` | `minecraft:player_killed_entity` |
-| `entity_killed_player` | `entity` | `minecraft:entity_killed_player` |
-| `location` | 无 | 位置类进度条件 |
-| `changed_dimension` | `from`、`to` | 维度变化类进度条件 |
-| `placed_block` | `block` | 放置方块类进度条件 |
-| `broke_block` | `block` | 目前映射到部分破坏方块类触发 |
-| `recipe_unlocked` | `recipe` | 解锁配方类进度条件 |
-| `effects_changed` | 无 | 药水效果变化类进度条件 |
+| `tick` | 无 | 触发 `minecraft:tick` advancement trigger。 |
+| `inventory_changed` | `item` | 用于 inventory changed 条件。 |
+| `item_used` | `item` | 用于 item used 条件。 |
+| `item_consumed` | `item` | 用于 consume item 条件。 |
+| `item_picked_up` | `item` | 作为 inventory changed 的别名路径。 |
+| `key_input` / `key_pressed` / `key_released` | `key`、`action` | 记录玩家键盘输入；沙盒自定义 `key_input` advancement trigger 可匹配。 |
+| `mouse_input` / `mouse_clicked` / `mouse_released` / `mouse_moved` | `button`、`action`、`x`、`y` | 记录玩家鼠标输入；沙盒自定义 `mouse_input` advancement trigger 可匹配。 |
+| `killed_entity` | `entity` | 触发 `minecraft:player_killed_entity`。 |
+| `entity_killed_player` | `entity` | 触发 `minecraft:entity_killed_player`。 |
+| `location` | 无 | 用于 location 条件。 |
+| `changed_dimension` | `from`、`to` | 用于 dimension change 条件。 |
+| `placed_block` | `block` | 用于 placed block 条件。 |
+| `broke_block` | `block` | 映射到已实现的 block break trigger 子集。 |
+| `recipe_unlocked` | `recipe` | 用于 recipe unlocked 条件。 |
+| `effects_changed` | 无 | 用于 effects changed 条件。 |
 
-REPL 的简写命令只提供一个 `[资源ID]` 和可选 action。需要同时指定 `from`/`to`、精确 item 组件、鼠标坐标等更复杂上下文时，用 manifest JSON。
+REPL 快捷命令只暴露一个可选 `[resource-id]` 和一个可选 action。需要更完整上下文时使用 JSON 清单，例如同时提供 `from`/`to` 维度、带 NBT 的物品或鼠标坐标。
 
-键鼠 manifest 示例：
+键鼠清单示例：
 
 ```json
 { "event": { "player": "Steve", "type": "key_input", "key": "key.jump", "action": "press" } }
 { "event": { "player": "Steve", "type": "mouse_input", "button": "left", "action": "click", "x": 12, "y": 8 } }
 ```
 
-事件会更新每个玩家独立的进度状态，并可能执行进度奖励，例如 function、loot、experience 和 recipe。事件执行后可以用 `inspect player <name>`、`inspect advancement`、`inspect outputs` 或 snapshot 查看结果。
+事件会更新玩家 advancement progress，并可能执行 advancement reward，例如 function、loot、experience、recipe。触发后可用 `inspect player <name>`、`inspect advancement`、`inspect outputs` 或 snapshot 查看结果。

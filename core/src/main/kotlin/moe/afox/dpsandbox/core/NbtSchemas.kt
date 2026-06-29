@@ -188,6 +188,16 @@ object NbtSchemas {
         val json = JsonObject()
         addEntityDefaults(entity, profile, json)
         entity.nbt.entrySet().forEach { (key, value) -> json.add(key, value.deepCopy()) }
+        if (entity.attributes.isNotEmpty()) {
+            json.add("Attributes", JsonArray().also { array ->
+                entity.attributes.toSortedMap().forEach { (id, base) ->
+                    array.add(JsonObject().also {
+                        it.addProperty("id", id.toString())
+                        it.addProperty("base", base)
+                    })
+                }
+            })
+        }
         json.addProperty("id", entity.type.toString())
         json.addProperty("UUID", entity.uuid)
         json.add("Pos", entity.position.toNbtArray())

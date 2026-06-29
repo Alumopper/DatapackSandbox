@@ -1,10 +1,15 @@
-# Datapack Sandbox
+﻿# Datapack Sandbox
 
 [中文文档](README.zh-CN.md)
 
 A lightweight, clean-room Minecraft Java datapack sandbox focused on local CLI
-debugging. Built-in version profiles cover every Minecraft Java release from
-`1.20.4` through `26.2`, with `26.2` as the default latest profile.
+debugging, manifest checks, and JVM-level quick tests. Built-in version profiles
+cover every Minecraft Java release from `1.20.4` through `26.2`, with `26.2` as
+the default latest profile.
+
+The runtime does not embed or distribute a vanilla server. Build tooling uses
+public `SpyglassMC/vanilla-mcdoc` data and the official `@spyglassmc/mcdoc`
+parser to generate NBT schemas for validation.
 
 ## Build
 
@@ -17,10 +22,6 @@ On Windows:
 ```powershell
 .\gradlew.bat :cli:fatJar
 ```
-
-The build downloads `SpyglassMC/vanilla-mcdoc` and installs the official
-`@spyglassmc/mcdoc` parser to generate runtime NBT schemas. `node_modules/` is
-local build tooling and is not distributed in the CLI jar.
 
 The standalone jar is written to:
 
@@ -42,8 +43,8 @@ List supported version profiles and their data pack formats:
 java -jar cli/build/libs/datapack-sandbox-cli.jar version
 ```
 
-The REPL supports TAB completion, live tail-tip suggestions while typing,
-command history suggestions, colored output, and runtime reloads:
+The REPL supports TAB completion, live multi-line suggestions while typing,
+history suggestions, colored output, Ctrl+C exit, and runtime datapack reloads:
 
 ```bash
 java -jar cli/build/libs/datapack-sandbox-cli.jar repl --pack ./my_pack --watch
@@ -64,6 +65,23 @@ Run a single `.mcfunction` file without creating a full datapack:
 java -jar cli/build/libs/datapack-sandbox-cli.jar run --version 26.2 --mcfunction ./scratch/test.mcfunction --snapshot
 ```
 
+Run inline `.mcfunction` text directly:
+
+```bash
+java -jar cli/build/libs/datapack-sandbox-cli.jar run --version 26.2 --mcfunction-text "say hello from inline"
+```
+
+Load multiple lightweight functions together. Use `id=path` or `id=text` when a
+function must be callable by another function:
+
+```bash
+java -jar cli/build/libs/datapack-sandbox-cli.jar run --version 26.2 \
+  --mcfunction-id demo:main \
+  --mcfunction demo:main=./scratch/main.mcfunction \
+  --mcfunction demo:helper=./scratch/helper.mcfunction \
+  --mcfunction-text "demo:inline=scoreboard players add #clock ticks 1"
+```
+
 Run JSON check manifests:
 
 ```bash
@@ -77,6 +95,23 @@ Manifest files use the `.dps.json` suffix:
   "version": "26.2",
   "unsupported": "warn",
   "packs": ["./packs/counter"],
+  "world": {
+    "blocks": [
+      { "pos": [0, 64, 0], "id": "minecraft:chest", "nbt": { "Items": [] } }
+    ],
+    "entities": [
+      { "type": "minecraft:pig", "pos": [1, 64, 0], "tags": ["fixture"] }
+    ],
+    "players": [
+      { "name": "Alex", "position": [2, 65, 3], "xp": 5 }
+    ],
+    "scores": [
+      { "target": "#fixture", "objective": "ready", "value": 1 }
+    ],
+    "storage": {
+      "demo:env": { "ready": true }
+    }
+  },
   "steps": [
     { "load": true },
     { "ticks": 20 },
@@ -89,14 +124,24 @@ Manifest files use the `.dps.json` suffix:
         "objective": "ticks",
         "equals": 20
       }
+    },
+    {
+      "output": {
+        "command": "tellraw",
+        "channel": "chat",
+        "target": "Steve",
+        "contains": "reward",
+        "segment": {
+          "color": "yellow"
+        },
+        "count": 1
+      }
     }
   ]
 }
 ```
 
-The same manifest can also run across multiple version profiles. Use a `packs`
-object when each version needs a different `pack_format` or resource directory
-layout:
+The same manifest can also run across multiple version profiles:
 
 ```json
 {
@@ -121,22 +166,30 @@ layout:
 }
 ```
 
-## v1 Scope
+## Runtime Scope
 
-This is not an embedded vanilla server. It implements a small deterministic
-runtime for datapack logic: functions, load/tick tags, scoreboard state, storage,
-minimal entities, a default readable player, simple selectors including `@n`,
-entity/block/item NBT checked against generated vanilla mcdoc schemas,
-predicates, loot tables, advancements, player events, observable output
-commands, and configurable handling for unsupported vanilla commands. The
-default policy is `warn`, which records a warning output event and continues;
-use `--unsupported error` for strict failures or `--unsupported ignore` to
-silence those warnings.
+This is not an embedded vanilla server. It implements a deterministic runtime
+for datapack-visible logic:
 
-Output-oriented commands such as `tellraw`, `title`, `say`, `msg`,
-`playsound`, `stopsound`, and `particle` are recorded as sandbox output events.
-They do not emulate a real client UI, but they are visible in REPL output,
-`run`, `check --verbose`, and snapshots.
+- functions, load/tick tags, and scheduled functions
+- scoreboard, storage, gamerules, time, weather, bossbars, world border, forced
+  chunks, biome overrides, and world/player spawn state
+- sparse void worlds, explicit block/entity/player fixtures, and selected Java
+  Anvil save imports
+- readable player NBT, writable non-player entity and block entity NBT validated
+  against generated vanilla mcdoc schemas
+- selectors including `@s`, `@a`, `@p`, `@e`, `@n`
+- predicates, loot tables, advancements, player events, and keyboard/mouse input
+  events
+- observable output commands such as `tellraw`, `title`, `say`, `msg`,
+  `playsound`, `stopsound`, and `particle`
+- configurable unsupported-command policy: `warn` by default, `error` for strict
+  validation, `ignore` for silent skipping
+
+The sandbox does not simulate networking, client UI, permissions, chunk
+generation, redstone, entity AI, full combat, physics, or the vanilla server
+threading model. Entities do not tick AI by default, but the runtime does not
+write `NoAI:1b` unless test data does so explicitly.
 
 ## Full-Stack Example
 
