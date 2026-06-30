@@ -3,6 +3,9 @@ package moe.afox.dpsandbox.cli
 import java.io.ByteArrayOutputStream
 import java.io.PrintStream
 import java.nio.file.Files
+import java.nio.file.Path
+import java.util.zip.ZipEntry
+import java.util.zip.ZipOutputStream
 import kotlin.test.Test
 import kotlin.test.assertTrue
 
@@ -89,6 +92,40 @@ class RunCommandTest {
     }
 
     @Test
+    fun `run uses folder and zip packs as mcfunction dependencies`() {
+        val root = Files.createTempDirectory("dps-cli-function-deps")
+        val folderPack = writeDependencyPack(root.resolve("folder-pack"), "folder", "scoreboard players add #cli_deps runs 2")
+        val zipPack = zipPack(writeDependencyPack(root.resolve("zip-pack"), "zip", "scoreboard players add #cli_deps runs 4"), root.resolve("zip-pack.zip"))
+
+        val output = captureStdout {
+            main(
+                arrayOf(
+                    "run",
+                    "--version",
+                    "26.2",
+                    "--pack",
+                    folderPack.toString(),
+                    "--pack",
+                    zipPack.toString(),
+                    "--mcfunction-id",
+                    "demo:main",
+                    "--mcfunction-text",
+                    """
+                    demo:main=scoreboard objectives add runs dummy
+                    scoreboard players set #cli_deps runs 1
+                    function demo:folder
+                    function demo:zip
+                    """.trimIndent(),
+                    "--snapshot",
+                ),
+            )
+        }
+
+        assertTrue("OK version=26.2" in output, output)
+        assertTrue("\"#cli_deps\": 7" in output, output)
+    }
+
+    @Test
     fun `version lists supported datapack formats`() {
         val output = captureStdout {
             main(arrayOf("version"))
@@ -109,5 +146,38 @@ class RunCommandTest {
         } finally {
             System.setOut(original)
         }
+    }
+
+    private fun writeDependencyPack(root: Path, functionName: String, body: String): Path {
+        Files.createDirectories(root)
+        Files.writeString(
+            root.resolve("pack.mcmeta"),
+            """
+            {
+              "pack": {
+                "pack_format": 107.1,
+                "description": "temporary dependency pack"
+              }
+            }
+            """.trimIndent(),
+        )
+        val functionRoot = root.resolve("data").resolve("demo").resolve("function")
+        Files.createDirectories(functionRoot)
+        Files.writeString(functionRoot.resolve("$functionName.mcfunction"), body)
+        return root
+    }
+
+    private fun zipPack(root: Path, output: Path): Path {
+        ZipOutputStream(Files.newOutputStream(output)).use { zip ->
+            Files.walk(root).use { walk ->
+                walk.filter { Files.isRegularFile(it) }.forEach { file ->
+                    val entryName = root.relativize(file).toString().replace('\\', '/')
+                    zip.putNextEntry(ZipEntry(entryName))
+                    Files.copy(file, zip)
+                    zip.closeEntry()
+                }
+            }
+        }
+        return output
     }
 }

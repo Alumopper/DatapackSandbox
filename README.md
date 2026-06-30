@@ -82,6 +82,16 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar run --version 26.2 \
   --mcfunction-text "demo:inline=scoreboard players add #clock ticks 1"
 ```
 
+Add one or more folder/zip datapacks as dependencies for lightweight functions:
+
+```bash
+java -jar cli/build/libs/datapack-sandbox-cli.jar run --version 26.2 \
+  --pack ./deps/library_pack \
+  --pack ./deps/items.zip \
+  --mcfunction-id demo:main \
+  --mcfunction-text "demo:main=function library:setup"
+```
+
 Run JSON check manifests:
 
 ```bash

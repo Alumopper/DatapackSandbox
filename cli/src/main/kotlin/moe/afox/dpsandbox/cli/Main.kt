@@ -123,14 +123,9 @@ class RunCommand : CliktCommand(name = "run") {
             val functionSources = parseFunctionSources()
             val sandbox = when {
                 functionSources.isNotEmpty() -> {
-                    if (packs.isNotEmpty()) {
-                        throw SandboxException(
-                            DiagnosticCode.INPUT_FORMAT,
-                            "run accepts either --mcfunction/--mcfunction-text sources or --pack datapacks, not both",
-                        )
-                    }
                     createFunctionSandbox(
                         version = version,
+                        packs = packs,
                         functionSources = functionSources,
                         unsupportedFeatureMode = unsupportedFeatureMode(unsupported),
                     )

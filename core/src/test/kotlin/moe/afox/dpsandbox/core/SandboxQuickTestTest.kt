@@ -2,6 +2,8 @@
 
 import java.nio.file.Path
 import java.nio.file.Files
+import java.util.zip.ZipEntry
+import java.util.zip.ZipOutputStream
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -128,6 +130,33 @@ class SandboxQuickTestTest {
     }
 
     @Test
+    fun `loads folder and zip datapacks as dependencies for function sources`() {
+        val root = Files.createTempDirectory("dps-function-deps")
+        val folderPack = writeDependencyPack(root.resolve("folder-pack"), "folder", "scoreboard players add #deps runs 2")
+        val zipPack = zipPack(writeDependencyPack(root.resolve("zip-pack"), "zip", "scoreboard players add #deps runs 4"), root.resolve("zip-pack.zip"))
+
+        SandboxQuickTest.functions(
+            functionSources = listOf(
+                FunctionSource.text(
+                    "demo:main",
+                    """
+                    scoreboard objectives add runs dummy
+                    scoreboard players set #deps runs 1
+                    function demo:folder
+                    function demo:zip
+                    """.trimIndent(),
+                ),
+            ),
+            version = "26.2",
+            defaultFunctionId = "demo:main",
+            dependencyPacks = listOf(folderPack, zipPack),
+        )
+            .function()
+            .assertScore("#deps", "runs", 7)
+            .requirePassed()
+    }
+
+    @Test
     fun `quick tests can get and assert structured outputs`() {
         val functionFile = Files.createTempFile("dps-output-function", ".mcfunction")
         Files.writeString(
@@ -229,5 +258,38 @@ class SandboxQuickTestTest {
         Files.createDirectories(tagRoot)
         Files.writeString(tagRoot.resolve("load.json"), """{"values":["demo:load"]}""")
         return root
+    }
+
+    private fun writeDependencyPack(root: Path, functionName: String, body: String): Path {
+        Files.createDirectories(root)
+        Files.writeString(
+            root.resolve("pack.mcmeta"),
+            """
+            {
+              "pack": {
+                "pack_format": 107.1,
+                "description": "temporary dependency pack"
+              }
+            }
+            """.trimIndent(),
+        )
+        val functionRoot = root.resolve("data").resolve("demo").resolve("function")
+        Files.createDirectories(functionRoot)
+        Files.writeString(functionRoot.resolve("$functionName.mcfunction"), body)
+        return root
+    }
+
+    private fun zipPack(root: Path, output: Path): Path {
+        ZipOutputStream(Files.newOutputStream(output)).use { zip ->
+            Files.walk(root).use { walk ->
+                walk.filter { Files.isRegularFile(it) }.forEach { file ->
+                    val entryName = root.relativize(file).toString().replace('\\', '/')
+                    zip.putNextEntry(ZipEntry(entryName))
+                    Files.copy(file, zip)
+                    zip.closeEntry()
+                }
+            }
+        }
+        return output
     }
 }

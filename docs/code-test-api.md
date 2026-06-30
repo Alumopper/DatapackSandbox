@@ -108,6 +108,25 @@ SandboxQuickTest.functions(
     .requirePassed()
 ```
 
+Folder or zip datapacks can be loaded as dependencies for those lightweight
+functions:
+
+```kotlin
+SandboxQuickTest.functions(
+    functionSources = listOf(
+        FunctionSource.text("demo:main", "function library:setup"),
+    ),
+    version = "26.2",
+    defaultFunctionId = "demo:main",
+    dependencyPacks = listOf(
+        Path.of("deps/library_pack"),
+        Path.of("deps/items.zip"),
+    ),
+)
+    .function()
+    .requirePassed()
+```
+
 ## Predefined World State
 
 Tests can start from an explicit world fixture without issuing setup commands.
@@ -196,7 +215,7 @@ class MyDatapackTest {
 | `function(id)` | Run a datapack function |
 | `function()` | Run the default single-file function created by `singleFunction(...)` |
 | `singleFunctionText(text, version)` | Create a quick-test scenario from one function string |
-| `functions(sources, version)` | Create a quick-test scenario from multiple `FunctionSource` values |
+| `functions(sources, version)` | Create a quick-test scenario from multiple `FunctionSource` values, optionally with datapack dependencies |
 | `matrix(packsByVersion)` | Create a multi-version quick-test matrix |
 | `command(raw)` | Execute one command |
 | `world { ... }` | Apply an in-memory world fixture before running behavior |

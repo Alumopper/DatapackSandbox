@@ -106,6 +106,24 @@ SandboxQuickTest.functions(
     .requirePassed()
 ```
 
+这些轻量函数也可以加载文件夹或 zip 数据包作为依赖：
+
+```kotlin
+SandboxQuickTest.functions(
+    functionSources = listOf(
+        FunctionSource.text("demo:main", "function library:setup"),
+    ),
+    version = "26.2",
+    defaultFunctionId = "demo:main",
+    dependencyPacks = listOf(
+        Path.of("deps/library_pack"),
+        Path.of("deps/items.zip"),
+    ),
+)
+    .function()
+    .requirePassed()
+```
+
 ## 预定义世界状态
 
 测试可以在执行任何步骤前定义初始世界。通过 API 写入的 NBT 仍会按当前版本 profile 做校验，所以未知顶层实体/方块实体字段会像 `data modify` 一样失败。
@@ -189,7 +207,7 @@ class MyDatapackTest {
 | `function(id)` | 运行指定数据包函数。 |
 | `function()` | 运行 `singleFunction(...)` 创建的默认函数。 |
 | `singleFunctionText(text, version)` | 从一个函数字符串创建 quick-test 场景。 |
-| `functions(sources, version)` | 从多个 `FunctionSource` 创建 quick-test 场景。 |
+| `functions(sources, version)` | 从多个 `FunctionSource` 创建 quick-test 场景，可附加数据包依赖。 |
 | `matrix(packsByVersion)` | 创建多版本 quick-test 矩阵。 |
 | `command(raw)` | 执行一条命令。 |
 | `world { ... }` | 在行为执行前应用内存世界 fixture。 |

@@ -2179,6 +2179,29 @@ fun createFunctionSandbox(
 }
 
 /**
+ * Creates a [DatapackSandbox] from datapack dependencies plus synthetic functions.
+ *
+ * Dependency packs are loaded first from [packs], then [functionSources] overlay
+ * additional top-priority functions. This keeps lightweight function tests able
+ * to call functions, loot tables, predicates, and advancements from real
+ * datapack dependencies.
+ */
+@JvmOverloads
+fun createFunctionSandbox(
+    version: String,
+    packs: List<Path>,
+    functionSources: List<FunctionSource>,
+    world: SandboxWorld = SandboxWorld(),
+    defaultPlayerName: String? = "Steve",
+    unsupportedFeatureMode: UnsupportedFeatureMode = UnsupportedFeatureMode.WARN,
+): DatapackSandbox {
+    val profile = VersionProfiles.get(version)
+    val datapack = DatapackLoader.loadFunctionSources(packs, functionSources, profile)
+    defaultPlayerName?.let { if (world.players.isEmpty()) world.createPlayer(it) }
+    return DatapackSandbox(profile, datapack, world, unsupportedFeatureMode)
+}
+
+/**
  * Creates a [DatapackSandbox] backed by a single `.mcfunction` file.
  *
  * This factory is intended for lightweight tests that do not need a full
@@ -2229,6 +2252,29 @@ fun createFunctionSandboxFromString(
 ): DatapackSandbox =
     createFunctionSandbox(
         version = version,
+        functionSources = listOf(FunctionSource.text(functionId, functionText, sourceName)),
+        world = world,
+        defaultPlayerName = defaultPlayerName,
+        unsupportedFeatureMode = unsupportedFeatureMode,
+    )
+
+/**
+ * Creates a [DatapackSandbox] backed by dependencies and one in-memory function string.
+ */
+@JvmOverloads
+fun createFunctionSandboxFromString(
+    version: String,
+    packs: List<Path>,
+    functionText: String,
+    functionId: String = SingleFunctionDatapack.DEFAULT_ID,
+    sourceName: String = "<string:$functionId>",
+    world: SandboxWorld = SandboxWorld(),
+    defaultPlayerName: String? = "Steve",
+    unsupportedFeatureMode: UnsupportedFeatureMode = UnsupportedFeatureMode.WARN,
+): DatapackSandbox =
+    createFunctionSandbox(
+        version = version,
+        packs = packs,
         functionSources = listOf(FunctionSource.text(functionId, functionText, sourceName)),
         world = world,
         defaultPlayerName = defaultPlayerName,

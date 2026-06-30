@@ -713,6 +713,7 @@ class SandboxQuickTest private constructor(
          * @param functionFile Path to the `.mcfunction` file.
          * @param version Minecraft version profile id used for command parsing and NBT validation.
          * @param functionId Temporary function id assigned to the file.
+         * @param dependencyPacks Datapack directories or zip files loaded before this function.
          */
         @JvmStatic
         @JvmOverloads
@@ -722,6 +723,7 @@ class SandboxQuickTest private constructor(
             functionId: String = SingleFunctionDatapack.DEFAULT_ID,
             defaultPlayerName: String? = "Steve",
             unsupportedFeatureMode: UnsupportedFeatureMode = UnsupportedFeatureMode.WARN,
+            dependencyPacks: List<Path> = emptyList(),
         ): SandboxQuickTest {
             val id = ResourceLocation.parse(functionId)
             return functions(
@@ -730,6 +732,7 @@ class SandboxQuickTest private constructor(
                 defaultFunctionId = id.toString(),
                 defaultPlayerName = defaultPlayerName,
                 unsupportedFeatureMode = unsupportedFeatureMode,
+                dependencyPacks = dependencyPacks,
             )
         }
 
@@ -743,6 +746,7 @@ class SandboxQuickTest private constructor(
          * @param version Minecraft version profile id used for command parsing and NBT validation.
          * @param functionId Temporary function id assigned to [functionText].
          * @param sourceName Label used in diagnostics.
+         * @param dependencyPacks Datapack directories or zip files loaded before this function.
          */
         @JvmStatic
         @JvmOverloads
@@ -753,6 +757,7 @@ class SandboxQuickTest private constructor(
             sourceName: String = "<string:$functionId>",
             defaultPlayerName: String? = "Steve",
             unsupportedFeatureMode: UnsupportedFeatureMode = UnsupportedFeatureMode.WARN,
+            dependencyPacks: List<Path> = emptyList(),
         ): SandboxQuickTest =
             functions(
                 functionSources = listOf(FunctionSource.text(functionId, functionText, sourceName)),
@@ -760,6 +765,7 @@ class SandboxQuickTest private constructor(
                 defaultFunctionId = functionId,
                 defaultPlayerName = defaultPlayerName,
                 unsupportedFeatureMode = unsupportedFeatureMode,
+                dependencyPacks = dependencyPacks,
             )
 
         /**
@@ -770,6 +776,7 @@ class SandboxQuickTest private constructor(
          *
          * @param functionSources Functions to load into the synthetic datapack.
          * @param defaultFunctionId Function id used by [SandboxQuickTest.function].
+         * @param dependencyPacks Datapack directories or zip files loaded before [functionSources].
          */
         @JvmStatic
         @JvmOverloads
@@ -779,15 +786,26 @@ class SandboxQuickTest private constructor(
             defaultFunctionId: String = SingleFunctionDatapack.DEFAULT_ID,
             defaultPlayerName: String? = "Steve",
             unsupportedFeatureMode: UnsupportedFeatureMode = UnsupportedFeatureMode.WARN,
+            dependencyPacks: List<Path> = emptyList(),
         ): SandboxQuickTest {
             val id = ResourceLocation.parse(defaultFunctionId)
             return SandboxQuickTest(
-                sandbox = createFunctionSandbox(
-                    version = version,
-                    functionSources = functionSources,
-                    defaultPlayerName = defaultPlayerName,
-                    unsupportedFeatureMode = unsupportedFeatureMode,
-                ),
+                sandbox = if (dependencyPacks.isEmpty()) {
+                    createFunctionSandbox(
+                        version = version,
+                        functionSources = functionSources,
+                        defaultPlayerName = defaultPlayerName,
+                        unsupportedFeatureMode = unsupportedFeatureMode,
+                    )
+                } else {
+                    createFunctionSandbox(
+                        version = version,
+                        packs = dependencyPacks,
+                        functionSources = functionSources,
+                        defaultPlayerName = defaultPlayerName,
+                        unsupportedFeatureMode = unsupportedFeatureMode,
+                    )
+                },
                 defaultFunctionId = id,
             )
         }
@@ -825,8 +843,9 @@ object DatapackSandboxTestApi {
         functionId: String = SingleFunctionDatapack.DEFAULT_ID,
         defaultPlayerName: String? = "Steve",
         unsupportedFeatureMode: UnsupportedFeatureMode = UnsupportedFeatureMode.WARN,
+        dependencyPacks: List<Path> = emptyList(),
     ): SandboxQuickTest =
-        SandboxQuickTest.singleFunction(functionFile, version, functionId, defaultPlayerName, unsupportedFeatureMode)
+        SandboxQuickTest.singleFunction(functionFile, version, functionId, defaultPlayerName, unsupportedFeatureMode, dependencyPacks)
 
     /**
      * Creates a quick-test scenario for one in-memory `.mcfunction` string.
@@ -840,8 +859,9 @@ object DatapackSandboxTestApi {
         sourceName: String = "<string:$functionId>",
         defaultPlayerName: String? = "Steve",
         unsupportedFeatureMode: UnsupportedFeatureMode = UnsupportedFeatureMode.WARN,
+        dependencyPacks: List<Path> = emptyList(),
     ): SandboxQuickTest =
-        SandboxQuickTest.singleFunctionText(functionText, version, functionId, sourceName, defaultPlayerName, unsupportedFeatureMode)
+        SandboxQuickTest.singleFunctionText(functionText, version, functionId, sourceName, defaultPlayerName, unsupportedFeatureMode, dependencyPacks)
 
     /**
      * Creates a quick-test scenario for multiple synthetic function sources.
@@ -854,8 +874,9 @@ object DatapackSandboxTestApi {
         defaultFunctionId: String = SingleFunctionDatapack.DEFAULT_ID,
         defaultPlayerName: String? = "Steve",
         unsupportedFeatureMode: UnsupportedFeatureMode = UnsupportedFeatureMode.WARN,
+        dependencyPacks: List<Path> = emptyList(),
     ): SandboxQuickTest =
-        SandboxQuickTest.functions(functionSources, version, defaultFunctionId, defaultPlayerName, unsupportedFeatureMode)
+        SandboxQuickTest.functions(functionSources, version, defaultFunctionId, defaultPlayerName, unsupportedFeatureMode, dependencyPacks)
 
     /**
      * Creates a multi-version quick-test matrix.
@@ -902,8 +923,9 @@ object DatapackSandboxTestApi {
         functionSources: List<FunctionSource>,
         version: String,
         defaultFunctionId: String = SingleFunctionDatapack.DEFAULT_ID,
+        dependencyPacks: List<Path> = emptyList(),
     ): SandboxQuickTestReport =
-        functionSourcesScenario(functionSources, version, defaultFunctionId).function().report()
+        functionSourcesScenario(functionSources, version, defaultFunctionId, dependencyPacks = dependencyPacks).function().report()
 
     /**
      * Executes a list of raw commands against a newly created scenario.

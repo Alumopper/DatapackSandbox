@@ -73,6 +73,16 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar run --version 26.2 ^
   --mcfunction-text "demo:inline=scoreboard players add #clock ticks 1"
 ```
 
+也可以给轻量函数附加一个或多个文件夹/zip 数据包作为依赖：
+
+```bash
+java -jar cli/build/libs/datapack-sandbox-cli.jar run --version 26.2 ^
+  --pack ./deps/library_pack ^
+  --pack ./deps/items.zip ^
+  --mcfunction-id demo:main ^
+  --mcfunction-text "demo:main=function library:setup"
+```
+
 运行 JSON 检查清单：
 
 ```bash

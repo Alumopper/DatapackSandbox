@@ -103,6 +103,39 @@ object DatapackLoader {
     }
 
     /**
+     * Loads datapack dependencies and overlays synthetic function sources.
+     *
+     * Dependency packs may be directories or zip files. Their resources are
+     * loaded first, then [sources] are added as top-priority functions. This is
+     * useful for testing generated or inline functions against real datapack
+     * dependencies without creating another datapack directory.
+     *
+     * @throws SandboxException when both [paths] and [sources] are empty, a pack
+     * is invalid, a function source is invalid, or duplicate synthetic function
+     * ids are supplied.
+     */
+    @JvmStatic
+    fun loadFunctionSources(
+        paths: List<Path>,
+        sources: List<FunctionSource>,
+        profile: VersionProfile,
+    ): Datapack {
+        if (paths.isEmpty()) return loadFunctionSources(sources, profile)
+        if (sources.isEmpty()) return load(paths, profile)
+
+        val dependencies = load(paths, profile)
+        val overlay = loadFunctionSources(sources, profile)
+        return Datapack(
+            functions = (dependencies.functions + overlay.functions).toSortedMap(),
+            loadFunctions = dependencies.loadFunctions,
+            tickFunctions = dependencies.tickFunctions,
+            lootTables = dependencies.lootTables,
+            predicates = dependencies.predicates,
+            advancements = dependencies.advancements,
+        )
+    }
+
+    /**
      * Loads one `.mcfunction` file as a synthetic datapack.
      *
      * The resulting datapack contains exactly one function with [functionId] and
