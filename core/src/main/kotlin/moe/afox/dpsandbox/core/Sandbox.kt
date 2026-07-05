@@ -632,7 +632,7 @@ class DatapackSandbox(
         val itemsArray = updated.getAsJsonArray("Items") ?: JsonArray().also { updated.add("Items", it) }
         var nextSlot = itemsArray.size()
         items.forEach { item ->
-            val itemJson = item.toJson()
+            val itemJson = blockItemJson(item)
             itemJson.addProperty("Slot", nextSlot++)
             itemsArray.add(itemJson)
         }
@@ -649,11 +649,20 @@ class DatapackSandbox(
             if (element.isJsonObject && element.asJsonObject.get("Slot")?.asInt == slot) iterator.remove()
         }
         if (item != null && item.count > 0) {
-            val itemJson = item.toJson()
+            val itemJson = blockItemJson(item)
             itemJson.addProperty("Slot", slot)
             itemsArray.add(itemJson)
         }
         block.writeFullNbt(pos, profile, updated, location)
+    }
+
+    private fun blockItemJson(item: ItemStack): JsonObject {
+        val json = item.toJson()
+        json.remove("nbt")
+        if (item.nbt.entrySet().isNotEmpty()) {
+            json.getAsJsonObject("components").add("minecraft:custom_data", item.nbt.deepCopy())
+        }
+        return json
     }
 
     private fun spawnLootItems(position: Position, items: List<ItemStack>) {
@@ -1660,34 +1669,86 @@ class DatapackSandbox(
     }
 
     private fun executeItemModify(tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext) {
-        requireSize(tokens, 6, "item modify entity <targets> <slot> <modifier>", location)
-        if (tokens[2].text != "entity") {
-            unsupportedFeature("Only 'item modify entity <targets> <slot> <modifier>' is implemented", profile.id, location)
-        }
-        val slot = inventorySlot(tokens[4].text)
-        val modifier = datapack.itemModifier(ResourceLocation.parse(tokens[5].text))
-        resolvePlayers(tokens[3].text, location, context).forEach { player ->
-            val item = player.inventory.getOrNull(slot) ?: return@forEach
-            if (item.id == ResourceLocation("minecraft", "air") || item.count <= 0) return@forEach
-            player.inventory[slot] = applyItemModifier(item, modifier.root, player, location)
-            advancements.handle(PlayerEvent(player.name, "inventory_changed", item = player.inventory[slot]))
+        requireSize(tokens, 3, "item modify <entity|block> ...", location)
+        when (tokens[2].text) {
+            "entity" -> {
+                requireSize(tokens, 6, "item modify entity <targets> <slot> <modifier>", location)
+                val slot = inventorySlot(tokens[4].text)
+                val modifier = datapack.itemModifier(ResourceLocation.parse(tokens[5].text))
+                resolvePlayers(tokens[3].text, location, context).forEach { player ->
+                    val item = player.inventory.getOrNull(slot) ?: return@forEach
+                    if (item.id == ResourceLocation("minecraft", "air") || item.count <= 0) return@forEach
+                    player.inventory[slot] = applyItemModifier(item, modifier.root, { stack -> itemModifierPredicateContext(player, stack) }, location)
+                    advancements.handle(PlayerEvent(player.name, "inventory_changed", item = player.inventory[slot]))
+                }
+            }
+            "block" -> {
+                requireSize(tokens, 8, "item modify block <pos> <slot> <modifier>", location)
+                val pos = parseBlockPos(tokens, 3, context.position, location)
+                val slot = inventorySlot(tokens[6].text)
+                val modifier = datapack.itemModifier(ResourceLocation.parse(tokens[7].text))
+                val item = blockItem(pos, slot, location) ?: return
+                if (item.id == ResourceLocation("minecraft", "air") || item.count <= 0) return
+                replaceBlockItem(pos, slot, applyItemModifier(item, modifier.root, { stack -> itemModifierPredicateContext(pos, stack) }, location), location)
+            }
+            else -> unsupportedFeature("Unsupported item modify target '${tokens[2].text}'", profile.id, location)
         }
     }
 
     private fun executeItemReplace(tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext) {
-        requireSize(tokens, 7, "item replace entity <targets> <slot> with <item> [count]", location)
-        if (tokens[2].text != "entity" || tokens[5].text != "with") {
-            unsupportedFeature("Only 'item replace entity <targets> <slot> with <item> [count]' is implemented", profile.id, location)
-        }
-        val slot = inventorySlot(tokens[4].text)
-        val item = ItemStack(ResourceLocation.parse(tokens[6].text), tokens.getOrNull(7)?.text?.let { parseInt(it, "item count", location) } ?: 1)
-        resolvePlayers(tokens[3].text, location, context).forEach { player ->
-            while (player.inventory.size <= slot) player.inventory += ItemStack(ResourceLocation("minecraft", "air"), 0)
-            player.inventory[slot] = item.copy(components = item.components.deepCopy(), nbt = item.nbt.deepCopy())
+        requireSize(tokens, 3, "item replace <entity|block> ...", location)
+        when (tokens[2].text) {
+            "entity" -> {
+                requireSize(tokens, 7, "item replace entity <targets> <slot> with <item> [count]", location)
+                if (tokens[5].text != "with") {
+                    unsupportedFeature("Expected 'with' in item replace entity", profile.id, location)
+                }
+                val slot = inventorySlot(tokens[4].text)
+                val item = ItemStack(ResourceLocation.parse(tokens[6].text), tokens.getOrNull(7)?.text?.let { parseInt(it, "item count", location) } ?: 1)
+                resolvePlayers(tokens[3].text, location, context).forEach { player ->
+                    while (player.inventory.size <= slot) player.inventory += ItemStack(ResourceLocation("minecraft", "air"), 0)
+                    player.inventory[slot] = item.copy(components = item.components.deepCopy(), nbt = item.nbt.deepCopy())
+                }
+            }
+            "block" -> {
+                requireSize(tokens, 9, "item replace block <pos> <slot> with <item> [count]", location)
+                if (tokens[7].text != "with") {
+                    unsupportedFeature("Expected 'with' in item replace block", profile.id, location)
+                }
+                val pos = parseBlockPos(tokens, 3, context.position, location)
+                val slot = inventorySlot(tokens[6].text)
+                val item = ItemStack(ResourceLocation.parse(tokens[8].text), tokens.getOrNull(9)?.text?.let { parseInt(it, "item count", location) } ?: 1)
+                replaceBlockItem(pos, slot, item, location)
+            }
+            else -> unsupportedFeature("Unsupported item replace target '${tokens[2].text}'", profile.id, location)
         }
     }
 
-    private fun applyItemModifier(item: ItemStack, root: JsonElement, player: SandboxPlayer, location: SourceLocation?): ItemStack {
+    private fun blockItem(pos: BlockPos, slot: Int, location: SourceLocation?): ItemStack? {
+        val block = world.requireBlock(pos)
+        val items = block.fullNbt(pos, profile, location).getAsJsonArray("Items") ?: return null
+        val itemJson = items.firstOrNull {
+            it.isJsonObject && it.asJsonObject.get("Slot")?.asInt == slot
+        }?.asJsonObject ?: return null
+        return itemStackFromJson(itemJson)
+    }
+
+    private fun itemStackFromJson(json: JsonObject): ItemStack? {
+        val id = json.get("id")?.takeIf { it.isJsonPrimitive }?.asString ?: return null
+        val count = (json.get("count") ?: json.get("Count"))?.takeIf { it.isJsonPrimitive }?.asInt ?: 1
+        val components = json.getAsJsonObject("components")?.deepCopy() ?: JsonObject()
+        val nbt = (json.getAsJsonObject("nbt")
+            ?: json.getAsJsonObject("tag")
+            ?: components.getAsJsonObject("minecraft:custom_data"))?.deepCopy() ?: JsonObject()
+        return ItemStack(ResourceLocation.parse(id), count, components, nbt)
+    }
+
+    private fun applyItemModifier(
+        item: ItemStack,
+        root: JsonElement,
+        predicateContext: (ItemStack) -> PredicateContext,
+        location: SourceLocation?,
+    ): ItemStack {
         var stack = item.copy(components = item.components.deepCopy(), nbt = item.nbt.deepCopy())
         val functions = when {
             root.isJsonArray -> root.asJsonArray.toList()
@@ -1700,7 +1761,7 @@ class DatapackSandbox(
             }
             val function = element.asJsonObject
             val conditions = function.get("conditions")
-            if (conditions != null && !predicates.testConditions(conditions, itemModifierPredicateContext(player, stack))) {
+            if (conditions != null && !predicates.testConditions(conditions, predicateContext(stack))) {
                 return@forEach
             }
             when (val type = itemModifierType(function, location)) {
@@ -1727,6 +1788,16 @@ class DatapackSandbox(
         }
         return stack
     }
+
+    private fun itemModifierPredicateContext(pos: BlockPos, stack: ItemStack): PredicateContext =
+        PredicateContext(
+            world = world,
+            origin = Position(pos.x.toDouble(), pos.y.toDouble(), pos.z.toDouble()),
+            dimension = ResourceLocation("minecraft", "overworld"),
+            tool = stack,
+            block = world.block(pos)?.id,
+            weather = currentWeatherState(),
+        )
 
     private fun itemModifierPredicateContext(player: SandboxPlayer, stack: ItemStack): PredicateContext =
         PredicateContext(

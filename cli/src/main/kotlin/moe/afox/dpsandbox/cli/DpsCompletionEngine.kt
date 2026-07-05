@@ -303,9 +303,13 @@ class DpsCompletionEngine(private val sandbox: () -> DatapackSandbox) {
             context.wordIndex == 2 -> listOf("entity", "block").suggest("item targets", appendSpace = true)
             words.getOrNull(2) == "entity" && context.wordIndex == 3 -> playerTargets().suggest("players/selectors", appendSpace = true)
             words.getOrNull(2) == "entity" && context.wordIndex == 4 -> inventorySlots.suggest("slots", appendSpace = true)
-            context.wordIndex == 5 && words.getOrNull(1) == "modify" -> sandbox().datapack.itemModifiers.keys.mapResource("item modifiers")
-            context.wordIndex == 5 && words.getOrNull(1) == "replace" -> listOf("with").suggest("item source", appendSpace = true)
-            context.wordIndex == 6 && words.getOrNull(1) == "replace" -> sandbox().profile.registryView.items.mapResource("items")
+            words.getOrNull(2) == "block" && context.wordIndex == 6 -> inventorySlots.suggest("slots", appendSpace = true)
+            words.getOrNull(2) == "block" && context.wordIndex == 7 && words.getOrNull(1) == "modify" -> sandbox().datapack.itemModifiers.keys.mapResource("item modifiers")
+            words.getOrNull(2) == "block" && context.wordIndex == 7 && words.getOrNull(1) == "replace" -> listOf("with").suggest("item source", appendSpace = true)
+            words.getOrNull(2) == "block" && context.wordIndex == 8 && words.getOrNull(1) == "replace" -> sandbox().profile.registryView.items.mapResource("items")
+            words.getOrNull(2) == "entity" && context.wordIndex == 5 && words.getOrNull(1) == "modify" -> sandbox().datapack.itemModifiers.keys.mapResource("item modifiers")
+            words.getOrNull(2) == "entity" && context.wordIndex == 5 && words.getOrNull(1) == "replace" -> listOf("with").suggest("item source", appendSpace = true)
+            words.getOrNull(2) == "entity" && context.wordIndex == 6 && words.getOrNull(1) == "replace" -> sandbox().profile.registryView.items.mapResource("items")
             else -> emptyList()
         }
 

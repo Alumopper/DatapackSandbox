@@ -110,6 +110,24 @@ class CommandExpansionTest {
     }
 
     @Test
+    fun `item replace and modify support block slots`() {
+        val pack = writeItemModifierPack(Files.createTempDirectory("dps-block-item-modifier-pack"))
+        val sandbox = createSandbox("26.2", listOf(pack))
+
+        sandbox.executeCommand("setblock 0 64 0 minecraft:chest")
+        sandbox.executeCommand("item replace block 0 64 0 container.0 with minecraft:stick 1")
+        sandbox.executeCommand("item modify block 0 64 0 container.0 demo:mark")
+
+        val items = sandbox.world.requireBlock(BlockPos(0, 64, 0)).fullNbt(BlockPos(0, 64, 0), sandbox.profile)
+            .getAsJsonArray("Items")
+        val item = items.single { it.asJsonObject.get("Slot").asInt == 0 }.asJsonObject
+        assertEquals("minecraft:stick", item.get("id").asString)
+        assertEquals(2, item.get("count").asInt)
+        assertEquals("tagged", item.getAsJsonObject("components").get("demo:tag").asString)
+        assertEquals(true, item.getAsJsonObject("components").getAsJsonObject("minecraft:custom_data").get("marked").asBoolean)
+    }
+
+    @Test
     fun `execute conditions cover predicate dimension biome and loaded state`() {
         val pack = writePredicatePack(Files.createTempDirectory("dps-execute-conditions-pack"))
         val sandbox = createSandbox("26.2", listOf(pack))
