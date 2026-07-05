@@ -13,7 +13,12 @@ class DpsCompletionEngine(private val sandbox: () -> DatapackSandbox) {
         val options = when {
             first.isBlank() || context.wordIndex == 0 -> rootCommands
             first == "help" -> rootCommands
+            first == "load" && context.wordIndex == 1 -> listOf("fixture").suggest("load actions", appendSpace = true)
             first == "function" && context.wordIndex == 1 -> box.datapack.functions.keys.mapResource("functions")
+            first == "trace" && context.wordIndex == 1 -> listOf("on", "off", "status").suggest("trace modes")
+            first == "diff" && context.wordIndex == 1 -> listOf("last").suggest("diff targets")
+            first == "rerun" && context.wordIndex == 1 -> listOf("last").suggest("rerun targets")
+            first == "reset" && context.wordIndex == 1 -> listOf("world").suggest("reset targets")
             first == "inspect" && context.wordIndex == 1 -> inspectTargets.suggest("inspect targets", appendSpace = true)
             first == "inspect" && words.getOrNull(1) == "player" -> playerTargets(includeSelectors = false).suggest("players")
             first == "inspect" && words.getOrNull(1) == "storage" -> storageTargets().suggest("storages")

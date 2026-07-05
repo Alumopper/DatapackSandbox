@@ -44,12 +44,15 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar version
 ```
 
 The REPL supports TAB completion, live multi-line suggestions while typing,
-history suggestions, colored output, Ctrl+C exit, and runtime datapack reloads:
+history suggestions, colored output, Ctrl+C exit, runtime datapack reloads,
+trace/diff helpers, rerun-last, reset-world, and fixture loading:
 
 ```bash
 java -jar cli/build/libs/datapack-sandbox-cli.jar repl --pack ./my_pack --watch
 dps> reload
 dps> function demo:main
+dps> trace on
+dps> diff last
 dps> inspect outputs
 ```
 

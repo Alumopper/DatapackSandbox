@@ -129,7 +129,12 @@ JSON text component 支持 `text`、`score`、`selector`、`translate`、`keybin
 | `snapshot [file]` | 打印或写出确定性的世界 JSON。 |
 | `reload` | REPL 专用，保留世界状态并重载数据包文件。 |
 | `load` | 在 REPL 中运行 `#minecraft:load`。 |
+| `load fixture <file>` | 在 REPL 中应用 manifest-style world JSON fixture。 |
 | `tick [n]` | 在 REPL 中推进 tick。 |
+| `trace <on|off|status>` | 开关 REPL 对新执行命令的自动 trace 输出。 |
+| `diff last` | 输出上一条被跟踪 REPL 命令执行前后的 snapshot diff。 |
+| `rerun last` | 重新执行上一条被跟踪 REPL 命令。 |
+| `reset world` | 用全新的 sparse world 替换当前 REPL 世界。 |
 | CLI `loot --table <id> --context <context>` | 直接生成 loot table。 |
 | CLI `run --snapshot-diff` | 输出执行前后的状态差异，可配合 `--snapshot-diff-file` 写出 JSON。 |
 | CLI `run --stdin` | 从标准输入读取 `.mcfunction` 文本；`--stdin-mode commands` 会按原始命令行执行 stdin。 |

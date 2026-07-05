@@ -36,12 +36,14 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar repl --version 26.2 --pack ./m
 java -jar cli/build/libs/datapack-sandbox-cli.jar version
 ```
 
-REPL 支持 TAB 补全、输入过程中的多行候选提示、历史输入提示、彩色输出、Ctrl+C 退出，以及运行时重载数据包文件：
+REPL 支持 TAB 补全、输入过程中的多行候选提示、历史输入提示、彩色输出、Ctrl+C 退出、运行时重载数据包文件、trace/diff helper、rerun-last、reset-world 和 fixture 加载：
 
 ```bash
 java -jar cli/build/libs/datapack-sandbox-cli.jar repl --pack ./my_pack --watch
 dps> reload
 dps> function demo:main
+dps> trace on
+dps> diff last
 dps> inspect outputs
 ```
 

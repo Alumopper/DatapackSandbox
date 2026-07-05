@@ -50,6 +50,12 @@ class DpsCompleterTest {
         assertSuggests(completer, "give Steve ", "minecraft:apple")
         assertSuggests(completer, "effect give Steve ", "minecraft:speed")
         assertSuggests(completer, "item replace entity Steve ", "hotbar.0")
+        assertSuggests(completer, "tr", "trace")
+        assertSuggests(completer, "trace ", "on")
+        assertSuggests(completer, "diff ", "last")
+        assertSuggests(completer, "rerun ", "last")
+        assertSuggests(completer, "reset ", "world")
+        assertSuggests(completer, "load ", "fixture")
     }
 
     @Test

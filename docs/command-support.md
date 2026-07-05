@@ -144,7 +144,12 @@ These are tooling commands, not vanilla commands:
 | `snapshot [file]` | Print or write deterministic world JSON. |
 | `reload` | REPL-only datapack reload while preserving world state. |
 | `load` | Run `#minecraft:load` in REPL. |
+| `load fixture <file>` | Apply a manifest-style world JSON fixture in REPL. |
 | `tick [n]` | Advance sandbox ticks in REPL. |
+| `trace <on|off|status>` | Toggle automatic REPL trace printing for newly executed commands. |
+| `diff last` | Print the before/after snapshot diff for the last tracked REPL command. |
+| `rerun last` | Re-execute the last tracked REPL command. |
+| `reset world` | Replace the current REPL world with a fresh sparse world. |
 | CLI `loot --table <id> --context <context>` | Generate a loot table directly. |
 | CLI `run --snapshot-diff` | Print before/after state changes; use `--snapshot-diff-file` to write JSON. |
 | CLI `run --stdin` | Read `.mcfunction` text from standard input; `--stdin-mode commands` executes stdin as raw command lines. |

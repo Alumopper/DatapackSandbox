@@ -11,6 +11,10 @@ object DpsCommandCatalog {
         command("function", "run a loaded function"),
         command("player", "create or reuse a player"),
         command("event", "inject a player event"),
+        command("trace", "toggle command trace printing"),
+        command("diff", "inspect the last snapshot diff"),
+        command("rerun", "rerun the last tracked command"),
+        command("reset", "reset sandbox state"),
         command("inspect", "inspect sandbox state"),
         command("snapshot", "print or write a snapshot"),
         command("help", "show help"),
@@ -93,7 +97,12 @@ object DpsCommandCatalog {
     fun usageSuffix(command: String): String =
         when (command) {
             "function" -> " <namespace:path>"
+            "load" -> " [fixture <file>]"
             "tick" -> " [count]"
+            "trace" -> " <on|off|status>"
+            "diff" -> " last"
+            "rerun" -> " last"
+            "reset" -> " world"
             "inspect" -> " <score|storage|entities|blocks|player|loot|predicate|advancement|registry|outputs>"
             "event" -> " player <name> <type> [id] [action]"
             "scoreboard" -> " objectives|players ..."
@@ -125,6 +134,10 @@ object DpsCommandCatalog {
         "load",
         "player",
         "event",
+        "trace",
+        "diff",
+        "rerun",
+        "reset",
         "inspect",
         "snapshot",
         "exit",

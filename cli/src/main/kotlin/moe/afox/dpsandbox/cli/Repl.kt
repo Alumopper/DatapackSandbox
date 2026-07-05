@@ -1,5 +1,7 @@
 ﻿package moe.afox.dpsandbox.cli
 
+import com.google.gson.JsonObject
+import com.google.gson.JsonParser
 import moe.afox.dpsandbox.core.DatapackSandbox
 import moe.afox.dpsandbox.core.ExecutionResult
 import moe.afox.dpsandbox.core.JsonPaths
@@ -7,6 +9,8 @@ import moe.afox.dpsandbox.core.JsonValues
 import moe.afox.dpsandbox.core.PlayerEvents
 import moe.afox.dpsandbox.core.ResourceLocation
 import moe.afox.dpsandbox.core.SandboxException
+import moe.afox.dpsandbox.core.SandboxWorld
+import moe.afox.dpsandbox.core.SnapshotDiff
 import moe.afox.dpsandbox.core.UnsupportedFeatureMode
 import moe.afox.dpsandbox.core.createSandbox
 import moe.afox.dpsandbox.core.toPlayerJson
@@ -30,6 +34,11 @@ class Repl(
 ) {
     private var sandbox: DatapackSandbox = initialSandbox ?: createSandbox(version, packs, unsupportedFeatureMode = unsupportedFeatureMode)
     private var outputCursor = sandbox.world.outputs.size
+    private var traceCursor = sandbox.world.traces.size
+    private var traceEnabled = false
+    private var lastCommandLine: String? = null
+    private var lastBeforeSnapshot: JsonObject? = null
+    private var lastAfterSnapshot: JsonObject? = null
     private var packStamp = fingerprintPacks()
 
     constructor(sandbox: DatapackSandbox) : this(sandbox.profile.id, emptyList(), false, sandbox.unsupportedFeatureMode, sandbox)
@@ -99,36 +108,76 @@ class Repl(
         val parts = line.split(Regex("\\s+"))
         var keepGoing = true
         val outputBefore = sandbox.world.outputs.size
+        val beforeSnapshot = sandbox.snapshotJson()
+        var trackLast = false
         try {
             when (parts[0]) {
                 "exit", "quit" -> keepGoing = false
                 "help" -> printHelp(parts.getOrNull(1))
                 "reload" -> reload()
-                "load" -> printCommandResult("load", sandbox.runLoad(), outputBefore)
+                "load" -> {
+                    if (parts.getOrNull(1) == "fixture") {
+                        trackLast = true
+                        loadFixture(parts.getOrNull(2) ?: throw IllegalArgumentException("fixture file is required"))
+                    } else {
+                        trackLast = true
+                        printCommandResult("load", sandbox.runLoad(), outputBefore)
+                    }
+                }
                 "tick" -> {
                     val count = parts.getOrNull(1)?.toIntOrNull() ?: 1
+                    trackLast = true
                     printCommandResult("tick $count", sandbox.runTicks(count), outputBefore)
                 }
                 "function" -> {
                     val id = parts.getOrNull(1) ?: throw IllegalArgumentException("function id is required")
+                    trackLast = true
                     printCommandResult("function $id", sandbox.runFunction(id), outputBefore)
                 }
                 "player" -> {
                     val name = parts.getOrNull(1) ?: throw IllegalArgumentException("player name is required")
+                    trackLast = true
                     sandbox.createPlayer(name)
                     printManualResult("player $name", "created/reused player")
                 }
-                "event" -> runEvent(parts, outputBefore)
+                "event" -> {
+                    trackLast = true
+                    runEvent(parts, outputBefore)
+                }
+                "trace" -> trace(parts.drop(1))
+                "diff" -> {
+                    if (parts.getOrNull(1) == "last") printLastDiff() else println("Usage: diff last")
+                }
+                "rerun" -> {
+                    if (parts.getOrNull(1) == "last") rerunLast() else println("Usage: rerun last")
+                }
+                "reset" -> {
+                    if (parts.getOrNull(1) == "world") {
+                        trackLast = true
+                        resetWorld()
+                    } else {
+                        println("Usage: reset world")
+                    }
+                }
                 "inspect" -> inspect(parts.drop(1))
                 "snapshot" -> snapshot(parts.getOrNull(1))
-                else -> printCommandResult(line, sandbox.executeCommand(line), outputBefore)
+                else -> {
+                    trackLast = true
+                    printCommandResult(line, sandbox.executeCommand(line), outputBefore)
+                }
             }
         } catch (error: SandboxException) {
             println(ConsoleStyle.diagnostic(error.render()))
         } catch (error: Exception) {
             println(ConsoleStyle.red("ERROR: ${error.message}"))
         } finally {
+            if (trackLast) {
+                lastCommandLine = line
+                lastBeforeSnapshot = beforeSnapshot
+                lastAfterSnapshot = sandbox.snapshotJson()
+            }
             printNewOutputs()
+            printNewTraces()
         }
         return keepGoing
     }
@@ -152,6 +201,11 @@ class Repl(
             null -> helpText()
             "reload" -> "reload - reload datapack files from disk while keeping the in-memory world state"
             "event" -> eventHelp()
+            "trace" -> "trace <on|off|status> - print command trace events produced after trace is enabled"
+            "diff" -> "diff last - print the snapshot diff for the last executed world-changing command"
+            "rerun" -> "rerun last - run the last executed world-changing command again"
+            "reset" -> "reset world - replace the current world with a fresh sparse world"
+            "load" -> "load - run #minecraft:load; load fixture <file> - apply a manifest-style world fixture JSON"
             "tellraw" -> "tellraw <targets> <message-json> - record a chat output event from a JSON text component"
             "title" -> "title <targets> <title|subtitle|actionbar|clear|reset|times> ... - record title output events"
             "inspect" -> "inspect <score|storage|entities|blocks|player|loot|predicate|advancement|recipe|item_modifier|tags|resources|registry|outputs>"
@@ -174,7 +228,7 @@ class Repl(
         """.trimIndent()
 
     private fun helpText(): String =
-        "Commands: load, reload, tick [n], function <id>, player <name>, event player <name> <type> [id] [action], inspect <score|storage|entities|blocks|player|loot|predicate|advancement|recipe|item_modifier|tags|resources|registry|outputs>, snapshot [file], exit"
+        "Commands: load, load fixture <file>, reload, tick [n], function <id>, player <name>, event player <name> <type> [id] [action], trace <on|off|status>, diff last, rerun last, reset world, inspect <score|storage|entities|blocks|player|loot|predicate|advancement|recipe|item_modifier|tags|resources|registry|outputs>, snapshot [file], exit"
 
     private fun reload() {
         if (packs.isEmpty()) {
@@ -202,6 +256,74 @@ class Repl(
             }
         }
     }
+
+    private fun trace(args: List<String>) {
+        when (args.firstOrNull() ?: "status") {
+            "on" -> {
+                traceEnabled = true
+                traceCursor = sandbox.world.traces.size
+                printManualResult("trace on", "new command trace events will be printed")
+            }
+            "off" -> {
+                traceEnabled = false
+                printManualResult("trace off", "trace printing disabled")
+            }
+            "status" -> {
+                val state = if (traceEnabled) "on" else "off"
+                printManualResult("trace status", "state=$state total=${sandbox.world.traces.size}")
+            }
+            else -> println("Usage: trace <on|off|status>")
+        }
+    }
+
+    private fun printLastDiff() {
+        val before = lastBeforeSnapshot
+        val after = lastAfterSnapshot
+        if (before == null || after == null) {
+            println("<no previous command>")
+            return
+        }
+        println(SnapshotDiff.render(SnapshotDiff.diff(before, after)))
+    }
+
+    private fun rerunLast() {
+        val command = lastCommandLine
+        if (command == null) {
+            println("<no previous command>")
+            return
+        }
+        println(ConsoleStyle.dim("rerun: $command"))
+        handle(command)
+    }
+
+    private fun resetWorld() {
+        val world = SandboxWorld().also { it.createPlayer("Steve") }
+        sandbox = DatapackSandbox(sandbox.profile, sandbox.datapack, world, sandbox.unsupportedFeatureMode)
+        outputCursor = sandbox.world.outputs.size
+        traceCursor = sandbox.world.traces.size
+        printManualResult("reset world", "gameTime=${sandbox.world.gameTime}, players=${sandbox.world.players.keys.joinToString()}")
+    }
+
+    private fun loadFixture(fileName: String) {
+        val file = Path.of(fileName)
+        val root = parseJsonObject(Files.readString(file, StandardCharsets.UTF_8), "fixture $file")
+        val world = when {
+            !root.has("world") -> root
+            root.get("world").isJsonObject -> root.getAsJsonObject("world")
+            else -> throw IllegalArgumentException("fixture file contains non-object world")
+        }
+        ManifestWorldSetup.apply(world, sandbox, file.parent ?: Path.of("."))
+        printManualResult("load fixture $file", "applied")
+    }
+
+    private fun parseJsonObject(raw: String, label: String): JsonObject =
+        try {
+            val parsed = JsonParser.parseString(raw)
+            if (!parsed.isJsonObject) throw IllegalArgumentException("$label must be a JSON object")
+            parsed.asJsonObject
+        } catch (error: IllegalArgumentException) {
+            throw IllegalArgumentException("Invalid JSON for $label: ${error.message}", error)
+        }
 
     private fun inspect(args: List<String>) {
         when (args.firstOrNull()) {
@@ -308,6 +430,13 @@ class Repl(
         val newOutputs = sandbox.world.outputs.drop(outputCursor)
         outputCursor = sandbox.world.outputs.size
         OutputRenderer.print(newOutputs)
+    }
+
+    private fun printNewTraces() {
+        if (!traceEnabled) return
+        val newTraces = sandbox.world.traces.drop(traceCursor)
+        traceCursor = sandbox.world.traces.size
+        TraceRenderer.print(newTraces)
     }
 
     private fun fingerprintPacks(): Long =
