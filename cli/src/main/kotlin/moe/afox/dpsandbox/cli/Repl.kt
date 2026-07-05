@@ -208,7 +208,7 @@ class Repl(
             "load" -> "load - run #minecraft:load; load fixture <file> - apply a manifest-style world fixture JSON"
             "tellraw" -> "tellraw <targets> <message-json> - record a chat output event from a JSON text component"
             "title" -> "title <targets> <title|subtitle|actionbar|clear|reset|times> ... - record title output events"
-            "inspect" -> "inspect <score|storage|entities|blocks|player|loot|predicate|advancement|recipe|item_modifier|tags|resources|registry|outputs>"
+            "inspect" -> inspectUsage()
             else -> "No detailed help for '$command'. Try TAB for available forms."
         }
         println(text)
@@ -228,7 +228,10 @@ class Repl(
         """.trimIndent()
 
     private fun helpText(): String =
-        "Commands: load, load fixture <file>, reload, tick [n], function <id>, player <name>, event player <name> <type> [id] [action], trace <on|off|status>, diff last, rerun last, reset world, inspect <score|storage|entities|blocks|player|loot|predicate|advancement|recipe|item_modifier|tags|resources|registry|outputs>, snapshot [file], exit"
+        "Commands: load, load fixture <file>, reload, tick [n], function <id>, player <name>, event player <name> <type> [id] [action], trace <on|off|status>, diff last, rerun last, reset world, ${inspectUsage()}, snapshot [file], exit"
+
+    private fun inspectUsage(): String =
+        "inspect <score|storage|entities|blocks|player|loot|predicate|advancement|recipe|item_modifier|raw|tags|resources|registry|outputs>"
 
     private fun reload() {
         if (packs.isEmpty()) {
@@ -239,7 +242,7 @@ class Repl(
         packStamp = fingerprintPacks()
         println(
             ConsoleStyle.green(
-                "reloaded packs: functions=${sandbox.datapack.functions.size} loot=${sandbox.datapack.lootTables.size} predicates=${sandbox.datapack.predicates.size} advancements=${sandbox.datapack.advancements.size} recipes=${sandbox.datapack.recipes.size} itemModifiers=${sandbox.datapack.itemModifiers.size} tags=${sandbox.datapack.tags.size}",
+                "reloaded packs: functions=${sandbox.datapack.functions.size} loot=${sandbox.datapack.lootTables.size} predicates=${sandbox.datapack.predicates.size} advancements=${sandbox.datapack.advancements.size} recipes=${sandbox.datapack.recipes.size} itemModifiers=${sandbox.datapack.itemModifiers.size} raw=${sandbox.datapack.rawResources.values.sumOf { it.size }} tags=${sandbox.datapack.tags.size}",
             ),
         )
     }
@@ -367,6 +370,7 @@ class Repl(
             "advancement" -> sandbox.datapack.advancements.keys.forEach { println(it) }
             "recipe" -> sandbox.datapack.recipes.keys.forEach { println(it) }
             "item_modifier", "item-modifier" -> sandbox.datapack.itemModifiers.keys.forEach { println(it) }
+            "raw", "raw_resource", "raw-resource" -> inspectRawResource(args)
             "tag", "tags" -> {
                 val registryFilter = args.getOrNull(1)
                 sandbox.datapack.tags.toSortedMap()
@@ -397,8 +401,34 @@ class Repl(
                 println("lootFunctions=${sandbox.profile.registryView.lootFunctions.joinToString()}")
             }
             "outputs" -> OutputRenderer.print(sandbox.world.outputs)
-            else -> println("Usage: inspect <score|storage|entities|blocks|player|loot|predicate|advancement|recipe|item_modifier|tags|resources|registry|outputs>")
+            else -> println("Usage: ${inspectUsage()}")
         }
+    }
+
+    private fun inspectRawResource(args: List<String>) {
+        val kind = args.getOrNull(1)?.replace('-', '_')
+        if (kind == null) {
+            sandbox.datapack.rawResources.toSortedMap().forEach { (resourceKind, resources) ->
+                println("$resourceKind ${resources.size}")
+            }
+            return
+        }
+
+        val resources = sandbox.datapack.rawResources[kind]
+        if (resources == null) {
+            println("<missing raw resource type $kind>")
+            return
+        }
+
+        val id = args.getOrNull(2)?.let { ResourceLocation.parse(it) }
+        if (id == null) {
+            resources.toSortedMap().forEach { (resourceId, resource) ->
+                println("$resourceId file=${resource.file}")
+            }
+            return
+        }
+
+        println(resources[id]?.let { JsonValues.render(it.root) } ?: "<missing>")
     }
 
     private fun runEvent(parts: List<String>, outputBefore: Int) {

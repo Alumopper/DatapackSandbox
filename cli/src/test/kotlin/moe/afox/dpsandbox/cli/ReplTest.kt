@@ -91,6 +91,48 @@ class ReplTest {
         assertTrue(output.lines().last { it.trim().toIntOrNull() != null }.trim() == "0", output)
     }
 
+    @Test
+    fun `inspects raw datapack resources`() {
+        val pack = Files.createTempDirectory("dps-repl-raw-pack")
+        Files.writeString(
+            pack.resolve("pack.mcmeta"),
+            """
+            {
+              "pack": {
+                "pack_format": 107.1,
+                "description": "raw resource test pack"
+              }
+            }
+            """.trimIndent(),
+        )
+        val damageTypeRoot = pack.resolve("data").resolve("demo").resolve("damage_type")
+        Files.createDirectories(damageTypeRoot)
+        Files.writeString(
+            damageTypeRoot.resolve("debug_damage.json"),
+            """
+            {
+              "message_id": "debug",
+              "scaling": "never",
+              "exhaustion": 0.0,
+              "marker": "raw"
+            }
+            """.trimIndent(),
+        )
+
+        val repl = Repl(createSandbox("26.2", listOf(pack)))
+        val output = captureStdout {
+            repl.handle("inspect raw")
+            repl.handle("inspect raw damage_type")
+            repl.handle("inspect raw damage_type demo:debug_damage")
+            repl.handle("inspect resources damage_type")
+        }
+
+        assertTrue(output.contains("damage_type 1"), output)
+        assertTrue(output.contains("demo:debug_damage file="), output)
+        assertTrue(output.contains("\"marker\": \"raw\""), output)
+        assertTrue(output.contains("damage_type demo:debug_damage active"), output)
+    }
+
     private fun captureStdout(block: () -> Unit): String {
         val original = System.out
         val bytes = ByteArrayOutputStream()

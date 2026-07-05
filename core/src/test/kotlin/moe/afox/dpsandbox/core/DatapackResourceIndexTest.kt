@@ -27,6 +27,8 @@ class DatapackResourceIndexTest {
 
         assertEquals("current", datapack.recipe(ResourceLocation.parse("demo:marker")).root.asJsonObject.get("marker").asString)
         assertEquals("item_modifier", datapack.itemModifier(ResourceLocation.parse("demo:mark_item")).kind)
+        assertEquals("current", datapack.rawResource("damage-type", ResourceLocation.parse("demo:debug_damage")).root.asJsonObject.get("marker").asString)
+        assertEquals("26.2", datapack.rawResource("worldgen/configured_feature", ResourceLocation.parse("demo:debug_feature")).version)
 
         val tag = datapack.tag("item", ResourceLocation.parse("demo:debug_items"))
         assertFalse(tag.replace)
@@ -36,6 +38,10 @@ class DatapackResourceIndexTest {
         assertTrue(datapack.resourceIndex.any { it.type == "recipe" && it.id == ResourceLocation.parse("demo:marker") && it.active })
         assertTrue(datapack.resourceIndex.any { it.type == "item_modifier" && it.id == ResourceLocation.parse("demo:mark_item") && it.active })
         assertTrue(datapack.resourceIndex.any { it.type == "tag/item" && it.id == ResourceLocation.parse("demo:debug_items") && it.active })
+        expectedRawKinds.forEach { kind ->
+            assertTrue(kind in datapack.rawResources.keys, "missing raw resource kind $kind")
+            assertTrue(datapack.resourceIndex.any { it.type == kind && it.active }, "missing resource index for $kind")
+        }
     }
 
     @Test
@@ -55,6 +61,7 @@ class DatapackResourceIndexTest {
 
         assertEquals("legacy", datapack.recipe(ResourceLocation.parse("demo:marker")).root.asJsonObject.get("marker").asString)
         assertNotNull(datapack.itemModifier(ResourceLocation.parse("demo:mark_item")))
+        assertEquals("1.20.4", datapack.rawResource("damage_type", ResourceLocation.parse("demo:debug_damage")).version)
         assertEquals(2, datapack.tag("items", ResourceLocation.parse("demo:debug_items")).values.size)
     }
 
@@ -73,6 +80,12 @@ class DatapackResourceIndexTest {
         assertTrue(recipeEntries[0].overriddenBy?.contains("overlay-second") == true, recipeEntries[0].toString())
         assertTrue(recipeEntries[1].active)
         assertTrue(recipeEntries[1].overrides?.contains("overlay-first") == true, recipeEntries[1].toString())
+
+        assertEquals("second", datapack.rawResource("damage_type", ResourceLocation.parse("demo:debug_damage")).root.asJsonObject.get("marker").asString)
+        val damageEntries = datapack.resourceIndex.filter { it.type == "damage_type" && it.id == ResourceLocation.parse("demo:debug_damage") }
+        assertEquals(2, damageEntries.size)
+        assertFalse(damageEntries[0].active)
+        assertTrue(damageEntries[1].active)
     }
 
     private fun writePack(
@@ -139,7 +152,26 @@ class DatapackResourceIndexTest {
             }
             """.trimIndent(),
         )
+
+        writeRawRegistryResources(root, recipeMarker)
         return root
+    }
+
+    private fun writeRawRegistryResources(root: Path, marker: String) {
+        expectedRawKinds.forEach { kind ->
+            val idPath = rawResourceIds.getValue(kind)
+            val file = root.resolve("data").resolve("demo").resolve(kind).resolve("$idPath.json")
+            Files.createDirectories(file.parent)
+            Files.writeString(
+                file,
+                """
+                {
+                  "marker": "$marker",
+                  "kind": "$kind"
+                }
+                """.trimIndent(),
+            )
+        }
     }
 
     private fun zipPack(root: Path, output: Path): Path {
@@ -154,5 +186,43 @@ class DatapackResourceIndexTest {
             }
         }
         return output
+    }
+
+    private companion object {
+        val expectedRawKinds = listOf(
+            "damage_type",
+            "chat_type",
+            "dimension",
+            "dimension_type",
+            "worldgen/configured_feature",
+            "worldgen/placed_feature",
+            "worldgen/structure",
+            "worldgen/processor_list",
+            "enchantment",
+            "jukebox_song",
+            "trim_material",
+            "trim_pattern",
+            "banner_pattern",
+            "wolf_variant",
+            "painting_variant",
+        )
+
+        val rawResourceIds = mapOf(
+            "damage_type" to "debug_damage",
+            "chat_type" to "debug_chat",
+            "dimension" to "debug_dimension",
+            "dimension_type" to "debug_dimension_type",
+            "worldgen/configured_feature" to "debug_feature",
+            "worldgen/placed_feature" to "debug_feature",
+            "worldgen/structure" to "debug_structure",
+            "worldgen/processor_list" to "debug_processor",
+            "enchantment" to "debug_enchantment",
+            "jukebox_song" to "debug_song",
+            "trim_material" to "debug_trim_material",
+            "trim_pattern" to "debug_trim_pattern",
+            "banner_pattern" to "debug_banner",
+            "wolf_variant" to "debug_wolf",
+            "painting_variant" to "debug_painting",
+        )
     }
 }

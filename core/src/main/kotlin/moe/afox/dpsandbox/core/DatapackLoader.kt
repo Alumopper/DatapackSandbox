@@ -21,6 +21,53 @@ import kotlin.io.path.relativeTo
  * Loads datapack resources from directories, zip files, or synthetic function sources.
  */
 object DatapackLoader {
+    private data class RawJsonResourceSpec(
+        val kind: String,
+        val directories: List<String> = listOf(kind),
+    ) {
+        val errorLabel: String = kind.replace('/', ' ').replace('_', ' ')
+    }
+
+    private val additionalRawJsonResourceSpecs = listOf(
+        RawJsonResourceSpec("banner_pattern"),
+        RawJsonResourceSpec("cat_variant"),
+        RawJsonResourceSpec("chat_type"),
+        RawJsonResourceSpec("chicken_variant"),
+        RawJsonResourceSpec("cow_variant"),
+        RawJsonResourceSpec("damage_type"),
+        RawJsonResourceSpec("dialog"),
+        RawJsonResourceSpec("dimension"),
+        RawJsonResourceSpec("dimension_type"),
+        RawJsonResourceSpec("enchantment"),
+        RawJsonResourceSpec("enchantment_provider"),
+        RawJsonResourceSpec("equipment_asset"),
+        RawJsonResourceSpec("frog_variant"),
+        RawJsonResourceSpec("instrument"),
+        RawJsonResourceSpec("jukebox_song"),
+        RawJsonResourceSpec("painting_variant"),
+        RawJsonResourceSpec("pig_variant"),
+        RawJsonResourceSpec("test_environment"),
+        RawJsonResourceSpec("test_instance"),
+        RawJsonResourceSpec("trim_material"),
+        RawJsonResourceSpec("trim_pattern"),
+        RawJsonResourceSpec("wolf_sound_variant"),
+        RawJsonResourceSpec("wolf_variant"),
+        RawJsonResourceSpec("worldgen/biome"),
+        RawJsonResourceSpec("worldgen/configured_carver"),
+        RawJsonResourceSpec("worldgen/configured_feature"),
+        RawJsonResourceSpec("worldgen/density_function"),
+        RawJsonResourceSpec("worldgen/flat_level_generator_preset"),
+        RawJsonResourceSpec("worldgen/multi_noise_biome_source_parameter_list"),
+        RawJsonResourceSpec("worldgen/noise"),
+        RawJsonResourceSpec("worldgen/noise_settings"),
+        RawJsonResourceSpec("worldgen/placed_feature"),
+        RawJsonResourceSpec("worldgen/processor_list"),
+        RawJsonResourceSpec("worldgen/structure"),
+        RawJsonResourceSpec("worldgen/structure_set"),
+        RawJsonResourceSpec("worldgen/template_pool"),
+        RawJsonResourceSpec("worldgen/world_preset"),
+    )
+
     /**
      * Loads and validates one or more datapacks for [profile].
      *
@@ -46,8 +93,14 @@ object DatapackLoader {
         val advancements = linkedMapOf<ResourceLocation, AdvancementDefinition>()
         val recipes = linkedMapOf<ResourceLocation, RawJsonResource>()
         val itemModifiers = linkedMapOf<ResourceLocation, RawJsonResource>()
+        val rawResources = linkedMapOf<String, MutableMap<ResourceLocation, RawJsonResource>>()
         val tags = linkedMapOf<TagKey, TagDefinition>()
         val resourceIndex = ResourceIndexBuilder()
+
+        fun mergeRawResources(kind: String, resources: Map<ResourceLocation, RawJsonResource>) {
+            if (resources.isEmpty()) return
+            rawResources.getOrPut(kind) { linkedMapOf() }.putAll(resources)
+        }
 
         paths.forEach { input ->
             val packLabel = input.toAbsolutePath().normalize().toString()
@@ -74,10 +127,17 @@ object DatapackLoader {
                 val packRecipes = readRecipes(root, profile)
                 resourceIndex.recordAll("recipe", packRecipes, packLabel)
                 recipes.putAll(packRecipes)
+                mergeRawResources("recipe", packRecipes)
 
                 val packItemModifiers = readItemModifiers(root, profile)
                 resourceIndex.recordAll("item_modifier", packItemModifiers, packLabel)
                 itemModifiers.putAll(packItemModifiers)
+                mergeRawResources("item_modifier", packItemModifiers)
+
+                readAdditionalRawJsonResources(root, profile).forEach { (kind, resources) ->
+                    resourceIndex.recordAll(kind, resources, packLabel)
+                    mergeRawResources(kind, resources)
+                }
 
                 val packTags = readTags(root, profile)
                 mergeTags(tags, packTags)
@@ -102,6 +162,7 @@ object DatapackLoader {
             advancements = advancements.toSortedMap(),
             recipes = recipes.toSortedMap(),
             itemModifiers = itemModifiers.toSortedMap(),
+            rawResources = rawResources.toSortedRawResourceMap(),
             tags = tags.toSortedMap(),
             resourceIndex = resourceIndex.entries(),
         )
@@ -183,6 +244,7 @@ object DatapackLoader {
             advancements = dependencies.advancements,
             recipes = dependencies.recipes,
             itemModifiers = dependencies.itemModifiers,
+            rawResources = dependencies.rawResources,
             tags = dependencies.tags,
             resourceIndex = dependencies.resourceIndex + overlay.resourceIndex.map { entry ->
                 if (dependencies.functions.containsKey(entry.id) && entry.type == "function") {
@@ -474,12 +536,34 @@ object DatapackLoader {
             .mapValues { (_, resource) -> parseAdvancement(resource, profile) }
 
     private fun readRecipes(root: Path, profile: VersionProfile): Map<ResourceLocation, RawJsonResource> =
-        readJsonResources(root, profile, profile.resourceDirectories.recipes, "recipe")
-            .mapValues { (_, resource) -> RawJsonResource("recipe", resource.id, resource.file, resource.root) }
+        readRawJsonResources(root, profile, "recipe", profile.resourceDirectories.recipes)
 
     private fun readItemModifiers(root: Path, profile: VersionProfile): Map<ResourceLocation, RawJsonResource> =
-        readJsonResources(root, profile, profile.resourceDirectories.itemModifiers, "item modifier")
-            .mapValues { (_, resource) -> RawJsonResource("item_modifier", resource.id, resource.file, resource.root) }
+        readRawJsonResources(root, profile, "item_modifier", profile.resourceDirectories.itemModifiers, "item modifier")
+
+    private fun readAdditionalRawJsonResources(
+        root: Path,
+        profile: VersionProfile,
+    ): Map<String, Map<ResourceLocation, RawJsonResource>> {
+        val resources = linkedMapOf<String, Map<ResourceLocation, RawJsonResource>>()
+        additionalRawJsonResourceSpecs.forEach { spec ->
+            val loaded = readRawJsonResources(root, profile, spec.kind, spec.directories, spec.errorLabel)
+            if (loaded.isNotEmpty()) {
+                resources[spec.kind] = loaded
+            }
+        }
+        return resources
+    }
+
+    private fun readRawJsonResources(
+        root: Path,
+        profile: VersionProfile,
+        kind: String,
+        directoryNames: List<String>,
+        errorLabel: String = kind.replace('/', ' ').replace('_', ' '),
+    ): Map<ResourceLocation, RawJsonResource> =
+        readJsonResources(root, profile, directoryNames, errorLabel)
+            .mapValues { (_, resource) -> RawJsonResource(kind, resource.id, resource.file, resource.root, profile.id) }
 
     private fun readTags(root: Path, profile: VersionProfile): Map<TagKey, TagDefinition> {
         val data = root.resolve("data")
@@ -697,6 +781,9 @@ object DatapackLoader {
             location = SourceLocation(file = resource.file),
             version = profile.id,
         )
+
+    private fun Map<String, Map<ResourceLocation, RawJsonResource>>.toSortedRawResourceMap(): Map<String, Map<ResourceLocation, RawJsonResource>> =
+        toSortedMap().mapValues { (_, resources) -> resources.toSortedMap() }
 
     private class ResourceIndexBuilder {
         private val entries = mutableListOf<ResourceIndexEntry>()

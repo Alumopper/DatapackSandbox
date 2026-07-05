@@ -40,6 +40,8 @@ Minecraft Java `26.2` 使用 data pack format `107.1`，当前资源目录是单
 - `data/<namespace>/advancement/**/*.json`
 - `data/<namespace>/recipe/**/*.json`
 - `data/<namespace>/item_modifier/**/*.json`
+- `data/<namespace>/(chat_type|damage_type|dimension|dimension_type|enchantment|jukebox_song|trim_material|trim_pattern|...)/**/*.json`
+- `data/<namespace>/worldgen/(configured_feature|placed_feature|structure|processor_list|...)/**/*.json`
 - `data/<namespace>/tags/<registry>/**/*.json`
 
 兼容 profile 会保留自己的 data pack format。例如 `26.1`、`26.1.1`、`26.1.2` 使用 `101.1`，`1.21.11` 使用 `94.1`，`1.20.5` 到 `1.20.6` 使用 `41`。
@@ -112,13 +114,28 @@ data/<namespace>/advancements/**/*.json
 
 加载器会解析 parent、display、criteria、requirements、rewards 和 telemetry flags。运行时按玩家独立记录 progress，支持 grant/revoke/test、事件触发和 reward 执行。
 
-## Recipe、Item Modifier 与 Tags
+## Raw JSON Resource 与 Tags
 
-Recipe 和 item modifier 会作为 raw JSON resource 加载并进入资源索引。当前沙盒还不执行完整合成系统或全部 item modifier 函数，但这些资源可以被版本 profile 校验目录布局、被 pack overlay 覆盖，并可通过 API 或 REPL inspect 调试：
+Recipe、item modifier 以及更多注册表资源会作为 raw JSON resource 加载并进入资源索引。当前沙盒还不执行完整合成系统、全部 item modifier 函数或 worldgen 语义，但这些资源可以被版本 profile 校验目录布局、被 pack overlay 覆盖，并可通过 API 或 REPL inspect 调试：
 
 ```text
 data/<namespace>/recipe/**/*.json
 data/<namespace>/item_modifier/**/*.json
+data/<namespace>/chat_type/**/*.json
+data/<namespace>/damage_type/**/*.json
+data/<namespace>/dimension/**/*.json
+data/<namespace>/dimension_type/**/*.json
+data/<namespace>/worldgen/configured_feature/**/*.json
+data/<namespace>/worldgen/placed_feature/**/*.json
+data/<namespace>/worldgen/structure/**/*.json
+data/<namespace>/worldgen/processor_list/**/*.json
+data/<namespace>/enchantment/**/*.json
+data/<namespace>/jukebox_song/**/*.json
+data/<namespace>/trim_material/**/*.json
+data/<namespace>/trim_pattern/**/*.json
+data/<namespace>/banner_pattern/**/*.json
+data/<namespace>/wolf_variant/**/*.json
+data/<namespace>/painting_variant/**/*.json
 ```
 
 兼容旧版本时也接受：
@@ -135,6 +152,9 @@ REPL 中可以查看：
 ```text
 inspect recipe
 inspect item_modifier
+inspect raw
+inspect raw <type>
+inspect raw <type> <id>
 inspect tags [registry]
 inspect resources [type]
 ```

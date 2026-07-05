@@ -103,7 +103,7 @@ object DpsCommandCatalog {
             "diff" -> " last"
             "rerun" -> " last"
             "reset" -> " world"
-            "inspect" -> " <score|storage|entities|blocks|player|loot|predicate|advancement|registry|outputs>"
+            "inspect" -> " <score|storage|entities|blocks|player|loot|predicate|advancement|recipe|item_modifier|raw|tags|resources|registry|outputs>"
             "event" -> " player <name> <type> [id] [action]"
             "scoreboard" -> " objectives|players ..."
             "execute" -> " as|at|if|unless|store ... run <command>"

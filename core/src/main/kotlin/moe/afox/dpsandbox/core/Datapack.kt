@@ -100,6 +100,7 @@ data class RawJsonResource(
     val id: ResourceLocation,
     val file: String,
     val root: JsonElement,
+    val version: String? = null,
 )
 
 /**
@@ -233,6 +234,7 @@ data class Datapack(
     val advancements: Map<ResourceLocation, AdvancementDefinition> = emptyMap(),
     val recipes: Map<ResourceLocation, RawJsonResource> = emptyMap(),
     val itemModifiers: Map<ResourceLocation, RawJsonResource> = emptyMap(),
+    val rawResources: Map<String, Map<ResourceLocation, RawJsonResource>> = emptyMap(),
     val tags: Map<TagKey, TagDefinition> = emptyMap(),
     val resourceIndex: List<ResourceIndexEntry> = emptyList(),
 ) {
@@ -307,6 +309,20 @@ data class Datapack(
                 code = DiagnosticCode.RESOURCE_NOT_FOUND,
                 message = "Item modifier '$id' was not found",
             )
+
+    /**
+     * Returns a raw JSON datapack resource by kind and id.
+     *
+     * @throws SandboxException with [DiagnosticCode.RESOURCE_NOT_FOUND] when missing.
+     */
+    fun rawResource(kind: String, id: ResourceLocation): RawJsonResource {
+        val normalizedKind = kind.replace('-', '_')
+        return rawResources[normalizedKind]?.get(id)
+            ?: throw SandboxException(
+                code = DiagnosticCode.RESOURCE_NOT_FOUND,
+                message = "Raw resource '$normalizedKind/$id' was not found",
+            )
+    }
 
     /**
      * Returns a datapack tag by registry and id.

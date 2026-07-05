@@ -44,6 +44,8 @@ dps> reload
 dps> function demo:main
 dps> trace on
 dps> diff last
+dps> inspect raw damage_type
+dps> inspect resources damage_type
 dps> inspect outputs
 ```
 
@@ -227,6 +229,7 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar run --version 26.2 \
 - 默认可读玩家 NBT，非玩家实体和方块实体 NBT 的 schema 校验与读写。
 - selector，包括 `@s`、`@a`、`@p`、`@e`、`@n` 以及常用过滤项。
 - predicate、loot table、advancement、玩家事件、键盘/鼠标输入事件。
+- raw JSON 注册表资源，包括 recipe、item modifier、damage type、dimension、worldgen JSON、enchantment、trim 与 variant 资源。
 - `tellraw`、`title`、`say`、`msg`、`playsound`、`stopsound`、`particle` 等可观测输出命令。
 - 未支持原版命令的可配置策略：默认 `warn` 记录警告并继续，`error` 严格失败，`ignore` 静默跳过。
 

@@ -140,7 +140,7 @@ These are tooling commands, not vanilla commands:
 |---|---|
 | `event player <name> <type> ...` | Inject player events for advancements/predicates. |
 | `player <name>` | Create or reuse a sandbox player. |
-| `inspect <...>` | Inspect score, storage, entities, blocks, player, loot, predicate, advancement, recipe, item_modifier, tags, resources, registry, outputs. |
+| `inspect <...>` | Inspect score, storage, entities, blocks, player, loot, predicate, advancement, recipe, item_modifier, raw JSON resources, tags, resource index, registry, outputs. |
 | `snapshot [file]` | Print or write deterministic world JSON. |
 | `reload` | REPL-only datapack reload while preserving world state. |
 | `load` | Run `#minecraft:load` in REPL. |

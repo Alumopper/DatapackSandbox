@@ -53,6 +53,8 @@ dps> reload
 dps> function demo:main
 dps> trace on
 dps> diff last
+dps> inspect raw damage_type
+dps> inspect resources damage_type
 dps> inspect outputs
 ```
 
@@ -246,6 +248,8 @@ for datapack-visible logic:
 - selectors including `@s`, `@a`, `@p`, `@e`, `@n`
 - predicates, loot tables, advancements, player events, and keyboard/mouse input
   events
+- raw JSON registry resources such as recipes, item modifiers, damage types,
+  dimensions, worldgen JSON, enchantments, trim resources, and variants
 - observable output commands such as `tellraw`, `title`, `say`, `msg`,
   `playsound`, `stopsound`, and `particle`
 - configurable unsupported-command policy: `warn` by default, `error` for strict

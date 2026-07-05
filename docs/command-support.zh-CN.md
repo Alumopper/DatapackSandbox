@@ -125,7 +125,7 @@ JSON text component 支持 `text`、`score`、`selector`、`translate`、`keybin
 |---|---|
 | `event player <name> <type> ...` | 注入玩家事件，用于 advancement/predicate 测试。 |
 | `player <name>` | 创建或复用沙盒玩家。 |
-| `inspect <...>` | 查看 score、storage、entities、blocks、player、loot、predicate、advancement、recipe、item_modifier、tags、resources、registry、outputs。 |
+| `inspect <...>` | 查看 score、storage、entities、blocks、player、loot、predicate、advancement、recipe、item_modifier、raw JSON resource、tags、resource index、registry、outputs。 |
 | `snapshot [file]` | 打印或写出确定性的世界 JSON。 |
 | `reload` | REPL 专用，保留世界状态并重载数据包文件。 |
 | `load` | 在 REPL 中运行 `#minecraft:load`。 |

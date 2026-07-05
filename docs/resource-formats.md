@@ -41,6 +41,8 @@ resource directories:
 - `data/<namespace>/advancement/**/*.json`
 - `data/<namespace>/recipe/**/*.json`
 - `data/<namespace>/item_modifier/**/*.json`
+- `data/<namespace>/(chat_type|damage_type|dimension|dimension_type|enchantment|jukebox_song|trim_material|trim_pattern|...)/**/*.json`
+- `data/<namespace>/worldgen/(configured_feature|placed_feature|structure|processor_list|...)/**/*.json`
 - `data/<namespace>/tags/<registry>/**/*.json`
 
 Compatibility profiles keep their own data pack formats. For example,
@@ -103,18 +105,34 @@ check player inventory by slot, id, count, components path, and NBT path.
 `trace` assertions can check command/root/contains, success, count, source file,
 and function stack.
 
-## Recipes, Item Modifiers, and Tags
+## Raw JSON Resources and Tags
 
-Recipes and item modifiers are loaded as raw JSON resources and included in the
-resource index. The sandbox does not yet execute the full crafting system or
-every item modifier function, but these resources are version-profile checked,
-participate in pack overlay behavior, and can be inspected from API or REPL.
+Recipes, item modifiers, and additional registry resources are loaded as raw
+JSON resources and included in the resource index. The sandbox does not yet
+execute the full crafting system, every item modifier function, or worldgen
+semantics, but these resources are version-profile checked, participate in pack
+overlay behavior, and can be inspected from API or REPL.
 
 Current directories:
 
 ```text
 data/<namespace>/recipe/**/*.json
 data/<namespace>/item_modifier/**/*.json
+data/<namespace>/chat_type/**/*.json
+data/<namespace>/damage_type/**/*.json
+data/<namespace>/dimension/**/*.json
+data/<namespace>/dimension_type/**/*.json
+data/<namespace>/worldgen/configured_feature/**/*.json
+data/<namespace>/worldgen/placed_feature/**/*.json
+data/<namespace>/worldgen/structure/**/*.json
+data/<namespace>/worldgen/processor_list/**/*.json
+data/<namespace>/enchantment/**/*.json
+data/<namespace>/jukebox_song/**/*.json
+data/<namespace>/trim_material/**/*.json
+data/<namespace>/trim_pattern/**/*.json
+data/<namespace>/banner_pattern/**/*.json
+data/<namespace>/wolf_variant/**/*.json
+data/<namespace>/painting_variant/**/*.json
 ```
 
 Legacy aliases, when allowed by the active profile:
@@ -134,6 +152,9 @@ REPL inspection:
 ```text
 inspect recipe
 inspect item_modifier
+inspect raw
+inspect raw <type>
+inspect raw <type> <id>
 inspect tags [registry]
 inspect resources [type]
 ```

@@ -56,6 +56,8 @@ class DpsCompleterTest {
         assertSuggests(completer, "rerun ", "last")
         assertSuggests(completer, "reset ", "world")
         assertSuggests(completer, "load ", "fixture")
+        assertSuggests(completer, "inspect ", "raw")
+        assertSuggests(completer, "inspect resources ", "function")
     }
 
     @Test

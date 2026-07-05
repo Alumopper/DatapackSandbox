@@ -19,9 +19,7 @@ class DpsCompletionEngine(private val sandbox: () -> DatapackSandbox) {
             first == "diff" && context.wordIndex == 1 -> listOf("last").suggest("diff targets")
             first == "rerun" && context.wordIndex == 1 -> listOf("last").suggest("rerun targets")
             first == "reset" && context.wordIndex == 1 -> listOf("world").suggest("reset targets")
-            first == "inspect" && context.wordIndex == 1 -> inspectTargets.suggest("inspect targets", appendSpace = true)
-            first == "inspect" && words.getOrNull(1) == "player" -> playerTargets(includeSelectors = false).suggest("players")
-            first == "inspect" && words.getOrNull(1) == "storage" -> storageTargets().suggest("storages")
+            first == "inspect" -> inspectSuggestions(words, context)
             first == "player" && context.wordIndex == 1 -> playerTargets(includeSelectors = false).suggest("players")
             first == "event" -> eventSuggestions(words, context)
             first in chatTargetCommands && context.wordIndex == 1 -> playerTargets().suggest("players/selectors", appendSpace = true)
@@ -102,6 +100,17 @@ class DpsCompletionEngine(private val sandbox: () -> DatapackSandbox) {
                 else -> emptyList()
             }
             5 -> if (words.getOrNull(3) in inputEventTypes) inputActions.suggest("input actions") else emptyList()
+            else -> emptyList()
+        }
+
+    private fun inspectSuggestions(words: List<String>, context: CompletionContext): List<CompletionSuggestion> =
+        when {
+            context.wordIndex == 1 -> inspectTargets.suggest("inspect targets", appendSpace = true)
+            words.getOrNull(1) == "player" -> playerTargets(includeSelectors = false).suggest("players")
+            words.getOrNull(1) == "storage" -> storageTargets().suggest("storages")
+            words.getOrNull(1) == "raw" && context.wordIndex == 2 -> rawResourceKinds().suggest("raw resource types", appendSpace = true)
+            words.getOrNull(1) == "raw" && context.wordIndex == 3 -> rawResourceIds(words.getOrNull(2)).suggest("raw resources")
+            words.getOrNull(1) in setOf("resource", "resources") && context.wordIndex == 2 -> resourceIndexTypes().suggest("resource types")
             else -> emptyList()
         }
 
@@ -359,6 +368,20 @@ class DpsCompletionEngine(private val sandbox: () -> DatapackSandbox) {
     private fun storageTargets(): List<String> =
         sandbox().world.storages.keys.map { it.toString() }
 
+    private fun rawResourceKinds(): List<String> =
+        sandbox().datapack.rawResources.keys.toList()
+
+    private fun rawResourceIds(kind: String?): List<String> =
+        kind
+            ?.replace('-', '_')
+            ?.let { sandbox().datapack.rawResources[it] }
+            .orEmpty()
+            .keys
+            .map { it.toString() }
+
+    private fun resourceIndexTypes(): List<String> =
+        sandbox().datapack.resourceIndex.map { it.type }.distinct()
+
     private fun knownTags(): List<String> =
         sandbox().world.entities.flatMap { it.tags }.distinct()
 
@@ -379,7 +402,23 @@ class DpsCompletionEngine(private val sandbox: () -> DatapackSandbox) {
 
     companion object {
         private val selectors = listOf("@a", "@s", "@p", "@n", "@e")
-        private val inspectTargets = listOf("score", "storage", "entities", "blocks", "player", "loot", "predicate", "advancement", "registry", "outputs")
+        private val inspectTargets = listOf(
+            "score",
+            "storage",
+            "entities",
+            "blocks",
+            "player",
+            "loot",
+            "predicate",
+            "advancement",
+            "recipe",
+            "item_modifier",
+            "raw",
+            "tags",
+            "resources",
+            "registry",
+            "outputs",
+        )
         private val chatTargetCommands = setOf("tellraw", "msg", "tell", "w", "stopsound")
         private val soundSources = listOf("master", "music", "record", "weather", "block", "hostile", "neutral", "player", "ambient", "voice")
         private val eventTypes = listOf(
