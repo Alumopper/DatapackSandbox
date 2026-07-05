@@ -6,6 +6,7 @@ import moe.afox.dpsandbox.core.VersionProfiles
 import moe.afox.dpsandbox.core.createSandbox
 import java.nio.file.Path
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
@@ -41,7 +42,9 @@ class DpsCompleterTest {
     fun `completes newly supported root commands and subcommands`() {
         val completer = completer()
 
+        assertSuggests(completer, "attr", "attribute")
         assertSuggests(completer, "bo", "bossbar")
+        assertSuggests(completer, "worldb", "worldborder")
         assertSuggests(completer, "scoreboard players ", "list")
         assertSuggests(completer, "scoreboard players ", "reset")
         assertSuggests(completer, "schedule ", "clear")
@@ -91,6 +94,14 @@ class DpsCompleterTest {
         assertTrue(hint.size >= 2, hint.joinToString("\n"))
         assertTrue("function <namespace:path>" in hint[0].toString(), hint[0].toString())
         assertTrue("run one loaded function" in hint[1].toString(), hint[1].toString())
+    }
+
+    @Test
+    fun `catalog describes implemented partial root commands`() {
+        val commands = DpsCommandCatalog.rootCommands(VersionProfiles.default).associateBy { it.value }
+
+        assertEquals("read or edit stored entity attributes", commands.getValue("attribute").description)
+        assertEquals("edit stored world border state", commands.getValue("worldborder").description)
     }
 
     private fun assertSuggests(completer: DpsCompleter, line: String, expected: String) {

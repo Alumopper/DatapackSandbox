@@ -21,6 +21,7 @@ object DpsCommandCatalog {
         command("exit", "leave the REPL"),
         command("quit", "leave the REPL"),
         command("advancement", "grant, revoke, or test advancement progress"),
+        command("attribute", "read or edit stored entity attributes"),
         command("bossbar", "edit stored bossbar state"),
         command("clear", "remove items from player inventories"),
         command("clone", "copy sparse sandbox blocks"),
@@ -51,6 +52,7 @@ object DpsCommandCatalog {
         command("tp", "move entities"),
         command("time", "edit world time state"),
         command("weather", "edit weather state"),
+        command("worldborder", "edit stored world border state"),
         command("tellraw", "record a raw JSON chat output"),
         command("title", "record title output"),
         command("say", "record chat output"),
@@ -63,7 +65,6 @@ object DpsCommandCatalog {
         command("playsound", "record a sound output"),
         command("stopsound", "record a stop-sound output"),
         command("particle", "record a visual output"),
-        unsupported("attribute"),
         unsupported("datapack"),
         unsupported("debug"),
         unsupported("defaultgamemode"),
@@ -77,7 +78,6 @@ object DpsCommandCatalog {
         unsupported("spectate"),
         unsupported("spreadplayers"),
         unsupported("trigger"),
-        unsupported("worldborder"),
     ).distinctBy { it.value }.sortedBy { it.value }
 
     fun rootCommands(profile: VersionProfile = VersionProfiles.default): List<CompletionSuggestion> {
@@ -105,6 +105,7 @@ object DpsCommandCatalog {
             "reset" -> " world"
             "inspect" -> " <score|storage|entities|blocks|player|loot|predicate|advancement|recipe|item_modifier|raw|tags|resources|registry|outputs>"
             "event" -> " player <name> <type> [id] [action]"
+            "attribute" -> " <target> <attribute> <get|base|modifier> ..."
             "scoreboard" -> " objectives|players ..."
             "execute" -> " as|at|if|unless|store ... run <command>"
             "data" -> " <get|modify|merge|remove> <storage|entity|block> ..."
@@ -117,6 +118,7 @@ object DpsCommandCatalog {
             "fill" -> " <from> <to> <block>"
             "weather" -> " <clear|rain|thunder> [duration]"
             "time" -> " <set|add|query> ..."
+            "worldborder" -> " <get|set|add|center|damage|warning> ..."
             else -> baseRootCommands.firstOrNull { it.value == command }
                 ?.description
                 ?.takeIf { it.isNotBlank() }
