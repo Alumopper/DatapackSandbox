@@ -370,6 +370,30 @@ class SandboxQuickTestMatrix private constructor(
     }
 
     /**
+     * Applies a lower-bound entity count assertion to every scenario.
+     */
+    @JvmOverloads
+    fun assertEntityCountAtLeast(minimum: Int, type: String? = null, tag: String? = null): SandboxQuickTestMatrix = apply {
+        scenarios.values.forEach { it.assertEntityCountAtLeast(minimum, type, tag) }
+    }
+
+    /**
+     * Applies an upper-bound entity count assertion to every scenario.
+     */
+    @JvmOverloads
+    fun assertEntityCountAtMost(maximum: Int, type: String? = null, tag: String? = null): SandboxQuickTestMatrix = apply {
+        scenarios.values.forEach { it.assertEntityCountAtMost(maximum, type, tag) }
+    }
+
+    /**
+     * Applies optional lower and upper entity count bounds to every scenario.
+     */
+    @JvmOverloads
+    fun assertEntityCountRange(min: Int? = null, max: Int? = null, type: String? = null, tag: String? = null): SandboxQuickTestMatrix = apply {
+        scenarios.values.forEach { it.assertEntityCountRange(min, max, type, tag) }
+    }
+
+    /**
      * Applies an inventory item assertion to every scenario.
      */
     @JvmOverloads
@@ -1008,13 +1032,70 @@ class SandboxQuickTest private constructor(
      */
     @JvmOverloads
     fun assertEntityCount(expected: Int, type: String? = null, tag: String? = null): SandboxQuickTest = apply {
+        val actual = entityCount(type, tag)
+        if (actual != expected) {
+            failures += "entityCount ${describeEntityCount(type, tag)} expected $expected but was $actual"
+        }
+    }
+
+    /**
+     * Asserts that the number of matching entities is at least [minimum].
+     */
+    @JvmOverloads
+    fun assertEntityCountAtLeast(minimum: Int, type: String? = null, tag: String? = null): SandboxQuickTest = apply {
+        assertEntityCountBounds(min = minimum, max = null, type = type, tag = tag)
+    }
+
+    /**
+     * Asserts that the number of matching entities is at most [maximum].
+     */
+    @JvmOverloads
+    fun assertEntityCountAtMost(maximum: Int, type: String? = null, tag: String? = null): SandboxQuickTest = apply {
+        assertEntityCountBounds(min = null, max = maximum, type = type, tag = tag)
+    }
+
+    /**
+     * Asserts optional lower and upper bounds for the number of matching entities.
+     */
+    @JvmOverloads
+    fun assertEntityCountRange(min: Int? = null, max: Int? = null, type: String? = null, tag: String? = null): SandboxQuickTest = apply {
+        assertEntityCountBounds(min, max, type, tag)
+    }
+
+    private fun assertEntityCountBounds(min: Int?, max: Int?, type: String?, tag: String?) {
+        val actual = entityCount(type, tag)
+        val label = describeEntityCount(type, tag)
+        var checked = false
+        min?.let {
+            checked = true
+            if (actual < it) {
+                failures += "entityCount $label expected >= $it but was $actual"
+            }
+        }
+        max?.let {
+            checked = true
+            if (actual > it) {
+                failures += "entityCount $label expected <= $it but was $actual"
+            }
+        }
+        if (!checked) {
+            failures += "entityCount $label range assertion requires min or max"
+        }
+    }
+
+    private fun entityCount(type: String?, tag: String?): Int {
         val expectedType = type?.let(ResourceLocation::parse)
-        val actual = sandbox.world.entities.count { entity ->
+        return sandbox.world.entities.count { entity ->
             (expectedType == null || entity.type == expectedType) &&
                 (tag == null || tag in entity.tags)
         }
-        if (actual != expected) failures += "entityCount expected $expected but was $actual"
     }
+
+    private fun describeEntityCount(type: String?, tag: String?): String =
+        listOfNotNull(
+            type?.let { "type=$it" },
+            tag?.let { "tag=$it" },
+        ).ifEmpty { listOf("<any entity>") }.joinToString(", ")
 
     /**
      * Asserts that a player's inventory contains or does not contain a matching item.

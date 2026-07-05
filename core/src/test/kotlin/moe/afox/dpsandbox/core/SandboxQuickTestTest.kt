@@ -68,6 +68,24 @@ class SandboxQuickTestTest {
     }
 
     @Test
+    fun `quick entity count range assertions explain failures`() {
+        val report = SandboxQuickTest.create(listOf(fixturePack()), version = "26.1.2")
+            .world {
+                entity("minecraft:pig", 0.0, 64.0, 0.0, tags = listOf("range"))
+                entity("minecraft:pig", 1.0, 64.0, 0.0, tags = listOf("range"))
+            }
+            .assertEntityCountAtLeast(3, type = "minecraft:pig", tag = "range")
+            .assertEntityCountAtMost(1, type = "minecraft:pig", tag = "range")
+            .assertEntityCountRange(type = "minecraft:pig", tag = "range")
+            .report()
+
+        assertTrue(!report.passed)
+        assertTrue(report.failures.any { "entityCount type=minecraft:pig, tag=range expected >= 3 but was 2" in it }, report.failures.joinToString())
+        assertTrue(report.failures.any { "entityCount type=minecraft:pig, tag=range expected <= 1 but was 2" in it }, report.failures.joinToString())
+        assertTrue(report.failures.any { "entityCount type=minecraft:pig, tag=range range assertion requires min or max" in it }, report.failures.joinToString())
+    }
+
+    @Test
     fun `records keyboard and mouse player input events`() {
         val scenario = SandboxQuickTest.create(listOf(fixturePack()), version = "26.1.2")
             .keyInput("Steve", "key.jump")
@@ -373,6 +391,9 @@ class SandboxQuickTestTest {
             .assertBlock(0, 64, 0, "minecraft:chest")
             .assertEntity(type = "minecraft:pig", tag = "fixture", position = Position(1.0, 64.0, 0.0))
             .assertEntityCount(expected = 1, type = "minecraft:pig", tag = "fixture")
+            .assertEntityCountAtLeast(1, type = "minecraft:pig", tag = "fixture")
+            .assertEntityCountAtMost(1, type = "minecraft:pig", tag = "fixture")
+            .assertEntityCountRange(min = 1, max = 1, type = "minecraft:pig", tag = "fixture")
             .assertPlayer(
                 name = "Alex",
                 position = Position(2.0, 65.0, 3.0),

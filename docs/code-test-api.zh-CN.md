@@ -174,6 +174,7 @@ SandboxQuickTest.create(
     .assertBlock(0, 64, 0, "minecraft:chest")
     .assertEntity(type = "minecraft:pig", tag = "fixture")
     .assertEntityCount(expected = 1, type = "minecraft:pig", tag = "fixture")
+    .assertEntityCountRange(min = 1, max = 3, type = "minecraft:pig", tag = "fixture")
     .assertPlayer("Alex", xp = 5, recipe = "minecraft:bread", effect = "minecraft:speed")
     .assertItem("Alex", "minecraft:stick", 2)
     .assertScore("#fixture", "ready", 1)
@@ -266,6 +267,9 @@ class MyDatapackTest {
 | `assertBlock(x, y, z, id, exists)` | 断言 sparse world 中的方块。 |
 | `assertEntity(type, tag, uuid, position, exists, count)` | 断言匹配实体存在性或数量。 |
 | `assertEntityCount(expected, type, tag)` | 断言匹配实体数量。 |
+| `assertEntityCountAtLeast(minimum, type, tag)` | 断言匹配实体数量下界。 |
+| `assertEntityCountAtMost(maximum, type, tag)` | 断言匹配实体数量上界。 |
+| `assertEntityCountRange(min, max, type, tag)` | 断言匹配实体数量的可选上下界。 |
 | `assertItem(player, id, count, slot, exists)` | 断言玩家背包中的匹配物品。 |
 | `assertPlayerXp(player, expected)` | 断言玩家 XP。 |
 | `assertPlayerLastInput(player, device, code, action)` | 断言玩家最后一次输入。 |

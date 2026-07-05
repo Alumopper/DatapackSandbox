@@ -198,6 +198,7 @@ SandboxQuickTest.create(
     .assertBlock(0, 64, 0, "minecraft:chest")
     .assertEntity(type = "minecraft:pig", tag = "fixture")
     .assertEntityCount(expected = 1, type = "minecraft:pig", tag = "fixture")
+    .assertEntityCountRange(min = 1, max = 3, type = "minecraft:pig", tag = "fixture")
     .assertPlayer("Alex", xp = 5, recipe = "minecraft:bread", effect = "minecraft:speed")
     .assertItem("Alex", "minecraft:stick", 2)
     .assertScore("#fixture", "ready", 1)
@@ -292,6 +293,9 @@ class MyDatapackTest {
 | `assertBlock(x, y, z, id, exists)` | Assert a sparse-world block |
 | `assertEntity(type, tag, uuid, position, exists, count)` | Assert matching entity existence or count |
 | `assertEntityCount(expected, type, tag)` | Assert matching entity count |
+| `assertEntityCountAtLeast(minimum, type, tag)` | Assert a matching entity count lower bound |
+| `assertEntityCountAtMost(maximum, type, tag)` | Assert a matching entity count upper bound |
+| `assertEntityCountRange(min, max, type, tag)` | Assert optional matching entity count bounds |
 | `assertItem(player, id, count, slot, exists)` | Assert a matching player inventory item |
 | `assertPlayerXp(player, expected)` | Assert player XP |
 | `assertPlayerLastInput(player, device, code, action)` | Assert the latest player input |
