@@ -99,6 +99,25 @@ class CommandExpansionTest {
         assertEquals(0, sandbox.world.getScore("#fail", "checks"))
     }
 
+    @Test
+    fun `execute blocks condition compares sparse block regions`() {
+        val sandbox = createSandbox("26.1.2", listOf(fixturePack()))
+
+        sandbox.executeCommand("scoreboard objectives add checks dummy")
+        sandbox.executeCommand("setblock 0 64 0 minecraft:stone")
+        sandbox.executeCommand("setblock 1 64 0 minecraft:chest[facing=north]")
+        sandbox.executeCommand("setblock 4 64 0 minecraft:stone")
+        sandbox.executeCommand("setblock 5 64 0 minecraft:chest[facing=north]")
+        sandbox.executeCommand("setblock 6 64 0 minecraft:dirt")
+        sandbox.executeCommand("execute if blocks 0 64 0 1 64 0 4 64 0 all run scoreboard players add #pass checks 1")
+        sandbox.executeCommand("execute if blocks 0 64 0 2 64 0 4 64 0 masked run scoreboard players add #pass checks 1")
+        sandbox.executeCommand("execute unless blocks 0 64 0 2 64 0 4 64 0 all run scoreboard players add #pass checks 1")
+        sandbox.executeCommand("execute if blocks 0 64 0 2 64 0 4 64 0 all run scoreboard players add #fail checks 1")
+
+        assertEquals(3, sandbox.world.getScore("#pass", "checks"))
+        assertEquals(0, sandbox.world.getScore("#fail", "checks"))
+    }
+
     private fun fixturePack(): Path =
         Path.of("src/test/resources/packs/counter")
 

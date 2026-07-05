@@ -149,7 +149,7 @@ class DpsCompletionEngine(private val sandbox: () -> DatapackSandbox) {
         return when {
             previous in setOf("as", "at") -> entityTargets().suggest("entities/selectors", appendSpace = true)
             previous == "run" -> DpsCommandCatalog.rootCommands(sandbox().profile)
-            previous in setOf("if", "unless") -> listOf("entity", "score", "data", "block", "predicate", "dimension", "biome", "loaded").suggest("conditions", appendSpace = true)
+            previous in setOf("if", "unless") -> listOf("entity", "score", "data", "block", "blocks", "predicate", "dimension", "biome", "loaded").suggest("conditions", appendSpace = true)
             beforePrevious in setOf("if", "unless") && previous == "entity" -> entityTargets().suggest("entities/selectors", appendSpace = true)
             beforePrevious in setOf("if", "unless") && previous == "predicate" -> sandbox().datapack.predicates.keys.mapResource("predicates")
             beforePrevious in setOf("if", "unless") && previous == "dimension" -> sandbox().profile.registryView.dimensions.mapResource("dimensions")

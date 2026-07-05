@@ -976,6 +976,7 @@ class DatapackSandbox(
                 val pos = parseBlockPos(tokens, index + 1, context.position, location)
                 (matchesBlock(pos, tokens[index + 4].text, location) to index + 5)
             }
+            "blocks" -> evaluateBlocksCondition(tokens, index, location, context)
             "predicate" -> {
                 requireIndex(tokens, index + 1, "execute if|unless predicate <id>", location)
                 predicates.test(ResourceLocation.parse(tokens[index + 1].text), executePredicateContext(context)) to index + 2
@@ -1013,6 +1014,41 @@ class DatapackSandbox(
 
     private fun entityDimension(entity: SandboxEntity): ResourceLocation =
         (entity as? SandboxPlayer)?.dimension ?: ResourceLocation("minecraft", "overworld")
+
+    private fun evaluateBlocksCondition(tokens: List<CommandToken>, index: Int, location: SourceLocation?, context: ExecutionContext): Pair<Boolean, Int> {
+        requireSizeFrom(tokens, index, 11, "execute if|unless blocks <begin> <end> <destination> <all|masked>", location)
+        val from = parseBlockPos(tokens, index + 1, context.position, location)
+        val to = parseBlockPos(tokens, index + 4, context.position, location)
+        val dest = parseBlockPos(tokens, index + 7, context.position, location)
+        val mode = tokens[index + 10].text
+        if (mode !in setOf("all", "masked")) {
+            unsupportedFeature("Unsupported execute blocks mode '$mode'", profile.id, location)
+        }
+
+        val xs = minOf(from.x, to.x)..maxOf(from.x, to.x)
+        val ys = minOf(from.y, to.y)..maxOf(from.y, to.y)
+        val zs = minOf(from.z, to.z)..maxOf(from.z, to.z)
+        val volume = xs.count() * ys.count() * zs.count()
+        if (volume > 32768) {
+            throw SandboxException(DiagnosticCode.COMMAND_ERROR, "Execute blocks volume $volume exceeds sandbox limit 32768", location)
+        }
+
+        for ((dx, x) in xs.withIndex()) for ((dy, y) in ys.withIndex()) for ((dz, z) in zs.withIndex()) {
+            val source = world.block(BlockPos(x, y, z))
+            if (mode == "masked" && source == null) continue
+            val target = world.block(BlockPos(dest.x + dx, dest.y + dy, dest.z + dz))
+            if (!sameBlock(source, target)) return false to index + 11
+        }
+        return true to index + 11
+    }
+
+    private fun sameBlock(left: SandboxBlock?, right: SandboxBlock?): Boolean {
+        if (left == null || left.id == ResourceLocation("minecraft", "air")) {
+            return right == null || right.id == ResourceLocation("minecraft", "air")
+        }
+        if (right == null || right.id == ResourceLocation("minecraft", "air")) return false
+        return left.id == right.id && left.properties == right.properties && left.nbt == right.nbt
+    }
 
     private fun evaluateScoreCondition(tokens: List<CommandToken>, index: Int, location: SourceLocation?): Boolean {
         requireSizeFrom(tokens, index, 5, "execute if score <target> <objective> matches <range>", location)

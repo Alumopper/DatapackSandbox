@@ -48,6 +48,7 @@ class DpsCompleterTest {
         assertSuggests(completer, "advancement grant Steve ", "everything")
         assertSuggests(completer, "execute store result ", "score")
         assertSuggests(completer, "execute if ", "predicate")
+        assertSuggests(completer, "execute if ", "blocks")
         assertSuggests(completer, "execute unless ", "loaded")
         assertSuggests(completer, "execute if dimension ", "minecraft:overworld")
         assertSuggests(completer, "execute if biome 0 64 0 ", "minecraft:plains")
