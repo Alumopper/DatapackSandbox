@@ -53,7 +53,7 @@ run continues. Use `--unsupported error`, manifest `"unsupported": "error"`, or
 | `help` | Partial | Reports command roots and basic sandbox help text. |
 | `item` | Partial | `replace entity|block ... with <item> [count]`; `modify entity|block ... <modifier>` applies common item modifier functions (`set_components`, `set_custom_data`, `set_count`). |
 | `kick` | Unsupported | Network sessions are not simulated. |
-| `kill` | Supported | Removes selected sandbox entities. |
+| `kill` | Supported | Removes selected sandbox entities; player execution contexts fire `killed_entity` advancement events for non-player targets. |
 | `list` | Supported | Reports sandbox players and UUIDs. |
 | `locate` | Partial | Accepts `biome`, `structure`, `poi`; reports no result in the void world instead of querying worldgen. |
 | `loot` | Partial | Supports `give`, `insert`, `spawn`, `replace entity`, `replace block`; sources include `loot <table>`, `fish <table> <pos> [tool]`, `mine <pos> [tool]`, and `kill <target>` when entities declare `DeathLootTable`. |

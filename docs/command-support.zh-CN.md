@@ -46,7 +46,7 @@
 | `help` | 部分支持 | 输出命令根节点和基础沙盒帮助。 |
 | `item` | 部分支持 | `replace entity|block ... with <item> [count]`；`modify entity|block ... <modifier>` 会应用常用 item modifier 函数（`set_components`、`set_custom_data`、`set_count`）。 |
 | `kick` | 未支持 | 不模拟网络会话。 |
-| `kill` | 支持 | 移除选中的沙盒实体。 |
+| `kill` | 支持 | 移除选中的沙盒实体；玩家执行上下文会为非玩家目标触发 `killed_entity` advancement 事件。 |
 | `list` | 支持 | 报告沙盒玩家及 UUID。 |
 | `locate` | 部分支持 | 接受 `biome`、`structure`、`poi`；虚空世界中报告没有结果。 |
 | `loot` | 部分支持 | 支持 `give`、`insert`、`spawn`、`replace entity`、`replace block`；source 支持 `loot <table>`、`fish <table> <pos> [tool]`、`mine <pos> [tool]`，以及实体声明 `DeathLootTable` 时的 `kill <target>`。 |

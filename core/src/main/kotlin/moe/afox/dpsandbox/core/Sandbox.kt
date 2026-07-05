@@ -1860,6 +1860,11 @@ class DatapackSandbox(
     private fun executeKill(tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext) {
         val targetToken = tokens.getOrNull(1)?.text ?: "@s"
         val selected = EntitySelectors.select(world, targetToken, context, location).toSet()
+        (context.entity as? SandboxPlayer)?.let { player ->
+            selected.filterNot { it is SandboxPlayer }.forEach { target ->
+                advancements.handle(PlayerEvent(player.name, "killed_entity", entity = target))
+            }
+        }
         world.entities.removeIf { it in selected }
     }
 
