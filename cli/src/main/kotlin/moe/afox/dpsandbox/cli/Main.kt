@@ -214,6 +214,16 @@ private fun ManifestResult.toReportJson(): JsonObject =
         json.add("messages", stringArray(messages))
         json.addProperty("outputCount", outputs.size)
         json.addProperty("traceCount", traces.size)
+        json.addProperty("eventTraceCount", eventTraces.size)
+        json.add("outputs", JsonArray().also { outputsJson ->
+            outputs.forEach { outputsJson.add(it.toJson()) }
+        })
+        json.add("traces", JsonArray().also { tracesJson ->
+            traces.forEach { tracesJson.add(it.toJson()) }
+        })
+        json.add("eventTraces", JsonArray().also { eventTracesJson ->
+            eventTraces.forEach { eventTracesJson.add(it.toJson()) }
+        })
         json.add("attempts", JsonArray().also { attemptsJson ->
             attempts.forEach { attemptsJson.add(it.toReportJson()) }
         })
@@ -227,6 +237,16 @@ private fun ManifestAttemptResult.toReportJson(): JsonObject =
         json.add("messages", stringArray(messages))
         json.addProperty("outputCount", outputs.size)
         json.addProperty("traceCount", traces.size)
+        json.addProperty("eventTraceCount", eventTraces.size)
+        json.add("outputs", JsonArray().also { outputsJson ->
+            outputs.forEach { outputsJson.add(it.toJson()) }
+        })
+        json.add("traces", JsonArray().also { tracesJson ->
+            traces.forEach { tracesJson.add(it.toJson()) }
+        })
+        json.add("eventTraces", JsonArray().also { eventTracesJson ->
+            eventTraces.forEach { eventTracesJson.add(it.toJson()) }
+        })
         resourceSummary?.let { json.add("resources", it.toReportJson()) }
     }
 

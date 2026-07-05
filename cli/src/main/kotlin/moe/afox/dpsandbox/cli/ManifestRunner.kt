@@ -13,6 +13,7 @@ import moe.afox.dpsandbox.core.JsonValues
 import moe.afox.dpsandbox.core.OutputEvent
 import moe.afox.dpsandbox.core.PlayerEvent
 import moe.afox.dpsandbox.core.PlayerEventTraceAssertions
+import moe.afox.dpsandbox.core.PlayerEventTraceEvent
 import moe.afox.dpsandbox.core.PlayerEventTraceExpectation
 import moe.afox.dpsandbox.core.PlayerInput
 import moe.afox.dpsandbox.core.PredicateContext
@@ -44,6 +45,7 @@ data class ManifestResult(
     val messages: List<String>,
     val outputs: List<OutputEvent> = emptyList(),
     val traces: List<CommandTraceEvent> = emptyList(),
+    val eventTraces: List<PlayerEventTraceEvent> = emptyList(),
     val attempts: List<ManifestAttemptResult> = emptyList(),
 )
 
@@ -54,6 +56,7 @@ data class ManifestAttemptResult(
     val messages: List<String>,
     val outputs: List<OutputEvent> = emptyList(),
     val traces: List<CommandTraceEvent> = emptyList(),
+    val eventTraces: List<PlayerEventTraceEvent> = emptyList(),
     val resourceSummary: ManifestResourceSummary? = null,
 )
 
@@ -167,6 +170,7 @@ object ManifestRunner {
             messages = messages,
             outputs = attempts.flatMap { it.outputs },
             traces = attempts.flatMap { it.traces },
+            eventTraces = attempts.flatMap { it.eventTraces },
             attempts = attempts,
         )
     }
@@ -244,6 +248,7 @@ object ManifestRunner {
             messages = failures,
             outputs = sandbox.world.outputs.toList(),
             traces = sandbox.world.traces.toList(),
+            eventTraces = sandbox.world.playerEventTraces.toList(),
             resourceSummary = resourceSummary,
         )
     }

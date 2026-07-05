@@ -197,10 +197,13 @@ class CheckCommandTest {
               "packs": ["$pack"],
               "steps": [
                 { "command": "scoreboard objectives add ticks dummy" },
-                { "command": "scoreboard players set #clock ticks 5" }
+                { "command": "scoreboard players set #clock ticks 5" },
+                { "command": "say check report ok" },
+                { "event": { "player": "Steve", "type": "key_input", "key": "key.jump", "action": "press" } }
               ],
               "assertions": [
-                { "score": { "target": "#clock", "objective": "ticks", "equals": 5 } }
+                { "score": { "target": "#clock", "objective": "ticks", "equals": 5 } },
+                { "eventTrace": { "player": "Steve", "type": "key_input", "success": true, "count": 1 } }
               ]
             }
             """.trimIndent(),
@@ -214,8 +217,16 @@ class CheckCommandTest {
         assertTrue("report written: $reportFile" in output, output)
         val report = JsonParser.parseString(Files.readString(reportFile)).asJsonArray[0].asJsonObject
         assertTrue(report.get("passed").asBoolean)
+        assertTrue(report.get("outputCount").asInt == 1)
+        assertTrue(report.get("traceCount").asInt >= 3)
+        assertTrue(report.get("eventTraceCount").asInt == 1)
+        assertTrue(report.getAsJsonArray("outputs")[0].asJsonObject.get("text").asString == "<Server> check report ok")
+        assertTrue(report.getAsJsonArray("eventTraces")[0].asJsonObject.get("type").asString == "key_input")
         assertTrue(report.getAsJsonArray("attempts")[0].asJsonObject.get("version").asString == "26.1.2")
-        assertTrue(report.getAsJsonArray("attempts")[0].asJsonObject.getAsJsonObject("resources").get("functions").asInt > 0)
+        val attempt = report.getAsJsonArray("attempts")[0].asJsonObject
+        assertTrue(attempt.get("eventTraceCount").asInt == 1)
+        assertTrue(attempt.getAsJsonArray("eventTraces")[0].asJsonObject.get("player").asString == "Steve")
+        assertTrue(attempt.getAsJsonObject("resources").get("functions").asInt > 0)
     }
 
     @Test
