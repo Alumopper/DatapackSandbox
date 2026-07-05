@@ -193,7 +193,8 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar run --version 26.2 \
 ```
 
 For quick score, storage, player, item, entity-count, trace, warning, and output checks,
-`--assert` also accepts compact shorthands:
+`--assert` also accepts compact shorthands. `--assert-file` can contain JSON
+assertions or one shorthand per non-empty, non-comment line:
 
 ```bash
 java -jar cli/build/libs/datapack-sandbox-cli.jar run --version 26.2 \

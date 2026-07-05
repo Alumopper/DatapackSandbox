@@ -630,6 +630,38 @@ class RunCommandTest {
     }
 
     @Test
+    fun `run reads shorthand assertions from text files`() {
+        val assertionsFile = Files.createTempFile("dps-cli-assertions", ".txt")
+        Files.writeString(
+            assertionsFile,
+            """
+            # generated assertions
+            score:#line_assert:runs=3
+            score:#line_assert:runs>=2
+
+            player:Steve?
+            output:line assert ok
+            """.trimIndent(),
+        )
+
+        val output = captureStdout {
+            main(
+                arrayOf(
+                    "run",
+                    "--version",
+                    "26.2",
+                    "--mcfunction-text",
+                    "scoreboard objectives add runs dummy\nscoreboard players set #line_assert runs 3\nsay line assert ok",
+                    "--assert-file",
+                    assertionsFile.toString(),
+                ),
+            )
+        }
+
+        assertTrue("OK version=26.2" in output, output)
+    }
+
+    @Test
     fun `run can print and write snapshot diff`() {
         val diffFile = Files.createTempFile("dps-cli-snapshot-diff", ".json")
 

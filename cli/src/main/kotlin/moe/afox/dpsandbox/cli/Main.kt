@@ -721,8 +721,20 @@ class RunCommand : CliktCommand(name = "run") {
     }
 
     private fun parseAssertionFile(file: Path): List<JsonObject> {
+        val text = Files.readString(file, StandardCharsets.UTF_8)
+        val trimmed = text.trim()
+        if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) {
+            return text.lines().mapIndexedNotNull { index, raw ->
+                val line = raw.trim()
+                if (line.isEmpty() || line.startsWith("#")) {
+                    null
+                } else {
+                    parseInlineAssertion(line, "--assert-file $file:${index + 1}")
+                }
+            }
+        }
         val parsed = try {
-            JsonParser.parseString(Files.readString(file, StandardCharsets.UTF_8))
+            JsonParser.parseString(text)
         } catch (error: Exception) {
             throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Invalid JSON for --assert-file $file", cause = error)
         }
