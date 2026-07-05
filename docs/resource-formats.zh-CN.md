@@ -239,6 +239,8 @@ docs/dps-manifest.schema.json
 
 `snapshot` 和 `trace` 步骤可以写 `true` 记录 debug 输出事件，可以写相对文件路径保存 artifact，也可以写成包含 `file` 和 `output` 的对象。`reset` 会保留已加载的数据包，但把当前世界替换为全新的 sparse world，并重新创建默认玩家 `Steve`。
 
+如果某个步骤本来就应该失败，可以在该步骤上加 `"allowFailure": true`，然后用 `diagnostic` 断言检查错误码、命令文本和错误消息。
+
 `assertions` 除了既有 score、storage、player、block、entityCount、advancement、predicate、loot 和 output 外，也支持：
 
 ```json
@@ -257,4 +259,8 @@ docs/dps-manifest.schema.json
 { "eventTrace": { "player": "Steve", "type": "damage", "success": true, "criterion": "fell", "count": 1 } }
 ```
 
-`player` 断言还可检查 dimension、game mode、health、food、selected slot、recipe、effect、stat、position、last input 和 spawn point。`team`、`bossbar` 断言会检查对应运行时状态。`item` 断言可按玩家、slot、id、count、components path 和 NBT path 检查背包结果。`trace` 断言可按 command/root/contains/success/count/source file/function stack 检查命令执行链。`eventTrace` 断言可按 player、type、success、advancement、criterion 和 count 检查玩家事件调试链路。
+```json
+{ "diagnostic": { "step": 1, "code": "COMMAND_ERROR", "contains": "Unknown scoreboard objective", "count": 1 } }
+```
+
+`player` 断言还可检查 dimension、game mode、health、food、selected slot、recipe、effect、stat、position、last input 和 spawn point。`team`、`bossbar` 断言会检查对应运行时状态。`item` 断言可按玩家、slot、id、count、components path 和 NBT path 检查背包结果。`trace` 断言可按 command/root/contains/success/count/source file/function stack 检查命令执行链。`eventTrace` 断言可按 player、type、success、advancement、criterion 和 count 检查玩家事件调试链路。`diagnostic` 断言可按 step、version、code、command、root、message substring 和 count 检查预期失败。

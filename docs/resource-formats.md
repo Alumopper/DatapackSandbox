@@ -95,14 +95,17 @@ relative file path string to write an artifact, or an object with `file` and
 `output`. `reset` replaces the current world with a fresh sparse world and the
 default `Steve` player while keeping the loaded packs.
 
+Add `"allowFailure": true` to a step when the failure itself is expected and
+should be asserted later with a `diagnostic` assertion.
+
 `world` can predefine sparse blocks/entities/players, scoreboards, storage,
 gamerules, time/weather, seed/difficulty/default game mode, world/player spawn
 points, forced chunks, biome overrides, teams, bossbars, and scoped Java save
 imports.
 
 Assertions support score, storage, world, player, team, bossbar, block,
-entityCount, advancement, predicate, loot, output, item, trace, and event trace
-checks:
+entityCount, advancement, predicate, loot, output, item, trace, event trace, and
+diagnostic checks:
 
 ```json
 { "world": { "difficulty": "hard", "forcedChunk": [0, 0] } }
@@ -120,13 +123,19 @@ checks:
 { "eventTrace": { "player": "Steve", "type": "damage", "success": true, "criterion": "fell", "count": 1 } }
 ```
 
+```json
+{ "diagnostic": { "step": 1, "code": "COMMAND_ERROR", "contains": "Unknown scoreboard objective", "count": 1 } }
+```
+
 `player` assertions can also check dimension, game mode, health, food, selected
 slot, recipe, effect, stat, position, last input, and spawn point. `team` and
 `bossbar` assertions inspect their stored runtime state. `item` assertions can
 check player inventory by slot, id, count, components path, and NBT path.
 `trace` assertions can check command/root/contains, success, count, source file,
 and function stack. `eventTrace` assertions check player event dispatch by
-player, type, success, advancement id, criterion, and count.
+player, type, success, advancement id, criterion, and count. `diagnostic`
+assertions check expected step failures by step, version, code, command, root,
+message substring, and count.
 
 ## Raw JSON Resources and Tags
 

@@ -62,10 +62,30 @@ class ManifestRunnerTest {
         assertEquals("#/\$defs/stepOutput", stepProperties.getAsJsonObject("snapshot").get("\$ref").asString)
         assertEquals("#/\$defs/stepOutput", stepProperties.getAsJsonObject("trace").get("\$ref").asString)
         assertEquals("boolean", stepProperties.getAsJsonObject("reset").get("type").asString)
+        assertEquals("boolean", stepProperties.getAsJsonObject("allowFailure").get("type").asString)
         assertEquals("boolean", stepOutputVariants[0].asJsonObject.get("type").asString)
         assertEquals("string", stepOutputVariants[1].asJsonObject.get("type").asString)
         assertEquals("string", outputObjectProperties.getAsJsonObject("file").get("type").asString)
         assertEquals("boolean", outputObjectProperties.getAsJsonObject("output").get("type").asString)
+    }
+
+    @Test
+    fun `manifest schema documents diagnostic assertions`() {
+        val schema = JsonParser.parseString(Files.readString(Path.of("../docs/dps-manifest.schema.json"))).asJsonObject
+        val defs = schema.getAsJsonObject("\$defs")
+        val assertion = defs.getAsJsonObject("assertion")
+        val assertionRequired = assertion.getAsJsonArray("oneOf").map {
+            it.asJsonObject.getAsJsonArray("required").single().asString
+        }
+        val diagnosticRef = assertion.getAsJsonObject("properties").getAsJsonObject("diagnostic")
+        val diagnosticProperties = defs.getAsJsonObject("diagnosticAssertion").getAsJsonObject("properties")
+
+        assertTrue("diagnostic" in assertionRequired)
+        assertEquals("#/\$defs/diagnosticAssertion", diagnosticRef.get("\$ref").asString)
+        assertEquals("integer", diagnosticProperties.getAsJsonObject("step").get("type").asString)
+        assertEquals("string", diagnosticProperties.getAsJsonObject("code").get("type").asString)
+        assertEquals("string", diagnosticProperties.getAsJsonObject("contains").get("type").asString)
+        assertEquals("integer", diagnosticProperties.getAsJsonObject("count").get("type").asString)
     }
 
     @Test
@@ -455,6 +475,44 @@ class ManifestRunnerTest {
         assertTrue("\"command\": \"scoreboard players set #before_reset runs 2\"" in trace, trace)
         assertTrue(result.outputs.any { it.command == "manifest snapshot" && it.channel == "debug" && "\"Steve\"" in it.text })
         assertTrue(result.outputs.any { it.command == "manifest trace" && it.channel == "debug" && it.text == "1" })
+    }
+
+    @Test
+    fun `allows expected manifest diagnostics to be asserted`() {
+        val dir = Files.createTempDirectory("dps-diagnostic-manifest")
+        val pack = Path.of("../core/src/test/resources/packs/counter").toAbsolutePath().normalize().toString().replace("\\", "\\\\")
+        val manifest = dir.resolve("diagnostic.dps.json")
+        Files.writeString(
+            manifest,
+            """
+            {
+              "version": "26.1.2",
+              "packs": ["$pack"],
+              "steps": [
+                { "command": "scoreboard players set #bad missing 1", "allowFailure": true },
+                { "command": "say after expected diagnostic" }
+              ],
+              "assertions": [
+                {
+                  "diagnostic": {
+                    "step": 1,
+                    "code": "COMMAND_ERROR",
+                    "command": "scoreboard players set #bad missing 1",
+                    "contains": "Unknown scoreboard objective 'missing'",
+                    "count": 1
+                  }
+                },
+                { "trace": { "command": "scoreboard players set #bad missing 1", "success": false, "count": 1 } },
+                { "trace": { "command": "say after expected diagnostic", "success": true, "count": 1 } },
+                { "output": { "command": "say", "contains": "after expected diagnostic", "count": 1 } }
+              ]
+            }
+            """.trimIndent(),
+        )
+
+        val result = ManifestRunner.run(manifest)
+
+        assertTrue(result.passed, result.messages.joinToString())
     }
 
     @Test

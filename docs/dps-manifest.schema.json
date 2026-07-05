@@ -357,6 +357,7 @@
         "snapshot": { "$ref": "#/$defs/stepOutput" },
         "trace": { "$ref": "#/$defs/stepOutput" },
         "reset": { "type": "boolean" },
+        "allowFailure": { "type": "boolean" },
         "loot": { "type": "object" }
       }
     },
@@ -392,6 +393,7 @@
         { "required": ["item"] },
         { "required": ["trace"] },
         { "required": ["eventTrace"] },
+        { "required": ["diagnostic"] },
         { "required": ["output"] }
       ],
       "properties": {
@@ -409,6 +411,7 @@
         "item": { "$ref": "#/$defs/itemAssertion" },
         "trace": { "$ref": "#/$defs/traceAssertion" },
         "eventTrace": { "$ref": "#/$defs/eventTraceAssertion" },
+        "diagnostic": { "$ref": "#/$defs/diagnosticAssertion" },
         "output": { "type": "object" }
       }
     },
@@ -567,6 +570,20 @@
         "success": { "type": "boolean" },
         "advancement": { "type": "string" },
         "criterion": { "type": "string" },
+        "count": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "diagnosticAssertion": {
+      "type": "object",
+      "properties": {
+        "step": { "type": "integer", "minimum": 1 },
+        "version": { "type": "string" },
+        "code": { "type": "string" },
+        "command": { "type": "string" },
+        "root": { "type": "string" },
+        "message": { "type": "string" },
+        "contains": { "type": "string" },
         "count": { "type": "integer", "minimum": 0 }
       },
       "additionalProperties": false

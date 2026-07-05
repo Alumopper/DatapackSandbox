@@ -63,6 +63,15 @@ object ManifestRunner {
         val packs: List<Path>,
     )
 
+    private data class ManifestDiagnostic(
+        val step: Int?,
+        val version: String,
+        val code: DiagnosticCode,
+        val message: String,
+        val command: String?,
+        val root: String?,
+    )
+
     fun discover(inputs: List<Path>): List<Path> {
         val manifests = mutableListOf<Path>()
         inputs.forEach { input ->
@@ -113,8 +122,11 @@ object ManifestRunner {
     }
 
     internal fun evaluateAssertions(assertions: List<JsonObject>, sandbox: DatapackSandbox): List<String> =
+        evaluateAssertions(assertions, sandbox, emptyList())
+
+    private fun evaluateAssertions(assertions: List<JsonObject>, sandbox: DatapackSandbox, diagnostics: List<ManifestDiagnostic>): List<String> =
         assertions.flatMapIndexed { index, assertion ->
-            evaluateAssertion(assertion, sandbox).map { "assertion ${index + 1}: $it" }
+            evaluateAssertion(assertion, sandbox, diagnostics).map { "assertion ${index + 1}: $it" }
         }
 
     private fun runOne(
@@ -127,23 +139,29 @@ object ManifestRunner {
         var sandbox = createSandbox(config.version, config.packs, unsupportedFeatureMode = unsupportedMode)
         ManifestWorldSetup.apply(json.getAsJsonObject("world"), sandbox, path.parent ?: Path.of("."))
         val beforeSnapshot = sandbox.snapshotJson()
+        val diagnostics = mutableListOf<ManifestDiagnostic>()
         json.manifestArray("steps").forEachIndexed { index, step ->
             if (!step.isJsonObject) {
                 throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Manifest steps must be objects: $path")
             }
+            val stepObject = step.asJsonObject
             try {
-                sandbox = runStep(step.asJsonObject, sandbox, options, path.parent ?: Path.of("."))
+                sandbox = runStep(stepObject, sandbox, options, path.parent ?: Path.of("."))
             } catch (error: SandboxException) {
+                if (stepObject.get("allowFailure")?.asBoolean == true) {
+                    diagnostics += manifestDiagnostic(index + 1, config.version, error, sandbox)
+                    return@forEachIndexed
+                }
                 throw SandboxException(error.code, "Step ${index + 1} failed for ${config.version}: ${error.message}", error.location, error.version, error.command, error)
             }
         }
 
         val failures = mutableListOf<String>()
-        json.manifestArray("assertions").forEach { assertion ->
+        json.manifestArray("assertions").forEachIndexed { index, assertion ->
             if (!assertion.isJsonObject) {
-                failures += "Assertion must be an object"
+                failures += "assertion ${index + 1}: Assertion must be an object"
             } else {
-                failures += evaluateAssertion(assertion.asJsonObject, sandbox)
+                failures += evaluateAssertion(assertion.asJsonObject, sandbox, diagnostics).map { "assertion ${index + 1}: $it" }
             }
         }
         if (failures.isNotEmpty() && options.snapshotOnFail) {
@@ -159,6 +177,19 @@ object ManifestRunner {
             passed = failures.isEmpty(),
             messages = failures,
             outputs = sandbox.world.outputs.toList(),
+        )
+    }
+
+    private fun manifestDiagnostic(step: Int, version: String, error: SandboxException, sandbox: DatapackSandbox): ManifestDiagnostic {
+        val trace = sandbox.world.traces.lastOrNull { it.errorCode == error.code && it.errorMessage == error.message }
+        val command = error.command ?: trace?.command
+        return ManifestDiagnostic(
+            step = step,
+            version = error.version ?: version,
+            code = error.code,
+            message = error.message,
+            command = command,
+            root = command?.substringBefore(' ') ?: trace?.root,
         )
     }
 
@@ -339,7 +370,7 @@ object ManifestRunner {
         sandbox.world.setBlock(pos, sandboxBlock)
     }
 
-    private fun evaluateAssertion(assertion: JsonObject, sandbox: DatapackSandbox): List<String> {
+    private fun evaluateAssertion(assertion: JsonObject, sandbox: DatapackSandbox, diagnostics: List<ManifestDiagnostic> = emptyList()): List<String> {
         val failures = mutableListOf<String>()
         when {
             assertion.has("score") -> {
@@ -497,10 +528,68 @@ object ManifestRunner {
             assertion.has("output") -> {
                 failures += ManifestOutputAssertions.evaluate(assertion.getAsJsonObject("output"), sandbox)
             }
+            assertion.has("diagnostic") -> {
+                failures += evaluateDiagnosticAssertion(assertion.getAsJsonObject("diagnostic"), diagnostics, sandbox)
+            }
             else -> failures += "Unknown assertion kind: ${assertion.keySet().joinToString()}"
         }
         return failures
     }
+
+    private fun evaluateDiagnosticAssertion(diagnostic: JsonObject, diagnostics: List<ManifestDiagnostic>, sandbox: DatapackSandbox): List<String> {
+        val records = diagnostics.ifEmpty {
+            sandbox.world.traces
+                .filter { it.errorCode != null }
+                .map {
+                    ManifestDiagnostic(
+                        step = null,
+                        version = sandbox.profile.id,
+                        code = it.errorCode ?: DiagnosticCode.COMMAND_ERROR,
+                        message = it.errorMessage ?: it.errorCode?.name.orEmpty(),
+                        command = it.command,
+                        root = it.root,
+                    )
+                }
+        }
+        val expectedCode = diagnostic.manifestString("code")?.uppercase()
+        val expectedCommand = diagnostic.manifestString("command")
+        val expectedRoot = diagnostic.manifestString("root")
+        val expectedMessage = diagnostic.manifestString("message")
+        val expectedContains = diagnostic.manifestString("contains")
+        val expectedVersion = diagnostic.manifestString("version")
+        val expectedStep = diagnostic.get("step")?.asInt
+        val matches = records.filter { record ->
+            (expectedCode == null || record.code.name == expectedCode) &&
+                (expectedCommand == null || record.command == expectedCommand) &&
+                (expectedRoot == null || record.root == expectedRoot) &&
+                (expectedMessage == null || record.message == expectedMessage) &&
+                (expectedContains == null || expectedContains in record.message || expectedContains in (record.command ?: "")) &&
+                (expectedVersion == null || record.version == expectedVersion) &&
+                (expectedStep == null || record.step == expectedStep)
+        }
+        diagnostic.get("count")?.let { expected ->
+            if (matches.size != expected.asInt) {
+                return listOf("diagnostic ${describeDiagnosticExpectation(diagnostic)} expected count ${expected.asInt} but was ${matches.size}")
+            }
+            return emptyList()
+        }
+        return if (matches.isEmpty()) {
+            listOf("diagnostic ${describeDiagnosticExpectation(diagnostic)} did not match any recorded diagnostic")
+        } else {
+            emptyList()
+        }
+    }
+
+    private fun describeDiagnosticExpectation(diagnostic: JsonObject): String =
+        listOfNotNull(
+            diagnostic.get("step")?.let { "step=${it.asInt}" },
+            diagnostic.manifestString("version")?.let { "version=$it" },
+            diagnostic.manifestString("code")?.let { "code=$it" },
+            diagnostic.manifestString("command")?.let { "command=$it" },
+            diagnostic.manifestString("root")?.let { "root=$it" },
+            diagnostic.manifestString("message")?.let { "message=$it" },
+            diagnostic.manifestString("contains")?.let { "contains=$it" },
+        ).ifEmpty { listOf("<any diagnostic>") }.joinToString(", ")
 
     private fun evaluateWorldAssertion(world: JsonObject, sandbox: DatapackSandbox): List<String> {
         val failures = mutableListOf<String>()
