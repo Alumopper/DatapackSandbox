@@ -194,6 +194,21 @@ class SandboxQuickTestTest {
     }
 
     @Test
+    fun `output assertion failures include actual output candidates`() {
+        val error = assertFailsWith<SandboxQuickTestAssertionError> {
+            SandboxQuickTest.singleFunctionText("say actual candidate", version = "26.2")
+                .function()
+                .assertOutput(command = "say", contains = "missing candidate")
+                .requirePassed()
+        }
+        val message = error.message.orEmpty()
+
+        assertTrue("actual outputs:" in message, message)
+        assertTrue("command=say" in message, message)
+        assertTrue("<Server> actual candidate" in message, message)
+    }
+
+    @Test
     fun `quick tests can get and assert structured traces`() {
         val scenario = SandboxQuickTest.singleFunctionText(
             """

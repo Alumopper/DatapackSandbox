@@ -113,10 +113,10 @@ data class OutputExpectation(
     fun failures(outputs: List<OutputEvent>, label: String = "output"): List<String> {
         val matches = matching(outputs)
         if (count != null && matches.size != count) {
-            return listOf("$label expected $count match(es) but found ${matches.size}: ${describe()}")
+            return listOf("$label expected $count match(es) but found ${matches.size}: ${describe()}; ${actualOutputs(outputs)}")
         }
         if (count == null && matches.isEmpty()) {
-            return listOf("$label expected at least one match: ${describe()}")
+            return listOf("$label expected at least one match: ${describe()}; ${actualOutputs(outputs)}")
         }
         return emptyList()
     }
@@ -148,6 +148,20 @@ data class OutputExpectation(
     }
 
     private fun quote(value: String): String = "'$value'"
+
+    private fun actualOutputs(outputs: List<OutputEvent>): String {
+        if (outputs.isEmpty()) return "actual outputs: <none>"
+        val rendered = outputs.take(5).mapIndexed { index, output ->
+            "#${index + 1} command=${output.command} channel=${output.channel} targets=${output.targets.sorted()} text=${quote(output.text.truncateForAssertion())}"
+        }
+        val suffix = if (outputs.size > rendered.size) "; ... +${outputs.size - rendered.size} more" else ""
+        return "actual outputs: ${rendered.joinToString("; ")}$suffix"
+    }
+
+    private fun String.truncateForAssertion(): String =
+        replace("\r", "\\r")
+            .replace("\n", "\\n")
+            .let { if (it.length <= 160) it else it.take(157) + "..." }
 }
 
 private val OutputWhitespace = Regex("\\s+")

@@ -175,7 +175,8 @@ slot, recipe, effect, stat, position, last input, and spawn point. `team` and
 check player inventory by slot, id, count, components path, and NBT path.
 `output` assertions can check command/channel/targets, text/contains,
 whitespace-normalized text/contains, payload path/value, segment style, count,
-and one-based `order`.
+and one-based `order`. When an output assertion misses, the failure message
+includes a bounded list of actual output candidates.
 `trace` assertions can check command/root/contains, success, count, source file,
 and function stack. `eventTrace` assertions check player event dispatch by
 player, type, success, advancement id, criterion, and count. `diagnostic`
