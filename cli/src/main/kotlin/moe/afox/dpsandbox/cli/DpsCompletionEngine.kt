@@ -35,14 +35,20 @@ class DpsCompletionEngine(private val sandbox: () -> DatapackSandbox) {
             first == "summon" && context.wordIndex == 1 -> box.profile.registryView.entityTypes.mapResource("entity types")
             first == "kill" && context.wordIndex == 1 -> entityTargets().suggest("entities/selectors")
             first == "advancement" -> advancementSuggestions(words, context)
+            first == "attribute" -> attributeSuggestions(words, context)
             first == "schedule" -> scheduleSuggestions(context)
             first == "bossbar" -> bossbarSuggestions(words, context)
             first == "clear" -> clearSuggestions(context)
             first == "clone" -> cloneSuggestions(words, context)
             first == "damage" -> damageSuggestions(context)
+            first == "defaultgamemode" -> if (context.wordIndex == 1) gameModes.suggest("game modes") else emptyList()
+            first == "difficulty" -> if (context.wordIndex == 1) difficulties.suggest("difficulties") else emptyList()
             first == "effect" -> effectSuggestions(context)
             first == "enchant" -> enchantSuggestions(context)
             first in setOf("experience", "xp") -> experienceSuggestions(context)
+            first == "fillbiome" -> fillBiomeSuggestions(words, context)
+            first == "forceload" -> forceloadSuggestions(context)
+            first == "gamemode" -> gamemodeSuggestions(context)
             first == "gamerule" -> gameruleSuggestions(context)
             first == "give" -> giveSuggestions(context)
             first == "item" -> itemSuggestions(words, context)
@@ -50,9 +56,14 @@ class DpsCompletionEngine(private val sandbox: () -> DatapackSandbox) {
             first == "recipe" -> recipeSuggestions(context)
             first == "ride" -> rideSuggestions(context)
             first == "rotate" -> rotateSuggestions(context)
+            first == "spawnpoint" -> spawnpointSuggestions(context)
+            first == "spectate" -> spectateSuggestions(context)
+            first == "spreadplayers" -> spreadPlayersSuggestions(context)
             first == "team" -> teamSuggestions(words, context)
             first == "time" -> timeSuggestions(words, context)
+            first == "trigger" -> triggerSuggestions(context)
             first == "weather" -> weatherSuggestions(context)
+            first == "worldborder" -> worldborderSuggestions(words, context)
             else -> emptyList()
         }
         return context.filter(options)
@@ -230,6 +241,16 @@ class DpsCompletionEngine(private val sandbox: () -> DatapackSandbox) {
             else -> emptyList()
         }
 
+    private fun attributeSuggestions(words: List<String>, context: CompletionContext): List<CompletionSuggestion> =
+        when {
+            context.wordIndex == 1 -> entityTargets().suggest("entities/selectors", appendSpace = true)
+            context.wordIndex == 2 -> attributes.suggest("attributes", appendSpace = true)
+            context.wordIndex == 3 -> listOf("get", "base", "modifier").suggest("attribute actions", appendSpace = true)
+            context.wordIndex == 4 && words.getOrNull(3) == "base" -> listOf("get", "set", "reset").suggest("attribute base actions", appendSpace = true)
+            context.wordIndex == 4 && words.getOrNull(3) == "modifier" -> listOf("add", "remove", "value").suggest("attribute modifier actions", appendSpace = true)
+            else -> emptyList()
+        }
+
     private fun bossbarSuggestions(words: List<String>, context: CompletionContext): List<CompletionSuggestion> =
         when {
             context.wordIndex == 1 -> listOf("add", "remove", "list", "get", "set").suggest("bossbar actions", appendSpace = true)
@@ -278,6 +299,28 @@ class DpsCompletionEngine(private val sandbox: () -> DatapackSandbox) {
         when (context.wordIndex) {
             1 -> playerTargets().suggest("players/selectors", appendSpace = true)
             2 -> sandbox().profile.registryView.enchantments.mapResource("enchantments")
+            else -> emptyList()
+        }
+
+    private fun fillBiomeSuggestions(words: List<String>, context: CompletionContext): List<CompletionSuggestion> =
+        when (context.wordIndex) {
+            7 -> sandbox().profile.registryView.biomes.mapResource("biomes")
+            8 -> listOf("replace").suggest("fillbiome filters", appendSpace = true)
+            9 -> if (words.getOrNull(8) == "replace") sandbox().profile.registryView.biomes.mapResource("biomes") else emptyList()
+            else -> emptyList()
+        }
+
+    private fun forceloadSuggestions(context: CompletionContext): List<CompletionSuggestion> =
+        when (context.wordIndex) {
+            1 -> listOf("add", "remove", "query").suggest("forceload actions", appendSpace = true)
+            2 -> if (context.words.getOrNull(1) == "remove") listOf("all").suggest("forceload targets") else emptyList()
+            else -> emptyList()
+        }
+
+    private fun gamemodeSuggestions(context: CompletionContext): List<CompletionSuggestion> =
+        when (context.wordIndex) {
+            1 -> gameModes.suggest("game modes", appendSpace = true)
+            2 -> playerTargets().suggest("players/selectors")
             else -> emptyList()
         }
 
@@ -344,6 +387,23 @@ class DpsCompletionEngine(private val sandbox: () -> DatapackSandbox) {
     private fun rotateSuggestions(context: CompletionContext): List<CompletionSuggestion> =
         if (context.wordIndex == 1) entityTargets().suggest("entities/selectors", appendSpace = true) else emptyList()
 
+    private fun spawnpointSuggestions(context: CompletionContext): List<CompletionSuggestion> =
+        if (context.wordIndex == 1) playerTargets().suggest("players/selectors", appendSpace = true) else emptyList()
+
+    private fun spectateSuggestions(context: CompletionContext): List<CompletionSuggestion> =
+        when (context.wordIndex) {
+            1 -> entityTargets().suggest("entities/selectors", appendSpace = true)
+            2 -> playerTargets().suggest("players/selectors")
+            else -> emptyList()
+        }
+
+    private fun spreadPlayersSuggestions(context: CompletionContext): List<CompletionSuggestion> =
+        when (context.wordIndex) {
+            5 -> booleans.suggest("booleans", appendSpace = true)
+            6 -> entityTargets().suggest("entities/selectors")
+            else -> emptyList()
+        }
+
     private fun teamSuggestions(words: List<String>, context: CompletionContext): List<CompletionSuggestion> =
         when (context.wordIndex) {
             1 -> listOf("add", "remove", "list", "join", "leave", "empty", "modify").suggest("team actions", appendSpace = true)
@@ -363,8 +423,23 @@ class DpsCompletionEngine(private val sandbox: () -> DatapackSandbox) {
             else -> emptyList()
         }
 
+    private fun triggerSuggestions(context: CompletionContext): List<CompletionSuggestion> =
+        when (context.wordIndex) {
+            1 -> sandbox().world.objectives.keys.suggest("objectives", appendSpace = true)
+            2 -> listOf("add", "set").suggest("trigger actions", appendSpace = true)
+            else -> emptyList()
+        }
+
     private fun weatherSuggestions(context: CompletionContext): List<CompletionSuggestion> =
         if (context.wordIndex == 1) listOf("clear", "rain", "thunder").suggest("weather states") else emptyList()
+
+    private fun worldborderSuggestions(words: List<String>, context: CompletionContext): List<CompletionSuggestion> =
+        when {
+            context.wordIndex == 1 -> listOf("add", "center", "damage", "get", "set", "warning").suggest("worldborder actions", appendSpace = true)
+            context.wordIndex == 2 && words.getOrNull(1) == "damage" -> listOf("amount", "buffer").suggest("worldborder damage fields", appendSpace = true)
+            context.wordIndex == 2 && words.getOrNull(1) == "warning" -> listOf("distance", "time").suggest("worldborder warning fields", appendSpace = true)
+            else -> emptyList()
+        }
 
     private fun playerTargets(includeSelectors: Boolean = true): List<String> {
         val players = sandbox().world.players.keys.toList()
@@ -477,6 +552,15 @@ class DpsCompletionEngine(private val sandbox: () -> DatapackSandbox) {
         private val commonKeys = listOf("key.forward", "key.back", "key.left", "key.right", "key.jump", "key.sneak", "key.sprint", "key.use", "key.attack")
         private val mouseButtons = listOf("left", "right", "middle", "scroll")
         private val booleans = listOf("true", "false")
+        private val gameModes = listOf("survival", "creative", "adventure", "spectator")
+        private val difficulties = listOf("peaceful", "easy", "normal", "hard")
+        private val attributes = listOf(
+            "minecraft:generic.max_health",
+            "minecraft:generic.movement_speed",
+            "minecraft:generic.attack_damage",
+            "minecraft:generic.armor",
+            "minecraft:generic.scale",
+        )
         private val bossbarColors = listOf("pink", "blue", "red", "green", "yellow", "purple", "white")
         private val bossbarStyles = listOf("progress", "notched_6", "notched_10", "notched_12", "notched_20")
         private val commonGamerules = listOf("doDaylightCycle", "doMobSpawning", "doWeatherCycle", "keepInventory", "randomTickSpeed", "sendCommandFeedback")
