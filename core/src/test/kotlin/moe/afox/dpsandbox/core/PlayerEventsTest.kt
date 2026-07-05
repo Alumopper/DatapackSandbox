@@ -118,6 +118,12 @@ class PlayerEventsTest {
         assertEquals(4.5, event.damageAmount)
         assertEquals(1, updates.size)
         assertTrue(player.advancementProgress.getValue(advancementId).criteria.getValue("fell_far"))
+        val trace = sandbox.world.playerEventTraces.single()
+        assertEquals("damage", trace.type)
+        assertTrue(trace.success)
+        assertEquals(ResourceLocation.parse("minecraft:fall"), trace.damageSource)
+        assertEquals(advancementId, trace.advancements.single().advancement)
+        assertEquals(1, sandbox.snapshotJson().getAsJsonArray("playerEventTraces").size())
     }
 
     @Test

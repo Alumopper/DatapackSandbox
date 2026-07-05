@@ -45,7 +45,7 @@ class MyDatapackTest {
 
 `requirePassed()` 在断言失败时抛出 `SandboxQuickTestAssertionError`。异常中包含所有失败项和最终 snapshot。
 
-`report()` 和 `requirePassed()` 返回的报告还包含结构化命令 trace。每条 trace 记录命令文本、命令根、是否成功、执行的命令数、产生的输出数、来源文件/行号、函数调用栈、执行者和位置。需要调试生成器输出或函数调用链时，可以直接读取：
+`report()` 和 `requirePassed()` 返回的报告还包含结构化命令 trace 和玩家事件 trace。命令 trace 记录命令文本、命令根、是否成功、执行的命令数、产生的输出数、来源文件/行号、函数调用栈、执行者和位置。玩家事件 trace 记录事件上下文以及本次事件匹配到的 advancement criteria。需要调试生成器输出、函数调用链或事件驱动数据包时，可以直接读取：
 
 ```kotlin
 val report = SandboxQuickTest.singleFunctionText(
@@ -58,7 +58,7 @@ val report = SandboxQuickTest.singleFunctionText(
 println(report.traces.single().command)
 ```
 
-同一套 matcher 也可以通过 `assertTrace(...)` 做 fluent 断言，或通过 `matchingTraces(...)` 只检查匹配事件而不登记失败。
+同一套 matcher 也可以通过 `assertTrace(...)` 做 fluent 断言，或通过 `matchingTraces(...)` 只检查匹配事件而不登记失败。玩家事件可通过 `playerEventTraces()` 或 `report.playerEventTraces` 检查。
 
 需要比较两个状态时，可以用 `SnapshotDiff.diff(before, after)` 获得稳定 JSON Pointer 路径差异，或用 `SnapshotDiff.render(...)` 输出适合测试失败日志的文本。
 
@@ -267,6 +267,7 @@ class MyDatapackTest {
 | `assertTrace(...)` | 按 command/root/source/success/count 断言 trace 事件。 |
 | `outputs()` | 返回记录的输出事件。 |
 | `traces()` | 返回记录的结构化命令 trace。 |
+| `playerEventTraces()` | 返回记录的玩家事件 trace。 |
 | `matchingTraces(...)` | 返回匹配结构化期望的 trace 事件。 |
 | `matchingOutputs(...)` | 返回匹配结构化期望的输出事件。 |
 | `report()` | 返回 `SandboxQuickTestReport`，不抛异常。 |

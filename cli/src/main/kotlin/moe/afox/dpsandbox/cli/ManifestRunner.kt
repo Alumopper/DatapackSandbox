@@ -441,6 +441,9 @@ object ManifestRunner {
             assertion.has("trace") -> {
                 failures += evaluateTraceAssertion(assertion.getAsJsonObject("trace"), sandbox)
             }
+            assertion.has("eventTrace") -> {
+                failures += evaluateEventTraceAssertion(assertion.getAsJsonObject("eventTrace"), sandbox)
+            }
             assertion.has("output") -> {
                 failures += ManifestOutputAssertions.evaluate(assertion.getAsJsonObject("output"), sandbox)
             }
@@ -572,6 +575,41 @@ object ManifestRunner {
             ),
         )
     }
+
+    private fun evaluateEventTraceAssertion(trace: JsonObject, sandbox: DatapackSandbox): List<String> {
+        val expectedPlayer = trace.manifestString("player")
+        val expectedType = trace.manifestString("type")?.replace('-', '_')
+        val expectedAdvancement = trace.manifestString("advancement")?.let(ResourceLocation::parse)
+        val expectedCriterion = trace.manifestString("criterion")
+        val expectedSuccess = trace.get("success")?.asBoolean
+        val matches = sandbox.world.playerEventTraces.filter { event ->
+            (expectedPlayer == null || event.playerName == expectedPlayer) &&
+                (expectedType == null || event.type == expectedType) &&
+                (expectedAdvancement == null || event.advancements.any { it.advancement == expectedAdvancement }) &&
+                (expectedCriterion == null || event.advancements.any { it.criterion == expectedCriterion }) &&
+                (expectedSuccess == null || event.success == expectedSuccess)
+        }
+        trace.get("count")?.let { expected ->
+            if (matches.size != expected.asInt) {
+                return listOf("eventTrace ${describeEventTraceExpectation(trace)} expected count ${expected.asInt} but was ${matches.size}")
+            }
+            return emptyList()
+        }
+        return if (matches.isEmpty()) {
+            listOf("eventTrace ${describeEventTraceExpectation(trace)} did not match any player event trace")
+        } else {
+            emptyList()
+        }
+    }
+
+    private fun describeEventTraceExpectation(trace: JsonObject): String =
+        listOfNotNull(
+            trace.manifestString("player")?.let { "player=$it" },
+            trace.manifestString("type")?.let { "type=$it" },
+            trace.get("success")?.let { "success=${it.asBoolean}" },
+            trace.manifestString("advancement")?.let { "advancement=$it" },
+            trace.manifestString("criterion")?.let { "criterion=$it" },
+        ).ifEmpty { listOf("<any event trace>") }.joinToString(", ")
 
     private fun parseEvent(event: JsonObject, sandbox: DatapackSandbox): PlayerEvent {
         val playerName = event.requiredManifestString("player")

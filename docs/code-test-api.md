@@ -49,10 +49,12 @@ class MyDatapackTest {
 The error contains all failures and the final snapshot.
 
 Reports returned by `report()` and `requirePassed()` also include structured
-command traces. Each trace records the command text, root command, success
-flag, executed command count, output count, source file/line, function stack,
-executor, and position. This is useful for debugging generated commands or
-function call chains:
+command traces and player event traces. Command traces record the command text,
+root command, success flag, executed command count, output count, source
+file/line, function stack, executor, and position. Player event traces record
+the dispatched event context and advancement criteria matched by that event.
+This is useful for debugging generated commands, function call chains, and
+event-driven datapacks:
 
 ```kotlin
 val report = SandboxQuickTest.singleFunctionText(
@@ -66,7 +68,9 @@ println(report.traces.single().command)
 ```
 
 The same matcher is available as `assertTrace(...)` for fluent assertions and
-`matchingTraces(...)` for inspection without registering a failure.
+`matchingTraces(...)` for inspection without registering a failure. Use
+`playerEventTraces()` or `report.playerEventTraces` to inspect injected player
+events.
 
 When you need to compare two states, use `SnapshotDiff.diff(before, after)` for
 stable JSON Pointer paths or `SnapshotDiff.render(...)` for readable failure
@@ -282,6 +286,7 @@ class MyDatapackTest {
 | `assertTrace(...)` | Assert command/root/source/success/count for trace events |
 | `outputs()` | Return recorded output events |
 | `traces()` | Return recorded structured command trace events |
+| `playerEventTraces()` | Return recorded player event trace records |
 | `matchingTraces(...)` | Return trace events matching a structured expectation |
 | `matchingOutputs(...)` | Return output events matching a structured expectation |
 | `report()` | Return `SandboxQuickTestReport` without throwing |

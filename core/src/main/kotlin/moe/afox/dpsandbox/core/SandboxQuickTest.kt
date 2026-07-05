@@ -19,6 +19,8 @@ data class SandboxQuickTestReport(
     val outputs: List<OutputEvent>,
     /** Structured command trace events recorded during execution. */
     val traces: List<CommandTraceEvent>,
+    /** Structured player event trace records captured during event dispatch. */
+    val playerEventTraces: List<PlayerEventTraceEvent>,
     /** Final deterministic world snapshot after all executed steps. */
     val snapshot: JsonElement,
 )
@@ -941,6 +943,12 @@ class SandboxQuickTest private constructor(
         sandbox.world.traces.toList()
 
     /**
+     * Returns a defensive copy of all player event trace records.
+     */
+    fun playerEventTraces(): List<PlayerEventTraceEvent> =
+        sandbox.world.playerEventTraces.toList()
+
+    /**
      * Returns command trace events matching [expectation] without registering a failure.
      */
     fun matchingTraces(expectation: TraceExpectation): List<CommandTraceEvent> =
@@ -1013,6 +1021,7 @@ class SandboxQuickTest private constructor(
             failures = failures.toList(),
             outputs = sandbox.world.outputs.toList(),
             traces = sandbox.world.traces.toList(),
+            playerEventTraces = sandbox.world.playerEventTraces.toList(),
             snapshot = sandbox.snapshotJson(),
         )
 

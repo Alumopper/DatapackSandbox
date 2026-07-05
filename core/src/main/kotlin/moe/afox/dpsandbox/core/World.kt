@@ -531,6 +531,95 @@ data class CommandTraceEvent(
 }
 
 /**
+ * Structured trace event for one high-level player event dispatch.
+ */
+data class PlayerEventTraceEvent(
+    val tick: Long,
+    val playerName: String,
+    val type: String,
+    val item: ResourceLocation? = null,
+    val entity: ResourceLocation? = null,
+    val block: ResourceLocation? = null,
+    val recipe: ResourceLocation? = null,
+    val fromDimension: ResourceLocation? = null,
+    val toDimension: ResourceLocation? = null,
+    val damageSource: ResourceLocation? = null,
+    val damageAmount: Double? = null,
+    val input: PlayerInput? = null,
+    val advancements: List<AdvancementUpdate> = emptyList(),
+    val success: Boolean = true,
+    val errorCode: DiagnosticCode? = null,
+    val errorMessage: String? = null,
+) {
+    /**
+     * Serializes this player event trace into deterministic snapshot JSON.
+     */
+    fun toJson(): JsonObject =
+        JsonObject().also { json ->
+            json.addProperty("tick", tick)
+            json.addProperty("player", playerName)
+            json.addProperty("type", type)
+            json.addProperty("success", success)
+            item?.let { json.addProperty("item", it.toString()) }
+            entity?.let { json.addProperty("entity", it.toString()) }
+            block?.let { json.addProperty("block", it.toString()) }
+            recipe?.let { json.addProperty("recipe", it.toString()) }
+            fromDimension?.let { json.addProperty("from", it.toString()) }
+            toDimension?.let { json.addProperty("to", it.toString()) }
+            damageSource?.let { json.addProperty("damageSource", it.toString()) }
+            damageAmount?.let { json.addProperty("damageAmount", it) }
+            input?.let { json.add("input", it.toJson()) }
+            json.add(
+                "advancements",
+                JsonArray().also { array ->
+                    advancements
+                        .sortedWith(compareBy<AdvancementUpdate> { it.advancement.toString() }.thenBy { it.criterion })
+                        .forEach { update ->
+                            array.add(
+                                JsonObject().also { advancement ->
+                                    advancement.addProperty("id", update.advancement.toString())
+                                    advancement.addProperty("criterion", update.criterion)
+                                    advancement.addProperty("completed", update.completed)
+                                },
+                            )
+                        }
+                },
+            )
+            errorCode?.let { json.addProperty("errorCode", it.name) }
+            errorMessage?.let { json.addProperty("errorMessage", it) }
+        }
+
+    companion object {
+        fun from(
+            tick: Long,
+            event: PlayerEvent,
+            updates: List<AdvancementUpdate>,
+            success: Boolean = true,
+            errorCode: DiagnosticCode? = null,
+            errorMessage: String? = null,
+        ): PlayerEventTraceEvent =
+            PlayerEventTraceEvent(
+                tick = tick,
+                playerName = event.playerName,
+                type = event.type,
+                item = event.item?.id,
+                entity = event.entity?.type,
+                block = event.block,
+                recipe = event.recipe,
+                fromDimension = event.fromDimension,
+                toDimension = event.toDimension,
+                damageSource = event.damageSource,
+                damageAmount = event.damageAmount,
+                input = event.input,
+                advancements = updates,
+                success = success,
+                errorCode = errorCode,
+                errorMessage = errorMessage,
+            )
+    }
+}
+
+/**
  * Observable output event recorded by commands and warnings.
  */
 data class OutputEvent(
@@ -598,6 +687,7 @@ class SandboxWorld {
     val scheduledFunctions: MutableList<ScheduledFunction> = mutableListOf()
     val outputs: MutableList<OutputEvent> = mutableListOf()
     val traces: MutableList<CommandTraceEvent> = mutableListOf()
+    val playerEventTraces: MutableList<PlayerEventTraceEvent> = mutableListOf()
     val bossbars: MutableMap<ResourceLocation, SandboxBossbar> = linkedMapOf()
     val gamerules: MutableMap<String, String> = linkedMapOf()
     val teams: MutableMap<String, SandboxTeam> = linkedMapOf()
@@ -855,6 +945,10 @@ class SandboxWorld {
         val traceJson = JsonArray()
         traces.forEach { traceJson.add(it.toJson()) }
         root.add("traces", traceJson)
+
+        val playerEventTraceJson = JsonArray()
+        playerEventTraces.forEach { playerEventTraceJson.add(it.toJson()) }
+        root.add("playerEventTraces", playerEventTraceJson)
         return root
     }
 }

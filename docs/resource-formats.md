@@ -93,7 +93,8 @@ points, forced chunks, biome overrides, teams, bossbars, and scoped Java save
 imports.
 
 Assertions support score, storage, world, player, team, bossbar, block,
-entityCount, advancement, predicate, loot, output, item, and trace checks:
+entityCount, advancement, predicate, loot, output, item, trace, and event trace
+checks:
 
 ```json
 { "world": { "difficulty": "hard", "forcedChunk": [0, 0] } }
@@ -107,12 +108,17 @@ entityCount, advancement, predicate, loot, output, item, and trace checks:
 { "trace": { "root": "scoreboard", "success": true, "count": 2 } }
 ```
 
+```json
+{ "eventTrace": { "player": "Steve", "type": "damage", "success": true, "criterion": "fell", "count": 1 } }
+```
+
 `player` assertions can also check dimension, game mode, health, food, selected
 slot, recipe, effect, stat, position, last input, and spawn point. `team` and
 `bossbar` assertions inspect their stored runtime state. `item` assertions can
 check player inventory by slot, id, count, components path, and NBT path.
 `trace` assertions can check command/root/contains, success, count, source file,
-and function stack.
+and function stack. `eventTrace` assertions check player event dispatch by
+player, type, success, advancement id, criterion, and count.
 
 ## Raw JSON Resources and Tags
 

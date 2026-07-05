@@ -371,6 +371,7 @@
         { "required": ["loot"] },
         { "required": ["item"] },
         { "required": ["trace"] },
+        { "required": ["eventTrace"] },
         { "required": ["output"] }
       ],
       "properties": {
@@ -387,6 +388,7 @@
         "loot": { "type": "object" },
         "item": { "$ref": "#/$defs/itemAssertion" },
         "trace": { "$ref": "#/$defs/traceAssertion" },
+        "eventTrace": { "$ref": "#/$defs/eventTraceAssertion" },
         "output": { "type": "object" }
       }
     },
@@ -534,6 +536,18 @@
         "count": { "type": "integer", "minimum": 0 },
         "fileContains": { "type": "string" },
         "function": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "eventTraceAssertion": {
+      "type": "object",
+      "properties": {
+        "player": { "type": "string" },
+        "type": { "type": "string" },
+        "success": { "type": "boolean" },
+        "advancement": { "type": "string" },
+        "criterion": { "type": "string" },
+        "count": { "type": "integer", "minimum": 0 }
       },
       "additionalProperties": false
     }

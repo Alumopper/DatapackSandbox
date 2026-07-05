@@ -42,11 +42,15 @@ class SandboxQuickTestTest {
             .keyInput("Steve", "key.jump")
             .mouseInput("Steve", "left", "click", 12.0, 8.0)
             .assertPlayerLastInput("Steve", "mouse", "left", "click")
-            .requirePassed()
+        val traces = scenario.playerEventTraces()
+        val report = scenario.requirePassed()
 
-        val player = scenario.snapshot.asJsonObject.get("players").asJsonObject.get("Steve").asJsonObject
+        val player = report.snapshot.asJsonObject.get("players").asJsonObject.get("Steve").asJsonObject
         assertEquals("mouse", player.get("lastInput").asJsonObject.get("device").asString)
         assertEquals(2, player.get("inputEvents").asJsonArray.size())
+        assertEquals(2, traces.size)
+        assertEquals("mouse_input", report.playerEventTraces.last().type)
+        assertEquals(2, report.snapshot.asJsonObject.getAsJsonArray("playerEventTraces").size())
     }
 
     @Test

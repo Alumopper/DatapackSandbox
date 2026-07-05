@@ -25,12 +25,24 @@ class ManifestRunnerTest {
         val stepEvent = defs.getAsJsonObject("step")
             .getAsJsonObject("properties")
             .getAsJsonObject("event")
+        val assertionEventTrace = defs.getAsJsonObject("assertion")
+            .getAsJsonObject("properties")
+            .getAsJsonObject("eventTrace")
 
         assertEquals("#/\$defs/eventStep", stepEvent.get("\$ref").asString)
+        assertEquals("#/\$defs/eventTraceAssertion", assertionEventTrace.get("\$ref").asString)
         assertTrue(event.getAsJsonArray("required").map { it.asString }.containsAll(listOf("player", "type")))
         assertEquals("string", properties.getAsJsonObject("damageSource").get("type").asString)
         assertEquals("number", properties.getAsJsonObject("amount").get("type").asString)
         assertEquals("string", properties.getAsJsonObject("mouseButton").get("type").asString)
+        assertEquals(
+            "boolean",
+            defs.getAsJsonObject("eventTraceAssertion")
+                .getAsJsonObject("properties")
+                .getAsJsonObject("success")
+                .get("type")
+                .asString,
+        )
     }
 
     @Test
@@ -283,7 +295,8 @@ class ManifestRunnerTest {
                 { "event": { "player": "Steve", "type": "damage", "damageSource": "minecraft:fall", "amount": 4.5 } }
               ],
               "assertions": [
-                { "advancement": { "player": "Steve", "id": "demo:fall_damage", "criterion": "fell", "criterionDone": true } }
+                { "advancement": { "player": "Steve", "id": "demo:fall_damage", "criterion": "fell", "criterionDone": true } },
+                { "eventTrace": { "player": "Steve", "type": "damage", "success": true, "advancement": "demo:fall_damage", "criterion": "fell", "count": 1 } }
               ]
             }
             """.trimIndent(),
