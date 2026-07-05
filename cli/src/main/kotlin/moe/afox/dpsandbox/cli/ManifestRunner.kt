@@ -25,6 +25,7 @@ import moe.afox.dpsandbox.core.SandboxBlock
 import moe.afox.dpsandbox.core.SandboxWorld
 import moe.afox.dpsandbox.core.SandboxWorldBorder
 import moe.afox.dpsandbox.core.SnapshotDiff
+import moe.afox.dpsandbox.core.SnapshotDiffEntry
 import moe.afox.dpsandbox.core.SourceLocation
 import moe.afox.dpsandbox.core.TraceAssertions
 import moe.afox.dpsandbox.core.TraceExpectation
@@ -57,6 +58,8 @@ data class ManifestAttemptResult(
     val outputs: List<OutputEvent> = emptyList(),
     val traces: List<CommandTraceEvent> = emptyList(),
     val eventTraces: List<PlayerEventTraceEvent> = emptyList(),
+    val snapshot: JsonObject? = null,
+    val snapshotDiffs: List<SnapshotDiffEntry> = emptyList(),
     val resourceSummary: ManifestResourceSummary? = null,
 )
 
@@ -240,6 +243,7 @@ object ManifestRunner {
         if (failures.isNotEmpty() && options.snapshotDiffOnFail) {
             failures += "snapshot diff:${System.lineSeparator()}${SnapshotDiff.render(SnapshotDiff.diff(beforeSnapshot, sandbox.snapshotJson()))}"
         }
+        val finalSnapshot = sandbox.snapshotJson()
 
         return ManifestAttemptResult(
             version = config.version,
@@ -249,6 +253,8 @@ object ManifestRunner {
             outputs = sandbox.world.outputs.toList(),
             traces = sandbox.world.traces.toList(),
             eventTraces = sandbox.world.playerEventTraces.toList(),
+            snapshot = finalSnapshot,
+            snapshotDiffs = SnapshotDiff.diff(beforeSnapshot, finalSnapshot),
             resourceSummary = resourceSummary,
         )
     }

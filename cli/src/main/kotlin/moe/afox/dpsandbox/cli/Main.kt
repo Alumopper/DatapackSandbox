@@ -261,6 +261,8 @@ private fun ManifestAttemptResult.toReportJson(): JsonObject =
         json.add("eventTraces", JsonArray().also { eventTracesJson ->
             eventTraces.forEach { eventTracesJson.add(it.toJson()) }
         })
+        snapshot?.let { json.add("snapshot", it.deepCopy()) }
+        json.add("snapshotDiffs", SnapshotDiff.toJson(snapshotDiffs))
         resourceSummary?.let { json.add("resources", it.toReportJson()) }
     }
 

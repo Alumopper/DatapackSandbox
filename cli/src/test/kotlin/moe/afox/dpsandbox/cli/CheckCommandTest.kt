@@ -263,6 +263,12 @@ class CheckCommandTest {
         val attempt = report.getAsJsonArray("attempts")[0].asJsonObject
         assertTrue(attempt.get("eventTraceCount").asInt == 1)
         assertTrue(attempt.getAsJsonArray("eventTraces")[0].asJsonObject.get("player").asString == "Steve")
+        assertTrue(attempt.getAsJsonObject("snapshot").getAsJsonObject("scores").getAsJsonObject("ticks").get("#clock").asInt == 5)
+        assertTrue(
+            attempt.getAsJsonArray("snapshotDiffs").any { entry ->
+                entry.asJsonObject.get("path").asString == "/scores/ticks"
+            },
+        )
         assertTrue(attempt.getAsJsonObject("resources").get("functions").asInt > 0)
     }
 
