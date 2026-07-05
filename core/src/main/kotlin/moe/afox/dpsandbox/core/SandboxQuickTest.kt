@@ -344,8 +344,17 @@ class SandboxQuickTestMatrix private constructor(
      * Applies a sparse-world block assertion to every scenario.
      */
     @JvmOverloads
-    fun assertBlock(x: Int, y: Int, z: Int, id: String? = null, exists: Boolean = true): SandboxQuickTestMatrix = apply {
-        scenarios.values.forEach { it.assertBlock(x, y, z, id, exists) }
+    fun assertBlock(
+        x: Int,
+        y: Int,
+        z: Int,
+        id: String? = null,
+        exists: Boolean = true,
+        nbtPath: String? = null,
+        nbtEquals: String? = null,
+        nbtExists: Boolean? = null,
+    ): SandboxQuickTestMatrix = apply {
+        scenarios.values.forEach { it.assertBlock(x, y, z, id, exists, nbtPath, nbtEquals, nbtExists) }
     }
 
     /**
@@ -1014,7 +1023,16 @@ class SandboxQuickTest private constructor(
      * Asserts an explicit sparse-world block.
      */
     @JvmOverloads
-    fun assertBlock(x: Int, y: Int, z: Int, id: String? = null, exists: Boolean = true): SandboxQuickTest = apply {
+    fun assertBlock(
+        x: Int,
+        y: Int,
+        z: Int,
+        id: String? = null,
+        exists: Boolean = true,
+        nbtPath: String? = null,
+        nbtEquals: String? = null,
+        nbtExists: Boolean? = null,
+    ): SandboxQuickTest = apply {
         val pos = BlockPos(x, y, z)
         val actual = sandbox.world.block(pos)
         if ((actual != null) != exists) {
@@ -1024,6 +1042,13 @@ class SandboxQuickTest private constructor(
             val expected = ResourceLocation.parse(it)
             if (actual?.id != expected) failures += "block $pos id expected $expected but was ${actual?.id ?: "void"}"
         }
+        pathExpectationFailure(
+            label = "block $pos nbt",
+            root = actual?.fullNbt(pos, sandbox.profile),
+            path = nbtPath,
+            equalsJson = nbtEquals,
+            exists = nbtExists,
+        )?.let { failures += it }
     }
 
     /**
@@ -1155,8 +1180,8 @@ class SandboxQuickTest private constructor(
                 (count == null || item.count == count) &&
                 (minCount == null || item.count >= minCount) &&
                 (maxCount == null || item.count <= maxCount) &&
-                itemPathMatches(item.components, componentsPath, componentsEquals, componentsExists) &&
-                itemPathMatches(item.nbt, nbtPath, nbtEquals, nbtExists)
+                jsonPathMatches(item.components, componentsPath, componentsEquals, componentsExists) &&
+                jsonPathMatches(item.nbt, nbtPath, nbtEquals, nbtExists)
         }
         val expectation = describeItemExpectation(
             id = id,
@@ -1179,7 +1204,7 @@ class SandboxQuickTest private constructor(
         }
     }
 
-    private fun itemPathMatches(root: JsonObject, path: String?, equalsJson: String?, exists: Boolean?): Boolean {
+    private fun jsonPathMatches(root: JsonObject, path: String?, equalsJson: String?, exists: Boolean?): Boolean {
         if (path == null && equalsJson == null && exists == null) return true
         val actual = JsonPaths.get(root, path)
         if (exists != null && (actual != null) != exists) return false
@@ -1187,6 +1212,34 @@ class SandboxQuickTest private constructor(
             if (actual != JsonValues.parse(expectedJson)) return false
         }
         return exists != null || equalsJson != null || actual != null
+    }
+
+    private fun pathExpectationFailure(
+        label: String,
+        root: JsonObject?,
+        path: String?,
+        equalsJson: String?,
+        exists: Boolean?,
+    ): String? {
+        if (path == null && equalsJson == null && exists == null) return null
+        val actual = root?.let { JsonPaths.get(it, path) }
+        val displayPath = path ?: "<root>"
+        exists?.let { expected ->
+            val actualExists = actual != null
+            if (actualExists != expected) {
+                return "$label $displayPath exists expected $expected but was $actualExists"
+            }
+        }
+        equalsJson?.let { expectedJson ->
+            val expected = JsonValues.parse(expectedJson)
+            if (actual != expected) {
+                return "$label $displayPath expected ${JsonValues.render(expected)} but was ${actual?.let(JsonValues::render) ?: "<missing>"}"
+            }
+        }
+        if (exists == null && equalsJson == null && actual == null) {
+            return "$label $displayPath expected present but was <missing>"
+        }
+        return null
     }
 
     private fun describeItemExpectation(

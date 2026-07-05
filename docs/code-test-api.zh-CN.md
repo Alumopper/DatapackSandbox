@@ -171,7 +171,7 @@ SandboxQuickTest.create(
         gamerule("doDaylightCycle", "false")
     }
     .assertWorld(difficulty = "hard", defaultGameMode = "creative", seed = 123)
-    .assertBlock(0, 64, 0, "minecraft:chest")
+    .assertBlock(0, 64, 0, "minecraft:chest", nbtPath = "Items", nbtEquals = "[]")
     .assertEntity(type = "minecraft:pig", tag = "fixture")
     .assertEntityCount(expected = 1, type = "minecraft:pig", tag = "fixture")
     .assertEntityCountRange(min = 1, max = 3, type = "minecraft:pig", tag = "fixture")
@@ -264,7 +264,7 @@ class MyDatapackTest {
 | `assertStorageMissing(id, path)` | 断言 storage 根对象或路径不存在。 |
 | `assertWorld(...)` | 断言选定的世界级状态。 |
 | `assertPlayer(...)` | 断言选定的玩家状态。 |
-| `assertBlock(x, y, z, id, exists)` | 断言 sparse world 中的方块。 |
+| `assertBlock(x, y, z, id, exists, nbtPath, nbtEquals, nbtExists)` | 断言 sparse world 中的方块。 |
 | `assertEntity(type, tag, uuid, position, exists, count)` | 断言匹配实体存在性或数量。 |
 | `assertEntityCount(expected, type, tag)` | 断言匹配实体数量。 |
 | `assertEntityCountAtLeast(minimum, type, tag)` | 断言匹配实体数量下界。 |
@@ -289,8 +289,8 @@ class MyDatapackTest {
 | `report()` | 返回 `SandboxQuickTestReport`，不抛异常。 |
 | `requirePassed()` | 返回报告；如果失败则抛异常。 |
 
-`assertItem` 的 path 检查使用和 manifest item 断言相同的 `JsonPaths`
-语义。`componentsEquals` 和 `nbtEquals` 接受 JSON/SNBT-lite 文本。
+`assertBlock` 和 `assertItem` 的 path 检查使用和 manifest 断言相同的
+`JsonPaths` 语义。`nbtEquals` 和 `componentsEquals` 接受 JSON/SNBT-lite 文本。
 
 ## 输出断言
 

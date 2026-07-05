@@ -195,7 +195,7 @@ SandboxQuickTest.create(
         gamerule("doDaylightCycle", "false")
     }
     .assertWorld(difficulty = "hard", defaultGameMode = "creative", seed = 123)
-    .assertBlock(0, 64, 0, "minecraft:chest")
+    .assertBlock(0, 64, 0, "minecraft:chest", nbtPath = "Items", nbtEquals = "[]")
     .assertEntity(type = "minecraft:pig", tag = "fixture")
     .assertEntityCount(expected = 1, type = "minecraft:pig", tag = "fixture")
     .assertEntityCountRange(min = 1, max = 3, type = "minecraft:pig", tag = "fixture")
@@ -290,7 +290,7 @@ class MyDatapackTest {
 | `assertStorageMissing(id, path)` | Assert that a storage root or path is absent |
 | `assertWorld(...)` | Assert selected world-level state |
 | `assertPlayer(...)` | Assert selected player state |
-| `assertBlock(x, y, z, id, exists)` | Assert a sparse-world block |
+| `assertBlock(x, y, z, id, exists, nbtPath, nbtEquals, nbtExists)` | Assert a sparse-world block |
 | `assertEntity(type, tag, uuid, position, exists, count)` | Assert matching entity existence or count |
 | `assertEntityCount(expected, type, tag)` | Assert matching entity count |
 | `assertEntityCountAtLeast(minimum, type, tag)` | Assert a matching entity count lower bound |
@@ -315,8 +315,9 @@ class MyDatapackTest {
 | `report()` | Return `SandboxQuickTestReport` without throwing |
 | `requirePassed()` | Return report or throw an assertion error |
 
-`assertItem` path checks use the same `JsonPaths` syntax as manifest item
-assertions. `componentsEquals` and `nbtEquals` accept JSON/SNBT-lite text.
+`assertBlock` and `assertItem` path checks use the same `JsonPaths` syntax as
+manifest assertions. `nbtEquals` and `componentsEquals` accept JSON/SNBT-lite
+text.
 
 ## Output Tests
 

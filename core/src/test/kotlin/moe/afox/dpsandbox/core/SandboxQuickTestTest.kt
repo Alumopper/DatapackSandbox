@@ -124,6 +124,20 @@ class SandboxQuickTestTest {
     }
 
     @Test
+    fun `quick block nbt path assertions explain failures`() {
+        val report = SandboxQuickTest.create(listOf(fixturePack()), version = "26.1.2")
+            .world {
+                block(0, 64, 0, "minecraft:chest", nbt = "{Items:[]}")
+            }
+            .assertBlock(0, 64, 0, "minecraft:chest", nbtPath = "Items", nbtEquals = "[]")
+            .assertBlock(0, 64, 0, "minecraft:chest", nbtPath = "Missing", nbtExists = true)
+            .report()
+
+        assertTrue(!report.passed)
+        assertTrue(report.failures.any { "block 0 64 0 nbt Missing exists expected true but was false" in it }, report.failures.joinToString())
+    }
+
+    @Test
     fun `records keyboard and mouse player input events`() {
         val scenario = SandboxQuickTest.create(listOf(fixturePack()), version = "26.1.2")
             .keyInput("Steve", "key.jump")
@@ -440,7 +454,7 @@ class SandboxQuickTestTest {
                 gamerule("doDaylightCycle", "false")
             }
             .assertWorld(difficulty = "hard", defaultGameMode = "creative", seed = 123)
-            .assertBlock(0, 64, 0, "minecraft:chest")
+            .assertBlock(0, 64, 0, "minecraft:chest", nbtPath = "Items", nbtEquals = "[]")
             .assertEntity(type = "minecraft:pig", tag = "fixture", position = Position(1.0, 64.0, 0.0))
             .assertEntityCount(expected = 1, type = "minecraft:pig", tag = "fixture")
             .assertEntityCountAtLeast(1, type = "minecraft:pig", tag = "fixture")
