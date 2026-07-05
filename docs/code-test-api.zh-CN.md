@@ -204,6 +204,8 @@ SandboxQuickTest.create(
         spawnAngle = 90.0,
         spawnForced = false,
     )
+    .assertTeam("red", member = "Alex", memberCount = 1, optionName = "color", optionEquals = "red")
+    .assertBossbar("demo:bar", name = "Demo", value = 3, max = 10, player = "Alex")
     .assertItem("Alex", "minecraft:stick", 2, minCount = 1, maxCount = 3)
     .assertScore("#fixture", "ready", 1)
     .assertScoreRange("#fixture", "ready", min = 1, max = 3)
@@ -292,6 +294,8 @@ class MyDatapackTest {
 | `assertStorageMissing(id, path)` | 断言 storage 根对象或路径不存在。 |
 | `assertWorld(...)` | 断言选定的世界级状态、force-loaded chunk、biome override、世界出生点和世界边界。 |
 | `assertPlayer(...)` | 断言选定的玩家状态，包括出生点细节。 |
+| `assertTeam(...)` | 断言选定 team 状态、成员、成员数量和选项。 |
+| `assertBossbar(...)` | 断言选定 bossbar 状态和关联玩家。 |
 | `assertBlock(x, y, z, id, exists, nbtPath, nbtEquals, nbtExists)` | 断言 sparse world 中的方块。 |
 | `assertEntity(type, tag, uuid, position, exists, count)` | 断言匹配实体存在性或数量。 |
 | `assertEntityCount(expected, type, tag)` | 断言匹配实体数量。 |

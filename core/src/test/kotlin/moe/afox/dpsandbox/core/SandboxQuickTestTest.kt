@@ -199,6 +199,31 @@ class SandboxQuickTestTest {
     }
 
     @Test
+    fun `quick team and bossbar assertions explain failures`() {
+        val report = SandboxQuickTest.create(listOf(fixturePack()), version = "26.1.2", defaultPlayerName = null)
+            .world {
+                team("red", displayName = "Red", members = listOf("Alex"), options = mapOf("color" to "red"))
+                bossbar("demo:bar", "Demo", value = 3, max = 10, color = "blue", style = "notched_10", players = listOf("Alex"))
+            }
+            .assertTeam("red", displayName = "Blue", member = "Steve", memberCount = 2, optionName = "color", optionEquals = "blue")
+            .assertBossbar("demo:bar", name = "Other", value = 4, max = 9, color = "red", style = "progress", visible = false, player = "Steve")
+            .report()
+
+        assertTrue(!report.passed)
+        assertTrue(report.failures.any { "team red displayName expected Blue but was Red" in it }, report.failures.joinToString())
+        assertTrue(report.failures.any { "team red expected member Steve" in it }, report.failures.joinToString())
+        assertTrue(report.failures.any { "team red memberCount expected 2 but was 1" in it }, report.failures.joinToString())
+        assertTrue(report.failures.any { "team red option color expected blue but was red" in it }, report.failures.joinToString())
+        assertTrue(report.failures.any { "bossbar demo:bar name expected Other but was Demo" in it }, report.failures.joinToString())
+        assertTrue(report.failures.any { "bossbar demo:bar value expected 4 but was 3" in it }, report.failures.joinToString())
+        assertTrue(report.failures.any { "bossbar demo:bar max expected 9 but was 10" in it }, report.failures.joinToString())
+        assertTrue(report.failures.any { "bossbar demo:bar color expected red but was blue" in it }, report.failures.joinToString())
+        assertTrue(report.failures.any { "bossbar demo:bar style expected progress but was notched_10" in it }, report.failures.joinToString())
+        assertTrue(report.failures.any { "bossbar demo:bar visible expected false but was true" in it }, report.failures.joinToString())
+        assertTrue(report.failures.any { "bossbar demo:bar expected player Steve" in it }, report.failures.joinToString())
+    }
+
+    @Test
     fun `records keyboard and mouse player input events`() {
         val scenario = SandboxQuickTest.create(listOf(fixturePack()), version = "26.1.2")
             .keyInput("Steve", "key.jump")
@@ -571,6 +596,8 @@ class SandboxQuickTestTest {
                 spawnAngle = 90.0,
                 spawnForced = true,
             )
+            .assertTeam("red", member = "Alex", memberCount = 1, optionName = "color", optionEquals = "red")
+            .assertBossbar("demo:bar", name = "Demo", value = 3, max = 10, player = "Alex")
             .assertItem(
                 "Alex",
                 "minecraft:stick",

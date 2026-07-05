@@ -228,6 +228,8 @@ SandboxQuickTest.create(
         spawnAngle = 90.0,
         spawnForced = false,
     )
+    .assertTeam("red", member = "Alex", memberCount = 1, optionName = "color", optionEquals = "red")
+    .assertBossbar("demo:bar", name = "Demo", value = 3, max = 10, player = "Alex")
     .assertItem("Alex", "minecraft:stick", 2, minCount = 1, maxCount = 3)
     .assertScore("#fixture", "ready", 1)
     .assertScoreRange("#fixture", "ready", min = 1, max = 3)
@@ -318,6 +320,8 @@ class MyDatapackTest {
 | `assertStorageMissing(id, path)` | Assert that a storage root or path is absent |
 | `assertWorld(...)` | Assert selected world-level state, forced chunks, biome overrides, world spawn, and world border |
 | `assertPlayer(...)` | Assert selected player state, including spawn point details |
+| `assertTeam(...)` | Assert selected team state, members, member count, and options |
+| `assertBossbar(...)` | Assert selected bossbar state and assigned players |
 | `assertBlock(x, y, z, id, exists, nbtPath, nbtEquals, nbtExists)` | Assert a sparse-world block |
 | `assertEntity(type, tag, uuid, position, exists, count)` | Assert matching entity existence or count |
 | `assertEntityCount(expected, type, tag)` | Assert matching entity count |

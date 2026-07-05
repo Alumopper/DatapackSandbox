@@ -474,6 +474,62 @@ class SandboxQuickTestMatrix private constructor(
     }
 
     /**
+     * Applies a team state assertion to every scenario.
+     */
+    @JvmOverloads
+    fun assertTeam(
+        name: String,
+        exists: Boolean = true,
+        displayName: String? = null,
+        member: String? = null,
+        memberCount: Int? = null,
+        optionName: String? = null,
+        optionEquals: String? = null,
+    ): SandboxQuickTestMatrix = apply {
+        scenarios.values.forEach {
+            it.assertTeam(
+                name = name,
+                exists = exists,
+                displayName = displayName,
+                member = member,
+                memberCount = memberCount,
+                optionName = optionName,
+                optionEquals = optionEquals,
+            )
+        }
+    }
+
+    /**
+     * Applies a bossbar state assertion to every scenario.
+     */
+    @JvmOverloads
+    fun assertBossbar(
+        id: String,
+        exists: Boolean = true,
+        name: String? = null,
+        value: Int? = null,
+        max: Int? = null,
+        color: String? = null,
+        style: String? = null,
+        visible: Boolean? = null,
+        player: String? = null,
+    ): SandboxQuickTestMatrix = apply {
+        scenarios.values.forEach {
+            it.assertBossbar(
+                id = id,
+                exists = exists,
+                name = name,
+                value = value,
+                max = max,
+                color = color,
+                style = style,
+                visible = visible,
+                player = player,
+            )
+        }
+    }
+
+    /**
      * Applies an inventory item assertion to every scenario.
      */
     @JvmOverloads
@@ -1183,6 +1239,79 @@ class SandboxQuickTest private constructor(
         worldBorderDamageAmount?.let { if (sandbox.world.worldBorder.damageAmount != it) failures += "world border damageAmount expected $it but was ${sandbox.world.worldBorder.damageAmount}" }
         worldBorderWarningDistance?.let { if (sandbox.world.worldBorder.warningDistance != it) failures += "world border warningDistance expected $it but was ${sandbox.world.worldBorder.warningDistance}" }
         worldBorderWarningTime?.let { if (sandbox.world.worldBorder.warningTime != it) failures += "world border warningTime expected $it but was ${sandbox.world.worldBorder.warningTime}" }
+    }
+
+    /**
+     * Asserts selected team state.
+     */
+    @JvmOverloads
+    fun assertTeam(
+        name: String,
+        exists: Boolean = true,
+        displayName: String? = null,
+        member: String? = null,
+        memberCount: Int? = null,
+        optionName: String? = null,
+        optionEquals: String? = null,
+    ): SandboxQuickTest = apply {
+        val actual = sandbox.world.teams[name]
+        if (!exists) {
+            if (actual != null) failures += "team $name expected missing but exists"
+            return@apply
+        }
+        if (actual == null) {
+            failures += "team $name expected to exist"
+            return@apply
+        }
+
+        displayName?.let { if (actual.displayName != it) failures += "team $name displayName expected $it but was ${actual.displayName}" }
+        member?.let { if (it !in actual.members) failures += "team $name expected member $it" }
+        memberCount?.let { if (actual.members.size != it) failures += "team $name memberCount expected $it but was ${actual.members.size}" }
+        if (optionName != null || optionEquals != null) {
+            if (optionName == null || optionEquals == null) {
+                failures += "team $name option assertion requires optionName and optionEquals"
+            } else {
+                val actualValue = actual.options[optionName]
+                if (actualValue != optionEquals) {
+                    failures += "team $name option $optionName expected $optionEquals but was ${actualValue ?: "<missing>"}"
+                }
+            }
+        }
+    }
+
+    /**
+     * Asserts selected bossbar state.
+     */
+    @JvmOverloads
+    fun assertBossbar(
+        id: String,
+        exists: Boolean = true,
+        name: String? = null,
+        value: Int? = null,
+        max: Int? = null,
+        color: String? = null,
+        style: String? = null,
+        visible: Boolean? = null,
+        player: String? = null,
+    ): SandboxQuickTest = apply {
+        val parsedId = ResourceLocation.parse(id)
+        val actual = sandbox.world.bossbars[parsedId]
+        if (!exists) {
+            if (actual != null) failures += "bossbar $parsedId expected missing but exists"
+            return@apply
+        }
+        if (actual == null) {
+            failures += "bossbar $parsedId expected to exist"
+            return@apply
+        }
+
+        name?.let { if (actual.name != it) failures += "bossbar $parsedId name expected $it but was ${actual.name}" }
+        value?.let { if (actual.value != it) failures += "bossbar $parsedId value expected $it but was ${actual.value}" }
+        max?.let { if (actual.max != it) failures += "bossbar $parsedId max expected $it but was ${actual.max}" }
+        color?.let { if (actual.color != it) failures += "bossbar $parsedId color expected $it but was ${actual.color}" }
+        style?.let { if (actual.style != it) failures += "bossbar $parsedId style expected $it but was ${actual.style}" }
+        visible?.let { if (actual.visible != it) failures += "bossbar $parsedId visible expected $it but was ${actual.visible}" }
+        player?.let { if (it !in actual.players) failures += "bossbar $parsedId expected player $it" }
     }
 
     /**
