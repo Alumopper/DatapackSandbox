@@ -1007,10 +1007,12 @@ class DatapackSandbox(
                 "store" -> {
                     val runIndex = tokens.indexOfFirst { it.text == "run" }
                     if (runIndex < 0) throw SandboxException(DiagnosticCode.INPUT_FORMAT, "execute store requires run", location)
-                    val before = commandsExecuted
+                    val commandsBefore = commandsExecuted
+                    val outputsBefore = world.outputs.size
                     val rest = CommandTokenizer.tailAfter(command, tokens[runIndex])
                     contexts.forEach { executeOne(rest, location, it) }
-                    val stored = (commandsExecuted - before).coerceAtLeast(0)
+                    val commandsRun = (commandsExecuted - commandsBefore).coerceAtLeast(0)
+                    val stored = executeStoreValue(tokens.getOrNull(index + 1)?.text ?: "result", commandsRun, outputsBefore)
                     storeExecuteValue(tokens, index + 1, stored, location, contexts.firstOrNull() ?: context)
                     return
                 }
@@ -2258,6 +2260,17 @@ class DatapackSandbox(
         val scaled = value * scale
         return if (scaled % 1.0 == 0.0) JsonPrimitive(scaled.toLong()) else JsonPrimitive(scaled)
     }
+
+    private fun executeStoreValue(storeType: String, commandsRun: Int, outputsBefore: Int): Int =
+        when (storeType) {
+            "success" -> if (commandsRun > 0) 1 else 0
+            else -> latestNumericOutput(outputsBefore) ?: commandsRun
+        }
+
+    private fun latestNumericOutput(outputsBefore: Int): Int? =
+        world.outputs.drop(outputsBefore)
+            .asReversed()
+            .firstNotNullOfOrNull { output -> output.text.trim().toDoubleOrNull()?.toInt() }
 
     private fun outputSender(context: ExecutionContext): String =
         when (val entity = context.entity) {

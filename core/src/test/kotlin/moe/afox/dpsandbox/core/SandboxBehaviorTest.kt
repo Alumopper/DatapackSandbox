@@ -103,7 +103,11 @@ class SandboxBehaviorTest {
         sandbox.executeCommand("damage @e[tag=rider] 5")
         sandbox.executeCommand("item replace entity Steve hotbar.0 with minecraft:diamond_sword 1")
         sandbox.executeCommand("scoreboard objectives add runs dummy")
+        sandbox.executeCommand("scoreboard objectives add success dummy")
         sandbox.executeCommand("execute store result score Steve runs run random value 3..3")
+        sandbox.executeCommand("execute store result storage demo:store value int 2 run random value 3..3")
+        sandbox.executeCommand("execute store success score Steve success run random value 1..1")
+        sandbox.executeCommand("execute if entity @e[type=minecraft:skeleton] store success score #none success run random value 1..1")
 
         assertEquals(ResourceLocation.parse("minecraft:stone"), sandbox.world.requireBlock(BlockPos(0, 1, 0)).id)
         assertEquals(ResourceLocation.parse("minecraft:stone"), sandbox.world.requireBlock(BlockPos(1, 1, 0)).id)
@@ -115,7 +119,10 @@ class SandboxBehaviorTest {
         assertEquals(15.0, pig.pitch)
         assertEquals(5.0, pig.fullNbt().get("Health").asDouble)
         assertEquals(ResourceLocation.parse("minecraft:diamond_sword"), sandbox.world.requirePlayer("Steve").inventory[0].id)
-        assertEquals(1, sandbox.world.getScore("Steve", "runs"))
+        assertEquals(3, sandbox.world.getScore("Steve", "runs"))
+        assertEquals(1, sandbox.world.getScore("Steve", "success"))
+        assertEquals(0, sandbox.world.getScore("#none", "success"))
+        assertEquals(6L, JsonPaths.get(sandbox.world.storage(ResourceLocation.parse("demo:store")), "value")?.asLong)
         assertTrue(sandbox.world.outputs.any { it.command == "random value" && it.text == "3" })
     }
 
