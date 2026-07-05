@@ -142,7 +142,7 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar check ./sandbox-cases --snapsh
 `check` 也可以把 trace 和输出事件写成 CI artifact：
 
 ```bash
-java -jar cli/build/libs/datapack-sandbox-cli.jar check ./sandbox-cases --trace-filter root=scoreboard --trace-file check-trace.jsonl --outputs-file check-outputs.jsonl
+java -jar cli/build/libs/datapack-sandbox-cli.jar check ./sandbox-cases --trace-filter root=scoreboard --trace-file check-trace.jsonl --outputs-file check-outputs.jsonl --report-file check-report.json
 ```
 
 不想写完整 manifest 时，`run` 可以直接加载 manifest-style world fixture，并接受一个或多个内联 JSON assertion：

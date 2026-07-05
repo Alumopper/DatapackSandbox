@@ -167,7 +167,7 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar check ./sandbox-cases --snapsh
 For CI artifacts, `check` can also write command traces:
 
 ```bash
-java -jar cli/build/libs/datapack-sandbox-cli.jar check ./sandbox-cases --trace-filter root=scoreboard --trace-file check-trace.jsonl --outputs-file check-outputs.jsonl
+java -jar cli/build/libs/datapack-sandbox-cli.jar check ./sandbox-cases --trace-filter root=scoreboard --trace-file check-trace.jsonl --outputs-file check-outputs.jsonl --report-file check-report.json
 ```
 
 For ad hoc checks without a full manifest, `run` can apply a manifest-style

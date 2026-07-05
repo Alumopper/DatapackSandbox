@@ -12,6 +12,7 @@ import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.types.int
 import com.github.ajalt.clikt.parameters.types.long
 import com.github.ajalt.clikt.parameters.types.path
+import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import moe.afox.dpsandbox.core.CommandTraceEvent
@@ -74,6 +75,7 @@ class CheckCommand : CliktCommand(name = "check") {
     private val traceFile by option("--trace-file").path()
     private val traceFilters by option("--trace-filter").multiple()
     private val outputsFile by option("--outputs-file").path()
+    private val reportFile by option("--report-file").path()
     private val seed by option("--seed").long().default(0)
     private val unsupported by option("--unsupported").default("warn")
 
@@ -83,6 +85,7 @@ class CheckCommand : CliktCommand(name = "check") {
             var failed = false
             val traces = mutableListOf<CommandTraceEvent>()
             val outputs = mutableListOf<OutputEvent>()
+            val results = mutableListOf<ManifestResult>()
             manifests.forEach { manifest ->
                 val result = ManifestRunner.run(
                     manifest,
@@ -97,6 +100,7 @@ class CheckCommand : CliktCommand(name = "check") {
                 val resultTraces = TraceFilters.apply(result.traces, traceFilters)
                 traces += resultTraces
                 outputs += result.outputs
+                results += result
                 val versionLabel = result.attempts
                     .map { it.version }
                     .takeIf { it.size > 1 }
@@ -123,11 +127,13 @@ class CheckCommand : CliktCommand(name = "check") {
                 if (!result.passed && failFast) {
                     traceFile?.let { writeTraceFile(it, traces) }
                     outputsFile?.let { writeOutputsFile(it, outputs) }
+                    reportFile?.let { writeManifestReportFile(it, results) }
                     exitProcess(ExitCodes.ASSERTION_FAILED)
                 }
             }
             traceFile?.let { writeTraceFile(it, traces) }
             outputsFile?.let { writeOutputsFile(it, outputs) }
+            reportFile?.let { writeManifestReportFile(it, results) }
             if (failed) exitProcess(ExitCodes.ASSERTION_FAILED)
         } catch (error: SandboxException) {
             println(ConsoleStyle.diagnostic(error.render()))
@@ -151,6 +157,82 @@ private fun writeOutputsFile(path: Path, outputs: List<OutputEvent>) {
     Files.writeString(path, content, StandardCharsets.UTF_8)
     println(ConsoleStyle.green("outputs written: $path"))
 }
+
+private fun writeManifestReportFile(path: Path, results: List<ManifestResult>) {
+    val json = JsonArray()
+    results.forEach { json.add(it.toReportJson()) }
+    Files.writeString(path, JsonValues.render(json), StandardCharsets.UTF_8)
+    println(ConsoleStyle.green("report written: $path"))
+}
+
+private fun ManifestResult.toReportJson(): JsonObject =
+    JsonObject().also { json ->
+        json.addProperty("path", path.toString())
+        json.addProperty("passed", passed)
+        json.add("messages", stringArray(messages))
+        json.addProperty("outputCount", outputs.size)
+        json.addProperty("traceCount", traces.size)
+        json.add("attempts", JsonArray().also { attemptsJson ->
+            attempts.forEach { attemptsJson.add(it.toReportJson()) }
+        })
+    }
+
+private fun ManifestAttemptResult.toReportJson(): JsonObject =
+    JsonObject().also { json ->
+        json.addProperty("version", version)
+        json.add("packs", stringArray(packs.map { it.toString() }))
+        json.addProperty("passed", passed)
+        json.add("messages", stringArray(messages))
+        json.addProperty("outputCount", outputs.size)
+        json.addProperty("traceCount", traces.size)
+        resourceSummary?.let { json.add("resources", it.toReportJson()) }
+    }
+
+private fun ManifestResourceSummary.toReportJson(): JsonObject =
+    JsonObject().also { json ->
+        json.addProperty("functions", functions)
+        json.addProperty("lootTables", lootTables)
+        json.addProperty("predicates", predicates)
+        json.addProperty("advancements", advancements)
+        json.addProperty("recipes", recipes)
+        json.addProperty("itemModifiers", itemModifiers)
+        json.addProperty("tags", tags)
+        json.addProperty("rawResourceKinds", rawResourceKinds)
+        json.addProperty("rawResources", rawResources)
+        json.addProperty("resourceIndex", resourceIndex)
+        json.addProperty("activeResources", activeResources)
+        json.addProperty("overriddenResources", overriddenResources)
+        json.add("overlays", JsonArray().also { overlaysJson ->
+            overlays.forEach { entry ->
+                overlaysJson.add(
+                    JsonObject().also { overlay ->
+                        overlay.addProperty("type", entry.type)
+                        overlay.addProperty("id", entry.id.toString())
+                        overlay.addProperty("file", entry.file)
+                        overlay.addProperty("pack", entry.pack)
+                        overlay.addProperty("order", entry.order)
+                        overlay.addProperty("active", entry.active)
+                        entry.overrides?.let { overlay.addProperty("overrides", it) }
+                        entry.overriddenBy?.let { overlay.addProperty("overriddenBy", it) }
+                    },
+                )
+            }
+        })
+        json.add("missingReferences", JsonArray().also { missingJson ->
+            missingReferences.forEach { reference ->
+                missingJson.add(
+                    JsonObject().also { missing ->
+                        missing.addProperty("source", reference.source)
+                        missing.addProperty("type", reference.type)
+                        missing.addProperty("id", reference.id.toString())
+                    },
+                )
+            }
+        })
+    }
+
+private fun stringArray(values: List<String>): JsonArray =
+    JsonArray().also { array -> values.forEach(array::add) }
 
 class RunCommand : CliktCommand(name = "run") {
     private val version by option("--version", "-v").default(VersionProfiles.default.id)

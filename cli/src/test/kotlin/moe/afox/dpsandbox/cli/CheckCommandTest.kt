@@ -1,5 +1,6 @@
 package moe.afox.dpsandbox.cli
 
+import com.google.gson.JsonParser
 import java.io.ByteArrayOutputStream
 import java.io.PrintStream
 import java.nio.file.Files
@@ -76,6 +77,41 @@ class CheckCommandTest {
         val outputJson = Files.readString(outputsFile)
         assertTrue("\"command\": \"say\"" in outputJson, outputJson)
         assertTrue("\"text\": \"<Server> output from check\"" in outputJson, outputJson)
+    }
+
+    @Test
+    fun `check writes structured manifest reports`() {
+        val dir = Files.createTempDirectory("dps-check-report")
+        val reportFile = dir.resolve("report.json")
+        val pack = Path.of("../core/src/test/resources/packs/counter").toAbsolutePath().normalize().toString().replace("\\", "\\\\")
+        val manifest = dir.resolve("report.dps.json")
+        Files.writeString(
+            manifest,
+            """
+            {
+              "version": "26.1.2",
+              "packs": ["$pack"],
+              "steps": [
+                { "command": "scoreboard objectives add ticks dummy" },
+                { "command": "scoreboard players set #clock ticks 5" }
+              ],
+              "assertions": [
+                { "score": { "target": "#clock", "objective": "ticks", "equals": 5 } }
+              ]
+            }
+            """.trimIndent(),
+        )
+
+        val output = captureStdout {
+            main(arrayOf("check", manifest.toString(), "--report-file", reportFile.toString()))
+        }
+
+        assertTrue("PASS $manifest" in output, output)
+        assertTrue("report written: $reportFile" in output, output)
+        val report = JsonParser.parseString(Files.readString(reportFile)).asJsonArray[0].asJsonObject
+        assertTrue(report.get("passed").asBoolean)
+        assertTrue(report.getAsJsonArray("attempts")[0].asJsonObject.get("version").asString == "26.1.2")
+        assertTrue(report.getAsJsonArray("attempts")[0].asJsonObject.getAsJsonObject("resources").get("functions").asInt > 0)
     }
 
     @Test
