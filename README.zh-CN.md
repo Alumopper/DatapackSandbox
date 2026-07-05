@@ -107,6 +107,8 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar check ./sandbox-cases
 java -jar cli/build/libs/datapack-sandbox-cli.jar check ./sandbox-cases --snapshot-on-fail --snapshot-diff-on-fail
 ```
 
+清单中的 `steps` 也可以直接包含 `commands`、`functionText` 或相对路径 `mcfunction`，用于验证命令生成器输出；`assertions` 可检查 `trace` 和玩家背包 `item`。
+
 清单文件固定使用 `.dps.json` 后缀：
 
 ```json

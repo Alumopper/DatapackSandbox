@@ -117,6 +117,10 @@ When assertions fail, print the final snapshot or a minimal snapshot diff:
 java -jar cli/build/libs/datapack-sandbox-cli.jar check ./sandbox-cases --snapshot-on-fail --snapshot-diff-on-fail
 ```
 
+Manifest `steps` can also contain `commands`, `functionText`, or a relative
+`mcfunction` path for command-generator output tests; assertions can check
+`trace` events and player inventory `item` results.
+
 Manifest files use the `.dps.json` suffix:
 
 ```json

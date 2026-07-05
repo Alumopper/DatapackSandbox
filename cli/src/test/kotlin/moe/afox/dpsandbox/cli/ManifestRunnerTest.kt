@@ -1,5 +1,6 @@
 ﻿package moe.afox.dpsandbox.cli
 
+import com.google.gson.JsonParser
 import java.nio.file.Path
 import java.nio.file.Files
 import kotlin.test.Test
@@ -8,6 +9,13 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class ManifestRunnerTest {
+    @Test
+    fun `manifest schema parses as json`() {
+        val schema = JsonParser.parseString(Files.readString(Path.of("../docs/dps-manifest.schema.json"))).asJsonObject
+
+        assertEquals("Datapack Sandbox manifest", schema.get("title").asString)
+    }
+
     @Test
     fun `runs a manifest check`() {
         val path = Path.of("src/test/resources/cases/counter.dps.json")
@@ -174,6 +182,56 @@ class ManifestRunnerTest {
         assertTrue("snapshot diff:" in messages, messages)
         assertTrue("+ /scores/runs =" in messages, messages)
         assertTrue("\"#manifest_diff\": 2" in messages, messages)
+    }
+
+    @Test
+    fun `runs generated command text and asserts trace and items`() {
+        val dir = Files.createTempDirectory("dps-generator-manifest")
+        val pack = Path.of("../core/src/test/resources/packs/counter").toAbsolutePath().normalize().toString().replace("\\", "\\\\")
+        val generated = dir.resolve("generated.mcfunction")
+        Files.writeString(
+            generated,
+            """
+            scoreboard players add #generated runs 1
+            give Steve minecraft:apple 3
+            """.trimIndent(),
+        )
+        val manifest = dir.resolve("generator.dps.json")
+        Files.writeString(
+            manifest,
+            """
+            {
+              "version": "26.1.2",
+              "packs": ["$pack"],
+              "steps": [
+                {
+                  "commands": [
+                    "scoreboard objectives add runs dummy",
+                    "scoreboard players set #generated runs 1"
+                  ],
+                  "source": "<generator:commands>"
+                },
+                {
+                  "functionText": "scoreboard players add #generated runs 2",
+                  "source": "<generator:inline>"
+                },
+                {
+                  "mcfunction": "generated.mcfunction"
+                }
+              ],
+              "assertions": [
+                { "score": { "target": "#generated", "objective": "runs", "equals": 4 } },
+                { "item": { "player": "Steve", "id": "minecraft:apple", "count": 3 } },
+                { "trace": { "root": "scoreboard", "count": 4 } },
+                { "trace": { "contains": "give Steve", "fileContains": "generated.mcfunction", "success": true, "count": 1 } }
+              ]
+            }
+            """.trimIndent(),
+        )
+
+        val result = ManifestRunner.run(manifest)
+
+        assertTrue(result.passed, result.messages.joinToString())
     }
 
     @Test

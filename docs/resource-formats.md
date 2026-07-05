@@ -56,6 +56,41 @@ For newer packs that declare a supported range instead of a single
 `supported_formats` when the active profile's data pack format is inside the
 range.
 
+## `.dps.json` Manifests
+
+Manifests may contain `version` or `versions`, `unsupported`, `packs`, `world`,
+`steps`, and `assertions`. The JSON Schema is available at:
+
+```text
+docs/dps-manifest.schema.json
+```
+
+`steps` support full datapack execution and lightweight generated-output tests:
+
+- `{ "load": true }`
+- `{ "ticks": 20 }`
+- `{ "function": "demo:main" }`
+- `{ "command": "say hello" }`
+- `{ "commands": ["scoreboard objectives add runs dummy", "..."], "source": "<generator>" }`
+- `{ "functionText": "say inline\nscoreboard ...", "source": "<inline>" }`
+- `{ "mcfunction": "relative/path/generated.mcfunction" }`
+- `{ "player": { ... } }`, `{ "block": { ... } }`, `{ "event": { ... } }`, `{ "loot": { ... } }`
+
+Assertions support score, storage, player, block, entityCount, advancement,
+predicate, loot, output, item, and trace checks:
+
+```json
+{ "item": { "player": "Steve", "id": "minecraft:apple", "count": 3 } }
+```
+
+```json
+{ "trace": { "root": "scoreboard", "success": true, "count": 2 } }
+```
+
+`item` assertions can check player inventory by slot, id, count, components
+path, and NBT path. `trace` assertions can check command/root/contains,
+success, count, source file, and function stack.
+
 ## Recipes, Item Modifiers, and Tags
 
 Recipes and item modifiers are loaded as raw JSON resources and included in the

@@ -169,6 +169,12 @@ foo[0].bar
 - `steps`
 - `assertions`
 
+JSON Schema 位于：
+
+```text
+docs/dps-manifest.schema.json
+```
+
 最小示例：
 
 ```json
@@ -187,3 +193,26 @@ foo[0].bar
 ```
 
 `world` 可预置方块、实体、玩家、分数、storage、gamerule、time/weather，也可以从 Java 存档导入指定 chunk。`assertions` 可检查 score、storage、player、advancement、output、loot 等行为。
+
+`steps` 支持完整数据包执行和轻量生成器产物测试：
+
+- `{ "load": true }`
+- `{ "ticks": 20 }`
+- `{ "function": "demo:main" }`
+- `{ "command": "say hello" }`
+- `{ "commands": ["scoreboard objectives add runs dummy", "..."], "source": "<generator>" }`
+- `{ "functionText": "say inline\nscoreboard ...", "source": "<inline>" }`
+- `{ "mcfunction": "relative/path/generated.mcfunction" }`
+- `{ "player": { ... } }`、`{ "block": { ... } }`、`{ "event": { ... } }`、`{ "loot": { ... } }`
+
+`assertions` 除了既有 score、storage、player、block、entityCount、advancement、predicate、loot 和 output 外，也支持：
+
+```json
+{ "item": { "player": "Steve", "id": "minecraft:apple", "count": 3 } }
+```
+
+```json
+{ "trace": { "root": "scoreboard", "success": true, "count": 2 } }
+```
+
+`item` 断言可按玩家、slot、id、count、components path 和 NBT path 检查背包结果。`trace` 断言可按 command/root/contains/success/count/source file/function stack 检查命令执行链。

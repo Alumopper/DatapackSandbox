@@ -1,0 +1,158 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://afox.moe/dpsandbox/dps-manifest.schema.json",
+  "title": "Datapack Sandbox manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "version": { "type": "string" },
+    "versions": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "unsupported": {
+      "type": "string",
+      "enum": ["warn", "warning", "ignore", "silent", "error", "strict"]
+    },
+    "packs": {
+      "oneOf": [
+        { "$ref": "#/$defs/stringArray" },
+        {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/stringArray" }
+        }
+      ]
+    },
+    "world": { "type": "object" },
+    "steps": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/step" }
+    },
+    "assertions": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/assertion" }
+    }
+  },
+  "required": ["packs"],
+  "oneOf": [
+    { "required": ["version"], "not": { "required": ["versions"] } },
+    { "required": ["versions"], "not": { "required": ["version"] } },
+    { "not": { "anyOf": [{ "required": ["version"] }, { "required": ["versions"] }] } }
+  ],
+  "$defs": {
+    "stringArray": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1
+    },
+    "step": {
+      "type": "object",
+      "additionalProperties": true,
+      "oneOf": [
+        { "required": ["load"] },
+        { "required": ["ticks"] },
+        { "required": ["function"] },
+        { "required": ["command"] },
+        { "required": ["commands"] },
+        { "required": ["functionText"] },
+        { "required": ["mcfunction"] },
+        { "required": ["player"] },
+        { "required": ["block"] },
+        { "required": ["event"] },
+        { "required": ["loot"] }
+      ],
+      "properties": {
+        "load": { "type": "boolean" },
+        "ticks": { "type": "integer", "minimum": 0 },
+        "function": { "type": "string" },
+        "command": { "type": "string" },
+        "commands": { "$ref": "#/$defs/stringArray" },
+        "functionText": { "type": "string" },
+        "mcfunction": { "type": "string" },
+        "source": { "type": "string" },
+        "player": { "type": "object" },
+        "block": { "type": "object" },
+        "event": { "type": "object" },
+        "loot": { "type": "object" }
+      }
+    },
+    "assertion": {
+      "type": "object",
+      "additionalProperties": false,
+      "oneOf": [
+        { "required": ["score"] },
+        { "required": ["storage"] },
+        { "required": ["entityCount"] },
+        { "required": ["player"] },
+        { "required": ["block"] },
+        { "required": ["advancement"] },
+        { "required": ["predicate"] },
+        { "required": ["loot"] },
+        { "required": ["item"] },
+        { "required": ["trace"] },
+        { "required": ["output"] }
+      ],
+      "properties": {
+        "score": { "$ref": "#/$defs/scoreAssertion" },
+        "storage": { "type": "object" },
+        "entityCount": { "type": "object" },
+        "player": { "type": "object" },
+        "block": { "type": "object" },
+        "advancement": { "type": "object" },
+        "predicate": { "type": "object" },
+        "loot": { "type": "object" },
+        "item": { "$ref": "#/$defs/itemAssertion" },
+        "trace": { "$ref": "#/$defs/traceAssertion" },
+        "output": { "type": "object" }
+      }
+    },
+    "scoreAssertion": {
+      "type": "object",
+      "required": ["target", "objective", "equals"],
+      "properties": {
+        "target": { "type": "string" },
+        "objective": { "type": "string" },
+        "equals": { "type": "integer" }
+      },
+      "additionalProperties": false
+    },
+    "pathExpectation": {
+      "type": "object",
+      "properties": {
+        "path": { "type": "string" },
+        "equals": {},
+        "exists": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "itemAssertion": {
+      "type": "object",
+      "required": ["player"],
+      "properties": {
+        "player": { "type": "string" },
+        "id": { "type": "string" },
+        "count": { "type": "integer", "minimum": 0 },
+        "slot": { "type": "integer", "minimum": 0 },
+        "exists": { "type": "boolean" },
+        "components": { "$ref": "#/$defs/pathExpectation" },
+        "nbt": { "$ref": "#/$defs/pathExpectation" }
+      },
+      "additionalProperties": false
+    },
+    "traceAssertion": {
+      "type": "object",
+      "properties": {
+        "command": { "type": "string" },
+        "root": { "type": "string" },
+        "contains": { "type": "string" },
+        "success": { "type": "boolean" },
+        "count": { "type": "integer", "minimum": 0 },
+        "fileContains": { "type": "string" },
+        "function": { "type": "string" }
+      },
+      "additionalProperties": false
+    }
+  }
+}

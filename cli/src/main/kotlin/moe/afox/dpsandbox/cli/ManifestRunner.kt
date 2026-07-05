@@ -17,6 +17,7 @@ import moe.afox.dpsandbox.core.SandboxException
 import moe.afox.dpsandbox.core.SandboxEntity
 import moe.afox.dpsandbox.core.SandboxBlock
 import moe.afox.dpsandbox.core.SnapshotDiff
+import moe.afox.dpsandbox.core.SourceLocation
 import moe.afox.dpsandbox.core.UnsupportedFeatureMode
 import moe.afox.dpsandbox.core.VersionProfiles
 import moe.afox.dpsandbox.core.createSandbox
@@ -122,7 +123,7 @@ object ManifestRunner {
                 throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Manifest steps must be objects: $path")
             }
             try {
-                runStep(step.asJsonObject, sandbox, options)
+                runStep(step.asJsonObject, sandbox, options, path.parent ?: Path.of("."))
             } catch (error: SandboxException) {
                 throw SandboxException(error.code, "Step ${index + 1} failed for ${config.version}: ${error.message}", error.location, error.version, error.command, error)
             }
@@ -204,12 +205,26 @@ object ManifestRunner {
         return packs
     }
 
-    private fun runStep(step: JsonObject, sandbox: DatapackSandbox, options: ManifestOptions) {
+    private fun runStep(step: JsonObject, sandbox: DatapackSandbox, options: ManifestOptions, base: Path) {
         when {
             step.has("load") && step.get("load").asBoolean -> sandbox.runLoad()
             step.has("ticks") -> sandbox.runTicks(step.get("ticks").asInt)
             step.has("function") -> sandbox.runFunction(step.get("function").asString)
             step.has("command") -> sandbox.executeCommand(step.get("command").asString)
+            step.has("commands") -> runCommandLines(
+                step.manifestStringArray("commands", "Manifest step 'commands'"),
+                sandbox,
+                step.manifestString("source") ?: "<manifest:commands>",
+            )
+            step.has("functionText") -> runCommandLines(
+                step.requiredManifestString("functionText").lines(),
+                sandbox,
+                step.manifestString("source") ?: "<manifest:functionText>",
+            )
+            step.has("mcfunction") -> {
+                val file = base.resolve(step.requiredManifestString("mcfunction")).normalize()
+                runCommandLines(Files.readAllLines(file, StandardCharsets.UTF_8), sandbox, file.toString())
+            }
             step.has("player") -> runPlayerStep(step.getAsJsonObject("player"), sandbox)
             step.has("block") -> runBlockStep(step.getAsJsonObject("block"), sandbox)
             step.has("event") -> sandbox.handlePlayerEvent(parseEvent(step.getAsJsonObject("event"), sandbox))
@@ -222,7 +237,21 @@ object ManifestRunner {
                     loot.get("seed")?.asLong ?: options.seed,
                 )
             }
-            else -> throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Step must contain load, ticks, function, command, player, block, event, or loot")
+            else -> throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Step must contain load, ticks, function, command, commands, functionText, mcfunction, player, block, event, or loot")
+        }
+    }
+
+    private fun runCommandLines(lines: List<String>, sandbox: DatapackSandbox, sourceName: String) {
+        lines.mapIndexedNotNull { index, raw ->
+            val command = raw.removePrefix("\uFEFF").trim()
+            if (command.isBlank() || command.startsWith("#")) {
+                null
+            } else {
+                val normalized = command.removePrefix("/")
+                normalized to SourceLocation(file = sourceName, line = index + 1, command = normalized)
+            }
+        }.forEach { (command, location) ->
+            sandbox.executeCommand(command, location)
         }
     }
 
@@ -370,6 +399,12 @@ object ManifestRunner {
                     if (result.items.none { it.id == ResourceLocation.parse(expected) }) failures += "loot expected item $expected but got ${result.items.map { it.id }}"
                 }
             }
+            assertion.has("item") -> {
+                failures += evaluateItemAssertion(assertion.getAsJsonObject("item"), sandbox)
+            }
+            assertion.has("trace") -> {
+                failures += evaluateTraceAssertion(assertion.getAsJsonObject("trace"), sandbox)
+            }
             assertion.has("output") -> {
                 failures += ManifestOutputAssertions.evaluate(assertion.getAsJsonObject("output"), sandbox)
             }
@@ -377,6 +412,82 @@ object ManifestRunner {
         }
         return failures
     }
+
+    private fun evaluateItemAssertion(item: JsonObject, sandbox: DatapackSandbox): List<String> {
+        val player = sandbox.world.requirePlayer(item.requiredManifestString("player"))
+        val slot = item.get("slot")?.asInt
+        val candidates = slot?.let { player.inventory.getOrNull(it)?.let(::listOf) ?: emptyList() } ?: player.inventory
+        val expectedId = item.manifestString("id")?.let(ResourceLocation::parse)
+        val expectedCount = item.get("count")?.asInt
+        val exists = item.get("exists")?.asBoolean ?: true
+        val matches = candidates.filter { stack ->
+            (expectedId == null || stack.id == expectedId) &&
+                (expectedCount == null || stack.count == expectedCount) &&
+                itemPathMatches(stack.components, item.getAsJsonObject("components")) &&
+                itemPathMatches(stack.nbt, item.getAsJsonObject("nbt"))
+        }
+        if (exists && matches.isEmpty()) {
+            return listOf("item for player ${player.name} expected ${describeItemExpectation(item)} but inventory was ${player.inventory.map { "${it.id}x${it.count}" }}")
+        }
+        if (!exists && matches.isNotEmpty()) {
+            return listOf("item for player ${player.name} expected missing ${describeItemExpectation(item)} but found ${matches.map { "${it.id}x${it.count}" }}")
+        }
+        return emptyList()
+    }
+
+    private fun itemPathMatches(root: JsonObject, expectation: JsonObject?): Boolean {
+        if (expectation == null) return true
+        val path = expectation.manifestString("path")
+        val actual = JsonPaths.get(root, path)
+        val expected = expectation.get("equals")
+        return when {
+            expectation.get("exists")?.asBoolean == true -> actual != null
+            expectation.get("exists")?.asBoolean == false -> actual == null
+            expected != null -> actual == expected
+            else -> actual != null
+        }
+    }
+
+    private fun describeItemExpectation(item: JsonObject): String =
+        listOfNotNull(
+            item.manifestString("id")?.let { "id=$it" },
+            item.get("count")?.let { "count=${it.asInt}" },
+            item.get("slot")?.let { "slot=${it.asInt}" },
+        ).ifEmpty { listOf("<any item>") }.joinToString(", ")
+
+    private fun evaluateTraceAssertion(trace: JsonObject, sandbox: DatapackSandbox): List<String> {
+        val matches = sandbox.world.traces.filter { event ->
+            trace.manifestString("command")?.let { event.command == it } ?: true
+        }.filter { event ->
+            trace.manifestString("root")?.let { event.root == it } ?: true
+        }.filter { event ->
+            trace.manifestString("contains")?.let { it in event.command } ?: true
+        }.filter { event ->
+            trace.get("success")?.asBoolean?.let { event.success == it } ?: true
+        }.filter { event ->
+            trace.manifestString("fileContains")?.let { expected -> event.source?.file?.contains(expected) == true } ?: true
+        }.filter { event ->
+            trace.manifestString("function")?.let { expected -> event.source?.functionStack?.any { frame -> frame.id.toString() == expected } == true } ?: true
+        }
+        val count = trace.get("count")?.asInt
+        if (count != null && matches.size != count) {
+            return listOf("trace expected $count match(es) but found ${matches.size}: ${describeTraceExpectation(trace)}")
+        }
+        if (count == null && matches.isEmpty()) {
+            return listOf("trace expected at least one match: ${describeTraceExpectation(trace)}")
+        }
+        return emptyList()
+    }
+
+    private fun describeTraceExpectation(trace: JsonObject): String =
+        listOfNotNull(
+            trace.manifestString("command")?.let { "command=$it" },
+            trace.manifestString("root")?.let { "root=$it" },
+            trace.manifestString("contains")?.let { "contains=$it" },
+            trace.get("success")?.let { "success=${it.asBoolean}" },
+            trace.manifestString("fileContains")?.let { "fileContains=$it" },
+            trace.manifestString("function")?.let { "function=$it" },
+        ).ifEmpty { listOf("<any trace>") }.joinToString(", ")
 
     private fun parseEvent(event: JsonObject, sandbox: DatapackSandbox): PlayerEvent {
         val playerName = event.requiredManifestString("player")
