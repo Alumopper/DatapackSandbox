@@ -226,6 +226,14 @@ docs/dps-manifest.schema.json
 - `{ "mcfunction": "relative/path/generated.mcfunction" }`
 - `{ "player": { ... } }`、`{ "block": { ... } }`、`{ "event": { ... } }`、`{ "loot": { ... } }`
 
+事件步骤至少需要 `player` 和 `type`。可选上下文字段包括 `item`、`entity`、
+`block`、`recipe`、`from`/`to`、`damageSource` 或 `damageType`、`amount`、
+键盘 `key`、鼠标 `button`、`action` 以及指针坐标 `x`/`y`：
+
+```json
+{ "event": { "player": "Steve", "type": "damage", "damageSource": "minecraft:fall", "amount": 4.5 } }
+```
+
 `assertions` 除了既有 score、storage、player、block、entityCount、advancement、predicate、loot 和 output 外，也支持：
 
 ```json

@@ -17,6 +17,23 @@ class ManifestRunnerTest {
     }
 
     @Test
+    fun `manifest schema documents player event fields`() {
+        val schema = JsonParser.parseString(Files.readString(Path.of("../docs/dps-manifest.schema.json"))).asJsonObject
+        val defs = schema.getAsJsonObject("\$defs")
+        val event = defs.getAsJsonObject("eventStep")
+        val properties = event.getAsJsonObject("properties")
+        val stepEvent = defs.getAsJsonObject("step")
+            .getAsJsonObject("properties")
+            .getAsJsonObject("event")
+
+        assertEquals("#/\$defs/eventStep", stepEvent.get("\$ref").asString)
+        assertTrue(event.getAsJsonArray("required").map { it.asString }.containsAll(listOf("player", "type")))
+        assertEquals("string", properties.getAsJsonObject("damageSource").get("type").asString)
+        assertEquals("number", properties.getAsJsonObject("amount").get("type").asString)
+        assertEquals("string", properties.getAsJsonObject("mouseButton").get("type").asString)
+    }
+
+    @Test
     fun `runs a manifest check`() {
         val path = Path.of("src/test/resources/cases/counter.dps.json")
 

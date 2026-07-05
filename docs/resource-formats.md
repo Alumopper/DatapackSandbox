@@ -78,6 +78,15 @@ docs/dps-manifest.schema.json
 - `{ "mcfunction": "relative/path/generated.mcfunction" }`
 - `{ "player": { ... } }`, `{ "block": { ... } }`, `{ "event": { ... } }`, `{ "loot": { ... } }`
 
+Event steps require `player` and `type`. Optional context fields include
+`item`, `entity`, `block`, `recipe`, `from`/`to`, `damageSource` or
+`damageType`, `amount`, keyboard `key`, mouse `button`, `action`, and pointer
+`x`/`y`:
+
+```json
+{ "event": { "player": "Steve", "type": "damage", "damageSource": "minecraft:fall", "amount": 4.5 } }
+```
+
 `world` can predefine sparse blocks/entities/players, scoreboards, storage,
 gamerules, time/weather, seed/difficulty/default game mode, world/player spawn
 points, forced chunks, biome overrides, teams, bossbars, and scoped Java save
