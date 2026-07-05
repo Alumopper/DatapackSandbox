@@ -45,3 +45,50 @@ tasks.register<Jar>("fatJar") {
             .map { zipTree(it) }
     })
 }
+
+val fatJar = tasks.named<Jar>("fatJar")
+val cliSmokeJavaLauncher = javaToolchains.launcherFor {
+    languageVersion.set(JavaLanguageVersion.of(25))
+}
+
+fun registerCliJarSmokeTask(
+    name: String,
+    descriptionText: String,
+    vararg cliArgs: String,
+) = tasks.register<Exec>(name) {
+    group = "verification"
+    description = descriptionText
+    dependsOn(fatJar)
+    executable = cliSmokeJavaLauncher.get().executablePath.asFile.absolutePath
+    inputs.file(fatJar.flatMap { it.archiveFile })
+
+    doFirst {
+        setArgs(listOf("-jar", fatJar.get().archiveFile.get().asFile.absolutePath) + cliArgs)
+    }
+}
+
+val smokeCliJarVersion = registerCliJarSmokeTask(
+    name = "smokeCliJarVersion",
+    descriptionText = "Runs the standalone CLI jar version command.",
+    "version",
+)
+
+val smokeCliJarExamples = registerCliJarSmokeTask(
+    name = "smokeCliJarExamples",
+    descriptionText = "Runs all example manifests through the standalone CLI jar.",
+    "check",
+    rootProject.layout.projectDirectory.dir("examples").asFile.absolutePath,
+)
+smokeCliJarExamples.configure {
+    inputs.dir(rootProject.layout.projectDirectory.dir("examples"))
+}
+
+tasks.register("smokeCliJar") {
+    group = "verification"
+    description = "Builds the standalone CLI jar and runs release smoke checks."
+    dependsOn(smokeCliJarVersion, smokeCliJarExamples)
+}
+
+tasks.named("check") {
+    dependsOn("smokeCliJar")
+}

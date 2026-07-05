@@ -23,6 +23,12 @@ On Windows:
 .\gradlew.bat :cli:fatJar
 ```
 
+Run release smoke checks for the standalone jar:
+
+```powershell
+.\gradlew.bat :cli:smokeCliJar
+```
+
 The standalone jar is written to:
 
 ```text
