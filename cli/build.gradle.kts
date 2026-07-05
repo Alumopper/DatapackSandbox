@@ -146,10 +146,42 @@ smokeCliJarReadmeEvent.configure {
     errorOutput = output
 }
 
+val smokeCliJarReadmeRunAssert = registerCliJarSmokeTask(
+    name = "smokeCliJarReadmeRunAssert",
+    descriptionText = "Runs the README run assertion shorthand example through the standalone jar.",
+    "run",
+    "--version",
+    "26.2",
+    "--command",
+    "scoreboard objectives add runs dummy",
+    "--command",
+    "scoreboard players set #fixture runs 1",
+    "--command",
+    "data merge storage demo:env {ready:true}",
+    "--command",
+    "give Steve minecraft:stick 3",
+    "--command",
+    "summon minecraft:pig 0 0 0 {Tags:[\"fixture\"]}",
+    "--command",
+    "say generated ok",
+    "--assert",
+    "score:#fixture:runs=1",
+    "--assert",
+    "storage:demo:env:ready=true",
+    "--assert",
+    "item:Steve:minecraft:stick=3",
+    "--assert",
+    "entity:minecraft:pig@fixture=1",
+    "--assert",
+    "trace:scoreboard=2",
+    "--assert",
+    "output:generated ok",
+)
+
 tasks.register("smokeCliJar") {
     group = "verification"
     description = "Builds the standalone CLI jar and runs release smoke checks."
-    dependsOn(smokeCliJarVersion, smokeCliJarSchema, smokeCliJarExamples, smokeCliJarReadmeLoot, smokeCliJarReadmeEvent)
+    dependsOn(smokeCliJarVersion, smokeCliJarSchema, smokeCliJarExamples, smokeCliJarReadmeLoot, smokeCliJarReadmeEvent, smokeCliJarReadmeRunAssert)
 }
 
 tasks.named("check") {
