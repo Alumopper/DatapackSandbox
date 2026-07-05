@@ -420,6 +420,34 @@ class RunCommandTest {
     }
 
     @Test
+    fun `run writes player event traces as jsonl`() {
+        val eventTraceFile = Files.createTempFile("dps-cli-event-trace", ".jsonl")
+
+        val output = captureStdout {
+            main(
+                arrayOf(
+                    "run",
+                    "--version",
+                    "26.2",
+                    "--event",
+                    "player Steve key_input key.jump release",
+                    "--event-trace-file",
+                    eventTraceFile.toString(),
+                ),
+            )
+        }
+
+        assertTrue("event trace written: $eventTraceFile" in output, output)
+        val eventTraceJson = Files.readString(eventTraceFile)
+        assertTrue("\"player\": \"Steve\"" in eventTraceJson, eventTraceJson)
+        assertTrue("\"type\": \"key_input\"" in eventTraceJson, eventTraceJson)
+        assertTrue("\"success\": true" in eventTraceJson, eventTraceJson)
+        assertTrue("\"device\": \"keyboard\"" in eventTraceJson, eventTraceJson)
+        assertTrue("\"code\": \"key.jump\"" in eventTraceJson, eventTraceJson)
+        assertTrue("\"action\": \"release\"" in eventTraceJson, eventTraceJson)
+    }
+
+    @Test
     fun `run loads multiple mcfunction files and strings together`() {
         val mainFile = Files.createTempFile("dps-cli-main-function", ".mcfunction")
         val helperFile = Files.createTempFile("dps-cli-helper-function", ".mcfunction")

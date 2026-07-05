@@ -143,6 +143,7 @@ JSON text component 支持 `text`、`score`、`selector`、`translate`、`keybin
 | CLI `run --command-file <file>` | 按参数顺序执行一个或多个原始命令文件，适合命令生成器输出。 |
 | CLI `run --event "<event>"` | 在轻量 run 流程中注入玩家事件，格式为 `player <name> <type> [id] [detail/action]`，之后可断言玩家状态或 `eventTrace`。 |
 | CLI `run --event-file <file>` | 按文件中的非空、非注释行逐条注入玩家事件，格式与 `--event` 相同。 |
+| CLI `run --event-trace-file <file>` | 写出玩家事件 trace JSONL，适合作为事件驱动数据包调试和 CI artifact。 |
 | CLI `run --world` | 执行前应用 manifest-style world JSON fixture，包括 fixture 引用链。 |
 | CLI `run --assert`、`run --assert-file` | 执行后评估内联或文件形式的 manifest assertion，包括需要执行前后上下文的 `snapshotDiff` 断言。`--assert-file` 支持 JSON object/array 文件，也支持非空、非注释行逐行写 shorthand。简写包括 `score:<target>:<objective>=N`、`score:<target>:<objective>>=N`、`score:<target>:<objective><=N`、`storage:<id>[:<path>]=<json>`、`storage:<id>[:<path>]?`、`storage:<id>[:<path>]!`、`player:<name>[:<field>=<value>]`、`item:<player>:<id>[@slot]=N`、`entity:<type|*>[@tag]=N`、`trace:<root>=N`、`trace:<text>`、`warning=N`、`warning:<text>` 和 `output:<text>`。 |
 | CLI `check <manifest-or-directory>` | 运行 `.dps.json` 清单；`--validate-schema` 会在执行前校验 manifest 结构；`--fail-on-missing-resources` 会把直接资源缺失引用视为失败；`--verbose` 会打印资源摘要、覆盖条目、缺失引用和输出事件；可用 `--snapshot-diff-on-fail` 输出状态差异，也可用 `--trace-file`、`--trace-filter`、`--outputs-file` 和 `--report-file` 写出 CI artifact。 |

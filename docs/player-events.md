@@ -55,6 +55,7 @@ or event trace:
 ```bash
 java -jar cli/build/libs/datapack-sandbox-cli.jar run --version 26.2 \
   --event "player Steve key_input key.jump release" \
+  --event-trace-file ./event-trace.jsonl \
   --assert '{"eventTrace":{"player":"Steve","type":"key_input","success":true,"count":1}}'
 ```
 

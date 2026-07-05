@@ -271,6 +271,7 @@ class RunCommand : CliktCommand(name = "run") {
     private val snapshotDiffFile by option("--snapshot-diff-file").path()
     private val trace by option("--trace").flag(default = false)
     private val traceFile by option("--trace-file").path()
+    private val eventTraceFile by option("--event-trace-file").path()
     private val traceFilters by option("--trace-filter").multiple()
     private val outputsFile by option("--outputs-file").path()
     private val unsupported by option("--unsupported").default("warn")
@@ -295,7 +296,11 @@ class RunCommand : CliktCommand(name = "run") {
                 snapshot ||
                 snapshotFile != null ||
                 snapshotDiff ||
-                snapshotDiffFile != null
+                snapshotDiffFile != null ||
+                trace ||
+                traceFile != null ||
+                eventTraceFile != null ||
+                outputsFile != null
             val sandbox = when {
                 functionSources.isNotEmpty() -> {
                     createFunctionSandbox(
@@ -313,7 +318,7 @@ class RunCommand : CliktCommand(name = "run") {
                 )
                 else -> throw SandboxException(
                     DiagnosticCode.INPUT_FORMAT,
-                    "run requires at least one --pack path, --mcfunction file, --mcfunction-text string, --stdin, --command, --command-file, --event, --event-file, --world, --assert, or snapshot option",
+                    "run requires at least one --pack path, --mcfunction file, --mcfunction-text string, --stdin, --command, --command-file, --event, --event-file, --world, --assert, or output/snapshot/trace option",
                 )
             }
             applyWorldFixtures(sandbox)
@@ -362,6 +367,13 @@ class RunCommand : CliktCommand(name = "run") {
                 }
                 Files.writeString(it, content, StandardCharsets.UTF_8)
                 println(ConsoleStyle.green("trace written: $it"))
+            }
+            eventTraceFile?.let {
+                val content = sandbox.world.playerEventTraces.joinToString(separator = System.lineSeparator()) { event ->
+                    JsonValues.render(event.toJson())
+                }
+                Files.writeString(it, content, StandardCharsets.UTF_8)
+                println(ConsoleStyle.green("event trace written: $it"))
             }
             outputsFile?.let { writeOutputsFile(it, sandbox.world.outputs) }
             val assertionFailures = ManifestRunner.evaluateAssertions(parseAssertions(), sandbox, beforeSnapshot)

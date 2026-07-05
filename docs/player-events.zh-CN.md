@@ -57,6 +57,7 @@ CLI 接受连字符或下划线；`item-used` 会标准化为 `item_used`。
 ```bash
 java -jar cli/build/libs/datapack-sandbox-cli.jar run --version 26.2 \
   --event "player Steve key_input key.jump release" \
+  --event-trace-file ./event-trace.jsonl \
   --assert '{"eventTrace":{"player":"Steve","type":"key_input","success":true,"count":1}}'
 ```
 
