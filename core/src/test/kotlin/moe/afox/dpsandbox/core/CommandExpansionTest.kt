@@ -72,6 +72,29 @@ class CommandExpansionTest {
     }
 
     @Test
+    fun `loot command supports fish mine and empty kill sources`() {
+        val pack = writeLootSourcePack(Files.createTempDirectory("dps-loot-source-pack"))
+        val sandbox = createSandbox("26.2", listOf(pack))
+
+        sandbox.executeCommand("setblock 0 64 0 minecraft:stone")
+        sandbox.executeCommand("loot give Steve fish demo:fish 0 64 0 minecraft:stick")
+        sandbox.executeCommand("loot give Steve mine 0 64 0 minecraft:stick")
+        sandbox.executeCommand("summon minecraft:zombie 2 64 0")
+        sandbox.executeCommand("loot give Steve kill @e[type=minecraft:zombie,limit=1]")
+        sandbox.executeCommand("loot spawn 1 64 1 mine 0 64 0")
+
+        val inventoryIds = sandbox.world.requirePlayer("Steve").inventory.map { it.id }.toSet()
+        assertTrue(ResourceLocation.parse("minecraft:diamond") in inventoryIds)
+        assertTrue(ResourceLocation.parse("minecraft:stone") in inventoryIds)
+        assertTrue(
+            sandbox.world.entities.any {
+                it.type == ResourceLocation.parse("minecraft:item") &&
+                    it.nbt.getAsJsonObject("Item")?.get("id")?.asString == "minecraft:stone"
+            },
+        )
+    }
+
+    @Test
     fun `execute conditions cover predicate dimension biome and loaded state`() {
         val pack = writePredicatePack(Files.createTempDirectory("dps-execute-conditions-pack"))
         val sandbox = createSandbox("26.2", listOf(pack))
@@ -140,6 +163,41 @@ class CommandExpansionTest {
             """
             {
               "type": "minecraft:command",
+              "pools": [
+                {
+                  "rolls": 1,
+                  "entries": [
+                    {
+                      "type": "minecraft:item",
+                      "name": "minecraft:diamond"
+                    }
+                  ]
+                }
+              ]
+            }
+            """.trimIndent(),
+        )
+        return root
+    }
+
+    private fun writeLootSourcePack(root: Path): Path {
+        Files.writeString(
+            root.resolve("pack.mcmeta").also { Files.createDirectories(it.parent) },
+            """
+            {
+              "pack": {
+                "pack_format": 107.1,
+                "description": "loot source test"
+              }
+            }
+            """.trimIndent(),
+        )
+        val lootRoot = root.resolve("data").resolve("demo").resolve("loot_table")
+        Files.createDirectories(lootRoot)
+        Files.writeString(
+            lootRoot.resolve("fish.json"),
+            """
+            {
               "pools": [
                 {
                   "rolls": 1,

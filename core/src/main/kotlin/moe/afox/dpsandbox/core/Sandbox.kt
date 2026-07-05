@@ -257,11 +257,13 @@ class DatapackSandbox(
                 predicateContext = PredicateContext(
                     world = world,
                     player = player,
+                    dimension = player?.dimension,
                     thisEntity = player,
                     attackingPlayer = player,
                     interactingEntity = player,
                     origin = player?.position,
                     tool = player?.selectedItem,
+                    weather = currentWeatherState(),
                 ),
                 seed = seed,
             ),
@@ -531,12 +533,73 @@ class DatapackSandbox(
         return when (tokens[index].text) {
             "loot" -> {
                 requireIndex(tokens, index + 1, "loot <table>", location)
-                val player = context.entity as? SandboxPlayer
-                generateLoot(ResourceLocation.parse(tokens[index + 1].text), ResourceLocation("minecraft", "command"), player, world.gameTime).items
+                generateLootItems(ResourceLocation.parse(tokens[index + 1].text), ResourceLocation("minecraft", "command"), context)
             }
-            else -> unsupportedFeature("Only loot source 'loot <table>' is implemented for /loot", profile.id, location)
+            "fish" -> {
+                requireSizeFrom(tokens, index, 5, "loot source fish <table> <pos> [tool]", location)
+                val origin = parsePosition(tokens, index + 2, context.position, location)
+                val tool = tokens.getOrNull(index + 5)?.text?.let(::lootTool)
+                generateLootItems(ResourceLocation.parse(tokens[index + 1].text), ResourceLocation("minecraft", "fishing"), context, origin = origin, tool = tool)
+            }
+            "mine" -> {
+                requireSizeFrom(tokens, index, 4, "loot source mine <pos> [tool]", location)
+                val pos = parseBlockPos(tokens, index + 1, context.position, location)
+                val block = world.block(pos) ?: return emptyList()
+                val tool = tokens.getOrNull(index + 4)?.text?.let(::lootTool)
+                val table = block.nbt.get("LootTable")?.takeIf { it.isJsonPrimitive }?.asString?.let(ResourceLocation::parse)
+                if (table == null) {
+                    listOf(ItemStack(block.id))
+                } else {
+                    generateLootItems(table, ResourceLocation("minecraft", "block"), context, origin = Position(pos.x.toDouble(), pos.y.toDouble(), pos.z.toDouble()), tool = tool, block = block.id)
+                }
+            }
+            "kill" -> {
+                requireIndex(tokens, index + 1, "loot source kill <target>", location)
+                EntitySelectors.select(world, tokens[index + 1].text, context, location).flatMap { entity ->
+                    val table = entity.nbt.get("DeathLootTable")?.takeIf { it.isJsonPrimitive }?.asString?.let(ResourceLocation::parse)
+                    table?.let {
+                        generateLootItems(it, ResourceLocation("minecraft", "entity"), context, origin = entity.position, thisEntity = entity)
+                    }.orEmpty()
+                }
+            }
+            else -> unsupportedFeature("Unsupported loot source '${tokens[index].text}'", profile.id, location)
         }
     }
+
+    private fun generateLootItems(
+        table: ResourceLocation,
+        contextType: ResourceLocation,
+        execution: ExecutionContext,
+        origin: Position = execution.position,
+        thisEntity: SandboxEntity? = execution.entity,
+        tool: ItemStack? = (execution.entity as? SandboxPlayer)?.selectedItem,
+        block: ResourceLocation? = null,
+    ): List<ItemStack> {
+        val player = thisEntity as? SandboxPlayer ?: execution.entity as? SandboxPlayer
+        return loot.generate(
+            table,
+            LootContext(
+                type = contextType,
+                predicateContext = PredicateContext(
+                    world = world,
+                    origin = origin,
+                    dimension = execution.dimension,
+                    thisEntity = thisEntity,
+                    player = player,
+                    attackingPlayer = execution.entity as? SandboxPlayer,
+                    interactingEntity = execution.entity,
+                    tool = tool,
+                    block = block,
+                    weather = currentWeatherState(),
+                ),
+                seed = world.gameTime,
+                tool = tool,
+            ),
+        ).items
+    }
+
+    private fun lootTool(raw: String): ItemStack =
+        ItemStack(ResourceLocation.parse(raw))
 
     private fun insertLootIntoBlock(pos: BlockPos, items: List<ItemStack>, location: SourceLocation?) {
         val block = world.requireBlock(pos)
@@ -1008,9 +1071,12 @@ class DatapackSandbox(
             thisEntity = context.entity,
             player = player,
             tool = player?.selectedItem,
-            weather = WeatherState(raining = world.weather == "rain" || world.weather == "thunder", thundering = world.weather == "thunder"),
+            weather = currentWeatherState(),
         )
     }
+
+    private fun currentWeatherState(): WeatherState =
+        WeatherState(raining = world.weather == "rain" || world.weather == "thunder", thundering = world.weather == "thunder")
 
     private fun entityDimension(entity: SandboxEntity): ResourceLocation =
         (entity as? SandboxPlayer)?.dimension ?: ResourceLocation("minecraft", "overworld")

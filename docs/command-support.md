@@ -56,7 +56,7 @@ run continues. Use `--unsupported error`, manifest `"unsupported": "error"`, or
 | `kill` | Supported | Removes selected sandbox entities. |
 | `list` | Supported | Reports sandbox players and UUIDs. |
 | `locate` | Partial | Accepts `biome`, `structure`, `poi`; reports no result in the void world instead of querying worldgen. |
-| `loot` | Partial | Supports `give`, `insert`, `spawn`, `replace entity`, `replace block` with source `loot <table>`. Other vanilla loot sources are unsupported. |
+| `loot` | Partial | Supports `give`, `insert`, `spawn`, `replace entity`, `replace block`; sources include `loot <table>`, `fish <table> <pos> [tool]`, `mine <pos> [tool]`, and `kill <target>` when entities declare `DeathLootTable`. |
 | `me` | Supported | Recorded as chat output. |
 | `msg`, `tell`, `w` | Supported | Recorded as private chat output. |
 | `pardon`, `pardon-ip` | Unsupported | Server administration is not simulated. |
