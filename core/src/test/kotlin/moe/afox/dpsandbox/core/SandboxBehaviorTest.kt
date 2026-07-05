@@ -102,10 +102,16 @@ class SandboxBehaviorTest {
         sandbox.executeCommand("rotate @e[tag=rider] 90 15")
         sandbox.executeCommand("damage @e[tag=rider] 5")
         sandbox.executeCommand("item replace entity Steve hotbar.0 with minecraft:diamond_sword 1")
+        sandbox.executeCommand("""setblock 2 0 0 minecraft:chest{Items:[{Slot:0b,id:"minecraft:stone",count:1b}]}""")
+        sandbox.executeCommand("""bossbar add demo:stored {"text":"Stored"}""")
         sandbox.executeCommand("scoreboard objectives add runs dummy")
         sandbox.executeCommand("scoreboard objectives add success dummy")
         sandbox.executeCommand("execute store result score Steve runs run random value 3..3")
         sandbox.executeCommand("execute store result storage demo:store value int 2 run random value 3..3")
+        sandbox.executeCommand("execute store result entity @e[tag=rider,limit=1] Health double 2 run random value 2..2")
+        sandbox.executeCommand("execute store result block 2 0 0 Items[0].count int 3 run random value 2..2")
+        sandbox.executeCommand("execute store result bossbar demo:stored value run random value 7..7")
+        sandbox.executeCommand("execute store success bossbar demo:stored max run random value 1..1")
         sandbox.executeCommand("execute store success score Steve success run random value 1..1")
         sandbox.executeCommand("execute if entity @e[type=minecraft:skeleton] store success score #none success run random value 1..1")
 
@@ -117,12 +123,19 @@ class SandboxBehaviorTest {
         assertTrue(pig.uuid in cow.passengers)
         assertEquals(90.0, pig.yaw)
         assertEquals(15.0, pig.pitch)
-        assertEquals(5.0, pig.fullNbt().get("Health").asDouble)
+        assertEquals(4.0, pig.fullNbt().get("Health").asDouble)
         assertEquals(ResourceLocation.parse("minecraft:diamond_sword"), sandbox.world.requirePlayer("Steve").inventory[0].id)
         assertEquals(3, sandbox.world.getScore("Steve", "runs"))
         assertEquals(1, sandbox.world.getScore("Steve", "success"))
         assertEquals(0, sandbox.world.getScore("#none", "success"))
         assertEquals(6L, JsonPaths.get(sandbox.world.storage(ResourceLocation.parse("demo:store")), "value")?.asLong)
+        assertEquals(
+            6,
+            sandbox.world.requireBlock(BlockPos(2, 0, 0)).fullNbt(BlockPos(2, 0, 0), sandbox.profile)
+                .getAsJsonArray("Items")[0].asJsonObject.get("count").asInt,
+        )
+        assertEquals(7, sandbox.world.bossbars[ResourceLocation.parse("demo:stored")]?.value)
+        assertEquals(1, sandbox.world.bossbars[ResourceLocation.parse("demo:stored")]?.max)
         assertTrue(sandbox.world.outputs.any { it.command == "random value" && it.text == "3" })
     }
 
