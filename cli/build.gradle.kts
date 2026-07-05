@@ -101,6 +101,7 @@ val smokeCliJarExamples = registerCliJarSmokeTask(
     name = "smokeCliJarExamples",
     descriptionText = "Runs all example manifests through the standalone CLI jar.",
     "check",
+    "--validate-schema",
     examplesDir.asFile.absolutePath,
 )
 smokeCliJarExamples.configure {
