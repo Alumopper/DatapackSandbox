@@ -232,6 +232,29 @@ class SandboxQuickTestTest {
     }
 
     @Test
+    fun `quick test assertion errors include snapshot diff and trace summary`() {
+        val error = assertFailsWith<SandboxQuickTestAssertionError> {
+            SandboxQuickTest.singleFunctionText(
+                """
+                scoreboard objectives add runs dummy
+                scoreboard players set #quick_failure runs 4
+                """.trimIndent(),
+                version = "26.2",
+            )
+                .function()
+                .assertScore("#quick_failure", "runs", 5)
+                .requirePassed()
+        }
+        val message = error.message.orEmpty()
+
+        assertTrue("score #quick_failure runs expected 5 but was 4" in message, message)
+        assertTrue("snapshot diff:" in message, message)
+        assertTrue("\"#quick_failure\": 4" in message, message)
+        assertTrue("trace summary:" in message, message)
+        assertTrue("[OK] scoreboard players set #quick_failure runs 4" in message, message)
+    }
+
+    @Test
     fun `quick tests can predefine world state`() {
         val report = SandboxQuickTest.create(listOf(fixturePack()), version = "26.1.2", defaultPlayerName = null)
             .world {

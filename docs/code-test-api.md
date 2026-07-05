@@ -46,7 +46,9 @@ class MyDatapackTest {
 ```
 
 `requirePassed()` throws `SandboxQuickTestAssertionError` when assertions fail.
-The error contains all failures and the final snapshot.
+The error contains all failures, a minimal snapshot diff from the scenario's
+initial state, and a short trace summary. The full report still exposes the
+final snapshot for custom test-framework rendering.
 
 Reports returned by `report()` and `requirePassed()` also include structured
 command traces and player event traces. Command traces record the command text,

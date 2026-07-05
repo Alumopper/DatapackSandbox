@@ -35,7 +35,7 @@ data class SandboxQuickTestReport(
  */
 class SandboxQuickTestAssertionError(
     val report: SandboxQuickTestReport,
-) : AssertionError(report.failures.joinToString(separator = "\n"))
+) : AssertionError(formatQuickTestFailure(report))
 
 /**
  * Aggregated result for a multi-version quick-test matrix.
@@ -54,7 +54,43 @@ data class SandboxQuickTestMatrixReport(
  */
 class SandboxQuickTestMatrixAssertionError(
     val report: SandboxQuickTestMatrixReport,
-) : AssertionError(report.failures.joinToString(separator = "\n"))
+) : AssertionError(formatMatrixQuickTestFailure(report))
+
+private fun formatQuickTestFailure(report: SandboxQuickTestReport): String =
+    buildList {
+        addAll(report.failures)
+        if (report.snapshotDiffs.isNotEmpty()) {
+            add("snapshot diff:")
+            add(SnapshotDiff.render(report.snapshotDiffs))
+        }
+        if (report.traces.isNotEmpty()) {
+            add("trace summary:")
+            report.traces.takeLast(5).forEach { trace ->
+                val status = if (trace.success) "OK" else "ERR"
+                val error = trace.errorCode?.let { " ${it.name}: ${trace.errorMessage}" }.orEmpty()
+                add("[$status] ${trace.command} commands=${trace.commandsExecuted} outputs=${trace.outputs}$error")
+            }
+        }
+    }.joinToString(separator = "\n")
+
+private fun formatMatrixQuickTestFailure(report: SandboxQuickTestMatrixReport): String =
+    buildList {
+        addAll(report.failures)
+        report.reports.filterValues { !it.passed }.forEach { (version, scenario) ->
+            if (scenario.snapshotDiffs.isNotEmpty()) {
+                add("[$version] snapshot diff:")
+                add(SnapshotDiff.render(scenario.snapshotDiffs))
+            }
+            if (scenario.traces.isNotEmpty()) {
+                add("[$version] trace summary:")
+                scenario.traces.takeLast(5).forEach { trace ->
+                    val status = if (trace.success) "OK" else "ERR"
+                    val error = trace.errorCode?.let { " ${it.name}: ${trace.errorMessage}" }.orEmpty()
+                    add("[$version][$status] ${trace.command} commands=${trace.commandsExecuted} outputs=${trace.outputs}$error")
+                }
+            }
+        }
+    }.joinToString(separator = "\n")
 
 /**
  * Fluent quick-test runner for executing the same scenario across multiple
