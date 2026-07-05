@@ -70,6 +70,7 @@ class CheckCommand : CliktCommand(name = "check") {
     private val snapshotDiffOnFail by option("--snapshot-diff-on-fail").flag(default = false)
     private val trace by option("--trace").flag(default = false)
     private val traceFile by option("--trace-file").path()
+    private val traceFilters by option("--trace-filter").multiple()
     private val seed by option("--seed").long().default(0)
     private val unsupported by option("--unsupported").default("warn")
 
@@ -89,7 +90,8 @@ class CheckCommand : CliktCommand(name = "check") {
                         unsupportedFeatureMode = unsupportedFeatureMode(unsupported),
                     ),
                 )
-                traces += result.traces
+                val resultTraces = TraceFilters.apply(result.traces, traceFilters)
+                traces += resultTraces
                 val versionLabel = result.attempts
                     .map { it.version }
                     .takeIf { it.size > 1 }
@@ -105,8 +107,8 @@ class CheckCommand : CliktCommand(name = "check") {
                 if (verbose && result.outputs.isNotEmpty()) {
                     OutputRenderer.print(result.outputs)
                 }
-                if (trace && result.traces.isNotEmpty()) {
-                    TraceRenderer.print(result.traces)
+                if (trace && resultTraces.isNotEmpty()) {
+                    TraceRenderer.print(resultTraces)
                 }
                 if (!result.passed && failFast) {
                     traceFile?.let { writeTraceFile(it, traces) }
@@ -212,7 +214,7 @@ class RunCommand : CliktCommand(name = "run") {
                     SourceLocation(file = "<arg:--command>", line = index + 1, command = normalized),
                 ).commandsExecuted
             }
-            val traces = filteredTraces(sandbox.world.traces)
+            val traces = TraceFilters.apply(sandbox.world.traces, traceFilters)
             OutputRenderer.print(sandbox.world.outputs)
             if (trace) TraceRenderer.print(traces)
             if (snapshot) println(sandbox.snapshotString())
@@ -334,39 +336,6 @@ class RunCommand : CliktCommand(name = "run") {
         }
         return total
     }
-
-    private fun filteredTraces(traces: List<CommandTraceEvent>): List<CommandTraceEvent> =
-        if (traceFilters.isEmpty()) {
-            traces
-        } else {
-            traces.filter { event -> traceFilters.all { filter -> traceMatchesFilter(event, filter) } }
-        }
-
-    private fun traceMatchesFilter(event: CommandTraceEvent, raw: String): Boolean {
-        val splitAt = raw.indexOf('=')
-        if (splitAt < 0) return traceContains(event, raw)
-        val key = raw.substring(0, splitAt).trim().lowercase()
-        val value = raw.substring(splitAt + 1).trim()
-        return when (key) {
-            "root" -> event.root == value
-            "command" -> event.command == value
-            "contains" -> value in event.command || value in (event.errorMessage ?: "")
-            "function" -> event.source?.functionStack?.any { value in it.id.toString() } == true
-            "file", "source" -> value in (event.source?.file ?: "")
-            "success" -> value.toBooleanStrictOrNull()?.let { event.success == it } ?: false
-            "output", "outputs" -> value.toIntOrNull()?.let { event.outputs == it }
-                ?: value.toBooleanStrictOrNull()?.let { if (it) event.outputs > 0 else event.outputs == 0 }
-                ?: false
-            else -> traceContains(event, raw)
-        }
-    }
-
-    private fun traceContains(event: CommandTraceEvent, value: String): Boolean =
-        value in event.command ||
-            value == event.root ||
-            value in (event.source?.file ?: "") ||
-            event.source?.functionStack?.any { value in it.id.toString() } == true ||
-            value in (event.errorMessage ?: "")
 
     private fun String.sanitizeFunctionPath(): String =
         lowercase()

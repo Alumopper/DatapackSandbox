@@ -21,7 +21,8 @@ class CheckCommandTest {
               "version": "26.1.2",
               "packs": ["$pack"],
               "steps": [
-                { "command": "say traced from check" }
+                { "command": "say traced from check" },
+                { "command": "scoreboard objectives add filtered_check dummy" }
               ],
               "assertions": [
                 { "trace": { "command": "say traced from check", "success": true, "count": 1 } }
@@ -31,15 +32,17 @@ class CheckCommandTest {
         )
 
         val output = captureStdout {
-            main(arrayOf("check", manifest.toString(), "--trace", "--trace-file", traceFile.toString()))
+            main(arrayOf("check", manifest.toString(), "--trace", "--trace-filter", "root=say", "--trace-file", traceFile.toString()))
         }
 
         assertTrue("PASS $manifest" in output, output)
         assertTrue("trace OK say traced from check" in output, output)
+        assertTrue("scoreboard objectives add filtered_check dummy" !in output, output)
         assertTrue("trace written: $traceFile" in output, output)
         val traceJson = Files.readString(traceFile)
         assertTrue("\"command\": \"say traced from check\"" in traceJson, traceJson)
         assertTrue("\"root\": \"say\"" in traceJson, traceJson)
+        assertTrue("scoreboard objectives add filtered_check dummy" !in traceJson, traceJson)
     }
 
     private fun captureStdout(block: () -> Unit): String {
