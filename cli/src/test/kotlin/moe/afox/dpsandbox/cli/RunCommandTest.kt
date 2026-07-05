@@ -1,5 +1,6 @@
 package moe.afox.dpsandbox.cli
 
+import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.PrintStream
 import java.nio.file.Files
@@ -46,6 +47,101 @@ class RunCommandTest {
 
         assertTrue("OK version=26.2" in output, output)
         assertTrue("\"#inline\": 6" in output, output)
+    }
+
+    @Test
+    fun `run reads stdin as mcfunction text`() {
+        val output = captureStdout(
+            stdin = """
+            scoreboard objectives add runs dummy
+            scoreboard players set #stdin runs 8
+            """.trimIndent(),
+        ) {
+            main(
+                arrayOf(
+                    "run",
+                    "--version",
+                    "26.2",
+                    "--stdin",
+                    "--snapshot",
+                ),
+            )
+        }
+
+        assertTrue("OK version=26.2" in output, output)
+        assertTrue("\"#stdin\": 8" in output, output)
+    }
+
+    @Test
+    fun `run reads stdin as raw command lines`() {
+        val output = captureStdout(
+            stdin = """
+            scoreboard objectives add runs dummy
+            scoreboard players set #stdin_commands runs 4
+            """.trimIndent(),
+        ) {
+            main(
+                arrayOf(
+                    "run",
+                    "--version",
+                    "26.2",
+                    "--stdin",
+                    "--stdin-mode",
+                    "commands",
+                    "--snapshot",
+                ),
+            )
+        }
+
+        assertTrue("OK version=26.2" in output, output)
+        assertTrue("\"#stdin_commands\": 4" in output, output)
+    }
+
+    @Test
+    fun `run applies world fixtures and inline assertions without a pack`() {
+        val worldFile = Files.createTempFile("dps-cli-world", ".json")
+        Files.writeString(
+            worldFile,
+            """
+            {
+              "seed": 42,
+              "players": [
+                {
+                  "name": "Alex",
+                  "inventory": [
+                    { "id": "minecraft:stick", "count": 2 }
+                  ]
+                }
+              ],
+              "scores": [
+                { "target": "#fixture", "objective": "ready", "value": 1 }
+              ]
+            }
+            """.trimIndent(),
+        )
+
+        val output = captureStdout {
+            main(
+                arrayOf(
+                    "run",
+                    "--version",
+                    "26.2",
+                    "--world",
+                    worldFile.toString(),
+                    "--assert",
+                    """{"world":{"seed":42}}""",
+                    "--assert",
+                    """{"score":{"target":"#fixture","objective":"ready","equals":1}}""",
+                    "--assert",
+                    """{"item":{"player":"Alex","id":"minecraft:stick","count":2}}""",
+                    "--snapshot",
+                ),
+            )
+        }
+
+        assertTrue("OK version=26.2" in output, output)
+        assertTrue("\"seed\": 42" in output, output)
+        assertTrue("\"#fixture\": 1" in output, output)
     }
 
     @Test
@@ -190,15 +286,20 @@ class RunCommandTest {
         assertTrue("26.2 java=25 pack_format=107.1 data=4903 default" in output, output)
     }
 
-    private fun captureStdout(block: () -> Unit): String {
+    private fun captureStdout(stdin: String? = null, block: () -> Unit): String {
         val original = System.out
+        val originalIn = System.`in`
         val bytes = ByteArrayOutputStream()
         System.setOut(PrintStream(bytes, true, Charsets.UTF_8))
+        if (stdin != null) {
+            System.setIn(ByteArrayInputStream(stdin.toByteArray(Charsets.UTF_8)))
+        }
         return try {
             block()
             bytes.toString(Charsets.UTF_8)
         } finally {
             System.setOut(original)
+            System.setIn(originalIn)
         }
     }
 

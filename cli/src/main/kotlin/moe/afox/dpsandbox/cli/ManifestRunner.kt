@@ -110,6 +110,11 @@ object ManifestRunner {
         )
     }
 
+    internal fun evaluateAssertions(assertions: List<JsonObject>, sandbox: DatapackSandbox): List<String> =
+        assertions.flatMapIndexed { index, assertion ->
+            evaluateAssertion(assertion, sandbox).map { "assertion ${index + 1}: $it" }
+        }
+
     private fun runOne(
         path: Path,
         json: JsonObject,

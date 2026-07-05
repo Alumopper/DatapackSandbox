@@ -84,6 +84,13 @@ Run inline `.mcfunction` text directly:
 java -jar cli/build/libs/datapack-sandbox-cli.jar run --version 26.2 --mcfunction-text "say hello from inline"
 ```
 
+Read `.mcfunction` text from standard input:
+
+```bash
+printf 'scoreboard objectives add runs dummy\nscoreboard players set #stdin runs 1\n' \
+  | java -jar cli/build/libs/datapack-sandbox-cli.jar run --version 26.2 --stdin --snapshot
+```
+
 Load multiple lightweight functions together. Use `id=path` or `id=text` when a
 function must be callable by another function:
 
@@ -115,6 +122,16 @@ When assertions fail, print the final snapshot or a minimal snapshot diff:
 
 ```bash
 java -jar cli/build/libs/datapack-sandbox-cli.jar check ./sandbox-cases --snapshot-on-fail --snapshot-diff-on-fail
+```
+
+For ad hoc checks without a full manifest, `run` can apply a manifest-style
+world fixture and one or more inline JSON assertions:
+
+```bash
+java -jar cli/build/libs/datapack-sandbox-cli.jar run --version 26.2 \
+  --world ./fixture-world.json \
+  --assert '{"world":{"seed":42}}' \
+  --assert '{"score":{"target":"#fixture","objective":"ready","equals":1}}'
 ```
 
 Manifest `steps` can also contain `commands`, `functionText`, or a relative

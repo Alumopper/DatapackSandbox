@@ -132,4 +132,7 @@ JSON text component 支持 `text`、`score`、`selector`、`translate`、`keybin
 | `tick [n]` | 在 REPL 中推进 tick。 |
 | CLI `loot --table <id> --context <context>` | 直接生成 loot table。 |
 | CLI `run --snapshot-diff` | 输出执行前后的状态差异，可配合 `--snapshot-diff-file` 写出 JSON。 |
+| CLI `run --stdin` | 从标准输入读取 `.mcfunction` 文本；`--stdin-mode commands` 会按原始命令行执行 stdin。 |
+| CLI `run --world` | 执行前应用 manifest-style world JSON fixture。 |
+| CLI `run --assert` | 执行后评估一个内联 manifest assertion JSON 对象。 |
 | CLI `check <manifest-or-directory>` | 运行 `.dps.json` 清单；失败时可用 `--snapshot-diff-on-fail` 输出最小状态差异。 |

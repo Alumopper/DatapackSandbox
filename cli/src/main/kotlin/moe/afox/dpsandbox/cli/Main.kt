@@ -12,7 +12,10 @@ import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.types.int
 import com.github.ajalt.clikt.parameters.types.long
 import com.github.ajalt.clikt.parameters.types.path
+import com.google.gson.JsonObject
+import com.google.gson.JsonParser
 import moe.afox.dpsandbox.core.DiagnosticCode
+import moe.afox.dpsandbox.core.DatapackSandbox
 import moe.afox.dpsandbox.core.FunctionSource
 import moe.afox.dpsandbox.core.JsonValues
 import moe.afox.dpsandbox.core.PlayerEvents
@@ -20,6 +23,7 @@ import moe.afox.dpsandbox.core.ResourceLocation
 import moe.afox.dpsandbox.core.SandboxException
 import moe.afox.dpsandbox.core.SingleFunctionDatapack
 import moe.afox.dpsandbox.core.SnapshotDiff
+import moe.afox.dpsandbox.core.SourceLocation
 import moe.afox.dpsandbox.core.UnsupportedFeatureMode
 import moe.afox.dpsandbox.core.VersionProfiles
 import moe.afox.dpsandbox.core.createFunctionSandbox
@@ -112,11 +116,15 @@ class RunCommand : CliktCommand(name = "run") {
     private val mcfunctions by option("--mcfunction", "--function-file").multiple()
     private val mcfunctionTexts by option("--mcfunction-text", "--function-text").multiple()
     private val mcfunctionId by option("--mcfunction-id").default(SingleFunctionDatapack.DEFAULT_ID)
+    private val stdin by option("--stdin").flag(default = false)
+    private val stdinMode by option("--stdin-mode").default("function")
+    private val worldFiles by option("--world").path(mustExist = true).multiple()
     private val shouldLoad by option("--load").flag(default = false)
     private val ticks by option("--ticks").int().default(0)
     private val functions by option("--function", "-f").multiple()
     private val commands by option("--command", "-c").multiple()
     private val commandFile by option("--command-file").path(mustExist = true)
+    private val assertions by option("--assert").multiple()
     private val snapshot by option("--snapshot").flag(default = false)
     private val snapshotFile by option("--snapshot-file").path()
     private val snapshotDiff by option("--snapshot-diff").flag(default = false)
@@ -127,7 +135,22 @@ class RunCommand : CliktCommand(name = "run") {
 
     override fun run() {
         try {
-            val functionSources = parseFunctionSources()
+            val stdinText = if (stdin) String(System.`in`.readAllBytes(), StandardCharsets.UTF_8) else null
+            val stdinAsFunction = stdinText?.takeIf { stdinMode == "function" }
+            val stdinAsCommands = stdinText?.takeIf { stdinMode == "commands" }
+            if (stdin && stdinAsFunction == null && stdinAsCommands == null) {
+                throw SandboxException(DiagnosticCode.INPUT_FORMAT, "--stdin-mode must be function or commands")
+            }
+            val functionSources = parseFunctionSources(stdinAsFunction)
+            val canUseEmptySandbox = commands.isNotEmpty() ||
+                commandFile != null ||
+                stdinAsCommands != null ||
+                worldFiles.isNotEmpty() ||
+                assertions.isNotEmpty() ||
+                snapshot ||
+                snapshotFile != null ||
+                snapshotDiff ||
+                snapshotDiffFile != null
             val sandbox = when {
                 functionSources.isNotEmpty() -> {
                     createFunctionSandbox(
@@ -138,11 +161,17 @@ class RunCommand : CliktCommand(name = "run") {
                     )
                 }
                 packs.isNotEmpty() -> createSandbox(version, packs, unsupportedFeatureMode = unsupportedFeatureMode(unsupported))
+                canUseEmptySandbox -> createFunctionSandbox(
+                    version = version,
+                    functionSources = listOf(FunctionSource.text(mcfunctionId, "", "<empty:$mcfunctionId>")),
+                    unsupportedFeatureMode = unsupportedFeatureMode(unsupported),
+                )
                 else -> throw SandboxException(
                     DiagnosticCode.INPUT_FORMAT,
-                    "run requires at least one --pack path, --mcfunction file, or --mcfunction-text string",
+                    "run requires at least one --pack path, --mcfunction file, --mcfunction-text string, --stdin, --command, --command-file, --world, --assert, or snapshot option",
                 )
             }
+            applyWorldFixtures(sandbox)
             val beforeSnapshot = sandbox.snapshotJson()
             var total = 0
             if (functionSources.isNotEmpty()) total += sandbox.runFunction(mcfunctionId).commandsExecuted
@@ -150,15 +179,20 @@ class RunCommand : CliktCommand(name = "run") {
             if (ticks > 0) total += sandbox.runTicks(ticks).commandsExecuted
             functions.forEach { total += sandbox.runFunction(it).commandsExecuted }
             commandFile?.let { file ->
-                Files.readAllLines(file, StandardCharsets.UTF_8)
-                    .map { it.trim() }
-                    .filter { it.isNotEmpty() && !it.startsWith("#") }
-                    .forEach { total += sandbox.executeCommand(it).commandsExecuted }
+                total += executeCommandLines(sandbox, Files.readAllLines(file, StandardCharsets.UTF_8), file.toString())
             }
-            commands.forEach { total += sandbox.executeCommand(it).commandsExecuted }
+            stdinAsCommands?.let {
+                total += executeCommandLines(sandbox, it.lines(), "<stdin>")
+            }
+            commands.forEachIndexed { index, command ->
+                val normalized = command.trim().removePrefix("/")
+                total += sandbox.executeCommand(
+                    normalized,
+                    SourceLocation(file = "<arg:--command>", line = index + 1, command = normalized),
+                ).commandsExecuted
+            }
             OutputRenderer.print(sandbox.world.outputs)
             if (trace) TraceRenderer.print(sandbox.world.traces)
-            println(ConsoleStyle.green("OK version=${sandbox.profile.id} gameTime=${sandbox.world.gameTime} commands=$total entities=${sandbox.world.entities.size}"))
             if (snapshot) println(sandbox.snapshotString())
             snapshotFile?.let {
                 Files.writeString(it, sandbox.snapshotString(), StandardCharsets.UTF_8)
@@ -177,14 +211,20 @@ class RunCommand : CliktCommand(name = "run") {
                 Files.writeString(it, content, StandardCharsets.UTF_8)
                 println(ConsoleStyle.green("trace written: $it"))
             }
+            val assertionFailures = ManifestRunner.evaluateAssertions(parseAssertions(), sandbox)
+            if (assertionFailures.isNotEmpty()) {
+                assertionFailures.forEach { println(ConsoleStyle.red(it)) }
+                exitProcess(ExitCodes.ASSERTION_FAILED)
+            }
+            println(ConsoleStyle.green("OK version=${sandbox.profile.id} gameTime=${sandbox.world.gameTime} commands=$total entities=${sandbox.world.entities.size}"))
         } catch (error: SandboxException) {
             println(ConsoleStyle.diagnostic(error.render()))
             exitProcess(ExitCodes.forException(error))
         }
     }
 
-    private fun parseFunctionSources(): List<FunctionSource> {
-        val total = mcfunctions.size + mcfunctionTexts.size
+    private fun parseFunctionSources(stdinFunctionText: String?): List<FunctionSource> {
+        val total = mcfunctions.size + mcfunctionTexts.size + if (stdinFunctionText != null) 1 else 0
         val fileSources = mcfunctions.mapIndexed { index, raw ->
             val (explicitId, value) = parseFunctionSourceSpec(raw)
             FunctionSource.file(explicitId ?: implicitFunctionId(index, total, value), Path.of(value))
@@ -198,7 +238,14 @@ class RunCommand : CliktCommand(name = "run") {
                 explicitId?.let { "<string:$it>" } ?: "<string:${implicitFunctionId(index, total, "inline")}>",
             )
         }
-        return fileSources + textSources
+        val stdinSource = stdinFunctionText?.let {
+            FunctionSource.text(
+                id = if (total <= 1) mcfunctionId else "sandbox:stdin",
+                content = it,
+                sourceName = "<stdin>",
+            )
+        }
+        return fileSources + textSources + listOfNotNull(stdinSource)
     }
 
     private fun implicitFunctionId(index: Int, total: Int, value: String): String =
@@ -223,6 +270,47 @@ class RunCommand : CliktCommand(name = "run") {
         } catch (_: SandboxException) {
             null to raw
         }
+    }
+
+    private fun applyWorldFixtures(sandbox: DatapackSandbox) {
+        worldFiles.forEach { file ->
+            val root = parseJsonObject(Files.readString(file, StandardCharsets.UTF_8), "--world $file")
+            val world = when {
+                !root.has("world") -> root
+                root.get("world").isJsonObject -> root.getAsJsonObject("world")
+                else -> throw SandboxException(DiagnosticCode.INPUT_FORMAT, "--world file '$file' contains non-object world")
+            }
+            ManifestWorldSetup.apply(world, sandbox, file.parent ?: Path.of("."))
+        }
+    }
+
+    private fun parseAssertions(): List<JsonObject> =
+        assertions.mapIndexed { index, raw -> parseJsonObject(raw, "--assert ${index + 1}") }
+
+    private fun parseJsonObject(raw: String, label: String): JsonObject =
+        try {
+            val parsed = JsonParser.parseString(raw)
+            if (!parsed.isJsonObject) throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label must be a JSON object")
+            parsed.asJsonObject
+        } catch (error: SandboxException) {
+            throw error
+        } catch (error: Exception) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Invalid JSON for $label", cause = error)
+        }
+
+    private fun executeCommandLines(sandbox: DatapackSandbox, lines: List<String>, sourceName: String): Int {
+        var total = 0
+        lines.forEachIndexed { index, raw ->
+            val command = raw.removePrefix("\uFEFF").trim()
+            if (command.isNotEmpty() && !command.startsWith("#")) {
+                val normalized = command.removePrefix("/")
+                total += sandbox.executeCommand(
+                    normalized,
+                    SourceLocation(file = sourceName, line = index + 1, command = normalized),
+                ).commandsExecuted
+            }
+        }
+        return total
     }
 
     private fun String.sanitizeFunctionPath(): String =

@@ -75,6 +75,13 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar run --version 26.2 --mcfunctio
 java -jar cli/build/libs/datapack-sandbox-cli.jar run --version 26.2 --mcfunction-text "say hello from inline"
 ```
 
+从标准输入读取 `.mcfunction` 文本：
+
+```bash
+printf 'scoreboard objectives add runs dummy\nscoreboard players set #stdin runs 1\n' \
+  | java -jar cli/build/libs/datapack-sandbox-cli.jar run --version 26.2 --stdin --snapshot
+```
+
 一次加载多个轻量函数。函数之间需要互相调用时，使用 `id=path` 或 `id=text` 指定函数 id：
 
 ```bash
@@ -105,6 +112,15 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar check ./sandbox-cases
 
 ```bash
 java -jar cli/build/libs/datapack-sandbox-cli.jar check ./sandbox-cases --snapshot-on-fail --snapshot-diff-on-fail
+```
+
+不想写完整 manifest 时，`run` 可以直接加载 manifest-style world fixture，并接受一个或多个内联 JSON assertion：
+
+```bash
+java -jar cli/build/libs/datapack-sandbox-cli.jar run --version 26.2 \
+  --world ./fixture-world.json \
+  --assert '{"world":{"seed":42}}' \
+  --assert '{"score":{"target":"#fixture","objective":"ready","equals":1}}'
 ```
 
 清单中的 `steps` 也可以直接包含 `commands`、`functionText` 或相对路径 `mcfunction`，用于验证命令生成器输出；`assertions` 可检查 `world`、`team`、`bossbar`、`trace` 和玩家背包 `item`。
