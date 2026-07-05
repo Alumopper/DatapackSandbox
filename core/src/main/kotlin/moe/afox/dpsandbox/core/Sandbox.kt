@@ -1500,11 +1500,23 @@ class DatapackSandbox(
         requireSize(tokens, 2, "item <replace|modify> ...", location)
         when (tokens[1].text) {
             "replace" -> executeItemReplace(tokens, location, context)
-            "modify" -> {
-                // Item modifiers are data-pack resources; the sandbox records the command as accepted but does not transform components yet.
-                requireSize(tokens, 5, "item modify <block|entity> ... <modifier>", location)
-            }
+            "modify" -> executeItemModify(tokens, location, context)
             else -> unsupportedFeature("Unsupported item action '${tokens[1].text}'", profile.id, location)
+        }
+    }
+
+    private fun executeItemModify(tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext) {
+        requireSize(tokens, 6, "item modify entity <targets> <slot> <modifier>", location)
+        if (tokens[2].text != "entity") {
+            unsupportedFeature("Only 'item modify entity <targets> <slot> <modifier>' is implemented", profile.id, location)
+        }
+        val slot = inventorySlot(tokens[4].text)
+        val modifier = datapack.itemModifier(ResourceLocation.parse(tokens[5].text))
+        resolvePlayers(tokens[3].text, location, context).forEach { player ->
+            val item = player.inventory.getOrNull(slot) ?: return@forEach
+            if (item.id == ResourceLocation("minecraft", "air") || item.count <= 0) return@forEach
+            player.inventory[slot] = applyItemModifier(item, modifier.root, player, location)
+            advancements.handle(PlayerEvent(player.name, "inventory_changed", item = player.inventory[slot]))
         }
     }
 
@@ -1520,6 +1532,72 @@ class DatapackSandbox(
             player.inventory[slot] = item.copy(components = item.components.deepCopy(), nbt = item.nbt.deepCopy())
         }
     }
+
+    private fun applyItemModifier(item: ItemStack, root: JsonElement, player: SandboxPlayer, location: SourceLocation?): ItemStack {
+        var stack = item.copy(components = item.components.deepCopy(), nbt = item.nbt.deepCopy())
+        val functions = when {
+            root.isJsonArray -> root.asJsonArray.toList()
+            root.isJsonObject -> listOf(root)
+            else -> throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Item modifier must be an object or array", location)
+        }
+        functions.forEach { element ->
+            if (!element.isJsonObject) {
+                throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Item modifier entries must be objects", location)
+            }
+            val function = element.asJsonObject
+            val conditions = function.get("conditions")
+            if (conditions != null && !predicates.testConditions(conditions, itemModifierPredicateContext(player, stack))) {
+                return@forEach
+            }
+            when (val type = itemModifierType(function, location)) {
+                "set_components" -> {
+                    function.getAsJsonObject("components")?.entrySet()?.forEach { (key, value) ->
+                        stack.components.add(key, value.deepCopy())
+                    }
+                }
+                "set_custom_data", "set_nbt" -> {
+                    val tag = function.get("tag") ?: function.get("nbt")
+                    val parsed = when {
+                        tag == null -> JsonObject()
+                        tag.isJsonPrimitive && tag.asJsonPrimitive.isString -> JsonValues.parse(tag.asString, location)
+                        else -> tag
+                    }
+                    if (!parsed.isJsonObject) {
+                        throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Item modifier custom data must be an object", location)
+                    }
+                    JsonPaths.merge(stack.nbt, null, parsed)
+                }
+                "set_count" -> stack = stack.copy(count = itemModifierCount(function.get("count"), stack.count).coerceAtLeast(0))
+                else -> unsupportedFeature("Item modifier function '$type' is not implemented", profile.id, location)
+            }
+        }
+        return stack
+    }
+
+    private fun itemModifierPredicateContext(player: SandboxPlayer, stack: ItemStack): PredicateContext =
+        PredicateContext(
+            world = world,
+            player = player,
+            thisEntity = player,
+            origin = player.position,
+            dimension = player.dimension,
+            tool = stack,
+            weather = currentWeatherState(),
+        )
+
+    private fun itemModifierType(function: JsonObject, location: SourceLocation?): String {
+        val raw = function.get("function")?.takeIf { it.isJsonPrimitive }?.asString
+            ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Item modifier function is missing", location)
+        return ResourceLocation.parse(raw).path
+    }
+
+    private fun itemModifierCount(element: JsonElement?, fallback: Int): Int =
+        when {
+            element == null || element.isJsonNull -> fallback
+            element.isJsonPrimitive && element.asJsonPrimitive.isNumber -> element.asInt
+            element.isJsonObject -> element.asJsonObject.get("min")?.asInt ?: element.asJsonObject.get("base")?.asInt ?: fallback
+            else -> fallback
+        }
 
     private fun executeTag(tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext) {
         requireSize(tokens, 3, "tag <targets> <add|remove|list> [name]", location)

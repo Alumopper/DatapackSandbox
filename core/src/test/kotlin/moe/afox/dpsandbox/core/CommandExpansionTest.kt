@@ -95,6 +95,21 @@ class CommandExpansionTest {
     }
 
     @Test
+    fun `item modify applies common item modifier functions`() {
+        val pack = writeItemModifierPack(Files.createTempDirectory("dps-item-modifier-pack"))
+        val sandbox = createSandbox("26.2", listOf(pack))
+
+        sandbox.executeCommand("item replace entity Steve hotbar.0 with minecraft:stick 1")
+        sandbox.executeCommand("item modify entity Steve hotbar.0 demo:mark")
+
+        val item = sandbox.world.requirePlayer("Steve").inventory[0]
+        assertEquals(ResourceLocation.parse("minecraft:stick"), item.id)
+        assertEquals(2, item.count)
+        assertEquals(true, item.nbt.get("marked").asBoolean)
+        assertEquals("tagged", item.components.get("demo:tag").asString)
+    }
+
+    @Test
     fun `execute conditions cover predicate dimension biome and loaded state`() {
         val pack = writePredicatePack(Files.createTempDirectory("dps-execute-conditions-pack"))
         val sandbox = createSandbox("26.2", listOf(pack))
@@ -210,6 +225,46 @@ class CommandExpansionTest {
                 }
               ]
             }
+            """.trimIndent(),
+        )
+        return root
+    }
+
+    private fun writeItemModifierPack(root: Path): Path {
+        Files.writeString(
+            root.resolve("pack.mcmeta").also { Files.createDirectories(it.parent) },
+            """
+            {
+              "pack": {
+                "pack_format": 107.1,
+                "description": "item modifier test"
+              }
+            }
+            """.trimIndent(),
+        )
+        val modifierRoot = root.resolve("data").resolve("demo").resolve("item_modifier")
+        Files.createDirectories(modifierRoot)
+        Files.writeString(
+            modifierRoot.resolve("mark.json"),
+            """
+            [
+              {
+                "function": "minecraft:set_components",
+                "components": {
+                  "demo:tag": "tagged"
+                }
+              },
+              {
+                "function": "minecraft:set_custom_data",
+                "tag": {
+                  "marked": true
+                }
+              },
+              {
+                "function": "minecraft:set_count",
+                "count": 2
+              }
+            ]
             """.trimIndent(),
         )
         return root

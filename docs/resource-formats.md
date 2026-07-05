@@ -111,7 +111,9 @@ Recipes, item modifiers, and additional registry resources are loaded as raw
 JSON resources and included in the resource index. The sandbox does not yet
 execute the full crafting system, every item modifier function, or worldgen
 semantics, but these resources are version-profile checked, participate in pack
-overlay behavior, and can be inspected from API or REPL.
+overlay behavior, and can be inspected from API or REPL. `item modify entity`
+models common item modifier functions such as `set_components`,
+`set_custom_data`, and `set_count`.
 
 Current directories:
 
