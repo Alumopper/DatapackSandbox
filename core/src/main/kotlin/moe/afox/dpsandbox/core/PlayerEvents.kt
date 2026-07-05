@@ -133,7 +133,7 @@ object PlayerEvents {
             playerName = playerName,
             type = type,
             item = resource?.let { ItemStack(it) },
-            entity = if (type.contains("kill")) resource?.let { SandboxEntity(type = it) } else null,
+            entity = if (type.contains("kill") || type.contains("interact")) resource?.let { SandboxEntity(type = it) } else null,
             block = if (type.contains("block")) resource else null,
             recipe = if (type.contains("recipe")) resource else null,
             fromDimension = if (type == "changed_dimension") resource else null,

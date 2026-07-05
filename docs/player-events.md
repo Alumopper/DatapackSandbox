@@ -9,6 +9,7 @@ contexts, loot contexts, and advancement triggers.
 
 ```text
 dps> event player Steve item_used minecraft:carrot_on_a_stick
+dps> event player Steve entity_interacted minecraft:villager
 dps> event player Steve killed_entity minecraft:zombie
 dps> event player Steve placed_block minecraft:oak_log
 dps> event player Steve changed_dimension minecraft:overworld minecraft:the_nether
@@ -25,10 +26,10 @@ event player <name> <event-type> [resource-id] [detail]
 ```
 
 The optional resource id is interpreted by event type: `item_used` treats it as
-an item, `killed_entity` as an entity type, `placed_block`/`broke_block` as a
-block, `recipe_unlocked` as a recipe, and `changed_dimension` as the source
-dimension. For `changed_dimension`, the optional `[detail]` argument is the
-destination dimension.
+an item, `entity_interacted`/`killed_entity` as an entity type,
+`placed_block`/`broke_block` as a block, `recipe_unlocked` as a recipe, and
+`changed_dimension` as the source dimension. For `changed_dimension`, the
+optional `[detail]` argument is the destination dimension.
 
 For keyboard/mouse events, put the input code in the `[resource-id]` slot:
 `key_input key.jump`, `key_pressed space`, or `mouse_input left`. A fifth
@@ -79,6 +80,7 @@ The CLI accepts hyphens or underscores; `item-used` is normalized to
 | `item_picked_up` | `item` | Alias path for inventory changes |
 | `key_input` / `key_pressed` / `key_released` | `key`, `action` | Records player keyboard input; sandbox custom `key_input` advancement triggers can match it |
 | `mouse_input` / `mouse_clicked` / `mouse_released` / `mouse_moved` | `button`, `action`, `x`, `y` | Records player mouse input; sandbox custom `mouse_input` advancement triggers can match it |
+| `entity_interacted` | `entity` | `minecraft:player_interacted_with_entity` |
 | `killed_entity` | `entity` | `minecraft:player_killed_entity` |
 | `entity_killed_player` | `entity` | `minecraft:entity_killed_player` |
 | `location` | none | Location advancement conditions |

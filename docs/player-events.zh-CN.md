@@ -6,6 +6,7 @@
 
 ```text
 dps> event player Steve item_used minecraft:carrot_on_a_stick
+dps> event player Steve entity_interacted minecraft:villager
 dps> event player Steve killed_entity minecraft:zombie
 dps> event player Steve placed_block minecraft:oak_log
 dps> event player Steve changed_dimension minecraft:overworld minecraft:the_nether
@@ -24,7 +25,7 @@ event player <name> <event-type> [resource-id] [detail]
 可选 `resource-id` 会按事件类型解释：
 
 - `item_used`、`item_consumed`、`inventory_changed`、`item_picked_up`：物品 id。
-- `killed_entity`、`entity_killed_player`：实体类型 id。
+- `entity_interacted`、`killed_entity`、`entity_killed_player`：实体类型 id。
 - `placed_block`、`broke_block`：方块 id。
 - `changed_dimension`：`resource-id` 是来源维度，`detail` 是目标维度。
 - `recipe_unlocked`：recipe id。
@@ -83,6 +84,7 @@ CLI 接受连字符或下划线；`item-used` 会标准化为 `item_used`。
 | `item_picked_up` | `item` | 作为 inventory changed 的别名路径。 |
 | `key_input` / `key_pressed` / `key_released` | `key`、`action` | 记录玩家键盘输入；沙盒自定义 `key_input` advancement trigger 可匹配。 |
 | `mouse_input` / `mouse_clicked` / `mouse_released` / `mouse_moved` | `button`、`action`、`x`、`y` | 记录玩家鼠标输入；沙盒自定义 `mouse_input` advancement trigger 可匹配。 |
+| `entity_interacted` | `entity` | 触发 `minecraft:player_interacted_with_entity`。 |
 | `killed_entity` | `entity` | 触发 `minecraft:player_killed_entity`。 |
 | `entity_killed_player` | `entity` | 触发 `minecraft:entity_killed_player`。 |
 | `location` | 无 | 用于 location 条件。 |

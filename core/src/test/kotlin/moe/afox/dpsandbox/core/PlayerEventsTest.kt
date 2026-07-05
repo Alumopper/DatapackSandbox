@@ -62,6 +62,30 @@ class PlayerEventsTest {
         assertTrue(player.advancementProgress.getValue(advancementId).criteria.getValue("kill_zombie"))
     }
 
+    @Test
+    fun `shorthand entity interacted event triggers interaction advancements`() {
+        val criterion = Criterion(
+            name = "talk_to_villager",
+            trigger = ResourceLocation.parse("minecraft:player_interacted_with_entity"),
+            conditions = JsonObject().also { condition ->
+                condition.add(
+                    "entity",
+                    JsonObject().also {
+                        it.addProperty("type", "minecraft:villager")
+                    },
+                )
+            },
+        )
+        val advancementId = ResourceLocation.parse("demo:talk_to_villager")
+        val sandbox = sandboxWithAdvancement(advancementId, criterion)
+        val player = sandbox.createPlayer("Steve")
+
+        val updates = sandbox.handlePlayerEvent(PlayerEvents.shorthand("Steve", "entity_interacted", "minecraft:villager"))
+
+        assertEquals(1, updates.size)
+        assertTrue(player.advancementProgress.getValue(advancementId).criteria.getValue("talk_to_villager"))
+    }
+
     private fun sandboxWithAdvancement(id: ResourceLocation, criterion: Criterion): DatapackSandbox =
         DatapackSandbox(
             profile = VersionProfiles.default,

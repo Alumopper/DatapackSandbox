@@ -36,6 +36,7 @@ data class RegistryView(
                 "item_used_on_block",
                 "using_item",
                 "consume_item",
+                "player_interacted_with_entity",
                 "player_killed_entity",
                 "entity_killed_player",
                 "location",

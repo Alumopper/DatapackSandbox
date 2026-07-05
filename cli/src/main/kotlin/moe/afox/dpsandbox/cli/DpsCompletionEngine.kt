@@ -92,7 +92,7 @@ class DpsCompletionEngine(private val sandbox: () -> DatapackSandbox) {
             3 -> eventTypes.suggest("event types", appendSpace = true)
             4 -> when (words.getOrNull(3)) {
                 "item_used", "item_consumed", "inventory_changed", "item_picked_up" -> sandbox().profile.registryView.items.mapResource("items")
-                "killed_entity", "entity_killed_player" -> sandbox().profile.registryView.entityTypes.mapResource("entity types")
+                "entity_interacted", "killed_entity", "entity_killed_player" -> sandbox().profile.registryView.entityTypes.mapResource("entity types")
                 "placed_block", "broke_block" -> sandbox().profile.registryView.blocks.mapResource("blocks")
                 "changed_dimension" -> sandbox().profile.registryView.dimensions.mapResource("dimensions")
                 "recipe_unlocked" -> listOf("minecraft:bread", "minecraft:stick").suggest("recipes")
@@ -459,6 +459,7 @@ class DpsCompletionEngine(private val sandbox: () -> DatapackSandbox) {
             "mouse_clicked",
             "mouse_released",
             "mouse_moved",
+            "entity_interacted",
             "killed_entity",
             "entity_killed_player",
             "location",

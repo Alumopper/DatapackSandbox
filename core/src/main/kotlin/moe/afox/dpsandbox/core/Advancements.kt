@@ -104,6 +104,7 @@ class AdvancementRuntime(private val sandbox: DatapackSandbox) {
             "inventory_changed" -> eventType in setOf("inventory_changed", "item_picked_up", "item_added")
             "using_item", "item_used_on_block" -> eventType in setOf("item_used", "using_item", "item_used_on_block")
             "consume_item" -> eventType in setOf("item_consumed", "consume_item")
+            "player_interacted_with_entity" -> eventType in setOf("entity_interacted", "player_interacted_with_entity")
             "player_killed_entity" -> eventType == "killed_entity"
             "entity_killed_player" -> eventType == "entity_killed_player"
             "location" -> eventType in setOf("location", "moved")
