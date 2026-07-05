@@ -76,8 +76,17 @@ docs/dps-manifest.schema.json
 - `{ "mcfunction": "relative/path/generated.mcfunction" }`
 - `{ "player": { ... } }`, `{ "block": { ... } }`, `{ "event": { ... } }`, `{ "loot": { ... } }`
 
-Assertions support score, storage, player, block, entityCount, advancement,
-predicate, loot, output, item, and trace checks:
+`world` can predefine sparse blocks/entities/players, scoreboards, storage,
+gamerules, time/weather, seed/difficulty/default game mode, world/player spawn
+points, forced chunks, biome overrides, teams, bossbars, and scoped Java save
+imports.
+
+Assertions support score, storage, world, player, team, bossbar, block,
+entityCount, advancement, predicate, loot, output, item, and trace checks:
+
+```json
+{ "world": { "difficulty": "hard", "forcedChunk": [0, 0] } }
+```
 
 ```json
 { "item": { "player": "Steve", "id": "minecraft:apple", "count": 3 } }
@@ -87,9 +96,12 @@ predicate, loot, output, item, and trace checks:
 { "trace": { "root": "scoreboard", "success": true, "count": 2 } }
 ```
 
-`item` assertions can check player inventory by slot, id, count, components
-path, and NBT path. `trace` assertions can check command/root/contains,
-success, count, source file, and function stack.
+`player` assertions can also check dimension, game mode, health, food, selected
+slot, recipe, effect, stat, position, last input, and spawn point. `team` and
+`bossbar` assertions inspect their stored runtime state. `item` assertions can
+check player inventory by slot, id, count, components path, and NBT path.
+`trace` assertions can check command/root/contains, success, count, source file,
+and function stack.
 
 ## Recipes, Item Modifiers, and Tags
 

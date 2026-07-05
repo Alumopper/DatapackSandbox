@@ -52,6 +52,57 @@ class SandboxWorldSetup {
     }
 
     /**
+     * Sets the world's deterministic seed.
+     *
+     * @return this setup for fluent chaining.
+     */
+    fun seed(value: Long): SandboxWorldSetup = apply {
+        operations += { world, _ -> world.seed = value }
+    }
+
+    /**
+     * Sets the world's stored difficulty.
+     *
+     * @return this setup for fluent chaining.
+     */
+    fun difficulty(value: String): SandboxWorldSetup = apply {
+        operations += { world, _ -> world.difficulty = value.lowercase() }
+    }
+
+    /**
+     * Sets the world's default game mode.
+     *
+     * @return this setup for fluent chaining.
+     */
+    fun defaultGameMode(value: String): SandboxWorldSetup = apply {
+        operations += { world, _ -> world.defaultGameMode = value.lowercase() }
+    }
+
+    /**
+     * Sets the world spawn point.
+     *
+     * @return this setup for fluent chaining.
+     */
+    @JvmOverloads
+    fun worldSpawn(
+        x: Double,
+        y: Double,
+        z: Double,
+        dimension: String = "minecraft:overworld",
+        angle: Double? = null,
+        forced: Boolean = false,
+    ): SandboxWorldSetup = apply {
+        operations += { world, _ ->
+            world.worldSpawn = SpawnPoint(
+                position = Position(x, y, z),
+                dimension = ResourceLocation.parse(dimension),
+                angle = angle,
+                forced = forced,
+            )
+        }
+    }
+
+    /**
      * Sets the stored weather state.
      *
      * @param kind One of `clear`, `rain`, or `thunder`.
@@ -69,6 +120,24 @@ class SandboxWorldSetup {
             world.weather = normalized
             world.weatherDuration = duration.coerceAtLeast(0)
         }
+    }
+
+    /**
+     * Marks a chunk as force-loaded.
+     *
+     * @return this setup for fluent chaining.
+     */
+    fun forcedChunk(x: Int, z: Int): SandboxWorldSetup = apply {
+        operations += { world, _ -> world.forcedChunks += ChunkPos(x, z) }
+    }
+
+    /**
+     * Stores an explicit biome override at a block position.
+     *
+     * @return this setup for fluent chaining.
+     */
+    fun biome(x: Int, y: Int, z: Int, id: String): SandboxWorldSetup = apply {
+        operations += { world, _ -> world.biomes[BlockPos(x, y, z)] = ResourceLocation.parse(id) }
     }
 
     /**
@@ -206,6 +275,64 @@ class SandboxWorldSetup {
     }
 
     /**
+     * Adds a recipe to an existing or newly-created player fixture.
+     *
+     * @return this setup for fluent chaining.
+     */
+    fun playerRecipe(name: String, recipe: String): SandboxWorldSetup = apply {
+        operations += { world, _ -> world.createPlayer(name).recipes += ResourceLocation.parse(recipe) }
+    }
+
+    /**
+     * Adds a stat value to an existing or newly-created player fixture.
+     *
+     * @return this setup for fluent chaining.
+     */
+    fun playerStat(name: String, stat: String, value: Int): SandboxWorldSetup = apply {
+        operations += { world, _ -> world.createPlayer(name).stats[ResourceLocation.parse(stat)] = value }
+    }
+
+    /**
+     * Adds an active effect to an existing or newly-created player fixture.
+     *
+     * @return this setup for fluent chaining.
+     */
+    @JvmOverloads
+    fun playerEffect(name: String, effect: String, durationTicks: Int = -1, amplifier: Int = 0, hideParticles: Boolean = false): SandboxWorldSetup = apply {
+        operations += { world, _ ->
+            val id = ResourceLocation.parse(effect)
+            val player = world.createPlayer(name)
+            player.effects += id
+            player.effectDetails[id] = PlayerEffect(id, durationTicks, amplifier, hideParticles)
+        }
+    }
+
+    /**
+     * Sets a player's spawn point.
+     *
+     * @return this setup for fluent chaining.
+     */
+    @JvmOverloads
+    fun playerSpawn(
+        name: String,
+        x: Double,
+        y: Double,
+        z: Double,
+        dimension: String = "minecraft:overworld",
+        angle: Double? = null,
+        forced: Boolean = false,
+    ): SandboxWorldSetup = apply {
+        operations += { world, _ ->
+            world.createPlayer(name).spawnPoint = SpawnPoint(
+                position = Position(x, y, z),
+                dimension = ResourceLocation.parse(dimension),
+                angle = angle,
+                forced = forced,
+            )
+        }
+    }
+
+    /**
      * Creates an [ItemStack] helper for player inventories and assertions.
      *
      * The returned stack owns deep copies of [components] and [nbt].
@@ -262,6 +389,58 @@ class SandboxWorldSetup {
      */
     fun gamerule(name: String, value: String): SandboxWorldSetup = apply {
         operations += { world, _ -> world.gamerules[name] = value }
+    }
+
+    /**
+     * Creates or replaces a team fixture.
+     *
+     * @return this setup for fluent chaining.
+     */
+    @JvmOverloads
+    fun team(
+        name: String,
+        displayName: String = name,
+        members: Iterable<String> = emptyList(),
+        options: Map<String, String> = emptyMap(),
+    ): SandboxWorldSetup = apply {
+        operations += { world, _ ->
+            world.teams[name] = SandboxTeam(
+                name = name,
+                displayName = displayName,
+                members = members.toMutableSet().toSortedSet(),
+                options = options.toMutableMap(),
+            )
+        }
+    }
+
+    /**
+     * Creates or replaces a bossbar fixture.
+     *
+     * @return this setup for fluent chaining.
+     */
+    @JvmOverloads
+    fun bossbar(
+        id: String,
+        name: String,
+        value: Int = 0,
+        max: Int = 100,
+        color: String = "white",
+        style: String = "progress",
+        visible: Boolean = true,
+        players: Iterable<String> = emptyList(),
+    ): SandboxWorldSetup = apply {
+        operations += { world, _ ->
+            world.bossbars[ResourceLocation.parse(id)] = SandboxBossbar(
+                id = ResourceLocation.parse(id),
+                name = name,
+                value = value,
+                max = max,
+                color = color,
+                style = style,
+                visible = visible,
+                players = players.toMutableSet().toSortedSet(),
+            )
+        }
     }
 
     /**

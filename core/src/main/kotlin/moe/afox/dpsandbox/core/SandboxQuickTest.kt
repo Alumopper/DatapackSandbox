@@ -564,6 +564,77 @@ class SandboxQuickTest private constructor(
     }
 
     /**
+     * Asserts selected world-level state.
+     *
+     * Null parameters are ignored.
+     */
+    @JvmOverloads
+    fun assertWorld(
+        gameTime: Long? = null,
+        dayTime: Long? = null,
+        weather: String? = null,
+        difficulty: String? = null,
+        defaultGameMode: String? = null,
+        seed: Long? = null,
+    ): SandboxQuickTest = apply {
+        gameTime?.let { if (sandbox.world.gameTime != it) failures += "world gameTime expected $it but was ${sandbox.world.gameTime}" }
+        dayTime?.let { if (sandbox.world.dayTime != it) failures += "world dayTime expected $it but was ${sandbox.world.dayTime}" }
+        weather?.let { if (sandbox.world.weather != it) failures += "world weather expected $it but was ${sandbox.world.weather}" }
+        difficulty?.let { if (sandbox.world.difficulty != it) failures += "world difficulty expected $it but was ${sandbox.world.difficulty}" }
+        defaultGameMode?.let { if (sandbox.world.defaultGameMode != it) failures += "world defaultGameMode expected $it but was ${sandbox.world.defaultGameMode}" }
+        seed?.let { if (sandbox.world.seed != it) failures += "world seed expected $it but was ${sandbox.world.seed}" }
+    }
+
+    /**
+     * Asserts an explicit sparse-world block.
+     */
+    @JvmOverloads
+    fun assertBlock(x: Int, y: Int, z: Int, id: String? = null, exists: Boolean = true): SandboxQuickTest = apply {
+        val pos = BlockPos(x, y, z)
+        val actual = sandbox.world.block(pos)
+        if ((actual != null) != exists) {
+            failures += "block $pos exists expected $exists but was ${actual != null}"
+        }
+        id?.let {
+            val expected = ResourceLocation.parse(it)
+            if (actual?.id != expected) failures += "block $pos id expected $expected but was ${actual?.id ?: "void"}"
+        }
+    }
+
+    /**
+     * Asserts the number of entities matching optional type and tag filters.
+     */
+    @JvmOverloads
+    fun assertEntityCount(expected: Int, type: String? = null, tag: String? = null): SandboxQuickTest = apply {
+        val expectedType = type?.let(ResourceLocation::parse)
+        val actual = sandbox.world.entities.count { entity ->
+            (expectedType == null || entity.type == expectedType) &&
+                (tag == null || tag in entity.tags)
+        }
+        if (actual != expected) failures += "entityCount expected $expected but was $actual"
+    }
+
+    /**
+     * Asserts that a player's inventory contains or does not contain a matching item.
+     */
+    @JvmOverloads
+    fun assertItem(playerName: String, id: String? = null, count: Int? = null, slot: Int? = null, exists: Boolean = true): SandboxQuickTest = apply {
+        val player = sandbox.world.requirePlayer(playerName)
+        val expectedId = id?.let(ResourceLocation::parse)
+        val candidates = slot?.let { player.inventory.getOrNull(it)?.let(::listOf) ?: emptyList() } ?: player.inventory
+        val matches = candidates.filter { item ->
+            (expectedId == null || item.id == expectedId) &&
+                (count == null || item.count == count)
+        }
+        if (exists && matches.isEmpty()) {
+            failures += "item for player $playerName expected ${id ?: "<any>"}${count?.let { " x$it" }.orEmpty()} but inventory was ${player.inventory.map { "${it.id}x${it.count}" }}"
+        }
+        if (!exists && matches.isNotEmpty()) {
+            failures += "item for player $playerName expected missing ${id ?: "<any>"} but found ${matches.map { "${it.id}x${it.count}" }}"
+        }
+    }
+
+    /**
      * Asserts whether an advancement is complete for a player.
      *
      * Completion is computed from the loaded advancement definition and the

@@ -192,7 +192,7 @@ docs/dps-manifest.schema.json
 }
 ```
 
-`world` 可预置方块、实体、玩家、分数、storage、gamerule、time/weather，也可以从 Java 存档导入指定 chunk。`assertions` 可检查 score、storage、player、advancement、output、loot 等行为。
+`world` 可预置 sparse 方块、实体、玩家、分数、storage、gamerule、time/weather、seed/difficulty/default game mode、世界/玩家出生点、force-loaded chunk、biome 覆盖、team、bossbar，也可以从 Java 存档导入指定 chunk。`assertions` 可检查 score、storage、world、player、team、bossbar、advancement、output、loot 等行为。
 
 `steps` 支持完整数据包执行和轻量生成器产物测试：
 
@@ -208,6 +208,10 @@ docs/dps-manifest.schema.json
 `assertions` 除了既有 score、storage、player、block、entityCount、advancement、predicate、loot 和 output 外，也支持：
 
 ```json
+{ "world": { "difficulty": "hard", "forcedChunk": [0, 0] } }
+```
+
+```json
 { "item": { "player": "Steve", "id": "minecraft:apple", "count": 3 } }
 ```
 
@@ -215,4 +219,4 @@ docs/dps-manifest.schema.json
 { "trace": { "root": "scoreboard", "success": true, "count": 2 } }
 ```
 
-`item` 断言可按玩家、slot、id、count、components path 和 NBT path 检查背包结果。`trace` 断言可按 command/root/contains/success/count/source file/function stack 检查命令执行链。
+`player` 断言还可检查 dimension、game mode、health、food、selected slot、recipe、effect、stat、position、last input 和 spawn point。`team`、`bossbar` 断言会检查对应运行时状态。`item` 断言可按玩家、slot、id、count、components path 和 NBT path 检查背包结果。`trace` 断言可按 command/root/contains/success/count/source file/function stack 检查命令执行链。

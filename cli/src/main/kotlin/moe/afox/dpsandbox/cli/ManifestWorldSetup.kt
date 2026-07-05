@@ -1,5 +1,6 @@
 package moe.afox.dpsandbox.cli
 
+import com.google.gson.JsonArray
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 import moe.afox.dpsandbox.core.ChunkPos
@@ -20,12 +21,20 @@ object ManifestWorldSetup {
         world.get("gameTime")?.let { setup.gameTime(it.asLong) }
         world.get("time")?.let { setup.dayTime(it.asLong) }
         world.get("dayTime")?.let { setup.dayTime(it.asLong) }
+        world.get("seed")?.let { setup.seed(it.asLong) }
+        world.manifestString("difficulty")?.let { setup.difficulty(it) }
+        (world.manifestString("defaultGameMode") ?: world.manifestString("defaultGamemode"))?.let { setup.defaultGameMode(it) }
         world.manifestString("weather")?.let { setup.weather(it, world.get("weatherDuration")?.asInt ?: 0) }
+        world.getAsJsonObject("worldSpawn")?.let { setupWorldSpawn(setup, it) }
 
         world.getAsJsonObject("gamerules")?.entrySet()?.forEach { (name, value) ->
             setup.gamerule(name, manifestPrimitiveString(value))
         }
 
+        parseManifestChunks(world.getAsJsonArray("forcedChunks") ?: JsonArray(), "world.forcedChunks").forEach { setup.forcedChunk(it.x, it.z) }
+        world.manifestArray("biomes", "world.biomes").forEach { setupBiome(setup, it) }
+        world.manifestArray("teams", "world.teams").forEach { setupTeam(setup, it) }
+        world.manifestArray("bossbars", "world.bossbars").forEach { setupBossbar(setup, it) }
         parseSaves(world, base).forEach { save -> setup.importSave(save.path, save.chunks, save.dimension, save.includeBlocks, save.includeBlockEntities, save.includeEntities) }
         parseScores(world).forEach { score -> setup.score(score.target, score.objective, score.value, score.criteria) }
         parseStorages(world).forEach { storage -> setup.storage(storage.id, storage.value) }
@@ -79,6 +88,91 @@ object ManifestWorldSetup {
                 if (!it.isJsonObject) throw SandboxException(DiagnosticCode.INPUT_FORMAT, "world player inventory entries must be objects")
                 parseManifestItem(it.asJsonObject)
             },
+        )
+        player.manifestStringArray("recipes", "world player recipes").forEach { setup.playerRecipe(player.requiredManifestString("name"), it) }
+        player.getAsJsonObject("stats")?.entrySet()?.forEach { (id, value) -> setup.playerStat(player.requiredManifestString("name"), id, value.asInt) }
+        player.manifestArray("effects", "world player effects").forEach { setupPlayerEffect(setup, player.requiredManifestString("name"), it) }
+        player.getAsJsonObject("spawn")?.let { setupPlayerSpawn(setup, player.requiredManifestString("name"), it) }
+    }
+
+    private fun setupWorldSpawn(setup: SandboxWorldSetup, spawn: JsonObject) {
+        val position = spawn.getAsJsonArray("pos")?.let { parseManifestPosition(it) }
+            ?: spawn.getAsJsonArray("position")?.let { parseManifestPosition(it) }
+            ?: Position.zero
+        setup.worldSpawn(
+            x = position.x,
+            y = position.y,
+            z = position.z,
+            dimension = spawn.manifestString("dimension") ?: "minecraft:overworld",
+            angle = spawn.get("angle")?.asDouble,
+            forced = spawn.get("forced")?.asBoolean ?: false,
+        )
+    }
+
+    private fun setupBiome(setup: SandboxWorldSetup, element: JsonElement) {
+        if (!element.isJsonObject) throw SandboxException(DiagnosticCode.INPUT_FORMAT, "world.biomes entries must be objects")
+        val biome = element.asJsonObject
+        val pos = parseManifestBlockPos(biome.getAsJsonArray("pos") ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "world biome requires pos"))
+        setup.biome(pos.x, pos.y, pos.z, biome.requiredManifestString("id"))
+    }
+
+    private fun setupTeam(setup: SandboxWorldSetup, element: JsonElement) {
+        if (!element.isJsonObject) throw SandboxException(DiagnosticCode.INPUT_FORMAT, "world.teams entries must be objects")
+        val team = element.asJsonObject
+        val options = linkedMapOf<String, String>()
+        team.getAsJsonObject("options")?.entrySet()?.forEach { (key, value) -> options[key] = manifestPrimitiveString(value) }
+        setup.team(
+            name = team.requiredManifestString("name"),
+            displayName = team.manifestString("displayName") ?: team.requiredManifestString("name"),
+            members = team.manifestStringArray("members", "world team members"),
+            options = options,
+        )
+    }
+
+    private fun setupBossbar(setup: SandboxWorldSetup, element: JsonElement) {
+        if (!element.isJsonObject) throw SandboxException(DiagnosticCode.INPUT_FORMAT, "world.bossbars entries must be objects")
+        val bossbar = element.asJsonObject
+        setup.bossbar(
+            id = bossbar.requiredManifestString("id"),
+            name = bossbar.manifestString("name") ?: bossbar.requiredManifestString("id"),
+            value = bossbar.get("value")?.asInt ?: 0,
+            max = bossbar.get("max")?.asInt ?: 100,
+            color = bossbar.manifestString("color") ?: "white",
+            style = bossbar.manifestString("style") ?: "progress",
+            visible = bossbar.get("visible")?.asBoolean ?: true,
+            players = bossbar.manifestStringArray("players", "world bossbar players"),
+        )
+    }
+
+    private fun setupPlayerEffect(setup: SandboxWorldSetup, name: String, element: JsonElement) {
+        when {
+            element.isJsonPrimitive && element.asJsonPrimitive.isString -> setup.playerEffect(name, element.asString)
+            element.isJsonObject -> {
+                val effect = element.asJsonObject
+                setup.playerEffect(
+                    name = name,
+                    effect = effect.requiredManifestString("id"),
+                    durationTicks = effect.get("duration")?.asInt ?: -1,
+                    amplifier = effect.get("amplifier")?.asInt ?: 0,
+                    hideParticles = effect.get("hideParticles")?.asBoolean ?: false,
+                )
+            }
+            else -> throw SandboxException(DiagnosticCode.INPUT_FORMAT, "world player effects entries must be strings or objects")
+        }
+    }
+
+    private fun setupPlayerSpawn(setup: SandboxWorldSetup, name: String, spawn: JsonObject) {
+        val position = spawn.getAsJsonArray("pos")?.let { parseManifestPosition(it) }
+            ?: spawn.getAsJsonArray("position")?.let { parseManifestPosition(it) }
+            ?: Position.zero
+        setup.playerSpawn(
+            name = name,
+            x = position.x,
+            y = position.y,
+            z = position.z,
+            dimension = spawn.manifestString("dimension") ?: "minecraft:overworld",
+            angle = spawn.get("angle")?.asDouble,
+            forced = spawn.get("forced")?.asBoolean ?: false,
         )
     }
 

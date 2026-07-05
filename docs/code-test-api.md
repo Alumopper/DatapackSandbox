@@ -162,13 +162,28 @@ SandboxQuickTest.create(
     defaultPlayerName = null,
 )
     .world {
+        seed(123)
+        difficulty("hard")
+        defaultGameMode("creative")
+        worldSpawn(4.0, 70.0, 5.0)
+        forcedChunk(0, 0)
+        biome(0, 64, 0, "minecraft:plains")
         block(0, 64, 0, "minecraft:chest", nbt = "{Items:[]}")
         entity("minecraft:pig", 1.0, 64.0, 0.0, tags = listOf("fixture"))
-        player("Alex", x = 2.0, y = 65.0, z = 3.0, xp = 5)
+        player("Alex", x = 2.0, y = 65.0, z = 3.0, xp = 5, inventory = listOf(item("minecraft:stick", 2)))
+        playerEffect("Alex", "minecraft:speed", durationTicks = 40, amplifier = 1)
+        playerRecipe("Alex", "minecraft:bread")
+        playerSpawn("Alex", 2.0, 66.0, 3.0)
+        team("red", members = listOf("Alex"), options = mapOf("color" to "red"))
+        bossbar("demo:bar", "Demo", value = 3, max = 10, players = listOf("Alex"))
         score("#fixture", "ready", 1)
         storage("demo:env", "{ready:true}")
         gamerule("doDaylightCycle", "false")
     }
+    .assertWorld(difficulty = "hard", defaultGameMode = "creative", seed = 123)
+    .assertBlock(0, 64, 0, "minecraft:chest")
+    .assertEntityCount(expected = 1, type = "minecraft:pig", tag = "fixture")
+    .assertItem("Alex", "minecraft:stick", 2)
     .assertScore("#fixture", "ready", 1)
     .assertPlayerXp("Alex", 5)
     .requirePassed()
@@ -248,6 +263,10 @@ class MyDatapackTest {
 | `mouseInput(player, button, action, x, y)` | Inject mouse input |
 | `assertScore(target, objective, expected)` | Assert scoreboard state |
 | `assertStorageEquals(id, path, expectedJson)` | Assert a storage path |
+| `assertWorld(...)` | Assert selected world-level state |
+| `assertBlock(x, y, z, id, exists)` | Assert a sparse-world block |
+| `assertEntityCount(expected, type, tag)` | Assert matching entity count |
+| `assertItem(player, id, count, slot, exists)` | Assert a matching player inventory item |
 | `assertPlayerXp(player, expected)` | Assert player XP |
 | `assertPlayerLastInput(player, device, code, action)` | Assert the latest player input |
 | `assertAdvancementDone(player, id, expected)` | Assert advancement completion |

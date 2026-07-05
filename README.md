@@ -119,7 +119,7 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar check ./sandbox-cases --snapsh
 
 Manifest `steps` can also contain `commands`, `functionText`, or a relative
 `mcfunction` path for command-generator output tests; assertions can check
-`trace` events and player inventory `item` results.
+`world`, `team`, `bossbar`, `trace`, and player inventory `item` results.
 
 Manifest files use the `.dps.json` suffix:
 
@@ -129,6 +129,7 @@ Manifest files use the `.dps.json` suffix:
   "unsupported": "warn",
   "packs": ["./packs/counter"],
   "world": {
+    "difficulty": "normal",
     "blocks": [
       { "pos": [0, 64, 0], "id": "minecraft:chest", "nbt": { "Items": [] } }
     ],
@@ -137,6 +138,12 @@ Manifest files use the `.dps.json` suffix:
     ],
     "players": [
       { "name": "Alex", "position": [2, 65, 3], "xp": 5 }
+    ],
+    "teams": [
+      { "name": "red", "members": ["Alex"], "options": { "color": "red" } }
+    ],
+    "bossbars": [
+      { "id": "demo:bar", "name": "Demo", "value": 3, "max": 10 }
     ],
     "scores": [
       { "target": "#fixture", "objective": "ready", "value": 1 }
@@ -156,6 +163,11 @@ Manifest files use the `.dps.json` suffix:
         "target": "#clock",
         "objective": "ticks",
         "equals": 20
+      }
+    },
+    {
+      "world": {
+        "difficulty": "normal"
       }
     },
     {

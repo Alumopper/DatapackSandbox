@@ -107,7 +107,7 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar check ./sandbox-cases
 java -jar cli/build/libs/datapack-sandbox-cli.jar check ./sandbox-cases --snapshot-on-fail --snapshot-diff-on-fail
 ```
 
-清单中的 `steps` 也可以直接包含 `commands`、`functionText` 或相对路径 `mcfunction`，用于验证命令生成器输出；`assertions` 可检查 `trace` 和玩家背包 `item`。
+清单中的 `steps` 也可以直接包含 `commands`、`functionText` 或相对路径 `mcfunction`，用于验证命令生成器输出；`assertions` 可检查 `world`、`team`、`bossbar`、`trace` 和玩家背包 `item`。
 
 清单文件固定使用 `.dps.json` 后缀：
 
@@ -117,6 +117,7 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar check ./sandbox-cases --snapsh
   "unsupported": "warn",
   "packs": ["./packs/counter"],
   "world": {
+    "difficulty": "normal",
     "blocks": [
       { "pos": [0, 64, 0], "id": "minecraft:chest", "nbt": { "Items": [] } }
     ],
@@ -125,6 +126,12 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar check ./sandbox-cases --snapsh
     ],
     "players": [
       { "name": "Alex", "position": [2, 65, 3], "xp": 5 }
+    ],
+    "teams": [
+      { "name": "red", "members": ["Alex"], "options": { "color": "red" } }
+    ],
+    "bossbars": [
+      { "id": "demo:bar", "name": "Demo", "value": 3, "max": 10 }
     ],
     "scores": [
       { "target": "#fixture", "objective": "ready", "value": 1 }
@@ -144,6 +151,11 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar check ./sandbox-cases --snapsh
         "target": "#clock",
         "objective": "ticks",
         "equals": 20
+      }
+    },
+    {
+      "world": {
+        "difficulty": "normal"
       }
     },
     {

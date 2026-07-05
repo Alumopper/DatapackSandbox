@@ -317,6 +317,9 @@ object ManifestRunner {
                     failures += "entityCount expected $expected but was $actual"
                 }
             }
+            assertion.has("world") -> {
+                failures += evaluateWorldAssertion(assertion.getAsJsonObject("world"), sandbox)
+            }
             assertion.has("player") -> {
                 val player = assertion.getAsJsonObject("player")
                 val actual = sandbox.world.players[player.requiredManifestString("name")]
@@ -325,6 +328,20 @@ object ManifestRunner {
                 } else {
                     player.get("xp")?.let { if (actual.xp != it.asInt) failures += "player ${actual.name} xp expected ${it.asInt} but was ${actual.xp}" }
                     player.get("inventoryCount")?.let { if (actual.inventory.size != it.asInt) failures += "player ${actual.name} inventoryCount expected ${it.asInt} but was ${actual.inventory.size}" }
+                    player.manifestString("dimension")?.let { if (actual.dimension != ResourceLocation.parse(it)) failures += "player ${actual.name} dimension expected $it but was ${actual.dimension}" }
+                    player.manifestString("gameMode")?.let { if (actual.gameMode != it) failures += "player ${actual.name} gameMode expected $it but was ${actual.gameMode}" }
+                    player.manifestString("gamemode")?.let { if (actual.gameMode != it) failures += "player ${actual.name} gameMode expected $it but was ${actual.gameMode}" }
+                    player.get("health")?.let { if (actual.health != it.asDouble) failures += "player ${actual.name} health expected ${it.asDouble} but was ${actual.health}" }
+                    player.get("food")?.let { if (actual.food != it.asInt) failures += "player ${actual.name} food expected ${it.asInt} but was ${actual.food}" }
+                    player.get("selectedSlot")?.let { if (actual.selectedSlot != it.asInt) failures += "player ${actual.name} selectedSlot expected ${it.asInt} but was ${actual.selectedSlot}" }
+                    player.manifestString("recipe")?.let { if (ResourceLocation.parse(it) !in actual.recipes) failures += "player ${actual.name} expected recipe $it" }
+                    player.manifestString("effect")?.let { if (ResourceLocation.parse(it) !in actual.effects) failures += "player ${actual.name} expected effect $it" }
+                    player.getAsJsonObject("stat")?.let { stat ->
+                        val id = ResourceLocation.parse(stat.requiredManifestString("id"))
+                        val expected = stat.get("equals").asInt
+                        val actualValue = actual.stats[id] ?: 0
+                        if (actualValue != expected) failures += "player ${actual.name} stat $id expected $expected but was $actualValue"
+                    }
                     player.getAsJsonArray("position")?.let {
                         val expected = parseManifestPosition(it)
                         if (actual.position != expected) failures += "player ${actual.name} position expected $expected but was ${actual.position}"
@@ -339,7 +356,19 @@ object ManifestRunner {
                             expected.manifestString("action")?.let { if (input.action != it) failures += "player ${actual.name} lastInput action expected $it but was ${input.action}" }
                         }
                     }
+                    player.getAsJsonObject("spawn")?.let { spawn ->
+                        val expected = spawn.getAsJsonArray("pos")?.let { parseManifestPosition(it) }
+                            ?: spawn.getAsJsonArray("position")?.let { parseManifestPosition(it) }
+                        if (expected != null && actual.spawnPoint?.position != expected) failures += "player ${actual.name} spawn position expected $expected but was ${actual.spawnPoint?.position}"
+                        spawn.manifestString("dimension")?.let { if (actual.spawnPoint?.dimension != ResourceLocation.parse(it)) failures += "player ${actual.name} spawn dimension expected $it but was ${actual.spawnPoint?.dimension}" }
+                    }
                 }
+            }
+            assertion.has("team") -> {
+                failures += evaluateTeamAssertion(assertion.getAsJsonObject("team"), sandbox)
+            }
+            assertion.has("bossbar") -> {
+                failures += evaluateBossbarAssertion(assertion.getAsJsonObject("bossbar"), sandbox)
             }
             assertion.has("block") -> {
                 val block = assertion.getAsJsonObject("block")
@@ -410,6 +439,73 @@ object ManifestRunner {
             }
             else -> failures += "Unknown assertion kind: ${assertion.keySet().joinToString()}"
         }
+        return failures
+    }
+
+    private fun evaluateWorldAssertion(world: JsonObject, sandbox: DatapackSandbox): List<String> {
+        val failures = mutableListOf<String>()
+        world.get("gameTime")?.let { if (sandbox.world.gameTime != it.asLong) failures += "world gameTime expected ${it.asLong} but was ${sandbox.world.gameTime}" }
+        world.get("dayTime")?.let { if (sandbox.world.dayTime != it.asLong) failures += "world dayTime expected ${it.asLong} but was ${sandbox.world.dayTime}" }
+        world.get("time")?.let { if (sandbox.world.dayTime != it.asLong) failures += "world dayTime expected ${it.asLong} but was ${sandbox.world.dayTime}" }
+        world.get("seed")?.let { if (sandbox.world.seed != it.asLong) failures += "world seed expected ${it.asLong} but was ${sandbox.world.seed}" }
+        world.manifestString("weather")?.let { if (sandbox.world.weather != it) failures += "world weather expected $it but was ${sandbox.world.weather}" }
+        world.get("weatherDuration")?.let { if (sandbox.world.weatherDuration != it.asInt) failures += "world weatherDuration expected ${it.asInt} but was ${sandbox.world.weatherDuration}" }
+        world.manifestString("difficulty")?.let { if (sandbox.world.difficulty != it) failures += "world difficulty expected $it but was ${sandbox.world.difficulty}" }
+        (world.manifestString("defaultGameMode") ?: world.manifestString("defaultGamemode"))?.let {
+            if (sandbox.world.defaultGameMode != it) failures += "world defaultGameMode expected $it but was ${sandbox.world.defaultGameMode}"
+        }
+        world.getAsJsonArray("forcedChunk")?.let {
+            val chunk = parseManifestChunk(it, "world assertion forcedChunk")
+            if (chunk !in sandbox.world.forcedChunks) failures += "world expected forced chunk ${chunk.x},${chunk.z}"
+        }
+        world.getAsJsonObject("biome")?.let { biome ->
+            val pos = parseManifestBlockPos(biome.getAsJsonArray("pos"), "world assertion biome pos")
+            val expected = ResourceLocation.parse(biome.requiredManifestString("id"))
+            val actual = sandbox.world.biomes[pos]
+            if (actual != expected) failures += "world biome $pos expected $expected but was ${actual ?: "<missing>"}"
+        }
+        world.getAsJsonObject("worldSpawn")?.let { spawn ->
+            val expected = spawn.getAsJsonArray("pos")?.let { parseManifestPosition(it) }
+                ?: spawn.getAsJsonArray("position")?.let { parseManifestPosition(it) }
+            if (expected != null && sandbox.world.worldSpawn.position != expected) failures += "world spawn position expected $expected but was ${sandbox.world.worldSpawn.position}"
+            spawn.manifestString("dimension")?.let { if (sandbox.world.worldSpawn.dimension != ResourceLocation.parse(it)) failures += "world spawn dimension expected $it but was ${sandbox.world.worldSpawn.dimension}" }
+        }
+        return failures
+    }
+
+    private fun evaluateTeamAssertion(team: JsonObject, sandbox: DatapackSandbox): List<String> {
+        val name = team.requiredManifestString("name")
+        val actual = sandbox.world.teams[name]
+        val exists = team.get("exists")?.asBoolean ?: true
+        if (!exists) return if (actual == null) emptyList() else listOf("team $name expected missing but exists")
+        if (actual == null) return listOf("team $name expected to exist")
+        val failures = mutableListOf<String>()
+        team.manifestString("displayName")?.let { if (actual.displayName != it) failures += "team $name displayName expected $it but was ${actual.displayName}" }
+        team.manifestString("member")?.let { if (it !in actual.members) failures += "team $name expected member $it" }
+        team.get("memberCount")?.let { if (actual.members.size != it.asInt) failures += "team $name memberCount expected ${it.asInt} but was ${actual.members.size}" }
+        team.getAsJsonObject("option")?.let { option ->
+            val key = option.requiredManifestString("name")
+            val expected = option.requiredManifestString("equals")
+            val actualValue = actual.options[key]
+            if (actualValue != expected) failures += "team $name option $key expected $expected but was ${actualValue ?: "<missing>"}"
+        }
+        return failures
+    }
+
+    private fun evaluateBossbarAssertion(bossbar: JsonObject, sandbox: DatapackSandbox): List<String> {
+        val id = ResourceLocation.parse(bossbar.requiredManifestString("id"))
+        val actual = sandbox.world.bossbars[id]
+        val exists = bossbar.get("exists")?.asBoolean ?: true
+        if (!exists) return if (actual == null) emptyList() else listOf("bossbar $id expected missing but exists")
+        if (actual == null) return listOf("bossbar $id expected to exist")
+        val failures = mutableListOf<String>()
+        bossbar.manifestString("name")?.let { if (actual.name != it) failures += "bossbar $id name expected $it but was ${actual.name}" }
+        bossbar.get("value")?.let { if (actual.value != it.asInt) failures += "bossbar $id value expected ${it.asInt} but was ${actual.value}" }
+        bossbar.get("max")?.let { if (actual.max != it.asInt) failures += "bossbar $id max expected ${it.asInt} but was ${actual.max}" }
+        bossbar.manifestString("color")?.let { if (actual.color != it) failures += "bossbar $id color expected $it but was ${actual.color}" }
+        bossbar.manifestString("style")?.let { if (actual.style != it) failures += "bossbar $id style expected $it but was ${actual.style}" }
+        bossbar.get("visible")?.let { if (actual.visible != it.asBoolean) failures += "bossbar $id visible expected ${it.asBoolean} but was ${actual.visible}" }
+        bossbar.manifestString("player")?.let { if (it !in actual.players) failures += "bossbar $id expected player $it" }
         return failures
     }
 

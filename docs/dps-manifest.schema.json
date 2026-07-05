@@ -25,7 +25,7 @@
         }
       ]
     },
-    "world": { "type": "object" },
+    "world": { "$ref": "#/$defs/worldFixture" },
     "steps": {
       "type": "array",
       "items": { "$ref": "#/$defs/step" }
@@ -46,6 +46,254 @@
       "type": "array",
       "items": { "type": "string" },
       "minItems": 1
+    },
+    "position": {
+      "type": "array",
+      "prefixItems": [
+        { "type": "number" },
+        { "type": "number" },
+        { "type": "number" }
+      ],
+      "items": false,
+      "minItems": 3,
+      "maxItems": 3
+    },
+    "blockPos": {
+      "type": "array",
+      "prefixItems": [
+        { "type": "integer" },
+        { "type": "integer" },
+        { "type": "integer" }
+      ],
+      "items": false,
+      "minItems": 3,
+      "maxItems": 3
+    },
+    "chunk": {
+      "type": "array",
+      "prefixItems": [
+        { "type": "integer" },
+        { "type": "integer" }
+      ],
+      "items": false,
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "spawnPoint": {
+      "type": "object",
+      "properties": {
+        "pos": { "$ref": "#/$defs/position" },
+        "position": { "$ref": "#/$defs/position" },
+        "dimension": { "type": "string" },
+        "angle": { "type": "number" },
+        "forced": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "worldFixture": {
+      "type": "object",
+      "properties": {
+        "gameTime": { "type": "integer" },
+        "time": { "type": "integer" },
+        "dayTime": { "type": "integer" },
+        "seed": { "type": "integer" },
+        "difficulty": { "type": "string" },
+        "defaultGameMode": { "type": "string" },
+        "defaultGamemode": { "type": "string" },
+        "weather": { "type": "string", "enum": ["clear", "rain", "thunder"] },
+        "weatherDuration": { "type": "integer", "minimum": 0 },
+        "worldSpawn": { "$ref": "#/$defs/spawnPoint" },
+        "forcedChunks": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/chunk" }
+        },
+        "biomes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["pos", "id"],
+            "properties": {
+              "pos": { "$ref": "#/$defs/blockPos" },
+              "id": { "type": "string" }
+            },
+            "additionalProperties": false
+          }
+        },
+        "blocks": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/blockFixture" }
+        },
+        "entities": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/entityFixture" }
+        },
+        "players": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/playerFixture" }
+        },
+        "teams": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/teamFixture" }
+        },
+        "bossbars": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/bossbarFixture" }
+        },
+        "scores": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["target", "objective", "value"],
+            "properties": {
+              "target": { "type": "string" },
+              "objective": { "type": "string" },
+              "value": { "type": "integer" },
+              "criteria": { "type": "string" }
+            },
+            "additionalProperties": false
+          }
+        },
+        "storage": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "storages": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "value"],
+            "properties": {
+              "id": { "type": "string" },
+              "value": true
+            },
+            "additionalProperties": false
+          }
+        },
+        "gamerules": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "save": { "type": "object" },
+        "saves": {
+          "type": "array",
+          "items": { "type": "object" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "blockFixture": {
+      "type": "object",
+      "required": ["pos", "id"],
+      "properties": {
+        "pos": { "$ref": "#/$defs/blockPos" },
+        "id": { "type": "string" },
+        "properties": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "nbt": true
+      },
+      "additionalProperties": false
+    },
+    "entityFixture": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": { "type": "string" },
+        "pos": { "$ref": "#/$defs/position" },
+        "tags": { "$ref": "#/$defs/stringArray" },
+        "nbt": true,
+        "yaw": { "type": "number" },
+        "pitch": { "type": "number" }
+      },
+      "additionalProperties": false
+    },
+    "itemFixture": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "item": { "type": "string" },
+        "count": { "type": "integer", "minimum": 0 },
+        "components": { "type": "object" },
+        "nbt": true
+      },
+      "additionalProperties": false
+    },
+    "playerEffectFixture": {
+      "oneOf": [
+        { "type": "string" },
+        {
+          "type": "object",
+          "required": ["id"],
+          "properties": {
+            "id": { "type": "string" },
+            "duration": { "type": "integer" },
+            "amplifier": { "type": "integer" },
+            "hideParticles": { "type": "boolean" }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "playerFixture": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string" },
+        "pos": { "$ref": "#/$defs/position" },
+        "position": { "$ref": "#/$defs/position" },
+        "dimension": { "type": "string" },
+        "gameMode": { "type": "string" },
+        "gamemode": { "type": "string" },
+        "xp": { "type": "integer" },
+        "health": { "type": "number" },
+        "food": { "type": "integer" },
+        "selectedSlot": { "type": "integer", "minimum": 0 },
+        "inventory": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/itemFixture" }
+        },
+        "recipes": { "$ref": "#/$defs/stringArray" },
+        "stats": {
+          "type": "object",
+          "additionalProperties": { "type": "integer" }
+        },
+        "effects": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/playerEffectFixture" }
+        },
+        "spawn": { "$ref": "#/$defs/spawnPoint" }
+      },
+      "additionalProperties": false
+    },
+    "teamFixture": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string" },
+        "displayName": { "type": "string" },
+        "members": { "$ref": "#/$defs/stringArray" },
+        "options": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "bossbarFixture": {
+      "type": "object",
+      "required": ["id"],
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "value": { "type": "integer" },
+        "max": { "type": "integer", "minimum": 1 },
+        "color": { "type": "string" },
+        "style": { "type": "string" },
+        "visible": { "type": "boolean" },
+        "players": { "$ref": "#/$defs/stringArray" }
+      },
+      "additionalProperties": false
     },
     "step": {
       "type": "object",
@@ -85,7 +333,10 @@
         { "required": ["score"] },
         { "required": ["storage"] },
         { "required": ["entityCount"] },
+        { "required": ["world"] },
         { "required": ["player"] },
+        { "required": ["team"] },
+        { "required": ["bossbar"] },
         { "required": ["block"] },
         { "required": ["advancement"] },
         { "required": ["predicate"] },
@@ -98,7 +349,10 @@
         "score": { "$ref": "#/$defs/scoreAssertion" },
         "storage": { "type": "object" },
         "entityCount": { "type": "object" },
-        "player": { "type": "object" },
+        "world": { "$ref": "#/$defs/worldAssertion" },
+        "player": { "$ref": "#/$defs/playerAssertion" },
+        "team": { "$ref": "#/$defs/teamAssertion" },
+        "bossbar": { "$ref": "#/$defs/bossbarAssertion" },
         "block": { "type": "object" },
         "advancement": { "type": "object" },
         "predicate": { "type": "object" },
@@ -115,6 +369,107 @@
         "target": { "type": "string" },
         "objective": { "type": "string" },
         "equals": { "type": "integer" }
+      },
+      "additionalProperties": false
+    },
+    "worldAssertion": {
+      "type": "object",
+      "properties": {
+        "gameTime": { "type": "integer" },
+        "dayTime": { "type": "integer" },
+        "time": { "type": "integer" },
+        "seed": { "type": "integer" },
+        "weather": { "type": "string" },
+        "weatherDuration": { "type": "integer" },
+        "difficulty": { "type": "string" },
+        "defaultGameMode": { "type": "string" },
+        "defaultGamemode": { "type": "string" },
+        "forcedChunk": { "$ref": "#/$defs/chunk" },
+        "biome": {
+          "type": "object",
+          "required": ["pos", "id"],
+          "properties": {
+            "pos": { "$ref": "#/$defs/blockPos" },
+            "id": { "type": "string" }
+          },
+          "additionalProperties": false
+        },
+        "worldSpawn": { "$ref": "#/$defs/spawnPoint" }
+      },
+      "additionalProperties": false
+    },
+    "playerAssertion": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string" },
+        "xp": { "type": "integer" },
+        "inventoryCount": { "type": "integer", "minimum": 0 },
+        "dimension": { "type": "string" },
+        "gameMode": { "type": "string" },
+        "gamemode": { "type": "string" },
+        "health": { "type": "number" },
+        "food": { "type": "integer" },
+        "selectedSlot": { "type": "integer", "minimum": 0 },
+        "recipe": { "type": "string" },
+        "effect": { "type": "string" },
+        "stat": {
+          "type": "object",
+          "required": ["id", "equals"],
+          "properties": {
+            "id": { "type": "string" },
+            "equals": { "type": "integer" }
+          },
+          "additionalProperties": false
+        },
+        "position": { "$ref": "#/$defs/position" },
+        "lastInput": {
+          "type": "object",
+          "properties": {
+            "device": { "type": "string" },
+            "code": { "type": "string" },
+            "action": { "type": "string" }
+          },
+          "additionalProperties": false
+        },
+        "spawn": { "$ref": "#/$defs/spawnPoint" }
+      },
+      "additionalProperties": false
+    },
+    "teamAssertion": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string" },
+        "exists": { "type": "boolean" },
+        "displayName": { "type": "string" },
+        "member": { "type": "string" },
+        "memberCount": { "type": "integer", "minimum": 0 },
+        "option": {
+          "type": "object",
+          "required": ["name", "equals"],
+          "properties": {
+            "name": { "type": "string" },
+            "equals": { "type": "string" }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "bossbarAssertion": {
+      "type": "object",
+      "required": ["id"],
+      "properties": {
+        "id": { "type": "string" },
+        "exists": { "type": "boolean" },
+        "name": { "type": "string" },
+        "value": { "type": "integer" },
+        "max": { "type": "integer", "minimum": 1 },
+        "color": { "type": "string" },
+        "style": { "type": "string" },
+        "visible": { "type": "boolean" },
+        "player": { "type": "string" }
       },
       "additionalProperties": false
     },

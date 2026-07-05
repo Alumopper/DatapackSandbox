@@ -192,13 +192,29 @@ class SandboxQuickTestTest {
     fun `quick tests can predefine world state`() {
         val report = SandboxQuickTest.create(listOf(fixturePack()), version = "26.1.2", defaultPlayerName = null)
             .world {
+                seed(123)
+                difficulty("hard")
+                defaultGameMode("creative")
+                worldSpawn(4.0, 70.0, 5.0, angle = 90.0)
+                forcedChunk(0, 0)
+                biome(0, 64, 0, "minecraft:plains")
                 block(0, 64, 0, "minecraft:chest", nbt = "{Items:[]}")
                 entity("minecraft:pig", 1.0, 64.0, 0.0, tags = listOf("fixture"))
                 player("Alex", x = 2.0, y = 65.0, z = 3.0, xp = 5, inventory = listOf(item("minecraft:stick", 2)))
+                playerEffect("Alex", "minecraft:speed", durationTicks = 40, amplifier = 1)
+                playerRecipe("Alex", "minecraft:bread")
+                playerStat("Alex", "minecraft:jump", 3)
+                playerSpawn("Alex", 2.0, 66.0, 3.0)
+                team("red", members = listOf("Alex"), options = mapOf("color" to "red"))
+                bossbar("demo:bar", "Demo", value = 3, max = 10, players = listOf("Alex"))
                 score("#fixture", "ready", 1)
                 storage("demo:env", "{ready:true}")
                 gamerule("doDaylightCycle", "false")
             }
+            .assertWorld(difficulty = "hard", defaultGameMode = "creative", seed = 123)
+            .assertBlock(0, 64, 0, "minecraft:chest")
+            .assertEntityCount(expected = 1, type = "minecraft:pig", tag = "fixture")
+            .assertItem("Alex", "minecraft:stick", 2)
             .assertScore("#fixture", "ready", 1)
             .assertStorageEquals("demo:env", "ready", "true")
             .assertPlayerXp("Alex", 5)
@@ -208,6 +224,10 @@ class SandboxQuickTestTest {
         assertEquals("minecraft:chest", snapshot.get("blocks").asJsonArray[0].asJsonObject.get("id").asString)
         assertEquals("false", snapshot.get("gamerules").asJsonObject.get("doDaylightCycle").asString)
         assertEquals(1, snapshot.get("entities").asJsonArray.count { it.asJsonObject.get("type").asString == "minecraft:pig" })
+        assertEquals("hard", snapshot.get("difficulty").asString)
+        assertEquals(1, snapshot.get("forcedChunks").asJsonArray.size())
+        assertEquals("Alex", snapshot.get("teams").asJsonObject.get("red").asJsonObject.getAsJsonArray("members")[0].asString)
+        assertEquals(3, snapshot.get("bossbars").asJsonObject.get("demo:bar").asJsonObject.get("value").asInt)
     }
 
     @Test

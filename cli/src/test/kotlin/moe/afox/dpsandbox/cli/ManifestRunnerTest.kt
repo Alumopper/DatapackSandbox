@@ -93,6 +93,14 @@ class ManifestRunnerTest {
               "version": "26.1.2",
               "packs": ["$pack"],
               "world": {
+                "seed": 123,
+                "difficulty": "hard",
+                "defaultGameMode": "creative",
+                "worldSpawn": { "pos": [4, 70, 5], "angle": 90 },
+                "forcedChunks": [[0, 0]],
+                "biomes": [
+                  { "pos": [0, 64, 0], "id": "minecraft:plains" }
+                ],
                 "blocks": [
                   { "pos": [0, 64, 0], "id": "minecraft:chest", "nbt": { "Items": [] } }
                 ],
@@ -100,7 +108,31 @@ class ManifestRunnerTest {
                   { "type": "minecraft:pig", "pos": [1, 64, 0], "tags": ["fixture"] }
                 ],
                 "players": [
-                  { "name": "Alex", "position": [2, 65, 3], "xp": 5 }
+                  {
+                    "name": "Alex",
+                    "position": [2, 65, 3],
+                    "dimension": "minecraft:overworld",
+                    "gameMode": "creative",
+                    "xp": 5,
+                    "health": 18.0,
+                    "food": 17,
+                    "selectedSlot": 0,
+                    "inventory": [
+                      { "id": "minecraft:stick", "count": 2 }
+                    ],
+                    "recipes": ["minecraft:bread"],
+                    "stats": { "minecraft:jump": 3 },
+                    "effects": [
+                      { "id": "minecraft:speed", "duration": 40, "amplifier": 1 }
+                    ],
+                    "spawn": { "pos": [2, 66, 3], "dimension": "minecraft:overworld" }
+                  }
+                ],
+                "teams": [
+                  { "name": "red", "members": ["Alex"], "options": { "color": "red" } }
+                ],
+                "bossbars": [
+                  { "id": "demo:bar", "name": "Demo", "value": 3, "max": 10, "players": ["Alex"] }
                 ],
                 "scores": [
                   { "target": "#fixture", "objective": "ready", "value": 1 }
@@ -111,9 +143,44 @@ class ManifestRunnerTest {
               },
               "steps": [],
               "assertions": [
+                {
+                  "world": {
+                    "seed": 123,
+                    "difficulty": "hard",
+                    "defaultGameMode": "creative",
+                    "worldSpawn": { "pos": [4, 70, 5], "dimension": "minecraft:overworld" },
+                    "forcedChunk": [0, 0],
+                    "biome": { "pos": [0, 64, 0], "id": "minecraft:plains" }
+                  }
+                },
                 { "block": { "pos": [0, 64, 0], "id": "minecraft:chest" } },
                 { "entityCount": { "type": "minecraft:pig", "tag": "fixture", "equals": 1 } },
-                { "player": { "name": "Alex", "xp": 5, "position": [2, 65, 3] } },
+                {
+                  "player": {
+                    "name": "Alex",
+                    "xp": 5,
+                    "position": [2, 65, 3],
+                    "dimension": "minecraft:overworld",
+                    "gameMode": "creative",
+                    "health": 18.0,
+                    "food": 17,
+                    "selectedSlot": 0,
+                    "recipe": "minecraft:bread",
+                    "effect": "minecraft:speed",
+                    "stat": { "id": "minecraft:jump", "equals": 3 },
+                    "spawn": { "pos": [2, 66, 3], "dimension": "minecraft:overworld" }
+                  }
+                },
+                { "item": { "player": "Alex", "id": "minecraft:stick", "count": 2 } },
+                {
+                  "team": {
+                    "name": "red",
+                    "member": "Alex",
+                    "memberCount": 1,
+                    "option": { "name": "color", "equals": "red" }
+                  }
+                },
+                { "bossbar": { "id": "demo:bar", "name": "Demo", "value": 3, "max": 10, "player": "Alex" } },
                 { "score": { "target": "#fixture", "objective": "ready", "equals": 1 } },
                 { "storage": { "id": "demo:env", "path": "ready", "equals": true } }
               ]

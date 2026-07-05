@@ -150,13 +150,28 @@ SandboxQuickTest.create(
     defaultPlayerName = null,
 )
     .world {
+        seed(123)
+        difficulty("hard")
+        defaultGameMode("creative")
+        worldSpawn(4.0, 70.0, 5.0)
+        forcedChunk(0, 0)
+        biome(0, 64, 0, "minecraft:plains")
         block(0, 64, 0, "minecraft:chest", nbt = "{Items:[]}")
         entity("minecraft:pig", 1.0, 64.0, 0.0, tags = listOf("fixture"))
-        player("Alex", x = 2.0, y = 65.0, z = 3.0, xp = 5)
+        player("Alex", x = 2.0, y = 65.0, z = 3.0, xp = 5, inventory = listOf(item("minecraft:stick", 2)))
+        playerEffect("Alex", "minecraft:speed", durationTicks = 40, amplifier = 1)
+        playerRecipe("Alex", "minecraft:bread")
+        playerSpawn("Alex", 2.0, 66.0, 3.0)
+        team("red", members = listOf("Alex"), options = mapOf("color" to "red"))
+        bossbar("demo:bar", "Demo", value = 3, max = 10, players = listOf("Alex"))
         score("#fixture", "ready", 1)
         storage("demo:env", "{ready:true}")
         gamerule("doDaylightCycle", "false")
     }
+    .assertWorld(difficulty = "hard", defaultGameMode = "creative", seed = 123)
+    .assertBlock(0, 64, 0, "minecraft:chest")
+    .assertEntityCount(expected = 1, type = "minecraft:pig", tag = "fixture")
+    .assertItem("Alex", "minecraft:stick", 2)
     .assertScore("#fixture", "ready", 1)
     .assertPlayerXp("Alex", 5)
     .requirePassed()
@@ -234,6 +249,10 @@ class MyDatapackTest {
 | `mouseInput(player, button, action, x, y)` | 注入鼠标输入。 |
 | `assertScore(target, objective, expected)` | 断言 scoreboard。 |
 | `assertStorageEquals(id, path, expectedJson)` | 断言 storage 路径。 |
+| `assertWorld(...)` | 断言选定的世界级状态。 |
+| `assertBlock(x, y, z, id, exists)` | 断言 sparse world 中的方块。 |
+| `assertEntityCount(expected, type, tag)` | 断言匹配实体数量。 |
+| `assertItem(player, id, count, slot, exists)` | 断言玩家背包中的匹配物品。 |
 | `assertPlayerXp(player, expected)` | 断言玩家 XP。 |
 | `assertPlayerLastInput(player, device, code, action)` | 断言玩家最后一次输入。 |
 | `assertAdvancementDone(player, id, expected)` | 断言 advancement 是否完成。 |
