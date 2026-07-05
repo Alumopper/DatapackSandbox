@@ -47,4 +47,33 @@ class ExtendedRuntimeTest {
         assertEquals(1, JsonPaths.get(sandbox.world.storage(ResourceLocation.parse("demo:state")), "rewards")?.asJsonArray?.size())
         assertTrue(player.advancementProgress[ResourceLocation.parse("demo:use_carrot")]?.criteria?.get("use_carrot") == true)
     }
+
+    @Test
+    fun `advancement test records structured results`() {
+        val sandbox = createSandbox("26.2", listOf(pack()))
+        sandbox.createPlayer("Steve")
+
+        sandbox.executeCommand("advancement test Steve demo:use_carrot use_carrot")
+
+        assertEquals("0", sandbox.world.outputs.single { it.command == "advancement test" }.text)
+
+        sandbox.executeCommand("advancement grant Steve only demo:use_carrot use_carrot")
+        sandbox.executeCommand("advancement test Steve demo:use_carrot use_carrot")
+
+        val output = sandbox.world.outputs.last { it.command == "advancement test" }
+        val payload = output.payload?.asJsonObject ?: error("missing advancement test payload")
+        val result = payload.getAsJsonArray("results").single().asJsonObject
+        assertEquals("1", output.text)
+        assertEquals("demo:use_carrot", payload.get("id").asString)
+        assertEquals("use_carrot", payload.get("criterion").asString)
+        assertEquals(1, payload.get("passed").asInt)
+        assertEquals("Steve", result.get("player").asString)
+        assertEquals(true, result.get("done").asBoolean)
+        assertEquals(true, result.get("criterionDone").asBoolean)
+
+        sandbox.executeCommand("scoreboard objectives add advancement dummy")
+        sandbox.executeCommand("execute store result score Steve advancement run advancement test Steve demo:use_carrot use_carrot")
+
+        assertEquals(1, sandbox.world.getScore("Steve", "advancement"))
+    }
 }

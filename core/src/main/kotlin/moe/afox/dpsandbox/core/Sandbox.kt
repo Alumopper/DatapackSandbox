@@ -2357,13 +2357,43 @@ class DatapackSandbox(
         val action = tokens[1].text
         val targets = resolvePlayers(tokens[2].text, location)
         val mode = tokens[3].text
-        targets.forEach { player ->
-            if (action == "test") {
-                requireSize(tokens, 4, "advancement test <targets> <advancement> [criterion]", location)
-                val id = ResourceLocation.parse(tokens[3].text)
-                advancements.progress(player, id)
-                return@forEach
+        if (action == "test") {
+            val id = ResourceLocation.parse(tokens[3].text)
+            val criterion = tokens.getOrNull(4)?.text
+            val results = JsonArray()
+            var passed = 0
+            targets.forEach { player ->
+                val advancement = datapack.advancement(id)
+                val progress = advancements.progress(player, id)
+                val done = progress.isDone(advancement.requirements)
+                val criterionDone = criterion?.let { progress.criteria[it] == true }
+                val success = criterionDone ?: done
+                if (success) passed += 1
+                results.add(
+                    JsonObject().also { result ->
+                        result.addProperty("player", player.name)
+                        result.addProperty("done", done)
+                        criterion?.let {
+                            result.addProperty("criterion", it)
+                            result.addProperty("criterionDone", criterionDone)
+                        }
+                    },
+                )
             }
+            world.recordOutput(
+                "advancement test",
+                "data",
+                text = passed.toString(),
+                payload = JsonObject().also { payload ->
+                    payload.addProperty("id", id.toString())
+                    criterion?.let { payload.addProperty("criterion", it) }
+                    payload.addProperty("passed", passed)
+                    payload.add("results", results)
+                },
+            )
+            return
+        }
+        targets.forEach { player ->
             val ids = advancementTargets(mode, tokens.getOrNull(4)?.text, location)
             val criterion = if (mode == "only") tokens.getOrNull(5)?.text else null
             ids.forEach { advancement ->
