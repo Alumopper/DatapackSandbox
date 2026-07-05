@@ -1501,19 +1501,43 @@ class DatapackSandbox(
         val targets = tokens.getOrNull(1)?.text?.let { resolvePlayers(it, location, context) } ?: world.players.values.toList()
         val item = tokens.getOrNull(2)?.text?.let(ResourceLocation::parse)
         val maxCount = tokens.getOrNull(3)?.text?.let { parseInt(it, "clear max count", location) } ?: Int.MAX_VALUE
+        if (maxCount < 0) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "clear max count must be non-negative", location)
+        }
+        val queryOnly = maxCount == 0
+        var matched = 0
+        var removed = 0
         targets.forEach { player ->
             var remaining = maxCount
             val iterator = player.inventory.listIterator()
-            while (iterator.hasNext() && remaining > 0) {
+            while (iterator.hasNext()) {
                 val stack = iterator.next()
                 if (item == null || stack.id == item) {
-                    val removed = minOf(stack.count, remaining)
-                    stack.count -= removed
-                    remaining -= removed
-                    if (stack.count <= 0) iterator.remove()
+                    matched += stack.count
+                    if (!queryOnly && remaining > 0) {
+                        val removedFromStack = minOf(stack.count, remaining)
+                        stack.count -= removedFromStack
+                        remaining -= removedFromStack
+                        removed += removedFromStack
+                        if (stack.count <= 0) iterator.remove()
+                    }
                 }
             }
         }
+        val result = if (queryOnly) matched else removed
+        world.recordOutput(
+            "clear",
+            "data",
+            text = result.toString(),
+            payload = JsonObject().also { payload ->
+                payload.add("targets", JsonArray().also { array -> targets.forEach { array.add(it.name) } })
+                item?.let { payload.addProperty("item", it.toString()) }
+                payload.addProperty("maxCount", maxCount)
+                payload.addProperty("query", queryOnly)
+                payload.addProperty("matched", matched)
+                payload.addProperty("removed", removed)
+            },
+        )
     }
 
     private fun executeGive(tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext) {

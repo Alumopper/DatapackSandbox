@@ -30,7 +30,7 @@ run continues. Use `--unsupported error`, manifest `"unsupported": "error"`, or
 | `attribute` | Partial | `get`, `base get`, `base set`, `base reset`; modifier subcommands are accepted as no-op warning output. |
 | `ban`, `ban-ip`, `banlist` | Unsupported | Server administration and ban lists are not simulated. |
 | `bossbar` | Partial | `add`, `remove`, `list`, `get`, `set`; state is stored and appears in snapshots, no real client UI. |
-| `clear` | Partial | Removes matching item stacks from sandbox player inventories. |
+| `clear` | Partial | Removes matching item stacks from sandbox player inventories, records the matched/removed count, and treats `maxCount=0` as a query-only check. |
 | `clone` | Partial | Copies sparse sandbox block state/NBT; no updates, drops, or overlap physics. |
 | `damage` | Partial | Reduces entity/player health and emits sandbox damage/death advancement events; no armor, invulnerability, death loot, or combat rules. |
 | `data` | Partial | `get`, `merge`, `modify`, `remove` for `storage`, `entity`, and `block`; paths support fields, numeric indexes, and simple object matchers; `modify` supports `value`, `from`, and `string` sources; top-level NBT is schema-checked. |

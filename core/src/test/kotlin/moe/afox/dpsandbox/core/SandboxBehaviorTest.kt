@@ -91,6 +91,41 @@ class SandboxBehaviorTest {
     }
 
     @Test
+    fun `clear can query and remove bounded inventory stacks`() {
+        val sandbox = createSandbox("26.1.2", listOf(fixturePack()))
+        val apple = ResourceLocation.parse("minecraft:apple")
+
+        sandbox.executeCommand("give Steve minecraft:apple 5")
+        sandbox.executeCommand("give Steve minecraft:stick 2")
+        sandbox.executeCommand("clear Steve minecraft:apple 0")
+
+        val player = sandbox.world.requirePlayer("Steve")
+        assertEquals(5, player.inventory.single { it.id == apple }.count)
+        val queryPayload = sandbox.world.outputs.last { it.command == "clear" }.payload?.asJsonObject
+            ?: error("missing clear payload")
+        assertEquals("5", sandbox.world.outputs.last { it.command == "clear" }.text)
+        assertEquals(true, queryPayload.get("query").asBoolean)
+        assertEquals(5, queryPayload.get("matched").asInt)
+        assertEquals(0, queryPayload.get("removed").asInt)
+
+        sandbox.executeCommand("clear Steve minecraft:apple 2")
+
+        assertEquals(3, player.inventory.single { it.id == apple }.count)
+        val removePayload = sandbox.world.outputs.last { it.command == "clear" }.payload?.asJsonObject
+            ?: error("missing clear payload")
+        assertEquals("2", sandbox.world.outputs.last { it.command == "clear" }.text)
+        assertEquals(false, removePayload.get("query").asBoolean)
+        assertEquals(5, removePayload.get("matched").asInt)
+        assertEquals(2, removePayload.get("removed").asInt)
+
+        sandbox.executeCommand("scoreboard objectives add cleared dummy")
+        sandbox.executeCommand("execute store result score Steve cleared run clear Steve minecraft:apple 0")
+
+        assertEquals(3, sandbox.world.getScore("Steve", "cleared"))
+        assertEquals(3, player.inventory.single { it.id == apple }.count)
+    }
+
+    @Test
     fun `supports world entity inventory random and execute store commands`() {
         val sandbox = createSandbox("26.1.2", listOf(fixturePack()))
 

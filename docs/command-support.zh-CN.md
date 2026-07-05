@@ -23,7 +23,7 @@
 | `attribute` | 部分支持 | `get`、`base get`、`base set`、`base reset`；modifier 子命令作为 no-op warning 接受。 |
 | `ban`、`ban-ip`、`banlist` | 未支持 | 不模拟服务器封禁列表。 |
 | `bossbar` | 部分支持 | `add`、`remove`、`list`、`get`、`set`；状态进入 snapshot，不模拟客户端 UI。 |
-| `clear` | 部分支持 | 从沙盒玩家背包移除匹配物品。 |
+| `clear` | 部分支持 | 从沙盒玩家背包移除匹配物品，记录 matched/removed 数量；`maxCount=0` 作为只查询不删除的检查。 |
 | `clone` | 部分支持 | 复制稀疏世界中的方块状态和方块实体 NBT；不执行更新、掉落或重叠区物理。 |
 | `damage` | 部分支持 | 降低实体或玩家生命值，并发出沙盒 damage/death advancement 事件；不计算盔甲、无敌帧、死亡掉落和完整战斗规则。 |
 | `data` | 部分支持 | `get`、`merge`、`modify`、`remove`，目标支持 `storage`、`entity`、`block`；path 支持字段、数字索引和简单对象匹配；`modify` 支持 `value`、`from` 和 `string` 来源；顶层 NBT 字段经过 schema 校验。 |
