@@ -155,6 +155,6 @@ These are tooling commands, not vanilla commands:
 | CLI `run --snapshot-diff` | Print before/after state changes; use `--snapshot-diff-file` to write JSON. |
 | CLI `run --stdin` | Read `.mcfunction` text from standard input; `--stdin-mode commands` executes stdin as raw command lines. |
 | CLI `run --world` | Apply a manifest-style world JSON fixture before execution. |
-| CLI `run --assert` | Evaluate one inline manifest assertion JSON object after execution, including before/after `snapshotDiff` assertions. |
+| CLI `run --assert`, `run --assert-file` | Evaluate inline or file-backed manifest assertion JSON after execution, including before/after `snapshotDiff` assertions. |
 | CLI `check <manifest-or-directory>` | Run `.dps.json` manifests; `--verbose` prints resource summaries, overlay entries, missing references, and output events; use `--snapshot-diff-on-fail` for state changes, plus `--trace-file` and `--trace-filter` for JSONL command traces. |
 | CLI `schema [--output <file>]` | Print or write the bundled `.dps.json` manifest JSON Schema for editor and CI integration. |

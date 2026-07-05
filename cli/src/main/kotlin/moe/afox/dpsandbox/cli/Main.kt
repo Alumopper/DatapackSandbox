@@ -153,6 +153,7 @@ class RunCommand : CliktCommand(name = "run") {
     private val commands by option("--command", "-c").multiple()
     private val commandFile by option("--command-file").path(mustExist = true)
     private val assertions by option("--assert").multiple()
+    private val assertionFiles by option("--assert-file").path(mustExist = true).multiple()
     private val snapshot by option("--snapshot").flag(default = false)
     private val snapshotFile by option("--snapshot-file").path()
     private val snapshotDiff by option("--snapshot-diff").flag(default = false)
@@ -176,6 +177,7 @@ class RunCommand : CliktCommand(name = "run") {
                 stdinAsCommands != null ||
                 worldFiles.isNotEmpty() ||
                 assertions.isNotEmpty() ||
+                assertionFiles.isNotEmpty() ||
                 snapshot ||
                 snapshotFile != null ||
                 snapshotDiff ||
@@ -315,7 +317,32 @@ class RunCommand : CliktCommand(name = "run") {
     }
 
     private fun parseAssertions(): List<JsonObject> =
-        assertions.mapIndexed { index, raw -> parseJsonObject(raw, "--assert ${index + 1}") }
+        assertions.mapIndexed { index, raw -> parseJsonObject(raw, "--assert ${index + 1}") } +
+            assertionFiles.flatMap { file -> parseAssertionFile(file) }
+
+    private fun parseAssertionFile(file: Path): List<JsonObject> {
+        val parsed = try {
+            JsonParser.parseString(Files.readString(file, StandardCharsets.UTF_8))
+        } catch (error: Exception) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Invalid JSON for --assert-file $file", cause = error)
+        }
+        val assertions = when {
+            parsed.isJsonArray -> parsed.asJsonArray.toList()
+            parsed.isJsonObject && parsed.asJsonObject.has("assertions") -> {
+                val element = parsed.asJsonObject.get("assertions")
+                if (!element.isJsonArray) throw SandboxException(DiagnosticCode.INPUT_FORMAT, "--assert-file $file field 'assertions' must be an array")
+                element.asJsonArray.toList()
+            }
+            parsed.isJsonObject -> listOf(parsed)
+            else -> throw SandboxException(DiagnosticCode.INPUT_FORMAT, "--assert-file $file must contain an assertion object, assertion array, or object with assertions array")
+        }
+        return assertions.mapIndexed { index, element ->
+            if (!element.isJsonObject) {
+                throw SandboxException(DiagnosticCode.INPUT_FORMAT, "--assert-file $file assertion ${index + 1} must be an object")
+            }
+            element.asJsonObject
+        }
+    }
 
     private fun parseJsonObject(raw: String, label: String): JsonObject =
         try {

@@ -299,6 +299,38 @@ class RunCommandTest {
     }
 
     @Test
+    fun `run reads assertions from json files`() {
+        val assertionsFile = Files.createTempFile("dps-cli-assertions", ".json")
+        Files.writeString(
+            assertionsFile,
+            """
+            {
+              "assertions": [
+                { "score": { "target": "#file_assert", "objective": "runs", "equals": 11 } },
+                { "output": { "command": "say", "contains": "assert file ok", "count": 1 } }
+              ]
+            }
+            """.trimIndent(),
+        )
+
+        val output = captureStdout {
+            main(
+                arrayOf(
+                    "run",
+                    "--version",
+                    "26.2",
+                    "--mcfunction-text",
+                    "scoreboard objectives add runs dummy\nscoreboard players set #file_assert runs 11\nsay assert file ok",
+                    "--assert-file",
+                    assertionsFile.toString(),
+                ),
+            )
+        }
+
+        assertTrue("OK version=26.2" in output, output)
+    }
+
+    @Test
     fun `run can print and write snapshot diff`() {
         val diffFile = Files.createTempFile("dps-cli-snapshot-diff", ".json")
 

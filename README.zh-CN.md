@@ -139,7 +139,8 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar check ./sandbox-cases --snapsh
 java -jar cli/build/libs/datapack-sandbox-cli.jar run --version 26.2 \
   --world ./fixture-world.json \
   --assert '{"world":{"seed":42}}' \
-  --assert '{"score":{"target":"#fixture","objective":"ready","equals":1}}'
+  --assert '{"score":{"target":"#fixture","objective":"ready","equals":1}}' \
+  --assert-file ./assertions.json
 ```
 
 清单中的 `steps` 也可以直接包含 `commands`、`functionText` 或相对路径 `mcfunction`，用于验证命令生成器输出；`assertions` 可检查 `world`、`team`、`bossbar`、`trace` 和玩家背包 `item`。

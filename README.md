@@ -171,7 +171,8 @@ world fixture and one or more inline JSON assertions:
 java -jar cli/build/libs/datapack-sandbox-cli.jar run --version 26.2 \
   --world ./fixture-world.json \
   --assert '{"world":{"seed":42}}' \
-  --assert '{"score":{"target":"#fixture","objective":"ready","equals":1}}'
+  --assert '{"score":{"target":"#fixture","objective":"ready","equals":1}}' \
+  --assert-file ./assertions.json
 ```
 
 Manifest `steps` can also contain `commands`, `functionText`, or a relative
