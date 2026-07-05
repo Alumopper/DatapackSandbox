@@ -1,5 +1,6 @@
 ﻿package moe.afox.dpsandbox.core
 
+import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -9,6 +10,33 @@ import kotlin.test.assertTrue
 class SandboxBehaviorTest {
     private fun fixturePack(): Path =
         Path.of("src/test/resources/packs/counter")
+
+    private fun writeRecipeCommandPack(root: Path): Path {
+        Files.writeString(
+            root.resolve("pack.mcmeta").also { Files.createDirectories(it.parent) },
+            """
+            {
+              "pack": {
+                "pack_format": 107.1,
+                "description": "recipe command test"
+              }
+            }
+            """.trimIndent(),
+        )
+        val recipeRoot = root.resolve("data").resolve("demo").resolve("recipe")
+        Files.createDirectories(recipeRoot)
+        Files.writeString(
+            recipeRoot.resolve("marker.json"),
+            """
+            {
+              "type": "minecraft:crafting_shapeless",
+              "ingredients": [],
+              "result": { "id": "minecraft:stone", "count": 1 }
+            }
+            """.trimIndent(),
+        )
+        return root
+    }
 
     @Test
     fun `runs load and tick functions`() {
@@ -123,6 +151,30 @@ class SandboxBehaviorTest {
 
         assertEquals(3, sandbox.world.getScore("Steve", "cleared"))
         assertEquals(3, player.inventory.single { it.id == apple }.count)
+    }
+
+    @Test
+    fun `recipe give star and take report changed counts`() {
+        val pack = writeRecipeCommandPack(Files.createTempDirectory("dps-recipe-command-pack"))
+        val sandbox = createSandbox("26.2", listOf(pack))
+        val recipe = ResourceLocation.parse("demo:marker")
+        val player = sandbox.world.requirePlayer("Steve")
+
+        sandbox.executeCommand("recipe give Steve *")
+
+        val giveOutput = sandbox.world.outputs.single { it.command == "recipe give" }
+        assertTrue(recipe in player.recipes)
+        assertEquals("1", giveOutput.text)
+        assertEquals("*", giveOutput.payload?.asJsonObject?.get("recipe")?.asString)
+        assertEquals(1, giveOutput.payload?.asJsonObject?.get("changed")?.asInt)
+
+        sandbox.executeCommand("scoreboard objectives add recipes dummy")
+        sandbox.executeCommand("execute store result score Steve recipes run recipe take Steve *")
+
+        val takeOutput = sandbox.world.outputs.last { it.command == "recipe take" }
+        assertTrue(recipe !in player.recipes)
+        assertEquals("1", takeOutput.text)
+        assertEquals(1, sandbox.world.getScore("Steve", "recipes"))
     }
 
     @Test

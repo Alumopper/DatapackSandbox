@@ -1622,14 +1622,38 @@ class DatapackSandbox(
         requireSize(tokens, 4, "recipe <give|take> <targets> <recipe|*>", location)
         val targets = resolvePlayers(tokens[2].text, location, context)
         val recipe = tokens[3].text
+        val recipeIds = if (recipe == "*") datapack.recipes.keys.sorted() else listOf(ResourceLocation.parse(recipe))
+        var changed = 0
         targets.forEach { player ->
             when (tokens[1].text) {
-                "give" -> if (recipe != "*") player.recipes += ResourceLocation.parse(recipe)
-                "take" -> if (recipe == "*") player.recipes.clear() else player.recipes -= ResourceLocation.parse(recipe)
+                "give" -> recipeIds.forEach { id ->
+                    if (player.recipes.add(id)) {
+                        changed += 1
+                        advancements.handle(PlayerEvent(player.name, "recipe_unlocked", recipe = id))
+                    }
+                }
+                "take" -> {
+                    val before = player.recipes.size
+                    if (recipe == "*") {
+                        player.recipes.clear()
+                        changed += before
+                    } else if (player.recipes.remove(recipeIds.single())) {
+                        changed += 1
+                    }
+                }
                 else -> unsupportedFeature("Unsupported recipe action '${tokens[1].text}'", profile.id, location)
             }
-            advancements.handle(PlayerEvent(player.name, "recipe_unlocked", recipe = recipe.takeIf { it != "*" }?.let(ResourceLocation::parse)))
         }
+        world.recordOutput(
+            "recipe ${tokens[1].text}",
+            "data",
+            text = changed.toString(),
+            payload = JsonObject().also { payload ->
+                payload.add("targets", JsonArray().also { array -> targets.forEach { array.add(it.name) } })
+                payload.addProperty("recipe", recipe)
+                payload.addProperty("changed", changed)
+            },
+        )
     }
 
     private fun executeForceload(tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext) {

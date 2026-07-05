@@ -65,7 +65,7 @@ run continues. Use `--unsupported error`, manifest `"unsupported": "error"`, or
 | `playsound` | Partial | Recorded as sound output event. |
 | `publish` | Unsupported | LAN/networking is not simulated. |
 | `random` | Partial | `value`, `roll`, `reset`; deterministic sandbox sequence state. |
-| `recipe` | Partial | `give`, `take`; updates per-player recipe sets. |
+| `recipe` | Partial | `give`, `take`; supports `*` for loaded datapack recipes, updates per-player recipe sets, and records changed counts. |
 | `reload` | No-op | Accepted and recorded; REPL `reload` performs real datapack reload, vanilla command does not mutate this immutable sandbox instance. |
 | `return` | Supported | Stops the current function; supports `return <value>`, `return fail`, and `return run <command>` for function conditions and store result tests. |
 | `ride` | Partial | Tracks vehicle/passenger relationships; no physics/control. |
