@@ -212,6 +212,16 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar run --version 26.2 \
   --assert "output:generated ok"
 ```
 
+Player events can be injected in the same quick `run` flow and checked with
+regular assertions:
+
+```bash
+java -jar cli/build/libs/datapack-sandbox-cli.jar run --version 26.2 \
+  --event "player Steve key_input key.jump release" \
+  --assert '{"player":{"name":"Steve","lastInput":{"device":"keyboard","code":"key.jump","action":"release"}}}' \
+  --assert '{"eventTrace":{"player":"Steve","type":"key_input","success":true,"count":1}}'
+```
+
 World fixtures can reference reusable fixture files with `fixture`, `fixtures`,
 or `extends`; referenced files are applied first, then local fields override the
 shared setup.

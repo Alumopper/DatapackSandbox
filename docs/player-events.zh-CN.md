@@ -51,6 +51,15 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar event --pack examples/full-sta
 
 CLI 接受连字符或下划线；`item-used` 会标准化为 `item_used`。
 
+随手小测可以用 `run --event` 注入同一套简写事件，然后断言玩家状态或
+event trace：
+
+```bash
+java -jar cli/build/libs/datapack-sandbox-cli.jar run --version 26.2 \
+  --event "player Steve key_input key.jump release" \
+  --assert '{"eventTrace":{"player":"Steve","type":"key_input","success":true,"count":1}}'
+```
+
 ## 清单用法
 
 ```json

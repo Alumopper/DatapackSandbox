@@ -21,6 +21,7 @@ import moe.afox.dpsandbox.core.DatapackSandbox
 import moe.afox.dpsandbox.core.FunctionSource
 import moe.afox.dpsandbox.core.JsonValues
 import moe.afox.dpsandbox.core.OutputEvent
+import moe.afox.dpsandbox.core.PlayerEvent
 import moe.afox.dpsandbox.core.PlayerEvents
 import moe.afox.dpsandbox.core.ResourceLocation
 import moe.afox.dpsandbox.core.SandboxException
@@ -260,6 +261,7 @@ class RunCommand : CliktCommand(name = "run") {
     private val functions by option("--function", "-f").multiple()
     private val commands by option("--command", "-c").multiple()
     private val commandFiles by option("--command-file").path(mustExist = true).multiple()
+    private val events by option("--event").multiple()
     private val assertions by option("--assert").multiple()
     private val assertionFiles by option("--assert-file").path(mustExist = true).multiple()
     private val snapshot by option("--snapshot").flag(default = false)
@@ -284,6 +286,7 @@ class RunCommand : CliktCommand(name = "run") {
             val canUseEmptySandbox = commands.isNotEmpty() ||
                 commandFiles.isNotEmpty() ||
                 stdinAsCommands != null ||
+                events.isNotEmpty() ||
                 worldFiles.isNotEmpty() ||
                 assertions.isNotEmpty() ||
                 assertionFiles.isNotEmpty() ||
@@ -308,7 +311,7 @@ class RunCommand : CliktCommand(name = "run") {
                 )
                 else -> throw SandboxException(
                     DiagnosticCode.INPUT_FORMAT,
-                    "run requires at least one --pack path, --mcfunction file, --mcfunction-text string, --stdin, --command, --command-file, --world, --assert, or snapshot option",
+                    "run requires at least one --pack path, --mcfunction file, --mcfunction-text string, --stdin, --command, --command-file, --event, --world, --assert, or snapshot option",
                 )
             }
             applyWorldFixtures(sandbox)
@@ -330,6 +333,11 @@ class RunCommand : CliktCommand(name = "run") {
                     normalized,
                     SourceLocation(file = "<arg:--command>", line = index + 1, command = normalized),
                 ).commandsExecuted
+            }
+            events.forEachIndexed { index, raw ->
+                val event = parsePlayerEventText(raw, "--event ${index + 1}")
+                sandbox.createPlayer(event.playerName)
+                sandbox.handlePlayerEvent(event)
             }
             val traces = TraceFilters.apply(sandbox.world.traces, traceFilters)
             OutputRenderer.print(sandbox.world.outputs)
@@ -807,6 +815,27 @@ class AdvancementCommand : CliktCommand(name = "advancement") {
     }
 }
 
+private fun parsePlayerEventText(raw: String, label: String): PlayerEvent {
+    val args = raw.trim().split(Regex("\\s+")).filter { it.isNotEmpty() }
+    return parsePlayerEventArgs(args, label)
+}
+
+private fun parsePlayerEventArgs(args: List<String>, label: String): PlayerEvent {
+    if (args.getOrNull(0) != "player" || args.size < 3) {
+        throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Usage: $label player <name> <type> [id] [detail/action]")
+    }
+    val playerName = args[1].trim()
+    val eventType = args[2].trim()
+    if (playerName.isEmpty() || eventType.isEmpty()) {
+        throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Usage: $label player <name> <type> [id] [detail/action]")
+    }
+    return try {
+        PlayerEvents.shorthand(playerName, eventType, args.getOrNull(3), args.getOrNull(4))
+    } catch (error: IllegalArgumentException) {
+        throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label invalid player event: ${error.message}", cause = error)
+    }
+}
+
 class EventCommand : CliktCommand(name = "event") {
     private val version by option("--version", "-v").default(VersionProfiles.default.id)
     private val packs by option("--pack", "-p").path(mustExist = true).multiple(required = true)
@@ -816,12 +845,8 @@ class EventCommand : CliktCommand(name = "event") {
     override fun run() {
         try {
             val sandbox = createSandbox(version, packs, unsupportedFeatureMode = unsupportedFeatureMode(unsupported))
-            if (args.getOrNull(0) != "player") {
-                throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Usage: event player <name> <type> [id] [detail/action]")
-            }
-            val player = sandbox.createPlayer(args.getOrNull(1) ?: "Steve")
-            val eventType = args.getOrNull(2) ?: "tick"
-            val event = PlayerEvents.shorthand(player.name, eventType, args.getOrNull(3), args.getOrNull(4))
+            val event = parsePlayerEventArgs(args, "event")
+            val player = sandbox.createPlayer(event.playerName)
             val updates = sandbox.handlePlayerEvent(event)
             val inputText = event.input?.let { ", input=${it.device}:${it.code}/${it.action}" }.orEmpty()
             println(ConsoleStyle.green("OK event player ${player.name} ${event.type}") + ConsoleStyle.dim(" (updates=${updates.size}$inputText)"))

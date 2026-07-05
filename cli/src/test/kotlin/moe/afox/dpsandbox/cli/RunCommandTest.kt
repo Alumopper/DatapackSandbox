@@ -365,6 +365,27 @@ class RunCommandTest {
     }
 
     @Test
+    fun `run injects player events for inline assertions`() {
+        val output = captureStdout {
+            main(
+                arrayOf(
+                    "run",
+                    "--version",
+                    "26.2",
+                    "--event",
+                    "player Steve key_input key.jump release",
+                    "--assert",
+                    """{"player":{"name":"Steve","lastInput":{"device":"keyboard","code":"key.jump","action":"release"}}}""",
+                    "--assert",
+                    """{"eventTrace":{"player":"Steve","type":"key_input","success":true,"count":1}}""",
+                ),
+            )
+        }
+
+        assertTrue("OK version=26.2" in output, output)
+    }
+
+    @Test
     fun `run loads multiple mcfunction files and strings together`() {
         val mainFile = Files.createTempFile("dps-cli-main-function", ".mcfunction")
         val helperFile = Files.createTempFile("dps-cli-helper-function", ".mcfunction")
