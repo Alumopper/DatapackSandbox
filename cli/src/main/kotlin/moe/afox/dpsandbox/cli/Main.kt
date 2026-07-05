@@ -427,8 +427,54 @@ class RunCommand : CliktCommand(name = "run") {
     }
 
     private fun parseAssertions(): List<JsonObject> =
-        assertions.mapIndexed { index, raw -> parseJsonObject(raw, "--assert ${index + 1}") } +
+        assertions.mapIndexed { index, raw -> parseInlineAssertion(raw, "--assert ${index + 1}") } +
             assertionFiles.flatMap { file -> parseAssertionFile(file) }
+
+    private fun parseInlineAssertion(raw: String, label: String): JsonObject {
+        val trimmed = raw.trim()
+        if (trimmed.startsWith("{")) return parseJsonObject(raw, label)
+        return when {
+            trimmed.startsWith("score:") -> parseScoreAssertion(trimmed.removePrefix("score:"), label)
+            trimmed.startsWith("output:") -> parseOutputAssertion(trimmed.removePrefix("output:"), label)
+            else -> throw SandboxException(
+                DiagnosticCode.INPUT_FORMAT,
+                "$label must be a JSON object or shorthand score:<target>:<objective>=N, score:<target>:<objective>>=N, score:<target>:<objective><=N, or output:<text>",
+            )
+        }
+    }
+
+    private fun parseScoreAssertion(spec: String, label: String): JsonObject {
+        val operator = listOf(">=", "<=", "=").firstOrNull { it in spec }
+            ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label score shorthand requires =, >=, or <=")
+        val splitAt = spec.indexOf(operator)
+        val left = spec.substring(0, splitAt)
+        val right = spec.substring(splitAt + operator.length).trim()
+        val separator = left.lastIndexOf(':')
+        if (separator <= 0 || separator == left.lastIndex) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label score shorthand must be score:<target>:<objective>${operator}N")
+        }
+        val expected = right.toIntOrNull()
+            ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label score shorthand expected integer but got '$right'")
+        val score = JsonObject().also { json ->
+            json.addProperty("target", left.substring(0, separator).trim())
+            json.addProperty("objective", left.substring(separator + 1).trim())
+            when (operator) {
+                ">=" -> json.addProperty("min", expected)
+                "<=" -> json.addProperty("max", expected)
+                else -> json.addProperty("equals", expected)
+            }
+        }
+        return JsonObject().also { it.add("score", score) }
+    }
+
+    private fun parseOutputAssertion(text: String, label: String): JsonObject {
+        val contains = text.trim()
+        if (contains.isEmpty()) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label output shorthand must be output:<text>")
+        }
+        val output = JsonObject().also { it.addProperty("contains", contains) }
+        return JsonObject().also { it.add("output", output) }
+    }
 
     private fun parseAssertionFile(file: Path): List<JsonObject> {
         val parsed = try {

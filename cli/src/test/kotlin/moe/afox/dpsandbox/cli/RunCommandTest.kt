@@ -146,6 +146,31 @@ class RunCommandTest {
     }
 
     @Test
+    fun `run accepts shorthand inline assertions`() {
+        val output = captureStdout {
+            main(
+                arrayOf(
+                    "run",
+                    "--version",
+                    "26.2",
+                    "--mcfunction-text",
+                    "scoreboard objectives add runs dummy\nscoreboard players set #short runs 5\nsay shorthand ok",
+                    "--assert",
+                    "score:#short:runs=5",
+                    "--assert",
+                    "score:#short:runs>=4",
+                    "--assert",
+                    "score:#short:runs<=6",
+                    "--assert",
+                    "output:shorthand ok",
+                ),
+            )
+        }
+
+        assertTrue("OK version=26.2" in output, output)
+    }
+
+    @Test
     fun `run loads multiple mcfunction files and strings together`() {
         val mainFile = Files.createTempFile("dps-cli-main-function", ".mcfunction")
         val helperFile = Files.createTempFile("dps-cli-helper-function", ".mcfunction")

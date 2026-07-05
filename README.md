@@ -183,6 +183,17 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar run --version 26.2 \
   --assert-file ./assertions.json
 ```
 
+For quick score and output checks, `--assert` also accepts compact shorthands:
+
+```bash
+java -jar cli/build/libs/datapack-sandbox-cli.jar run --version 26.2 \
+  --command "scoreboard objectives add runs dummy" \
+  --command "scoreboard players set #fixture runs 1" \
+  --command "say generated ok" \
+  --assert "score:#fixture:runs=1" \
+  --assert "output:generated ok"
+```
+
 World fixtures can reference reusable fixture files with `fixture`, `fixtures`,
 or `extends`; referenced files are applied first, then local fields override the
 shared setup.
