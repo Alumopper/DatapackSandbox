@@ -580,11 +580,17 @@ object ManifestRunner {
             ?: event.manifestString("entity")?.let { ResourceLocation.parse(it) }
             ?: event.manifestString("block")?.let { ResourceLocation.parse(it) }
             ?: event.manifestString("recipe")?.let { ResourceLocation.parse(it) }
+        val damageSource = event.manifestString("damageSource")
+            ?: event.manifestString("damageType")
+        val damageAmount = event.get("amount")?.asDouble
+            ?: event.get("damage")?.takeIf { it.isJsonPrimitive }?.asDouble
         return PlayerEvent(
             playerName = playerName,
             type = event.requiredManifestString("type").replace('-', '_'),
             item = event.manifestString("item")?.let { parseManifestItem(event) } ?: id?.takeIf { event.manifestString("item") != null }?.let { ItemStack(it) },
             entity = event.manifestString("entity")?.let { SandboxEntity(type = ResourceLocation.parse(it)) },
+            damageAmount = damageAmount,
+            damageSource = damageSource?.let { ResourceLocation.parse(it) },
             block = event.manifestString("block")?.let { ResourceLocation.parse(it) },
             fromDimension = event.manifestString("from")?.let { ResourceLocation.parse(it) },
             toDimension = event.manifestString("to")?.let { ResourceLocation.parse(it) },

@@ -1,5 +1,6 @@
 ﻿package moe.afox.dpsandbox.core
 
+import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 
 data class AdvancementUpdate(
@@ -60,16 +61,30 @@ class AdvancementRuntime(private val sandbox: DatapackSandbox) {
         val trigger = criterion.trigger.path
         if (!triggerMatchesEvent(trigger, event.type)) return false
         val conditions = criterion.conditions ?: return true
+        val incomingDamageEvent = event.type in setOf("damage", "death", "entity_killed_player", "entity_hurt_player")
+        val playerAttackEvent = event.type in setOf("killed_entity", "player_hurt_entity")
+        val attacker = when {
+            incomingDamageEvent -> event.entity
+            playerAttackEvent -> player
+            else -> event.entity
+        }
         val predicateContext = PredicateContext(
             world = sandbox.world,
             origin = player.position,
             thisEntity = player,
             player = player,
-            attackingPlayer = player,
-            targetEntity = event.entity,
+            directEntity = attacker,
+            attacker = attacker,
+            attackingPlayer = when {
+                playerAttackEvent -> player
+                else -> event.entity as? SandboxPlayer
+            },
+            targetEntity = if (incomingDamageEvent) player else event.entity,
             interactingEntity = player,
+            killer = if (event.type in setOf("death", "entity_killed_player")) event.entity else attacker,
             tool = event.item ?: player.selectedItem,
             block = event.block,
+            damageSource = event.damageSource,
         )
         conditions.getAsJsonObject("player")?.let {
             if (!predicates.testElement(entityCondition("this", it), predicateContext.copy(thisEntity = player))) return false
@@ -88,6 +103,9 @@ class AdvancementRuntime(private val sandbox: DatapackSandbox) {
         conditions.string("block")?.let { if (event.block != ResourceLocation.parse(it)) return false }
         conditions.string("from")?.let { if (event.fromDimension != ResourceLocation.parse(it)) return false }
         conditions.string("to")?.let { if (event.toDimension != ResourceLocation.parse(it)) return false }
+        conditions.string("damage_source")?.let { if (event.damageSource != ResourceLocation.parse(it)) return false }
+        conditions.string("damageType")?.let { if (event.damageSource != ResourceLocation.parse(it)) return false }
+        conditions.getAsJsonObject("damage")?.let { if (!damageMatches(event, it, predicateContext)) return false }
         conditions.string("key")?.let { if (event.input?.device != "keyboard" || event.input.code != it) return false }
         conditions.string("button")?.let { if (event.input?.device != "mouse" || event.input.code != it) return false }
         conditions.string("input")?.let { if (event.input?.code != it) return false }
@@ -105,6 +123,10 @@ class AdvancementRuntime(private val sandbox: DatapackSandbox) {
             "using_item", "item_used_on_block" -> eventType in setOf("item_used", "using_item", "item_used_on_block")
             "consume_item" -> eventType in setOf("item_consumed", "consume_item")
             "player_interacted_with_entity" -> eventType in setOf("entity_interacted", "player_interacted_with_entity")
+            "damage" -> eventType == "damage"
+            "death" -> eventType == "death"
+            "entity_hurt_player" -> eventType in setOf("damage", "entity_hurt_player")
+            "player_hurt_entity" -> eventType == "player_hurt_entity"
             "player_killed_entity" -> eventType == "killed_entity"
             "entity_killed_player" -> eventType == "entity_killed_player"
             "location" -> eventType in setOf("location", "moved")
@@ -152,6 +174,37 @@ class AdvancementRuntime(private val sandbox: DatapackSandbox) {
         condition.addProperty("condition", "minecraft:location_check")
         condition.add("predicate", predicate)
         return condition
+    }
+
+    private fun damageMatches(event: PlayerEvent, predicate: JsonObject, context: PredicateContext): Boolean {
+        predicate.get("amount")?.let { if (!rangeMatches(event.damageAmount, it)) return false }
+        predicate.get("dealt")?.let { if (!rangeMatches(event.damageAmount, it)) return false }
+        predicate.get("taken")?.let { if (!rangeMatches(event.damageAmount, it)) return false }
+        predicate.get("type")?.let { typePredicate ->
+            when {
+                typePredicate.isJsonPrimitive -> if (event.damageSource != ResourceLocation.parse(typePredicate.asString)) return false
+                typePredicate.isJsonObject -> typePredicate.asJsonObject.string("type")?.let {
+                    if (event.damageSource != ResourceLocation.parse(it)) return false
+                }
+                else -> return false
+            }
+        }
+        predicate.getAsJsonObject("source_entity")?.let {
+            if (!predicates.testElement(entityCondition("this", it), context.copy(thisEntity = event.entity))) return false
+        }
+        predicate.getAsJsonObject("direct_entity")?.let {
+            if (!predicates.testElement(entityCondition("this", it), context.copy(thisEntity = event.entity))) return false
+        }
+        return true
+    }
+
+    private fun rangeMatches(actual: Double?, expected: JsonElement): Boolean {
+        val value = actual ?: return false
+        if (expected.isJsonPrimitive) return value == expected.asDouble
+        val range = expected.takeIf { it.isJsonObject }?.asJsonObject ?: return false
+        range.get("min")?.let { if (value < it.asDouble) return false }
+        range.get("max")?.let { if (value > it.asDouble) return false }
+        return true
     }
 
     private fun JsonObject.string(name: String): String? =

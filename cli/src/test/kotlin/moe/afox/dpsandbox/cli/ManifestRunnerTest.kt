@@ -220,6 +220,64 @@ class ManifestRunnerTest {
     }
 
     @Test
+    fun `runs damage events from manifests`() {
+        val dir = Files.createTempDirectory("dps-damage-manifest")
+        val pack = dir.resolve("pack")
+        val advancementRoot = pack.resolve("data").resolve("demo").resolve("advancement")
+        Files.createDirectories(advancementRoot)
+        Files.writeString(
+            pack.resolve("pack.mcmeta"),
+            """
+            {
+              "pack": {
+                "pack_format": 107.1,
+                "description": "damage event fixture"
+              }
+            }
+            """.trimIndent(),
+        )
+        Files.writeString(
+            advancementRoot.resolve("fall_damage.json"),
+            """
+            {
+              "criteria": {
+                "fell": {
+                  "trigger": "minecraft:entity_hurt_player",
+                  "conditions": {
+                    "damage": {
+                      "type": { "type": "minecraft:fall" },
+                      "dealt": { "min": 4.0 }
+                    }
+                  }
+                }
+              }
+            }
+            """.trimIndent(),
+        )
+        val manifest = dir.resolve("damage.dps.json")
+        val packPath = pack.toAbsolutePath().normalize().toString().replace("\\", "\\\\")
+        Files.writeString(
+            manifest,
+            """
+            {
+              "version": "26.2",
+              "packs": ["$packPath"],
+              "steps": [
+                { "event": { "player": "Steve", "type": "damage", "damageSource": "minecraft:fall", "amount": 4.5 } }
+              ],
+              "assertions": [
+                { "advancement": { "player": "Steve", "id": "demo:fall_damage", "criterion": "fell", "criterionDone": true } }
+              ]
+            }
+            """.trimIndent(),
+        )
+
+        val result = ManifestRunner.run(manifest)
+
+        assertTrue(result.passed, result.messages.joinToString())
+    }
+
+    @Test
     fun `adds snapshot diff to failing manifest reports`() {
         val dir = Files.createTempDirectory("dps-diff-manifest")
         val pack = Path.of("../core/src/test/resources/packs/counter").toAbsolutePath().normalize().toString().replace("\\", "\\\\")

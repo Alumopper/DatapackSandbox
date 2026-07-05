@@ -7,6 +7,7 @@
 ```text
 dps> event player Steve item_used minecraft:carrot_on_a_stick
 dps> event player Steve entity_interacted minecraft:villager
+dps> event player Steve damage minecraft:fall 4.5
 dps> event player Steve killed_entity minecraft:zombie
 dps> event player Steve placed_block minecraft:oak_log
 dps> event player Steve changed_dimension minecraft:overworld minecraft:the_nether
@@ -26,6 +27,7 @@ event player <name> <event-type> [resource-id] [detail]
 
 - `item_used`、`item_consumed`、`inventory_changed`、`item_picked_up`：物品 id。
 - `entity_interacted`、`killed_entity`、`entity_killed_player`：实体类型 id。
+- `damage`、`death`：damage source 类型 id，`detail` 可填写伤害数值。
 - `placed_block`、`broke_block`：方块 id。
 - `changed_dimension`：`resource-id` 是来源维度，`detail` 是目标维度。
 - `recipe_unlocked`：recipe id。
@@ -68,6 +70,14 @@ CLI 接受连字符或下划线；`item-used` 会标准化为 `item_used`。
         "type": "item_used",
         "item": "minecraft:carrot_on_a_stick"
       }
+    },
+    {
+      "event": {
+        "player": "Steve",
+        "type": "damage",
+        "damageSource": "minecraft:fall",
+        "amount": 4.5
+      }
     }
   ]
 }
@@ -85,6 +95,8 @@ CLI 接受连字符或下划线；`item-used` 会标准化为 `item_used`。
 | `key_input` / `key_pressed` / `key_released` | `key`、`action` | 记录玩家键盘输入；沙盒自定义 `key_input` advancement trigger 可匹配。 |
 | `mouse_input` / `mouse_clicked` / `mouse_released` / `mouse_moved` | `button`、`action`、`x`、`y` | 记录玩家鼠标输入；沙盒自定义 `mouse_input` advancement trigger 可匹配。 |
 | `entity_interacted` | `entity` | 触发 `minecraft:player_interacted_with_entity`。 |
+| `damage` | `damageSource`、`amount`、`entity` | 触发 `minecraft:entity_hurt_player`；`entity` 表示伤害来源实体。 |
+| `death` | `damageSource`、`amount`、`entity` | 触发沙盒自定义 `death`；带来源实体的 `damage` 命令击杀玩家时也会触发 `entity_killed_player`。 |
 | `killed_entity` | `entity` | 触发 `minecraft:player_killed_entity`。 |
 | `entity_killed_player` | `entity` | 触发 `minecraft:entity_killed_player`。 |
 | `location` | 无 | 用于 location 条件。 |
@@ -94,7 +106,12 @@ CLI 接受连字符或下划线；`item-used` 会标准化为 `item_used`。
 | `recipe_unlocked` | `recipe` | 用于 recipe unlocked 条件。 |
 | `effects_changed` | 无 | 用于 effects changed 条件。 |
 
-REPL 快捷命令暴露一个可选 `[resource-id]` 和一个可选 detail 或输入 action。需要更完整上下文时使用 JSON 清单，例如带 NBT 的物品、精确实体上下文或鼠标坐标。
+REPL 快捷命令暴露一个可选 `[resource-id]` 和一个可选 detail 或输入 action。需要更完整上下文时使用 JSON 清单，例如带 NBT 的物品、精确实体上下文、伤害源元数据或鼠标坐标。
+
+原版风格的 `damage` 命令也会发出玩家事件：玩家受伤时发出 `damage`；
+生命值归零时发出 `death`；如果命令使用 `by <entity>` 或 `from <entity>`，
+还会发出 `entity_killed_player`。当玩家是非玩家实体的伤害来源时，沙盒会发出
+`player_hurt_entity`，致命伤害还会发出 `killed_entity`。
 
 键鼠清单示例：
 

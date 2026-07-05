@@ -10,6 +10,7 @@ contexts, loot contexts, and advancement triggers.
 ```text
 dps> event player Steve item_used minecraft:carrot_on_a_stick
 dps> event player Steve entity_interacted minecraft:villager
+dps> event player Steve damage minecraft:fall 4.5
 dps> event player Steve killed_entity minecraft:zombie
 dps> event player Steve placed_block minecraft:oak_log
 dps> event player Steve changed_dimension minecraft:overworld minecraft:the_nether
@@ -27,9 +28,11 @@ event player <name> <event-type> [resource-id] [detail]
 
 The optional resource id is interpreted by event type: `item_used` treats it as
 an item, `entity_interacted`/`killed_entity` as an entity type,
-`placed_block`/`broke_block` as a block, `recipe_unlocked` as a recipe, and
-`changed_dimension` as the source dimension. For `changed_dimension`, the
-optional `[detail]` argument is the destination dimension.
+`damage`/`death` as a damage source type, `placed_block`/`broke_block` as a
+block, `recipe_unlocked` as a recipe, and `changed_dimension` as the source
+dimension. For `damage`/`death`, optional `[detail]` is the damage amount. For
+`changed_dimension`, the optional `[detail]` argument is the destination
+dimension.
 
 For keyboard/mouse events, put the input code in the `[resource-id]` slot:
 `key_input key.jump`, `key_pressed space`, or `mouse_input left`. A fifth
@@ -64,6 +67,14 @@ The CLI accepts hyphens or underscores; `item-used` is normalized to
         "type": "item_used",
         "item": "minecraft:carrot_on_a_stick"
       }
+    },
+    {
+      "event": {
+        "player": "Steve",
+        "type": "damage",
+        "damageSource": "minecraft:fall",
+        "amount": 4.5
+      }
     }
   ]
 }
@@ -81,6 +92,8 @@ The CLI accepts hyphens or underscores; `item-used` is normalized to
 | `key_input` / `key_pressed` / `key_released` | `key`, `action` | Records player keyboard input; sandbox custom `key_input` advancement triggers can match it |
 | `mouse_input` / `mouse_clicked` / `mouse_released` / `mouse_moved` | `button`, `action`, `x`, `y` | Records player mouse input; sandbox custom `mouse_input` advancement triggers can match it |
 | `entity_interacted` | `entity` | `minecraft:player_interacted_with_entity` |
+| `damage` | `damageSource`, `amount`, `entity` | `minecraft:entity_hurt_player`; `entity` is the source entity when provided |
+| `death` | `damageSource`, `amount`, `entity` | Sandbox `death` trigger; command damage with a source entity also emits `entity_killed_player` |
 | `killed_entity` | `entity` | `minecraft:player_killed_entity` |
 | `entity_killed_player` | `entity` | `minecraft:entity_killed_player` |
 | `location` | none | Location advancement conditions |
@@ -91,8 +104,15 @@ The CLI accepts hyphens or underscores; `item-used` is normalized to
 | `effects_changed` | none | Effects-changed advancement conditions |
 
 The REPL shorthand exposes one optional `[resource-id]` and optional detail or
-input action. Use manifest JSON for richer item data, exact entity context, or
-mouse coordinates.
+input action. Use manifest JSON for richer item data, exact entity context,
+damage source metadata, or mouse coordinates.
+
+The vanilla-style `damage` command also emits player events. Damaging a player
+emits `damage`; reducing a player's health to zero emits `death`; and if the
+command uses `by <entity>` or `from <entity>`, the death also emits
+`entity_killed_player`. When a player is the source entity for damage to a
+non-player entity, the sandbox emits `player_hurt_entity` and, on lethal
+damage, `killed_entity`.
 
 Keyboard/mouse manifest examples:
 

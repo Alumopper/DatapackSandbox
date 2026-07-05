@@ -47,8 +47,12 @@ data class PlayerEvent(
     val type: String,
     /** Optional item context, used by item and inventory events. */
     val item: ItemStack? = null,
-    /** Optional entity context, used by kill-related events. */
+    /** Optional entity context, used by interaction, kill, and damage-source events. */
     val entity: SandboxEntity? = null,
+    /** Optional damage amount context for damage and death events. */
+    val damageAmount: Double? = null,
+    /** Optional damage source id for damage and death events. */
+    val damageSource: ResourceLocation? = null,
     /** Optional block id context, used by place/break block events. */
     val block: ResourceLocation? = null,
     /** Optional source dimension for dimension-change events. */
@@ -129,11 +133,20 @@ object PlayerEvents {
 
     private fun vanillaVisibleEvent(playerName: String, type: String, id: String?, detail: String?): PlayerEvent {
         val resource = id?.let(ResourceLocation::parse)
+        val damageAmount = if (type in damageEventTypes) {
+            detail?.toDoubleOrNull() ?: detail?.let {
+                throw IllegalArgumentException("Damage event detail must be a number, got '$it'")
+            }
+        } else {
+            null
+        }
         return PlayerEvent(
             playerName = playerName,
             type = type,
-            item = resource?.let { ItemStack(it) },
+            item = if (type in itemEventTypes) resource?.let { ItemStack(it) } else null,
             entity = if (type.contains("kill") || type.contains("interact")) resource?.let { SandboxEntity(type = it) } else null,
+            damageAmount = damageAmount,
+            damageSource = if (type in damageEventTypes) resource else null,
             block = if (type.contains("block")) resource else null,
             recipe = if (type.contains("recipe")) resource else null,
             fromDimension = if (type == "changed_dimension") resource else null,
@@ -159,4 +172,17 @@ object PlayerEvents {
             "mouse_moved" -> "move"
             else -> "click"
         }
+
+    private val itemEventTypes = setOf(
+        "item_used",
+        "using_item",
+        "item_used_on_block",
+        "item_consumed",
+        "consume_item",
+        "inventory_changed",
+        "item_picked_up",
+        "item_added",
+    )
+
+    private val damageEventTypes = setOf("damage", "death")
 }

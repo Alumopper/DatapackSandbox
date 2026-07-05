@@ -86,6 +86,104 @@ class PlayerEventsTest {
         assertTrue(player.advancementProgress.getValue(advancementId).criteria.getValue("talk_to_villager"))
     }
 
+    @Test
+    fun `shorthand damage event triggers hurt player advancements`() {
+        val criterion = Criterion(
+            name = "fell_far",
+            trigger = ResourceLocation.parse("minecraft:entity_hurt_player"),
+            conditions = JsonObject().also { condition ->
+                condition.add(
+                    "damage",
+                    JsonObject().also { damage ->
+                        damage.add(
+                            "type",
+                            JsonObject().also { it.addProperty("type", "minecraft:fall") },
+                        )
+                        damage.add(
+                            "dealt",
+                            JsonObject().also { it.addProperty("min", 4.0) },
+                        )
+                    },
+                )
+            },
+        )
+        val advancementId = ResourceLocation.parse("demo:fall_damage")
+        val sandbox = sandboxWithAdvancement(advancementId, criterion)
+        val player = sandbox.createPlayer("Steve")
+        val event = PlayerEvents.shorthand("Steve", "damage", "minecraft:fall", "4.5")
+
+        val updates = sandbox.handlePlayerEvent(event)
+
+        assertEquals(ResourceLocation.parse("minecraft:fall"), event.damageSource)
+        assertEquals(4.5, event.damageAmount)
+        assertEquals(1, updates.size)
+        assertTrue(player.advancementProgress.getValue(advancementId).criteria.getValue("fell_far"))
+    }
+
+    @Test
+    fun `damage command with source entity fires killed player advancement event`() {
+        val criterion = Criterion(
+            name = "killed_by_zombie",
+            trigger = ResourceLocation.parse("minecraft:entity_killed_player"),
+            conditions = JsonObject().also { condition ->
+                condition.add(
+                    "entity",
+                    JsonObject().also {
+                        it.addProperty("type", "minecraft:zombie")
+                    },
+                )
+                condition.add(
+                    "damage",
+                    JsonObject().also { damage ->
+                        damage.addProperty("type", "minecraft:mob_attack")
+                    },
+                )
+            },
+        )
+        val advancementId = ResourceLocation.parse("demo:killed_by_zombie")
+        val sandbox = sandboxWithAdvancement(advancementId, criterion)
+        val player = sandbox.createPlayer("Steve")
+        sandbox.executeCommand("summon minecraft:zombie 0 64 0")
+
+        sandbox.executeCommand("damage Steve 25 minecraft:mob_attack by @e[type=minecraft:zombie,limit=1]")
+
+        assertEquals(0.0, player.health)
+        assertTrue(player.advancementProgress.getValue(advancementId).criteria.getValue("killed_by_zombie"))
+    }
+
+    @Test
+    fun `damage command from player source fires hurt entity advancement event`() {
+        val criterion = Criterion(
+            name = "hit_cow",
+            trigger = ResourceLocation.parse("minecraft:player_hurt_entity"),
+            conditions = JsonObject().also { condition ->
+                condition.add(
+                    "entity",
+                    JsonObject().also {
+                        it.addProperty("type", "minecraft:cow")
+                    },
+                )
+                condition.add(
+                    "damage",
+                    JsonObject().also { damage ->
+                        damage.add(
+                            "taken",
+                            JsonObject().also { it.addProperty("min", 4.0) },
+                        )
+                    },
+                )
+            },
+        )
+        val advancementId = ResourceLocation.parse("demo:hit_cow")
+        val sandbox = sandboxWithAdvancement(advancementId, criterion)
+        val player = sandbox.createPlayer("Steve")
+        sandbox.executeCommand("""summon minecraft:cow 0 64 0 {Health:8f}""")
+
+        sandbox.executeCommand("damage @e[type=minecraft:cow,limit=1] 4 minecraft:player_attack by Steve")
+
+        assertTrue(player.advancementProgress.getValue(advancementId).criteria.getValue("hit_cow"))
+    }
+
     private fun sandboxWithAdvancement(id: ResourceLocation, criterion: Criterion): DatapackSandbox =
         DatapackSandbox(
             profile = VersionProfiles.default,

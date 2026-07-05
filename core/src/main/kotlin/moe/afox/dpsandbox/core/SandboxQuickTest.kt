@@ -590,7 +590,8 @@ class SandboxQuickTest private constructor(
      *
      * @param type Event type, accepting either hyphen or underscore naming.
      * @param id Optional resource id interpreted by event type, such as an item
-     * id for `item_used` or an entity id for `killed_entity`.
+     * id for `item_used`, an entity id for `killed_entity`, or a damage source
+     * id for `damage`/`death`.
      * @param action Optional input action for keyboard/mouse events.
      * @return this scenario for fluent chaining.
      */

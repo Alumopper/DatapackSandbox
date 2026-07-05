@@ -1609,15 +1609,75 @@ class DatapackSandbox(
     private fun executeDamage(tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext) {
         requireSize(tokens, 3, "damage <target> <amount> [damageType] ...", location)
         val amount = tokens[2].text.toDoubleOrNull() ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Invalid damage amount '${tokens[2].text}'", location)
+        val damageSource = tokens.getOrNull(3)
+            ?.text
+            ?.takeUnless { it in setOf("at", "by", "from") }
+            ?.let(ResourceLocation::parse)
+            ?: ResourceLocation("minecraft", "generic")
+        val sourceEntity = damageCommandSourceEntity(tokens, context, location)
         val targets = EntitySelectors.select(world, tokens[1].text, context, location)
         targets.forEach { entity ->
+            val beforeHealth = if (entity is SandboxPlayer) entity.health else entity.fullNbt(profile, location).get("Health")?.asDouble ?: 20.0
+            val afterHealth = (beforeHealth - amount).coerceAtLeast(0.0)
             if (entity is SandboxPlayer) {
-                entity.health = (entity.health - amount).coerceAtLeast(0.0)
+                entity.health = afterHealth
+                advancements.handle(
+                    PlayerEvent(
+                        entity.name,
+                        "damage",
+                        entity = sourceEntity,
+                        damageAmount = amount,
+                        damageSource = damageSource,
+                    ),
+                )
+                if (beforeHealth > 0.0 && afterHealth <= 0.0) {
+                    advancements.handle(
+                        PlayerEvent(
+                            entity.name,
+                            "death",
+                            entity = sourceEntity,
+                            damageAmount = amount,
+                            damageSource = damageSource,
+                        ),
+                    )
+                    if (sourceEntity != null) {
+                        advancements.handle(
+                            PlayerEvent(
+                                entity.name,
+                                "entity_killed_player",
+                                entity = sourceEntity,
+                                damageAmount = amount,
+                                damageSource = damageSource,
+                            ),
+                        )
+                    }
+                }
             } else {
                 val updated = entity.fullNbt(profile, location)
-                val health = updated.get("Health")?.asDouble ?: 20.0
-                updated.addProperty("Health", (health - amount).coerceAtLeast(0.0))
+                updated.addProperty("Health", afterHealth)
                 entity.writeFullNbt(profile, updated, location)
+                if (sourceEntity is SandboxPlayer) {
+                    advancements.handle(
+                        PlayerEvent(
+                            sourceEntity.name,
+                            "player_hurt_entity",
+                            entity = entity,
+                            damageAmount = amount,
+                            damageSource = damageSource,
+                        ),
+                    )
+                    if (beforeHealth > 0.0 && afterHealth <= 0.0) {
+                        advancements.handle(
+                            PlayerEvent(
+                                sourceEntity.name,
+                                "killed_entity",
+                                entity = entity,
+                                damageAmount = amount,
+                                damageSource = damageSource,
+                            ),
+                        )
+                    }
+                }
             }
         }
         world.entities.removeIf { entity ->
@@ -1626,6 +1686,15 @@ class DatapackSandbox(
                 else -> entity.fullNbt(profile, location).get("Health")?.asDouble == 0.0
             }
         }
+    }
+
+    private fun damageCommandSourceEntity(tokens: List<CommandToken>, context: ExecutionContext, location: SourceLocation?): SandboxEntity? {
+        val markerIndex = tokens.indexOfFirst { it.text == "by" || it.text == "from" }
+        if (markerIndex < 0) return null
+        val selector = tokens.getOrNull(markerIndex + 1)
+            ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "damage ${tokens[markerIndex].text} requires an entity selector", location)
+        return EntitySelectors.select(world, selector.text, context, location).firstOrNull()
+            ?: throw SandboxException(DiagnosticCode.COMMAND_ERROR, "Damage source '${selector.text}' did not match an entity", location)
     }
 
     private fun executeRide(tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext) {
