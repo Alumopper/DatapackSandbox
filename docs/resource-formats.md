@@ -142,6 +142,10 @@ entityCount, advancement, predicate, loot, output, item, trace, event trace,
 diagnostic, and snapshot diff checks:
 
 ```json
+{ "score": { "target": "#clock", "objective": "ticks", "min": 20, "max": 40 } }
+```
+
+```json
 { "world": { "difficulty": "hard", "forcedChunk": [0, 0] } }
 ```
 

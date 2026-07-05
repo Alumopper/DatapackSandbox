@@ -574,10 +574,28 @@ object ManifestRunner {
                 val score = assertion.getAsJsonObject("score")
                 val target = score.requiredManifestString("target")
                 val objective = score.requiredManifestString("objective")
-                val expected = score.get("equals").asInt
                 val actual = sandbox.world.getScore(target, objective)
-                if (actual != expected) {
-                    failures += "score $target $objective expected $expected but was $actual"
+                var checked = false
+                score.get("equals")?.let { expected ->
+                    checked = true
+                    if (actual != expected.asInt) {
+                        failures += "score $target $objective expected ${expected.asInt} but was $actual"
+                    }
+                }
+                score.get("min")?.let { expected ->
+                    checked = true
+                    if (actual < expected.asInt) {
+                        failures += "score $target $objective expected >= ${expected.asInt} but was $actual"
+                    }
+                }
+                score.get("max")?.let { expected ->
+                    checked = true
+                    if (actual > expected.asInt) {
+                        failures += "score $target $objective expected <= ${expected.asInt} but was $actual"
+                    }
+                }
+                if (!checked) {
+                    failures += "score $target $objective assertion requires equals, min, or max"
                 }
             }
             assertion.has("storage") -> {

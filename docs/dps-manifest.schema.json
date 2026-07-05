@@ -447,11 +447,18 @@
     },
     "scoreAssertion": {
       "type": "object",
-      "required": ["target", "objective", "equals"],
+      "required": ["target", "objective"],
+      "anyOf": [
+        { "required": ["equals"] },
+        { "required": ["min"] },
+        { "required": ["max"] }
+      ],
       "properties": {
         "target": { "type": "string" },
         "objective": { "type": "string" },
-        "equals": { "type": "integer" }
+        "equals": { "type": "integer" },
+        "min": { "type": "integer" },
+        "max": { "type": "integer" }
       },
       "additionalProperties": false
     },

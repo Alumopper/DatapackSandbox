@@ -144,6 +144,20 @@ class ManifestRunnerTest {
     }
 
     @Test
+    fun `manifest schema documents score min max assertions`() {
+        val schema = JsonParser.parseString(Files.readString(Path.of("../docs/dps-manifest.schema.json"))).asJsonObject
+        val scoreAssertion = schema.getAsJsonObject("\$defs").getAsJsonObject("scoreAssertion")
+        val properties = scoreAssertion.getAsJsonObject("properties")
+        val requiredAlternatives = scoreAssertion.getAsJsonArray("anyOf").map {
+            it.asJsonObject.getAsJsonArray("required").single().asString
+        }
+
+        assertTrue(requiredAlternatives.containsAll(listOf("equals", "min", "max")))
+        assertEquals("integer", properties.getAsJsonObject("min").get("type").asString)
+        assertEquals("integer", properties.getAsJsonObject("max").get("type").asString)
+    }
+
+    @Test
     fun `runs a manifest check`() {
         val path = Path.of("src/test/resources/cases/counter.dps.json")
 
@@ -713,6 +727,35 @@ class ManifestRunnerTest {
         val result = ManifestRunner.run(manifest)
 
         assertTrue(result.passed, result.messages.joinToString())
+    }
+
+    @Test
+    fun `runs score min max assertions`() {
+        val dir = Files.createTempDirectory("dps-score-range-manifest")
+        val pack = Path.of("../core/src/test/resources/packs/counter").toAbsolutePath().normalize().toString().replace("\\", "\\\\")
+        val manifest = dir.resolve("score-range.dps.json")
+        Files.writeString(
+            manifest,
+            """
+            {
+              "version": "26.1.2",
+              "packs": ["$pack"],
+              "steps": [
+                { "command": "scoreboard objectives add runs dummy" },
+                { "command": "scoreboard players set #range runs 5" }
+              ],
+              "assertions": [
+                { "score": { "target": "#range", "objective": "runs", "min": 4, "max": 6 } },
+                { "score": { "target": "#range", "objective": "runs", "min": 6 } }
+              ]
+            }
+            """.trimIndent(),
+        )
+
+        val result = ManifestRunner.run(manifest)
+
+        assertFalse(result.passed)
+        assertTrue(result.messages.any { "expected >= 6 but was 5" in it }, result.messages.joinToString())
     }
 
     @Test
