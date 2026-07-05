@@ -169,11 +169,12 @@ inspect resources [type]
 {foo:[1b,2s,{bar:"baz"}],flag:true}
 ```
 
-Data path 支持字段和数字 list index：
+Data path 支持字段、数字 list index，以及数组中的简单对象匹配：
 
 ```text
 foo.bar
 foo[0].bar
+Items[{Slot:0b}].id
 ```
 
 同一套 path 引擎会被 `data` 命令、predicate、loot function 和 advancement condition 复用。写入实体或方块实体 NBT 时，会使用 mcdoc schema 校验顶层字段。

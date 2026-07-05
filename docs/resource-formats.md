@@ -172,11 +172,13 @@ The runtime accepts SNBT-lite values such as:
 {foo:[1b,2s,{bar:"baz"}],flag:true}
 ```
 
-Data paths support fields and numeric list indexes:
+Data paths support fields, numeric list indexes, and simple object matchers for
+arrays:
 
 ```text
 foo.bar
 foo[0].bar
+Items[{Slot:0b}].id
 ```
 
 The same path engine is used by `data`, predicates, loot functions, and

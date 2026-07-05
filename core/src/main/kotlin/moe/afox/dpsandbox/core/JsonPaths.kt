@@ -114,6 +114,7 @@ object JsonPaths {
 private sealed interface PathPart {
     data class Field(val name: String) : PathPart
     data class Index(val index: Int) : PathPart
+    data class Match(val expected: JsonObject) : PathPart
 }
 
 private data class NbtPath(val parts: List<PathPart>) {
@@ -124,6 +125,11 @@ private data class NbtPath(val parts: List<PathPart>) {
                 is PathPart.Field -> if (current.isJsonObject) current.asJsonObject.get(part.name) ?: return null else return null
                 is PathPart.Index -> if (current.isJsonArray && part.index in 0 until current.asJsonArray.size()) {
                     current.asJsonArray[part.index]
+                } else {
+                    return null
+                }
+                is PathPart.Match -> if (current.isJsonArray) {
+                    current.asJsonArray.firstOrNull { it.isJsonObject && objectMatches(it.asJsonObject, part.expected) } ?: return null
                 } else {
                     return null
                 }
@@ -145,7 +151,7 @@ private data class NbtPath(val parts: List<PathPart>) {
                     val objectCurrent = current.asJsonObject
                     val existing = objectCurrent.get(part.name)
                     if (existing == null || existing is JsonNull) {
-                        val created = if (next is PathPart.Index) JsonArray() else JsonObject()
+                        val created = if (next is PathPart.Index || next is PathPart.Match) JsonArray() else JsonObject()
                         objectCurrent.add(part.name, created)
                         created
                     } else {
@@ -157,6 +163,11 @@ private data class NbtPath(val parts: List<PathPart>) {
                     val array = current.asJsonArray
                     while (array.size() <= part.index) array.add(JsonObject())
                     array[part.index]
+                }
+                is PathPart.Match -> {
+                    if (!current.isJsonArray) throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Path object matcher is not applied to an array")
+                    current.asJsonArray.firstOrNull { it.isJsonObject && objectMatches(it.asJsonObject, part.expected) }
+                        ?: throw SandboxException(DiagnosticCode.COMMAND_ERROR, "Path object matcher did not match any array entry")
                 }
             }
         }
@@ -172,6 +183,13 @@ private data class NbtPath(val parts: List<PathPart>) {
                 while (array.size() <= last.index) array.add(JsonNull.INSTANCE)
                 array.set(last.index, value.deepCopy())
             }
+            is PathPart.Match -> {
+                if (!current.isJsonArray) throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Path object matcher target is not an array")
+                val array = current.asJsonArray
+                val index = array.indexOfFirst { it.isJsonObject && objectMatches(it.asJsonObject, last.expected) }
+                if (index < 0) throw SandboxException(DiagnosticCode.COMMAND_ERROR, "Path object matcher did not match any array entry")
+                array.set(index, value.deepCopy())
+            }
         }
     }
 
@@ -186,13 +204,47 @@ private data class NbtPath(val parts: List<PathPart>) {
                 } else {
                     return false
                 }
+                is PathPart.Match -> if (current.isJsonArray) {
+                    current.asJsonArray.firstOrNull { it.isJsonObject && objectMatches(it.asJsonObject, part.expected) } ?: return false
+                } else {
+                    return false
+                }
             }
         }
         return when (val last = parts.last()) {
             is PathPart.Field -> current.isJsonObject && current.asJsonObject.remove(last.name) != null
             is PathPart.Index -> current.isJsonArray && last.index in 0 until current.asJsonArray.size() && current.asJsonArray.remove(current.asJsonArray[last.index])
+            is PathPart.Match -> {
+                if (!current.isJsonArray) return false
+                val array = current.asJsonArray
+                val matches = array.filter { it.isJsonObject && objectMatches(it.asJsonObject, last.expected) }
+                matches.forEach { array.remove(it) }
+                matches.isNotEmpty()
+            }
         }
     }
+
+    private fun objectMatches(actual: JsonObject, expected: JsonObject): Boolean =
+        expected.entrySet().all { (key, expectedValue) ->
+            val actualValue = actual.get(key) ?: return@all false
+            elementMatches(actualValue, expectedValue)
+        }
+
+    private fun elementMatches(actual: JsonElement, expected: JsonElement): Boolean =
+        when {
+            expected.isJsonObject -> actual.isJsonObject && objectMatches(actual.asJsonObject, expected.asJsonObject)
+            expected.isJsonArray -> actual.isJsonArray && actual.asJsonArray.size() == expected.asJsonArray.size() &&
+                actual.asJsonArray.zip(expected.asJsonArray).all { (actualElement, expectedElement) -> elementMatches(actualElement, expectedElement) }
+            expected.isJsonPrimitive && actual.isJsonPrimitive -> primitiveMatches(actual.asJsonPrimitive, expected.asJsonPrimitive)
+            else -> actual == expected
+        }
+
+    private fun primitiveMatches(actual: JsonPrimitive, expected: JsonPrimitive): Boolean =
+        when {
+            actual.isNumber && expected.isNumber -> actual.asDouble == expected.asDouble
+            actual.isBoolean && expected.isBoolean -> actual.asBoolean == expected.asBoolean
+            else -> actual.asString == expected.asString
+        }
 
     companion object {
         fun parse(path: String): NbtPath {
@@ -214,12 +266,20 @@ private data class NbtPath(val parts: List<PathPart>) {
                     }
                     '[' -> {
                         flushName()
-                        val end = path.indexOf(']', index)
+                        val end = findClosingBracket(path, index)
                         if (end < 0) throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Unclosed path index in '$path'")
                         val rawIndex = path.substring(index + 1, end)
-                        val parsed = rawIndex.toIntOrNull()
-                            ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Only numeric path indexes are supported in '$path'")
-                        parts += PathPart.Index(parsed)
+                        parts += if (rawIndex.trimStart().startsWith("{")) {
+                            val matcher = JsonValues.parse(rawIndex)
+                            if (!matcher.isJsonObject) {
+                                throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Path object matcher must be an object in '$path'")
+                            }
+                            PathPart.Match(matcher.asJsonObject)
+                        } else {
+                            val parsed = rawIndex.toIntOrNull()
+                                ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Only numeric path indexes and object matchers are supported in '$path'")
+                            PathPart.Index(parsed)
+                        }
                         index = end + 1
                     }
                     else -> {
@@ -230,6 +290,38 @@ private data class NbtPath(val parts: List<PathPart>) {
             }
             flushName()
             return NbtPath(parts)
+        }
+
+        private fun findClosingBracket(path: String, start: Int): Int {
+            var index = start + 1
+            var objectDepth = 0
+            var arrayDepth = 0
+            var quote: Char? = null
+            var escaped = false
+            while (index < path.length) {
+                val char = path[index]
+                if (quote != null) {
+                    when {
+                        escaped -> escaped = false
+                        char == '\\' -> escaped = true
+                        char == quote -> quote = null
+                    }
+                    index++
+                    continue
+                }
+                when (char) {
+                    '"', '\'' -> quote = char
+                    '{' -> objectDepth++
+                    '}' -> objectDepth--
+                    '[' -> arrayDepth++
+                    ']' -> {
+                        if (objectDepth == 0 && arrayDepth == 0) return index
+                        arrayDepth--
+                    }
+                }
+                index++
+            }
+            return -1
         }
     }
 }

@@ -290,12 +290,14 @@ class SandboxBehaviorTest {
         assertTrue(sandbox.world.blocks.isEmpty())
         sandbox.executeCommand("""setblock 0 64 0 minecraft:chest[facing=north]{Items:[{Slot:0b,id:"minecraft:apple",count:1b}]}""")
         sandbox.executeCommand("""data modify block 0 64 0 Items append value {Slot:0b,id:"minecraft:stone",count:1b}""")
+        sandbox.executeCommand("""data modify block 0 64 0 Items[{id:"minecraft:stone"}].count set value 3b""")
         sandbox.executeCommand("execute if block 0 64 0 minecraft:chest[facing=north] run setblock 1 64 0 minecraft:stone")
 
         val chest = sandbox.world.requireBlock(BlockPos(0, 64, 0))
         assertEquals(ResourceLocation.parse("minecraft:chest"), chest.id)
         assertEquals("north", chest.properties["facing"])
         assertEquals(2, chest.nbt.getAsJsonArray("Items").size())
+        assertEquals(3, JsonPaths.get(chest.fullNbt(BlockPos(0, 64, 0), sandbox.profile), """Items[{id:"minecraft:stone"}].count""")?.asInt)
         assertEquals(ResourceLocation.parse("minecraft:stone"), sandbox.world.requireBlock(BlockPos(1, 64, 0)).id)
     }
 

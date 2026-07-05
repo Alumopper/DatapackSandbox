@@ -15,9 +15,13 @@ class ExtendedRuntimeTest {
         assertEquals(2, JsonPaths.get(value, "foo[1]")?.asInt)
         JsonPaths.set(value, "foo[2].bar", JsonValues.parse("\"changed\""))
         JsonPaths.append(value, "foo", JsonValues.parse("{added:1}"))
+        JsonPaths.set(value, "foo[{bar:\"changed\"}].flag", JsonValues.parse("true"))
 
         assertEquals("changed", JsonPaths.get(value, "foo[2].bar")?.asString)
+        assertEquals(true, JsonPaths.get(value, "foo[{bar:\"changed\"}].flag")?.asBoolean)
         assertEquals(4, JsonPaths.get(value, "foo")?.asJsonArray?.size())
+        assertEquals(true, JsonPaths.remove(value, "foo[{added:1}]"))
+        assertEquals(3, JsonPaths.get(value, "foo")?.asJsonArray?.size())
     }
 
     @Test
