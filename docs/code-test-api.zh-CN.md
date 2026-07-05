@@ -243,7 +243,11 @@ SandboxQuickTest.matrix(
     ),
 )
     .load()
+    .world { player("Alex", xp = 5) }
+    .keyInput("Alex", "jump")
     .assertScore("#clock", "ticks", 0)
+    .assertPlayerXp("Alex", 5)
+    .assertPlayerLastInput("Alex", "keyboard", "jump", "press")
     .requirePassed()
 ```
 

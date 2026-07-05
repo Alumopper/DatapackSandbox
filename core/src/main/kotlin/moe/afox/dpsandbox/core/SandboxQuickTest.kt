@@ -411,6 +411,20 @@ class SandboxQuickTestMatrix private constructor(
     }
 
     /**
+     * Applies a player XP assertion to every scenario.
+     */
+    fun assertPlayerXp(playerName: String, expected: Int): SandboxQuickTestMatrix = apply {
+        scenarios.values.forEach { it.assertPlayerXp(playerName, expected) }
+    }
+
+    /**
+     * Applies a latest player input assertion to every scenario.
+     */
+    fun assertPlayerLastInput(playerName: String, device: String, code: String, action: String): SandboxQuickTestMatrix = apply {
+        scenarios.values.forEach { it.assertPlayerLastInput(playerName, device, code, action) }
+    }
+
+    /**
      * Applies a sparse-world block assertion to every scenario.
      */
     @JvmOverloads
