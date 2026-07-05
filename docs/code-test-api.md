@@ -288,7 +288,7 @@ class MyDatapackTest {
 | `assertPlayerLastInput(player, device, code, action)` | Assert the latest player input |
 | `assertAdvancementDone(player, id, expected)` | Assert advancement completion |
 | `assertOutputContains(text)` | Assert output event text |
-| `assertOutput(...)` | Assert command/channel/target/text/count/order for output events |
+| `assertOutput(...)` | Assert command/channel/target/text/normalized text/count/order for output events |
 | `assertTrace(...)` | Assert command/root/source/success/count for trace events |
 | `assertSnapshotDiff(...)` | Assert before/after snapshot path/kind/rendered text/count |
 | `outputs()` | Return recorded output events |
@@ -306,6 +306,7 @@ class MyDatapackTest {
 val report = SandboxQuickTest.singleFunction(Path.of("scratch/output.mcfunction"), "26.2")
     .function()
     .assertOutput(command = "say", channel = "chat", target = "Steve", contains = "hello")
+    .assertOutput(command = "tellraw", normalizedText = "generated output")
     .assertOutput(
         OutputExpectation(
             command = "tellraw",

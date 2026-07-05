@@ -362,6 +362,8 @@ class SandboxQuickTestMatrix private constructor(
         contains: String? = null,
         count: Int? = null,
         order: Int? = null,
+        normalizedText: String? = null,
+        normalizedContains: String? = null,
     ): SandboxQuickTestMatrix =
         assertOutput(
             OutputExpectation(
@@ -372,6 +374,8 @@ class SandboxQuickTestMatrix private constructor(
                 contains = contains,
                 count = count,
                 order = order,
+                normalizedText = normalizedText,
+                normalizedContains = normalizedContains,
             ),
         )
 
@@ -933,6 +937,8 @@ class SandboxQuickTest private constructor(
         contains: String? = null,
         count: Int? = null,
         order: Int? = null,
+        normalizedText: String? = null,
+        normalizedContains: String? = null,
     ): SandboxQuickTest =
         assertOutput(
             OutputExpectation(
@@ -943,6 +949,8 @@ class SandboxQuickTest private constructor(
                 contains = contains,
                 count = count,
                 order = order,
+                normalizedText = normalizedText,
+                normalizedContains = normalizedContains,
             ),
         )
 
@@ -1072,6 +1080,8 @@ class SandboxQuickTest private constructor(
         target: String? = null,
         text: String? = null,
         contains: String? = null,
+        normalizedText: String? = null,
+        normalizedContains: String? = null,
     ): List<OutputEvent> =
         matchingOutputs(
             OutputExpectation(
@@ -1080,6 +1090,8 @@ class SandboxQuickTest private constructor(
                 target = target,
                 text = text,
                 contains = contains,
+                normalizedText = normalizedText,
+                normalizedContains = normalizedContains,
             ),
         )
 

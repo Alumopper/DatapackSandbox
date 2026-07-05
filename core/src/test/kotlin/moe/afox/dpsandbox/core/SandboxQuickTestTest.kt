@@ -209,6 +209,18 @@ class SandboxQuickTestTest {
     }
 
     @Test
+    fun `quick output helpers support normalized text matching`() {
+        val scenario = SandboxQuickTest.singleFunctionText("tellraw Steve {\"text\":\"generated     output\"}", version = "26.2")
+            .function()
+            .assertOutput(command = "tellraw", normalizedText = "generated output", normalizedContains = "generated output", count = 1)
+
+        val matches = scenario.matchingOutputs(command = "tellraw", normalizedText = "generated output")
+
+        assertEquals(1, matches.size)
+        scenario.requirePassed()
+    }
+
+    @Test
     fun `quick tests can get and assert structured traces`() {
         val scenario = SandboxQuickTest.singleFunctionText(
             """
