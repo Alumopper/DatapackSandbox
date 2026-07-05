@@ -183,7 +183,7 @@ object ManifestRunner {
         beforeSnapshot: JsonObject?,
     ): List<String> =
         assertions.flatMapIndexed { index, assertion ->
-            evaluateAssertion(assertion, sandbox, diagnostics, beforeSnapshot).map { "assertion ${index + 1}: $it" }
+            evaluateAssertion(assertion, sandbox, diagnostics, beforeSnapshot).map { "${assertionLabel(index)}: $it" }
         }
 
     private fun runOne(
@@ -224,9 +224,9 @@ object ManifestRunner {
         }
         document.assertions.forEachIndexed { index, assertion ->
             if (!assertion.element.isJsonObject) {
-                failures += "assertion ${index + 1}: Assertion must be an object"
+                failures += "${assertionLabel(index)}: Assertion must be an object"
             } else {
-                failures += evaluateAssertion(assertion.element.asJsonObject, sandbox, diagnostics, beforeSnapshot).map { "assertion ${index + 1}: $it" }
+                failures += evaluateAssertion(assertion.element.asJsonObject, sandbox, diagnostics, beforeSnapshot).map { "${assertionLabel(index)}: $it" }
             }
         }
         if (failures.isNotEmpty() && options.snapshotOnFail) {
@@ -436,6 +436,9 @@ object ManifestRunner {
         }
         return packs
     }
+
+    private fun assertionLabel(index: Int): String =
+        "assertion ${index + 1} (/assertions/$index)"
 
     private fun runStep(step: JsonObject, sandbox: DatapackSandbox, options: ManifestOptions, base: Path): DatapackSandbox {
         when {

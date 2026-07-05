@@ -141,6 +141,9 @@ Assertions support score, storage, world, player, team, bossbar, block,
 entityCount, advancement, predicate, loot, output, item, trace, event trace,
 diagnostic, and snapshot diff checks:
 
+Assertion failures are prefixed with the merged assertion index and JSON Pointer
+path, for example `assertion 1 (/assertions/0): ...`.
+
 ```json
 { "score": { "target": "#clock", "objective": "ticks", "min": 20, "max": 40 } }
 ```
