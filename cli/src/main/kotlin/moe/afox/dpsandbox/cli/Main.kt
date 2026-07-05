@@ -435,10 +435,11 @@ class RunCommand : CliktCommand(name = "run") {
         if (trimmed.startsWith("{")) return parseJsonObject(raw, label)
         return when {
             trimmed.startsWith("score:") -> parseScoreAssertion(trimmed.removePrefix("score:"), label)
+            trimmed.startsWith("storage:") -> parseStorageAssertion(trimmed.removePrefix("storage:"), label)
             trimmed.startsWith("output:") -> parseOutputAssertion(trimmed.removePrefix("output:"), label)
             else -> throw SandboxException(
                 DiagnosticCode.INPUT_FORMAT,
-                "$label must be a JSON object or shorthand score:<target>:<objective>=N, score:<target>:<objective>>=N, score:<target>:<objective><=N, or output:<text>",
+                "$label must be a JSON object or shorthand score:<target>:<objective>=N, storage:<id>[:<path>]=<json>, storage:<id>[:<path>]?, storage:<id>[:<path>]!, or output:<text>",
             )
         }
     }
@@ -465,6 +466,48 @@ class RunCommand : CliktCommand(name = "run") {
             }
         }
         return JsonObject().also { it.add("score", score) }
+    }
+
+    private fun parseStorageAssertion(spec: String, label: String): JsonObject {
+        val storage = when {
+            spec.endsWith("?") -> storageAssertionObject(spec.dropLast(1), label).also { it.addProperty("exists", true) }
+            spec.endsWith("!") -> storageAssertionObject(spec.dropLast(1), label).also { it.addProperty("missing", true) }
+            else -> {
+                val splitAt = spec.indexOf('=')
+                if (splitAt <= 0) {
+                    throw SandboxException(
+                        DiagnosticCode.INPUT_FORMAT,
+                        "$label storage shorthand must be storage:<id>[:<path>]=<json>, storage:<id>[:<path>]?, or storage:<id>[:<path>]!",
+                    )
+                }
+                val expectedText = spec.substring(splitAt + 1).trim()
+                val expected = try {
+                    JsonParser.parseString(expectedText)
+                } catch (error: Exception) {
+                    throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label storage shorthand expected JSON value but got '$expectedText'", cause = error)
+                }
+                storageAssertionObject(spec.substring(0, splitAt), label).also { it.add("equals", expected) }
+            }
+        }
+        return JsonObject().also { it.add("storage", storage) }
+    }
+
+    private fun storageAssertionObject(location: String, label: String): JsonObject {
+        val trimmed = location.trim()
+        val firstColon = trimmed.indexOf(':')
+        if (firstColon <= 0 || firstColon == trimmed.lastIndex) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label storage shorthand must include a namespaced id")
+        }
+        val secondColon = trimmed.indexOf(':', firstColon + 1)
+        val id = if (secondColon < 0) trimmed else trimmed.substring(0, secondColon)
+        val path = secondColon.takeIf { it >= 0 }?.let { trimmed.substring(it + 1).trim() }
+        if (path != null && path.isEmpty()) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label storage shorthand path must not be empty")
+        }
+        return JsonObject().also { json ->
+            json.addProperty("id", id.trim())
+            path?.let { json.addProperty("path", it) }
+        }
     }
 
     private fun parseOutputAssertion(text: String, label: String): JsonObject {

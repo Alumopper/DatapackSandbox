@@ -192,14 +192,16 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar run --version 26.2 \
   --assert-file ./assertions.json
 ```
 
-For quick score and output checks, `--assert` also accepts compact shorthands:
+For quick score, storage, and output checks, `--assert` also accepts compact shorthands:
 
 ```bash
 java -jar cli/build/libs/datapack-sandbox-cli.jar run --version 26.2 \
   --command "scoreboard objectives add runs dummy" \
   --command "scoreboard players set #fixture runs 1" \
+  --command "data merge storage demo:env {ready:true}" \
   --command "say generated ok" \
   --assert "score:#fixture:runs=1" \
+  --assert "storage:demo:env:ready=true" \
   --assert "output:generated ok"
 ```
 

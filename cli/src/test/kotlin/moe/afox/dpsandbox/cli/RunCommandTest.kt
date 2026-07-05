@@ -205,6 +205,29 @@ class RunCommandTest {
     }
 
     @Test
+    fun `run accepts storage shorthand inline assertions`() {
+        val output = captureStdout {
+            main(
+                arrayOf(
+                    "run",
+                    "--version",
+                    "26.2",
+                    "--command",
+                    "data merge storage demo:env {ready:true}",
+                    "--assert",
+                    "storage:demo:env?",
+                    "--assert",
+                    "storage:demo:env:ready=true",
+                    "--assert",
+                    "storage:demo:env:absent!",
+                ),
+            )
+        }
+
+        assertTrue("OK version=26.2" in output, output)
+    }
+
+    @Test
     fun `run loads multiple mcfunction files and strings together`() {
         val mainFile = Files.createTempFile("dps-cli-main-function", ".mcfunction")
         val helperFile = Files.createTempFile("dps-cli-helper-function", ".mcfunction")
