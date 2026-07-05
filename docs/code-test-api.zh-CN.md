@@ -43,7 +43,7 @@ class MyDatapackTest {
 }
 ```
 
-`requirePassed()` 在断言失败时抛出 `SandboxQuickTestAssertionError`。异常中包含所有失败项、从场景初始状态到当前状态的最小 snapshot diff，以及简短 trace 摘要。output 断言失败时还会列出候选输出事件的 command/channel/targets/text 摘要。完整报告仍会暴露最终 snapshot，方便测试框架自定义渲染。
+`requirePassed()` 在断言失败时抛出 `SandboxQuickTestAssertionError`。异常中包含所有失败项、从场景初始状态到当前状态的最小 snapshot diff，以及简短 trace 摘要。output 断言失败时还会列出候选输出事件的 command/channel/targets/text 摘要；trace 断言失败时会列出候选命令 trace 的 root/command/status 摘要。完整报告仍会暴露最终 snapshot，方便测试框架自定义渲染。
 
 `report()` 和 `requirePassed()` 返回的报告还包含结构化命令 trace 和玩家事件 trace。命令 trace 记录命令文本、命令根、是否成功、执行的命令数、产生的输出数、来源文件/行号、函数调用栈、执行者和位置。玩家事件 trace 记录事件上下文以及本次事件匹配到的 advancement criteria。需要调试生成器输出、函数调用链或事件驱动数据包时，可以直接读取：
 

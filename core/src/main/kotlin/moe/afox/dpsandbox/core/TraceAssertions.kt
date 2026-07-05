@@ -47,10 +47,10 @@ data class TraceExpectation(
     fun failures(traces: List<CommandTraceEvent>, label: String = "trace"): List<String> {
         val matches = matching(traces)
         if (count != null && matches.size != count) {
-            return listOf("$label expected $count match(es) but found ${matches.size}: ${describe()}")
+            return listOf("$label expected $count match(es) but found ${matches.size}: ${describe()}; ${actualTraces(traces)}")
         }
         if (count == null && matches.isEmpty()) {
-            return listOf("$label expected at least one match: ${describe()}")
+            return listOf("$label expected at least one match: ${describe()}; ${actualTraces(traces)}")
         }
         return emptyList()
     }
@@ -67,6 +67,26 @@ data class TraceExpectation(
             fileContains?.let { "fileContains=$it" },
             function?.let { "function=$it" },
         ).ifEmpty { listOf("<any trace>") }.joinToString(", ")
+
+    private fun actualTraces(traces: List<CommandTraceEvent>): String {
+        if (traces.isEmpty()) return "actual traces: <none>"
+        val rendered = traces.take(5).mapIndexed { index, trace ->
+            val status = if (trace.success) "OK" else "ERR"
+            val source = trace.source?.file?.let { " file=$it" }.orEmpty()
+            val line = trace.source?.line?.let { ":$it" }.orEmpty()
+            val error = trace.errorCode?.let { " error=$it" }.orEmpty()
+            "#${index + 1} [$status] root=${trace.root} command=${quote(trace.command.truncateForAssertion())}$source$line$error"
+        }
+        val suffix = if (traces.size > rendered.size) "; ... +${traces.size - rendered.size} more" else ""
+        return "actual traces: ${rendered.joinToString("; ")}$suffix"
+    }
+
+    private fun quote(value: String): String = "'$value'"
+
+    private fun String.truncateForAssertion(): String =
+        replace("\r", "\\r")
+            .replace("\n", "\\n")
+            .let { if (it.length <= 160) it else it.take(157) + "..." }
 }
 
 /**

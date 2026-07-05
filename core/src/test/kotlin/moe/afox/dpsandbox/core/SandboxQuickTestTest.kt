@@ -230,6 +230,21 @@ class SandboxQuickTestTest {
     }
 
     @Test
+    fun `trace assertion failures include actual trace candidates`() {
+        val error = assertFailsWith<SandboxQuickTestAssertionError> {
+            SandboxQuickTest.singleFunctionText("say actual trace candidate", version = "26.2")
+                .function()
+                .assertTrace(root = "scoreboard")
+                .requirePassed()
+        }
+        val message = error.message.orEmpty()
+
+        assertTrue("actual traces:" in message, message)
+        assertTrue("root=say" in message, message)
+        assertTrue("say actual trace candidate" in message, message)
+    }
+
+    @Test
     fun `quick tests can assert snapshot diffs`() {
         val scenario = SandboxQuickTest.singleFunctionText(
             """
