@@ -167,6 +167,29 @@ class SandboxQuickTestTest {
     }
 
     @Test
+    fun `quick player spawn assertions explain failures`() {
+        val report = SandboxQuickTest.create(listOf(fixturePack()), version = "26.1.2", defaultPlayerName = null)
+            .world {
+                player("Alex")
+                playerSpawn("Alex", 2.0, 66.0, 3.0, angle = 90.0, forced = true)
+            }
+            .assertPlayer(
+                name = "Alex",
+                spawn = Position(1.0, 66.0, 3.0),
+                spawnDimension = "minecraft:the_nether",
+                spawnAngle = 45.0,
+                spawnForced = false,
+            )
+            .report()
+
+        assertTrue(!report.passed)
+        assertTrue(report.failures.any { "player Alex spawn position expected Position(x=1.0, y=66.0, z=3.0)" in it }, report.failures.joinToString())
+        assertTrue(report.failures.any { "player Alex spawn dimension expected minecraft:the_nether but was minecraft:overworld" in it }, report.failures.joinToString())
+        assertTrue(report.failures.any { "player Alex spawn angle expected 45.0 but was 90.0" in it }, report.failures.joinToString())
+        assertTrue(report.failures.any { "player Alex spawn forced expected false but was true" in it }, report.failures.joinToString())
+    }
+
+    @Test
     fun `records keyboard and mouse player input events`() {
         val scenario = SandboxQuickTest.create(listOf(fixturePack()), version = "26.1.2")
             .keyInput("Steve", "key.jump")
@@ -475,7 +498,7 @@ class SandboxQuickTestTest {
                 playerEffect("Alex", "minecraft:speed", durationTicks = 40, amplifier = 1)
                 playerRecipe("Alex", "minecraft:bread")
                 playerStat("Alex", "minecraft:jump", 3)
-                playerSpawn("Alex", 2.0, 66.0, 3.0)
+                playerSpawn("Alex", 2.0, 66.0, 3.0, angle = 90.0, forced = true)
                 team("red", members = listOf("Alex"), options = mapOf("color" to "red"))
                 bossbar("demo:bar", "Demo", value = 3, max = 10, players = listOf("Alex"))
                 score("#fixture", "ready", 1)
@@ -513,6 +536,10 @@ class SandboxQuickTestTest {
                 effect = "minecraft:speed",
                 stat = "minecraft:jump",
                 statValue = 3,
+                spawn = Position(2.0, 66.0, 3.0),
+                spawnDimension = "minecraft:overworld",
+                spawnAngle = 90.0,
+                spawnForced = true,
             )
             .assertItem(
                 "Alex",

@@ -361,9 +361,32 @@ class SandboxQuickTestMatrix private constructor(
         effect: String? = null,
         stat: String? = null,
         statValue: Int? = null,
+        spawn: Position? = null,
+        spawnDimension: String? = null,
+        spawnAngle: Double? = null,
+        spawnForced: Boolean? = null,
     ): SandboxQuickTestMatrix = apply {
         scenarios.values.forEach {
-            it.assertPlayer(name, exists, position, dimension, gameMode, xp, health, food, selectedSlot, inventoryCount, recipe, effect, stat, statValue)
+            it.assertPlayer(
+                name = name,
+                exists = exists,
+                position = position,
+                dimension = dimension,
+                gameMode = gameMode,
+                xp = xp,
+                health = health,
+                food = food,
+                selectedSlot = selectedSlot,
+                inventoryCount = inventoryCount,
+                recipe = recipe,
+                effect = effect,
+                stat = stat,
+                statValue = statValue,
+                spawn = spawn,
+                spawnDimension = spawnDimension,
+                spawnAngle = spawnAngle,
+                spawnForced = spawnForced,
+            )
         }
     }
 
@@ -986,6 +1009,10 @@ class SandboxQuickTest private constructor(
         effect: String? = null,
         stat: String? = null,
         statValue: Int? = null,
+        spawn: Position? = null,
+        spawnDimension: String? = null,
+        spawnAngle: Double? = null,
+        spawnForced: Boolean? = null,
     ): SandboxQuickTest = apply {
         val player = sandbox.world.players[name]
         if (!exists) {
@@ -1020,6 +1047,27 @@ class SandboxQuickTest private constructor(
                 if (actualValue == null) failures += "player $name expected stat $id"
             } else if ((actualValue ?: 0) != statValue) {
                 failures += "player $name stat $id expected $statValue but was ${actualValue ?: 0}"
+            }
+        }
+        spawn?.let {
+            if (player.spawnPoint?.position != it) {
+                failures += "player $name spawn position expected $it but was ${player.spawnPoint?.position ?: "<missing>"}"
+            }
+        }
+        spawnDimension?.let {
+            val expected = ResourceLocation.parse(it)
+            if (player.spawnPoint?.dimension != expected) {
+                failures += "player $name spawn dimension expected $expected but was ${player.spawnPoint?.dimension ?: "<missing>"}"
+            }
+        }
+        spawnAngle?.let {
+            if (player.spawnPoint?.angle != it) {
+                failures += "player $name spawn angle expected $it but was ${player.spawnPoint?.angle ?: "<missing>"}"
+            }
+        }
+        spawnForced?.let {
+            if (player.spawnPoint?.forced != it) {
+                failures += "player $name spawn forced expected $it but was ${player.spawnPoint?.forced ?: "<missing>"}"
             }
         }
     }

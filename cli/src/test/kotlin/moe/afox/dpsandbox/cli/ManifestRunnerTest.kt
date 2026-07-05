@@ -371,7 +371,7 @@ class ManifestRunnerTest {
                     "effects": [
                       { "id": "minecraft:speed", "duration": 40, "amplifier": 1 }
                     ],
-                    "spawn": { "pos": [2, 66, 3], "dimension": "minecraft:overworld" }
+                    "spawn": { "pos": [2, 66, 3], "dimension": "minecraft:overworld", "angle": 90, "forced": true }
                   }
                 ],
                 "teams": [
@@ -414,7 +414,7 @@ class ManifestRunnerTest {
                     "recipe": "minecraft:bread",
                     "effect": "minecraft:speed",
                     "stat": { "id": "minecraft:jump", "equals": 3 },
-                    "spawn": { "pos": [2, 66, 3], "dimension": "minecraft:overworld" }
+                    "spawn": { "pos": [2, 66, 3], "dimension": "minecraft:overworld", "angle": 90, "forced": true }
                   }
                 },
                 { "item": { "player": "Alex", "id": "minecraft:stick", "count": 2, "minCount": 1, "maxCount": 3 } },
@@ -1028,6 +1028,45 @@ class ManifestRunnerTest {
 
         assertFalse(result.passed)
         assertTrue(result.messages.any { "world spawn angle expected 45.0 but was 90.0" in it }, result.messages.joinToString())
+    }
+
+    @Test
+    fun `runs manifest player spawn detail assertions`() {
+        val dir = Files.createTempDirectory("dps-player-spawn-detail-manifest")
+        val pack = Path.of("../core/src/test/resources/packs/counter").toAbsolutePath().normalize().toString().replace("\\", "\\\\")
+        val manifest = dir.resolve("player-spawn-detail.dps.json")
+        Files.writeString(
+            manifest,
+            """
+            {
+              "version": "26.1.2",
+              "packs": ["$pack"],
+              "world": {
+                "players": [
+                  {
+                    "name": "Alex",
+                    "spawn": { "pos": [2, 66, 3], "angle": 90, "forced": true }
+                  }
+                ]
+              },
+              "steps": [],
+              "assertions": [
+                {
+                  "player": {
+                    "name": "Alex",
+                    "spawn": { "angle": 45, "forced": false }
+                  }
+                }
+              ]
+            }
+            """.trimIndent(),
+        )
+
+        val result = ManifestRunner.run(manifest)
+
+        assertFalse(result.passed)
+        assertTrue(result.messages.any { "player Alex spawn angle expected 45.0 but was 90.0" in it }, result.messages.joinToString())
+        assertTrue(result.messages.any { "player Alex spawn forced expected false but was true" in it }, result.messages.joinToString())
     }
 
     @Test

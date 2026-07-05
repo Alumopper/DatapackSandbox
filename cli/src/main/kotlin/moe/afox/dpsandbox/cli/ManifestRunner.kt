@@ -684,6 +684,16 @@ object ManifestRunner {
                             ?: spawn.getAsJsonArray("position")?.let { parseManifestPosition(it) }
                         if (expected != null && actual.spawnPoint?.position != expected) failures += "player ${actual.name} spawn position expected $expected but was ${actual.spawnPoint?.position}"
                         spawn.manifestString("dimension")?.let { if (actual.spawnPoint?.dimension != ResourceLocation.parse(it)) failures += "player ${actual.name} spawn dimension expected $it but was ${actual.spawnPoint?.dimension}" }
+                        spawn.get("angle")?.let {
+                            if (actual.spawnPoint?.angle != it.asDouble) {
+                                failures += "player ${actual.name} spawn angle expected ${it.asDouble} but was ${actual.spawnPoint?.angle ?: "<missing>"}"
+                            }
+                        }
+                        spawn.get("forced")?.let {
+                            if (actual.spawnPoint?.forced != it.asBoolean) {
+                                failures += "player ${actual.name} spawn forced expected ${it.asBoolean} but was ${actual.spawnPoint?.forced ?: "<missing>"}"
+                            }
+                        }
                     }
                 }
             }

@@ -163,7 +163,7 @@ SandboxQuickTest.create(
         player("Alex", x = 2.0, y = 65.0, z = 3.0, xp = 5, inventory = listOf(item("minecraft:stick", 2)))
         playerEffect("Alex", "minecraft:speed", durationTicks = 40, amplifier = 1)
         playerRecipe("Alex", "minecraft:bread")
-        playerSpawn("Alex", 2.0, 66.0, 3.0)
+        playerSpawn("Alex", 2.0, 66.0, 3.0, angle = 90.0)
         team("red", members = listOf("Alex"), options = mapOf("color" to "red"))
         bossbar("demo:bar", "Demo", value = 3, max = 10, players = listOf("Alex"))
         score("#fixture", "ready", 1)
@@ -188,7 +188,16 @@ SandboxQuickTest.create(
     .assertEntity(type = "minecraft:pig", tag = "fixture")
     .assertEntityCount(expected = 1, type = "minecraft:pig", tag = "fixture")
     .assertEntityCountRange(min = 1, max = 3, type = "minecraft:pig", tag = "fixture")
-    .assertPlayer("Alex", xp = 5, recipe = "minecraft:bread", effect = "minecraft:speed")
+    .assertPlayer(
+        "Alex",
+        xp = 5,
+        recipe = "minecraft:bread",
+        effect = "minecraft:speed",
+        spawn = Position(2.0, 66.0, 3.0),
+        spawnDimension = "minecraft:overworld",
+        spawnAngle = 90.0,
+        spawnForced = false,
+    )
     .assertItem("Alex", "minecraft:stick", 2, minCount = 1, maxCount = 3)
     .assertScore("#fixture", "ready", 1)
     .assertScoreRange("#fixture", "ready", min = 1, max = 3)
@@ -276,7 +285,7 @@ class MyDatapackTest {
 | `assertStorageExists(id, path)` | 断言 storage 根对象或路径存在。 |
 | `assertStorageMissing(id, path)` | 断言 storage 根对象或路径不存在。 |
 | `assertWorld(...)` | 断言选定的世界级状态、force-loaded chunk、biome override 和世界出生点。 |
-| `assertPlayer(...)` | 断言选定的玩家状态。 |
+| `assertPlayer(...)` | 断言选定的玩家状态，包括出生点细节。 |
 | `assertBlock(x, y, z, id, exists, nbtPath, nbtEquals, nbtExists)` | 断言 sparse world 中的方块。 |
 | `assertEntity(type, tag, uuid, position, exists, count)` | 断言匹配实体存在性或数量。 |
 | `assertEntityCount(expected, type, tag)` | 断言匹配实体数量。 |
