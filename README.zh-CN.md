@@ -57,6 +57,12 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar run --pack ./my_pack --load --
 java -jar cli/build/libs/datapack-sandbox-cli.jar run --pack ./my_pack --function demo:main --trace --trace-file trace.jsonl
 ```
 
+需要查看运行前后状态变化时，输出 snapshot diff：
+
+```bash
+java -jar cli/build/libs/datapack-sandbox-cli.jar run --pack ./my_pack --function demo:main --snapshot-diff
+```
+
 不创建完整数据包，直接运行单个 `.mcfunction` 文件：
 
 ```bash
@@ -93,6 +99,12 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar run --version 26.2 ^
 
 ```bash
 java -jar cli/build/libs/datapack-sandbox-cli.jar check ./sandbox-cases
+```
+
+断言失败时可以同时输出最终 snapshot 或最小 snapshot diff：
+
+```bash
+java -jar cli/build/libs/datapack-sandbox-cli.jar check ./sandbox-cases --snapshot-on-fail --snapshot-diff-on-fail
 ```
 
 清单文件固定使用 `.dps.json` 后缀：

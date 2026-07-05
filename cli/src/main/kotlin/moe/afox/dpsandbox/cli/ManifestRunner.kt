@@ -16,6 +16,7 @@ import moe.afox.dpsandbox.core.ResourceLocation
 import moe.afox.dpsandbox.core.SandboxException
 import moe.afox.dpsandbox.core.SandboxEntity
 import moe.afox.dpsandbox.core.SandboxBlock
+import moe.afox.dpsandbox.core.SnapshotDiff
 import moe.afox.dpsandbox.core.UnsupportedFeatureMode
 import moe.afox.dpsandbox.core.VersionProfiles
 import moe.afox.dpsandbox.core.createSandbox
@@ -47,6 +48,7 @@ data class ManifestOptions(
     val seed: Long = 0,
     val verbose: Boolean = false,
     val snapshotOnFail: Boolean = false,
+    val snapshotDiffOnFail: Boolean = false,
     val unsupportedFeatureMode: UnsupportedFeatureMode = UnsupportedFeatureMode.WARN,
 )
 
@@ -114,6 +116,7 @@ object ManifestRunner {
     ): ManifestAttemptResult {
         val sandbox = createSandbox(config.version, config.packs, unsupportedFeatureMode = unsupportedMode)
         ManifestWorldSetup.apply(json.getAsJsonObject("world"), sandbox, path.parent ?: Path.of("."))
+        val beforeSnapshot = sandbox.snapshotJson()
         json.manifestArray("steps").forEachIndexed { index, step ->
             if (!step.isJsonObject) {
                 throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Manifest steps must be objects: $path")
@@ -135,6 +138,9 @@ object ManifestRunner {
         }
         if (failures.isNotEmpty() && options.snapshotOnFail) {
             failures += "snapshot: ${sandbox.snapshotString()}"
+        }
+        if (failures.isNotEmpty() && options.snapshotDiffOnFail) {
+            failures += "snapshot diff:${System.lineSeparator()}${SnapshotDiff.render(SnapshotDiff.diff(beforeSnapshot, sandbox.snapshotJson()))}"
         }
 
         return ManifestAttemptResult(

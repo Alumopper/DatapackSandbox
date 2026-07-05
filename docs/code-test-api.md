@@ -65,6 +65,10 @@ val report = SandboxQuickTest.singleFunctionText(
 println(report.traces.single().command)
 ```
 
+When you need to compare two states, use `SnapshotDiff.diff(before, after)` for
+stable JSON Pointer paths or `SnapshotDiff.render(...)` for readable failure
+logs.
+
 `unsupportedFeatureMode` can be `WARN` (default), `IGNORE`, or `ERROR`. Use
 `ERROR` when you want unsupported vanilla commands to fail the test immediately.
 

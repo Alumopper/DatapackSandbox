@@ -153,6 +153,33 @@ class RunCommandTest {
     }
 
     @Test
+    fun `run can print and write snapshot diff`() {
+        val diffFile = Files.createTempFile("dps-cli-snapshot-diff", ".json")
+
+        val output = captureStdout {
+            main(
+                arrayOf(
+                    "run",
+                    "--version",
+                    "26.2",
+                    "--mcfunction-text",
+                    "scoreboard objectives add runs dummy\nscoreboard players set #diff runs 5",
+                    "--snapshot-diff",
+                    "--snapshot-diff-file",
+                    diffFile.toString(),
+                ),
+            )
+        }
+
+        assertTrue("+ /scores/runs =" in output, output)
+        assertTrue("\"#diff\": 5" in output, output)
+        assertTrue("snapshot diff written: $diffFile" in output, output)
+        val diffJson = Files.readString(diffFile)
+        assertTrue("\"path\": \"/scores/runs\"" in diffJson, diffJson)
+        assertTrue("\"kind\": \"added\"" in diffJson, diffJson)
+    }
+
+    @Test
     fun `version lists supported datapack formats`() {
         val output = captureStdout {
             main(arrayOf("version"))

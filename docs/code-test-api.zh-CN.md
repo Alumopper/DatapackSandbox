@@ -58,6 +58,8 @@ val report = SandboxQuickTest.singleFunctionText(
 println(report.traces.single().command)
 ```
 
+需要比较两个状态时，可以用 `SnapshotDiff.diff(before, after)` 获得稳定 JSON Pointer 路径差异，或用 `SnapshotDiff.render(...)` 输出适合测试失败日志的文本。
+
 `unsupportedFeatureMode` 可选值：
 
 - `WARN`：默认行为，未支持命令记录 warning 并继续。

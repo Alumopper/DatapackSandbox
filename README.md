@@ -66,6 +66,12 @@ trace output:
 java -jar cli/build/libs/datapack-sandbox-cli.jar run --pack ./my_pack --function demo:main --trace --trace-file trace.jsonl
 ```
 
+To inspect state changes before and after a run, print a snapshot diff:
+
+```bash
+java -jar cli/build/libs/datapack-sandbox-cli.jar run --pack ./my_pack --function demo:main --snapshot-diff
+```
+
 Run a single `.mcfunction` file without creating a full datapack:
 
 ```bash
@@ -103,6 +109,12 @@ Run JSON check manifests:
 
 ```bash
 java -jar cli/build/libs/datapack-sandbox-cli.jar check ./sandbox-cases
+```
+
+When assertions fail, print the final snapshot or a minimal snapshot diff:
+
+```bash
+java -jar cli/build/libs/datapack-sandbox-cli.jar check ./sandbox-cases --snapshot-on-fail --snapshot-diff-on-fail
 ```
 
 Manifest files use the `.dps.json` suffix:

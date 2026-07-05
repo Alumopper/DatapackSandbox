@@ -146,4 +146,5 @@ These are tooling commands, not vanilla commands:
 | `load` | Run `#minecraft:load` in REPL. |
 | `tick [n]` | Advance sandbox ticks in REPL. |
 | CLI `loot --table <id> --context <context>` | Generate a loot table directly. |
-| CLI `check <manifest-or-directory>` | Run `.dps.json` manifests. |
+| CLI `run --snapshot-diff` | Print before/after state changes; use `--snapshot-diff-file` to write JSON. |
+| CLI `check <manifest-or-directory>` | Run `.dps.json` manifests; use `--snapshot-diff-on-fail` to explain failing state changes. |

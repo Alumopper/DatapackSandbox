@@ -19,6 +19,7 @@ import moe.afox.dpsandbox.core.PlayerEvents
 import moe.afox.dpsandbox.core.ResourceLocation
 import moe.afox.dpsandbox.core.SandboxException
 import moe.afox.dpsandbox.core.SingleFunctionDatapack
+import moe.afox.dpsandbox.core.SnapshotDiff
 import moe.afox.dpsandbox.core.UnsupportedFeatureMode
 import moe.afox.dpsandbox.core.VersionProfiles
 import moe.afox.dpsandbox.core.createFunctionSandbox
@@ -61,6 +62,7 @@ class CheckCommand : CliktCommand(name = "check") {
     private val failFast by option("--fail-fast").flag(default = false)
     private val verbose by option("--verbose").flag(default = false)
     private val snapshotOnFail by option("--snapshot-on-fail").flag(default = false)
+    private val snapshotDiffOnFail by option("--snapshot-diff-on-fail").flag(default = false)
     private val seed by option("--seed").long().default(0)
     private val unsupported by option("--unsupported").default("warn")
 
@@ -75,6 +77,7 @@ class CheckCommand : CliktCommand(name = "check") {
                         seed = seed,
                         verbose = verbose,
                         snapshotOnFail = snapshotOnFail,
+                        snapshotDiffOnFail = snapshotDiffOnFail,
                         unsupportedFeatureMode = unsupportedFeatureMode(unsupported),
                     ),
                 )
@@ -116,6 +119,8 @@ class RunCommand : CliktCommand(name = "run") {
     private val commandFile by option("--command-file").path(mustExist = true)
     private val snapshot by option("--snapshot").flag(default = false)
     private val snapshotFile by option("--snapshot-file").path()
+    private val snapshotDiff by option("--snapshot-diff").flag(default = false)
+    private val snapshotDiffFile by option("--snapshot-diff-file").path()
     private val trace by option("--trace").flag(default = false)
     private val traceFile by option("--trace-file").path()
     private val unsupported by option("--unsupported").default("warn")
@@ -138,6 +143,7 @@ class RunCommand : CliktCommand(name = "run") {
                     "run requires at least one --pack path, --mcfunction file, or --mcfunction-text string",
                 )
             }
+            val beforeSnapshot = sandbox.snapshotJson()
             var total = 0
             if (functionSources.isNotEmpty()) total += sandbox.runFunction(mcfunctionId).commandsExecuted
             if (shouldLoad) total += sandbox.runLoad().commandsExecuted
@@ -157,6 +163,12 @@ class RunCommand : CliktCommand(name = "run") {
             snapshotFile?.let {
                 Files.writeString(it, sandbox.snapshotString(), StandardCharsets.UTF_8)
                 println(ConsoleStyle.green("snapshot written: $it"))
+            }
+            val diff = if (snapshotDiff || snapshotDiffFile != null) SnapshotDiff.diff(beforeSnapshot, sandbox.snapshotJson()) else emptyList()
+            if (snapshotDiff) println(SnapshotDiff.render(diff))
+            snapshotDiffFile?.let {
+                Files.writeString(it, JsonValues.render(SnapshotDiff.toJson(diff)), StandardCharsets.UTF_8)
+                println(ConsoleStyle.green("snapshot diff written: $it"))
             }
             traceFile?.let {
                 val content = sandbox.world.traces.joinToString(separator = System.lineSeparator()) { event ->

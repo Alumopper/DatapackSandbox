@@ -131,4 +131,5 @@ JSON text component 支持 `text`、`score`、`selector`、`translate`、`keybin
 | `load` | 在 REPL 中运行 `#minecraft:load`。 |
 | `tick [n]` | 在 REPL 中推进 tick。 |
 | CLI `loot --table <id> --context <context>` | 直接生成 loot table。 |
-| CLI `check <manifest-or-directory>` | 运行 `.dps.json` 清单。 |
+| CLI `run --snapshot-diff` | 输出执行前后的状态差异，可配合 `--snapshot-diff-file` 写出 JSON。 |
+| CLI `check <manifest-or-directory>` | 运行 `.dps.json` 清单；失败时可用 `--snapshot-diff-on-fail` 输出最小状态差异。 |

@@ -4,6 +4,7 @@ import java.nio.file.Path
 import java.nio.file.Files
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class ManifestRunnerTest {
@@ -141,6 +142,38 @@ class ManifestRunnerTest {
         val result = ManifestRunner.run(manifest)
 
         assertTrue(result.passed, result.messages.joinToString())
+    }
+
+    @Test
+    fun `adds snapshot diff to failing manifest reports`() {
+        val dir = Files.createTempDirectory("dps-diff-manifest")
+        val pack = Path.of("../core/src/test/resources/packs/counter").toAbsolutePath().normalize().toString().replace("\\", "\\\\")
+        val manifest = dir.resolve("diff.dps.json")
+        Files.writeString(
+            manifest,
+            """
+            {
+              "version": "26.1.2",
+              "packs": ["$pack"],
+              "steps": [
+                { "command": "scoreboard objectives add runs dummy" },
+                { "command": "scoreboard players set #manifest_diff runs 2" }
+              ],
+              "assertions": [
+                { "score": { "target": "#manifest_diff", "objective": "runs", "equals": 3 } }
+              ]
+            }
+            """.trimIndent(),
+        )
+
+        val result = ManifestRunner.run(manifest, ManifestOptions(snapshotDiffOnFail = true))
+
+        assertFalse(result.passed)
+        val messages = result.messages.joinToString("\n")
+        assertTrue("score #manifest_diff runs expected 3 but was 2" in messages, messages)
+        assertTrue("snapshot diff:" in messages, messages)
+        assertTrue("+ /scores/runs =" in messages, messages)
+        assertTrue("\"#manifest_diff\": 2" in messages, messages)
     }
 
     @Test
