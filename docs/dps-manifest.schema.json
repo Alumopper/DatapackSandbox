@@ -5,6 +5,12 @@
   "type": "object",
   "additionalProperties": false,
   "properties": {
+    "include": {
+      "oneOf": [
+        { "type": "string" },
+        { "$ref": "#/$defs/stringArray" }
+      ]
+    },
     "version": { "type": "string" },
     "versions": {
       "type": "array",
@@ -35,7 +41,10 @@
       "items": { "$ref": "#/$defs/assertion" }
     }
   },
-  "required": ["packs"],
+  "anyOf": [
+    { "required": ["packs"] },
+    { "required": ["include"] }
+  ],
   "oneOf": [
     { "required": ["version"], "not": { "required": ["versions"] } },
     { "required": ["versions"], "not": { "required": ["version"] } },

@@ -66,6 +66,20 @@ object ManifestRunner {
         val packs: List<Path>,
     )
 
+    private data class ManifestSection(
+        val element: JsonElement,
+        val base: Path,
+    )
+
+    private data class ResolvedManifest(
+        val path: Path,
+        val base: Path,
+        val root: JsonObject,
+        val worlds: List<ManifestSection>,
+        val steps: List<ManifestSection>,
+        val assertions: List<ManifestSection>,
+    )
+
     private data class ManifestDiagnostic(
         val step: Int?,
         val version: String,
@@ -102,11 +116,11 @@ object ManifestRunner {
             throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Invalid manifest JSON: ${path.toAbsolutePath().normalize()}", cause = error)
         }
 
-        val base = path.parent ?: Path.of(".")
-        val configs = runConfigs(json, base, path)
-        val unsupportedMode = json.manifestString("unsupported")?.let(::unsupportedFeatureMode) ?: options.unsupportedFeatureMode
+        val document = resolveManifest(path, json)
+        val configs = runConfigs(document.root, document.base, document.path)
+        val unsupportedMode = document.root.manifestString("unsupported")?.let(::unsupportedFeatureMode) ?: options.unsupportedFeatureMode
         val attempts = configs.map { config ->
-            runOne(path, json, config, unsupportedMode, options)
+            runOne(document, config, unsupportedMode, options)
         }
 
         val multiVersion = attempts.size > 1
@@ -142,23 +156,27 @@ object ManifestRunner {
         }
 
     private fun runOne(
-        path: Path,
-        json: JsonObject,
+        document: ResolvedManifest,
         config: ManifestRunConfig,
         unsupportedMode: UnsupportedFeatureMode,
         options: ManifestOptions,
     ): ManifestAttemptResult {
         var sandbox = createSandbox(config.version, config.packs, unsupportedFeatureMode = unsupportedMode)
-        ManifestWorldSetup.apply(json.getAsJsonObject("world"), sandbox, path.parent ?: Path.of("."))
+        document.worlds.forEach { world ->
+            if (!world.element.isJsonObject) {
+                throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Manifest world must be an object: ${document.path}")
+            }
+            ManifestWorldSetup.apply(world.element.asJsonObject, sandbox, world.base)
+        }
         val beforeSnapshot = sandbox.snapshotJson()
         val diagnostics = mutableListOf<ManifestDiagnostic>()
-        json.manifestArray("steps").forEachIndexed { index, step ->
-            if (!step.isJsonObject) {
-                throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Manifest steps must be objects: $path")
+        document.steps.forEachIndexed { index, step ->
+            if (!step.element.isJsonObject) {
+                throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Manifest steps must be objects: ${document.path}")
             }
-            val stepObject = step.asJsonObject
+            val stepObject = step.element.asJsonObject
             try {
-                sandbox = runStep(stepObject, sandbox, options, path.parent ?: Path.of("."))
+                sandbox = runStep(stepObject, sandbox, options, step.base)
             } catch (error: SandboxException) {
                 if (stepObject.get("allowFailure")?.asBoolean == true) {
                     diagnostics += manifestDiagnostic(index + 1, config.version, error, sandbox)
@@ -169,11 +187,11 @@ object ManifestRunner {
         }
 
         val failures = mutableListOf<String>()
-        json.manifestArray("assertions").forEachIndexed { index, assertion ->
-            if (!assertion.isJsonObject) {
+        document.assertions.forEachIndexed { index, assertion ->
+            if (!assertion.element.isJsonObject) {
                 failures += "assertion ${index + 1}: Assertion must be an object"
             } else {
-                failures += evaluateAssertion(assertion.asJsonObject, sandbox, diagnostics, beforeSnapshot).map { "assertion ${index + 1}: $it" }
+                failures += evaluateAssertion(assertion.element.asJsonObject, sandbox, diagnostics, beforeSnapshot).map { "assertion ${index + 1}: $it" }
             }
         }
         if (failures.isNotEmpty() && options.snapshotOnFail) {
@@ -204,6 +222,86 @@ object ManifestRunner {
             command = command,
             root = command?.substringBefore(' ') ?: trace?.root,
         )
+    }
+
+    private fun resolveManifest(path: Path, json: JsonObject, stack: MutableSet<Path> = linkedSetOf()): ResolvedManifest {
+        val normalized = path.toAbsolutePath().normalize()
+        if (!stack.add(normalized)) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Manifest include cycle detected: $normalized")
+        }
+        try {
+            val base = normalized.parent ?: Path.of(".")
+            val included = manifestIncludes(json, base).map { include ->
+                val includeJson = try {
+                    JsonParser.parseString(Files.readString(include, StandardCharsets.UTF_8)).asJsonObject
+                } catch (error: Exception) {
+                    throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Invalid included manifest JSON: $include", cause = error)
+                }
+                resolveManifest(include, includeJson, stack)
+            }
+            val root = manifestRootWithIncludedDefaults(json, included)
+            return ResolvedManifest(
+                path = normalized,
+                base = base,
+                root = root,
+                worlds = included.flatMap { it.worlds } + listOfNotNull(json.get("world")?.let { ManifestSection(it, base) }),
+                steps = included.flatMap { it.steps } + json.manifestArray("steps").map { ManifestSection(it, base) },
+                assertions = included.flatMap { it.assertions } + json.manifestArray("assertions").map { ManifestSection(it, base) },
+            )
+        } finally {
+            stack.remove(normalized)
+        }
+    }
+
+    private fun manifestIncludes(json: JsonObject, base: Path): List<Path> {
+        val include = json.get("include") ?: return emptyList()
+        val entries = when {
+            include.isJsonPrimitive && include.asJsonPrimitive.isString -> listOf(include)
+            include.isJsonArray -> include.asJsonArray.toList()
+            else -> throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Manifest include must be a string or array of strings")
+        }
+        return entries.map { entry ->
+            if (!entry.isJsonPrimitive || !entry.asJsonPrimitive.isString) {
+                throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Manifest include entries must be strings")
+            }
+            base.resolve(entry.asString).normalize()
+        }
+    }
+
+    private fun manifestRootWithIncludedDefaults(json: JsonObject, included: List<ResolvedManifest>): JsonObject {
+        val root = json.deepCopy()
+        listOf("version", "versions", "unsupported").forEach { key ->
+            if (!root.has(key)) {
+                included.firstOrNull { it.root.has(key) }?.let { root.add(key, it.root.get(key).deepCopy()) }
+            }
+        }
+        if (!root.has("packs")) {
+            included.firstOrNull { it.root.has("packs") }?.let { root.add("packs", rebasePacks(it.root.get("packs"), it.base)) }
+        }
+        return root
+    }
+
+    private fun rebasePacks(packs: JsonElement, base: Path): JsonElement =
+        when {
+            packs.isJsonArray -> JsonArray().also { array ->
+                packs.asJsonArray.forEach { entry -> array.add(rebasePackPath(entry, base)) }
+            }
+            packs.isJsonObject -> JsonObject().also { root ->
+                packs.asJsonObject.entrySet().forEach { (version, value) ->
+                    if (!value.isJsonArray) {
+                        throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Manifest packs for version '$version' must be an array")
+                    }
+                    root.add(version, rebasePacks(value, base))
+                }
+            }
+            else -> throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Manifest packs must be an array or object")
+        }
+
+    private fun rebasePackPath(entry: JsonElement, base: Path): JsonElement {
+        if (!entry.isJsonPrimitive || !entry.asJsonPrimitive.isString) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Manifest pack entries must be strings")
+        }
+        return com.google.gson.JsonPrimitive(base.resolve(entry.asString).normalize().toString())
     }
 
     private fun runConfigs(json: JsonObject, base: Path, path: Path): List<ManifestRunConfig> {

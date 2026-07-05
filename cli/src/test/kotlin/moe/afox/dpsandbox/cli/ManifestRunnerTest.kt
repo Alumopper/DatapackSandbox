@@ -17,6 +17,20 @@ class ManifestRunnerTest {
     }
 
     @Test
+    fun `manifest schema documents includes`() {
+        val schema = JsonParser.parseString(Files.readString(Path.of("../docs/dps-manifest.schema.json"))).asJsonObject
+        val include = schema.getAsJsonObject("properties").getAsJsonObject("include")
+        val includeVariants = include.getAsJsonArray("oneOf")
+        val requiredAlternatives = schema.getAsJsonArray("anyOf").map {
+            it.asJsonObject.getAsJsonArray("required").single().asString
+        }
+
+        assertEquals("string", includeVariants[0].asJsonObject.get("type").asString)
+        assertEquals("#/\$defs/stringArray", includeVariants[1].asJsonObject.get("\$ref").asString)
+        assertTrue(requiredAlternatives.containsAll(listOf("packs", "include")))
+    }
+
+    @Test
     fun `manifest schema documents player event fields`() {
         val schema = JsonParser.parseString(Files.readString(Path.of("../docs/dps-manifest.schema.json"))).asJsonObject
         val defs = schema.getAsJsonObject("\$defs")
@@ -540,6 +554,56 @@ class ManifestRunnerTest {
               "assertions": [
                 { "snapshotDiff": { "path": "/scores/runs", "kind": "added", "after": { "#diff": 3 }, "count": 1 } },
                 { "snapshotDiff": { "contains": "\"#diff\": 3", "count": 1 } }
+              ]
+            }
+            """.trimIndent(),
+        )
+
+        val result = ManifestRunner.run(manifest)
+
+        assertTrue(result.passed, result.messages.joinToString())
+    }
+
+    @Test
+    fun `runs manifests with includes and source relative steps`() {
+        val dir = Files.createTempDirectory("dps-include-manifest")
+        val common = dir.resolve("common")
+        val generated = common.resolve("generated")
+        Files.createDirectories(generated)
+        Files.writeString(
+            generated.resolve("common.mcfunction"),
+            """
+            scoreboard objectives add runs dummy
+            scoreboard players set #included runs 2
+            """.trimIndent(),
+        )
+        val pack = Path.of("../core/src/test/resources/packs/counter").toAbsolutePath().normalize().toString().replace("\\", "\\\\")
+        Files.writeString(
+            common.resolve("base.dps.json"),
+            """
+            {
+              "version": "26.1.2",
+              "packs": ["$pack"],
+              "steps": [
+                { "mcfunction": "generated/common.mcfunction" }
+              ],
+              "assertions": [
+                { "score": { "target": "#included", "objective": "runs", "equals": 2 } }
+              ]
+            }
+            """.trimIndent(),
+        )
+        val manifest = dir.resolve("include.dps.json")
+        Files.writeString(
+            manifest,
+            """
+            {
+              "include": "common/base.dps.json",
+              "steps": [
+                { "command": "scoreboard players set #main runs 3" }
+              ],
+              "assertions": [
+                { "score": { "target": "#main", "objective": "runs", "equals": 3 } }
               ]
             }
             """.trimIndent(),

@@ -61,11 +61,18 @@ range.
 ## `.dps.json` Manifests
 
 Manifests may contain `version` or `versions`, `unsupported`, `packs`, `world`,
-`steps`, and `assertions`. The JSON Schema is available at:
+`include`, `steps`, and `assertions`. The JSON Schema is available at:
 
 ```text
 docs/dps-manifest.schema.json
 ```
+
+`include` accepts a relative manifest path string or an array of paths. Included
+manifests are applied before the including manifest. Their `world`, `steps`, and
+`assertions` are concatenated in order, and their `version`/`versions`, `packs`,
+and `unsupported` fields act as defaults when the including manifest omits
+them. Relative paths inside included world setup and steps are resolved from the
+included file's directory.
 
 `steps` support full datapack execution and lightweight generated-output tests:
 
