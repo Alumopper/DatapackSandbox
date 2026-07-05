@@ -904,6 +904,11 @@ object ManifestRunner {
                 ?: spawn.getAsJsonArray("position")?.let { parseManifestPosition(it) }
             if (expected != null && sandbox.world.worldSpawn.position != expected) failures += "world spawn position expected $expected but was ${sandbox.world.worldSpawn.position}"
             spawn.manifestString("dimension")?.let { if (sandbox.world.worldSpawn.dimension != ResourceLocation.parse(it)) failures += "world spawn dimension expected $it but was ${sandbox.world.worldSpawn.dimension}" }
+            spawn.get("angle")?.let {
+                if (sandbox.world.worldSpawn.angle != it.asDouble) {
+                    failures += "world spawn angle expected ${it.asDouble} but was ${sandbox.world.worldSpawn.angle}"
+                }
+            }
         }
         return failures
     }

@@ -394,7 +394,7 @@ class ManifestRunnerTest {
                     "seed": 123,
                     "difficulty": "hard",
                     "defaultGameMode": "creative",
-                    "worldSpawn": { "pos": [4, 70, 5], "dimension": "minecraft:overworld" },
+                    "worldSpawn": { "pos": [4, 70, 5], "dimension": "minecraft:overworld", "angle": 90 },
                     "forcedChunk": [0, 0],
                     "biome": { "pos": [0, 64, 0], "id": "minecraft:plains" }
                   }
@@ -1000,6 +1000,34 @@ class ManifestRunnerTest {
 
         assertFalse(result.passed)
         assertTrue(result.messages.any { "block 0 64 0 nbt Missing exists expected true but was false" in it }, result.messages.joinToString())
+    }
+
+    @Test
+    fun `runs manifest world spawn angle assertions`() {
+        val dir = Files.createTempDirectory("dps-world-spawn-angle-manifest")
+        val pack = Path.of("../core/src/test/resources/packs/counter").toAbsolutePath().normalize().toString().replace("\\", "\\\\")
+        val manifest = dir.resolve("world-spawn-angle.dps.json")
+        Files.writeString(
+            manifest,
+            """
+            {
+              "version": "26.1.2",
+              "packs": ["$pack"],
+              "world": {
+                "worldSpawn": { "pos": [4, 70, 5], "angle": 90 }
+              },
+              "steps": [],
+              "assertions": [
+                { "world": { "worldSpawn": { "angle": 45 } } }
+              ]
+            }
+            """.trimIndent(),
+        )
+
+        val result = ManifestRunner.run(manifest)
+
+        assertFalse(result.passed)
+        assertTrue(result.messages.any { "world spawn angle expected 45.0 but was 90.0" in it }, result.messages.joinToString())
     }
 
     @Test
