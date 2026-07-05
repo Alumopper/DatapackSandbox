@@ -21,6 +21,8 @@ data class SandboxQuickTestReport(
     val traces: List<CommandTraceEvent>,
     /** Structured player event trace records captured during event dispatch. */
     val playerEventTraces: List<PlayerEventTraceEvent>,
+    /** Stable JSON Pointer diffs from the scenario's initial state to the final snapshot. */
+    val snapshotDiffs: List<SnapshotDiffEntry>,
     /** Final deterministic world snapshot after all executed steps. */
     val snapshot: JsonElement,
 )
@@ -367,6 +369,14 @@ class SandboxQuickTestMatrix private constructor(
             ),
         )
 
+    /**
+     * Asserts a before/after snapshot diff entry in every scenario.
+     */
+    @JvmOverloads
+    fun assertSnapshotDiff(path: String? = null, kind: SnapshotDiffKind? = null, contains: String? = null, count: Int? = null): SandboxQuickTestMatrix = apply {
+        scenarios.values.forEach { it.assertSnapshotDiff(path, kind, contains, count) }
+    }
+
     private fun eachScenario(operation: String, block: (SandboxQuickTest) -> Unit) {
         scenarios.forEach { (version, scenario) ->
             try {
@@ -458,6 +468,7 @@ class SandboxQuickTest private constructor(
     private val defaultFunctionId: ResourceLocation? = null,
 ) {
     private val failures = mutableListOf<String>()
+    private val initialSnapshot: JsonElement = sandbox.snapshotJson()
 
     /**
      * Runs all functions referenced by `#minecraft:load`.
@@ -978,6 +989,34 @@ class SandboxQuickTest private constructor(
         )
 
     /**
+     * Returns stable JSON Pointer diffs from the initial scenario state to now.
+     */
+    fun snapshotDiffs(): List<SnapshotDiffEntry> =
+        SnapshotDiff.diff(initialSnapshot, sandbox.snapshotJson())
+
+    /**
+     * Asserts that the current scenario changed the initial snapshot as expected.
+     *
+     * Null parameters are wildcards. [contains] matches the rendered diff line.
+     * When [count] is provided, exactly that many entries must match; otherwise
+     * at least one match is required.
+     */
+    @JvmOverloads
+    fun assertSnapshotDiff(path: String? = null, kind: SnapshotDiffKind? = null, contains: String? = null, count: Int? = null): SandboxQuickTest = apply {
+        val matches = snapshotDiffs().filter { entry ->
+            (path == null || entry.path.ifBlank { "/" } == path) &&
+                (kind == null || entry.kind == kind) &&
+                (contains == null || contains in entry.render())
+        }
+        if (count != null && matches.size != count) {
+            failures += "snapshotDiff ${describeSnapshotDiffExpectation(path, kind, contains)} expected count $count but was ${matches.size}"
+        }
+        if (count == null && matches.isEmpty()) {
+            failures += "snapshotDiff ${describeSnapshotDiffExpectation(path, kind, contains)} did not match any snapshot change"
+        }
+    }
+
+    /**
      * Returns output events matching [expectation] without registering a failure.
      */
     fun matchingOutputs(expectation: OutputExpectation): List<OutputEvent> =
@@ -1012,6 +1051,13 @@ class SandboxQuickTest private constructor(
             position?.let { "position=$it" },
         ).ifEmpty { listOf("<any entity>") }.joinToString(", ")
 
+    private fun describeSnapshotDiffExpectation(path: String?, kind: SnapshotDiffKind?, contains: String?): String =
+        listOfNotNull(
+            path?.let { "path=$it" },
+            kind?.let { "kind=${it.name.lowercase()}" },
+            contains?.let { "contains=$it" },
+        ).ifEmpty { listOf("<any snapshot diff>") }.joinToString(", ")
+
     /**
      * Builds an immutable report for the current scenario state.
      */
@@ -1022,6 +1068,7 @@ class SandboxQuickTest private constructor(
             outputs = sandbox.world.outputs.toList(),
             traces = sandbox.world.traces.toList(),
             playerEventTraces = sandbox.world.playerEventTraces.toList(),
+            snapshotDiffs = snapshotDiffs(),
             snapshot = sandbox.snapshotJson(),
         )
 

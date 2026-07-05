@@ -214,6 +214,23 @@ class SandboxQuickTestTest {
     }
 
     @Test
+    fun `quick tests can assert snapshot diffs`() {
+        val scenario = SandboxQuickTest.singleFunctionText(
+            """
+            scoreboard objectives add runs dummy
+            scoreboard players set #quick_diff runs 9
+            """.trimIndent(),
+            version = "26.2",
+        )
+            .function()
+            .assertSnapshotDiff(path = "/scores/runs", kind = SnapshotDiffKind.ADDED, contains = "\"#quick_diff\": 9", count = 1)
+
+        val report = scenario.requirePassed()
+
+        assertTrue(report.snapshotDiffs.any { it.path == "/scores/runs" && it.kind == SnapshotDiffKind.ADDED })
+    }
+
+    @Test
     fun `quick tests can predefine world state`() {
         val report = SandboxQuickTest.create(listOf(fixturePack()), version = "26.1.2", defaultPlayerName = null)
             .world {
