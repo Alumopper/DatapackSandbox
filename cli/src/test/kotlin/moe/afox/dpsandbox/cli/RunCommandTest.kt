@@ -99,6 +99,40 @@ class RunCommandTest {
     }
 
     @Test
+    fun `run executes multiple command files in order`() {
+        val first = Files.createTempFile("dps-cli-commands-first", ".txt")
+        val second = Files.createTempFile("dps-cli-commands-second", ".txt")
+        Files.writeString(
+            first,
+            """
+            scoreboard objectives add runs dummy
+            scoreboard players set #command_files runs 2
+            """.trimIndent(),
+        )
+        Files.writeString(second, "scoreboard players add #command_files runs 3")
+
+        val output = captureStdout {
+            main(
+                arrayOf(
+                    "run",
+                    "--version",
+                    "26.2",
+                    "--command-file",
+                    first.toString(),
+                    "--command-file",
+                    second.toString(),
+                    "--assert",
+                    "score:#command_files:runs=5",
+                    "--snapshot",
+                ),
+            )
+        }
+
+        assertTrue("OK version=26.2" in output, output)
+        assertTrue("\"#command_files\": 5" in output, output)
+    }
+
+    @Test
     fun `run applies world fixtures and inline assertions without a pack`() {
         val worldFile = Files.createTempFile("dps-cli-world", ".json")
         Files.writeString(

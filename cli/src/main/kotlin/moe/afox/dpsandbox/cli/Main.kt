@@ -259,7 +259,7 @@ class RunCommand : CliktCommand(name = "run") {
     private val ticks by option("--ticks").int().default(0)
     private val functions by option("--function", "-f").multiple()
     private val commands by option("--command", "-c").multiple()
-    private val commandFile by option("--command-file").path(mustExist = true)
+    private val commandFiles by option("--command-file").path(mustExist = true).multiple()
     private val assertions by option("--assert").multiple()
     private val assertionFiles by option("--assert-file").path(mustExist = true).multiple()
     private val snapshot by option("--snapshot").flag(default = false)
@@ -282,7 +282,7 @@ class RunCommand : CliktCommand(name = "run") {
             }
             val functionSources = parseFunctionSources(stdinAsFunction)
             val canUseEmptySandbox = commands.isNotEmpty() ||
-                commandFile != null ||
+                commandFiles.isNotEmpty() ||
                 stdinAsCommands != null ||
                 worldFiles.isNotEmpty() ||
                 assertions.isNotEmpty() ||
@@ -318,7 +318,7 @@ class RunCommand : CliktCommand(name = "run") {
             if (shouldLoad) total += sandbox.runLoad().commandsExecuted
             if (ticks > 0) total += sandbox.runTicks(ticks).commandsExecuted
             functions.forEach { total += sandbox.runFunction(it).commandsExecuted }
-            commandFile?.let { file ->
+            commandFiles.forEach { file ->
                 total += executeCommandLines(sandbox, Files.readAllLines(file, StandardCharsets.UTF_8), file.toString())
             }
             stdinAsCommands?.let {

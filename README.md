@@ -111,6 +111,15 @@ Run inline `.mcfunction` text directly:
 java -jar cli/build/libs/datapack-sandbox-cli.jar run --version 26.2 --mcfunction-text "say hello from inline"
 ```
 
+Run one or more raw command files from a generator:
+
+```bash
+java -jar cli/build/libs/datapack-sandbox-cli.jar run --version 26.2 \
+  --command-file ./generated/setup.commands \
+  --command-file ./generated/body.commands \
+  --assert "output:generated ok"
+```
+
 Read `.mcfunction` text from standard input:
 
 ```bash
