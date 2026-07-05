@@ -72,6 +72,7 @@ class CheckCommand : CliktCommand(name = "check") {
     private val snapshotOnFail by option("--snapshot-on-fail").flag(default = false)
     private val snapshotDiffOnFail by option("--snapshot-diff-on-fail").flag(default = false)
     private val validateSchema by option("--validate-schema").flag(default = false)
+    private val failOnMissingResources by option("--fail-on-missing-resources").flag(default = false)
     private val trace by option("--trace").flag(default = false)
     private val traceFile by option("--trace-file").path()
     private val traceFilters by option("--trace-filter").multiple()
@@ -104,6 +105,7 @@ class CheckCommand : CliktCommand(name = "check") {
                         verbose = verbose,
                         snapshotOnFail = snapshotOnFail,
                         snapshotDiffOnFail = snapshotDiffOnFail,
+                        failOnMissingResources = failOnMissingResources,
                         unsupportedFeatureMode = unsupportedFeatureMode(unsupported),
                     ),
                 )

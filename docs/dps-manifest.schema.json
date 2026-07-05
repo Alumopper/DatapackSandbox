@@ -22,6 +22,7 @@
       "type": "string",
       "enum": ["warn", "warning", "ignore", "silent", "error", "strict"]
     },
+    "failOnMissingResources": { "type": "boolean" },
     "packs": {
       "oneOf": [
         { "$ref": "#/$defs/stringArray" },

@@ -82,6 +82,7 @@ data class ManifestOptions(
     val verbose: Boolean = false,
     val snapshotOnFail: Boolean = false,
     val snapshotDiffOnFail: Boolean = false,
+    val failOnMissingResources: Boolean = false,
     val unsupportedFeatureMode: UnsupportedFeatureMode = UnsupportedFeatureMode.WARN,
 )
 
@@ -144,8 +145,11 @@ object ManifestRunner {
         val document = resolveManifest(path, json)
         val configs = runConfigs(document.root, document.base, document.path)
         val unsupportedMode = document.root.manifestString("unsupported")?.let(::unsupportedFeatureMode) ?: options.unsupportedFeatureMode
+        val effectiveOptions = options.copy(
+            failOnMissingResources = document.root.get("failOnMissingResources")?.asBoolean ?: options.failOnMissingResources,
+        )
         val attempts = configs.map { config ->
-            runOne(document, config, unsupportedMode, options)
+            runOne(document, config, unsupportedMode, effectiveOptions)
         }
 
         val multiVersion = attempts.size > 1
@@ -211,7 +215,11 @@ object ManifestRunner {
             }
         }
 
+        val resourceSummary = summarizeResources(sandbox)
         val failures = mutableListOf<String>()
+        if (options.failOnMissingResources) {
+            failures += missingResourceFailures(resourceSummary)
+        }
         document.assertions.forEachIndexed { index, assertion ->
             if (!assertion.element.isJsonObject) {
                 failures += "assertion ${index + 1}: Assertion must be an object"
@@ -233,9 +241,14 @@ object ManifestRunner {
             messages = failures,
             outputs = sandbox.world.outputs.toList(),
             traces = sandbox.world.traces.toList(),
-            resourceSummary = summarizeResources(sandbox),
+            resourceSummary = resourceSummary,
         )
     }
+
+    private fun missingResourceFailures(summary: ManifestResourceSummary): List<String> =
+        summary.missingReferences.map { reference ->
+            "missing-reference ${reference.source} -> ${reference.type} ${reference.id}"
+        }
 
     private fun summarizeResources(sandbox: DatapackSandbox): ManifestResourceSummary {
         val datapack = sandbox.datapack
@@ -336,7 +349,7 @@ object ManifestRunner {
 
     private fun manifestRootWithIncludedDefaults(json: JsonObject, included: List<ResolvedManifest>): JsonObject {
         val root = json.deepCopy()
-        listOf("version", "versions", "unsupported").forEach { key ->
+        listOf("version", "versions", "unsupported", "failOnMissingResources").forEach { key ->
             if (!root.has(key)) {
                 included.firstOrNull { it.root.has(key) }?.let { root.add(key, it.root.get(key).deepCopy()) }
             }

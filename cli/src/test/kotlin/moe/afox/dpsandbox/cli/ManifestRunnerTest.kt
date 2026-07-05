@@ -36,12 +36,14 @@ class ManifestRunnerTest {
         val worldProperties = schema.getAsJsonObject("\$defs")
             .getAsJsonObject("worldFixture")
             .getAsJsonObject("properties")
+        val rootProperties = schema.getAsJsonObject("properties")
 
         listOf("extends", "fixture", "fixtures").forEach { name ->
             val variants = worldProperties.getAsJsonObject(name).getAsJsonArray("oneOf")
             assertEquals("string", variants[0].asJsonObject.get("type").asString)
             assertEquals("#/\$defs/stringArray", variants[1].asJsonObject.get("\$ref").asString)
         }
+        assertEquals("boolean", rootProperties.getAsJsonObject("failOnMissingResources").get("type").asString)
     }
 
     @Test
@@ -748,6 +750,34 @@ class ManifestRunnerTest {
     }
 
     @Test
+    fun `manifests can fail on missing resource references`() {
+        val dir = Files.createTempDirectory("dps-missing-resource-manifest")
+        val pack = writeMissingReferencePack(dir.resolve("pack"))
+        val manifest = dir.resolve("missing-resource.dps.json")
+        Files.writeString(
+            manifest,
+            """
+            {
+              "version": "26.2",
+              "packs": ["${pack.toEscapedPath()}"],
+              "failOnMissingResources": true,
+              "steps": [],
+              "assertions": []
+            }
+            """.trimIndent(),
+        )
+
+        val result = ManifestRunner.run(manifest)
+
+        assertFalse(result.passed)
+        assertTrue(
+            result.messages.any { "missing-reference #minecraft:load -> function demo:missing_load" in it },
+            result.messages.joinToString(),
+        )
+        assertEquals(1, result.attempts.single().resourceSummary?.missingReferences?.size)
+    }
+
+    @Test
     fun `runs manifests against 1_20_4 datapacks`() {
         val dir = Files.createTempDirectory("dps-1204-manifest")
         val pack = writePack(dir.resolve("pack"), packFormat = "26", functionDir = "functions", scoreTarget = "#legacy", scoreValue = 4)
@@ -833,6 +863,25 @@ class ManifestRunnerTest {
         val tagRoot = root.resolve("data").resolve("minecraft").resolve("tags").resolve(functionDir)
         Files.createDirectories(tagRoot)
         Files.writeString(tagRoot.resolve("load.json"), """{"values":["demo:load"]}""")
+        return root
+    }
+
+    private fun writeMissingReferencePack(root: Path): Path {
+        Files.createDirectories(root)
+        Files.writeString(
+            root.resolve("pack.mcmeta"),
+            """
+            {
+              "pack": {
+                "pack_format": 107.1,
+                "description": "missing resource reference test"
+              }
+            }
+            """.trimIndent(),
+        )
+        val tagRoot = root.resolve("data").resolve("minecraft").resolve("tags").resolve("function")
+        Files.createDirectories(tagRoot)
+        Files.writeString(tagRoot.resolve("load.json"), """{"values":["demo:missing_load"]}""")
         return root
     }
 

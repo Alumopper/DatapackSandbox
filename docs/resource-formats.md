@@ -60,8 +60,9 @@ range.
 
 ## `.dps.json` Manifests
 
-Manifests may contain `version` or `versions`, `unsupported`, `packs`, `world`,
-`include`, `steps`, and `assertions`. The JSON Schema is available at:
+Manifests may contain `version` or `versions`, `unsupported`,
+`failOnMissingResources`, `packs`, `world`, `include`, `steps`, and
+`assertions`. The JSON Schema is available at:
 
 ```text
 docs/dps-manifest.schema.json
@@ -82,9 +83,15 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar check ./sandbox-cases --valida
 `include` accepts a relative manifest path string or an array of paths. Included
 manifests are applied before the including manifest. Their `world`, `steps`, and
 `assertions` are concatenated in order, and their `version`/`versions`, `packs`,
-and `unsupported` fields act as defaults when the including manifest omits
-them. Relative paths inside included world setup and steps are resolved from the
-included file's directory.
+`unsupported`, and `failOnMissingResources` fields act as defaults when the
+including manifest omits them. Relative paths inside included world setup and
+steps are resolved from the included file's directory.
+
+Set top-level `"failOnMissingResources": true`, or pass
+`check --fail-on-missing-resources`, to fail a manifest when loaded resources
+directly reference missing load/tick functions or advancement reward resources.
+The same missing references are always present in structured check reports and
+`check --verbose` resource summaries.
 
 Inside `world`, `fixture`, `fixtures`, and `extends` accept a relative world
 fixture path string or an array of paths. Referenced files may contain either a
