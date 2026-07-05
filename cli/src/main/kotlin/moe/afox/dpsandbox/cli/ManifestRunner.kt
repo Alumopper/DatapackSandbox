@@ -4,6 +4,7 @@ import com.google.gson.JsonArray
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
+import moe.afox.dpsandbox.core.CommandTraceEvent
 import moe.afox.dpsandbox.core.DiagnosticCode
 import moe.afox.dpsandbox.core.DatapackSandbox
 import moe.afox.dpsandbox.core.ItemStack
@@ -38,6 +39,7 @@ data class ManifestResult(
     val passed: Boolean,
     val messages: List<String>,
     val outputs: List<OutputEvent> = emptyList(),
+    val traces: List<CommandTraceEvent> = emptyList(),
     val attempts: List<ManifestAttemptResult> = emptyList(),
 )
 
@@ -47,6 +49,7 @@ data class ManifestAttemptResult(
     val passed: Boolean,
     val messages: List<String>,
     val outputs: List<OutputEvent> = emptyList(),
+    val traces: List<CommandTraceEvent> = emptyList(),
 )
 
 data class ManifestOptions(
@@ -117,6 +120,7 @@ object ManifestRunner {
             passed = attempts.all { it.passed },
             messages = messages,
             outputs = attempts.flatMap { it.outputs },
+            traces = attempts.flatMap { it.traces },
             attempts = attempts,
         )
     }
@@ -185,6 +189,7 @@ object ManifestRunner {
             passed = failures.isEmpty(),
             messages = failures,
             outputs = sandbox.world.outputs.toList(),
+            traces = sandbox.world.traces.toList(),
         )
     }
 

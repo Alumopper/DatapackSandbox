@@ -132,6 +132,12 @@ When assertions fail, print the final snapshot or a minimal snapshot diff:
 java -jar cli/build/libs/datapack-sandbox-cli.jar check ./sandbox-cases --snapshot-on-fail --snapshot-diff-on-fail
 ```
 
+For CI artifacts, `check` can also write command traces:
+
+```bash
+java -jar cli/build/libs/datapack-sandbox-cli.jar check ./sandbox-cases --trace-file check-trace.jsonl
+```
+
 For ad hoc checks without a full manifest, `run` can apply a manifest-style
 world fixture and one or more inline JSON assertions:
 

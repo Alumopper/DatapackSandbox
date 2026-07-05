@@ -68,6 +68,8 @@ class CheckCommand : CliktCommand(name = "check") {
     private val verbose by option("--verbose").flag(default = false)
     private val snapshotOnFail by option("--snapshot-on-fail").flag(default = false)
     private val snapshotDiffOnFail by option("--snapshot-diff-on-fail").flag(default = false)
+    private val trace by option("--trace").flag(default = false)
+    private val traceFile by option("--trace-file").path()
     private val seed by option("--seed").long().default(0)
     private val unsupported by option("--unsupported").default("warn")
 
@@ -75,6 +77,7 @@ class CheckCommand : CliktCommand(name = "check") {
         try {
             val manifests = ManifestRunner.discover(inputs)
             var failed = false
+            val traces = mutableListOf<CommandTraceEvent>()
             manifests.forEach { manifest ->
                 val result = ManifestRunner.run(
                     manifest,
@@ -86,6 +89,7 @@ class CheckCommand : CliktCommand(name = "check") {
                         unsupportedFeatureMode = unsupportedFeatureMode(unsupported),
                     ),
                 )
+                traces += result.traces
                 val versionLabel = result.attempts
                     .map { it.version }
                     .takeIf { it.size > 1 }
@@ -97,17 +101,32 @@ class CheckCommand : CliktCommand(name = "check") {
                     failed = true
                     println(ConsoleStyle.red("FAIL ${manifest}${versionLabel}"))
                     result.messages.forEach { println("  - $it") }
-                    if (failFast) exitProcess(ExitCodes.ASSERTION_FAILED)
                 }
                 if (verbose && result.outputs.isNotEmpty()) {
                     OutputRenderer.print(result.outputs)
                 }
+                if (trace && result.traces.isNotEmpty()) {
+                    TraceRenderer.print(result.traces)
+                }
+                if (!result.passed && failFast) {
+                    traceFile?.let { writeTraceFile(it, traces) }
+                    exitProcess(ExitCodes.ASSERTION_FAILED)
+                }
             }
+            traceFile?.let { writeTraceFile(it, traces) }
             if (failed) exitProcess(ExitCodes.ASSERTION_FAILED)
         } catch (error: SandboxException) {
             println(ConsoleStyle.diagnostic(error.render()))
             exitProcess(ExitCodes.forException(error))
         }
+    }
+
+    private fun writeTraceFile(path: Path, traces: List<CommandTraceEvent>) {
+        val content = traces.joinToString(separator = System.lineSeparator()) { event ->
+            JsonValues.render(event.toJson())
+        }
+        Files.writeString(path, content, StandardCharsets.UTF_8)
+        println(ConsoleStyle.green("trace written: $path"))
     }
 }
 
