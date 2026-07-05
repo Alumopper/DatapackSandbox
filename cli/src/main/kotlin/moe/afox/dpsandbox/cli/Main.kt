@@ -438,13 +438,14 @@ class RunCommand : CliktCommand(name = "run") {
             trimmed.startsWith("storage:") -> parseStorageAssertion(trimmed.removePrefix("storage:"), label)
             trimmed.startsWith("entity:") -> parseEntityCountAssertion(trimmed.removePrefix("entity:"), label)
             trimmed.startsWith("item:") -> parseItemAssertion(trimmed.removePrefix("item:"), label)
+            trimmed.startsWith("player:") -> parsePlayerAssertion(trimmed.removePrefix("player:"), label)
             trimmed.startsWith("trace:") -> parseTraceAssertion(trimmed.removePrefix("trace:"), label)
             trimmed.startsWith("warning:") -> parseWarningContainsAssertion(trimmed.removePrefix("warning:"), label)
             trimmed.startsWith("warning=") -> parseWarningCountAssertion(trimmed.removePrefix("warning="), label)
             trimmed.startsWith("output:") -> parseOutputAssertion(trimmed.removePrefix("output:"), label)
             else -> throw SandboxException(
                 DiagnosticCode.INPUT_FORMAT,
-                "$label must be a JSON object or shorthand score:<target>:<objective>=N, storage:<id>[:<path>]=<json>, entity:<type|*>[@tag]=N, item:<player>:<id>[@slot]=N, trace:<root>=N, trace:<text>, warning=N, warning:<text>, or output:<text>",
+                "$label must be a JSON object or shorthand score:<target>:<objective>=N, storage:<id>[:<path>]=<json>, entity:<type|*>[@tag]=N, item:<player>:<id>[@slot]=N, player:<name>[:<field>=<value>], trace:<root>=N, trace:<text>, warning=N, warning:<text>, or output:<text>",
             )
         }
     }
@@ -561,6 +562,67 @@ class RunCommand : CliktCommand(name = "run") {
         }
         return JsonObject().also { it.add("item", item) }
     }
+
+    private fun parsePlayerAssertion(spec: String, label: String): JsonObject {
+        val trimmed = spec.trim()
+        if (trimmed.isEmpty()) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label player shorthand must be player:<name>, player:<name>?, player:<name>!, or player:<name>:<field>=<value>")
+        }
+        val player = when {
+            trimmed.endsWith("?") -> playerAssertionObject(trimmed.dropLast(1), label).also { it.addProperty("exists", true) }
+            trimmed.endsWith("!") -> playerAssertionObject(trimmed.dropLast(1), label).also { it.addProperty("exists", false) }
+            ":" !in trimmed -> playerAssertionObject(trimmed, label).also { it.addProperty("exists", true) }
+            else -> parsePlayerFieldAssertion(trimmed, label)
+        }
+        return JsonObject().also { it.add("player", player) }
+    }
+
+    private fun parsePlayerFieldAssertion(spec: String, label: String): JsonObject {
+        val firstColon = spec.indexOf(':')
+        if (firstColon <= 0 || firstColon == spec.lastIndex) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label player shorthand must be player:<name>:<field>=<value>")
+        }
+        val name = spec.substring(0, firstColon).trim()
+        val fieldSpec = spec.substring(firstColon + 1)
+        val splitAt = fieldSpec.indexOf('=')
+        if (splitAt <= 0) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label player field shorthand must be player:<name>:<field>=<value>")
+        }
+        val field = fieldSpec.substring(0, splitAt).trim()
+        val value = fieldSpec.substring(splitAt + 1).trim()
+        if (name.isEmpty() || field.isEmpty()) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label player field shorthand must be player:<name>:<field>=<value>")
+        }
+        return playerAssertionObject(name, label).also { player ->
+            when (field) {
+                "xp", "food", "inventoryCount" -> player.addProperty(field, parsePlayerInt(value, field, label))
+                "selectedSlot", "slot" -> player.addProperty("selectedSlot", parsePlayerInt(value, field, label))
+                "health" -> player.addProperty("health", parsePlayerDouble(value, field, label))
+                "gameMode", "gamemode" -> player.addProperty("gameMode", value)
+                "dimension" -> player.addProperty("dimension", value)
+                else -> throw SandboxException(
+                    DiagnosticCode.INPUT_FORMAT,
+                    "$label unsupported player shorthand field '$field'; use xp, health, food, selectedSlot, slot, inventoryCount, gameMode, gamemode, or dimension",
+                )
+            }
+        }
+    }
+
+    private fun playerAssertionObject(name: String, label: String): JsonObject {
+        val trimmed = name.trim()
+        if (trimmed.isEmpty()) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label player shorthand name must not be empty")
+        }
+        return JsonObject().also { it.addProperty("name", trimmed) }
+    }
+
+    private fun parsePlayerInt(value: String, field: String, label: String): Int =
+        value.toIntOrNull()
+            ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label player field '$field' expected integer but got '$value'")
+
+    private fun parsePlayerDouble(value: String, field: String, label: String): Double =
+        value.toDoubleOrNull()
+            ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label player field '$field' expected number but got '$value'")
 
     private fun parseTraceAssertion(spec: String, label: String): JsonObject {
         val trimmed = spec.trim()

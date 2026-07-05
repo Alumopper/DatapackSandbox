@@ -253,6 +253,64 @@ class RunCommandTest {
     }
 
     @Test
+    fun `run accepts player shorthand inline assertions`() {
+        val worldFile = Files.createTempFile("dps-cli-player", ".json")
+        Files.writeString(
+            worldFile,
+            """
+            {
+              "players": [
+                {
+                  "name": "Alex",
+                  "xp": 7,
+                  "health": 18.5,
+                  "food": 19,
+                  "gameMode": "creative",
+                  "dimension": "minecraft:the_nether",
+                  "selectedSlot": 2,
+                  "inventory": [
+                    { "id": "minecraft:stick", "count": 1 }
+                  ]
+                }
+              ]
+            }
+            """.trimIndent(),
+        )
+
+        val output = captureStdout {
+            main(
+                arrayOf(
+                    "run",
+                    "--version",
+                    "26.2",
+                    "--world",
+                    worldFile.toString(),
+                    "--assert",
+                    "player:Alex?",
+                    "--assert",
+                    "player:Missing!",
+                    "--assert",
+                    "player:Alex:xp=7",
+                    "--assert",
+                    "player:Alex:health=18.5",
+                    "--assert",
+                    "player:Alex:food=19",
+                    "--assert",
+                    "player:Alex:gamemode=creative",
+                    "--assert",
+                    "player:Alex:dimension=minecraft:the_nether",
+                    "--assert",
+                    "player:Alex:slot=2",
+                    "--assert",
+                    "player:Alex:inventoryCount=1",
+                ),
+            )
+        }
+
+        assertTrue("OK version=26.2" in output, output)
+    }
+
+    @Test
     fun `run accepts trace shorthand inline assertions`() {
         val output = captureStdout {
             main(
