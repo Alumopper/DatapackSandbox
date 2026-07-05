@@ -322,6 +322,8 @@ class MyDatapackTest {
 | `assertPlayer(...)` | Assert selected player state, including spawn point details |
 | `assertTeam(...)` | Assert selected team state, members, member count, and options |
 | `assertBossbar(...)` | Assert selected bossbar state and assigned players |
+| `assertPredicate(id, expected, playerName)` | Assert a loaded predicate result |
+| `assertLoot(table, context, playerName, seed, count, item)` | Assert deterministic loot generation |
 | `assertBlock(x, y, z, id, exists, nbtPath, nbtEquals, nbtExists)` | Assert a sparse-world block |
 | `assertEntity(type, tag, uuid, position, exists, count)` | Assert matching entity existence or count |
 | `assertEntityCount(expected, type, tag)` | Assert matching entity count |

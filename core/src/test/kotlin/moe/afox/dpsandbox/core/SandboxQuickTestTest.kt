@@ -13,6 +13,9 @@ class SandboxQuickTestTest {
     private fun fixturePack(): Path =
         Path.of("src/test/resources/packs/counter")
 
+    private fun fullStackPack(): Path =
+        Path.of("../examples/full-stack/pack")
+
     @Test
     fun `runs quick code tests from core api`() {
         val report = SandboxQuickTest.create(listOf(fixturePack()), version = "26.1.2")
@@ -221,6 +224,53 @@ class SandboxQuickTestTest {
         assertTrue(report.failures.any { "bossbar demo:bar style expected progress but was notched_10" in it }, report.failures.joinToString())
         assertTrue(report.failures.any { "bossbar demo:bar visible expected false but was true" in it }, report.failures.joinToString())
         assertTrue(report.failures.any { "bossbar demo:bar expected player Steve" in it }, report.failures.joinToString())
+    }
+
+    @Test
+    fun `quick predicate loot and advancement assertions cover full stack packs`() {
+        val report = SandboxQuickTest.create(listOf(fullStackPack()), version = "26.2", defaultPlayerName = null)
+            .world {
+                player("Steve", inventory = listOf(item("minecraft:carrot_on_a_stick")))
+            }
+            .assertPredicate("demo:has_carrot", playerName = "Steve")
+            .assertLoot(
+                table = "demo:gift",
+                context = "minecraft:advancement_reward",
+                playerName = "Steve",
+                seed = 42,
+                count = 1,
+                item = "minecraft:diamond",
+            )
+            .event("Steve", "item_used", "minecraft:carrot_on_a_stick")
+            .assertAdvancementDone("Steve", "demo:use_carrot")
+            .requirePassed()
+
+        assertTrue(report.passed)
+    }
+
+    @Test
+    fun `quick predicate loot and advancement assertions explain failures`() {
+        val report = SandboxQuickTest.create(listOf(fullStackPack()), version = "26.2", defaultPlayerName = null)
+            .world {
+                player("Steve", inventory = listOf(item("minecraft:carrot_on_a_stick")))
+            }
+            .assertPredicate("demo:has_carrot", expected = false, playerName = "Steve")
+            .assertLoot(
+                table = "demo:gift",
+                context = "minecraft:advancement_reward",
+                playerName = "Steve",
+                seed = 42,
+                count = 2,
+                item = "minecraft:emerald",
+            )
+            .assertAdvancementDone("Steve", "demo:use_carrot")
+            .report()
+
+        assertTrue(!report.passed)
+        assertTrue(report.failures.any { "predicate demo:has_carrot expected false but was true" in it }, report.failures.joinToString())
+        assertTrue(report.failures.any { "loot count expected 2 but was 1" in it }, report.failures.joinToString())
+        assertTrue(report.failures.any { "loot expected item minecraft:emerald but got [minecraft:diamond]" in it }, report.failures.joinToString())
+        assertTrue(report.failures.any { "advancement demo:use_carrot for Steve done expected true but was false" in it }, report.failures.joinToString())
     }
 
     @Test

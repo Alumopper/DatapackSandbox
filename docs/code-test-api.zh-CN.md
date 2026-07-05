@@ -296,6 +296,8 @@ class MyDatapackTest {
 | `assertPlayer(...)` | 断言选定的玩家状态，包括出生点细节。 |
 | `assertTeam(...)` | 断言选定 team 状态、成员、成员数量和选项。 |
 | `assertBossbar(...)` | 断言选定 bossbar 状态和关联玩家。 |
+| `assertPredicate(id, expected, playerName)` | 断言已加载 predicate 的执行结果。 |
+| `assertLoot(table, context, playerName, seed, count, item)` | 断言确定性的 loot 生成结果。 |
 | `assertBlock(x, y, z, id, exists, nbtPath, nbtEquals, nbtExists)` | 断言 sparse world 中的方块。 |
 | `assertEntity(type, tag, uuid, position, exists, count)` | 断言匹配实体存在性或数量。 |
 | `assertEntityCount(expected, type, tag)` | 断言匹配实体数量。 |

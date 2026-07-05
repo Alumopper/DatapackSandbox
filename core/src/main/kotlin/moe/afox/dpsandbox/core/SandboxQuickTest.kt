@@ -568,6 +568,37 @@ class SandboxQuickTestMatrix private constructor(
     }
 
     /**
+     * Applies a predicate assertion to every scenario.
+     */
+    @JvmOverloads
+    fun assertPredicate(id: String, expected: Boolean = true, playerName: String? = null): SandboxQuickTestMatrix = apply {
+        scenarios.values.forEach { it.assertPredicate(id, expected, playerName) }
+    }
+
+    /**
+     * Applies a loot generation assertion to every scenario.
+     */
+    @JvmOverloads
+    fun assertLoot(
+        table: String,
+        context: String = "minecraft:empty",
+        playerName: String? = null,
+        seed: Long = 0,
+        count: Int? = null,
+        item: String? = null,
+    ): SandboxQuickTestMatrix = apply {
+        scenarios.values.forEach { it.assertLoot(table, context, playerName, seed, count, item) }
+    }
+
+    /**
+     * Applies an advancement completion assertion to every scenario.
+     */
+    @JvmOverloads
+    fun assertAdvancementDone(playerName: String, id: String, expected: Boolean = true): SandboxQuickTestMatrix = apply {
+        scenarios.values.forEach { it.assertAdvancementDone(playerName, id, expected) }
+    }
+
+    /**
      * Asserts that every scenario recorded at least one output event containing [text].
      */
     fun assertOutputContains(text: String): SandboxQuickTestMatrix = apply {
@@ -1563,6 +1594,59 @@ class SandboxQuickTest private constructor(
             nbtEquals?.let { "nbtEquals=$it" },
             nbtExists?.let { "nbtExists=$it" },
         ).ifEmpty { listOf("<any item>") }.joinToString(", ")
+
+    /**
+     * Asserts the result of evaluating a loaded predicate.
+     */
+    @JvmOverloads
+    fun assertPredicate(id: String, expected: Boolean = true, playerName: String? = null): SandboxQuickTest = apply {
+        val predicateId = ResourceLocation.parse(id)
+        val actual = sandbox.predicates.test(predicateId, predicateContextFor(playerName))
+        if (actual != expected) {
+            failures += "predicate $predicateId expected $expected but was $actual"
+        }
+    }
+
+    /**
+     * Asserts deterministic loot generation from a loaded loot table.
+     */
+    @JvmOverloads
+    fun assertLoot(
+        table: String,
+        context: String = "minecraft:empty",
+        playerName: String? = null,
+        seed: Long = 0,
+        count: Int? = null,
+        item: String? = null,
+    ): SandboxQuickTest = apply {
+        val result = sandbox.generateLoot(
+            ResourceLocation.parse(table),
+            ResourceLocation.parse(context),
+            playerName?.let { sandbox.world.requirePlayer(it) },
+            seed,
+        )
+        count?.let {
+            if (result.items.size != it) failures += "loot count expected $it but was ${result.items.size}"
+        }
+        item?.let { expected ->
+            val expectedId = ResourceLocation.parse(expected)
+            if (result.items.none { it.id == expectedId }) {
+                failures += "loot expected item $expectedId but got ${result.items.map { it.id }}"
+            }
+        }
+    }
+
+    private fun predicateContextFor(playerName: String?): PredicateContext {
+        val player = playerName?.let { sandbox.world.requirePlayer(it) }
+        return PredicateContext(
+            world = sandbox.world,
+            player = player,
+            thisEntity = player,
+            origin = player?.position,
+            dimension = player?.dimension,
+            tool = player?.selectedItem,
+        )
+    }
 
     /**
      * Asserts whether an advancement is complete for a player.
