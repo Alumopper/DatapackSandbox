@@ -104,8 +104,8 @@ points, forced chunks, biome overrides, teams, bossbars, and scoped Java save
 imports.
 
 Assertions support score, storage, world, player, team, bossbar, block,
-entityCount, advancement, predicate, loot, output, item, trace, event trace, and
-diagnostic checks:
+entityCount, advancement, predicate, loot, output, item, trace, event trace,
+diagnostic, and snapshot diff checks:
 
 ```json
 { "world": { "difficulty": "hard", "forcedChunk": [0, 0] } }
@@ -127,6 +127,10 @@ diagnostic checks:
 { "diagnostic": { "step": 1, "code": "COMMAND_ERROR", "contains": "Unknown scoreboard objective", "count": 1 } }
 ```
 
+```json
+{ "snapshotDiff": { "path": "/scores/runs/#clock", "kind": "changed", "after": 20, "count": 1 } }
+```
+
 `player` assertions can also check dimension, game mode, health, food, selected
 slot, recipe, effect, stat, position, last input, and spawn point. `team` and
 `bossbar` assertions inspect their stored runtime state. `item` assertions can
@@ -135,7 +139,9 @@ check player inventory by slot, id, count, components path, and NBT path.
 and function stack. `eventTrace` assertions check player event dispatch by
 player, type, success, advancement id, criterion, and count. `diagnostic`
 assertions check expected step failures by step, version, code, command, root,
-message substring, and count.
+message substring, and count. `snapshotDiff` assertions compare the manifest
+state before and after steps by JSON Pointer path, diff kind, before/after
+values, rendered text substring, and count.
 
 ## Raw JSON Resources and Tags
 

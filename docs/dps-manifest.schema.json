@@ -394,6 +394,7 @@
         { "required": ["trace"] },
         { "required": ["eventTrace"] },
         { "required": ["diagnostic"] },
+        { "required": ["snapshotDiff"] },
         { "required": ["output"] }
       ],
       "properties": {
@@ -412,6 +413,7 @@
         "trace": { "$ref": "#/$defs/traceAssertion" },
         "eventTrace": { "$ref": "#/$defs/eventTraceAssertion" },
         "diagnostic": { "$ref": "#/$defs/diagnosticAssertion" },
+        "snapshotDiff": { "$ref": "#/$defs/snapshotDiffAssertion" },
         "output": { "type": "object" }
       }
     },
@@ -583,6 +585,19 @@
         "command": { "type": "string" },
         "root": { "type": "string" },
         "message": { "type": "string" },
+        "contains": { "type": "string" },
+        "count": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "snapshotDiffAssertion": {
+      "type": "object",
+      "properties": {
+        "path": { "type": "string" },
+        "pathContains": { "type": "string" },
+        "kind": { "type": "string", "enum": ["added", "removed", "changed", "ADDED", "REMOVED", "CHANGED"] },
+        "before": {},
+        "after": {},
         "contains": { "type": "string" },
         "count": { "type": "integer", "minimum": 0 }
       },

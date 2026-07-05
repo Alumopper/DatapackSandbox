@@ -79,13 +79,20 @@ class ManifestRunnerTest {
         }
         val diagnosticRef = assertion.getAsJsonObject("properties").getAsJsonObject("diagnostic")
         val diagnosticProperties = defs.getAsJsonObject("diagnosticAssertion").getAsJsonObject("properties")
+        val snapshotDiffRef = assertion.getAsJsonObject("properties").getAsJsonObject("snapshotDiff")
+        val snapshotDiffProperties = defs.getAsJsonObject("snapshotDiffAssertion").getAsJsonObject("properties")
 
         assertTrue("diagnostic" in assertionRequired)
+        assertTrue("snapshotDiff" in assertionRequired)
         assertEquals("#/\$defs/diagnosticAssertion", diagnosticRef.get("\$ref").asString)
+        assertEquals("#/\$defs/snapshotDiffAssertion", snapshotDiffRef.get("\$ref").asString)
         assertEquals("integer", diagnosticProperties.getAsJsonObject("step").get("type").asString)
         assertEquals("string", diagnosticProperties.getAsJsonObject("code").get("type").asString)
         assertEquals("string", diagnosticProperties.getAsJsonObject("contains").get("type").asString)
         assertEquals("integer", diagnosticProperties.getAsJsonObject("count").get("type").asString)
+        assertEquals("string", snapshotDiffProperties.getAsJsonObject("path").get("type").asString)
+        assertEquals("string", snapshotDiffProperties.getAsJsonObject("kind").get("type").asString)
+        assertEquals("integer", snapshotDiffProperties.getAsJsonObject("count").get("type").asString)
     }
 
     @Test
@@ -505,6 +512,34 @@ class ManifestRunnerTest {
                 { "trace": { "command": "scoreboard players set #bad missing 1", "success": false, "count": 1 } },
                 { "trace": { "command": "say after expected diagnostic", "success": true, "count": 1 } },
                 { "output": { "command": "say", "contains": "after expected diagnostic", "count": 1 } }
+              ]
+            }
+            """.trimIndent(),
+        )
+
+        val result = ManifestRunner.run(manifest)
+
+        assertTrue(result.passed, result.messages.joinToString())
+    }
+
+    @Test
+    fun `asserts manifest snapshot diffs`() {
+        val dir = Files.createTempDirectory("dps-snapshot-diff-manifest")
+        val pack = Path.of("../core/src/test/resources/packs/counter").toAbsolutePath().normalize().toString().replace("\\", "\\\\")
+        val manifest = dir.resolve("snapshot-diff.dps.json")
+        Files.writeString(
+            manifest,
+            """
+            {
+              "version": "26.1.2",
+              "packs": ["$pack"],
+              "steps": [
+                { "command": "scoreboard objectives add runs dummy" },
+                { "command": "scoreboard players set #diff runs 3" }
+              ],
+              "assertions": [
+                { "snapshotDiff": { "path": "/scores/runs", "kind": "added", "after": { "#diff": 3 }, "count": 1 } },
+                { "snapshotDiff": { "contains": "\"#diff\": 3", "count": 1 } }
               ]
             }
             """.trimIndent(),

@@ -161,7 +161,7 @@ object ManifestRunner {
             if (!assertion.isJsonObject) {
                 failures += "assertion ${index + 1}: Assertion must be an object"
             } else {
-                failures += evaluateAssertion(assertion.asJsonObject, sandbox, diagnostics).map { "assertion ${index + 1}: $it" }
+                failures += evaluateAssertion(assertion.asJsonObject, sandbox, diagnostics, beforeSnapshot).map { "assertion ${index + 1}: $it" }
             }
         }
         if (failures.isNotEmpty() && options.snapshotOnFail) {
@@ -370,7 +370,12 @@ object ManifestRunner {
         sandbox.world.setBlock(pos, sandboxBlock)
     }
 
-    private fun evaluateAssertion(assertion: JsonObject, sandbox: DatapackSandbox, diagnostics: List<ManifestDiagnostic> = emptyList()): List<String> {
+    private fun evaluateAssertion(
+        assertion: JsonObject,
+        sandbox: DatapackSandbox,
+        diagnostics: List<ManifestDiagnostic> = emptyList(),
+        beforeSnapshot: JsonObject? = null,
+    ): List<String> {
         val failures = mutableListOf<String>()
         when {
             assertion.has("score") -> {
@@ -531,10 +536,55 @@ object ManifestRunner {
             assertion.has("diagnostic") -> {
                 failures += evaluateDiagnosticAssertion(assertion.getAsJsonObject("diagnostic"), diagnostics, sandbox)
             }
+            assertion.has("snapshotDiff") -> {
+                failures += evaluateSnapshotDiffAssertion(assertion.getAsJsonObject("snapshotDiff"), beforeSnapshot, sandbox)
+            }
             else -> failures += "Unknown assertion kind: ${assertion.keySet().joinToString()}"
         }
         return failures
     }
+
+    private fun evaluateSnapshotDiffAssertion(snapshotDiff: JsonObject, beforeSnapshot: JsonObject?, sandbox: DatapackSandbox): List<String> {
+        if (beforeSnapshot == null) {
+            return listOf("snapshotDiff assertion requires a manifest execution context")
+        }
+        val entries = SnapshotDiff.diff(beforeSnapshot, sandbox.snapshotJson())
+        val expectedPath = snapshotDiff.manifestString("path")
+        val expectedPathContains = snapshotDiff.manifestString("pathContains")
+        val expectedKind = snapshotDiff.manifestString("kind")
+        val expectedBefore = snapshotDiff.get("before")
+        val expectedAfter = snapshotDiff.get("after")
+        val expectedContains = snapshotDiff.manifestString("contains")
+        val matches = entries.filter { entry ->
+            (expectedPath == null || entry.path.ifBlank { "/" } == expectedPath) &&
+                (expectedPathContains == null || expectedPathContains in entry.path) &&
+                (expectedKind == null || entry.kind.name.equals(expectedKind, ignoreCase = true)) &&
+                (expectedBefore == null || entry.before == expectedBefore) &&
+                (expectedAfter == null || entry.after == expectedAfter) &&
+                (expectedContains == null || expectedContains in entry.render())
+        }
+        snapshotDiff.get("count")?.let { expected ->
+            if (matches.size != expected.asInt) {
+                return listOf("snapshotDiff ${describeSnapshotDiffExpectation(snapshotDiff)} expected count ${expected.asInt} but was ${matches.size}")
+            }
+            return emptyList()
+        }
+        return if (matches.isEmpty()) {
+            listOf("snapshotDiff ${describeSnapshotDiffExpectation(snapshotDiff)} did not match any snapshot change")
+        } else {
+            emptyList()
+        }
+    }
+
+    private fun describeSnapshotDiffExpectation(snapshotDiff: JsonObject): String =
+        listOfNotNull(
+            snapshotDiff.manifestString("path")?.let { "path=$it" },
+            snapshotDiff.manifestString("pathContains")?.let { "pathContains=$it" },
+            snapshotDiff.manifestString("kind")?.let { "kind=$it" },
+            snapshotDiff.get("before")?.let { "before=${JsonValues.render(it)}" },
+            snapshotDiff.get("after")?.let { "after=${JsonValues.render(it)}" },
+            snapshotDiff.manifestString("contains")?.let { "contains=$it" },
+        ).ifEmpty { listOf("<any snapshot diff>") }.joinToString(", ")
 
     private fun evaluateDiagnosticAssertion(diagnostic: JsonObject, diagnostics: List<ManifestDiagnostic>, sandbox: DatapackSandbox): List<String> {
         val records = diagnostics.ifEmpty {
