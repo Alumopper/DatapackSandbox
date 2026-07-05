@@ -134,6 +134,34 @@ class SandboxBehaviorTest {
     }
 
     @Test
+    fun `records command traces and output source metadata`() {
+        val sandbox = createFunctionSandboxFromString(
+            version = "26.2",
+            functionText = """
+            say traced
+            scoreboard objectives add runs dummy
+            scoreboard players set #trace runs 1
+            """.trimIndent(),
+            functionId = "demo:main",
+            sourceName = "<trace-test>",
+        )
+
+        sandbox.runFunction("demo:main")
+
+        assertEquals(3, sandbox.world.traces.size)
+        val first = sandbox.world.traces.first()
+        assertEquals("say traced", first.command)
+        assertEquals("say", first.root)
+        assertTrue(first.success)
+        assertEquals(1, first.outputs)
+        assertEquals("<trace-test>", first.source?.file)
+        assertEquals(1, first.source?.line)
+        assertEquals("demo:main", first.source?.functionStack?.singleOrNull()?.id.toString())
+        assertEquals(first.source, sandbox.world.outputs.single().source)
+        assertEquals(3, sandbox.snapshotJson().getAsJsonArray("traces").size())
+    }
+
+    @Test
     fun `resolves styled raw json text score components`() {
         val sandbox = createSandbox("26.1.2", listOf(fixturePack()))
         sandbox.createPlayer("Steve")

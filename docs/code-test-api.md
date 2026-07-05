@@ -48,6 +48,23 @@ class MyDatapackTest {
 `requirePassed()` throws `SandboxQuickTestAssertionError` when assertions fail.
 The error contains all failures and the final snapshot.
 
+Reports returned by `report()` and `requirePassed()` also include structured
+command traces. Each trace records the command text, root command, success
+flag, executed command count, output count, source file/line, function stack,
+executor, and position. This is useful for debugging generated commands or
+function call chains:
+
+```kotlin
+val report = SandboxQuickTest.singleFunctionText(
+    functionText = "say traced",
+    version = "26.2",
+)
+    .function()
+    .requirePassed()
+
+println(report.traces.single().command)
+```
+
 `unsupportedFeatureMode` can be `WARN` (default), `IGNORE`, or `ERROR`. Use
 `ERROR` when you want unsupported vanilla commands to fail the test immediately.
 
@@ -233,6 +250,7 @@ class MyDatapackTest {
 | `assertOutputContains(text)` | Assert output event text |
 | `assertOutput(...)` | Assert command/channel/target/text/count for output events |
 | `outputs()` | Return recorded output events |
+| `traces()` | Return recorded structured command trace events |
 | `matchingOutputs(...)` | Return output events matching a structured expectation |
 | `report()` | Return `SandboxQuickTestReport` without throwing |
 | `requirePassed()` | Return report or throw an assertion error |

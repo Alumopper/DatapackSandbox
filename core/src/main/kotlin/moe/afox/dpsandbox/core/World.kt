@@ -450,6 +450,87 @@ data class OutputTextSegment(
 }
 
 /**
+ * One frame in the datapack function stack for a command or output event.
+ */
+data class FunctionTraceFrame(
+    val id: ResourceLocation,
+    val file: String? = null,
+) {
+    /**
+     * Serializes this frame into deterministic snapshot JSON.
+     */
+    fun toJson(): JsonObject =
+        JsonObject().also { json ->
+            json.addProperty("id", id.toString())
+            file?.let { json.addProperty("file", it) }
+        }
+}
+
+/**
+ * Source metadata attached to commands, trace events, and output events.
+ */
+data class CommandSource(
+    val file: String? = null,
+    val line: Int? = null,
+    val command: String? = null,
+    val functionStack: List<FunctionTraceFrame> = emptyList(),
+) {
+    /**
+     * Serializes this source into deterministic snapshot JSON.
+     */
+    fun toJson(): JsonObject =
+        JsonObject().also { json ->
+            file?.let { json.addProperty("file", it) }
+            line?.let { json.addProperty("line", it) }
+            command?.let { json.addProperty("command", it) }
+            if (functionStack.isNotEmpty()) {
+                json.add("functionStack", JsonArray().also { array ->
+                    functionStack.forEach { array.add(it.toJson()) }
+                })
+            }
+        }
+}
+
+/**
+ * Structured trace event for one command execution.
+ */
+data class CommandTraceEvent(
+    val tick: Long,
+    val command: String,
+    val root: String,
+    val source: CommandSource? = null,
+    val executor: String? = null,
+    val position: Position = Position.zero,
+    val success: Boolean,
+    val commandsExecuted: Int,
+    val outputs: Int,
+    val errorCode: DiagnosticCode? = null,
+    val errorMessage: String? = null,
+) {
+    /**
+     * Serializes this trace event into deterministic snapshot JSON.
+     */
+    fun toJson(): JsonObject =
+        JsonObject().also { json ->
+            json.addProperty("tick", tick)
+            json.addProperty("command", command)
+            json.addProperty("root", root)
+            json.addProperty("success", success)
+            json.addProperty("commandsExecuted", commandsExecuted)
+            json.addProperty("outputs", outputs)
+            executor?.let { json.addProperty("executor", it) }
+            json.add("position", JsonObject().also { pos ->
+                pos.addProperty("x", position.x)
+                pos.addProperty("y", position.y)
+                pos.addProperty("z", position.z)
+            })
+            source?.let { json.add("source", it.toJson()) }
+            errorCode?.let { json.addProperty("errorCode", it.name) }
+            errorMessage?.let { json.addProperty("errorMessage", it) }
+        }
+}
+
+/**
  * Observable output event recorded by commands and warnings.
  */
 data class OutputEvent(
@@ -460,6 +541,7 @@ data class OutputEvent(
     val text: String = "",
     val payload: JsonElement? = null,
     val segments: List<OutputTextSegment> = emptyList(),
+    val source: CommandSource? = null,
 ) {
     /**
      * Serializes this output event into deterministic snapshot JSON.
@@ -476,6 +558,7 @@ data class OutputEvent(
         json.add("targets", targetJson)
 
         payload?.let { json.add("payload", it.deepCopy()) }
+        source?.let { json.add("source", it.toJson()) }
 
         if (segments.isNotEmpty()) {
             val segmentJson = JsonArray()
@@ -514,6 +597,7 @@ class SandboxWorld {
     val blocks: MutableMap<BlockPos, SandboxBlock> = linkedMapOf()
     val scheduledFunctions: MutableList<ScheduledFunction> = mutableListOf()
     val outputs: MutableList<OutputEvent> = mutableListOf()
+    val traces: MutableList<CommandTraceEvent> = mutableListOf()
     val bossbars: MutableMap<ResourceLocation, SandboxBossbar> = linkedMapOf()
     val gamerules: MutableMap<String, String> = linkedMapOf()
     val teams: MutableMap<String, SandboxTeam> = linkedMapOf()
@@ -521,6 +605,7 @@ class SandboxWorld {
     val forcedChunks: MutableSet<ChunkPos> = sortedSetOf()
     val biomes: MutableMap<BlockPos, ResourceLocation> = linkedMapOf()
     val worldBorder: SandboxWorldBorder = SandboxWorldBorder()
+    var currentCommandSource: CommandSource? = null
 
     /**
      * Advances world time by one tick and decreases weather duration when active.
@@ -654,6 +739,7 @@ class SandboxWorld {
         text: String = "",
         payload: JsonElement? = null,
         segments: List<OutputTextSegment> = emptyList(),
+        source: CommandSource? = currentCommandSource,
     ) {
         outputs += OutputEvent(
             tick = gameTime,
@@ -663,6 +749,7 @@ class SandboxWorld {
             text = text,
             payload = payload,
             segments = segments,
+            source = source,
         )
     }
 
@@ -764,6 +851,10 @@ class SandboxWorld {
         val outputJson = JsonArray()
         outputs.forEach { outputJson.add(it.toJson()) }
         root.add("outputs", outputJson)
+
+        val traceJson = JsonArray()
+        traces.forEach { traceJson.add(it.toJson()) }
+        root.add("traces", traceJson)
         return root
     }
 }

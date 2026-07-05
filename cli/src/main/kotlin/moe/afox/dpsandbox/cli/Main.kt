@@ -116,6 +116,8 @@ class RunCommand : CliktCommand(name = "run") {
     private val commandFile by option("--command-file").path(mustExist = true)
     private val snapshot by option("--snapshot").flag(default = false)
     private val snapshotFile by option("--snapshot-file").path()
+    private val trace by option("--trace").flag(default = false)
+    private val traceFile by option("--trace-file").path()
     private val unsupported by option("--unsupported").default("warn")
 
     override fun run() {
@@ -149,11 +151,19 @@ class RunCommand : CliktCommand(name = "run") {
             }
             commands.forEach { total += sandbox.executeCommand(it).commandsExecuted }
             OutputRenderer.print(sandbox.world.outputs)
+            if (trace) TraceRenderer.print(sandbox.world.traces)
             println(ConsoleStyle.green("OK version=${sandbox.profile.id} gameTime=${sandbox.world.gameTime} commands=$total entities=${sandbox.world.entities.size}"))
             if (snapshot) println(sandbox.snapshotString())
             snapshotFile?.let {
                 Files.writeString(it, sandbox.snapshotString(), StandardCharsets.UTF_8)
                 println(ConsoleStyle.green("snapshot written: $it"))
+            }
+            traceFile?.let {
+                val content = sandbox.world.traces.joinToString(separator = System.lineSeparator()) { event ->
+                    JsonValues.render(event.toJson())
+                }
+                Files.writeString(it, content, StandardCharsets.UTF_8)
+                println(ConsoleStyle.green("trace written: $it"))
             }
         } catch (error: SandboxException) {
             println(ConsoleStyle.diagnostic(error.render()))

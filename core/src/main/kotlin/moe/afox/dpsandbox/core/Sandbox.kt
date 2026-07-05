@@ -71,6 +71,7 @@ class DatapackSandbox(
 
     private var commandsExecuted = 0
     private var functionDepth = 0
+    private val functionStack = mutableListOf<FunctionTraceFrame>()
 
     /**
      * Runs every function referenced by `#minecraft:load`.
@@ -135,12 +136,14 @@ class DatapackSandbox(
         }
 
         try {
+            functionStack += FunctionTraceFrame(id, function.lines.firstOrNull()?.location?.file)
             for (line in function.lines) {
                 executeCommand(line.command, line.location, context)
             }
         } catch (_: ReturnSignal) {
             // A return command stops the current function only.
         } finally {
+            functionStack.removeLast()
             functionDepth -= 1
         }
         return ExecutionResult(commandsExecuted - before)
@@ -157,9 +160,51 @@ class DatapackSandbox(
      * @return number of command lines executed, normally 0 or 1 plus nested function calls.
      */
     fun executeCommand(command: String, location: SourceLocation? = null, context: ExecutionContext = ExecutionContext()): ExecutionResult {
+        val normalized = command.trim().removePrefix("/")
+        if (normalized.isBlank()) return ExecutionResult(0)
         val before = commandsExecuted
-        executeOne(command.trim().removePrefix("/"), location, context)
-        return ExecutionResult(commandsExecuted - before)
+        val outputsBefore = world.outputs.size
+        val source = CommandSource(
+            file = location?.file,
+            line = location?.line,
+            command = location?.command ?: normalized,
+            functionStack = functionStack.toList(),
+        )
+        val previousSource = world.currentCommandSource
+        world.currentCommandSource = source
+        var success = false
+        var errorCode: DiagnosticCode? = null
+        var errorMessage: String? = null
+        try {
+            executeOne(normalized, location, context)
+            success = true
+            return ExecutionResult(commandsExecuted - before)
+        } catch (signal: ReturnSignal) {
+            success = true
+            throw signal
+        } catch (error: SandboxException) {
+            errorCode = error.code
+            errorMessage = error.message
+            throw error
+        } catch (error: RuntimeException) {
+            errorMessage = error.message ?: error::class.simpleName
+            throw error
+        } finally {
+            world.traces += CommandTraceEvent(
+                tick = world.gameTime,
+                command = normalized,
+                root = normalized.substringBefore(' '),
+                source = source,
+                executor = context.entity?.scoreHolder ?: "Server",
+                position = context.position,
+                success = success,
+                commandsExecuted = commandsExecuted - before,
+                outputs = world.outputs.size - outputsBefore,
+                errorCode = errorCode,
+                errorMessage = errorMessage,
+            )
+            world.currentCommandSource = previousSource
+        }
     }
 
     /**

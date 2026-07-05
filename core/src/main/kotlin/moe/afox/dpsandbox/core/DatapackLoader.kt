@@ -44,16 +44,52 @@ object DatapackLoader {
         val lootTables = linkedMapOf<ResourceLocation, LootTable>()
         val predicates = linkedMapOf<ResourceLocation, PredicateDefinition>()
         val advancements = linkedMapOf<ResourceLocation, AdvancementDefinition>()
+        val recipes = linkedMapOf<ResourceLocation, RawJsonResource>()
+        val itemModifiers = linkedMapOf<ResourceLocation, RawJsonResource>()
+        val tags = linkedMapOf<TagKey, TagDefinition>()
+        val resourceIndex = ResourceIndexBuilder()
 
         paths.forEach { input ->
+            val packLabel = input.toAbsolutePath().normalize().toString()
             withPackRoot(input) { root ->
                 validatePackMetadata(root, input, profile)
-                functions.putAll(readFunctions(root, profile))
+                val packFunctions = readFunctions(root, profile)
+                resourceIndex.recordAll("function", packFunctions, packLabel)
+                functions.putAll(packFunctions)
                 loadFunctions += readFunctionTag(root, profile, "load")
                 tickFunctions += readFunctionTag(root, profile, "tick")
-                lootTables.putAll(readLootTables(root, profile))
-                predicates.putAll(readPredicates(root, profile))
-                advancements.putAll(readAdvancements(root, profile))
+
+                val packLootTables = readLootTables(root, profile)
+                resourceIndex.recordAll("loot_table", packLootTables, packLabel)
+                lootTables.putAll(packLootTables)
+
+                val packPredicates = readPredicates(root, profile)
+                resourceIndex.recordAll("predicate", packPredicates, packLabel)
+                predicates.putAll(packPredicates)
+
+                val packAdvancements = readAdvancements(root, profile)
+                resourceIndex.recordAll("advancement", packAdvancements, packLabel)
+                advancements.putAll(packAdvancements)
+
+                val packRecipes = readRecipes(root, profile)
+                resourceIndex.recordAll("recipe", packRecipes, packLabel)
+                recipes.putAll(packRecipes)
+
+                val packItemModifiers = readItemModifiers(root, profile)
+                resourceIndex.recordAll("item_modifier", packItemModifiers, packLabel)
+                itemModifiers.putAll(packItemModifiers)
+
+                val packTags = readTags(root, profile)
+                mergeTags(tags, packTags)
+                packTags.values.forEach { tag ->
+                    resourceIndex.record(
+                        type = "tag/${tag.key.registry}",
+                        id = tag.key.id,
+                        file = tag.file,
+                        pack = packLabel,
+                        overridesPrevious = tag.replace,
+                    )
+                }
             }
         }
 
@@ -64,6 +100,10 @@ object DatapackLoader {
             lootTables = lootTables.toSortedMap(),
             predicates = predicates.toSortedMap(),
             advancements = advancements.toSortedMap(),
+            recipes = recipes.toSortedMap(),
+            itemModifiers = itemModifiers.toSortedMap(),
+            tags = tags.toSortedMap(),
+            resourceIndex = resourceIndex.entries(),
         )
     }
 
@@ -99,6 +139,15 @@ object DatapackLoader {
             functions = functions.toSortedMap(),
             loadFunctions = emptyList(),
             tickFunctions = emptyList(),
+            resourceIndex = functions.values.mapIndexed { index, function ->
+                ResourceIndexEntry(
+                    type = "function",
+                    id = function.id,
+                    file = function.lines.firstOrNull()?.location?.file ?: "<synthetic:${function.id}>",
+                    pack = "<synthetic>",
+                    order = index,
+                )
+            },
         )
     }
 
@@ -132,6 +181,16 @@ object DatapackLoader {
             lootTables = dependencies.lootTables,
             predicates = dependencies.predicates,
             advancements = dependencies.advancements,
+            recipes = dependencies.recipes,
+            itemModifiers = dependencies.itemModifiers,
+            tags = dependencies.tags,
+            resourceIndex = dependencies.resourceIndex + overlay.resourceIndex.map { entry ->
+                if (dependencies.functions.containsKey(entry.id) && entry.type == "function") {
+                    entry.copy(overrides = dependencies.functions[entry.id]?.lines?.firstOrNull()?.location?.file)
+                } else {
+                    entry
+                }
+            },
         )
     }
 
@@ -414,6 +473,119 @@ object DatapackLoader {
         readJsonResources(root, profile, profile.resourceDirectories.advancements, "advancement")
             .mapValues { (_, resource) -> parseAdvancement(resource, profile) }
 
+    private fun readRecipes(root: Path, profile: VersionProfile): Map<ResourceLocation, RawJsonResource> =
+        readJsonResources(root, profile, profile.resourceDirectories.recipes, "recipe")
+            .mapValues { (_, resource) -> RawJsonResource("recipe", resource.id, resource.file, resource.root) }
+
+    private fun readItemModifiers(root: Path, profile: VersionProfile): Map<ResourceLocation, RawJsonResource> =
+        readJsonResources(root, profile, profile.resourceDirectories.itemModifiers, "item modifier")
+            .mapValues { (_, resource) -> RawJsonResource("item_modifier", resource.id, resource.file, resource.root) }
+
+    private fun readTags(root: Path, profile: VersionProfile): Map<TagKey, TagDefinition> {
+        val data = root.resolve("data")
+        if (!data.exists()) return emptyMap()
+
+        val tags = linkedMapOf<TagKey, TagDefinition>()
+        Files.list(data).use { namespaces ->
+            namespaces.filter { it.isDirectory() }.forEach { namespaceDir ->
+                val namespace = namespaceDir.name
+                val tagsRoot = namespaceDir.resolve("tags")
+                if (!tagsRoot.exists()) return@forEach
+                Files.walk(tagsRoot).use { walk ->
+                    walk.filter { it.isRegularFile() && it.name.endsWith(".json") }
+                        .forEach { file ->
+                            val relative = file.relativeTo(tagsRoot).toString().replace('\\', '/')
+                            val registry = relative.substringBefore('/', missingDelimiterValue = "")
+                            val idPath = relative.substringAfter('/', missingDelimiterValue = "").removeSuffix(".json")
+                            if (registry.isBlank() || idPath.isBlank()) {
+                                throw SandboxException(
+                                    code = DiagnosticCode.INPUT_FORMAT,
+                                    message = "Tag resource must be under data/<namespace>/tags/<registry>/<path>.json",
+                                    location = SourceLocation(file = file.toString()),
+                                    version = profile.id,
+                                )
+                            }
+                            val key = TagKey(registry, ResourceLocation(namespace, idPath))
+                            val json = try {
+                                JsonParser.parseString(Files.readString(file, StandardCharsets.UTF_8)).asJsonObject
+                            } catch (error: Exception) {
+                                throw SandboxException(
+                                    code = DiagnosticCode.INPUT_FORMAT,
+                                    message = "Invalid tag JSON for '$key': ${error.message}",
+                                    location = SourceLocation(file = file.toString()),
+                                    version = profile.id,
+                                    cause = error,
+                                )
+                            }
+                            tags[key] = parseTagDefinition(key, file.toString(), json, profile)
+                        }
+                }
+            }
+        }
+        return tags
+    }
+
+    private fun parseTagDefinition(key: TagKey, file: String, json: JsonObject, profile: VersionProfile): TagDefinition {
+        val values = json.get("values")
+        if (values !is JsonArray) {
+            throw SandboxException(
+                code = DiagnosticCode.INPUT_FORMAT,
+                message = "Tag '$key' must contain a 'values' array",
+                location = SourceLocation(file = file),
+                version = profile.id,
+            )
+        }
+        return TagDefinition(
+            key = key,
+            file = file,
+            replace = json.get("replace")?.takeIf { it.isJsonPrimitive }?.asBoolean ?: false,
+            values = values.mapIndexed { index, entry -> parseTagValue(key, index, entry, file, profile) },
+        )
+    }
+
+    private fun parseTagValue(key: TagKey, index: Int, entry: JsonElement, file: String, profile: VersionProfile): TagValue {
+        val id: String
+        val required: Boolean
+        when {
+            entry.isJsonPrimitive && entry.asJsonPrimitive.isString -> {
+                id = entry.asString
+                required = true
+            }
+            entry.isJsonObject -> {
+                val obj = entry.asJsonObject
+                id = obj.optionalString("id")
+                    ?: throw SandboxException(
+                        code = DiagnosticCode.INPUT_FORMAT,
+                        message = "Tag '$key' values[$index] object must contain string 'id'",
+                        location = SourceLocation(file = file),
+                        version = profile.id,
+                    )
+                required = obj.get("required")?.takeIf { it.isJsonPrimitive }?.asBoolean ?: true
+            }
+            else -> throw SandboxException(
+                code = DiagnosticCode.INPUT_FORMAT,
+                message = "Tag '$key' values[$index] must be a string or object",
+                location = SourceLocation(file = file),
+                version = profile.id,
+            )
+        }
+
+        val parsedId = id.removePrefix("#")
+        ResourceLocation.parse(parsedId)
+        return TagValue(id, required)
+    }
+
+    private fun mergeTags(target: MutableMap<TagKey, TagDefinition>, source: Map<TagKey, TagDefinition>) {
+        source.forEach { (key, tag) ->
+            val existing = target[key]
+            target[key] = if (existing == null || tag.replace) {
+                tag
+            } else {
+                tag.copy(values = existing.values + tag.values, replace = false)
+            }
+        }
+    }
+
     private fun readJsonResources(
         root: Path,
         profile: VersionProfile,
@@ -525,4 +697,63 @@ object DatapackLoader {
             location = SourceLocation(file = resource.file),
             version = profile.id,
         )
+
+    private class ResourceIndexBuilder {
+        private val entries = mutableListOf<ResourceIndexEntry>()
+        private val activeByKey = linkedMapOf<Pair<String, ResourceLocation>, MutableList<Int>>()
+
+        fun recordAll(type: String, resources: Map<ResourceLocation, *>, pack: String) {
+            resources.toSortedMap().forEach { (id, resource) ->
+                record(
+                    type = type,
+                    id = id,
+                    file = resourceFile(resource) ?: "<unknown:$type/$id>",
+                    pack = pack,
+                )
+            }
+        }
+
+        fun record(
+            type: String,
+            id: ResourceLocation,
+            file: String,
+            pack: String,
+            overridesPrevious: Boolean = true,
+        ) {
+            val key = type to id
+            val previous = if (overridesPrevious) activeByKey[key].orEmpty().toList() else emptyList()
+            previous.forEach { index ->
+                entries[index] = entries[index].copy(active = false, overriddenBy = file)
+            }
+            val nextIndex = entries.size
+            entries += ResourceIndexEntry(
+                type = type,
+                id = id,
+                file = file,
+                pack = pack,
+                order = nextIndex,
+                active = true,
+                overrides = previous.takeIf { it.isNotEmpty() }?.joinToString(";") { entries[it].file },
+            )
+            if (overridesPrevious) {
+                activeByKey[key] = mutableListOf(nextIndex)
+            } else {
+                activeByKey.getOrPut(key) { mutableListOf() } += nextIndex
+            }
+        }
+
+        fun entries(): List<ResourceIndexEntry> =
+            entries.sortedWith(compareBy<ResourceIndexEntry> { it.type }.thenBy { it.id.toString() }.thenBy { it.order })
+
+        private fun resourceFile(resource: Any?): String? =
+            when (resource) {
+                is DatapackFunction -> resource.lines.firstOrNull()?.location?.file ?: "<function:${resource.id}>"
+                is LootTable -> resource.file
+                is PredicateDefinition -> resource.file
+                is AdvancementDefinition -> resource.file
+                is RawJsonResource -> resource.file
+                is ResourceJson -> resource.file
+                else -> null
+            }
+    }
 }

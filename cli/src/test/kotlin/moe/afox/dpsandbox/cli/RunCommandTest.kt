@@ -126,6 +126,33 @@ class RunCommandTest {
     }
 
     @Test
+    fun `run can print and write command trace`() {
+        val traceFile = Files.createTempFile("dps-cli-trace", ".jsonl")
+
+        val output = captureStdout {
+            main(
+                arrayOf(
+                    "run",
+                    "--version",
+                    "26.2",
+                    "--mcfunction-text",
+                    "say traced from cli",
+                    "--trace",
+                    "--trace-file",
+                    traceFile.toString(),
+                ),
+            )
+        }
+
+        assertTrue("trace OK say traced from cli" in output, output)
+        assertTrue("trace written: $traceFile" in output, output)
+        val traceJson = Files.readString(traceFile)
+        assertTrue("\"command\": \"say traced from cli\"" in traceJson, traceJson)
+        assertTrue("\"root\": \"say\"" in traceJson, traceJson)
+        assertTrue("\"success\": true" in traceJson, traceJson)
+    }
+
+    @Test
     fun `version lists supported datapack formats`() {
         val output = captureStdout {
             main(arrayOf("version"))

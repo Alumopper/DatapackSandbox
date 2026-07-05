@@ -154,7 +154,7 @@ class Repl(
             "event" -> eventHelp()
             "tellraw" -> "tellraw <targets> <message-json> - record a chat output event from a JSON text component"
             "title" -> "title <targets> <title|subtitle|actionbar|clear|reset|times> ... - record title output events"
-            "inspect" -> "inspect <score|storage|entities|blocks|player|loot|predicate|advancement|registry|outputs>"
+            "inspect" -> "inspect <score|storage|entities|blocks|player|loot|predicate|advancement|recipe|item_modifier|tags|resources|registry|outputs>"
             else -> "No detailed help for '$command'. Try TAB for available forms."
         }
         println(text)
@@ -174,7 +174,7 @@ class Repl(
         """.trimIndent()
 
     private fun helpText(): String =
-        "Commands: load, reload, tick [n], function <id>, player <name>, event player <name> <type> [id] [action], inspect <score|storage|entities|blocks|player|loot|predicate|advancement|registry|outputs>, snapshot [file], exit"
+        "Commands: load, reload, tick [n], function <id>, player <name>, event player <name> <type> [id] [action], inspect <score|storage|entities|blocks|player|loot|predicate|advancement|recipe|item_modifier|tags|resources|registry|outputs>, snapshot [file], exit"
 
     private fun reload() {
         if (packs.isEmpty()) {
@@ -185,7 +185,7 @@ class Repl(
         packStamp = fingerprintPacks()
         println(
             ConsoleStyle.green(
-                "reloaded packs: functions=${sandbox.datapack.functions.size} loot=${sandbox.datapack.lootTables.size} predicates=${sandbox.datapack.predicates.size} advancements=${sandbox.datapack.advancements.size}",
+                "reloaded packs: functions=${sandbox.datapack.functions.size} loot=${sandbox.datapack.lootTables.size} predicates=${sandbox.datapack.predicates.size} advancements=${sandbox.datapack.advancements.size} recipes=${sandbox.datapack.recipes.size} itemModifiers=${sandbox.datapack.itemModifiers.size} tags=${sandbox.datapack.tags.size}",
             ),
         )
     }
@@ -243,13 +243,39 @@ class Repl(
             "loot" -> sandbox.datapack.lootTables.keys.forEach { println(it) }
             "predicate" -> sandbox.datapack.predicates.keys.forEach { println(it) }
             "advancement" -> sandbox.datapack.advancements.keys.forEach { println(it) }
+            "recipe" -> sandbox.datapack.recipes.keys.forEach { println(it) }
+            "item_modifier", "item-modifier" -> sandbox.datapack.itemModifiers.keys.forEach { println(it) }
+            "tag", "tags" -> {
+                val registryFilter = args.getOrNull(1)
+                sandbox.datapack.tags.toSortedMap()
+                    .filterKeys { registryFilter == null || it.registry == registryFilter }
+                    .forEach { (key, tag) ->
+                        val values = tag.values.joinToString(prefix = "[", postfix = "]") { value ->
+                            if (value.required) value.id else "${value.id}?"
+                        }
+                        println("${key.registry} ${key.id} replace=${tag.replace} values=$values")
+                    }
+            }
+            "resource", "resources" -> {
+                val typeFilter = args.getOrNull(1)
+                sandbox.datapack.resourceIndex
+                    .filter { typeFilter == null || it.type == typeFilter }
+                    .forEach { entry ->
+                        val active = if (entry.active) "active" else "overridden"
+                        val overlay = listOfNotNull(
+                            entry.overrides?.let { "overrides=$it" },
+                            entry.overriddenBy?.let { "overriddenBy=$it" },
+                        ).joinToString(prefix = " ", separator = " ").takeIf { it.isNotBlank() }.orEmpty()
+                        println("${entry.type} ${entry.id} $active pack=${entry.pack} file=${entry.file}$overlay")
+                    }
+            }
             "registry" -> {
                 println("items=${sandbox.profile.registryView.items.size} blocks=${sandbox.profile.registryView.blocks.size} entities=${sandbox.profile.registryView.entityTypes.size}")
                 println("lootConditions=${sandbox.profile.registryView.lootConditions.joinToString()}")
                 println("lootFunctions=${sandbox.profile.registryView.lootFunctions.joinToString()}")
             }
             "outputs" -> OutputRenderer.print(sandbox.world.outputs)
-            else -> println("Usage: inspect <score|storage|entities|blocks|player|loot|predicate|advancement|registry|outputs>")
+            else -> println("Usage: inspect <score|storage|entities|blocks|player|loot|predicate|advancement|recipe|item_modifier|tags|resources|registry|outputs>")
         }
     }
 

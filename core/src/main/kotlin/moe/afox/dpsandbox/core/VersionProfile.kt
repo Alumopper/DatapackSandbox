@@ -55,6 +55,8 @@ data class ResourceDirectoryProfile(
     val lootTables: List<String>,
     val predicates: List<String>,
     val advancements: List<String>,
+    val recipes: List<String>,
+    val itemModifiers: List<String>,
 ) {
     companion object {
         /** Resource directory layout used by older plural-directory packs. */
@@ -64,6 +66,8 @@ data class ResourceDirectoryProfile(
             lootTables = listOf("loot_tables"),
             predicates = listOf("predicates"),
             advancements = listOf("advancements"),
+            recipes = listOf("recipes"),
+            itemModifiers = listOf("item_modifiers"),
         )
 
         /** Current singular directory layout plus legacy aliases for compatibility profiles. */
@@ -73,6 +77,8 @@ data class ResourceDirectoryProfile(
             lootTables = listOf("loot_table", "loot_tables"),
             predicates = listOf("predicate", "predicates"),
             advancements = listOf("advancement", "advancements"),
+            recipes = listOf("recipe", "recipes"),
+            itemModifiers = listOf("item_modifier", "item_modifiers"),
         )
     }
 }

@@ -59,6 +59,13 @@ Run a quick smoke test:
 java -jar cli/build/libs/datapack-sandbox-cli.jar run --pack ./my_pack --load --ticks 20 --function demo:main --snapshot
 ```
 
+For debugging function call chains or command-generator output, enable structured
+trace output:
+
+```bash
+java -jar cli/build/libs/datapack-sandbox-cli.jar run --pack ./my_pack --function demo:main --trace --trace-file trace.jsonl
+```
+
 Run a single `.mcfunction` file without creating a full datapack:
 
 ```bash

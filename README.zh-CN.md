@@ -51,6 +51,12 @@ dps> inspect outputs
 java -jar cli/build/libs/datapack-sandbox-cli.jar run --pack ./my_pack --load --ticks 20 --function demo:main --snapshot
 ```
 
+需要调试函数调用链或命令生成器产物时，打开结构化 trace：
+
+```bash
+java -jar cli/build/libs/datapack-sandbox-cli.jar run --pack ./my_pack --function demo:main --trace --trace-file trace.jsonl
+```
+
 不创建完整数据包，直接运行单个 `.mcfunction` 文件：
 
 ```bash

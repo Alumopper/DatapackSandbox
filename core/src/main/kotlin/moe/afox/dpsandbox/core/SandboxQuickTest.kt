@@ -17,6 +17,8 @@ data class SandboxQuickTestReport(
     val failures: List<String>,
     /** Output events recorded by commands such as `tellraw`, `say`, `title`, and warnings. */
     val outputs: List<OutputEvent>,
+    /** Structured command trace events recorded during execution. */
+    val traces: List<CommandTraceEvent>,
     /** Final deterministic world snapshot after all executed steps. */
     val snapshot: JsonElement,
 )
@@ -626,6 +628,12 @@ class SandboxQuickTest private constructor(
         sandbox.world.outputs.toList()
 
     /**
+     * Returns a defensive copy of all command trace events recorded so far.
+     */
+    fun traces(): List<CommandTraceEvent> =
+        sandbox.world.traces.toList()
+
+    /**
      * Returns output events matching [expectation] without registering a failure.
      */
     fun matchingOutputs(expectation: OutputExpectation): List<OutputEvent> =
@@ -660,6 +668,7 @@ class SandboxQuickTest private constructor(
             passed = failures.isEmpty(),
             failures = failures.toList(),
             outputs = sandbox.world.outputs.toList(),
+            traces = sandbox.world.traces.toList(),
             snapshot = sandbox.snapshotJson(),
         )
 

@@ -45,6 +45,19 @@ class MyDatapackTest {
 
 `requirePassed()` 在断言失败时抛出 `SandboxQuickTestAssertionError`。异常中包含所有失败项和最终 snapshot。
 
+`report()` 和 `requirePassed()` 返回的报告还包含结构化命令 trace。每条 trace 记录命令文本、命令根、是否成功、执行的命令数、产生的输出数、来源文件/行号、函数调用栈、执行者和位置。需要调试生成器输出或函数调用链时，可以直接读取：
+
+```kotlin
+val report = SandboxQuickTest.singleFunctionText(
+    functionText = "say traced",
+    version = "26.2",
+)
+    .function()
+    .requirePassed()
+
+println(report.traces.single().command)
+```
+
 `unsupportedFeatureMode` 可选值：
 
 - `WARN`：默认行为，未支持命令记录 warning 并继续。
@@ -225,6 +238,7 @@ class MyDatapackTest {
 | `assertOutputContains(text)` | 断言输出事件包含文本。 |
 | `assertOutput(...)` | 按 command/channel/target/text/count 断言输出事件。 |
 | `outputs()` | 返回记录的输出事件。 |
+| `traces()` | 返回记录的结构化命令 trace。 |
 | `matchingOutputs(...)` | 返回匹配结构化期望的输出事件。 |
 | `report()` | 返回 `SandboxQuickTestReport`，不抛异常。 |
 | `requirePassed()` | 返回报告；如果失败则抛异常。 |

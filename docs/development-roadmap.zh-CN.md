@@ -1,0 +1,309 @@
+# Datapack Sandbox 开发路线图
+
+本文档描述 Datapack Sandbox 接下来的完整开发路线。目标不是嵌入或复刻 Mojang 原版服务端，而是在洁净室、确定性、可测试的前提下，尽可能完整地模拟数据包可见的资源、命令、输入、输出和状态变化，让它适用于单元调试、随手小测试、命令生成器产物验证、CI 回归和多版本兼容检查。
+
+当前项目已经具备 `core` 运行时、`cli` 工具、REPL、`.dps.json` 清单、quick-test API、输出事件、世界 fixture、部分命令实现、loot/predicate/advancement/player event 支持，以及 Minecraft Java `1.20.4` 到 `26.2` 的版本 profile。后续路线应优先扩展这些已有接口，而不是另起一套并行系统。
+
+每轮完成后，进行一次提交。
+
+根据功能的进展，更新版本号。
+
+## 总体目标
+
+- 尽可能覆盖数据包资源：函数、标签、战利品表、谓词、进度、配方、物品修饰器、结构、维度、世界生成 JSON、damage type、enchantment、chat type、trim 等资源都应能加载、校验、索引和调试。
+- 尽可能覆盖数据包命令：优先实现会影响数据包可见状态、输出事件、断言结果和生成器测试的命令语义；对暂不模拟的原版副作用给出结构化诊断。
+- 支持多种测试入口：完整数据包、zip 包、单个 `.mcfunction`、内联函数文本、多函数轻量包、命令文本、命令文件、清单批量测试和代码级 quick-test。
+- 强化输入与输出 debug：输入事件、玩家事件、命令输出、warning、trace、snapshot、diff、失败解释都应可被 CLI、REPL、manifest 和 API 使用。
+- 保持确定性：随机、tick、loot、调度、选择器排序、snapshot 输出和诊断文本都要稳定，便于 CI 比较和生成器回归。
+- 明确非目标：不模拟网络连接、真实客户端 UI、完整权限系统、真实区块生成、完整红石、实体 AI、真实战斗物理、服务端线程模型和未经显式导入的世界内容。
+
+## 阶段 1：资源覆盖与资源索引
+
+目标：让沙盒能理解更多数据包资源，并能解释“加载了什么、为什么没加载、版本是否匹配”。
+
+主要任务：
+
+- 扩展 `DatapackLoader` 的资源读取范围，按版本 profile 支持当前目录名和历史别名。
+- 为新增资源建立 typed model 或至少建立稳定的 raw JSON resource model，包含 resource id、文件路径、版本、资源类型和原始 JSON。
+- 增加资源索引能力，按 namespace、类型、id、来源 pack 和覆盖顺序查询。
+- 扩展 pack overlay 诊断：当后加载 pack 覆盖前一个资源时，可在 verbose/trace 中显示覆盖关系。
+- 增加资源格式校验：JSON 解析、必填字段、resource location、版本目录布局、`pack.mcmeta` 格式范围、标签 `replace` 语义。
+- 扩展 `inspect registry/resource` 或新增等价 CLI/REPL 命令，列出资源和来源。
+
+优先资源：
+
+- P0：function tags、普通 tags、loot table、predicate、advancement、recipe、item modifier。
+- P1：damage type、chat type、dimension、dimension_type、worldgen configured/placed feature、structure、processor list。
+- P2：enchantment、jukebox song、trim material/pattern、banner pattern、wolf variant、painting variant 等版本相关注册表资源。
+
+验收标准：
+
+- 每种 P0 资源有 loader 测试、路径映射测试、zip/目录双形态测试和版本别名测试。
+- 加载失败包含文件、resource id、版本、资源类型和具体原因。
+- `check --verbose` 或 REPL inspect 能展示资源数量、重复覆盖和缺失引用。
+
+## 阶段 2：命令执行语义扩展
+
+目标：优先补齐数据包高频命令，让生成器产物和真实数据包逻辑能在沙盒中跑出可断言结果。
+
+主要任务：
+
+- 扩展 `execute`：
+  - 补齐 `if/unless` 的 `blocks`、`biome`、`loaded`、`dimension`、`predicate`、`function` 等路径。
+  - 补齐 `store` 的 result/success 到 score、storage、entity、block、bossbar 的边界行为。
+  - 提升 `as/at/positioned/rotated/facing/anchored/in/align` 的上下文准确性。
+- 扩展 `data`：
+  - 支持更完整的 data path，包括 list/object 匹配、append/prepend/insert、set/from/string/value。
+  - 所有写入都经过 NBT schema 或 sandbox state 规则校验。
+- 扩展 `loot`：
+  - 补齐 source：`mine`、`kill`、`fish`、`entity`、`block`、`equipment` 等适合测试的确定性模型。
+  - 输出既能进入玩家/方块/实体，也能作为独立生成结果供 CLI 和 manifest 断言。
+- 扩展 `item` 和 item modifier：
+  - 支持 entity/block slot 读写、modifier 应用、components/NBT 兼容差异。
+- 扩展 `recipe`、`advancement`、`attribute`、`damage`、`effect`、`enchant`、`random`、`team`、`bossbar`、`worldborder` 的子命令覆盖。
+- 为不适合完整模拟的命令保留结构化 no-op 或 unsupported warning，例如 `debug`、`jfr`、`publish`、`stop`、网络和权限相关命令。
+
+验收标准：
+
+- `docs/command-support.zh-CN.md` 中每个命令的支持状态都和实现保持同步。
+- 每个新增命令路径至少包含成功、参数错误、版本差异和 unsupported 策略测试。
+- 命令失败时能返回命令文本、函数文件、行号、调用栈和版本。
+
+## 阶段 3：世界、实体与玩家状态建模
+
+目标：把数据包能观察或修改的状态建成稳定、可序列化、可断言的内存模型。
+
+主要任务：
+
+- 完善 sparse world：
+  - 方块状态、方块实体 NBT、biome override、强加载 chunk、世界边界、时间、天气、难度、gamerule、spawn。
+  - 支持区域 fixture、结构 fixture、从 Java Anvil 存档按 chunk 或坐标范围导入。
+- 完善实体模型：
+  - 类型、UUID、位置、旋转、维度、tag、score holder、attributes、effects、passengers/vehicle、equipment、health、custom NBT。
+  - 不执行 AI tick，但保留数据包可读写字段和明确的 no-AI 语义说明。
+- 完善玩家模型：
+  - inventory、selected slot、ender items、recipes、stats、xp、health、food、gamemode、spawn、advancement progress、last input。
+  - 玩家 NBT 默认只读；可通过命令、fixture 或事件改变玩家状态。
+- 完善 item stack：
+  - 兼容旧版 NBT 和新版 components。
+  - 提供 matcher，支持 id、count、components path、NBT path、slot、enchantment、custom data。
+
+验收标准：
+
+- `snapshotJson()` 输出稳定排序，不受 map/list 插入顺序影响。
+- world fixture、manifest world、quick-test world builder 三者能力一致或差异明确记录。
+- 所有新增状态都有 snapshot、assertion 和 inspect 路径。
+
+## 阶段 4：输入事件与玩家交互模拟
+
+目标：让沙盒可以模拟数据包常见输入来源，尤其适合 advancement、predicate、交互型数据包和命令生成器测试。
+
+主要任务：
+
+- 扩展 `PlayerEvent`：
+  - item used、item consumed、entity interacted、entity killed、block placed、block broken、changed dimension、tick、damage、death、inventory changed。
+  - keyboard/mouse input 保留 device、code、action、坐标、tick、source。
+- 为事件建立 manifest step、CLI command、REPL command 和 quick-test API。
+- 事件可以触发 advancement、predicate、loot、scoreboard、storage 和输出命令。
+- 增加事件 trace：事件输入、匹配到的 advancement criteria、执行的 reward、失败原因。
+
+验收标准：
+
+- 每类 P0 事件至少有一个 full-stack 示例和一个 manifest 测试。
+- 输入事件可被 `assertPlayerLastInput`、snapshot、`inspect player` 检查。
+- advancement 条件不满足时能解释缺少的上下文或失败字段。
+
+## 阶段 5：输出、Trace 与 Debug 体验
+
+目标：让用户能解释数据包“为什么这样输出、为什么断言失败、哪条命令改变了状态”。
+
+主要任务：
+
+- 扩展 `OutputEvent`：
+  - 保留 tick、command、channel、targets、plain text、segments、payload、source location、function stack。
+  - 输出 channel 覆盖 chat、title、sound、visual、warning、data、debug。
+- 增加命令 trace：
+  - `--trace`：记录每条命令、上下文、结果、错误、输出事件。
+  - `--trace-file`：写出 JSONL，适合 CI artifact。
+  - `--trace-filter`：按 command、function、selector、output、score/storage 变化过滤。
+- 增加 snapshot diff：
+  - 对比执行前后 world、score、storage、player、entity、block、outputs。
+  - manifest 失败时可显示最小差异，而不是只输出最终 snapshot。
+- 增强断言失败解释：
+  - 输出最近相关命令、相关 state path、实际值、候选输出事件和建议检查项。
+
+验收标准：
+
+- `check --snapshot-on-fail` 保持兼容，新增 diff/trace 不破坏旧输出。
+- `run`、`check`、REPL 和 quick-test report 都能读取同一套 trace model。
+- 输出断言支持 text、contains、targets、payload path、segment style、count、order。
+
+## 阶段 6：测试入口与使用场景
+
+目标：针对不同用户场景提供最短路径，同时共用同一套核心运行时和断言系统。
+
+### 单元调试
+
+- 强化 `SandboxQuickTest` fluent API：
+  - `assertScore`、`assertStoragePath`、`assertPlayer`、`assertEntity`、`assertBlock`、`assertItem`、`assertOutput`、`assertTrace`。
+  - 支持可复用 fixture：world setup、players、entities、blocks、storage、scoreboard、packs。
+- 增加 JUnit 辅助错误格式，失败时输出最小 snapshot diff 和 trace 摘要。
+
+### 随手小测试
+
+- 增强 `run`：
+  - 支持 `--world` 传入小型 JSON fixture。
+  - 支持 `--assert` 传入一两个简单断言。
+  - 支持 `--stdin` 从标准输入读取函数或命令。
+- 增强 REPL：
+  - `inspect` 输出结构更稳定。
+  - 支持 `trace on/off`、`diff last`、`rerun last`、`reset world`、`load fixture`。
+
+### 命令生成器产物测试
+
+- 提供专用模板：
+  - 输入：生成器输出的 command、command file、mcfunction text 或临时 pack。
+  - 环境：声明依赖 pack、版本、world fixture、seed、默认玩家。
+  - 断言：输出文本、score/storage、NBT、实体数量、unsupported warning 数量。
+- 提供严格模式：
+  - unknown command、unsupported command、schema mismatch、资源缺失都可作为失败。
+  - 输出规范化，避免生成器因为空白、斜杠、换行差异导致误判。
+
+验收标准：
+
+- README 中每类场景有一个最短示例。
+- `examples/` 至少包含 full-stack、single-function、generator-output、multi-version 四类示例。
+- CLI 和 quick-test 对同一清单行为输出一致结果。
+
+## 阶段 7：Manifest 格式演进
+
+目标：让 `.dps.json` 成为稳定的回归测试格式，可以覆盖输入、执行、断言、trace 和多版本矩阵。
+
+主要任务：
+
+- 增加 manifest schema 文档和 JSON Schema。
+- 扩展 `world`：
+  - 支持 fixture 引用、模板继承、局部覆盖、save import 范围、多个玩家和多个维度。
+- 扩展 `steps`：
+  - 支持 `commands` 数组、`functionText`、`mcfunction`、`event`、`trace`、`snapshot`、`reset`。
+- 扩展 `assertions`：
+  - score、storage、player、entity、block、item、loot、predicate、advancement、output、trace、diagnostic、snapshot diff。
+  - 支持 equals、contains、exists、missing、count、min/max、matches、path。
+- 支持 manifest include：
+  - 公共世界 fixture、公共断言、公共 pack matrix，减少重复。
+
+验收标准：
+
+- manifest 新增字段向后兼容。
+- JSON Schema 能被编辑器使用，并在 CLI 中可选校验。
+- manifest 失败消息包含 assertion index、path、expected、actual。
+
+## 阶段 8：版本 Profile 与原版资料更新流程
+
+目标：保持多版本兼容，降低新增 Minecraft 版本时的维护成本。
+
+主要任务：
+
+- 固化版本 profile 更新流程：
+  - pack format、data version、资源目录、命令根、注册表默认值、NBT schema。
+  - 通过公开资料和 `vanilla-mcdoc` 生成 schema，不分发 Mojang 服务端代码。
+- 增加版本 profile 差异报告：
+  - 哪些资源目录变化、命令根变化、NBT 字段变化、注册表项变化。
+- 增加多版本测试矩阵：
+  - 同一行为在 `1.20.4`、中间版本和默认最新版本运行。
+  - 对 pack format 不同的示例使用 per-version pack。
+
+验收标准：
+
+- 新增版本只需改 profile 数据和生成资源，核心逻辑尽量无需修改。
+- `docs/version-profile.zh-CN.md` 自动或半自动更新。
+- 版本不兼容错误清晰说明当前 pack format 和期望 format。
+
+## 阶段 9：差分验证与可信度提升
+
+目标：用可控方式提高沙盒行为和原版的接近度，同时避免引入原版服务端依赖。
+
+主要任务：
+
+- 建立 golden case：
+  - 对常见命令、资源、事件和输出保存稳定 expected snapshot。
+  - 对 bugfix 增加回归用例。
+- 建立可选的外部差分流程：
+  - 用户本地提供原版服务端或第三方测试环境时，生成同一输入脚本并比较可观察结果。
+  - 该流程不作为核心构建依赖，不提交 Mojang 代码或产物。
+- 建立行为等级：
+  - `exact`：与原版可观察行为高度一致。
+  - `modeled`：沙盒内确定性模型，覆盖数据包测试所需行为。
+  - `observed-noop`：接受命令并记录输出/诊断，不改变真实副作用。
+  - `unsupported`：按策略 warn/error/ignore。
+
+验收标准：
+
+- 每个命令和资源文档标注行为等级。
+- 差分报告能指出字段级差异，而不是只给通过/失败。
+- 任何 intentionally different 行为都在文档中说明原因。
+
+## 阶段 10：性能、稳定性与发布质量
+
+目标：让沙盒可以承受较大的数据包、批量清单和 CI 使用。
+
+主要任务：
+
+- 性能基准：
+  - 大型 pack 加载、深函数调用、大量 scoreboard、巨大 storage、批量 manifest、loot 大量抽样。
+- 缓存：
+  - 资源解析缓存、schema 缓存、版本 profile 缓存；保证不破坏 watch/reload。
+- 错误边界：
+  - 函数递归深度、最大命令数、最大 tick 数、最大输出事件数、最大 snapshot 大小。
+- 发布质量：
+  - fat jar smoke test、Windows/Linux/macOS 命令测试、README 示例测试。
+  - Maven 发布准备：坐标、版本号、源码包、文档包。
+
+验收标准：
+
+- CI 至少运行 unit、manifest、examples、fat jar smoke 四类测试。
+- 大型测试失败时不会无限执行或输出不可控日志。
+- 发布前所有文档示例命令都能运行。
+
+## 优先级建议
+
+P0 必须优先完成：
+
+- 资源索引和 P0 资源加载。
+- `execute`、`data`、`loot`、`item` 的高频路径。
+- trace、snapshot diff、结构化失败解释。
+- manifest schema 和断言扩展。
+- quick-test API 与 CLI 使用场景补齐。
+
+P1 紧随其后：
+
+- 更多资源类型和版本差异。
+- 玩家事件扩展。
+- 存档导入增强。
+- 命令生成器测试模板。
+- 多版本 profile 更新流程。
+
+P2 按需求推进：
+
+- worldgen/structure 更深入模拟。
+- 可选外部差分验证。
+- 高级性能缓存。
+- Maven 发布和更完整的平台测试。
+
+## 设计约束
+
+- 所有新能力必须通过 `core` 暴露稳定模型，再由 CLI、REPL、manifest 和 quick-test 复用。
+- 所有输出和 snapshot 必须确定性排序。
+- 所有 unsupported/no-op 行为必须可配置为 warn、error 或 ignore。
+- 新增 public API 应尽量保持 Kotlin/Java 友好，不要求用户依赖 CLI 才能测试。
+- 新增格式必须向后兼容现有 `.dps.json`。
+- 不应为了模拟原版而引入网络服务端、Mojang 服务端 jar 或不可分发代码。
+
+## 推荐里程碑
+
+1. `0.2`：资源索引、manifest schema、trace 基础、更多输出断言。
+2. `0.3`：`execute/data/loot/item` 高频路径补齐，命令生成器测试模板可用。
+3. `0.4`：玩家事件和 world fixture 大幅增强，examples 覆盖主要使用场景。
+4. `0.5`：多版本 profile 更新流程稳定，P0/P1 资源覆盖完成。
+5. `1.0`：核心 API 稳定、CLI 行为稳定、文档示例可验证、CI 覆盖完整，适合作为数据包本地回归测试工具长期使用。
+

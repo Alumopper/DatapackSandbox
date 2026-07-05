@@ -90,6 +90,70 @@ data class ResourceJson(
 )
 
 /**
+ * Loaded raw JSON resource with a stable kind label.
+ *
+ * This is used for datapack resources whose full runtime semantics are not yet
+ * modeled, while still making them loadable, inspectable, and version-aware.
+ */
+data class RawJsonResource(
+    val kind: String,
+    val id: ResourceLocation,
+    val file: String,
+    val root: JsonElement,
+)
+
+/**
+ * One value entry inside a datapack tag.
+ */
+data class TagValue(
+    /** Raw id text. Tag references keep their leading '#'. */
+    val id: String,
+    /** Vanilla tag object entries may mark a value as optional. */
+    val required: Boolean = true,
+)
+
+/**
+ * Resource key for a tag under a registry directory such as `item` or `block`.
+ */
+data class TagKey(
+    val registry: String,
+    val id: ResourceLocation,
+) : Comparable<TagKey> {
+    override fun compareTo(other: TagKey): Int =
+        compareValuesBy(this, other, TagKey::registry, { it.id.toString() })
+
+    override fun toString(): String = "$registry/$id"
+}
+
+/**
+ * Loaded datapack tag definition.
+ */
+data class TagDefinition(
+    val key: TagKey,
+    val file: String,
+    val replace: Boolean = false,
+    val values: List<TagValue> = emptyList(),
+)
+
+/**
+ * One resource contribution recorded while loading datapacks.
+ *
+ * [active] is false when a later pack overrode the resource. [overrides] and
+ * [overriddenBy] make pack overlay behavior inspectable without changing the
+ * loaded runtime maps.
+ */
+data class ResourceIndexEntry(
+    val type: String,
+    val id: ResourceLocation,
+    val file: String,
+    val pack: String,
+    val order: Int,
+    val active: Boolean = true,
+    val overrides: String? = null,
+    val overriddenBy: String? = null,
+)
+
+/**
  * Loaded loot table resource.
  */
 data class LootTable(
@@ -167,6 +231,10 @@ data class Datapack(
     val lootTables: Map<ResourceLocation, LootTable> = emptyMap(),
     val predicates: Map<ResourceLocation, PredicateDefinition> = emptyMap(),
     val advancements: Map<ResourceLocation, AdvancementDefinition> = emptyMap(),
+    val recipes: Map<ResourceLocation, RawJsonResource> = emptyMap(),
+    val itemModifiers: Map<ResourceLocation, RawJsonResource> = emptyMap(),
+    val tags: Map<TagKey, TagDefinition> = emptyMap(),
+    val resourceIndex: List<ResourceIndexEntry> = emptyList(),
 ) {
     /**
      * Returns a function by id.
@@ -214,5 +282,41 @@ data class Datapack(
             ?: throw SandboxException(
                 code = DiagnosticCode.RESOURCE_NOT_FOUND,
                 message = "Advancement '$id' was not found",
+            )
+
+    /**
+     * Returns a recipe by id.
+     *
+     * @throws SandboxException with [DiagnosticCode.RESOURCE_NOT_FOUND] when missing.
+     */
+    fun recipe(id: ResourceLocation): RawJsonResource =
+        recipes[id]
+            ?: throw SandboxException(
+                code = DiagnosticCode.RESOURCE_NOT_FOUND,
+                message = "Recipe '$id' was not found",
+            )
+
+    /**
+     * Returns an item modifier by id.
+     *
+     * @throws SandboxException with [DiagnosticCode.RESOURCE_NOT_FOUND] when missing.
+     */
+    fun itemModifier(id: ResourceLocation): RawJsonResource =
+        itemModifiers[id]
+            ?: throw SandboxException(
+                code = DiagnosticCode.RESOURCE_NOT_FOUND,
+                message = "Item modifier '$id' was not found",
+            )
+
+    /**
+     * Returns a datapack tag by registry and id.
+     *
+     * @throws SandboxException with [DiagnosticCode.RESOURCE_NOT_FOUND] when missing.
+     */
+    fun tag(registry: String, id: ResourceLocation): TagDefinition =
+        tags[TagKey(registry, id)]
+            ?: throw SandboxException(
+                code = DiagnosticCode.RESOURCE_NOT_FOUND,
+                message = "Tag '$registry/$id' was not found",
             )
 }
