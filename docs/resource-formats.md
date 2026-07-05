@@ -134,7 +134,7 @@ should be asserted later with a `diagnostic` assertion.
 
 `world` can predefine sparse blocks/entities/players, scoreboards, storage,
 gamerules, time/weather, seed/difficulty/default game mode, world/player spawn
-points, forced chunks, biome overrides, teams, bossbars, and scoped Java save
+points, world border, forced chunks, biome overrides, teams, bossbars, and scoped Java save
 imports.
 
 Assertions support score, storage, world, player, team, bossbar, block,
@@ -157,7 +157,7 @@ path, for example `assertion 1 (/assertions/0): ...`.
 ```
 
 ```json
-{ "world": { "difficulty": "hard", "forcedChunk": [0, 0] } }
+{ "world": { "difficulty": "hard", "forcedChunk": [0, 0], "worldBorder": { "size": 100 } } }
 ```
 
 ```json

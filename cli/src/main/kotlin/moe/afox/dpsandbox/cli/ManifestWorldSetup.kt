@@ -37,6 +37,7 @@ object ManifestWorldSetup {
         (world.manifestString("defaultGameMode") ?: world.manifestString("defaultGamemode"))?.let { setup.defaultGameMode(it) }
         world.manifestString("weather")?.let { setup.weather(it, world.get("weatherDuration")?.asInt ?: 0) }
         world.getAsJsonObject("worldSpawn")?.let { setupWorldSpawn(setup, it) }
+        world.getAsJsonObject("worldBorder")?.let { setupWorldBorder(setup, it) }
 
         world.getAsJsonObject("gamerules")?.entrySet()?.forEach { (name, value) ->
             setup.gamerule(name, manifestPrimitiveString(value))
@@ -158,6 +159,20 @@ object ManifestWorldSetup {
             dimension = spawn.manifestString("dimension") ?: "minecraft:overworld",
             angle = spawn.get("angle")?.asDouble,
             forced = spawn.get("forced")?.asBoolean ?: false,
+        )
+    }
+
+    private fun setupWorldBorder(setup: SandboxWorldSetup, border: JsonObject) {
+        setup.worldBorder(
+            centerX = border.get("centerX")?.asDouble,
+            centerZ = border.get("centerZ")?.asDouble,
+            size = border.get("size")?.asDouble,
+            targetSize = border.get("targetSize")?.asDouble,
+            lerpTimeSeconds = border.get("lerpTimeSeconds")?.asLong,
+            damageBuffer = border.get("damageBuffer")?.asDouble,
+            damageAmount = border.get("damageAmount")?.asDouble,
+            warningDistance = border.get("warningDistance")?.asInt,
+            warningTime = border.get("warningTime")?.asInt,
         )
     }
 

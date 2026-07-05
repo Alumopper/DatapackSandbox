@@ -143,7 +143,8 @@ class SandboxQuickTestTest {
             .world {
                 forcedChunk(0, 0)
                 biome(0, 64, 0, "minecraft:plains")
-                worldSpawn(4.0, 70.0, 5.0, angle = 90.0)
+                worldSpawn(4.0, 70.0, 5.0, angle = 90.0, forced = true)
+                worldBorder(centerX = 5.0, centerZ = -6.0, size = 100.0, warningDistance = 8)
             }
             .assertWorld(
                 forcedChunkX = 1,
@@ -155,6 +156,10 @@ class SandboxQuickTestTest {
                 worldSpawn = Position(1.0, 70.0, 5.0),
                 worldSpawnDimension = "minecraft:the_nether",
                 worldSpawnAngle = 45.0,
+                worldSpawnForced = false,
+                worldBorderCenterX = 4.0,
+                worldBorderSize = 90.0,
+                worldBorderWarningDistance = 9,
             )
             .report()
 
@@ -164,6 +169,10 @@ class SandboxQuickTestTest {
         assertTrue(report.failures.any { "world spawn position expected Position(x=1.0, y=70.0, z=5.0)" in it }, report.failures.joinToString())
         assertTrue(report.failures.any { "world spawn dimension expected minecraft:the_nether" in it }, report.failures.joinToString())
         assertTrue(report.failures.any { "world spawn angle expected 45.0 but was 90.0" in it }, report.failures.joinToString())
+        assertTrue(report.failures.any { "world spawn forced expected false but was true" in it }, report.failures.joinToString())
+        assertTrue(report.failures.any { "world border centerX expected 4.0 but was 5.0" in it }, report.failures.joinToString())
+        assertTrue(report.failures.any { "world border size expected 90.0 but was 100.0" in it }, report.failures.joinToString())
+        assertTrue(report.failures.any { "world border warningDistance expected 9 but was 8" in it }, report.failures.joinToString())
     }
 
     @Test
@@ -475,9 +484,20 @@ class SandboxQuickTestTest {
                 seed(123)
                 difficulty("hard")
                 defaultGameMode("creative")
-                worldSpawn(4.0, 70.0, 5.0, angle = 90.0)
+                worldSpawn(4.0, 70.0, 5.0, angle = 90.0, forced = true)
                 forcedChunk(0, 0)
                 biome(0, 64, 0, "minecraft:plains")
+                worldBorder(
+                    centerX = 5.0,
+                    centerZ = -6.0,
+                    size = 100.0,
+                    targetSize = 120.0,
+                    lerpTimeSeconds = 30,
+                    damageBuffer = 3.0,
+                    damageAmount = 0.5,
+                    warningDistance = 8,
+                    warningTime = 20,
+                )
                 block(0, 64, 0, "minecraft:chest", nbt = "{Items:[]}")
                 entity("minecraft:pig", 1.0, 64.0, 0.0, tags = listOf("fixture"))
                 player(
@@ -518,6 +538,16 @@ class SandboxQuickTestTest {
                 worldSpawn = Position(4.0, 70.0, 5.0),
                 worldSpawnDimension = "minecraft:overworld",
                 worldSpawnAngle = 90.0,
+                worldSpawnForced = true,
+                worldBorderCenterX = 5.0,
+                worldBorderCenterZ = -6.0,
+                worldBorderSize = 100.0,
+                worldBorderTargetSize = 120.0,
+                worldBorderLerpTimeSeconds = 30,
+                worldBorderDamageBuffer = 3.0,
+                worldBorderDamageAmount = 0.5,
+                worldBorderWarningDistance = 8,
+                worldBorderWarningTime = 20,
             )
             .assertBlock(0, 64, 0, "minecraft:chest", nbtPath = "Items", nbtEquals = "[]")
             .assertEntity(type = "minecraft:pig", tag = "fixture", position = Position(1.0, 64.0, 0.0))

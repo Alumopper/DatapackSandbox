@@ -179,9 +179,10 @@ SandboxQuickTest.create(
         seed(123)
         difficulty("hard")
         defaultGameMode("creative")
-        worldSpawn(4.0, 70.0, 5.0)
+        worldSpawn(4.0, 70.0, 5.0, forced = true)
         forcedChunk(0, 0)
         biome(0, 64, 0, "minecraft:plains")
+        worldBorder(centerX = 5.0, centerZ = -6.0, size = 100.0, warningDistance = 8)
         block(0, 64, 0, "minecraft:chest", nbt = "{Items:[]}")
         entity("minecraft:pig", 1.0, 64.0, 0.0, tags = listOf("fixture"))
         player("Alex", x = 2.0, y = 65.0, z = 3.0, xp = 5, inventory = listOf(item("minecraft:stick", 2)))
@@ -207,6 +208,11 @@ SandboxQuickTest.create(
         worldSpawn = Position(4.0, 70.0, 5.0),
         worldSpawnDimension = "minecraft:overworld",
         worldSpawnAngle = 90.0,
+        worldSpawnForced = true,
+        worldBorderCenterX = 5.0,
+        worldBorderCenterZ = -6.0,
+        worldBorderSize = 100.0,
+        worldBorderWarningDistance = 8,
     )
     .assertBlock(0, 64, 0, "minecraft:chest", nbtPath = "Items", nbtEquals = "[]")
     .assertEntity(type = "minecraft:pig", tag = "fixture")
@@ -310,7 +316,7 @@ class MyDatapackTest {
 | `assertStorageEquals(id, path, expectedJson)` | Assert a storage path |
 | `assertStorageExists(id, path)` | Assert that a storage root or path exists |
 | `assertStorageMissing(id, path)` | Assert that a storage root or path is absent |
-| `assertWorld(...)` | Assert selected world-level state, forced chunks, biome overrides, and world spawn |
+| `assertWorld(...)` | Assert selected world-level state, forced chunks, biome overrides, world spawn, and world border |
 | `assertPlayer(...)` | Assert selected player state, including spawn point details |
 | `assertBlock(x, y, z, id, exists, nbtPath, nbtEquals, nbtExists)` | Assert a sparse-world block |
 | `assertEntity(type, tag, uuid, position, exists, count)` | Assert matching entity existence or count |

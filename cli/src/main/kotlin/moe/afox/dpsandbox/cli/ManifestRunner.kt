@@ -22,6 +22,7 @@ import moe.afox.dpsandbox.core.SandboxException
 import moe.afox.dpsandbox.core.SandboxEntity
 import moe.afox.dpsandbox.core.SandboxBlock
 import moe.afox.dpsandbox.core.SandboxWorld
+import moe.afox.dpsandbox.core.SandboxWorldBorder
 import moe.afox.dpsandbox.core.SnapshotDiff
 import moe.afox.dpsandbox.core.SourceLocation
 import moe.afox.dpsandbox.core.TraceAssertions
@@ -919,7 +920,27 @@ object ManifestRunner {
                     failures += "world spawn angle expected ${it.asDouble} but was ${sandbox.world.worldSpawn.angle}"
                 }
             }
+            spawn.get("forced")?.let {
+                if (sandbox.world.worldSpawn.forced != it.asBoolean) {
+                    failures += "world spawn forced expected ${it.asBoolean} but was ${sandbox.world.worldSpawn.forced}"
+                }
+            }
         }
+        world.getAsJsonObject("worldBorder")?.let { failures += evaluateWorldBorderAssertion(it, sandbox.world.worldBorder) }
+        return failures
+    }
+
+    private fun evaluateWorldBorderAssertion(border: JsonObject, actual: SandboxWorldBorder): List<String> {
+        val failures = mutableListOf<String>()
+        border.get("centerX")?.asDouble?.let { if (actual.centerX != it) failures += "world border centerX expected $it but was ${actual.centerX}" }
+        border.get("centerZ")?.asDouble?.let { if (actual.centerZ != it) failures += "world border centerZ expected $it but was ${actual.centerZ}" }
+        border.get("size")?.asDouble?.let { if (actual.size != it) failures += "world border size expected $it but was ${actual.size}" }
+        border.get("targetSize")?.asDouble?.let { if (actual.targetSize != it) failures += "world border targetSize expected $it but was ${actual.targetSize}" }
+        border.get("lerpTimeSeconds")?.asLong?.let { if (actual.lerpTimeSeconds != it) failures += "world border lerpTimeSeconds expected $it but was ${actual.lerpTimeSeconds}" }
+        border.get("damageBuffer")?.asDouble?.let { if (actual.damageBuffer != it) failures += "world border damageBuffer expected $it but was ${actual.damageBuffer}" }
+        border.get("damageAmount")?.asDouble?.let { if (actual.damageAmount != it) failures += "world border damageAmount expected $it but was ${actual.damageAmount}" }
+        border.get("warningDistance")?.asInt?.let { if (actual.warningDistance != it) failures += "world border warningDistance expected $it but was ${actual.warningDistance}" }
+        border.get("warningTime")?.asInt?.let { if (actual.warningTime != it) failures += "world border warningTime expected $it but was ${actual.warningTime}" }
         return failures
     }
 

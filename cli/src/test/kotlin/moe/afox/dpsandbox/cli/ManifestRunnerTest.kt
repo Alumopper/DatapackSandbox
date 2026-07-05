@@ -36,6 +36,9 @@ class ManifestRunnerTest {
         val worldProperties = schema.getAsJsonObject("\$defs")
             .getAsJsonObject("worldFixture")
             .getAsJsonObject("properties")
+        val worldAssertionProperties = schema.getAsJsonObject("\$defs")
+            .getAsJsonObject("worldAssertion")
+            .getAsJsonObject("properties")
         val rootProperties = schema.getAsJsonObject("properties")
 
         listOf("extends", "fixture", "fixtures").forEach { name ->
@@ -44,6 +47,14 @@ class ManifestRunnerTest {
             assertEquals("#/\$defs/stringArray", variants[1].asJsonObject.get("\$ref").asString)
         }
         assertEquals("boolean", rootProperties.getAsJsonObject("failOnMissingResources").get("type").asString)
+        assertEquals(
+            "#/\$defs/worldBorder",
+            worldProperties.getAsJsonObject("worldBorder").get("\$ref").asString,
+        )
+        assertEquals(
+            "#/\$defs/worldBorder",
+            worldAssertionProperties.getAsJsonObject("worldBorder").get("\$ref").asString,
+        )
     }
 
     @Test
@@ -342,7 +353,18 @@ class ManifestRunnerTest {
                 "seed": 123,
                 "difficulty": "hard",
                 "defaultGameMode": "creative",
-                "worldSpawn": { "pos": [4, 70, 5], "angle": 90 },
+                "worldSpawn": { "pos": [4, 70, 5], "angle": 90, "forced": true },
+                "worldBorder": {
+                  "centerX": 5,
+                  "centerZ": -6,
+                  "size": 100,
+                  "targetSize": 120,
+                  "lerpTimeSeconds": 30,
+                  "damageBuffer": 3,
+                  "damageAmount": 0.5,
+                  "warningDistance": 8,
+                  "warningTime": 20
+                },
                 "forcedChunks": [[0, 0]],
                 "biomes": [
                   { "pos": [0, 64, 0], "id": "minecraft:plains" }
@@ -394,7 +416,18 @@ class ManifestRunnerTest {
                     "seed": 123,
                     "difficulty": "hard",
                     "defaultGameMode": "creative",
-                    "worldSpawn": { "pos": [4, 70, 5], "dimension": "minecraft:overworld", "angle": 90 },
+                    "worldSpawn": { "pos": [4, 70, 5], "dimension": "minecraft:overworld", "angle": 90, "forced": true },
+                    "worldBorder": {
+                      "centerX": 5,
+                      "centerZ": -6,
+                      "size": 100,
+                      "targetSize": 120,
+                      "lerpTimeSeconds": 30,
+                      "damageBuffer": 3,
+                      "damageAmount": 0.5,
+                      "warningDistance": 8,
+                      "warningTime": 20
+                    },
                     "forcedChunk": [0, 0],
                     "biome": { "pos": [0, 64, 0], "id": "minecraft:plains" }
                   }
@@ -1014,11 +1047,11 @@ class ManifestRunnerTest {
               "version": "26.1.2",
               "packs": ["$pack"],
               "world": {
-                "worldSpawn": { "pos": [4, 70, 5], "angle": 90 }
+                "worldSpawn": { "pos": [4, 70, 5], "angle": 90, "forced": true }
               },
               "steps": [],
               "assertions": [
-                { "world": { "worldSpawn": { "angle": 45 } } }
+                { "world": { "worldSpawn": { "angle": 45, "forced": false } } }
               ]
             }
             """.trimIndent(),
@@ -1028,6 +1061,52 @@ class ManifestRunnerTest {
 
         assertFalse(result.passed)
         assertTrue(result.messages.any { "world spawn angle expected 45.0 but was 90.0" in it }, result.messages.joinToString())
+        assertTrue(result.messages.any { "world spawn forced expected false but was true" in it }, result.messages.joinToString())
+    }
+
+    @Test
+    fun `runs manifest world border assertions`() {
+        val dir = Files.createTempDirectory("dps-world-border-manifest")
+        val pack = Path.of("../core/src/test/resources/packs/counter").toAbsolutePath().normalize().toString().replace("\\", "\\\\")
+        val manifest = dir.resolve("world-border.dps.json")
+        Files.writeString(
+            manifest,
+            """
+            {
+              "version": "26.1.2",
+              "packs": ["$pack"],
+              "world": {
+                "worldBorder": {
+                  "centerX": 5,
+                  "centerZ": -6,
+                  "size": 100,
+                  "warningDistance": 8
+                }
+              },
+              "steps": [],
+              "assertions": [
+                {
+                  "world": {
+                    "worldBorder": {
+                      "centerX": 4,
+                      "centerZ": -7,
+                      "size": 90,
+                      "warningDistance": 9
+                    }
+                  }
+                }
+              ]
+            }
+            """.trimIndent(),
+        )
+
+        val result = ManifestRunner.run(manifest)
+
+        assertFalse(result.passed)
+        assertTrue(result.messages.any { "world border centerX expected 4.0 but was 5.0" in it }, result.messages.joinToString())
+        assertTrue(result.messages.any { "world border centerZ expected -7.0 but was -6.0" in it }, result.messages.joinToString())
+        assertTrue(result.messages.any { "world border size expected 90.0 but was 100.0" in it }, result.messages.joinToString())
+        assertTrue(result.messages.any { "world border warningDistance expected 9 but was 8" in it }, result.messages.joinToString())
     }
 
     @Test

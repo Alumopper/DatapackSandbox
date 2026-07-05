@@ -321,6 +321,16 @@ class SandboxQuickTestMatrix private constructor(
         worldSpawn: Position? = null,
         worldSpawnDimension: String? = null,
         worldSpawnAngle: Double? = null,
+        worldSpawnForced: Boolean? = null,
+        worldBorderCenterX: Double? = null,
+        worldBorderCenterZ: Double? = null,
+        worldBorderSize: Double? = null,
+        worldBorderTargetSize: Double? = null,
+        worldBorderLerpTimeSeconds: Long? = null,
+        worldBorderDamageBuffer: Double? = null,
+        worldBorderDamageAmount: Double? = null,
+        worldBorderWarningDistance: Int? = null,
+        worldBorderWarningTime: Int? = null,
     ): SandboxQuickTestMatrix = apply {
         scenarios.values.forEach {
             it.assertWorld(
@@ -339,6 +349,16 @@ class SandboxQuickTestMatrix private constructor(
                 worldSpawn = worldSpawn,
                 worldSpawnDimension = worldSpawnDimension,
                 worldSpawnAngle = worldSpawnAngle,
+                worldSpawnForced = worldSpawnForced,
+                worldBorderCenterX = worldBorderCenterX,
+                worldBorderCenterZ = worldBorderCenterZ,
+                worldBorderSize = worldBorderSize,
+                worldBorderTargetSize = worldBorderTargetSize,
+                worldBorderLerpTimeSeconds = worldBorderLerpTimeSeconds,
+                worldBorderDamageBuffer = worldBorderDamageBuffer,
+                worldBorderDamageAmount = worldBorderDamageAmount,
+                worldBorderWarningDistance = worldBorderWarningDistance,
+                worldBorderWarningTime = worldBorderWarningTime,
             )
         }
     }
@@ -1094,6 +1114,16 @@ class SandboxQuickTest private constructor(
         worldSpawn: Position? = null,
         worldSpawnDimension: String? = null,
         worldSpawnAngle: Double? = null,
+        worldSpawnForced: Boolean? = null,
+        worldBorderCenterX: Double? = null,
+        worldBorderCenterZ: Double? = null,
+        worldBorderSize: Double? = null,
+        worldBorderTargetSize: Double? = null,
+        worldBorderLerpTimeSeconds: Long? = null,
+        worldBorderDamageBuffer: Double? = null,
+        worldBorderDamageAmount: Double? = null,
+        worldBorderWarningDistance: Int? = null,
+        worldBorderWarningTime: Int? = null,
     ): SandboxQuickTest = apply {
         gameTime?.let { if (sandbox.world.gameTime != it) failures += "world gameTime expected $it but was ${sandbox.world.gameTime}" }
         dayTime?.let { if (sandbox.world.dayTime != it) failures += "world dayTime expected $it but was ${sandbox.world.dayTime}" }
@@ -1139,6 +1169,20 @@ class SandboxQuickTest private constructor(
                 failures += "world spawn angle expected $it but was ${sandbox.world.worldSpawn.angle}"
             }
         }
+        worldSpawnForced?.let {
+            if (sandbox.world.worldSpawn.forced != it) {
+                failures += "world spawn forced expected $it but was ${sandbox.world.worldSpawn.forced}"
+            }
+        }
+        worldBorderCenterX?.let { if (sandbox.world.worldBorder.centerX != it) failures += "world border centerX expected $it but was ${sandbox.world.worldBorder.centerX}" }
+        worldBorderCenterZ?.let { if (sandbox.world.worldBorder.centerZ != it) failures += "world border centerZ expected $it but was ${sandbox.world.worldBorder.centerZ}" }
+        worldBorderSize?.let { if (sandbox.world.worldBorder.size != it) failures += "world border size expected $it but was ${sandbox.world.worldBorder.size}" }
+        worldBorderTargetSize?.let { if (sandbox.world.worldBorder.targetSize != it) failures += "world border targetSize expected $it but was ${sandbox.world.worldBorder.targetSize}" }
+        worldBorderLerpTimeSeconds?.let { if (sandbox.world.worldBorder.lerpTimeSeconds != it) failures += "world border lerpTimeSeconds expected $it but was ${sandbox.world.worldBorder.lerpTimeSeconds}" }
+        worldBorderDamageBuffer?.let { if (sandbox.world.worldBorder.damageBuffer != it) failures += "world border damageBuffer expected $it but was ${sandbox.world.worldBorder.damageBuffer}" }
+        worldBorderDamageAmount?.let { if (sandbox.world.worldBorder.damageAmount != it) failures += "world border damageAmount expected $it but was ${sandbox.world.worldBorder.damageAmount}" }
+        worldBorderWarningDistance?.let { if (sandbox.world.worldBorder.warningDistance != it) failures += "world border warningDistance expected $it but was ${sandbox.world.worldBorder.warningDistance}" }
+        worldBorderWarningTime?.let { if (sandbox.world.worldBorder.warningTime != it) failures += "world border warningTime expected $it but was ${sandbox.world.worldBorder.warningTime}" }
     }
 
     /**

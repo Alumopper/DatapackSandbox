@@ -100,6 +100,21 @@
       },
       "additionalProperties": false
     },
+    "worldBorder": {
+      "type": "object",
+      "properties": {
+        "centerX": { "type": "number" },
+        "centerZ": { "type": "number" },
+        "size": { "type": "number", "minimum": 1 },
+        "targetSize": { "type": "number", "minimum": 1 },
+        "lerpTimeSeconds": { "type": "integer", "minimum": 0 },
+        "damageBuffer": { "type": "number" },
+        "damageAmount": { "type": "number" },
+        "warningDistance": { "type": "integer", "minimum": 0 },
+        "warningTime": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
     "worldFixture": {
       "type": "object",
       "properties": {
@@ -131,6 +146,7 @@
         "weather": { "type": "string", "enum": ["clear", "rain", "thunder"] },
         "weatherDuration": { "type": "integer", "minimum": 0 },
         "worldSpawn": { "$ref": "#/$defs/spawnPoint" },
+        "worldBorder": { "$ref": "#/$defs/worldBorder" },
         "forcedChunks": {
           "type": "array",
           "items": { "$ref": "#/$defs/chunk" }
@@ -501,7 +517,8 @@
           },
           "additionalProperties": false
         },
-        "worldSpawn": { "$ref": "#/$defs/spawnPoint" }
+        "worldSpawn": { "$ref": "#/$defs/spawnPoint" },
+        "worldBorder": { "$ref": "#/$defs/worldBorder" }
       },
       "additionalProperties": false
     },

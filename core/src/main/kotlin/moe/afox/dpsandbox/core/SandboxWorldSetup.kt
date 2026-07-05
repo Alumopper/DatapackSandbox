@@ -103,6 +103,40 @@ class SandboxWorldSetup {
     }
 
     /**
+     * Sets selected world border fields.
+     *
+     * @return this setup for fluent chaining.
+     */
+    @JvmOverloads
+    fun worldBorder(
+        centerX: Double? = null,
+        centerZ: Double? = null,
+        size: Double? = null,
+        targetSize: Double? = null,
+        lerpTimeSeconds: Long? = null,
+        damageBuffer: Double? = null,
+        damageAmount: Double? = null,
+        warningDistance: Int? = null,
+        warningTime: Int? = null,
+    ): SandboxWorldSetup = apply {
+        operations += { world, _ ->
+            val border = world.worldBorder
+            centerX?.let { border.centerX = it }
+            centerZ?.let { border.centerZ = it }
+            size?.let {
+                border.size = it
+                if (targetSize == null) border.targetSize = it
+            }
+            targetSize?.let { border.targetSize = it }
+            lerpTimeSeconds?.let { border.lerpTimeSeconds = it }
+            damageBuffer?.let { border.damageBuffer = it }
+            damageAmount?.let { border.damageAmount = it }
+            warningDistance?.let { border.warningDistance = it }
+            warningTime?.let { border.warningTime = it }
+        }
+    }
+
+    /**
      * Sets the stored weather state.
      *
      * @param kind One of `clear`, `rain`, or `thunder`.

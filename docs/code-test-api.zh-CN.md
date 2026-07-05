@@ -155,9 +155,10 @@ SandboxQuickTest.create(
         seed(123)
         difficulty("hard")
         defaultGameMode("creative")
-        worldSpawn(4.0, 70.0, 5.0)
+        worldSpawn(4.0, 70.0, 5.0, forced = true)
         forcedChunk(0, 0)
         biome(0, 64, 0, "minecraft:plains")
+        worldBorder(centerX = 5.0, centerZ = -6.0, size = 100.0, warningDistance = 8)
         block(0, 64, 0, "minecraft:chest", nbt = "{Items:[]}")
         entity("minecraft:pig", 1.0, 64.0, 0.0, tags = listOf("fixture"))
         player("Alex", x = 2.0, y = 65.0, z = 3.0, xp = 5, inventory = listOf(item("minecraft:stick", 2)))
@@ -183,6 +184,11 @@ SandboxQuickTest.create(
         worldSpawn = Position(4.0, 70.0, 5.0),
         worldSpawnDimension = "minecraft:overworld",
         worldSpawnAngle = 90.0,
+        worldSpawnForced = true,
+        worldBorderCenterX = 5.0,
+        worldBorderCenterZ = -6.0,
+        worldBorderSize = 100.0,
+        worldBorderWarningDistance = 8,
     )
     .assertBlock(0, 64, 0, "minecraft:chest", nbtPath = "Items", nbtEquals = "[]")
     .assertEntity(type = "minecraft:pig", tag = "fixture")
@@ -284,7 +290,7 @@ class MyDatapackTest {
 | `assertStorageEquals(id, path, expectedJson)` | 断言 storage 路径。 |
 | `assertStorageExists(id, path)` | 断言 storage 根对象或路径存在。 |
 | `assertStorageMissing(id, path)` | 断言 storage 根对象或路径不存在。 |
-| `assertWorld(...)` | 断言选定的世界级状态、force-loaded chunk、biome override 和世界出生点。 |
+| `assertWorld(...)` | 断言选定的世界级状态、force-loaded chunk、biome override、世界出生点和世界边界。 |
 | `assertPlayer(...)` | 断言选定的玩家状态，包括出生点细节。 |
 | `assertBlock(x, y, z, id, exists, nbtPath, nbtEquals, nbtExists)` | 断言 sparse world 中的方块。 |
 | `assertEntity(type, tag, uuid, position, exists, count)` | 断言匹配实体存在性或数量。 |
