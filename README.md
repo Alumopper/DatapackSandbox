@@ -84,6 +84,12 @@ trace output:
 java -jar cli/build/libs/datapack-sandbox-cli.jar run --pack ./my_pack --function demo:main --trace --trace-file trace.jsonl
 ```
 
+Write observable command outputs as JSONL for CI artifacts:
+
+```bash
+java -jar cli/build/libs/datapack-sandbox-cli.jar run --pack ./my_pack --function demo:main --outputs-file outputs.jsonl
+```
+
 Use `--trace-filter root=scoreboard` or `--trace-filter contains=reward` to
 keep only the relevant trace events in both console output and JSONL files.
 
@@ -161,7 +167,7 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar check ./sandbox-cases --snapsh
 For CI artifacts, `check` can also write command traces:
 
 ```bash
-java -jar cli/build/libs/datapack-sandbox-cli.jar check ./sandbox-cases --trace-filter root=scoreboard --trace-file check-trace.jsonl
+java -jar cli/build/libs/datapack-sandbox-cli.jar check ./sandbox-cases --trace-filter root=scoreboard --trace-file check-trace.jsonl --outputs-file check-outputs.jsonl
 ```
 
 For ad hoc checks without a full manifest, `run` can apply a manifest-style

@@ -70,6 +70,12 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar run --pack ./my_pack --load --
 java -jar cli/build/libs/datapack-sandbox-cli.jar run --pack ./my_pack --function demo:main --trace --trace-file trace.jsonl
 ```
 
+将可观察命令输出写成 JSONL，便于作为 CI artifact 保存：
+
+```bash
+java -jar cli/build/libs/datapack-sandbox-cli.jar run --pack ./my_pack --function demo:main --outputs-file outputs.jsonl
+```
+
 需要查看运行前后状态变化时，输出 snapshot diff：
 
 ```bash
@@ -131,6 +137,12 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar schema --output dps-manifest.s
 
 ```bash
 java -jar cli/build/libs/datapack-sandbox-cli.jar check ./sandbox-cases --snapshot-on-fail --snapshot-diff-on-fail
+```
+
+`check` 也可以把 trace 和输出事件写成 CI artifact：
+
+```bash
+java -jar cli/build/libs/datapack-sandbox-cli.jar check ./sandbox-cases --trace-filter root=scoreboard --trace-file check-trace.jsonl --outputs-file check-outputs.jsonl
 ```
 
 不想写完整 manifest 时，`run` 可以直接加载 manifest-style world fixture，并接受一个或多个内联 JSON assertion：

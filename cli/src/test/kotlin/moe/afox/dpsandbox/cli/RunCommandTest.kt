@@ -250,6 +250,31 @@ class RunCommandTest {
     }
 
     @Test
+    fun `run writes output events as jsonl`() {
+        val outputsFile = Files.createTempFile("dps-cli-outputs", ".jsonl")
+
+        val output = captureStdout {
+            main(
+                arrayOf(
+                    "run",
+                    "--version",
+                    "26.2",
+                    "--mcfunction-text",
+                    "say output artifact",
+                    "--outputs-file",
+                    outputsFile.toString(),
+                ),
+            )
+        }
+
+        assertTrue("outputs written: $outputsFile" in output, output)
+        val outputJson = Files.readString(outputsFile)
+        assertTrue("\"command\": \"say\"" in outputJson, outputJson)
+        assertTrue("\"channel\": \"chat\"" in outputJson, outputJson)
+        assertTrue("\"text\": \"<Server> output artifact\"" in outputJson, outputJson)
+    }
+
+    @Test
     fun `run filters printed and written command traces`() {
         val traceFile = Files.createTempFile("dps-cli-filtered-trace", ".jsonl")
 

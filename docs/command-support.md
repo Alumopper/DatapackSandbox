@@ -152,9 +152,10 @@ These are tooling commands, not vanilla commands:
 | `reset world` | Replace the current REPL world with a fresh sparse world. |
 | CLI `loot --table <id> --context <context>` | Generate a loot table directly. |
 | CLI `run --trace --trace-filter <filter>` | Print or write only matching trace events; filters support `root=`, `command=`, `contains=`, `function=`, `file=`, `success=`, and `outputs=`. |
+| CLI `run --outputs-file <file>` | Write observable output events as JSONL for CI artifacts or generated-command regression tests. |
 | CLI `run --snapshot-diff` | Print before/after state changes; use `--snapshot-diff-file` to write JSON. |
 | CLI `run --stdin` | Read `.mcfunction` text from standard input; `--stdin-mode commands` executes stdin as raw command lines. |
 | CLI `run --world` | Apply a manifest-style world JSON fixture before execution. |
 | CLI `run --assert`, `run --assert-file` | Evaluate inline or file-backed manifest assertion JSON after execution, including before/after `snapshotDiff` assertions. |
-| CLI `check <manifest-or-directory>` | Run `.dps.json` manifests; `--verbose` prints resource summaries, overlay entries, missing references, and output events; use `--snapshot-diff-on-fail` for state changes, plus `--trace-file` and `--trace-filter` for JSONL command traces. |
+| CLI `check <manifest-or-directory>` | Run `.dps.json` manifests; `--verbose` prints resource summaries, overlay entries, missing references, and output events; use `--snapshot-diff-on-fail` for state changes, plus `--trace-file`, `--trace-filter`, and `--outputs-file` for JSONL artifacts. |
 | CLI `schema [--output <file>]` | Print or write the bundled `.dps.json` manifest JSON Schema for editor and CI integration. |

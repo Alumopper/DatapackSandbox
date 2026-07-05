@@ -46,6 +46,39 @@ class CheckCommandTest {
     }
 
     @Test
+    fun `check writes manifest output events as jsonl`() {
+        val dir = Files.createTempDirectory("dps-check-outputs")
+        val outputsFile = dir.resolve("outputs.jsonl")
+        val pack = Path.of("../core/src/test/resources/packs/counter").toAbsolutePath().normalize().toString().replace("\\", "\\\\")
+        val manifest = dir.resolve("outputs.dps.json")
+        Files.writeString(
+            manifest,
+            """
+            {
+              "version": "26.1.2",
+              "packs": ["$pack"],
+              "steps": [
+                { "command": "say output from check" }
+              ],
+              "assertions": [
+                { "output": { "command": "say", "contains": "output from check", "count": 1 } }
+              ]
+            }
+            """.trimIndent(),
+        )
+
+        val output = captureStdout {
+            main(arrayOf("check", manifest.toString(), "--outputs-file", outputsFile.toString()))
+        }
+
+        assertTrue("PASS $manifest" in output, output)
+        assertTrue("outputs written: $outputsFile" in output, output)
+        val outputJson = Files.readString(outputsFile)
+        assertTrue("\"command\": \"say\"" in outputJson, outputJson)
+        assertTrue("\"text\": \"<Server> output from check\"" in outputJson, outputJson)
+    }
+
+    @Test
     fun `check verbose prints resource summary overlays and missing references`() {
         val dir = Files.createTempDirectory("dps-check-verbose")
         val first = writeVerbosePack(dir, "verbose-first", "first", includeMissingLoad = true)

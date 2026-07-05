@@ -19,6 +19,7 @@ import moe.afox.dpsandbox.core.DiagnosticCode
 import moe.afox.dpsandbox.core.DatapackSandbox
 import moe.afox.dpsandbox.core.FunctionSource
 import moe.afox.dpsandbox.core.JsonValues
+import moe.afox.dpsandbox.core.OutputEvent
 import moe.afox.dpsandbox.core.PlayerEvents
 import moe.afox.dpsandbox.core.ResourceLocation
 import moe.afox.dpsandbox.core.SandboxException
@@ -72,6 +73,7 @@ class CheckCommand : CliktCommand(name = "check") {
     private val trace by option("--trace").flag(default = false)
     private val traceFile by option("--trace-file").path()
     private val traceFilters by option("--trace-filter").multiple()
+    private val outputsFile by option("--outputs-file").path()
     private val seed by option("--seed").long().default(0)
     private val unsupported by option("--unsupported").default("warn")
 
@@ -80,6 +82,7 @@ class CheckCommand : CliktCommand(name = "check") {
             val manifests = ManifestRunner.discover(inputs)
             var failed = false
             val traces = mutableListOf<CommandTraceEvent>()
+            val outputs = mutableListOf<OutputEvent>()
             manifests.forEach { manifest ->
                 val result = ManifestRunner.run(
                     manifest,
@@ -93,6 +96,7 @@ class CheckCommand : CliktCommand(name = "check") {
                 )
                 val resultTraces = TraceFilters.apply(result.traces, traceFilters)
                 traces += resultTraces
+                outputs += result.outputs
                 val versionLabel = result.attempts
                     .map { it.version }
                     .takeIf { it.size > 1 }
@@ -118,10 +122,12 @@ class CheckCommand : CliktCommand(name = "check") {
                 }
                 if (!result.passed && failFast) {
                     traceFile?.let { writeTraceFile(it, traces) }
+                    outputsFile?.let { writeOutputsFile(it, outputs) }
                     exitProcess(ExitCodes.ASSERTION_FAILED)
                 }
             }
             traceFile?.let { writeTraceFile(it, traces) }
+            outputsFile?.let { writeOutputsFile(it, outputs) }
             if (failed) exitProcess(ExitCodes.ASSERTION_FAILED)
         } catch (error: SandboxException) {
             println(ConsoleStyle.diagnostic(error.render()))
@@ -136,6 +142,14 @@ class CheckCommand : CliktCommand(name = "check") {
         Files.writeString(path, content, StandardCharsets.UTF_8)
         println(ConsoleStyle.green("trace written: $path"))
     }
+}
+
+private fun writeOutputsFile(path: Path, outputs: List<OutputEvent>) {
+    val content = outputs.joinToString(separator = System.lineSeparator()) { event ->
+        JsonValues.render(event.toJson())
+    }
+    Files.writeString(path, content, StandardCharsets.UTF_8)
+    println(ConsoleStyle.green("outputs written: $path"))
 }
 
 class RunCommand : CliktCommand(name = "run") {
@@ -161,6 +175,7 @@ class RunCommand : CliktCommand(name = "run") {
     private val trace by option("--trace").flag(default = false)
     private val traceFile by option("--trace-file").path()
     private val traceFilters by option("--trace-filter").multiple()
+    private val outputsFile by option("--outputs-file").path()
     private val unsupported by option("--unsupported").default("warn")
 
     override fun run() {
@@ -243,6 +258,7 @@ class RunCommand : CliktCommand(name = "run") {
                 Files.writeString(it, content, StandardCharsets.UTF_8)
                 println(ConsoleStyle.green("trace written: $it"))
             }
+            outputsFile?.let { writeOutputsFile(it, sandbox.world.outputs) }
             val assertionFailures = ManifestRunner.evaluateAssertions(parseAssertions(), sandbox, beforeSnapshot)
             if (assertionFailures.isNotEmpty()) {
                 assertionFailures.forEach { println(ConsoleStyle.red(it)) }
