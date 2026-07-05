@@ -402,7 +402,7 @@
         "trace": { "$ref": "#/$defs/stepOutput" },
         "reset": { "type": "boolean" },
         "allowFailure": { "type": "boolean" },
-        "loot": { "type": "object" }
+        "loot": { "$ref": "#/$defs/lootRequest" }
       }
     },
     "stepOutput": {
@@ -418,6 +418,17 @@
           "additionalProperties": false
         }
       ]
+    },
+    "lootRequest": {
+      "type": "object",
+      "required": ["table"],
+      "properties": {
+        "table": { "type": "string" },
+        "context": { "type": "string" },
+        "player": { "type": "string" },
+        "seed": { "type": "integer" }
+      },
+      "additionalProperties": false
     },
     "assertion": {
       "type": "object",
@@ -450,9 +461,9 @@
         "team": { "$ref": "#/$defs/teamAssertion" },
         "bossbar": { "$ref": "#/$defs/bossbarAssertion" },
         "block": { "$ref": "#/$defs/blockAssertion" },
-        "advancement": { "type": "object" },
-        "predicate": { "type": "object" },
-        "loot": { "type": "object" },
+        "advancement": { "$ref": "#/$defs/advancementAssertion" },
+        "predicate": { "$ref": "#/$defs/predicateAssertion" },
+        "loot": { "$ref": "#/$defs/lootAssertion" },
         "item": { "$ref": "#/$defs/itemAssertion" },
         "trace": { "$ref": "#/$defs/traceAssertion" },
         "eventTrace": { "$ref": "#/$defs/eventTraceAssertion" },
@@ -519,6 +530,41 @@
         },
         "worldSpawn": { "$ref": "#/$defs/spawnPoint" },
         "worldBorder": { "$ref": "#/$defs/worldBorder" }
+      },
+      "additionalProperties": false
+    },
+    "advancementAssertion": {
+      "type": "object",
+      "required": ["player", "id"],
+      "properties": {
+        "player": { "type": "string" },
+        "id": { "type": "string" },
+        "done": { "type": "boolean" },
+        "criterion": { "type": "string" },
+        "criterionDone": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "predicateAssertion": {
+      "type": "object",
+      "required": ["id"],
+      "properties": {
+        "id": { "type": "string" },
+        "player": { "type": "string" },
+        "equals": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "lootAssertion": {
+      "type": "object",
+      "required": ["table"],
+      "properties": {
+        "table": { "type": "string" },
+        "context": { "type": "string" },
+        "player": { "type": "string" },
+        "seed": { "type": "integer" },
+        "count": { "type": "integer", "minimum": 0 },
+        "item": { "type": "string" }
       },
       "additionalProperties": false
     },

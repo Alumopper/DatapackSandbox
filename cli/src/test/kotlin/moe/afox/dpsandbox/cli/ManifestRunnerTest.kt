@@ -137,6 +137,41 @@ class ManifestRunnerTest {
     }
 
     @Test
+    fun `manifest schema documents predicate loot and advancement assertions`() {
+        val schema = JsonParser.parseString(Files.readString(Path.of("../docs/dps-manifest.schema.json"))).asJsonObject
+        val defs = schema.getAsJsonObject("\$defs")
+        val stepProperties = defs.getAsJsonObject("step").getAsJsonObject("properties")
+        val assertionProperties = defs.getAsJsonObject("assertion").getAsJsonObject("properties")
+        val advancement = defs.getAsJsonObject("advancementAssertion")
+        val advancementProperties = advancement.getAsJsonObject("properties")
+        val predicate = defs.getAsJsonObject("predicateAssertion")
+        val predicateProperties = predicate.getAsJsonObject("properties")
+        val lootRequest = defs.getAsJsonObject("lootRequest")
+        val lootRequestProperties = lootRequest.getAsJsonObject("properties")
+        val loot = defs.getAsJsonObject("lootAssertion")
+        val lootProperties = loot.getAsJsonObject("properties")
+
+        assertEquals("#/\$defs/lootRequest", stepProperties.getAsJsonObject("loot").get("\$ref").asString)
+        assertEquals("#/\$defs/advancementAssertion", assertionProperties.getAsJsonObject("advancement").get("\$ref").asString)
+        assertEquals("#/\$defs/predicateAssertion", assertionProperties.getAsJsonObject("predicate").get("\$ref").asString)
+        assertEquals("#/\$defs/lootAssertion", assertionProperties.getAsJsonObject("loot").get("\$ref").asString)
+        assertTrue(advancement.getAsJsonArray("required").map { it.asString }.containsAll(listOf("player", "id")))
+        assertEquals("boolean", advancementProperties.getAsJsonObject("done").get("type").asString)
+        assertEquals("string", advancementProperties.getAsJsonObject("criterion").get("type").asString)
+        assertEquals("boolean", advancementProperties.getAsJsonObject("criterionDone").get("type").asString)
+        assertTrue(predicate.getAsJsonArray("required").map { it.asString }.contains("id"))
+        assertEquals("string", predicateProperties.getAsJsonObject("player").get("type").asString)
+        assertEquals("boolean", predicateProperties.getAsJsonObject("equals").get("type").asString)
+        assertTrue(lootRequest.getAsJsonArray("required").map { it.asString }.contains("table"))
+        assertEquals("integer", lootRequestProperties.getAsJsonObject("seed").get("type").asString)
+        assertTrue(loot.getAsJsonArray("required").map { it.asString }.contains("table"))
+        assertEquals("integer", lootProperties.getAsJsonObject("seed").get("type").asString)
+        assertEquals("integer", lootProperties.getAsJsonObject("count").get("type").asString)
+        assertEquals(0, lootProperties.getAsJsonObject("count").get("minimum").asInt)
+        assertEquals("string", lootProperties.getAsJsonObject("item").get("type").asString)
+    }
+
+    @Test
     fun `manifest schema documents output assertion order`() {
         val schema = JsonParser.parseString(Files.readString(Path.of("../docs/dps-manifest.schema.json"))).asJsonObject
         val defs = schema.getAsJsonObject("\$defs")
