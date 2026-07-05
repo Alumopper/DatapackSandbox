@@ -125,6 +125,7 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar run --version 26.2 ^
 
 ```bash
 java -jar cli/build/libs/datapack-sandbox-cli.jar check ./sandbox-cases
+java -jar cli/build/libs/datapack-sandbox-cli.jar check ./sandbox-cases --validate-schema
 ```
 
 导出随 CLI 打包的 manifest JSON Schema，供编辑器或 CI 工具使用：

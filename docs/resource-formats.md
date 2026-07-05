@@ -73,6 +73,12 @@ The standalone CLI also bundles the schema:
 java -jar cli/build/libs/datapack-sandbox-cli.jar schema --output dps-manifest.schema.json
 ```
 
+Use `check --validate-schema` to validate manifest structure before execution:
+
+```bash
+java -jar cli/build/libs/datapack-sandbox-cli.jar check ./sandbox-cases --validate-schema
+```
+
 `include` accepts a relative manifest path string or an array of paths. Included
 manifests are applied before the including manifest. Their `world`, `steps`, and
 `assertions` are concatenated in order, and their `version`/`versions`, `packs`,

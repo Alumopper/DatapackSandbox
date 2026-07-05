@@ -71,6 +71,7 @@ class CheckCommand : CliktCommand(name = "check") {
     private val verbose by option("--verbose").flag(default = false)
     private val snapshotOnFail by option("--snapshot-on-fail").flag(default = false)
     private val snapshotDiffOnFail by option("--snapshot-diff-on-fail").flag(default = false)
+    private val validateSchema by option("--validate-schema").flag(default = false)
     private val trace by option("--trace").flag(default = false)
     private val traceFile by option("--trace-file").path()
     private val traceFilters by option("--trace-filter").multiple()
@@ -82,6 +83,15 @@ class CheckCommand : CliktCommand(name = "check") {
     override fun run() {
         try {
             val manifests = ManifestRunner.discover(inputs)
+            if (validateSchema) {
+                val schemaFailures = manifests.flatMap(ManifestSchemaValidator::validateFile)
+                if (schemaFailures.isNotEmpty()) {
+                    throw SandboxException(
+                        DiagnosticCode.INPUT_FORMAT,
+                        "Manifest schema validation failed:${System.lineSeparator()}${schemaFailures.joinToString(System.lineSeparator()) { "- $it" }}",
+                    )
+                }
+            }
             var failed = false
             val traces = mutableListOf<CommandTraceEvent>()
             val outputs = mutableListOf<OutputEvent>()

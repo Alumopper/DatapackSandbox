@@ -10,6 +10,54 @@ import kotlin.test.assertTrue
 
 class CheckCommandTest {
     @Test
+    fun `check can validate manifests against bundled schema before running`() {
+        val dir = Files.createTempDirectory("dps-check-schema")
+        val pack = Path.of("../core/src/test/resources/packs/counter").toAbsolutePath().normalize().toString().replace("\\", "\\\\")
+        val manifest = dir.resolve("schema-valid.dps.json")
+        Files.writeString(
+            manifest,
+            """
+            {
+              "version": "26.1.2",
+              "packs": ["$pack"],
+              "steps": [
+                { "command": "say schema checked" }
+              ],
+              "assertions": [
+                { "output": { "command": "say", "contains": "schema checked", "count": 1 } }
+              ]
+            }
+            """.trimIndent(),
+        )
+
+        val output = captureStdout {
+            main(arrayOf("check", manifest.toString(), "--validate-schema"))
+        }
+
+        assertTrue("PASS $manifest" in output, output)
+    }
+
+    @Test
+    fun `manifest schema validator reports invalid manifest shapes`() {
+        val errors = ManifestSchemaValidator.validate(
+            JsonParser.parseString(
+                """
+                {
+                  "version": "26.2",
+                  "packs": "pack",
+                  "steps": [
+                    { "ticks": "one" }
+                  ]
+                }
+                """.trimIndent(),
+            ),
+        )
+
+        assertTrue(errors.any { it.contains("$/packs") }, errors.joinToString())
+        assertTrue(errors.any { it.contains("$/steps/0/ticks") }, errors.joinToString())
+    }
+
+    @Test
     fun `check can print and write manifest command traces`() {
         val dir = Files.createTempDirectory("dps-check-trace")
         val traceFile = dir.resolve("trace.jsonl")

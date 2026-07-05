@@ -143,6 +143,7 @@ Run JSON check manifests:
 
 ```bash
 java -jar cli/build/libs/datapack-sandbox-cli.jar check ./sandbox-cases
+java -jar cli/build/libs/datapack-sandbox-cli.jar check ./sandbox-cases --validate-schema
 ```
 
 Export the bundled manifest JSON Schema for editors or CI tooling:
