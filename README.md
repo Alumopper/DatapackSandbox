@@ -182,6 +182,10 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar run --version 26.2 \
   --assert-file ./assertions.json
 ```
 
+World fixtures can reference reusable fixture files with `fixture`, `fixtures`,
+or `extends`; referenced files are applied first, then local fields override the
+shared setup.
+
 Manifest `steps` can also contain `commands`, `functionText`, or a relative
 `mcfunction` path for command-generator output tests; assertions can check
 `world`, `team`, `bossbar`, `trace`, and player inventory `item` results.

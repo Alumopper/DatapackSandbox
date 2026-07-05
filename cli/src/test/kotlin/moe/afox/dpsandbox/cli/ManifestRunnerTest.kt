@@ -31,6 +31,20 @@ class ManifestRunnerTest {
     }
 
     @Test
+    fun `manifest schema documents world fixture references`() {
+        val schema = JsonParser.parseString(Files.readString(Path.of("../docs/dps-manifest.schema.json"))).asJsonObject
+        val worldProperties = schema.getAsJsonObject("\$defs")
+            .getAsJsonObject("worldFixture")
+            .getAsJsonObject("properties")
+
+        listOf("extends", "fixture", "fixtures").forEach { name ->
+            val variants = worldProperties.getAsJsonObject(name).getAsJsonArray("oneOf")
+            assertEquals("string", variants[0].asJsonObject.get("type").asString)
+            assertEquals("#/\$defs/stringArray", variants[1].asJsonObject.get("\$ref").asString)
+        }
+    }
+
+    @Test
     fun `manifest schema documents player event fields`() {
         val schema = JsonParser.parseString(Files.readString(Path.of("../docs/dps-manifest.schema.json"))).asJsonObject
         val defs = schema.getAsJsonObject("\$defs")
@@ -311,6 +325,97 @@ class ManifestRunnerTest {
 
         val result = ManifestRunner.run(manifest)
 
+        assertTrue(result.passed, result.messages.joinToString())
+    }
+
+    @Test
+    fun `runs manifests with referenced world fixtures and local overrides`() {
+        val dir = Files.createTempDirectory("dps-world-fixture-manifest")
+        val fixtures = dir.resolve("fixtures")
+        Files.createDirectories(fixtures)
+        Files.writeString(
+            fixtures.resolve("base-world.json"),
+            """
+            {
+              "seed": 10,
+              "players": [
+                {
+                  "name": "Alex",
+                  "xp": 1,
+                  "inventory": [
+                    { "id": "minecraft:stick", "count": 1 }
+                  ]
+                }
+              ],
+              "blocks": [
+                { "pos": [2, 64, 2], "id": "minecraft:stone" }
+              ],
+              "scores": [
+                { "target": "#fixture", "objective": "ready", "value": 1 }
+              ],
+              "storage": {
+                "demo:env": { "from": "base" }
+              }
+            }
+            """.trimIndent(),
+        )
+        Files.writeString(
+            fixtures.resolve("wrapped-world.json"),
+            """
+            {
+              "world": {
+                "difficulty": "hard",
+                "players": [
+                  { "name": "Builder", "xp": 2 }
+                ]
+              }
+            }
+            """.trimIndent(),
+        )
+        val pack = Path.of("../core/src/test/resources/packs/counter").toAbsolutePath().normalize().toString().replace("\\", "\\\\")
+        val manifest = dir.resolve("world-fixture.dps.json")
+        Files.writeString(
+            manifest,
+            """
+            {
+              "version": "26.1.2",
+              "packs": ["$pack"],
+              "world": {
+                "fixtures": ["fixtures/base-world.json"],
+                "extends": "fixtures/wrapped-world.json",
+                "seed": 99,
+                "players": [
+                  {
+                    "name": "Alex",
+                    "xp": 5,
+                    "inventory": [
+                      { "id": "minecraft:apple", "count": 3 }
+                    ]
+                  }
+                ],
+                "scores": [
+                  { "target": "#fixture", "objective": "ready", "value": 7 }
+                ]
+              },
+              "steps": [],
+              "assertions": [
+                { "world": { "seed": 99, "difficulty": "hard" } },
+                { "block": { "pos": [2, 64, 2], "id": "minecraft:stone" } },
+                { "player": { "name": "Alex", "xp": 5, "inventoryCount": 1 } },
+                { "item": { "player": "Alex", "id": "minecraft:apple", "count": 3 } },
+                { "item": { "player": "Alex", "id": "minecraft:stick", "exists": false } },
+                { "player": { "name": "Builder", "xp": 2 } },
+                { "score": { "target": "#fixture", "objective": "ready", "equals": 7 } },
+                { "storage": { "id": "demo:env", "path": "from", "equals": "base" } }
+              ]
+            }
+            """.trimIndent(),
+        )
+
+        val schemaFailures = ManifestSchemaValidator.validate(JsonParser.parseString(Files.readString(manifest)))
+        val result = ManifestRunner.run(manifest)
+
+        assertTrue(schemaFailures.isEmpty(), schemaFailures.joinToString())
         assertTrue(result.passed, result.messages.joinToString())
     }
 

@@ -155,7 +155,7 @@ These are tooling commands, not vanilla commands:
 | CLI `run --outputs-file <file>` | Write observable output events as JSONL for CI artifacts or generated-command regression tests. |
 | CLI `run --snapshot-diff` | Print before/after state changes; use `--snapshot-diff-file` to write JSON. |
 | CLI `run --stdin` | Read `.mcfunction` text from standard input; `--stdin-mode commands` executes stdin as raw command lines. |
-| CLI `run --world` | Apply a manifest-style world JSON fixture before execution. |
+| CLI `run --world` | Apply a manifest-style world JSON fixture, including fixture references, before execution. |
 | CLI `run --assert`, `run --assert-file` | Evaluate inline or file-backed manifest assertion JSON after execution, including before/after `snapshotDiff` assertions. |
 | CLI `check <manifest-or-directory>` | Run `.dps.json` manifests; `--validate-schema` checks manifest structure before execution; `--verbose` prints resource summaries, overlay entries, missing references, and output events; use `--snapshot-diff-on-fail` for state changes, plus `--trace-file`, `--trace-filter`, `--outputs-file`, and `--report-file` for CI artifacts. |
 | CLI `schema [--output <file>]` | Print or write the bundled `.dps.json` manifest JSON Schema for editor and CI integration. |

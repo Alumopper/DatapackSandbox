@@ -102,6 +102,24 @@
     "worldFixture": {
       "type": "object",
       "properties": {
+        "extends": {
+          "oneOf": [
+            { "type": "string" },
+            { "$ref": "#/$defs/stringArray" }
+          ]
+        },
+        "fixture": {
+          "oneOf": [
+            { "type": "string" },
+            { "$ref": "#/$defs/stringArray" }
+          ]
+        },
+        "fixtures": {
+          "oneOf": [
+            { "type": "string" },
+            { "$ref": "#/$defs/stringArray" }
+          ]
+        },
         "gameTime": { "type": "integer" },
         "time": { "type": "integer" },
         "dayTime": { "type": "integer" },

@@ -3,6 +3,7 @@ package moe.afox.dpsandbox.cli
 import com.google.gson.JsonArray
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
+import com.google.gson.JsonParser
 import moe.afox.dpsandbox.core.ChunkPos
 import moe.afox.dpsandbox.core.DatapackSandbox
 import moe.afox.dpsandbox.core.DiagnosticCode
@@ -11,11 +12,21 @@ import moe.afox.dpsandbox.core.ResourceLocation
 import moe.afox.dpsandbox.core.SandboxException
 import moe.afox.dpsandbox.core.SandboxWorldSetup
 import moe.afox.dpsandbox.core.chunksInBlockRange
+import java.nio.charset.StandardCharsets
+import java.nio.file.Files
 import java.nio.file.Path
 
 object ManifestWorldSetup {
     fun apply(world: JsonObject?, sandbox: DatapackSandbox, base: Path) {
         if (world == null) return
+        applyWorld(world, sandbox, base, linkedSetOf())
+    }
+
+    private fun applyWorld(world: JsonObject, sandbox: DatapackSandbox, base: Path, stack: MutableSet<Path>) {
+        referencedWorldFixtures(world, base).forEach { fixture ->
+            applyReferencedWorldFixture(fixture, sandbox, stack)
+        }
+
         val setup = SandboxWorldSetup()
 
         world.get("gameTime")?.let { setup.gameTime(it.asLong) }
@@ -44,6 +55,47 @@ object ManifestWorldSetup {
 
         setup.applyTo(sandbox.world, sandbox.profile)
     }
+
+    private fun applyReferencedWorldFixture(path: Path, sandbox: DatapackSandbox, stack: MutableSet<Path>) {
+        val normalized = path.toAbsolutePath().normalize()
+        if (!stack.add(normalized)) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "World fixture cycle detected: $normalized")
+        }
+        try {
+            val root = try {
+                JsonParser.parseString(Files.readString(normalized, StandardCharsets.UTF_8)).asJsonObject
+            } catch (error: Exception) {
+                throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Invalid world fixture JSON: $normalized", cause = error)
+            }
+            val world = when {
+                !root.has("world") -> root
+                root.get("world").isJsonObject -> root.getAsJsonObject("world")
+                else -> throw SandboxException(DiagnosticCode.INPUT_FORMAT, "World fixture '$normalized' contains non-object world")
+            }
+            applyWorld(world, sandbox, normalized.parent ?: Path.of("."), stack)
+        } finally {
+            stack.remove(normalized)
+        }
+    }
+
+    private fun referencedWorldFixtures(world: JsonObject, base: Path): List<Path> =
+        buildList {
+            listOf("extends", "fixture", "fixtures").forEach { name ->
+                world.get(name)?.let { addAll(parseFixturePaths(name, it, base)) }
+            }
+        }
+
+    private fun parseFixturePaths(name: String, value: JsonElement, base: Path): List<Path> =
+        when {
+            value.isJsonPrimitive && value.asJsonPrimitive.isString -> listOf(base.resolve(value.asString).normalize())
+            value.isJsonArray -> value.asJsonArray.mapIndexed { index, element ->
+                if (!element.isJsonPrimitive || !element.asJsonPrimitive.isString) {
+                    throw SandboxException(DiagnosticCode.INPUT_FORMAT, "world.$name[$index] must be a string")
+                }
+                base.resolve(element.asString).normalize()
+            }
+            else -> throw SandboxException(DiagnosticCode.INPUT_FORMAT, "world.$name must be a string or array of strings")
+        }
 
     private fun setupBlock(setup: SandboxWorldSetup, element: JsonElement) {
         if (!element.isJsonObject) throw SandboxException(DiagnosticCode.INPUT_FORMAT, "world.blocks entries must be objects")

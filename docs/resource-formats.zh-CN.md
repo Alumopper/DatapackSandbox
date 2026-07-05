@@ -211,6 +211,13 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar check ./sandbox-cases --valida
 
 `include` 可以写一个相对清单路径，也可以写路径数组。被 include 的清单会先应用；它们的 `world`、`steps` 和 `assertions` 会按顺序拼接，`version`/`versions`、`packs` 和 `unsupported` 会在当前清单省略这些字段时作为默认值。include 文件里的 world setup 和 step 相对路径会按 include 文件所在目录解析。
 
+在 `world` 内部，`fixture`、`fixtures` 和 `extends` 可以写一个相对 world
+fixture 路径，也可以写路径数组。被引用文件既可以是裸 world fixture 对象，
+也可以是顶层 `{ "world": { ... } }` 对象。它们会先于当前 `world` 应用，因此
+标量字段、同坐标方块、同名玩家/team/bossbar、score 和 storage 都可以被当前
+manifest 局部覆盖。嵌套 fixture 的相对路径按被引用文件所在目录解析；循环引用会
+作为输入格式错误失败。
+
 最小示例：
 
 ```json

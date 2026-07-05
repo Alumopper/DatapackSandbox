@@ -86,6 +86,14 @@ and `unsupported` fields act as defaults when the including manifest omits
 them. Relative paths inside included world setup and steps are resolved from the
 included file's directory.
 
+Inside `world`, `fixture`, `fixtures`, and `extends` accept a relative world
+fixture path string or an array of paths. Referenced files may contain either a
+raw world fixture object or a top-level `{ "world": { ... } }` object. They are
+applied before the local `world` object, so scalar fields, same-position blocks,
+same-name players/teams/bossbars, scores, and storage entries can be overridden
+by the including manifest. Nested fixture paths are resolved from the referenced
+file's directory, and cycles fail as input format errors.
+
 `steps` support full datapack execution and lightweight generated-output tests:
 
 - `{ "load": true }`
