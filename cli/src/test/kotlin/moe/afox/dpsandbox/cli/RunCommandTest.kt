@@ -386,6 +386,40 @@ class RunCommandTest {
     }
 
     @Test
+    fun `run injects player events from files`() {
+        val eventFile = Files.createTempFile("dps-cli-events", ".txt")
+        Files.writeString(
+            eventFile,
+            """
+            # event generator output
+            player Steve key_input key.jump press
+
+            player Steve mouse_input left click
+            """.trimIndent(),
+        )
+
+        val output = captureStdout {
+            main(
+                arrayOf(
+                    "run",
+                    "--version",
+                    "26.2",
+                    "--event-file",
+                    eventFile.toString(),
+                    "--assert",
+                    """{"player":{"name":"Steve","lastInput":{"device":"mouse","code":"left","action":"click"}}}""",
+                    "--assert",
+                    """{"eventTrace":{"player":"Steve","type":"key_input","success":true,"count":1}}""",
+                    "--assert",
+                    """{"eventTrace":{"player":"Steve","type":"mouse_input","success":true,"count":1}}""",
+                ),
+            )
+        }
+
+        assertTrue("OK version=26.2" in output, output)
+    }
+
+    @Test
     fun `run loads multiple mcfunction files and strings together`() {
         val mainFile = Files.createTempFile("dps-cli-main-function", ".mcfunction")
         val helperFile = Files.createTempFile("dps-cli-helper-function", ".mcfunction")

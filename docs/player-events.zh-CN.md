@@ -51,8 +51,8 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar event --pack examples/full-sta
 
 CLI 接受连字符或下划线；`item-used` 会标准化为 `item_used`。
 
-随手小测可以用 `run --event` 注入同一套简写事件，然后断言玩家状态或
-event trace：
+随手小测可以用 `run --event` 注入同一套简写事件；多条事件可写入文件后
+通过 `run --event-file` 按行注入，然后断言玩家状态或 `eventTrace`：
 
 ```bash
 java -jar cli/build/libs/datapack-sandbox-cli.jar run --version 26.2 \

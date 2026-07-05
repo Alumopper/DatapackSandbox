@@ -213,7 +213,8 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar run --version 26.2 \
 ```
 
 Player events can be injected in the same quick `run` flow and checked with
-regular assertions:
+regular assertions; use `--event-file` for one event per line from generator
+output:
 
 ```bash
 java -jar cli/build/libs/datapack-sandbox-cli.jar run --version 26.2 \

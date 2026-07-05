@@ -262,6 +262,7 @@ class RunCommand : CliktCommand(name = "run") {
     private val commands by option("--command", "-c").multiple()
     private val commandFiles by option("--command-file").path(mustExist = true).multiple()
     private val events by option("--event").multiple()
+    private val eventFiles by option("--event-file").path(mustExist = true).multiple()
     private val assertions by option("--assert").multiple()
     private val assertionFiles by option("--assert-file").path(mustExist = true).multiple()
     private val snapshot by option("--snapshot").flag(default = false)
@@ -287,6 +288,7 @@ class RunCommand : CliktCommand(name = "run") {
                 commandFiles.isNotEmpty() ||
                 stdinAsCommands != null ||
                 events.isNotEmpty() ||
+                eventFiles.isNotEmpty() ||
                 worldFiles.isNotEmpty() ||
                 assertions.isNotEmpty() ||
                 assertionFiles.isNotEmpty() ||
@@ -311,7 +313,7 @@ class RunCommand : CliktCommand(name = "run") {
                 )
                 else -> throw SandboxException(
                     DiagnosticCode.INPUT_FORMAT,
-                    "run requires at least one --pack path, --mcfunction file, --mcfunction-text string, --stdin, --command, --command-file, --event, --world, --assert, or snapshot option",
+                    "run requires at least one --pack path, --mcfunction file, --mcfunction-text string, --stdin, --command, --command-file, --event, --event-file, --world, --assert, or snapshot option",
                 )
             }
             applyWorldFixtures(sandbox)
@@ -334,10 +336,11 @@ class RunCommand : CliktCommand(name = "run") {
                     SourceLocation(file = "<arg:--command>", line = index + 1, command = normalized),
                 ).commandsExecuted
             }
+            eventFiles.forEach { file ->
+                applyPlayerEventLines(sandbox, Files.readAllLines(file, StandardCharsets.UTF_8), "--event-file $file")
+            }
             events.forEachIndexed { index, raw ->
-                val event = parsePlayerEventText(raw, "--event ${index + 1}")
-                sandbox.createPlayer(event.playerName)
-                sandbox.handlePlayerEvent(event)
+                applyPlayerEvent(sandbox, parsePlayerEventText(raw, "--event ${index + 1}"))
             }
             val traces = TraceFilters.apply(sandbox.world.traces, traceFilters)
             OutputRenderer.print(sandbox.world.outputs)
@@ -437,6 +440,19 @@ class RunCommand : CliktCommand(name = "run") {
     private fun parseAssertions(): List<JsonObject> =
         assertions.mapIndexed { index, raw -> parseInlineAssertion(raw, "--assert ${index + 1}") } +
             assertionFiles.flatMap { file -> parseAssertionFile(file) }
+
+    private fun applyPlayerEventLines(sandbox: DatapackSandbox, lines: List<String>, label: String) {
+        lines.forEachIndexed { index, raw ->
+            val trimmed = raw.trim()
+            if (trimmed.isEmpty() || trimmed.startsWith("#")) return@forEachIndexed
+            applyPlayerEvent(sandbox, parsePlayerEventText(trimmed, "$label:${index + 1}"))
+        }
+    }
+
+    private fun applyPlayerEvent(sandbox: DatapackSandbox, event: PlayerEvent) {
+        sandbox.createPlayer(event.playerName)
+        sandbox.handlePlayerEvent(event)
+    }
 
     private fun parseInlineAssertion(raw: String, label: String): JsonObject {
         val trimmed = raw.trim()

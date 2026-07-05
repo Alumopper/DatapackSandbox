@@ -48,8 +48,9 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar event --pack examples/full-sta
 The CLI accepts hyphens or underscores; `item-used` is normalized to
 `item_used`.
 
-For quick one-off runs, inject the same shorthand with `run --event` and assert
-the resulting player state or event trace:
+For quick one-off runs, inject the same shorthand with `run --event` or one
+event per line with `run --event-file`, then assert the resulting player state
+or event trace:
 
 ```bash
 java -jar cli/build/libs/datapack-sandbox-cli.jar run --version 26.2 \
