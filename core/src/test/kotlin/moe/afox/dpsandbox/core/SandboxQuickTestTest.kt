@@ -42,15 +42,34 @@ class SandboxQuickTestTest {
             .keyInput("Steve", "key.jump")
             .mouseInput("Steve", "left", "click", 12.0, 8.0)
             .assertPlayerLastInput("Steve", "mouse", "left", "click")
+            .assertPlayerEventTrace(player = "Steve", type = "key-input", success = true, count = 1)
+            .assertPlayerEventTrace(player = "Steve", type = "mouse_input", success = true, count = 1)
         val traces = scenario.playerEventTraces()
+        val mouseTraces = scenario.matchingPlayerEventTraces(player = "Steve", type = "mouse-input")
         val report = scenario.requirePassed()
 
         val player = report.snapshot.asJsonObject.get("players").asJsonObject.get("Steve").asJsonObject
         assertEquals("mouse", player.get("lastInput").asJsonObject.get("device").asString)
         assertEquals(2, player.get("inputEvents").asJsonArray.size())
         assertEquals(2, traces.size)
+        assertEquals(1, mouseTraces.size)
         assertEquals("mouse_input", report.playerEventTraces.last().type)
         assertEquals(2, report.snapshot.asJsonObject.getAsJsonArray("playerEventTraces").size())
+    }
+
+    @Test
+    fun `player event trace assertion failures include actual event candidates`() {
+        val error = assertFailsWith<SandboxQuickTestAssertionError> {
+            SandboxQuickTest.create(listOf(fixturePack()), version = "26.1.2")
+                .keyInput("Steve", "key.jump")
+                .assertPlayerEventTrace(player = "Steve", type = "damage")
+                .requirePassed()
+        }
+        val message = error.message.orEmpty()
+
+        assertTrue("actual event traces:" in message, message)
+        assertTrue("player=Steve" in message, message)
+        assertTrue("type=key_input" in message, message)
     }
 
     @Test

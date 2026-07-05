@@ -58,7 +58,7 @@ val report = SandboxQuickTest.singleFunctionText(
 println(report.traces.single().command)
 ```
 
-同一套 matcher 也可以通过 `assertTrace(...)` 做 fluent 断言，或通过 `matchingTraces(...)` 只检查匹配事件而不登记失败。玩家事件可通过 `playerEventTraces()` 或 `report.playerEventTraces` 检查。
+同一套 matcher 也可以通过 `assertTrace(...)` 做 fluent 断言，或通过 `matchingTraces(...)` 只检查匹配事件而不登记失败。玩家事件可通过 `assertPlayerEventTrace(...)`、`matchingPlayerEventTraces(...)`、`playerEventTraces()` 或 `report.playerEventTraces` 检查，包括事件匹配到的 advancement criteria。
 
 需要比较两个状态时，fluent 测试可直接用 `assertSnapshotDiff(...)`，检查时可读取 `snapshotDiffs()` 或 `report.snapshotDiffs`。更底层的代码仍可用 `SnapshotDiff.diff(before, after)` 获得稳定 JSON Pointer 路径差异，或用 `SnapshotDiff.render(...)` 输出适合测试失败日志的文本。
 
@@ -265,12 +265,14 @@ class MyDatapackTest {
 | `assertOutputContains(text)` | 断言输出事件包含文本。 |
 | `assertOutput(...)` | 按 command/channel/target/text/规范化文本/count/order 断言输出事件。 |
 | `assertTrace(...)` | 按 command/root/source/success/count 断言 trace 事件。 |
+| `assertPlayerEventTrace(...)` | 按 player/type/success/advancement/criterion/count 断言玩家事件 trace。 |
 | `assertSnapshotDiff(...)` | 按 before/after snapshot 的 path/kind/渲染文本/count 断言状态变化。 |
 | `outputs()` | 返回记录的输出事件。 |
 | `traces()` | 返回记录的结构化命令 trace。 |
 | `playerEventTraces()` | 返回记录的玩家事件 trace。 |
 | `snapshotDiffs()` | 返回从初始状态到当前状态的稳定 JSON Pointer diff。 |
 | `matchingTraces(...)` | 返回匹配结构化期望的 trace 事件。 |
+| `matchingPlayerEventTraces(...)` | 返回匹配结构化期望的玩家事件 trace。 |
 | `matchingOutputs(...)` | 返回匹配结构化期望的输出事件。 |
 | `report()` | 返回 `SandboxQuickTestReport`，不抛异常。 |
 | `requirePassed()` | 返回报告；如果失败则抛异常。 |

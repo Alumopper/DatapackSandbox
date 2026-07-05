@@ -180,7 +180,8 @@ includes a bounded list of actual output candidates.
 `trace` assertions can check command/root/contains, success, count, source file,
 and function stack. When a trace assertion misses, the failure message includes
 a bounded list of actual command trace candidates. `eventTrace` assertions check
-player event dispatch by player, type, success, advancement id, criterion, and count. `diagnostic`
+player event dispatch by player, type, success, advancement id, criterion, and
+count; misses include actual player event trace candidates. `diagnostic`
 assertions check expected step failures by step, version, code, command, root,
 message substring, and count. `snapshotDiff` assertions compare the manifest
 state before and after steps by JSON Pointer path, diff kind, before/after

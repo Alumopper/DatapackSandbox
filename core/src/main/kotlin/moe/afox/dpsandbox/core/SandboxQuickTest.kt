@@ -412,6 +412,36 @@ class SandboxQuickTestMatrix private constructor(
         )
 
     /**
+     * Applies a structured player event trace assertion to every scenario.
+     */
+    fun assertPlayerEventTrace(expectation: PlayerEventTraceExpectation): SandboxQuickTestMatrix = apply {
+        scenarios.values.forEach { it.assertPlayerEventTrace(expectation) }
+    }
+
+    /**
+     * Builds and applies a player event trace assertion to every scenario.
+     */
+    @JvmOverloads
+    fun assertPlayerEventTrace(
+        player: String? = null,
+        type: String? = null,
+        success: Boolean? = null,
+        advancement: String? = null,
+        criterion: String? = null,
+        count: Int? = null,
+    ): SandboxQuickTestMatrix =
+        assertPlayerEventTrace(
+            PlayerEventTraceExpectation(
+                player = player,
+                type = type,
+                success = success,
+                advancement = advancement?.let(ResourceLocation::parse),
+                criterion = criterion,
+                count = count,
+            ),
+        )
+
+    /**
      * Asserts a before/after snapshot diff entry in every scenario.
      */
     @JvmOverloads
@@ -990,6 +1020,39 @@ class SandboxQuickTest private constructor(
         )
 
     /**
+     * Applies a structured player event trace assertion.
+     */
+    fun assertPlayerEventTrace(expectation: PlayerEventTraceExpectation): SandboxQuickTest = apply {
+        failures += PlayerEventTraceAssertions.failures(sandbox.world.playerEventTraces, expectation)
+    }
+
+    /**
+     * Builds and applies a structured player event trace assertion.
+     *
+     * Null parameters are wildcards. When [count] is provided, exactly that many
+     * event traces must match; otherwise at least one event trace must match.
+     */
+    @JvmOverloads
+    fun assertPlayerEventTrace(
+        player: String? = null,
+        type: String? = null,
+        success: Boolean? = null,
+        advancement: String? = null,
+        criterion: String? = null,
+        count: Int? = null,
+    ): SandboxQuickTest =
+        assertPlayerEventTrace(
+            PlayerEventTraceExpectation(
+                player = player,
+                type = type,
+                success = success,
+                advancement = advancement?.let(ResourceLocation::parse),
+                criterion = criterion,
+                count = count,
+            ),
+        )
+
+    /**
      * Returns a defensive copy of all output events recorded so far.
      */
     fun outputs(): List<OutputEvent> =
@@ -1006,6 +1069,33 @@ class SandboxQuickTest private constructor(
      */
     fun playerEventTraces(): List<PlayerEventTraceEvent> =
         sandbox.world.playerEventTraces.toList()
+
+    /**
+     * Returns player event trace records matching [expectation] without registering a failure.
+     */
+    fun matchingPlayerEventTraces(expectation: PlayerEventTraceExpectation): List<PlayerEventTraceEvent> =
+        PlayerEventTraceAssertions.matching(sandbox.world.playerEventTraces, expectation)
+
+    /**
+     * Builds a player event trace expectation and returns matching records without registering a failure.
+     */
+    @JvmOverloads
+    fun matchingPlayerEventTraces(
+        player: String? = null,
+        type: String? = null,
+        success: Boolean? = null,
+        advancement: String? = null,
+        criterion: String? = null,
+    ): List<PlayerEventTraceEvent> =
+        matchingPlayerEventTraces(
+            PlayerEventTraceExpectation(
+                player = player,
+                type = type,
+                success = success,
+                advancement = advancement?.let(ResourceLocation::parse),
+                criterion = criterion,
+            ),
+        )
 
     /**
      * Returns command trace events matching [expectation] without registering a failure.

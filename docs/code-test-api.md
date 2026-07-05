@@ -74,8 +74,9 @@ println(report.traces.single().command)
 
 The same matcher is available as `assertTrace(...)` for fluent assertions and
 `matchingTraces(...)` for inspection without registering a failure. Use
-`playerEventTraces()` or `report.playerEventTraces` to inspect injected player
-events.
+`assertPlayerEventTrace(...)` / `matchingPlayerEventTraces(...)`,
+`playerEventTraces()`, or `report.playerEventTraces` to inspect injected player
+events and advancement criteria matched by those events.
 
 When you need to compare two states, use `assertSnapshotDiff(...)` in fluent
 tests or `snapshotDiffs()`/`report.snapshotDiffs` for inspection. Lower-level
@@ -290,12 +291,14 @@ class MyDatapackTest {
 | `assertOutputContains(text)` | Assert output event text |
 | `assertOutput(...)` | Assert command/channel/target/text/normalized text/count/order for output events |
 | `assertTrace(...)` | Assert command/root/source/success/count for trace events |
+| `assertPlayerEventTrace(...)` | Assert player event trace player/type/success/advancement/criterion/count |
 | `assertSnapshotDiff(...)` | Assert before/after snapshot path/kind/rendered text/count |
 | `outputs()` | Return recorded output events |
 | `traces()` | Return recorded structured command trace events |
 | `playerEventTraces()` | Return recorded player event trace records |
 | `snapshotDiffs()` | Return stable JSON Pointer diffs from initial to current state |
 | `matchingTraces(...)` | Return trace events matching a structured expectation |
+| `matchingPlayerEventTraces(...)` | Return player event trace records matching a structured expectation |
 | `matchingOutputs(...)` | Return output events matching a structured expectation |
 | `report()` | Return `SandboxQuickTestReport` without throwing |
 | `requirePassed()` | Return report or throw an assertion error |
