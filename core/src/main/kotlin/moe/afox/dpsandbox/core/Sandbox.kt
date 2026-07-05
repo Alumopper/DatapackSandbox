@@ -31,6 +31,8 @@ data class ExecutionContext(
 data class ExecutionResult(
     /** Number of command lines executed by the operation. */
     val commandsExecuted: Int,
+    /** Explicit value returned by `return <value>` or `return run <command>`, when present. */
+    val returnValue: Int? = null,
 )
 
 /**
@@ -73,6 +75,7 @@ class DatapackSandbox(
 
     private var commandsExecuted = 0
     private var functionDepth = 0
+    private var lastFunctionReturnValue: Int? = null
     private val functionStack = mutableListOf<FunctionTraceFrame>()
 
     /**
@@ -137,18 +140,20 @@ class DatapackSandbox(
             throw SandboxException(DiagnosticCode.COMMAND_ERROR, "Function call depth exceeded 64", version = profile.id)
         }
 
+        var returnValue: Int? = null
         try {
             functionStack += FunctionTraceFrame(id, function.lines.firstOrNull()?.location?.file)
             for (line in function.lines) {
                 executeCommand(line.command, line.location, context)
             }
-        } catch (_: ReturnSignal) {
+        } catch (signal: ReturnSignal) {
+            returnValue = signal.value
             // A return command stops the current function only.
         } finally {
             functionStack.removeLast()
             functionDepth -= 1
         }
-        return ExecutionResult(commandsExecuted - before)
+        return ExecutionResult(commandsExecuted - before, returnValue)
     }
 
     /**
@@ -278,7 +283,7 @@ class DatapackSandbox(
         try {
             when (tokens[0].text) {
                 "function" -> executeFunction(tokens, location, context)
-                "return" -> throw ReturnSignal()
+                "return" -> executeReturn(command, tokens, location, context)
                 "attribute" -> executeAttribute(tokens, location, context)
                 "scoreboard" -> executeScoreboard(tokens, location)
                 "bossbar" -> executeBossbar(command, tokens, location, context)
@@ -393,7 +398,27 @@ class DatapackSandbox(
 
     private fun executeFunction(tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext) {
         requireSize(tokens, 2, "function <id>", location)
-        runFunction(ResourceLocation.parse(tokens[1].text), context)
+        lastFunctionReturnValue = runFunction(ResourceLocation.parse(tokens[1].text), context).returnValue
+    }
+
+    private fun executeReturn(command: String, tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext): Nothing {
+        requireSize(tokens, 2, "return <value|fail|run ...>", location)
+        when (tokens[1].text) {
+            "fail" -> throw ReturnSignal(0)
+            "run" -> {
+                val rest = CommandTokenizer.tailAfter(command, tokens[1])
+                if (rest.isBlank()) {
+                    throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Expected: return run <command>", location)
+                }
+                val commandsBefore = commandsExecuted
+                val outputsBefore = world.outputs.size
+                lastFunctionReturnValue = null
+                executeOne(rest, location, context)
+                val commandsRun = (commandsExecuted - commandsBefore).coerceAtLeast(0)
+                throw ReturnSignal(executeStoreValue("result", commandsRun, outputsBefore, lastFunctionReturnValue))
+            }
+            else -> throw ReturnSignal(parseInt(tokens[1].text, "return value", location))
+        }
     }
 
     private fun executeHelp(tokens: List<CommandToken>, location: SourceLocation?) {
@@ -1017,17 +1042,25 @@ class DatapackSandbox(
                     val commandsBefore = commandsExecuted
                     val outputsBefore = world.outputs.size
                     val rest = CommandTokenizer.tailAfter(command, tokens[runIndex])
+                    lastFunctionReturnValue = null
                     contexts.forEach { executeOne(rest, location, it) }
                     val commandsRun = (commandsExecuted - commandsBefore).coerceAtLeast(0)
-                    val stored = executeStoreValue(tokens.getOrNull(index + 1)?.text ?: "result", commandsRun, outputsBefore)
+                    val stored = executeStoreValue(
+                        tokens.getOrNull(index + 1)?.text ?: "result",
+                        commandsRun,
+                        outputsBefore,
+                        lastFunctionReturnValue,
+                    )
                     storeExecuteValue(tokens, index + 1, stored, location, contexts.firstOrNull() ?: context)
                     return
                 }
                 "if", "unless" -> {
                     val positive = tokens[index].text == "if"
-                    val result = evaluateCondition(tokens, index + 1, location, contexts.firstOrNull() ?: context)
-                    contexts = contexts.filter { evaluateCondition(tokens, index + 1, location, it).first == positive }
-                    index = result.second
+                    val evaluated = contexts.map { it to evaluateCondition(tokens, index + 1, location, it) }
+                    contexts = evaluated
+                        .filter { (_, result) -> result.first == positive }
+                        .map { (ctx, _) -> ctx }
+                    index = evaluated.firstOrNull()?.second?.second ?: nextConditionIndex(tokens, index + 1, location)
                 }
                 else -> unsupportedFeature("Unsupported execute subcommand '${tokens[index].text}'", profile.id, location, command)
             }
@@ -1053,6 +1086,10 @@ class DatapackSandbox(
                 requireIndex(tokens, index + 1, "execute if|unless predicate <id>", location)
                 predicates.test(ResourceLocation.parse(tokens[index + 1].text), executePredicateContext(context)) to index + 2
             }
+            "function" -> {
+                requireIndex(tokens, index + 1, "execute if|unless function <id|#tag>", location)
+                evaluateFunctionCondition(tokens[index + 1].text, context, location) to index + 2
+            }
             "dimension" -> {
                 requireIndex(tokens, index + 1, "execute if|unless dimension <id>", location)
                 (context.dimension == ResourceLocation.parse(tokens[index + 1].text)) to index + 2
@@ -1069,6 +1106,81 @@ class DatapackSandbox(
             }
             else -> unsupportedFeature("Unsupported execute condition '${tokens[index].text}'", profile.id, location)
         }
+    }
+
+    private fun nextConditionIndex(tokens: List<CommandToken>, index: Int, location: SourceLocation?): Int {
+        requireIndex(tokens, index, "execute if|unless <condition>", location)
+        return when (tokens[index].text) {
+            "entity", "predicate", "function", "dimension" -> {
+                requireIndex(tokens, index + 1, "execute if|unless ${tokens[index].text} <argument>", location)
+                index + 2
+            }
+            "score" -> nextScoreConditionIndex(tokens, index)
+            "data" -> {
+                val (_, pathIndex) = parseDataTarget(tokens, index + 1, ExecutionContext(), location)
+                requireIndex(tokens, pathIndex, "execute if data <target> <path>", location)
+                pathIndex + 1
+            }
+            "block", "biome" -> {
+                requireSizeFrom(tokens, index, 5, "execute if|unless ${tokens[index].text} <pos> <id>", location)
+                index + 5
+            }
+            "blocks" -> {
+                requireSizeFrom(tokens, index, 11, "execute if|unless blocks <begin> <end> <destination> <all|masked>", location)
+                index + 11
+            }
+            "loaded" -> {
+                requireSizeFrom(tokens, index, 4, "execute if|unless loaded <pos>", location)
+                index + 4
+            }
+            else -> unsupportedFeature("Unsupported execute condition '${tokens[index].text}'", profile.id, location)
+        }
+    }
+
+    private fun evaluateFunctionCondition(raw: String, context: ExecutionContext, location: SourceLocation?): Boolean {
+        val ids = if (raw.startsWith("#")) {
+            resolveFunctionTag(ResourceLocation.parse(raw.removePrefix("#")), location)
+        } else {
+            listOf(ResourceLocation.parse(raw))
+        }
+        if (ids.isEmpty()) return false
+        return ids.map { runFunction(it, context) }.any { functionConditionPassed(it) }
+    }
+
+    private fun functionConditionPassed(result: ExecutionResult): Boolean =
+        result.returnValue?.let { it > 0 } ?: (result.commandsExecuted > 0)
+
+    private fun resolveFunctionTag(
+        id: ResourceLocation,
+        location: SourceLocation?,
+        visited: MutableSet<ResourceLocation> = linkedSetOf(),
+    ): List<ResourceLocation> {
+        if (!visited.add(id)) {
+            throw SandboxException(DiagnosticCode.COMMAND_ERROR, "Function tag '#$id' contains a cycle", location)
+        }
+        val definition = datapack.tags[TagKey("function", id)]
+            ?: datapack.tags[TagKey("functions", id)]
+            ?: throw SandboxException(DiagnosticCode.RESOURCE_NOT_FOUND, "Function tag '#$id' was not found", location)
+        val functions = definition.values.flatMap { value ->
+            if (value.id.startsWith("#")) {
+                try {
+                    resolveFunctionTag(ResourceLocation.parse(value.id.removePrefix("#")), location, visited)
+                } catch (error: SandboxException) {
+                    if (error.code == DiagnosticCode.RESOURCE_NOT_FOUND && !value.required) emptyList() else throw error
+                }
+            } else {
+                val functionId = ResourceLocation.parse(value.id)
+                if (datapack.functions.containsKey(functionId)) {
+                    listOf(functionId)
+                } else if (!value.required) {
+                    emptyList()
+                } else {
+                    throw SandboxException(DiagnosticCode.RESOURCE_NOT_FOUND, "Function '$functionId' in tag '#$id' was not found", location)
+                }
+            }
+        }
+        visited.remove(id)
+        return functions
     }
 
     private fun executePredicateContext(context: ExecutionContext): PredicateContext {
@@ -2268,10 +2380,10 @@ class DatapackSandbox(
         return if (scaled % 1.0 == 0.0) JsonPrimitive(scaled.toLong()) else JsonPrimitive(scaled)
     }
 
-    private fun executeStoreValue(storeType: String, commandsRun: Int, outputsBefore: Int): Int =
+    private fun executeStoreValue(storeType: String, commandsRun: Int, outputsBefore: Int, returnValue: Int? = null): Int =
         when (storeType) {
             "success" -> if (commandsRun > 0) 1 else 0
-            else -> latestNumericOutput(outputsBefore) ?: commandsRun
+            else -> returnValue ?: latestNumericOutput(outputsBefore) ?: commandsRun
         }
 
     private fun latestNumericOutput(outputsBefore: Int): Int? =
@@ -2389,7 +2501,7 @@ class DatapackSandbox(
     }
 }
 
-private class ReturnSignal : RuntimeException() {
+private class ReturnSignal(val value: Int? = null) : RuntimeException() {
     override fun fillInStackTrace(): Throwable = this
 }
 

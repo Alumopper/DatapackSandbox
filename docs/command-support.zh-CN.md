@@ -34,7 +34,7 @@
 | `deop`、`op` | 未支持 | 不模拟权限系统。 |
 | `effect` | 部分支持 | `give`、`clear`；更新玩家效果状态并触发相关 advancement 事件。 |
 | `enchant` | 部分支持 | 向选中物品写入附魔组件；不检查可附魔性。 |
-| `execute` | 部分支持 | 支持 `as`、`at`、`positioned`、`align`、`anchored`、`facing`、`in`、`rotated`、`store`、`if`、`unless`、`run` 的核心路径；条件覆盖 `entity`、`score`、`data`、`block`、`blocks`、`predicate`、`dimension`、`biome` 和 `loaded`。 |
+| `execute` | 部分支持 | 支持 `as`、`at`、`positioned`、`align`、`anchored`、`facing`、`in`、`rotated`、`store`、`if`、`unless`、`run` 的核心路径；条件覆盖 `entity`、`score`、`data`、`block`、`blocks`、`predicate`、`function`、`dimension`、`biome` 和 `loaded`。 |
 | `experience`、`xp` | 部分支持 | `add`、`set`、`query`；沙盒内 points/levels 共用玩家 XP 整数字段。 |
 | `fill` | 部分支持 | `fill <from> <to> <block[state]{nbt}> [replace|keep|destroy|hollow|outline]`；不执行更新或掉落。 |
 | `fillbiome` | 部分支持 | 为显式方块范围记录 biome 覆盖；不模拟区块 biome 容器或生成效果。 |
@@ -60,7 +60,7 @@
 | `random` | 部分支持 | `value`、`roll`、`reset`；使用确定性的沙盒随机序列状态。 |
 | `recipe` | 部分支持 | `give`、`take`；更新玩家 recipe 集合。 |
 | `reload` | 空操作 | 原版命令作为 no-op 记录；REPL 工具命令 `reload` 会真正重载数据包并保留世界状态。 |
-| `return` | 支持 | 结束当前 function。 |
+| `return` | 支持 | 结束当前 function；支持 `return <value>`、`return fail` 和 `return run <command>`，用于 function 条件和 store result 测试。 |
 | `ride` | 部分支持 | 记录载具和乘客关系；不模拟控制或物理。 |
 | `rotate` | 部分支持 | 更新 yaw/pitch。 |
 | `save-all`、`save-off`、`save-on` | 未支持 | 沙盒没有真实存档生命周期。 |

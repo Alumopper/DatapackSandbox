@@ -41,7 +41,7 @@ run continues. Use `--unsupported error`, manifest `"unsupported": "error"`, or
 | `deop`, `op` | Unsupported | Permission system is not simulated. |
 | `effect` | Partial | `give`, `clear`; updates player effect state and advancement events. |
 | `enchant` | Partial | Writes enchantment components to selected item; no enchantability checks. |
-| `execute` | Partial | `as`, `at`, `positioned`, `align`, `anchored`, `facing`, `in`, `rotated`, `store`, `if`, `unless`, `run`; conditions support `entity`, `score`, `data`, `block`, `blocks`, `predicate`, `dimension`, `biome`, and `loaded`. |
+| `execute` | Partial | `as`, `at`, `positioned`, `align`, `anchored`, `facing`, `in`, `rotated`, `store`, `if`, `unless`, `run`; conditions support `entity`, `score`, `data`, `block`, `blocks`, `predicate`, `function`, `dimension`, `biome`, and `loaded`. |
 | `experience`, `xp` | Partial | `add`, `set`, `query`; points and levels share the sandbox XP integer. |
 | `fill` | Partial | `fill <from> <to> <block[state]{nbt}> [replace|keep|destroy|hollow|outline]`; no updates/drops. |
 | `fillbiome` | Partial | Stores biome overrides for explicit block ranges; no chunk biome container or generation effects. |
@@ -67,7 +67,7 @@ run continues. Use `--unsupported error`, manifest `"unsupported": "error"`, or
 | `random` | Partial | `value`, `roll`, `reset`; deterministic sandbox sequence state. |
 | `recipe` | Partial | `give`, `take`; updates per-player recipe sets. |
 | `reload` | No-op | Accepted and recorded; REPL `reload` performs real datapack reload, vanilla command does not mutate this immutable sandbox instance. |
-| `return` | Supported | Stops the current function. |
+| `return` | Supported | Stops the current function; supports `return <value>`, `return fail`, and `return run <command>` for function conditions and store result tests. |
 | `ride` | Partial | Tracks vehicle/passenger relationships; no physics/control. |
 | `rotate` | Partial | Updates yaw/pitch. |
 | `save-all`, `save-off`, `save-on` | Unsupported | No real world save lifecycle exists. |

@@ -149,9 +149,10 @@ class DpsCompletionEngine(private val sandbox: () -> DatapackSandbox) {
         return when {
             previous in setOf("as", "at") -> entityTargets().suggest("entities/selectors", appendSpace = true)
             previous == "run" -> DpsCommandCatalog.rootCommands(sandbox().profile)
-            previous in setOf("if", "unless") -> listOf("entity", "score", "data", "block", "blocks", "predicate", "dimension", "biome", "loaded").suggest("conditions", appendSpace = true)
+            previous in setOf("if", "unless") -> listOf("entity", "score", "data", "block", "blocks", "predicate", "function", "dimension", "biome", "loaded").suggest("conditions", appendSpace = true)
             beforePrevious in setOf("if", "unless") && previous == "entity" -> entityTargets().suggest("entities/selectors", appendSpace = true)
             beforePrevious in setOf("if", "unless") && previous == "predicate" -> sandbox().datapack.predicates.keys.mapResource("predicates")
+            beforePrevious in setOf("if", "unless") && previous == "function" -> functionConditionTargets().suggest("functions/tags")
             beforePrevious in setOf("if", "unless") && previous == "dimension" -> sandbox().profile.registryView.dimensions.mapResource("dimensions")
             words.getOrNull(context.wordIndex - 4) == "biome" -> sandbox().profile.registryView.biomes.mapResource("biomes")
             previous == "in" -> sandbox().profile.registryView.dimensions.mapResource("dimensions")
@@ -387,6 +388,15 @@ class DpsCompletionEngine(private val sandbox: () -> DatapackSandbox) {
 
     private fun resourceIndexTypes(): List<String> =
         sandbox().datapack.resourceIndex.map { it.type }.distinct()
+
+    private fun functionConditionTargets(): List<String> {
+        val pack = sandbox().datapack
+        val functions = pack.functions.keys.map { it.toString() }
+        val tags = pack.tags.keys
+            .filter { it.registry == "function" || it.registry == "functions" }
+            .map { "#${it.id}" }
+        return (functions + tags).distinct().sorted()
+    }
 
     private fun knownTags(): List<String> =
         sandbox().world.entities.flatMap { it.tags }.distinct()

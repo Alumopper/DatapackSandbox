@@ -156,6 +156,27 @@ class CommandExpansionTest {
         assertEquals(0, sandbox.world.getScore("#fail", "checks"))
     }
 
+    @Test
+    fun `execute function condition uses function return values and tags`() {
+        val pack = writeExecuteFunctionPack(Files.createTempDirectory("dps-execute-function-pack"))
+        val sandbox = createSandbox("26.2", listOf(pack))
+
+        sandbox.executeCommand("scoreboard objectives add checks dummy")
+        sandbox.executeCommand("execute if function demo:pass run scoreboard players add #pass checks 1")
+        sandbox.executeCommand("execute unless function demo:fail run scoreboard players add #pass checks 1")
+        sandbox.executeCommand("execute if function #demo:group run scoreboard players add #pass checks 1")
+        sandbox.executeCommand("execute if function demo:fail run scoreboard players add #fail checks 1")
+        sandbox.executeCommand("execute unless function demo:pass run scoreboard players add #fail checks 1")
+        sandbox.executeCommand("execute store result score #return checks run function demo:return_run")
+        sandbox.executeCommand("execute store result score #explicit checks run function demo:return_after_output")
+
+        assertEquals(3, sandbox.world.getScore("#pass", "checks"))
+        assertEquals(0, sandbox.world.getScore("#fail", "checks"))
+        assertEquals(33, sandbox.world.getScore("#condition", "checks"))
+        assertEquals(4, sandbox.world.getScore("#return", "checks"))
+        assertEquals(4, sandbox.world.getScore("#explicit", "checks"))
+    }
+
     private fun fixturePack(): Path =
         Path.of("src/test/resources/packs/counter")
 
@@ -223,6 +244,66 @@ class CommandExpansionTest {
                     }
                   ]
                 }
+              ]
+            }
+            """.trimIndent(),
+        )
+        return root
+    }
+
+    private fun writeExecuteFunctionPack(root: Path): Path {
+        Files.writeString(
+            root.resolve("pack.mcmeta").also { Files.createDirectories(it.parent) },
+            """
+            {
+              "pack": {
+                "pack_format": 107.1,
+                "description": "execute function condition test"
+              }
+            }
+            """.trimIndent(),
+        )
+        val functionRoot = root.resolve("data").resolve("demo").resolve("function")
+        Files.createDirectories(functionRoot)
+        Files.writeString(
+            functionRoot.resolve("pass.mcfunction"),
+            """
+            scoreboard players add #condition checks 1
+            return 1
+            scoreboard players add #condition checks 100
+            """.trimIndent(),
+        )
+        Files.writeString(
+            functionRoot.resolve("fail.mcfunction"),
+            """
+            scoreboard players add #condition checks 10
+            return fail
+            scoreboard players add #condition checks 100
+            """.trimIndent(),
+        )
+        Files.writeString(
+            functionRoot.resolve("return_run.mcfunction"),
+            """
+            return run random value 4..4
+            """.trimIndent(),
+        )
+        Files.writeString(
+            functionRoot.resolve("return_after_output.mcfunction"),
+            """
+            random value 9..9
+            return 4
+            """.trimIndent(),
+        )
+        val tagRoot = root.resolve("data").resolve("demo").resolve("tags").resolve("function")
+        Files.createDirectories(tagRoot)
+        Files.writeString(
+            tagRoot.resolve("group.json"),
+            """
+            {
+              "values": [
+                "demo:pass",
+                "demo:fail",
+                { "id": "demo:missing", "required": false }
               ]
             }
             """.trimIndent(),
