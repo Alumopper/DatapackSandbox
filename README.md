@@ -29,8 +29,11 @@ Run release smoke checks for the standalone jar:
 .\gradlew.bat :cli:smokeCliJar
 ```
 
-The standard `check` lifecycle also runs unit tests, manifest examples, and the
-standalone jar smoke checks; CI runs `check` on Linux, Windows, and macOS.
+The smoke checks build the jar, export the bundled manifest schema, run all
+example manifests, and execute the concrete README `loot` and player `event`
+examples. The standard `check` lifecycle also runs unit tests, manifest
+examples, and the standalone jar smoke checks; CI runs `check` on Linux,
+Windows, and macOS.
 
 The standalone jar is written to:
 

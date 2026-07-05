@@ -1,4 +1,6 @@
-﻿plugins {
+﻿import java.io.ByteArrayOutputStream
+
+plugins {
     kotlin("jvm")
     application
 }
@@ -77,6 +79,9 @@ val smokeCliJarVersion = registerCliJarSmokeTask(
     "version",
 )
 
+val examplesDir = rootProject.layout.projectDirectory.dir("examples")
+val fullStackExamplePack = examplesDir.dir("full-stack/pack")
+
 val smokeSchemaOutput = layout.buildDirectory.file("smoke/dps-manifest.schema.json")
 val smokeCliJarSchema = registerCliJarSmokeTask(
     name = "smokeCliJarSchema",
@@ -96,16 +101,54 @@ val smokeCliJarExamples = registerCliJarSmokeTask(
     name = "smokeCliJarExamples",
     descriptionText = "Runs all example manifests through the standalone CLI jar.",
     "check",
-    rootProject.layout.projectDirectory.dir("examples").asFile.absolutePath,
+    examplesDir.asFile.absolutePath,
 )
 smokeCliJarExamples.configure {
-    inputs.dir(rootProject.layout.projectDirectory.dir("examples"))
+    inputs.dir(examplesDir)
+}
+
+val smokeCliJarReadmeLoot = registerCliJarSmokeTask(
+    name = "smokeCliJarReadmeLoot",
+    descriptionText = "Runs the README loot CLI example through the standalone jar.",
+    "loot",
+    "--pack",
+    fullStackExamplePack.asFile.absolutePath,
+    "--table",
+    "demo:gift",
+    "--context",
+    "minecraft:advancement_reward",
+    "--seed",
+    "42",
+)
+smokeCliJarReadmeLoot.configure {
+    inputs.dir(fullStackExamplePack)
+    val output = ByteArrayOutputStream()
+    standardOutput = output
+    errorOutput = output
+}
+
+val smokeCliJarReadmeEvent = registerCliJarSmokeTask(
+    name = "smokeCliJarReadmeEvent",
+    descriptionText = "Runs the README player event CLI example through the standalone jar.",
+    "event",
+    "--pack",
+    fullStackExamplePack.asFile.absolutePath,
+    "player",
+    "Steve",
+    "item-used",
+    "minecraft:carrot_on_a_stick",
+)
+smokeCliJarReadmeEvent.configure {
+    inputs.dir(fullStackExamplePack)
+    val output = ByteArrayOutputStream()
+    standardOutput = output
+    errorOutput = output
 }
 
 tasks.register("smokeCliJar") {
     group = "verification"
     description = "Builds the standalone CLI jar and runs release smoke checks."
-    dependsOn(smokeCliJarVersion, smokeCliJarSchema, smokeCliJarExamples)
+    dependsOn(smokeCliJarVersion, smokeCliJarSchema, smokeCliJarExamples, smokeCliJarReadmeLoot, smokeCliJarReadmeEvent)
 }
 
 tasks.named("check") {
