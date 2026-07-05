@@ -280,6 +280,25 @@ class RunCommandTest {
     }
 
     @Test
+    fun `run inline assertions can check snapshot diffs`() {
+        val output = captureStdout {
+            main(
+                arrayOf(
+                    "run",
+                    "--version",
+                    "26.2",
+                    "--mcfunction-text",
+                    "scoreboard objectives add runs dummy\nscoreboard players set #inline_diff runs 8",
+                    "--assert",
+                    """{"snapshotDiff":{"path":"/scores/runs","kind":"added","contains":"\"#inline_diff\": 8","count":1}}""",
+                ),
+            )
+        }
+
+        assertTrue("OK version=26.2" in output, output)
+    }
+
+    @Test
     fun `run can print and write snapshot diff`() {
         val diffFile = Files.createTempFile("dps-cli-snapshot-diff", ".json")
 

@@ -214,7 +214,7 @@ class RunCommand : CliktCommand(name = "run") {
                 Files.writeString(it, content, StandardCharsets.UTF_8)
                 println(ConsoleStyle.green("trace written: $it"))
             }
-            val assertionFailures = ManifestRunner.evaluateAssertions(parseAssertions(), sandbox)
+            val assertionFailures = ManifestRunner.evaluateAssertions(parseAssertions(), sandbox, beforeSnapshot)
             if (assertionFailures.isNotEmpty()) {
                 assertionFailures.forEach { println(ConsoleStyle.red(it)) }
                 exitProcess(ExitCodes.ASSERTION_FAILED)

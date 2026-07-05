@@ -122,11 +122,19 @@ object ManifestRunner {
     }
 
     internal fun evaluateAssertions(assertions: List<JsonObject>, sandbox: DatapackSandbox): List<String> =
-        evaluateAssertions(assertions, sandbox, emptyList())
+        evaluateAssertions(assertions, sandbox, beforeSnapshot = null)
 
-    private fun evaluateAssertions(assertions: List<JsonObject>, sandbox: DatapackSandbox, diagnostics: List<ManifestDiagnostic>): List<String> =
+    internal fun evaluateAssertions(assertions: List<JsonObject>, sandbox: DatapackSandbox, beforeSnapshot: JsonObject?): List<String> =
+        evaluateAssertions(assertions, sandbox, emptyList(), beforeSnapshot)
+
+    private fun evaluateAssertions(
+        assertions: List<JsonObject>,
+        sandbox: DatapackSandbox,
+        diagnostics: List<ManifestDiagnostic>,
+        beforeSnapshot: JsonObject?,
+    ): List<String> =
         assertions.flatMapIndexed { index, assertion ->
-            evaluateAssertion(assertion, sandbox, diagnostics).map { "assertion ${index + 1}: $it" }
+            evaluateAssertion(assertion, sandbox, diagnostics, beforeSnapshot).map { "assertion ${index + 1}: $it" }
         }
 
     private fun runOne(
