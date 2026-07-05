@@ -255,6 +255,10 @@ docs/dps-manifest.schema.json
 ```
 
 ```json
+{ "output": { "command": "say", "contains": "hello", "order": 1, "count": 1 } }
+```
+
+```json
 { "trace": { "root": "scoreboard", "success": true, "count": 2 } }
 ```
 
@@ -270,4 +274,4 @@ docs/dps-manifest.schema.json
 { "snapshotDiff": { "path": "/scores/runs/#clock", "kind": "changed", "after": 20, "count": 1 } }
 ```
 
-`player` 断言还可检查 dimension、game mode、health、food、selected slot、recipe、effect、stat、position、last input 和 spawn point。`team`、`bossbar` 断言会检查对应运行时状态。`item` 断言可按玩家、slot、id、count、components path 和 NBT path 检查背包结果。`trace` 断言可按 command/root/contains/success/count/source file/function stack 检查命令执行链。`eventTrace` 断言可按 player、type、success、advancement、criterion 和 count 检查玩家事件调试链路。`diagnostic` 断言可按 step、version、code、command、root、message substring 和 count 检查预期失败。`snapshotDiff` 断言可按 JSON Pointer path、diff kind、before/after 值、渲染文本片段和 count 检查步骤前后的状态差异。
+`player` 断言还可检查 dimension、game mode、health、food、selected slot、recipe、effect、stat、position、last input 和 spawn point。`team`、`bossbar` 断言会检查对应运行时状态。`item` 断言可按玩家、slot、id、count、components path 和 NBT path 检查背包结果。`output` 断言可按 command/channel/targets、text/contains、payload path/value、segment style、count 和从 1 开始的 `order` 检查输出。`trace` 断言可按 command/root/contains/success/count/source file/function stack 检查命令执行链。`eventTrace` 断言可按 player、type、success、advancement、criterion 和 count 检查玩家事件调试链路。`diagnostic` 断言可按 step、version、code、command、root、message substring 和 count 检查预期失败。`snapshotDiff` 断言可按 JSON Pointer path、diff kind、before/after 值、渲染文本片段和 count 检查步骤前后的状态差异。

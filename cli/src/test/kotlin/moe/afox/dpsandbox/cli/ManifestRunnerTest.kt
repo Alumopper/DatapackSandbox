@@ -110,6 +110,20 @@ class ManifestRunnerTest {
     }
 
     @Test
+    fun `manifest schema documents output assertion order`() {
+        val schema = JsonParser.parseString(Files.readString(Path.of("../docs/dps-manifest.schema.json"))).asJsonObject
+        val defs = schema.getAsJsonObject("\$defs")
+        val outputRef = defs.getAsJsonObject("assertion")
+            .getAsJsonObject("properties")
+            .getAsJsonObject("output")
+        val outputProperties = defs.getAsJsonObject("outputAssertion").getAsJsonObject("properties")
+
+        assertEquals("#/\$defs/outputAssertion", outputRef.get("\$ref").asString)
+        assertEquals("integer", outputProperties.getAsJsonObject("order").get("type").asString)
+        assertEquals(1, outputProperties.getAsJsonObject("order").get("minimum").asInt)
+    }
+
+    @Test
     fun `runs a manifest check`() {
         val path = Path.of("src/test/resources/cases/counter.dps.json")
 
@@ -150,6 +164,7 @@ class ManifestRunnerTest {
                     "channel": "chat",
                     "target": "Steve",
                     "contains": "hello from manifest",
+                    "order": 1,
                     "count": 1
                   }
                 },
@@ -157,6 +172,7 @@ class ManifestRunnerTest {
                   "output": {
                     "command": "tellraw",
                     "text": "gold",
+                    "order": 2,
                     "segment": {
                       "text": "gold",
                       "color": "yellow"

@@ -173,7 +173,7 @@ class SandboxQuickTestTest {
 
         val scenario = SandboxQuickTest.singleFunction(functionFile, "26.2")
             .function()
-            .assertOutput(command = "say", channel = "chat", target = "Steve", contains = "hello from test")
+            .assertOutput(command = "say", channel = "chat", target = "Steve", contains = "hello from test", order = 1)
             .assertOutput(
                 OutputExpectation(
                     command = "tellraw",
@@ -181,6 +181,7 @@ class SandboxQuickTestTest {
                     text = "gold",
                     segment = OutputSegmentExpectation(text = "gold", color = "yellow"),
                     count = 1,
+                    order = 2,
                 ),
             )
 

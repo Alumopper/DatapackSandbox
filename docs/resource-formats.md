@@ -123,6 +123,10 @@ diagnostic, and snapshot diff checks:
 ```
 
 ```json
+{ "output": { "command": "say", "contains": "hello", "order": 1, "count": 1 } }
+```
+
+```json
 { "trace": { "root": "scoreboard", "success": true, "count": 2 } }
 ```
 
@@ -142,6 +146,8 @@ diagnostic, and snapshot diff checks:
 slot, recipe, effect, stat, position, last input, and spawn point. `team` and
 `bossbar` assertions inspect their stored runtime state. `item` assertions can
 check player inventory by slot, id, count, components path, and NBT path.
+`output` assertions can check command/channel/targets, text/contains, payload
+path/value, segment style, count, and one-based `order`.
 `trace` assertions can check command/root/contains, success, count, source file,
 and function stack. `eventTrace` assertions check player event dispatch by
 player, type, success, advancement id, criterion, and count. `diagnostic`

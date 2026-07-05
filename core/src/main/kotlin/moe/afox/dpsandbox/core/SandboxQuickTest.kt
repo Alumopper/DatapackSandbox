@@ -325,6 +325,7 @@ class SandboxQuickTestMatrix private constructor(
         text: String? = null,
         contains: String? = null,
         count: Int? = null,
+        order: Int? = null,
     ): SandboxQuickTestMatrix =
         assertOutput(
             OutputExpectation(
@@ -334,6 +335,7 @@ class SandboxQuickTestMatrix private constructor(
                 text = text,
                 contains = contains,
                 count = count,
+                order = order,
             ),
         )
 
@@ -894,6 +896,7 @@ class SandboxQuickTest private constructor(
         text: String? = null,
         contains: String? = null,
         count: Int? = null,
+        order: Int? = null,
     ): SandboxQuickTest =
         assertOutput(
             OutputExpectation(
@@ -903,6 +906,7 @@ class SandboxQuickTest private constructor(
                 text = text,
                 contains = contains,
                 count = count,
+                order = order,
             ),
         )
 

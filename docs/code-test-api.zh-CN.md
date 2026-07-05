@@ -263,7 +263,7 @@ class MyDatapackTest {
 | `assertPlayerLastInput(player, device, code, action)` | 断言玩家最后一次输入。 |
 | `assertAdvancementDone(player, id, expected)` | 断言 advancement 是否完成。 |
 | `assertOutputContains(text)` | 断言输出事件包含文本。 |
-| `assertOutput(...)` | 按 command/channel/target/text/count 断言输出事件。 |
+| `assertOutput(...)` | 按 command/channel/target/text/count/order 断言输出事件。 |
 | `assertTrace(...)` | 按 command/root/source/success/count 断言 trace 事件。 |
 | `assertSnapshotDiff(...)` | 按 before/after snapshot 的 path/kind/渲染文本/count 断言状态变化。 |
 | `outputs()` | 返回记录的输出事件。 |

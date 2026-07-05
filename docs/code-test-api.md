@@ -283,7 +283,7 @@ class MyDatapackTest {
 | `assertPlayerLastInput(player, device, code, action)` | Assert the latest player input |
 | `assertAdvancementDone(player, id, expected)` | Assert advancement completion |
 | `assertOutputContains(text)` | Assert output event text |
-| `assertOutput(...)` | Assert command/channel/target/text/count for output events |
+| `assertOutput(...)` | Assert command/channel/target/text/count/order for output events |
 | `assertTrace(...)` | Assert command/root/source/success/count for trace events |
 | `assertSnapshotDiff(...)` | Assert before/after snapshot path/kind/rendered text/count |
 | `outputs()` | Return recorded output events |

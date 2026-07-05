@@ -69,6 +69,8 @@ data class OutputExpectation(
     val segment: OutputSegmentExpectation? = null,
     /** Exact expected number of matching events, or null to require at least one. */
     val count: Int? = null,
+    /** One-based global output event position to match, or null to search all outputs. */
+    val order: Int? = null,
 ) {
     /**
      * Returns whether one [event] satisfies this expectation.
@@ -87,7 +89,9 @@ data class OutputExpectation(
      * Returns every output event that satisfies this expectation.
      */
     fun matching(outputs: List<OutputEvent>): List<OutputEvent> =
-        outputs.filter(::matches)
+        order?.let { ordinal ->
+            outputs.getOrNull(ordinal - 1)?.takeIf(::matches)?.let(::listOf) ?: emptyList()
+        } ?: outputs.filter(::matches)
 
     /**
      * Returns assertion failure messages for [outputs].
@@ -118,6 +122,7 @@ data class OutputExpectation(
             contains?.let { "contains=${quote(it)}" },
             payloadPath?.let { "payload.$it=${payloadEquals?.let(JsonValues::render) ?: "<exists>"}" },
             segment?.let { "segment=$it" },
+            order?.let { "order=$it" },
         ).ifEmpty { listOf("<any output>") }.joinToString(", ")
 
     private fun payloadMatches(event: OutputEvent): Boolean {

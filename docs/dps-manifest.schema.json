@@ -423,7 +423,7 @@
         "eventTrace": { "$ref": "#/$defs/eventTraceAssertion" },
         "diagnostic": { "$ref": "#/$defs/diagnosticAssertion" },
         "snapshotDiff": { "$ref": "#/$defs/snapshotDiffAssertion" },
-        "output": { "type": "object" }
+        "output": { "$ref": "#/$defs/outputAssertion" }
       }
     },
     "scoreAssertion": {
@@ -570,6 +570,46 @@
         "count": { "type": "integer", "minimum": 0 },
         "fileContains": { "type": "string" },
         "function": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "outputAssertion": {
+      "type": "object",
+      "properties": {
+        "command": { "type": "string" },
+        "channel": { "type": "string" },
+        "target": { "type": "string" },
+        "targets": { "$ref": "#/$defs/stringArray" },
+        "text": { "type": "string" },
+        "equals": { "type": "string" },
+        "contains": { "type": "string" },
+        "payloadPath": { "type": "string" },
+        "payloadEquals": {},
+        "payload": {
+          "type": "object",
+          "properties": {
+            "path": { "type": "string" },
+            "equals": {}
+          },
+          "additionalProperties": false
+        },
+        "segment": {
+          "type": "object",
+          "properties": {
+            "text": { "type": "string" },
+            "equals": { "type": "string" },
+            "contains": { "type": "string" },
+            "color": { "type": "string" },
+            "bold": { "type": "boolean" },
+            "italic": { "type": "boolean" },
+            "underlined": { "type": "boolean" },
+            "strikethrough": { "type": "boolean" },
+            "obfuscated": { "type": "boolean" }
+          },
+          "additionalProperties": false
+        },
+        "count": { "type": "integer", "minimum": 0 },
+        "order": { "type": "integer", "minimum": 1 }
       },
       "additionalProperties": false
     },

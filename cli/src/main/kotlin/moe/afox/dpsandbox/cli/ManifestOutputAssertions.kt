@@ -26,6 +26,7 @@ object ManifestOutputAssertions {
             payloadEquals = output.get("payloadEquals") ?: payload?.get("equals"),
             segment = output.getAsJsonObject("segment")?.let(::parseSegment),
             count = output.get("count")?.asInt,
+            order = output.get("order")?.asInt,
         )
     }
 
