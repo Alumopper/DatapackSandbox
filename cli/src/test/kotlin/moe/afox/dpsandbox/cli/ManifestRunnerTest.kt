@@ -177,6 +177,27 @@ class ManifestRunnerTest {
     }
 
     @Test
+    fun `manifest schema documents storage existence assertions`() {
+        val schema = JsonParser.parseString(Files.readString(Path.of("../docs/dps-manifest.schema.json"))).asJsonObject
+        val defs = schema.getAsJsonObject("\$defs")
+        val assertionRef = defs.getAsJsonObject("assertion")
+            .getAsJsonObject("properties")
+            .getAsJsonObject("storage")
+        val storageAssertion = defs.getAsJsonObject("storageAssertion")
+        val properties = storageAssertion.getAsJsonObject("properties")
+        val requiredAlternatives = storageAssertion.getAsJsonArray("anyOf").map {
+            it.asJsonObject.getAsJsonArray("required").single().asString
+        }
+
+        assertEquals("#/\$defs/storageAssertion", assertionRef.get("\$ref").asString)
+        assertTrue(requiredAlternatives.containsAll(listOf("equals", "exists", "missing")))
+        assertEquals("string", properties.getAsJsonObject("id").get("type").asString)
+        assertEquals("string", properties.getAsJsonObject("path").get("type").asString)
+        assertEquals("boolean", properties.getAsJsonObject("exists").get("type").asString)
+        assertEquals("boolean", properties.getAsJsonObject("missing").get("type").asString)
+    }
+
+    @Test
     fun `runs a manifest check`() {
         val path = Path.of("src/test/resources/cases/counter.dps.json")
 
@@ -807,6 +828,40 @@ class ManifestRunnerTest {
 
         assertFalse(result.passed)
         assertTrue(result.messages.any { "entityCount type=minecraft:pig, tag=range expected <= 1 but was 2" in it }, result.messages.joinToString())
+    }
+
+    @Test
+    fun `runs storage exists and missing assertions`() {
+        val dir = Files.createTempDirectory("dps-storage-existence-manifest")
+        val pack = Path.of("../core/src/test/resources/packs/counter").toAbsolutePath().normalize().toString().replace("\\", "\\\\")
+        val manifest = dir.resolve("storage-existence.dps.json")
+        Files.writeString(
+            manifest,
+            """
+            {
+              "version": "26.1.2",
+              "packs": ["$pack"],
+              "world": {
+                "storage": {
+                  "demo:env": { "ready": true }
+                }
+              },
+              "steps": [],
+              "assertions": [
+                { "storage": { "id": "demo:env", "exists": true } },
+                { "storage": { "id": "demo:env", "path": "ready", "exists": true } },
+                { "storage": { "id": "demo:env", "path": "absent", "missing": true } },
+                { "storage": { "id": "demo:env", "path": "ready", "equals": true } },
+                { "storage": { "id": "demo:env", "path": "ready", "missing": true } }
+              ]
+            }
+            """.trimIndent(),
+        )
+
+        val result = ManifestRunner.run(manifest)
+
+        assertFalse(result.passed)
+        assertTrue(result.messages.any { "storage demo:env ready expected missing but was true" in it }, result.messages.joinToString())
     }
 
     @Test

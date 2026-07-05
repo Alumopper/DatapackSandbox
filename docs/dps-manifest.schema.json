@@ -427,7 +427,7 @@
       ],
       "properties": {
         "score": { "$ref": "#/$defs/scoreAssertion" },
-        "storage": { "type": "object" },
+        "storage": { "$ref": "#/$defs/storageAssertion" },
         "entityCount": { "$ref": "#/$defs/entityCountAssertion" },
         "world": { "$ref": "#/$defs/worldAssertion" },
         "player": { "$ref": "#/$defs/playerAssertion" },
@@ -459,6 +459,23 @@
         "equals": { "type": "integer" },
         "min": { "type": "integer" },
         "max": { "type": "integer" }
+      },
+      "additionalProperties": false
+    },
+    "storageAssertion": {
+      "type": "object",
+      "required": ["id"],
+      "anyOf": [
+        { "required": ["equals"] },
+        { "required": ["exists"] },
+        { "required": ["missing"] }
+      ],
+      "properties": {
+        "id": { "type": "string" },
+        "path": { "type": "string" },
+        "equals": true,
+        "exists": { "type": "boolean" },
+        "missing": { "type": "boolean" }
       },
       "additionalProperties": false
     },

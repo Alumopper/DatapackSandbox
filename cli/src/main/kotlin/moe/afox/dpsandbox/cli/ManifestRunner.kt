@@ -599,14 +599,7 @@ object ManifestRunner {
                 }
             }
             assertion.has("storage") -> {
-                val storage = assertion.getAsJsonObject("storage")
-                val id = ResourceLocation.parse(storage.requiredManifestString("id"))
-                val path = storage.requiredManifestString("path")
-                val expected = storage.get("equals")
-                val actual = sandbox.world.storages[id]?.let { JsonPaths.get(it, path) }
-                if (actual != expected) {
-                    failures += "storage $id $path expected ${JsonValues.render(expected)} but was ${actual?.let(JsonValues::render) ?: "<missing>"}"
-                }
+                failures += evaluateStorageAssertion(assertion.getAsJsonObject("storage"), sandbox)
             }
             assertion.has("entityCount") -> {
                 val entity = assertion.getAsJsonObject("entityCount")
@@ -983,6 +976,41 @@ object ManifestRunner {
             entity.manifestString("type")?.let { "type=$it" },
             entity.manifestString("tag")?.let { "tag=$it" },
         ).ifEmpty { listOf("<any entity>") }.joinToString(", ")
+
+    private fun evaluateStorageAssertion(storage: JsonObject, sandbox: DatapackSandbox): List<String> {
+        val id = ResourceLocation.parse(storage.requiredManifestString("id"))
+        val path = storage.manifestString("path")
+        val actual = sandbox.world.storages[id]?.let { root -> JsonPaths.get(root, path) }
+        val label = "storage $id ${path ?: "<root>"}"
+        val failures = mutableListOf<String>()
+        var checked = false
+
+        storage.get("equals")?.let { expected ->
+            checked = true
+            if (actual != expected) {
+                failures += "$label expected ${JsonValues.render(expected)} but was ${actual?.let(JsonValues::render) ?: "<missing>"}"
+            }
+        }
+        storage.get("exists")?.let { expected ->
+            checked = true
+            val exists = actual != null
+            if (exists != expected.asBoolean) {
+                failures += "$label exists expected ${expected.asBoolean} but was $exists"
+            }
+        }
+        storage.get("missing")?.let { expected ->
+            checked = true
+            val shouldBeMissing = expected.asBoolean
+            when {
+                shouldBeMissing && actual != null -> failures += "$label expected missing but was ${JsonValues.render(actual)}"
+                !shouldBeMissing && actual == null -> failures += "$label expected present but was <missing>"
+            }
+        }
+        if (!checked) {
+            failures += "$label assertion requires equals, exists, or missing"
+        }
+        return failures
+    }
 
     private fun evaluateTraceAssertion(trace: JsonObject, sandbox: DatapackSandbox): List<String> {
         return TraceAssertions.failures(

@@ -146,6 +146,10 @@ diagnostic, and snapshot diff checks:
 ```
 
 ```json
+{ "storage": { "id": "demo:env", "path": "debug.last", "missing": true } }
+```
+
+```json
 { "entityCount": { "type": "minecraft:pig", "tag": "fixture", "min": 1, "max": 3 } }
 ```
 
@@ -181,6 +185,8 @@ diagnostic, and snapshot diff checks:
 slot, recipe, effect, stat, position, last input, and spawn point. `team` and
 `bossbar` assertions inspect their stored runtime state. `item` assertions can
 check player inventory by slot, id, count, components path, and NBT path.
+`storage` assertions can compare a path with `equals` or check `exists` and
+`missing` for storage roots or nested paths.
 `output` assertions can check command/channel/targets, text/contains,
 whitespace-normalized text/contains, payload path/value, segment style, count,
 and one-based `order`. When an output assertion misses, the failure message
