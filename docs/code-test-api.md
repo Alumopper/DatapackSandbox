@@ -201,6 +201,8 @@ SandboxQuickTest.create(
     .assertPlayer("Alex", xp = 5, recipe = "minecraft:bread", effect = "minecraft:speed")
     .assertItem("Alex", "minecraft:stick", 2)
     .assertScore("#fixture", "ready", 1)
+    .assertStorageExists("demo:env", "ready")
+    .assertStorageMissing("demo:env", "debug.last")
     .assertPlayerXp("Alex", 5)
     .requirePassed()
 ```
@@ -279,6 +281,8 @@ class MyDatapackTest {
 | `mouseInput(player, button, action, x, y)` | Inject mouse input |
 | `assertScore(target, objective, expected)` | Assert scoreboard state |
 | `assertStorageEquals(id, path, expectedJson)` | Assert a storage path |
+| `assertStorageExists(id, path)` | Assert that a storage root or path exists |
+| `assertStorageMissing(id, path)` | Assert that a storage root or path is absent |
 | `assertWorld(...)` | Assert selected world-level state |
 | `assertPlayer(...)` | Assert selected player state |
 | `assertBlock(x, y, z, id, exists)` | Assert a sparse-world block |

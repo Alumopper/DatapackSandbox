@@ -37,6 +37,21 @@ class SandboxQuickTestTest {
     }
 
     @Test
+    fun `quick storage existence assertions explain failures`() {
+        val report = SandboxQuickTest.create(listOf(fixturePack()), version = "26.1.2")
+            .world {
+                storage("demo:env", "{ready:true}")
+            }
+            .assertStorageExists("demo:env", "absent")
+            .assertStorageMissing("demo:env", "ready")
+            .report()
+
+        assertTrue(!report.passed)
+        assertTrue(report.failures.any { "storage demo:env absent expected present but was <missing>" in it }, report.failures.joinToString())
+        assertTrue(report.failures.any { "storage demo:env ready expected missing but was true" in it }, report.failures.joinToString())
+    }
+
+    @Test
     fun `records keyboard and mouse player input events`() {
         val scenario = SandboxQuickTest.create(listOf(fixturePack()), version = "26.1.2")
             .keyInput("Steve", "key.jump")
@@ -356,7 +371,10 @@ class SandboxQuickTestTest {
             )
             .assertItem("Alex", "minecraft:stick", 2)
             .assertScore("#fixture", "ready", 1)
+            .assertStorageExists("demo:env")
+            .assertStorageExists("demo:env", "ready")
             .assertStorageEquals("demo:env", "ready", "true")
+            .assertStorageMissing("demo:env", "absent")
             .assertPlayerXp("Alex", 5)
             .requirePassed()
 

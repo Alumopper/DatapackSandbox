@@ -256,6 +256,29 @@ class SandboxQuickTestMatrix private constructor(
     }
 
     /**
+     * Adds a storage equality assertion to every scenario.
+     */
+    fun assertStorageEquals(id: String, path: String?, expectedJson: String): SandboxQuickTestMatrix = apply {
+        scenarios.values.forEach { it.assertStorageEquals(id, path, expectedJson) }
+    }
+
+    /**
+     * Adds a storage existence assertion to every scenario.
+     */
+    @JvmOverloads
+    fun assertStorageExists(id: String, path: String? = null): SandboxQuickTestMatrix = apply {
+        scenarios.values.forEach { it.assertStorageExists(id, path) }
+    }
+
+    /**
+     * Adds a storage missing assertion to every scenario.
+     */
+    @JvmOverloads
+    fun assertStorageMissing(id: String, path: String? = null): SandboxQuickTestMatrix = apply {
+        scenarios.values.forEach { it.assertStorageMissing(id, path) }
+    }
+
+    /**
      * Applies a world-level state assertion to every scenario.
      */
     @JvmOverloads
@@ -730,11 +753,40 @@ class SandboxQuickTest private constructor(
     fun assertStorageEquals(id: String, path: String?, expectedJson: String): SandboxQuickTest = apply {
         val storageId = ResourceLocation.parse(id)
         val expected = JsonValues.parse(expectedJson)
-        val actual = sandbox.world.storages[storageId]?.let { JsonPaths.get(it, path) }
+        val actual = storageValue(storageId, path)
         if (actual != expected) {
-            failures += "storage $storageId ${path ?: "<root>"} expected ${JsonValues.render(expected)} but was ${actual?.let(JsonValues::render) ?: "<missing>"}"
+            failures += "${storageLabel(storageId, path)} expected ${JsonValues.render(expected)} but was ${actual?.let(JsonValues::render) ?: "<missing>"}"
         }
     }
+
+    /**
+     * Asserts that a storage root or path exists.
+     */
+    @JvmOverloads
+    fun assertStorageExists(id: String, path: String? = null): SandboxQuickTest = apply {
+        val storageId = ResourceLocation.parse(id)
+        if (storageValue(storageId, path) == null) {
+            failures += "${storageLabel(storageId, path)} expected present but was <missing>"
+        }
+    }
+
+    /**
+     * Asserts that a storage root or path is absent.
+     */
+    @JvmOverloads
+    fun assertStorageMissing(id: String, path: String? = null): SandboxQuickTest = apply {
+        val storageId = ResourceLocation.parse(id)
+        val actual = storageValue(storageId, path)
+        if (actual != null) {
+            failures += "${storageLabel(storageId, path)} expected missing but was ${JsonValues.render(actual)}"
+        }
+    }
+
+    private fun storageValue(id: ResourceLocation, path: String?): JsonElement? =
+        sandbox.world.storages[id]?.let { JsonPaths.get(it, path) }
+
+    private fun storageLabel(id: ResourceLocation, path: String?): String =
+        "storage $id ${path ?: "<root>"}"
 
     /**
      * Asserts the current XP integer stored on a player.

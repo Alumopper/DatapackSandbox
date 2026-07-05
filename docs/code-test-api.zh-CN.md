@@ -177,6 +177,8 @@ SandboxQuickTest.create(
     .assertPlayer("Alex", xp = 5, recipe = "minecraft:bread", effect = "minecraft:speed")
     .assertItem("Alex", "minecraft:stick", 2)
     .assertScore("#fixture", "ready", 1)
+    .assertStorageExists("demo:env", "ready")
+    .assertStorageMissing("demo:env", "debug.last")
     .assertPlayerXp("Alex", 5)
     .requirePassed()
 ```
@@ -253,6 +255,8 @@ class MyDatapackTest {
 | `mouseInput(player, button, action, x, y)` | 注入鼠标输入。 |
 | `assertScore(target, objective, expected)` | 断言 scoreboard。 |
 | `assertStorageEquals(id, path, expectedJson)` | 断言 storage 路径。 |
+| `assertStorageExists(id, path)` | 断言 storage 根对象或路径存在。 |
+| `assertStorageMissing(id, path)` | 断言 storage 根对象或路径不存在。 |
 | `assertWorld(...)` | 断言选定的世界级状态。 |
 | `assertPlayer(...)` | 断言选定的玩家状态。 |
 | `assertBlock(x, y, z, id, exists)` | 断言 sparse world 中的方块。 |
