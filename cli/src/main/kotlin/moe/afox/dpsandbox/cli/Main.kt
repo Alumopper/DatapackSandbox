@@ -436,10 +436,13 @@ class RunCommand : CliktCommand(name = "run") {
         return when {
             trimmed.startsWith("score:") -> parseScoreAssertion(trimmed.removePrefix("score:"), label)
             trimmed.startsWith("storage:") -> parseStorageAssertion(trimmed.removePrefix("storage:"), label)
+            trimmed.startsWith("entity:") -> parseEntityCountAssertion(trimmed.removePrefix("entity:"), label)
+            trimmed.startsWith("warning:") -> parseWarningContainsAssertion(trimmed.removePrefix("warning:"), label)
+            trimmed.startsWith("warning=") -> parseWarningCountAssertion(trimmed.removePrefix("warning="), label)
             trimmed.startsWith("output:") -> parseOutputAssertion(trimmed.removePrefix("output:"), label)
             else -> throw SandboxException(
                 DiagnosticCode.INPUT_FORMAT,
-                "$label must be a JSON object or shorthand score:<target>:<objective>=N, storage:<id>[:<path>]=<json>, storage:<id>[:<path>]?, storage:<id>[:<path>]!, or output:<text>",
+                "$label must be a JSON object or shorthand score:<target>:<objective>=N, storage:<id>[:<path>]=<json>, entity:<type|*>[@tag]=N, warning=N, warning:<text>, or output:<text>",
             )
         }
     }
@@ -492,6 +495,35 @@ class RunCommand : CliktCommand(name = "run") {
         return JsonObject().also { it.add("storage", storage) }
     }
 
+    private fun parseEntityCountAssertion(spec: String, label: String): JsonObject {
+        val operator = listOf(">=", "<=", "=").firstOrNull { it in spec }
+            ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label entity shorthand requires =, >=, or <=")
+        val splitAt = spec.indexOf(operator)
+        val selector = spec.substring(0, splitAt).trim()
+        val right = spec.substring(splitAt + operator.length).trim()
+        if (selector.isEmpty()) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label entity shorthand must be entity:<type|*>[@tag]${operator}N")
+        }
+        val expected = right.toIntOrNull()
+            ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label entity shorthand expected integer but got '$right'")
+        val tagSplit = selector.indexOf('@')
+        val type = if (tagSplit < 0) selector else selector.substring(0, tagSplit).trim()
+        val tag = tagSplit.takeIf { it >= 0 }?.let { selector.substring(it + 1).trim() }
+        if (type.isEmpty() || tag?.isEmpty() == true) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label entity shorthand must be entity:<type|*>[@tag]${operator}N")
+        }
+        val entity = JsonObject().also { json ->
+            if (type != "*") json.addProperty("type", type)
+            tag?.let { json.addProperty("tag", it) }
+            when (operator) {
+                ">=" -> json.addProperty("min", expected)
+                "<=" -> json.addProperty("max", expected)
+                else -> json.addProperty("equals", expected)
+            }
+        }
+        return JsonObject().also { it.add("entityCount", entity) }
+    }
+
     private fun storageAssertionObject(location: String, label: String): JsonObject {
         val trimmed = location.trim()
         val firstColon = trimmed.indexOf(':')
@@ -516,6 +548,28 @@ class RunCommand : CliktCommand(name = "run") {
             throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label output shorthand must be output:<text>")
         }
         val output = JsonObject().also { it.addProperty("contains", contains) }
+        return JsonObject().also { it.add("output", output) }
+    }
+
+    private fun parseWarningContainsAssertion(text: String, label: String): JsonObject {
+        val contains = text.trim()
+        if (contains.isEmpty()) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label warning shorthand must be warning:<text>")
+        }
+        val output = JsonObject().also { json ->
+            json.addProperty("channel", "warning")
+            json.addProperty("contains", contains)
+        }
+        return JsonObject().also { it.add("output", output) }
+    }
+
+    private fun parseWarningCountAssertion(count: String, label: String): JsonObject {
+        val expected = count.trim().toIntOrNull()
+            ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label warning shorthand expected integer but got '${count.trim()}'")
+        val output = JsonObject().also { json ->
+            json.addProperty("channel", "warning")
+            json.addProperty("count", expected)
+        }
         return JsonObject().also { it.add("output", output) }
     }
 

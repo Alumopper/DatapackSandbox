@@ -228,6 +228,37 @@ class RunCommandTest {
     }
 
     @Test
+    fun `run accepts entity and warning shorthand inline assertions`() {
+        val output = captureStdout {
+            main(
+                arrayOf(
+                    "run",
+                    "--version",
+                    "26.2",
+                    "--command",
+                    """summon minecraft:pig 0 0 0 {Tags:["fixture"]}""",
+                    "--command",
+                    "summon minecraft:cow 0 0 0",
+                    "--command",
+                    "ban Steve",
+                    "--assert",
+                    "entity:*=3",
+                    "--assert",
+                    "entity:minecraft:pig@fixture=1",
+                    "--assert",
+                    "entity:minecraft:cow>=1",
+                    "--assert",
+                    "warning=1",
+                    "--assert",
+                    "warning:Command 'ban'",
+                ),
+            )
+        }
+
+        assertTrue("OK version=26.2" in output, output)
+    }
+
+    @Test
     fun `run loads multiple mcfunction files and strings together`() {
         val mainFile = Files.createTempFile("dps-cli-main-function", ".mcfunction")
         val helperFile = Files.createTempFile("dps-cli-helper-function", ".mcfunction")
