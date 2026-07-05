@@ -142,6 +142,6 @@ JSON text component 支持 `text`、`score`、`selector`、`translate`、`keybin
 | CLI `run --stdin` | 从标准输入读取 `.mcfunction` 文本；`--stdin-mode commands` 会按原始命令行执行 stdin。 |
 | CLI `run --command-file <file>` | 按参数顺序执行一个或多个原始命令文件，适合命令生成器输出。 |
 | CLI `run --world` | 执行前应用 manifest-style world JSON fixture，包括 fixture 引用链。 |
-| CLI `run --assert`、`run --assert-file` | 执行后评估内联或文件形式的 manifest assertion JSON，包括需要执行前后上下文的 `snapshotDiff` 断言。`--assert` 也支持 `score:<target>:<objective>=N`、`score:<target>:<objective>>=N`、`score:<target>:<objective><=N`、`storage:<id>[:<path>]=<json>`、`storage:<id>[:<path>]?`、`storage:<id>[:<path>]!`、`entity:<type|*>[@tag]=N`、`warning=N`、`warning:<text>` 和 `output:<text>` 简写。 |
+| CLI `run --assert`、`run --assert-file` | 执行后评估内联或文件形式的 manifest assertion JSON，包括需要执行前后上下文的 `snapshotDiff` 断言。`--assert` 也支持 `score:<target>:<objective>=N`、`score:<target>:<objective>>=N`、`score:<target>:<objective><=N`、`storage:<id>[:<path>]=<json>`、`storage:<id>[:<path>]?`、`storage:<id>[:<path>]!`、`item:<player>:<id>[@slot]=N`、`entity:<type|*>[@tag]=N`、`warning=N`、`warning:<text>` 和 `output:<text>` 简写。 |
 | CLI `check <manifest-or-directory>` | 运行 `.dps.json` 清单；`--validate-schema` 会在执行前校验 manifest 结构；`--fail-on-missing-resources` 会把直接资源缺失引用视为失败；`--verbose` 会打印资源摘要、覆盖条目、缺失引用和输出事件；可用 `--snapshot-diff-on-fail` 输出状态差异，也可用 `--trace-file`、`--trace-filter`、`--outputs-file` 和 `--report-file` 写出 CI artifact。 |
 | CLI `schema [--output <file>]` | 打印或写出内置 `.dps.json` manifest JSON Schema，用于编辑器和 CI 集成。 |

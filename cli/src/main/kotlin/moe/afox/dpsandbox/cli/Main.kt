@@ -437,12 +437,13 @@ class RunCommand : CliktCommand(name = "run") {
             trimmed.startsWith("score:") -> parseScoreAssertion(trimmed.removePrefix("score:"), label)
             trimmed.startsWith("storage:") -> parseStorageAssertion(trimmed.removePrefix("storage:"), label)
             trimmed.startsWith("entity:") -> parseEntityCountAssertion(trimmed.removePrefix("entity:"), label)
+            trimmed.startsWith("item:") -> parseItemAssertion(trimmed.removePrefix("item:"), label)
             trimmed.startsWith("warning:") -> parseWarningContainsAssertion(trimmed.removePrefix("warning:"), label)
             trimmed.startsWith("warning=") -> parseWarningCountAssertion(trimmed.removePrefix("warning="), label)
             trimmed.startsWith("output:") -> parseOutputAssertion(trimmed.removePrefix("output:"), label)
             else -> throw SandboxException(
                 DiagnosticCode.INPUT_FORMAT,
-                "$label must be a JSON object or shorthand score:<target>:<objective>=N, storage:<id>[:<path>]=<json>, entity:<type|*>[@tag]=N, warning=N, warning:<text>, or output:<text>",
+                "$label must be a JSON object or shorthand score:<target>:<objective>=N, storage:<id>[:<path>]=<json>, entity:<type|*>[@tag]=N, item:<player>:<id>[@slot]=N, warning=N, warning:<text>, or output:<text>",
             )
         }
     }
@@ -522,6 +523,42 @@ class RunCommand : CliktCommand(name = "run") {
             }
         }
         return JsonObject().also { it.add("entityCount", entity) }
+    }
+
+    private fun parseItemAssertion(spec: String, label: String): JsonObject {
+        val operator = listOf(">=", "<=", "=").firstOrNull { it in spec }
+            ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label item shorthand requires =, >=, or <=")
+        val splitAt = spec.indexOf(operator)
+        val left = spec.substring(0, splitAt).trim()
+        val right = spec.substring(splitAt + operator.length).trim()
+        val separator = left.indexOf(':')
+        if (separator <= 0 || separator == left.lastIndex) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label item shorthand must be item:<player>:<id>[@slot]${operator}N")
+        }
+        val expected = right.toIntOrNull()
+            ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label item shorthand expected integer but got '$right'")
+        val player = left.substring(0, separator).trim()
+        val itemSpec = left.substring(separator + 1).trim()
+        val slotSplit = itemSpec.indexOf('@')
+        val itemId = if (slotSplit < 0) itemSpec else itemSpec.substring(0, slotSplit).trim()
+        val slot = slotSplit.takeIf { it >= 0 }?.let {
+            itemSpec.substring(it + 1).trim().toIntOrNull()
+                ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label item shorthand slot must be an integer")
+        }
+        if (player.isEmpty() || itemId.isEmpty()) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label item shorthand must be item:<player>:<id>[@slot]${operator}N")
+        }
+        val item = JsonObject().also { json ->
+            json.addProperty("player", player)
+            json.addProperty("id", itemId)
+            slot?.let { json.addProperty("slot", it) }
+            when (operator) {
+                ">=" -> json.addProperty("minCount", expected)
+                "<=" -> json.addProperty("maxCount", expected)
+                else -> json.addProperty("count", expected)
+            }
+        }
+        return JsonObject().also { it.add("item", item) }
     }
 
     private fun storageAssertionObject(location: String, label: String): JsonObject {

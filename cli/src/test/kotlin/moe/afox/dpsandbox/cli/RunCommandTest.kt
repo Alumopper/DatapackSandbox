@@ -228,6 +228,31 @@ class RunCommandTest {
     }
 
     @Test
+    fun `run accepts item shorthand inline assertions`() {
+        val output = captureStdout {
+            main(
+                arrayOf(
+                    "run",
+                    "--version",
+                    "26.2",
+                    "--command",
+                    "give Steve minecraft:stick 3",
+                    "--assert",
+                    "item:Steve:minecraft:stick=3",
+                    "--assert",
+                    "item:Steve:minecraft:stick>=2",
+                    "--assert",
+                    "item:Steve:minecraft:stick<=4",
+                    "--assert",
+                    "item:Steve:minecraft:stick@0=3",
+                ),
+            )
+        }
+
+        assertTrue("OK version=26.2" in output, output)
+    }
+
+    @Test
     fun `run accepts entity and warning shorthand inline assertions`() {
         val output = captureStdout {
             main(
