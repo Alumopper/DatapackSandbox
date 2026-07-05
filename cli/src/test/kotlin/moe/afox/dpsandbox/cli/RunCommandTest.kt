@@ -253,6 +253,29 @@ class RunCommandTest {
     }
 
     @Test
+    fun `run accepts trace shorthand inline assertions`() {
+        val output = captureStdout {
+            main(
+                arrayOf(
+                    "run",
+                    "--version",
+                    "26.2",
+                    "--mcfunction-text",
+                    "say trace shorthand\nscoreboard objectives add traced dummy\nscoreboard players set #trace traced 1",
+                    "--assert",
+                    "trace:say=1",
+                    "--assert",
+                    "trace:scoreboard=2",
+                    "--assert",
+                    "trace:players set #trace",
+                ),
+            )
+        }
+
+        assertTrue("OK version=26.2" in output, output)
+    }
+
+    @Test
     fun `run accepts entity and warning shorthand inline assertions`() {
         val output = captureStdout {
             main(

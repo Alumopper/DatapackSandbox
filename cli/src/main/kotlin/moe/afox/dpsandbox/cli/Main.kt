@@ -438,12 +438,13 @@ class RunCommand : CliktCommand(name = "run") {
             trimmed.startsWith("storage:") -> parseStorageAssertion(trimmed.removePrefix("storage:"), label)
             trimmed.startsWith("entity:") -> parseEntityCountAssertion(trimmed.removePrefix("entity:"), label)
             trimmed.startsWith("item:") -> parseItemAssertion(trimmed.removePrefix("item:"), label)
+            trimmed.startsWith("trace:") -> parseTraceAssertion(trimmed.removePrefix("trace:"), label)
             trimmed.startsWith("warning:") -> parseWarningContainsAssertion(trimmed.removePrefix("warning:"), label)
             trimmed.startsWith("warning=") -> parseWarningCountAssertion(trimmed.removePrefix("warning="), label)
             trimmed.startsWith("output:") -> parseOutputAssertion(trimmed.removePrefix("output:"), label)
             else -> throw SandboxException(
                 DiagnosticCode.INPUT_FORMAT,
-                "$label must be a JSON object or shorthand score:<target>:<objective>=N, storage:<id>[:<path>]=<json>, entity:<type|*>[@tag]=N, item:<player>:<id>[@slot]=N, warning=N, warning:<text>, or output:<text>",
+                "$label must be a JSON object or shorthand score:<target>:<objective>=N, storage:<id>[:<path>]=<json>, entity:<type|*>[@tag]=N, item:<player>:<id>[@slot]=N, trace:<root>=N, trace:<text>, warning=N, warning:<text>, or output:<text>",
             )
         }
     }
@@ -559,6 +560,29 @@ class RunCommand : CliktCommand(name = "run") {
             }
         }
         return JsonObject().also { it.add("item", item) }
+    }
+
+    private fun parseTraceAssertion(spec: String, label: String): JsonObject {
+        val trimmed = spec.trim()
+        if (trimmed.isEmpty()) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label trace shorthand must be trace:<root>=N or trace:<text>")
+        }
+        val trace = JsonObject()
+        val splitAt = trimmed.indexOf('=')
+        if (splitAt > 0) {
+            val root = trimmed.substring(0, splitAt).trim()
+            val countText = trimmed.substring(splitAt + 1).trim()
+            if (root.isEmpty() || root.any(Char::isWhitespace)) {
+                throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label trace count shorthand must be trace:<root>=N")
+            }
+            val expected = countText.toIntOrNull()
+                ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label trace shorthand expected integer but got '$countText'")
+            trace.addProperty("root", root)
+            trace.addProperty("count", expected)
+        } else {
+            trace.addProperty("contains", trimmed)
+        }
+        return JsonObject().also { it.add("trace", trace) }
     }
 
     private fun storageAssertionObject(location: String, label: String): JsonObject {
