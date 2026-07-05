@@ -156,6 +156,24 @@ class CommandExpansionTest {
     }
 
     @Test
+    fun `execute as preserves position while at and positioned as move context`() {
+        val sandbox = createFunctionSandboxFromString(
+            version = "26.2",
+            functionText = "",
+            functionId = "demo:empty",
+        )
+
+        sandbox.executeCommand("""summon minecraft:pig 5 0 0 {Tags:["anchor"]}""")
+        sandbox.executeCommand("""execute as @e[tag=anchor,limit=1] run summon minecraft:marker ~1 ~0 ~0 {Tags:["from_as"]}""")
+        sandbox.executeCommand("""execute at @e[tag=anchor,limit=1] run summon minecraft:marker ~1 ~0 ~0 {Tags:["from_at"]}""")
+        sandbox.executeCommand("""execute positioned as @e[tag=anchor,limit=1] run summon minecraft:marker ~2 ~0 ~0 {Tags:["from_positioned_as"]}""")
+
+        assertEquals(Position(1.0, 0.0, 0.0), sandbox.world.entities.single { "from_as" in it.tags }.position)
+        assertEquals(Position(6.0, 0.0, 0.0), sandbox.world.entities.single { "from_at" in it.tags }.position)
+        assertEquals(Position(7.0, 0.0, 0.0), sandbox.world.entities.single { "from_positioned_as" in it.tags }.position)
+    }
+
+    @Test
     fun `execute blocks condition compares sparse block regions`() {
         val sandbox = createSandbox("26.1.2", listOf(fixturePack()))
 

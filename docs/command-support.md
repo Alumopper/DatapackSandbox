@@ -41,7 +41,7 @@ run continues. Use `--unsupported error`, manifest `"unsupported": "error"`, or
 | `deop`, `op` | Unsupported | Permission system is not simulated. |
 | `effect` | Partial | `give`, `clear`; updates player effect state and advancement events. |
 | `enchant` | Partial | Writes enchantment components to selected item; no enchantability checks. |
-| `execute` | Partial | `as`, `at`, `positioned`, `align`, `anchored`, `facing`, `in`, `rotated`, `store`, `if`, `unless`, `run`; conditions support `entity`, `score`, `data`, `block`, `blocks`, `predicate`, `function`, `dimension`, `biome`, and `loaded`. |
+| `execute` | Partial | `as`, `at`, `positioned <pos>`, `positioned as <selector>`, `align`, `anchored`, `facing`, `in`, `rotated`, `store`, `if`, `unless`, `run`; `as` changes only the executor while `at` and `positioned as` move the execution position; conditions support `entity`, `score`, `data`, `block`, `blocks`, `predicate`, `function`, `dimension`, `biome`, and `loaded`. |
 | `experience`, `xp` | Partial | `add`, `set`, `query`; points and levels share the sandbox XP integer. |
 | `fill` | Partial | `fill <from> <to> <block[state]{nbt}> [replace|keep|destroy|hollow|outline]`; no updates/drops. |
 | `fillbiome` | Partial | Stores biome overrides for explicit block ranges; no chunk biome container or generation effects. |

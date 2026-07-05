@@ -1040,7 +1040,7 @@ class DatapackSandbox(
                     requireIndex(tokens, index + 1, "execute as <selector>", location)
                     contexts = contexts.flatMap { ctx ->
                         EntitySelectors.select(world, tokens[index + 1].text, ctx, location).map {
-                            ctx.copy(entity = it, position = it.position, dimension = entityDimension(it))
+                            ctx.copy(entity = it)
                         }
                     }
                     index += 2
@@ -1055,11 +1055,22 @@ class DatapackSandbox(
                     index += 2
                 }
                 "positioned" -> {
-                    requireSizeFrom(tokens, index, 4, "execute positioned <x> <y> <z>", location)
-                    contexts = contexts.map { ctx ->
-                        ctx.copy(position = parsePosition(tokens, index + 1, ctx.position, location))
+                    requireIndex(tokens, index + 1, "execute positioned <x> <y> <z>|as <selector>", location)
+                    if (tokens[index + 1].text == "as") {
+                        requireIndex(tokens, index + 2, "execute positioned as <selector>", location)
+                        contexts = contexts.flatMap { ctx ->
+                            EntitySelectors.select(world, tokens[index + 2].text, ctx, location).map {
+                                ctx.copy(position = it.position)
+                            }
+                        }
+                        index += 3
+                    } else {
+                        requireSizeFrom(tokens, index, 4, "execute positioned <x> <y> <z>", location)
+                        contexts = contexts.map { ctx ->
+                            ctx.copy(position = parsePosition(tokens, index + 1, ctx.position, location))
+                        }
+                        index += 4
                     }
-                    index += 4
                 }
                 "align" -> {
                     requireIndex(tokens, index + 1, "execute align <axes>", location)
