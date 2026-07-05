@@ -138,6 +138,35 @@ class SandboxQuickTestTest {
     }
 
     @Test
+    fun `quick world fixture assertions explain failures`() {
+        val report = SandboxQuickTest.create(listOf(fixturePack()), version = "26.1.2")
+            .world {
+                forcedChunk(0, 0)
+                biome(0, 64, 0, "minecraft:plains")
+                worldSpawn(4.0, 70.0, 5.0, angle = 90.0)
+            }
+            .assertWorld(
+                forcedChunkX = 1,
+                forcedChunkZ = 1,
+                biomeX = 0,
+                biomeY = 64,
+                biomeZ = 0,
+                biome = "minecraft:desert",
+                worldSpawn = Position(1.0, 70.0, 5.0),
+                worldSpawnDimension = "minecraft:the_nether",
+                worldSpawnAngle = 45.0,
+            )
+            .report()
+
+        assertTrue(!report.passed)
+        assertTrue(report.failures.any { "world expected forced chunk 1,1" in it }, report.failures.joinToString())
+        assertTrue(report.failures.any { "world biome 0 64 0 expected minecraft:desert but was minecraft:plains" in it }, report.failures.joinToString())
+        assertTrue(report.failures.any { "world spawn position expected Position(x=1.0, y=70.0, z=5.0)" in it }, report.failures.joinToString())
+        assertTrue(report.failures.any { "world spawn dimension expected minecraft:the_nether" in it }, report.failures.joinToString())
+        assertTrue(report.failures.any { "world spawn angle expected 45.0 but was 90.0" in it }, report.failures.joinToString())
+    }
+
+    @Test
     fun `records keyboard and mouse player input events`() {
         val scenario = SandboxQuickTest.create(listOf(fixturePack()), version = "26.1.2")
             .keyInput("Steve", "key.jump")
@@ -453,7 +482,20 @@ class SandboxQuickTestTest {
                 storage("demo:env", "{ready:true}")
                 gamerule("doDaylightCycle", "false")
             }
-            .assertWorld(difficulty = "hard", defaultGameMode = "creative", seed = 123)
+            .assertWorld(
+                difficulty = "hard",
+                defaultGameMode = "creative",
+                seed = 123,
+                forcedChunkX = 0,
+                forcedChunkZ = 0,
+                biomeX = 0,
+                biomeY = 64,
+                biomeZ = 0,
+                biome = "minecraft:plains",
+                worldSpawn = Position(4.0, 70.0, 5.0),
+                worldSpawnDimension = "minecraft:overworld",
+                worldSpawnAngle = 90.0,
+            )
             .assertBlock(0, 64, 0, "minecraft:chest", nbtPath = "Items", nbtEquals = "[]")
             .assertEntity(type = "minecraft:pig", tag = "fixture", position = Position(1.0, 64.0, 0.0))
             .assertEntityCount(expected = 1, type = "minecraft:pig", tag = "fixture")

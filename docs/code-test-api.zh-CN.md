@@ -170,7 +170,20 @@ SandboxQuickTest.create(
         storage("demo:env", "{ready:true}")
         gamerule("doDaylightCycle", "false")
     }
-    .assertWorld(difficulty = "hard", defaultGameMode = "creative", seed = 123)
+    .assertWorld(
+        difficulty = "hard",
+        defaultGameMode = "creative",
+        seed = 123,
+        forcedChunkX = 0,
+        forcedChunkZ = 0,
+        biomeX = 0,
+        biomeY = 64,
+        biomeZ = 0,
+        biome = "minecraft:plains",
+        worldSpawn = Position(4.0, 70.0, 5.0),
+        worldSpawnDimension = "minecraft:overworld",
+        worldSpawnAngle = 90.0,
+    )
     .assertBlock(0, 64, 0, "minecraft:chest", nbtPath = "Items", nbtEquals = "[]")
     .assertEntity(type = "minecraft:pig", tag = "fixture")
     .assertEntityCount(expected = 1, type = "minecraft:pig", tag = "fixture")
@@ -262,7 +275,7 @@ class MyDatapackTest {
 | `assertStorageEquals(id, path, expectedJson)` | 断言 storage 路径。 |
 | `assertStorageExists(id, path)` | 断言 storage 根对象或路径存在。 |
 | `assertStorageMissing(id, path)` | 断言 storage 根对象或路径不存在。 |
-| `assertWorld(...)` | 断言选定的世界级状态。 |
+| `assertWorld(...)` | 断言选定的世界级状态、force-loaded chunk、biome override 和世界出生点。 |
 | `assertPlayer(...)` | 断言选定的玩家状态。 |
 | `assertBlock(x, y, z, id, exists, nbtPath, nbtEquals, nbtExists)` | 断言 sparse world 中的方块。 |
 | `assertEntity(type, tag, uuid, position, exists, count)` | 断言匹配实体存在性或数量。 |

@@ -312,8 +312,35 @@ class SandboxQuickTestMatrix private constructor(
         difficulty: String? = null,
         defaultGameMode: String? = null,
         seed: Long? = null,
+        forcedChunkX: Int? = null,
+        forcedChunkZ: Int? = null,
+        biomeX: Int? = null,
+        biomeY: Int? = null,
+        biomeZ: Int? = null,
+        biome: String? = null,
+        worldSpawn: Position? = null,
+        worldSpawnDimension: String? = null,
+        worldSpawnAngle: Double? = null,
     ): SandboxQuickTestMatrix = apply {
-        scenarios.values.forEach { it.assertWorld(gameTime, dayTime, weather, difficulty, defaultGameMode, seed) }
+        scenarios.values.forEach {
+            it.assertWorld(
+                gameTime = gameTime,
+                dayTime = dayTime,
+                weather = weather,
+                difficulty = difficulty,
+                defaultGameMode = defaultGameMode,
+                seed = seed,
+                forcedChunkX = forcedChunkX,
+                forcedChunkZ = forcedChunkZ,
+                biomeX = biomeX,
+                biomeY = biomeY,
+                biomeZ = biomeZ,
+                biome = biome,
+                worldSpawn = worldSpawn,
+                worldSpawnDimension = worldSpawnDimension,
+                worldSpawnAngle = worldSpawnAngle,
+            )
+        }
     }
 
     /**
@@ -1010,6 +1037,15 @@ class SandboxQuickTest private constructor(
         difficulty: String? = null,
         defaultGameMode: String? = null,
         seed: Long? = null,
+        forcedChunkX: Int? = null,
+        forcedChunkZ: Int? = null,
+        biomeX: Int? = null,
+        biomeY: Int? = null,
+        biomeZ: Int? = null,
+        biome: String? = null,
+        worldSpawn: Position? = null,
+        worldSpawnDimension: String? = null,
+        worldSpawnAngle: Double? = null,
     ): SandboxQuickTest = apply {
         gameTime?.let { if (sandbox.world.gameTime != it) failures += "world gameTime expected $it but was ${sandbox.world.gameTime}" }
         dayTime?.let { if (sandbox.world.dayTime != it) failures += "world dayTime expected $it but was ${sandbox.world.dayTime}" }
@@ -1017,6 +1053,44 @@ class SandboxQuickTest private constructor(
         difficulty?.let { if (sandbox.world.difficulty != it) failures += "world difficulty expected $it but was ${sandbox.world.difficulty}" }
         defaultGameMode?.let { if (sandbox.world.defaultGameMode != it) failures += "world defaultGameMode expected $it but was ${sandbox.world.defaultGameMode}" }
         seed?.let { if (sandbox.world.seed != it) failures += "world seed expected $it but was ${sandbox.world.seed}" }
+        if (forcedChunkX != null || forcedChunkZ != null) {
+            if (forcedChunkX == null || forcedChunkZ == null) {
+                failures += "world forcedChunk assertion requires forcedChunkX and forcedChunkZ"
+            } else {
+                val chunk = ChunkPos(forcedChunkX, forcedChunkZ)
+                if (chunk !in sandbox.world.forcedChunks) {
+                    failures += "world expected forced chunk ${chunk.x},${chunk.z}"
+                }
+            }
+        }
+        if (biomeX != null || biomeY != null || biomeZ != null || biome != null) {
+            if (biomeX == null || biomeY == null || biomeZ == null || biome == null) {
+                failures += "world biome assertion requires biomeX, biomeY, biomeZ, and biome"
+            } else {
+                val pos = BlockPos(biomeX, biomeY, biomeZ)
+                val expected = ResourceLocation.parse(biome)
+                val actual = sandbox.world.biomes[pos]
+                if (actual != expected) {
+                    failures += "world biome $pos expected $expected but was ${actual ?: "<missing>"}"
+                }
+            }
+        }
+        worldSpawn?.let {
+            if (sandbox.world.worldSpawn.position != it) {
+                failures += "world spawn position expected $it but was ${sandbox.world.worldSpawn.position}"
+            }
+        }
+        worldSpawnDimension?.let {
+            val expected = ResourceLocation.parse(it)
+            if (sandbox.world.worldSpawn.dimension != expected) {
+                failures += "world spawn dimension expected $expected but was ${sandbox.world.worldSpawn.dimension}"
+            }
+        }
+        worldSpawnAngle?.let {
+            if (sandbox.world.worldSpawn.angle != it) {
+                failures += "world spawn angle expected $it but was ${sandbox.world.worldSpawn.angle}"
+            }
+        }
     }
 
     /**

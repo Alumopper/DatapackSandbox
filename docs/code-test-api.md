@@ -194,7 +194,20 @@ SandboxQuickTest.create(
         storage("demo:env", "{ready:true}")
         gamerule("doDaylightCycle", "false")
     }
-    .assertWorld(difficulty = "hard", defaultGameMode = "creative", seed = 123)
+    .assertWorld(
+        difficulty = "hard",
+        defaultGameMode = "creative",
+        seed = 123,
+        forcedChunkX = 0,
+        forcedChunkZ = 0,
+        biomeX = 0,
+        biomeY = 64,
+        biomeZ = 0,
+        biome = "minecraft:plains",
+        worldSpawn = Position(4.0, 70.0, 5.0),
+        worldSpawnDimension = "minecraft:overworld",
+        worldSpawnAngle = 90.0,
+    )
     .assertBlock(0, 64, 0, "minecraft:chest", nbtPath = "Items", nbtEquals = "[]")
     .assertEntity(type = "minecraft:pig", tag = "fixture")
     .assertEntityCount(expected = 1, type = "minecraft:pig", tag = "fixture")
@@ -288,7 +301,7 @@ class MyDatapackTest {
 | `assertStorageEquals(id, path, expectedJson)` | Assert a storage path |
 | `assertStorageExists(id, path)` | Assert that a storage root or path exists |
 | `assertStorageMissing(id, path)` | Assert that a storage root or path is absent |
-| `assertWorld(...)` | Assert selected world-level state |
+| `assertWorld(...)` | Assert selected world-level state, forced chunks, biome overrides, and world spawn |
 | `assertPlayer(...)` | Assert selected player state |
 | `assertBlock(x, y, z, id, exists, nbtPath, nbtEquals, nbtExists)` | Assert a sparse-world block |
 | `assertEntity(type, tag, uuid, position, exists, count)` | Assert matching entity existence or count |
