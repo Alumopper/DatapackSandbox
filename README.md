@@ -189,7 +189,8 @@ shared setup.
 
 Manifest `steps` can also contain `commands`, `functionText`, or a relative
 `mcfunction` path for command-generator output tests; assertions can check
-`world`, `team`, `bossbar`, `trace`, and player inventory `item` results.
+`world`, `team`, `bossbar`, `trace`, whitespace-normalized `output`, and player
+inventory `item` results.
 
 Manifest files use the `.dps.json` suffix:
 

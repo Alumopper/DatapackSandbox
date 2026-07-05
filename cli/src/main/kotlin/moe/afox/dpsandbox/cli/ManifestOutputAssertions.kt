@@ -22,6 +22,8 @@ object ManifestOutputAssertions {
             targets = output.stringArray("targets").toSet(),
             text = output.string("text") ?: output.string("equals"),
             contains = output.string("contains"),
+            normalizedText = output.string("normalizedText") ?: output.string("normalizedEquals"),
+            normalizedContains = output.string("normalizedContains"),
             payloadPath = output.string("payloadPath") ?: payload?.string("path"),
             payloadEquals = output.get("payloadEquals") ?: payload?.get("equals"),
             segment = output.getAsJsonObject("segment")?.let(::parseSegment),
@@ -34,6 +36,8 @@ object ManifestOutputAssertions {
         OutputSegmentExpectation(
             text = segment.string("text") ?: segment.string("equals"),
             contains = segment.string("contains"),
+            normalizedText = segment.string("normalizedText") ?: segment.string("normalizedEquals"),
+            normalizedContains = segment.string("normalizedContains"),
             color = segment.string("color"),
             bold = segment.boolean("bold"),
             italic = segment.boolean("italic"),

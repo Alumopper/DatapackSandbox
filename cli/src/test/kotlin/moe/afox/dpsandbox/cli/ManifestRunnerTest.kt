@@ -137,6 +137,10 @@ class ManifestRunnerTest {
         assertEquals("#/\$defs/outputAssertion", outputRef.get("\$ref").asString)
         assertEquals("integer", outputProperties.getAsJsonObject("order").get("type").asString)
         assertEquals(1, outputProperties.getAsJsonObject("order").get("minimum").asInt)
+        assertEquals("string", outputProperties.getAsJsonObject("normalizedText").get("type").asString)
+        assertEquals("string", outputProperties.getAsJsonObject("normalizedContains").get("type").asString)
+        val segmentProperties = outputProperties.getAsJsonObject("segment").getAsJsonObject("properties")
+        assertEquals("string", segmentProperties.getAsJsonObject("normalizedText").get("type").asString)
     }
 
     @Test
@@ -183,7 +187,8 @@ class ManifestRunnerTest {
               "packs": ["$pack"],
               "steps": [
                 { "command": "say hello from manifest" },
-                { "command": "tellraw Steve {\"text\":\"gold\",\"color\":\"yellow\"}" }
+                { "command": "tellraw Steve {\"text\":\"gold\",\"color\":\"yellow\"}" },
+                { "command": "tellraw Steve {\"text\":\"hello     generated     output\"}" }
               ],
               "assertions": [
                 {
@@ -204,6 +209,17 @@ class ManifestRunnerTest {
                     "segment": {
                       "text": "gold",
                       "color": "yellow"
+                    },
+                    "count": 1
+                  }
+                },
+                {
+                  "output": {
+                    "command": "tellraw",
+                    "normalizedText": "hello generated output",
+                    "normalizedContains": "generated output",
+                    "segment": {
+                      "normalizedText": "hello generated output"
                     },
                     "count": 1
                   }

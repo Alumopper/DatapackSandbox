@@ -160,7 +160,7 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar run --version 26.2 \
 world fixture 可以用 `fixture`、`fixtures` 或 `extends` 引用可复用 fixture 文件；
 被引用文件会先应用，再由当前文件里的字段覆盖公共 setup。
 
-清单中的 `steps` 也可以直接包含 `commands`、`functionText` 或相对路径 `mcfunction`，用于验证命令生成器输出；`assertions` 可检查 `world`、`team`、`bossbar`、`trace` 和玩家背包 `item`。
+清单中的 `steps` 也可以直接包含 `commands`、`functionText` 或相对路径 `mcfunction`，用于验证命令生成器输出；`assertions` 可检查 `world`、`team`、`bossbar`、`trace`、空白规范化后的 `output` 和玩家背包 `item`。
 
 清单文件固定使用 `.dps.json` 后缀：
 
