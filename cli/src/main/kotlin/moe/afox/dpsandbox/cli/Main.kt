@@ -85,7 +85,7 @@ class CheckCommand : CliktCommand(name = "check") {
         try {
             val manifests = ManifestRunner.discover(inputs)
             if (validateSchema) {
-                val schemaFailures = manifests.flatMap(ManifestSchemaValidator::validateFile)
+                val schemaFailures = manifests.flatMap(ManifestSchemaValidator::validateFileTree)
                 if (schemaFailures.isNotEmpty()) {
                     throw SandboxException(
                         DiagnosticCode.INPUT_FORMAT,

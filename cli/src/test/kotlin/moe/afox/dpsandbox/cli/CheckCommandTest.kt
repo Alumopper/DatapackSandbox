@@ -58,6 +58,62 @@ class CheckCommandTest {
     }
 
     @Test
+    fun `manifest schema validator follows included manifests`() {
+        val dir = Files.createTempDirectory("dps-schema-include")
+        val common = dir.resolve("common")
+        Files.createDirectories(common)
+        val pack = Path.of("../core/src/test/resources/packs/counter").toAbsolutePath().normalize().toString().replace("\\", "\\\\")
+        val included = common.resolve("bad.dps.json")
+        Files.writeString(
+            included,
+            """
+            {
+              "version": "26.2",
+              "packs": ["$pack"],
+              "steps": [
+                { "ticks": "one" }
+              ]
+            }
+            """.trimIndent(),
+        )
+        val manifest = dir.resolve("root.dps.json")
+        Files.writeString(
+            manifest,
+            """
+            {
+              "include": "common/bad.dps.json"
+            }
+            """.trimIndent(),
+        )
+
+        val errors = ManifestSchemaValidator.validateFileTree(manifest)
+
+        assertTrue(
+            errors.any { included.toAbsolutePath().normalize().toString() in it && "\$/steps/0/ticks" in it },
+            errors.joinToString(),
+        )
+    }
+
+    @Test
+    fun `manifest schema validator reports missing included manifests`() {
+        val dir = Files.createTempDirectory("dps-schema-missing-include")
+        val missing = dir.resolve("common").resolve("missing.dps.json").toAbsolutePath().normalize()
+        val manifest = dir.resolve("root.dps.json")
+        Files.writeString(
+            manifest,
+            """
+            {
+              "include": "common/missing.dps.json"
+            }
+            """.trimIndent(),
+        )
+
+        val errors = ManifestSchemaValidator.validateFileTree(manifest)
+
+        assertTrue(errors.any { missing.toString() in it && "included manifest is missing" in it }, errors.joinToString())
+    }
+
+    @Test
     fun `check can print and write manifest command traces`() {
         val dir = Files.createTempDirectory("dps-check-trace")
         val traceFile = dir.resolve("trace.jsonl")

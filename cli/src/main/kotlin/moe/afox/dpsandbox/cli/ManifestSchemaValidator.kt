@@ -8,6 +8,7 @@ import com.google.gson.JsonPrimitive
 import moe.afox.dpsandbox.core.JsonValues
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
+import java.nio.file.NoSuchFileException
 import java.nio.file.Path
 
 object ManifestSchemaValidator {
@@ -20,8 +21,39 @@ object ManifestSchemaValidator {
         return validate(root).map { "${path.toAbsolutePath().normalize()}: $it" }
     }
 
+    fun validateFileTree(path: Path): List<String> =
+        validateFileTree(path.toAbsolutePath().normalize(), linkedSetOf(), mutableSetOf())
+
     fun validate(root: JsonElement): List<String> =
         validateElement(schema, root, "$")
+
+    private fun validateFileTree(path: Path, stack: MutableSet<Path>, visited: MutableSet<Path>): List<String> {
+        val normalized = path.toAbsolutePath().normalize()
+        if (normalized in stack) return listOf("$normalized: manifest include cycle detected")
+        if (!visited.add(normalized)) return emptyList()
+
+        val root = try {
+            JsonParser.parseString(Files.readString(normalized, StandardCharsets.UTF_8))
+        } catch (_: NoSuchFileException) {
+            return listOf("$normalized: included manifest is missing")
+        } catch (error: Exception) {
+            return listOf("$normalized: invalid JSON (${error.message ?: error::class.simpleName})")
+        }
+
+        val failures = validate(root).mapTo(mutableListOf()) { "$normalized: $it" }
+        if (!root.isJsonObject) return failures
+
+        stack.add(normalized)
+        try {
+            val base = normalized.parent ?: Path.of(".")
+            includePaths(root.asJsonObject, base).forEach { include ->
+                failures += validateFileTree(include, stack, visited)
+            }
+        } finally {
+            stack.remove(normalized)
+        }
+        return failures
+    }
 
     private fun validateElement(schemaElement: JsonElement, value: JsonElement, path: String): List<String> {
         if (schemaElement.isJsonPrimitive && schemaElement.asJsonPrimitive.isBoolean) {
@@ -136,6 +168,18 @@ object ManifestSchemaValidator {
             .fold(schema as JsonElement) { current, raw ->
                 current.asJsonObject.get(raw.replace("~1", "/").replace("~0", "~"))
             }
+    }
+
+    private fun includePaths(root: JsonObject, base: Path): List<Path> {
+        val include = root.get("include") ?: return emptyList()
+        val entries = when {
+            include.isJsonPrimitive && include.asJsonPrimitive.isString -> listOf(include.asString)
+            include.isJsonArray -> include.asJsonArray
+                .filter { it.isJsonPrimitive && it.asJsonPrimitive.isString }
+                .map { it.asString }
+            else -> emptyList()
+        }
+        return entries.map { base.resolve(it).normalize() }
     }
 
     private fun JsonElement.matchesType(type: String): Boolean =
