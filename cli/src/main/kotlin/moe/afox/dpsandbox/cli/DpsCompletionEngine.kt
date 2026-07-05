@@ -193,9 +193,9 @@ class DpsCompletionEngine(private val sandbox: () -> DatapackSandbox) {
             context.wordIndex == 2 -> listOf("storage", "entity", "block").suggest("data targets", appendSpace = true)
             words.getOrNull(2) == "entity" && context.wordIndex == 3 -> entityTargets().suggest("entities/selectors", appendSpace = true)
             words.getOrNull(2) == "storage" && context.wordIndex == 3 -> storageTargets().suggest("storages", appendSpace = true)
-            words.getOrNull(context.wordIndex - 1) in setOf("set", "merge", "append", "prepend") -> listOf("value", "from").suggest("data source", appendSpace = true)
-            words.getOrNull(context.wordIndex - 2) == "insert" -> listOf("value", "from").suggest("data source", appendSpace = true)
-            words.getOrNull(context.wordIndex - 1) == "from" -> listOf("storage", "entity", "block").suggest("data source targets", appendSpace = true)
+            words.getOrNull(context.wordIndex - 1) in setOf("set", "merge", "append", "prepend") -> listOf("value", "from", "string").suggest("data source", appendSpace = true)
+            words.getOrNull(context.wordIndex - 2) == "insert" -> listOf("value", "from", "string").suggest("data source", appendSpace = true)
+            words.getOrNull(context.wordIndex - 1) in setOf("from", "string") -> listOf("storage", "entity", "block").suggest("data source targets", appendSpace = true)
             else -> emptyList()
         }
 

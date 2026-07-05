@@ -1328,8 +1328,41 @@ class DatapackSandbox(
                 dataTargetNbtValues(sourceTarget, location).firstOrNull()?.let { JsonPaths.get(it, sourcePath)?.deepCopy() }
                     ?: throw SandboxException(DiagnosticCode.COMMAND_ERROR, "Data modify source did not resolve", location)
             }
+            "string" -> readDataModifyString(tokens, sourceKindIndex, context, location)
             else -> unsupportedFeature("Unsupported data modify source '${tokens[sourceKindIndex].text}'", profile.id, location, command)
         }
+
+    private fun readDataModifyString(
+        tokens: List<CommandToken>,
+        sourceKindIndex: Int,
+        context: ExecutionContext,
+        location: SourceLocation?,
+    ): JsonPrimitive {
+        val (sourceTarget, sourcePathIndex) = parseDataTarget(tokens, sourceKindIndex + 1, context, location)
+        requireIndex(tokens, sourcePathIndex, "data modify ... string <source> <path> [start] [end]", location)
+        val source = dataTargetNbtValues(sourceTarget, location).firstOrNull()
+            ?.let { JsonPaths.get(it, tokens[sourcePathIndex].text) }
+            ?: throw SandboxException(DiagnosticCode.COMMAND_ERROR, "Data modify string source did not resolve", location)
+        if (!source.isJsonPrimitive) {
+            throw SandboxException(DiagnosticCode.COMMAND_ERROR, "Data modify string source must be a primitive value", location)
+        }
+        val text = source.asJsonPrimitive.asString
+        val start = tokens.getOrNull(sourcePathIndex + 1)?.text?.let { parseInt(it, "string start", location) } ?: 0
+        val end = tokens.getOrNull(sourcePathIndex + 2)?.text?.let { parseInt(it, "string end", location) } ?: text.length
+        return JsonPrimitive(sliceString(text, start, end, location))
+    }
+
+    private fun sliceString(text: String, rawStart: Int, rawEnd: Int, location: SourceLocation?): String {
+        val start = normalizeStringIndex(rawStart, text.length)
+        val end = normalizeStringIndex(rawEnd, text.length)
+        if (start > end) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "String slice start $rawStart is after end $rawEnd", location)
+        }
+        return text.substring(start, end)
+    }
+
+    private fun normalizeStringIndex(index: Int, length: Int): Int =
+        (if (index < 0) length + index else index).coerceIn(0, length)
 
     private fun executeDataMerge(command: String, tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext) {
         requireSize(tokens, 4, "data merge <storage|entity|block> <target> <nbt>", location)

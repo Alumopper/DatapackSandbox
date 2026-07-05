@@ -326,6 +326,29 @@ class SandboxBehaviorTest {
     }
 
     @Test
+    fun `data modify copies string slices from source paths`() {
+        val sandbox = createSandbox("26.1.2", listOf(fixturePack()))
+
+        sandbox.executeCommand("""data merge storage demo:src {name:"AlphaBeta"}""")
+        sandbox.executeCommand("data modify storage demo:dst full set string storage demo:src name")
+        sandbox.executeCommand("data modify storage demo:dst middle set string storage demo:src name 1 5")
+        sandbox.executeCommand("data modify storage demo:dst tail set string storage demo:src name -4 -1")
+        sandbox.executeCommand("data modify storage demo:dst list set value []")
+        sandbox.executeCommand("data modify storage demo:dst list append string storage demo:src name 5")
+
+        val dst = sandbox.world.storage(ResourceLocation.parse("demo:dst"))
+        assertEquals("AlphaBeta", JsonPaths.get(dst, "full")?.asString)
+        assertEquals("lpha", JsonPaths.get(dst, "middle")?.asString)
+        assertEquals("Bet", JsonPaths.get(dst, "tail")?.asString)
+        assertEquals("Beta", JsonPaths.get(dst, "list[0]")?.asString)
+
+        val error = assertFailsWith<SandboxException> {
+            sandbox.executeCommand("data modify storage demo:dst missing set string storage demo:src nope")
+        }
+        assertEquals(DiagnosticCode.COMMAND_ERROR, error.code)
+    }
+
+    @Test
     fun `uses generated vanilla mcdoc block entity mappings and item stack fields`() {
         val sandbox = createSandbox("26.1.2", listOf(fixturePack()))
 
