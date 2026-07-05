@@ -48,6 +48,12 @@
 java -jar cli/build/libs/datapack-sandbox-cli.jar version
 ```
 
+比较两个 profile，查看 pack format、资源目录、命令根和 registry 差异：
+
+```bash
+java -jar cli/build/libs/datapack-sandbox-cli.jar version 1.20.4 26.2
+```
+
 ## 多版本清单
 
 `check` 清单可以运行版本矩阵：

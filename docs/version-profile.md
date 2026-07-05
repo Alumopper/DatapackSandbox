@@ -41,6 +41,13 @@ Use the CLI to list the active built-in profiles:
 java -jar cli/build/libs/datapack-sandbox-cli.jar version
 ```
 
+Compare two profiles to inspect pack format, resource directory, command-root,
+and registry differences:
+
+```bash
+java -jar cli/build/libs/datapack-sandbox-cli.jar version 1.20.4 26.2
+```
+
 Check manifests can run a version matrix:
 
 ```json

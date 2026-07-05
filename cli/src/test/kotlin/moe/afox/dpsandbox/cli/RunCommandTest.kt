@@ -336,6 +336,18 @@ class RunCommandTest {
         assertTrue("26.2 java=25 pack_format=107.1 data=4903 default" in output, output)
     }
 
+    @Test
+    fun `version reports profile diffs`() {
+        val output = captureStdout {
+            main(arrayOf("version", "1.20.4", "26.2"))
+        }
+
+        assertTrue("profile diff 1.20.4 -> 26.2" in output, output)
+        assertTrue("java: 17 -> 25" in output, output)
+        assertTrue("pack_format: 26 -> 107.1" in output, output)
+        assertTrue("command_roots: added=transfer" in output, output)
+    }
+
     private fun captureStdout(stdin: String? = null, block: () -> Unit): String {
         val original = System.out
         val originalIn = System.`in`

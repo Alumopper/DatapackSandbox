@@ -26,6 +26,7 @@ import moe.afox.dpsandbox.core.SingleFunctionDatapack
 import moe.afox.dpsandbox.core.SnapshotDiff
 import moe.afox.dpsandbox.core.SourceLocation
 import moe.afox.dpsandbox.core.UnsupportedFeatureMode
+import moe.afox.dpsandbox.core.VersionProfileDiffs
 import moe.afox.dpsandbox.core.VersionProfiles
 import moe.afox.dpsandbox.core.createFunctionSandbox
 import moe.afox.dpsandbox.core.createSandbox
@@ -456,11 +457,26 @@ class ManifestSchemaCommand : CliktCommand(name = "schema") {
 }
 
 class VersionCommand : CliktCommand(name = "version") {
+    private val versions by argument("version").multiple(required = false)
+
     override fun run() {
-        VersionProfiles.all.forEach { profile ->
-            val marker = if (profile == VersionProfiles.default) " default" else ""
-            val dataVersion = profile.dataVersion?.let { " data=$it" }.orEmpty()
-            println("${profile.id} java=${profile.javaMajor} pack_format=${profile.dataPackFormat}$dataVersion$marker - ${profile.description}")
+        try {
+            when (versions.size) {
+                0 -> VersionProfiles.all.forEach { profile ->
+                    val marker = if (profile == VersionProfiles.default) " default" else ""
+                    val dataVersion = profile.dataVersion?.let { " data=$it" }.orEmpty()
+                    println("${profile.id} java=${profile.javaMajor} pack_format=${profile.dataPackFormat}$dataVersion$marker - ${profile.description}")
+                }
+                2 -> {
+                    val from = VersionProfiles.get(versions[0])
+                    val to = VersionProfiles.get(versions[1])
+                    println(VersionProfileDiffs.render(VersionProfileDiffs.diff(from, to)))
+                }
+                else -> throw SandboxException(DiagnosticCode.INPUT_FORMAT, "version accepts either no arguments or two profile ids to diff")
+            }
+        } catch (error: SandboxException) {
+            println(ConsoleStyle.diagnostic(error.render()))
+            exitProcess(ExitCodes.forException(error))
         }
     }
 }
