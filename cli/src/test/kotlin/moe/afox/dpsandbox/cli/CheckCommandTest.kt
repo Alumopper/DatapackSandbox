@@ -184,6 +184,43 @@ class CheckCommandTest {
     }
 
     @Test
+    fun `check writes player event traces as jsonl`() {
+        val dir = Files.createTempDirectory("dps-check-event-trace")
+        val eventTraceFile = dir.resolve("event-trace.jsonl")
+        val pack = Path.of("../core/src/test/resources/packs/counter").toAbsolutePath().normalize().toString().replace("\\", "\\\\")
+        val manifest = dir.resolve("event-trace.dps.json")
+        Files.writeString(
+            manifest,
+            """
+            {
+              "version": "26.1.2",
+              "packs": ["$pack"],
+              "steps": [
+                { "event": { "player": "Steve", "type": "key_input", "key": "key.jump", "action": "release" } }
+              ],
+              "assertions": [
+                { "eventTrace": { "player": "Steve", "type": "key_input", "success": true, "count": 1 } }
+              ]
+            }
+            """.trimIndent(),
+        )
+
+        val output = captureStdout {
+            main(arrayOf("check", manifest.toString(), "--event-trace-file", eventTraceFile.toString()))
+        }
+
+        assertTrue("PASS $manifest" in output, output)
+        assertTrue("event trace written: $eventTraceFile" in output, output)
+        val eventTraceJson = Files.readString(eventTraceFile)
+        assertTrue("\"player\": \"Steve\"" in eventTraceJson, eventTraceJson)
+        assertTrue("\"type\": \"key_input\"" in eventTraceJson, eventTraceJson)
+        assertTrue("\"success\": true" in eventTraceJson, eventTraceJson)
+        assertTrue("\"device\": \"keyboard\"" in eventTraceJson, eventTraceJson)
+        assertTrue("\"code\": \"key.jump\"" in eventTraceJson, eventTraceJson)
+        assertTrue("\"action\": \"release\"" in eventTraceJson, eventTraceJson)
+    }
+
+    @Test
     fun `check writes structured manifest reports`() {
         val dir = Files.createTempDirectory("dps-check-report")
         val reportFile = dir.resolve("report.json")
