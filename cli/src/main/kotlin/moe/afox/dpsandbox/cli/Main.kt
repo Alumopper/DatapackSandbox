@@ -384,7 +384,7 @@ class EventCommand : CliktCommand(name = "event") {
         try {
             val sandbox = createSandbox(version, packs, unsupportedFeatureMode = unsupportedFeatureMode(unsupported))
             if (args.getOrNull(0) != "player") {
-                throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Usage: event player <name> <type> [id] [action]")
+                throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Usage: event player <name> <type> [id] [detail/action]")
             }
             val player = sandbox.createPlayer(args.getOrNull(1) ?: "Steve")
             val eventType = args.getOrNull(2) ?: "tick"

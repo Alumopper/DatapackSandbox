@@ -86,7 +86,7 @@ object PlayerEvents {
         return when {
             normalizedType.isKeyboardInputType() -> keyInput(playerName, id ?: "unknown", action ?: defaultKeyboardAction(normalizedType), normalizedType)
             normalizedType.isMouseInputType() -> mouseInput(playerName, id ?: "left", action ?: defaultMouseAction(normalizedType), type = normalizedType)
-            else -> vanillaVisibleEvent(playerName, normalizedType, id)
+            else -> vanillaVisibleEvent(playerName, normalizedType, id, action)
         }
     }
 
@@ -127,7 +127,7 @@ object PlayerEvents {
             input = PlayerInput(device = "mouse", code = button, action = action, x = x, y = y),
         )
 
-    private fun vanillaVisibleEvent(playerName: String, type: String, id: String?): PlayerEvent {
+    private fun vanillaVisibleEvent(playerName: String, type: String, id: String?, detail: String?): PlayerEvent {
         val resource = id?.let(ResourceLocation::parse)
         return PlayerEvent(
             playerName = playerName,
@@ -136,6 +136,8 @@ object PlayerEvents {
             entity = if (type.contains("kill")) resource?.let { SandboxEntity(type = it) } else null,
             block = if (type.contains("block")) resource else null,
             recipe = if (type.contains("recipe")) resource else null,
+            fromDimension = if (type == "changed_dimension") resource else null,
+            toDimension = if (type == "changed_dimension") detail?.let(ResourceLocation::parse) else null,
         )
     }
 

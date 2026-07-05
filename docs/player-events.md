@@ -11,6 +11,7 @@ contexts, loot contexts, and advancement triggers.
 dps> event player Steve item_used minecraft:carrot_on_a_stick
 dps> event player Steve killed_entity minecraft:zombie
 dps> event player Steve placed_block minecraft:oak_log
+dps> event player Steve changed_dimension minecraft:overworld minecraft:the_nether
 dps> event player Steve key_input key.jump
 dps> event player Steve mouse_input left
 dps> inspect player Steve
@@ -20,12 +21,14 @@ dps> inspect advancement
 Command shape:
 
 ```text
-event player <name> <event-type> [resource-id]
+event player <name> <event-type> [resource-id] [detail]
 ```
 
 The optional resource id is interpreted by event type: `item_used` treats it as
 an item, `killed_entity` as an entity type, `placed_block`/`broke_block` as a
-block, and `recipe_unlocked` as a recipe.
+block, `recipe_unlocked` as a recipe, and `changed_dimension` as the source
+dimension. For `changed_dimension`, the optional `[detail]` argument is the
+destination dimension.
 
 For keyboard/mouse events, put the input code in the `[resource-id]` slot:
 `key_input key.jump`, `key_pressed space`, or `mouse_input left`. A fifth
@@ -85,9 +88,9 @@ The CLI accepts hyphens or underscores; `item-used` is normalized to
 | `recipe_unlocked` | `recipe` | Recipe-unlocked advancement conditions |
 | `effects_changed` | none | Effects-changed advancement conditions |
 
-The REPL shorthand exposes one optional `[resource-id]` and optional action. Use
-manifest JSON for more detailed context such as both `from` and `to` dimensions,
-richer item data, or mouse coordinates.
+The REPL shorthand exposes one optional `[resource-id]` and optional detail or
+input action. Use manifest JSON for richer item data, exact entity context, or
+mouse coordinates.
 
 Keyboard/mouse manifest examples:
 

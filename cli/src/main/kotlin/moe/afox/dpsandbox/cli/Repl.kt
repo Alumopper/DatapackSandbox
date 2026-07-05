@@ -216,19 +216,20 @@ class Repl(
 
     private fun eventHelp(): String =
         """
-        event player <name> <type> [id] [action]
+        event player <name> <type> [id] [detail/action]
         Injects a sandbox player behavior event. It is not a vanilla command; it drives advancement triggers, predicate context, and rewards.
         Examples:
           event player Steve item_used minecraft:carrot_on_a_stick
           event player Steve killed_entity minecraft:zombie
           event player Steve placed_block minecraft:oak_log
+          event player Steve changed_dimension minecraft:overworld minecraft:the_nether
           event player Steve key_input key.jump
           event player Steve mouse_input left
         Use inspect player Steve, inspect advancement, and inspect outputs after dispatching events.
         """.trimIndent()
 
     private fun helpText(): String =
-        "Commands: load, load fixture <file>, reload, tick [n], function <id>, player <name>, event player <name> <type> [id] [action], trace <on|off|status>, diff last, rerun last, reset world, ${inspectUsage()}, snapshot [file], exit"
+        "Commands: load, load fixture <file>, reload, tick [n], function <id>, player <name>, event player <name> <type> [id] [detail/action], trace <on|off|status>, diff last, rerun last, reset world, ${inspectUsage()}, snapshot [file], exit"
 
     private fun inspectUsage(): String =
         "inspect <score|storage|entities|blocks|player|loot|predicate|advancement|recipe|item_modifier|raw|tags|resources|registry|outputs>"

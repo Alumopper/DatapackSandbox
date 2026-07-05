@@ -94,12 +94,17 @@ class DpsCompletionEngine(private val sandbox: () -> DatapackSandbox) {
                 "item_used", "item_consumed", "inventory_changed", "item_picked_up" -> sandbox().profile.registryView.items.mapResource("items")
                 "killed_entity", "entity_killed_player" -> sandbox().profile.registryView.entityTypes.mapResource("entity types")
                 "placed_block", "broke_block" -> sandbox().profile.registryView.blocks.mapResource("blocks")
+                "changed_dimension" -> sandbox().profile.registryView.dimensions.mapResource("dimensions")
                 "recipe_unlocked" -> listOf("minecraft:bread", "minecraft:stick").suggest("recipes")
                 "key_input", "key_pressed", "key_released" -> commonKeys.suggest("keys")
                 "mouse_input", "mouse_clicked", "mouse_released", "mouse_moved" -> mouseButtons.suggest("mouse buttons")
                 else -> emptyList()
             }
-            5 -> if (words.getOrNull(3) in inputEventTypes) inputActions.suggest("input actions") else emptyList()
+            5 -> when (words.getOrNull(3)) {
+                "changed_dimension" -> sandbox().profile.registryView.dimensions.mapResource("dimensions")
+                in inputEventTypes -> inputActions.suggest("input actions")
+                else -> emptyList()
+            }
             else -> emptyList()
         }
 

@@ -8,6 +8,7 @@
 dps> event player Steve item_used minecraft:carrot_on_a_stick
 dps> event player Steve killed_entity minecraft:zombie
 dps> event player Steve placed_block minecraft:oak_log
+dps> event player Steve changed_dimension minecraft:overworld minecraft:the_nether
 dps> event player Steve key_input key.jump
 dps> event player Steve mouse_input left
 dps> inspect player Steve
@@ -17,7 +18,7 @@ dps> inspect advancement
 命令形状：
 
 ```text
-event player <name> <event-type> [resource-id]
+event player <name> <event-type> [resource-id] [detail]
 ```
 
 可选 `resource-id` 会按事件类型解释：
@@ -25,6 +26,7 @@ event player <name> <event-type> [resource-id]
 - `item_used`、`item_consumed`、`inventory_changed`、`item_picked_up`：物品 id。
 - `killed_entity`、`entity_killed_player`：实体类型 id。
 - `placed_block`、`broke_block`：方块 id。
+- `changed_dimension`：`resource-id` 是来源维度，`detail` 是目标维度。
 - `recipe_unlocked`：recipe id。
 
 键盘/鼠标事件把输入代码放在 `[resource-id]` 位置：
@@ -90,7 +92,7 @@ CLI 接受连字符或下划线；`item-used` 会标准化为 `item_used`。
 | `recipe_unlocked` | `recipe` | 用于 recipe unlocked 条件。 |
 | `effects_changed` | 无 | 用于 effects changed 条件。 |
 
-REPL 快捷命令只暴露一个可选 `[resource-id]` 和一个可选 action。需要更完整上下文时使用 JSON 清单，例如同时提供 `from`/`to` 维度、带 NBT 的物品或鼠标坐标。
+REPL 快捷命令暴露一个可选 `[resource-id]` 和一个可选 detail 或输入 action。需要更完整上下文时使用 JSON 清单，例如带 NBT 的物品、精确实体上下文或鼠标坐标。
 
 键鼠清单示例：
 
