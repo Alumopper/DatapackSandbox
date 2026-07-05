@@ -201,6 +201,7 @@ SandboxQuickTest.create(
     .assertPlayer("Alex", xp = 5, recipe = "minecraft:bread", effect = "minecraft:speed")
     .assertItem("Alex", "minecraft:stick", 2)
     .assertScore("#fixture", "ready", 1)
+    .assertScoreRange("#fixture", "ready", min = 1, max = 3)
     .assertStorageExists("demo:env", "ready")
     .assertStorageMissing("demo:env", "debug.last")
     .assertPlayerXp("Alex", 5)
@@ -280,6 +281,9 @@ class MyDatapackTest {
 | `keyInput(player, key, action)` | Inject keyboard input |
 | `mouseInput(player, button, action, x, y)` | Inject mouse input |
 | `assertScore(target, objective, expected)` | Assert scoreboard state |
+| `assertScoreAtLeast(target, objective, minimum)` | Assert a scoreboard lower bound |
+| `assertScoreAtMost(target, objective, maximum)` | Assert a scoreboard upper bound |
+| `assertScoreRange(target, objective, min, max)` | Assert optional scoreboard bounds |
 | `assertStorageEquals(id, path, expectedJson)` | Assert a storage path |
 | `assertStorageExists(id, path)` | Assert that a storage root or path exists |
 | `assertStorageMissing(id, path)` | Assert that a storage root or path is absent |

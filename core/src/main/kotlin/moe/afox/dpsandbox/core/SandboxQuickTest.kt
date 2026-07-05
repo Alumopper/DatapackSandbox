@@ -256,6 +256,28 @@ class SandboxQuickTestMatrix private constructor(
     }
 
     /**
+     * Adds a lower-bound scoreboard assertion to every scenario.
+     */
+    fun assertScoreAtLeast(target: String, objective: String, minimum: Int): SandboxQuickTestMatrix = apply {
+        scenarios.values.forEach { it.assertScoreAtLeast(target, objective, minimum) }
+    }
+
+    /**
+     * Adds an upper-bound scoreboard assertion to every scenario.
+     */
+    fun assertScoreAtMost(target: String, objective: String, maximum: Int): SandboxQuickTestMatrix = apply {
+        scenarios.values.forEach { it.assertScoreAtMost(target, objective, maximum) }
+    }
+
+    /**
+     * Adds optional lower and upper scoreboard bounds to every scenario.
+     */
+    @JvmOverloads
+    fun assertScoreRange(target: String, objective: String, min: Int? = null, max: Int? = null): SandboxQuickTestMatrix = apply {
+        scenarios.values.forEach { it.assertScoreRange(target, objective, min, max) }
+    }
+
+    /**
      * Adds a storage equality assertion to every scenario.
      */
     fun assertStorageEquals(id: String, path: String?, expectedJson: String): SandboxQuickTestMatrix = apply {
@@ -740,6 +762,48 @@ class SandboxQuickTest private constructor(
         val actual = sandbox.world.getScore(target, objective)
         if (actual != expected) {
             failures += "score $target $objective expected $expected but was $actual"
+        }
+    }
+
+    /**
+     * Asserts that the current scoreboard value is at least [minimum].
+     */
+    fun assertScoreAtLeast(target: String, objective: String, minimum: Int): SandboxQuickTest = apply {
+        assertScoreBounds(target, objective, min = minimum, max = null)
+    }
+
+    /**
+     * Asserts that the current scoreboard value is at most [maximum].
+     */
+    fun assertScoreAtMost(target: String, objective: String, maximum: Int): SandboxQuickTest = apply {
+        assertScoreBounds(target, objective, min = null, max = maximum)
+    }
+
+    /**
+     * Asserts optional lower and upper bounds for a scoreboard value.
+     */
+    @JvmOverloads
+    fun assertScoreRange(target: String, objective: String, min: Int? = null, max: Int? = null): SandboxQuickTest = apply {
+        assertScoreBounds(target, objective, min, max)
+    }
+
+    private fun assertScoreBounds(target: String, objective: String, min: Int?, max: Int?) {
+        val actual = sandbox.world.getScore(target, objective)
+        var checked = false
+        min?.let {
+            checked = true
+            if (actual < it) {
+                failures += "score $target $objective expected >= $it but was $actual"
+            }
+        }
+        max?.let {
+            checked = true
+            if (actual > it) {
+                failures += "score $target $objective expected <= $it but was $actual"
+            }
+        }
+        if (!checked) {
+            failures += "score $target $objective range assertion requires min or max"
         }
     }
 

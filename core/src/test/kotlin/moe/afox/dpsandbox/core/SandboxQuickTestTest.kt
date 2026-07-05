@@ -52,6 +52,22 @@ class SandboxQuickTestTest {
     }
 
     @Test
+    fun `quick score range assertions explain failures`() {
+        val report = SandboxQuickTest.create(listOf(fixturePack()), version = "26.1.2")
+            .command("scoreboard objectives add runs dummy")
+            .command("scoreboard players set #range runs 5")
+            .assertScoreAtLeast("#range", "runs", 6)
+            .assertScoreAtMost("#range", "runs", 4)
+            .assertScoreRange("#range", "runs")
+            .report()
+
+        assertTrue(!report.passed)
+        assertTrue(report.failures.any { "score #range runs expected >= 6 but was 5" in it }, report.failures.joinToString())
+        assertTrue(report.failures.any { "score #range runs expected <= 4 but was 5" in it }, report.failures.joinToString())
+        assertTrue(report.failures.any { "score #range runs range assertion requires min or max" in it }, report.failures.joinToString())
+    }
+
+    @Test
     fun `records keyboard and mouse player input events`() {
         val scenario = SandboxQuickTest.create(listOf(fixturePack()), version = "26.1.2")
             .keyInput("Steve", "key.jump")
@@ -371,6 +387,9 @@ class SandboxQuickTestTest {
             )
             .assertItem("Alex", "minecraft:stick", 2)
             .assertScore("#fixture", "ready", 1)
+            .assertScoreAtLeast("#fixture", "ready", 1)
+            .assertScoreAtMost("#fixture", "ready", 1)
+            .assertScoreRange("#fixture", "ready", min = 1, max = 1)
             .assertStorageExists("demo:env")
             .assertStorageExists("demo:env", "ready")
             .assertStorageEquals("demo:env", "ready", "true")

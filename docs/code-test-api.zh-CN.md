@@ -177,6 +177,7 @@ SandboxQuickTest.create(
     .assertPlayer("Alex", xp = 5, recipe = "minecraft:bread", effect = "minecraft:speed")
     .assertItem("Alex", "minecraft:stick", 2)
     .assertScore("#fixture", "ready", 1)
+    .assertScoreRange("#fixture", "ready", min = 1, max = 3)
     .assertStorageExists("demo:env", "ready")
     .assertStorageMissing("demo:env", "debug.last")
     .assertPlayerXp("Alex", 5)
@@ -254,6 +255,9 @@ class MyDatapackTest {
 | `keyInput(player, key, action)` | 注入键盘输入。 |
 | `mouseInput(player, button, action, x, y)` | 注入鼠标输入。 |
 | `assertScore(target, objective, expected)` | 断言 scoreboard。 |
+| `assertScoreAtLeast(target, objective, minimum)` | 断言 scoreboard 下界。 |
+| `assertScoreAtMost(target, objective, maximum)` | 断言 scoreboard 上界。 |
+| `assertScoreRange(target, objective, min, max)` | 断言 scoreboard 可选上下界。 |
 | `assertStorageEquals(id, path, expectedJson)` | 断言 storage 路径。 |
 | `assertStorageExists(id, path)` | 断言 storage 根对象或路径存在。 |
 | `assertStorageMissing(id, path)` | 断言 storage 根对象或路径不存在。 |
