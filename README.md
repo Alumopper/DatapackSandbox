@@ -126,6 +126,13 @@ Run JSON check manifests:
 java -jar cli/build/libs/datapack-sandbox-cli.jar check ./sandbox-cases
 ```
 
+Use `--verbose` to include deterministic resource summaries, pack overlay
+entries, missing load/tick function references, and manifest output events:
+
+```bash
+java -jar cli/build/libs/datapack-sandbox-cli.jar check ./sandbox-cases --verbose
+```
+
 When assertions fail, print the final snapshot or a minimal snapshot diff:
 
 ```bash

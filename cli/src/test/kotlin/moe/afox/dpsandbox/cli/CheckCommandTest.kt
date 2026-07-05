@@ -45,6 +45,86 @@ class CheckCommandTest {
         assertTrue("scoreboard objectives add filtered_check dummy" !in traceJson, traceJson)
     }
 
+    @Test
+    fun `check verbose prints resource summary overlays and missing references`() {
+        val dir = Files.createTempDirectory("dps-check-verbose")
+        val first = writeVerbosePack(dir, "verbose-first", "first", includeMissingLoad = true)
+        val second = writeVerbosePack(dir, "verbose-second", "second", includeMissingLoad = false)
+        val manifest = dir.resolve("verbose.dps.json")
+        Files.writeString(
+            manifest,
+            """
+            {
+              "version": "26.2",
+              "packs": ["${manifestPath(first)}", "${manifestPath(second)}"]
+            }
+            """.trimIndent(),
+        )
+
+        val output = captureStdout {
+            main(arrayOf("check", manifest.toString(), "--verbose"))
+        }
+
+        assertTrue("PASS $manifest" in output, output)
+        assertTrue("resources 26.2 functions=1" in output, output)
+        assertTrue("recipes=1" in output, output)
+        assertTrue("overridden=" in output, output)
+        assertTrue("overlay recipe demo:marker active" in output, output)
+        assertTrue("overlay recipe demo:marker overridden" in output, output)
+        assertTrue("missing-reference #minecraft:load -> function demo:missing_load" in output, output)
+    }
+
+    private fun writeVerbosePack(root: Path, name: String, marker: String, includeMissingLoad: Boolean): Path {
+        val pack = root.resolve(name)
+        Files.createDirectories(pack)
+        Files.writeString(
+            pack.resolve("pack.mcmeta"),
+            """
+            {
+              "pack": {
+                "pack_format": 107.1,
+                "description": "$name"
+              }
+            }
+            """.trimIndent(),
+        )
+
+        val functionRoot = pack.resolve("data").resolve("demo").resolve("function")
+        Files.createDirectories(functionRoot)
+        Files.writeString(functionRoot.resolve("noop.mcfunction"), "say $marker")
+
+        val recipeRoot = pack.resolve("data").resolve("demo").resolve("recipe")
+        Files.createDirectories(recipeRoot)
+        Files.writeString(
+            recipeRoot.resolve("marker.json"),
+            """
+            {
+              "type": "minecraft:crafting_shapeless",
+              "marker": "$marker",
+              "ingredients": [],
+              "result": { "id": "minecraft:stone", "count": 1 }
+            }
+            """.trimIndent(),
+        )
+
+        if (includeMissingLoad) {
+            val tagRoot = pack.resolve("data").resolve("minecraft").resolve("tags").resolve("function")
+            Files.createDirectories(tagRoot)
+            Files.writeString(
+                tagRoot.resolve("load.json"),
+                """
+                {
+                  "values": ["demo:missing_load"]
+                }
+                """.trimIndent(),
+            )
+        }
+        return pack
+    }
+
+    private fun manifestPath(path: Path): String =
+        path.toAbsolutePath().normalize().toString().replace("\\", "\\\\")
+
     private fun captureStdout(block: () -> Unit): String {
         val original = System.out
         val bytes = ByteArrayOutputStream()

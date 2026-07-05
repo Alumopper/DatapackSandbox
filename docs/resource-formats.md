@@ -216,7 +216,9 @@ The resource index records type, id, source pack, file path, active/overridden
 state, and pack overlay relationships. `datapack list` includes
 `overriddenResources` and a `resourceOverrides` array in its structured output
 payload so generated command-output tests can assert overlay behavior without
-entering the REPL.
+entering the REPL. `check --verbose` also prints a resource summary, overlay
+entries, and missing direct references from load/tick function tags and
+advancement rewards.
 
 ## SNBT and Data Paths
 

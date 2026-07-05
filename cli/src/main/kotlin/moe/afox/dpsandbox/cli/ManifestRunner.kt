@@ -15,6 +15,7 @@ import moe.afox.dpsandbox.core.PlayerEvent
 import moe.afox.dpsandbox.core.PlayerInput
 import moe.afox.dpsandbox.core.PredicateContext
 import moe.afox.dpsandbox.core.ResourceLocation
+import moe.afox.dpsandbox.core.ResourceIndexEntry
 import moe.afox.dpsandbox.core.SandboxException
 import moe.afox.dpsandbox.core.SandboxEntity
 import moe.afox.dpsandbox.core.SandboxBlock
@@ -50,6 +51,30 @@ data class ManifestAttemptResult(
     val messages: List<String>,
     val outputs: List<OutputEvent> = emptyList(),
     val traces: List<CommandTraceEvent> = emptyList(),
+    val resourceSummary: ManifestResourceSummary? = null,
+)
+
+data class ManifestResourceSummary(
+    val functions: Int,
+    val lootTables: Int,
+    val predicates: Int,
+    val advancements: Int,
+    val recipes: Int,
+    val itemModifiers: Int,
+    val tags: Int,
+    val rawResourceKinds: Int,
+    val rawResources: Int,
+    val resourceIndex: Int,
+    val activeResources: Int,
+    val overriddenResources: Int,
+    val overlays: List<ResourceIndexEntry>,
+    val missingReferences: List<ManifestMissingResourceReference>,
+)
+
+data class ManifestMissingResourceReference(
+    val source: String,
+    val type: String,
+    val id: ResourceLocation,
 )
 
 data class ManifestOptions(
@@ -208,6 +233,47 @@ object ManifestRunner {
             messages = failures,
             outputs = sandbox.world.outputs.toList(),
             traces = sandbox.world.traces.toList(),
+            resourceSummary = summarizeResources(sandbox),
+        )
+    }
+
+    private fun summarizeResources(sandbox: DatapackSandbox): ManifestResourceSummary {
+        val datapack = sandbox.datapack
+        val overlays = datapack.resourceIndex.filter { !it.active || it.overrides != null || it.overriddenBy != null }
+        val missingReferences = buildList {
+            datapack.loadFunctions
+                .filterNot { it in datapack.functions }
+                .forEach { add(ManifestMissingResourceReference("#minecraft:load", "function", it)) }
+            datapack.tickFunctions
+                .filterNot { it in datapack.functions }
+                .forEach { add(ManifestMissingResourceReference("#minecraft:tick", "function", it)) }
+            datapack.advancements.toSortedMap().forEach { (advancementId, advancement) ->
+                advancement.rewards.function
+                    ?.takeIf { it !in datapack.functions }
+                    ?.let { add(ManifestMissingResourceReference("advancement $advancementId rewards.function", "function", it)) }
+                advancement.rewards.loot
+                    .filterNot { it in datapack.lootTables }
+                    .forEach { add(ManifestMissingResourceReference("advancement $advancementId rewards.loot", "loot_table", it)) }
+                advancement.rewards.recipes
+                    .filterNot { it in datapack.recipes }
+                    .forEach { add(ManifestMissingResourceReference("advancement $advancementId rewards.recipes", "recipe", it)) }
+            }
+        }
+        return ManifestResourceSummary(
+            functions = datapack.functions.size,
+            lootTables = datapack.lootTables.size,
+            predicates = datapack.predicates.size,
+            advancements = datapack.advancements.size,
+            recipes = datapack.recipes.size,
+            itemModifiers = datapack.itemModifiers.size,
+            tags = datapack.tags.size,
+            rawResourceKinds = datapack.rawResources.size,
+            rawResources = datapack.rawResources.values.sumOf { it.size },
+            resourceIndex = datapack.resourceIndex.size,
+            activeResources = datapack.resourceIndex.count { it.active },
+            overriddenResources = datapack.resourceIndex.count { !it.active },
+            overlays = overlays,
+            missingReferences = missingReferences,
         )
     }
 

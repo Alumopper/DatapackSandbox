@@ -104,8 +104,13 @@ class CheckCommand : CliktCommand(name = "check") {
                     println(ConsoleStyle.red("FAIL ${manifest}${versionLabel}"))
                     result.messages.forEach { println("  - $it") }
                 }
-                if (verbose && result.outputs.isNotEmpty()) {
-                    OutputRenderer.print(result.outputs)
+                if (verbose) {
+                    result.attempts.forEach { attempt ->
+                        attempt.resourceSummary?.let { ResourceSummaryRenderer.print(attempt.version, it) }
+                    }
+                    if (result.outputs.isNotEmpty()) {
+                        OutputRenderer.print(result.outputs)
+                    }
                 }
                 if (trace && resultTraces.isNotEmpty()) {
                     TraceRenderer.print(resultTraces)
