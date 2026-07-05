@@ -46,6 +46,29 @@ class ManifestRunnerTest {
     }
 
     @Test
+    fun `manifest schema documents snapshot trace and reset steps`() {
+        val schema = JsonParser.parseString(Files.readString(Path.of("../docs/dps-manifest.schema.json"))).asJsonObject
+        val defs = schema.getAsJsonObject("\$defs")
+        val step = defs.getAsJsonObject("step")
+        val stepProperties = step.getAsJsonObject("properties")
+        val stepRequired = step.getAsJsonArray("oneOf").map {
+            it.asJsonObject.getAsJsonArray("required").single().asString
+        }
+        val stepOutput = defs.getAsJsonObject("stepOutput")
+        val stepOutputVariants = stepOutput.getAsJsonArray("oneOf")
+        val outputObjectProperties = stepOutputVariants[2].asJsonObject.getAsJsonObject("properties")
+
+        assertTrue(stepRequired.containsAll(listOf("snapshot", "trace", "reset")))
+        assertEquals("#/\$defs/stepOutput", stepProperties.getAsJsonObject("snapshot").get("\$ref").asString)
+        assertEquals("#/\$defs/stepOutput", stepProperties.getAsJsonObject("trace").get("\$ref").asString)
+        assertEquals("boolean", stepProperties.getAsJsonObject("reset").get("type").asString)
+        assertEquals("boolean", stepOutputVariants[0].asJsonObject.get("type").asString)
+        assertEquals("string", stepOutputVariants[1].asJsonObject.get("type").asString)
+        assertEquals("string", outputObjectProperties.getAsJsonObject("file").get("type").asString)
+        assertEquals("boolean", outputObjectProperties.getAsJsonObject("output").get("type").asString)
+    }
+
+    @Test
     fun `runs a manifest check`() {
         val path = Path.of("src/test/resources/cases/counter.dps.json")
 
@@ -387,6 +410,51 @@ class ManifestRunnerTest {
         val result = ManifestRunner.run(manifest)
 
         assertTrue(result.passed, result.messages.joinToString())
+    }
+
+    @Test
+    fun `exports manifest snapshots and traces and resets world state`() {
+        val dir = Files.createTempDirectory("dps-debug-step-manifest")
+        val pack = Path.of("../core/src/test/resources/packs/counter").toAbsolutePath().normalize().toString().replace("\\", "\\\\")
+        val manifest = dir.resolve("debug-steps.dps.json")
+        Files.writeString(
+            manifest,
+            """
+            {
+              "version": "26.1.2",
+              "packs": ["$pack"],
+              "steps": [
+                { "command": "scoreboard objectives add runs dummy" },
+                { "command": "scoreboard players set #before_reset runs 2" },
+                { "snapshot": "artifacts/before.json" },
+                { "trace": "artifacts/before.jsonl" },
+                { "reset": true },
+                { "command": "list" },
+                { "snapshot": { "output": true } },
+                { "trace": { "output": true } },
+                { "player": { "name": "Alex", "xp": 7 } }
+              ],
+              "assertions": [
+                { "score": { "target": "#before_reset", "objective": "runs", "equals": 0 } },
+                { "player": { "name": "Steve" } },
+                { "player": { "name": "Alex", "xp": 7 } },
+                { "trace": { "root": "list", "success": true, "count": 1 } },
+                { "output": { "command": "manifest snapshot", "channel": "debug", "contains": "\"Steve\"", "count": 1 } },
+                { "output": { "command": "manifest trace", "channel": "debug", "text": "1", "count": 1 } }
+              ]
+            }
+            """.trimIndent(),
+        )
+
+        val result = ManifestRunner.run(manifest)
+
+        assertTrue(result.passed, result.messages.joinToString())
+        val snapshot = Files.readString(dir.resolve("artifacts/before.json"))
+        val trace = Files.readString(dir.resolve("artifacts/before.jsonl"))
+        assertTrue("\"#before_reset\": 2" in snapshot, snapshot)
+        assertTrue("\"command\": \"scoreboard players set #before_reset runs 2\"" in trace, trace)
+        assertTrue(result.outputs.any { it.command == "manifest snapshot" && it.channel == "debug" && "\"Steve\"" in it.text })
+        assertTrue(result.outputs.any { it.command == "manifest trace" && it.channel == "debug" && it.text == "1" })
     }
 
     @Test

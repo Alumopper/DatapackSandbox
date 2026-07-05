@@ -337,6 +337,9 @@
         { "required": ["player"] },
         { "required": ["block"] },
         { "required": ["event"] },
+        { "required": ["snapshot"] },
+        { "required": ["trace"] },
+        { "required": ["reset"] },
         { "required": ["loot"] }
       ],
       "properties": {
@@ -351,8 +354,25 @@
         "player": { "type": "object" },
         "block": { "type": "object" },
         "event": { "$ref": "#/$defs/eventStep" },
+        "snapshot": { "$ref": "#/$defs/stepOutput" },
+        "trace": { "$ref": "#/$defs/stepOutput" },
+        "reset": { "type": "boolean" },
         "loot": { "type": "object" }
       }
+    },
+    "stepOutput": {
+      "oneOf": [
+        { "type": "boolean" },
+        { "type": "string" },
+        {
+          "type": "object",
+          "properties": {
+            "file": { "type": "string" },
+            "output": { "type": "boolean" }
+          },
+          "additionalProperties": false
+        }
+      ]
     },
     "assertion": {
       "type": "object",

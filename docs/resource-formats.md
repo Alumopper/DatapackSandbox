@@ -76,6 +76,9 @@ docs/dps-manifest.schema.json
 - `{ "commands": ["scoreboard objectives add runs dummy", "..."], "source": "<generator>" }`
 - `{ "functionText": "say inline\nscoreboard ...", "source": "<inline>" }`
 - `{ "mcfunction": "relative/path/generated.mcfunction" }`
+- `{ "snapshot": "artifacts/before.json" }`
+- `{ "trace": { "file": "artifacts/trace.jsonl", "output": true } }`
+- `{ "reset": true }`
 - `{ "player": { ... } }`, `{ "block": { ... } }`, `{ "event": { ... } }`, `{ "loot": { ... } }`
 
 Event steps require `player` and `type`. Optional context fields include
@@ -86,6 +89,11 @@ Event steps require `player` and `type`. Optional context fields include
 ```json
 { "event": { "player": "Steve", "type": "damage", "damageSource": "minecraft:fall", "amount": 4.5 } }
 ```
+
+`snapshot` and `trace` steps accept `true` to record a debug output event, a
+relative file path string to write an artifact, or an object with `file` and
+`output`. `reset` replaces the current world with a fresh sparse world and the
+default `Steve` player while keeping the loaded packs.
 
 `world` can predefine sparse blocks/entities/players, scoreboards, storage,
 gamerules, time/weather, seed/difficulty/default game mode, world/player spawn

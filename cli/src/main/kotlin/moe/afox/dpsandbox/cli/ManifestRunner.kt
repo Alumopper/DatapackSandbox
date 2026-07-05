@@ -1,5 +1,6 @@
 ﻿package moe.afox.dpsandbox.cli
 
+import com.google.gson.JsonArray
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
@@ -16,6 +17,7 @@ import moe.afox.dpsandbox.core.ResourceLocation
 import moe.afox.dpsandbox.core.SandboxException
 import moe.afox.dpsandbox.core.SandboxEntity
 import moe.afox.dpsandbox.core.SandboxBlock
+import moe.afox.dpsandbox.core.SandboxWorld
 import moe.afox.dpsandbox.core.SnapshotDiff
 import moe.afox.dpsandbox.core.SourceLocation
 import moe.afox.dpsandbox.core.TraceAssertions
@@ -122,7 +124,7 @@ object ManifestRunner {
         unsupportedMode: UnsupportedFeatureMode,
         options: ManifestOptions,
     ): ManifestAttemptResult {
-        val sandbox = createSandbox(config.version, config.packs, unsupportedFeatureMode = unsupportedMode)
+        var sandbox = createSandbox(config.version, config.packs, unsupportedFeatureMode = unsupportedMode)
         ManifestWorldSetup.apply(json.getAsJsonObject("world"), sandbox, path.parent ?: Path.of("."))
         val beforeSnapshot = sandbox.snapshotJson()
         json.manifestArray("steps").forEachIndexed { index, step ->
@@ -130,7 +132,7 @@ object ManifestRunner {
                 throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Manifest steps must be objects: $path")
             }
             try {
-                runStep(step.asJsonObject, sandbox, options, path.parent ?: Path.of("."))
+                sandbox = runStep(step.asJsonObject, sandbox, options, path.parent ?: Path.of("."))
             } catch (error: SandboxException) {
                 throw SandboxException(error.code, "Step ${index + 1} failed for ${config.version}: ${error.message}", error.location, error.version, error.command, error)
             }
@@ -212,7 +214,7 @@ object ManifestRunner {
         return packs
     }
 
-    private fun runStep(step: JsonObject, sandbox: DatapackSandbox, options: ManifestOptions, base: Path) {
+    private fun runStep(step: JsonObject, sandbox: DatapackSandbox, options: ManifestOptions, base: Path): DatapackSandbox {
         when {
             step.has("load") && step.get("load").asBoolean -> sandbox.runLoad()
             step.has("ticks") -> sandbox.runTicks(step.get("ticks").asInt)
@@ -235,6 +237,9 @@ object ManifestRunner {
             step.has("player") -> runPlayerStep(step.getAsJsonObject("player"), sandbox)
             step.has("block") -> runBlockStep(step.getAsJsonObject("block"), sandbox)
             step.has("event") -> sandbox.handlePlayerEvent(parseEvent(step.getAsJsonObject("event"), sandbox))
+            step.has("snapshot") -> runSnapshotStep(step.get("snapshot"), sandbox, base)
+            step.has("trace") -> runTraceStep(step.get("trace"), sandbox, base)
+            step.has("reset") -> return resetSandbox(step.get("reset"), sandbox)
             step.has("loot") -> {
                 val loot = step.getAsJsonObject("loot")
                 sandbox.generateLoot(
@@ -244,8 +249,53 @@ object ManifestRunner {
                     loot.get("seed")?.asLong ?: options.seed,
                 )
             }
-            else -> throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Step must contain load, ticks, function, command, commands, functionText, mcfunction, player, block, event, or loot")
+            else -> throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Step must contain load, ticks, function, command, commands, functionText, mcfunction, player, block, event, snapshot, trace, reset, or loot")
         }
+        return sandbox
+    }
+
+    private fun resetSandbox(reset: JsonElement, sandbox: DatapackSandbox): DatapackSandbox {
+        if (reset.isJsonPrimitive && !reset.asBoolean) return sandbox
+        return DatapackSandbox(sandbox.profile, sandbox.datapack, SandboxWorld().also { it.createPlayer("Steve") }, sandbox.unsupportedFeatureMode)
+    }
+
+    private fun runSnapshotStep(snapshot: JsonElement, sandbox: DatapackSandbox, base: Path) {
+        val target = stepTarget(snapshot)
+        target.file?.let { writeTextStepOutput(base.resolve(it).normalize(), sandbox.snapshotString()) }
+        if (target.output) {
+            sandbox.world.recordOutput("manifest snapshot", "debug", text = sandbox.snapshotString(), payload = sandbox.snapshotJson())
+        }
+    }
+
+    private fun runTraceStep(trace: JsonElement, sandbox: DatapackSandbox, base: Path) {
+        val target = stepTarget(trace)
+        val traceLines = sandbox.world.traces.joinToString(System.lineSeparator()) { JsonValues.render(it.toJson()) }
+        target.file?.let { writeTextStepOutput(base.resolve(it).normalize(), traceLines) }
+        if (target.output) {
+            val payload = JsonArray().also { array -> sandbox.world.traces.forEach { array.add(it.toJson()) } }
+            sandbox.world.recordOutput("manifest trace", "debug", text = sandbox.world.traces.size.toString(), payload = payload)
+        }
+    }
+
+    private data class StepOutputTarget(val file: String?, val output: Boolean)
+
+    private fun stepTarget(value: JsonElement): StepOutputTarget =
+        when {
+            value.isJsonPrimitive && value.asJsonPrimitive.isBoolean -> StepOutputTarget(file = null, output = value.asBoolean)
+            value.isJsonPrimitive && value.asJsonPrimitive.isString -> StepOutputTarget(file = value.asString, output = false)
+            value.isJsonObject -> {
+                val root = value.asJsonObject
+                StepOutputTarget(
+                    file = root.manifestString("file"),
+                    output = root.get("output")?.asBoolean ?: false,
+                )
+            }
+            else -> throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Manifest snapshot/trace step must be a boolean, file path string, or object")
+        }
+
+    private fun writeTextStepOutput(path: Path, content: String) {
+        path.parent?.let(Files::createDirectories)
+        Files.writeString(path, content, StandardCharsets.UTF_8)
     }
 
     private fun runCommandLines(lines: List<String>, sandbox: DatapackSandbox, sourceName: String) {

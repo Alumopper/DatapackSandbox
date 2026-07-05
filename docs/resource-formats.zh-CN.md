@@ -224,6 +224,9 @@ docs/dps-manifest.schema.json
 - `{ "commands": ["scoreboard objectives add runs dummy", "..."], "source": "<generator>" }`
 - `{ "functionText": "say inline\nscoreboard ...", "source": "<inline>" }`
 - `{ "mcfunction": "relative/path/generated.mcfunction" }`
+- `{ "snapshot": "artifacts/before.json" }`
+- `{ "trace": { "file": "artifacts/trace.jsonl", "output": true } }`
+- `{ "reset": true }`
 - `{ "player": { ... } }`、`{ "block": { ... } }`、`{ "event": { ... } }`、`{ "loot": { ... } }`
 
 事件步骤至少需要 `player` 和 `type`。可选上下文字段包括 `item`、`entity`、
@@ -233,6 +236,8 @@ docs/dps-manifest.schema.json
 ```json
 { "event": { "player": "Steve", "type": "damage", "damageSource": "minecraft:fall", "amount": 4.5 } }
 ```
+
+`snapshot` 和 `trace` 步骤可以写 `true` 记录 debug 输出事件，可以写相对文件路径保存 artifact，也可以写成包含 `file` 和 `output` 的对象。`reset` 会保留已加载的数据包，但把当前世界替换为全新的 sparse world，并重新创建默认玩家 `Steve`。
 
 `assertions` 除了既有 score、storage、player、block、entityCount、advancement、predicate、loot 和 output 外，也支持：
 
