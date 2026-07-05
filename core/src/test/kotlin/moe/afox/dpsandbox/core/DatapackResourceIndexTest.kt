@@ -50,6 +50,8 @@ class DatapackResourceIndexTest {
         assertEquals(datapack.rawResources.values.sumOf { it.size }, payload.get("rawResources").asInt)
         assertEquals(datapack.tags.size, payload.get("tags").asInt)
         assertEquals(datapack.resourceIndex.count { it.active }, payload.get("activeResources").asInt)
+        assertEquals(0, payload.get("overriddenResources").asInt)
+        assertEquals(0, payload.getAsJsonArray("resourceOverrides").size())
     }
 
     @Test
@@ -78,7 +80,8 @@ class DatapackResourceIndexTest {
         val first = writePack("overlay-first", "107.1", "recipe", "item_modifier", "item", "first")
         val second = writePack("overlay-second", "107.1", "recipe", "item_modifier", "item", "second")
 
-        val datapack = createSandbox("26.2", listOf(first, second)).datapack
+        val sandbox = createSandbox("26.2", listOf(first, second))
+        val datapack = sandbox.datapack
 
         assertEquals("second", datapack.recipe(ResourceLocation.parse("demo:marker")).root.asJsonObject.get("marker").asString)
         val recipeEntries = datapack.resourceIndex.filter { it.type == "recipe" && it.id == ResourceLocation.parse("demo:marker") }
@@ -94,6 +97,23 @@ class DatapackResourceIndexTest {
         assertEquals(2, damageEntries.size)
         assertFalse(damageEntries[0].active)
         assertTrue(damageEntries[1].active)
+
+        sandbox.executeCommand("datapack list")
+        val payload = sandbox.world.outputs.single { it.command == "datapack list" }.payload?.asJsonObject
+            ?: error("missing datapack list payload")
+        val overlayEntries = datapack.resourceIndex.filter { !it.active || it.overrides != null || it.overriddenBy != null }
+        assertEquals(datapack.resourceIndex.count { !it.active }, payload.get("overriddenResources").asInt)
+        assertEquals(overlayEntries.size, payload.getAsJsonArray("resourceOverrides").size())
+
+        val recipeOverride = payload.getAsJsonArray("resourceOverrides")
+            .map { it.asJsonObject }
+            .single { it.get("type").asString == "recipe" && it.get("id").asString == "demo:marker" && it.get("active").asBoolean }
+        assertTrue(recipeOverride.get("overrides").asString.contains("overlay-first"), recipeOverride.toString())
+
+        val overriddenRecipe = payload.getAsJsonArray("resourceOverrides")
+            .map { it.asJsonObject }
+            .single { it.get("type").asString == "recipe" && it.get("id").asString == "demo:marker" && !it.get("active").asBoolean }
+        assertTrue(overriddenRecipe.get("overriddenBy").asString.contains("overlay-second"), overriddenRecipe.toString())
     }
 
     private fun writePack(

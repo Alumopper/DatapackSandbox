@@ -159,7 +159,7 @@ inspect tags [registry]
 inspect resources [type]
 ```
 
-资源索引会记录 type、id、来源 pack、文件路径、active/overridden 状态，以及 pack overlay 覆盖关系。
+资源索引会记录 type、id、来源 pack、文件路径、active/overridden 状态，以及 pack overlay 覆盖关系。`datapack list` 的结构化输出 payload 会包含 `overriddenResources` 和 `resourceOverrides` 数组，便于命令生成器或测试用例直接断言覆盖行为，不必进入 REPL。
 
 ## SNBT 与 Data Path
 

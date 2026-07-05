@@ -715,6 +715,15 @@ class DatapackSandbox(
                 payload.addProperty("rawResources", datapack.rawResources.values.sumOf { it.size })
                 payload.addProperty("resourceIndex", datapack.resourceIndex.size)
                 payload.addProperty("activeResources", datapack.resourceIndex.count { it.active })
+                payload.addProperty("overriddenResources", datapack.resourceIndex.count { !it.active })
+                payload.add(
+                    "resourceOverrides",
+                    JsonArray().also { overrides ->
+                        datapack.resourceIndex
+                            .filter { !it.active || it.overrides != null || it.overriddenBy != null }
+                            .forEach { overrides.add(it.toResourceIndexPayload()) }
+                    },
+                )
                 world.recordOutput("datapack list", "data", text = "Loaded datapack resources", payload = payload)
             }
             "enable", "disable" -> {
@@ -724,6 +733,17 @@ class DatapackSandbox(
             else -> unsupportedFeature("Unsupported datapack action '${tokens[1].text}'", profile.id, location)
         }
     }
+
+    private fun ResourceIndexEntry.toResourceIndexPayload(): JsonObject =
+        JsonObject().also { payload ->
+            payload.addProperty("type", type)
+            payload.addProperty("id", id.toString())
+            payload.addProperty("pack", pack)
+            payload.addProperty("file", file)
+            payload.addProperty("active", active)
+            overrides?.let { payload.addProperty("overrides", it) }
+            overriddenBy?.let { payload.addProperty("overriddenBy", it) }
+        }
 
     private fun executeReload(tokens: List<CommandToken>, location: SourceLocation?) {
         requireSize(tokens, 1, "reload", location)

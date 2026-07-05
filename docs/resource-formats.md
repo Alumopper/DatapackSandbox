@@ -213,7 +213,10 @@ inspect resources [type]
 ```
 
 The resource index records type, id, source pack, file path, active/overridden
-state, and pack overlay relationships.
+state, and pack overlay relationships. `datapack list` includes
+`overriddenResources` and a `resourceOverrides` array in its structured output
+payload so generated command-output tests can assert overlay behavior without
+entering the REPL.
 
 ## SNBT and Data Paths
 

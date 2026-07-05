@@ -34,7 +34,7 @@ run continues. Use `--unsupported error`, manifest `"unsupported": "error"`, or
 | `clone` | Partial | Copies sparse sandbox block state/NBT; no updates, drops, or overlap physics. |
 | `damage` | Partial | Reduces entity/player health and emits sandbox damage/death advancement events; no armor, invulnerability, death loot, or combat rules. |
 | `data` | Partial | `get`, `merge`, `modify`, `remove` for `storage`, `entity`, and `block`; paths support fields, numeric indexes, and simple object matchers; `modify` supports `value`, `from`, and `string` sources; top-level NBT is schema-checked. |
-| `datapack` | Partial | `list` reports loaded typed/raw/tag/resource-index counts; `enable`/`disable` are accepted as no-op because pack order is fixed at sandbox creation. |
+| `datapack` | Partial | `list` reports loaded typed/raw/tag/resource-index counts plus resource overlay diagnostics; `enable`/`disable` are accepted as no-op because pack order is fixed at sandbox creation. |
 | `debug`, `jfr`, `perf` | Unsupported | Profiling commands do not apply to this runtime. |
 | `defaultgamemode` | Supported | Stores world default game mode. |
 | `difficulty` | Supported | Stores and reports world difficulty. |
