@@ -296,7 +296,7 @@ class MyDatapackTest {
 | `assertEntityCountAtLeast(minimum, type, tag)` | Assert a matching entity count lower bound |
 | `assertEntityCountAtMost(maximum, type, tag)` | Assert a matching entity count upper bound |
 | `assertEntityCountRange(min, max, type, tag)` | Assert optional matching entity count bounds |
-| `assertItem(player, id, count, slot, exists, minCount, maxCount)` | Assert a matching player inventory item |
+| `assertItem(player, id, count, slot, exists, minCount, maxCount, componentsPath, componentsEquals, componentsExists, nbtPath, nbtEquals, nbtExists)` | Assert a matching player inventory item |
 | `assertPlayerXp(player, expected)` | Assert player XP |
 | `assertPlayerLastInput(player, device, code, action)` | Assert the latest player input |
 | `assertAdvancementDone(player, id, expected)` | Assert advancement completion |
@@ -314,6 +314,9 @@ class MyDatapackTest {
 | `matchingOutputs(...)` | Return output events matching a structured expectation |
 | `report()` | Return `SandboxQuickTestReport` without throwing |
 | `requirePassed()` | Return report or throw an assertion error |
+
+`assertItem` path checks use the same `JsonPaths` syntax as manifest item
+assertions. `componentsEquals` and `nbtEquals` accept JSON/SNBT-lite text.
 
 ## Output Tests
 

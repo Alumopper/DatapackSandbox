@@ -1,6 +1,7 @@
 ﻿package moe.afox.dpsandbox.core
 
 import com.google.gson.JsonElement
+import com.google.gson.JsonObject
 import java.nio.file.Path
 
 /**
@@ -405,8 +406,30 @@ class SandboxQuickTestMatrix private constructor(
         exists: Boolean = true,
         minCount: Int? = null,
         maxCount: Int? = null,
+        componentsPath: String? = null,
+        componentsEquals: String? = null,
+        componentsExists: Boolean? = null,
+        nbtPath: String? = null,
+        nbtEquals: String? = null,
+        nbtExists: Boolean? = null,
     ): SandboxQuickTestMatrix = apply {
-        scenarios.values.forEach { it.assertItem(playerName, id, count, slot, exists, minCount, maxCount) }
+        scenarios.values.forEach {
+            it.assertItem(
+                playerName = playerName,
+                id = id,
+                count = count,
+                slot = slot,
+                exists = exists,
+                minCount = minCount,
+                maxCount = maxCount,
+                componentsPath = componentsPath,
+                componentsEquals = componentsEquals,
+                componentsExists = componentsExists,
+                nbtPath = nbtPath,
+                nbtEquals = nbtEquals,
+                nbtExists = nbtExists,
+            )
+        }
     }
 
     /**
@@ -1117,6 +1140,12 @@ class SandboxQuickTest private constructor(
         exists: Boolean = true,
         minCount: Int? = null,
         maxCount: Int? = null,
+        componentsPath: String? = null,
+        componentsEquals: String? = null,
+        componentsExists: Boolean? = null,
+        nbtPath: String? = null,
+        nbtEquals: String? = null,
+        nbtExists: Boolean? = null,
     ): SandboxQuickTest = apply {
         val player = sandbox.world.requirePlayer(playerName)
         val expectedId = id?.let(ResourceLocation::parse)
@@ -1125,9 +1154,23 @@ class SandboxQuickTest private constructor(
             (expectedId == null || item.id == expectedId) &&
                 (count == null || item.count == count) &&
                 (minCount == null || item.count >= minCount) &&
-                (maxCount == null || item.count <= maxCount)
+                (maxCount == null || item.count <= maxCount) &&
+                itemPathMatches(item.components, componentsPath, componentsEquals, componentsExists) &&
+                itemPathMatches(item.nbt, nbtPath, nbtEquals, nbtExists)
         }
-        val expectation = describeItemExpectation(id, count, slot, minCount, maxCount)
+        val expectation = describeItemExpectation(
+            id = id,
+            count = count,
+            slot = slot,
+            minCount = minCount,
+            maxCount = maxCount,
+            componentsPath = componentsPath,
+            componentsEquals = componentsEquals,
+            componentsExists = componentsExists,
+            nbtPath = nbtPath,
+            nbtEquals = nbtEquals,
+            nbtExists = nbtExists,
+        )
         if (exists && matches.isEmpty()) {
             failures += "item for player $playerName expected $expectation but inventory was ${player.inventory.map { "${it.id}x${it.count}" }}"
         }
@@ -1136,13 +1179,41 @@ class SandboxQuickTest private constructor(
         }
     }
 
-    private fun describeItemExpectation(id: String?, count: Int?, slot: Int?, minCount: Int?, maxCount: Int?): String =
+    private fun itemPathMatches(root: JsonObject, path: String?, equalsJson: String?, exists: Boolean?): Boolean {
+        if (path == null && equalsJson == null && exists == null) return true
+        val actual = JsonPaths.get(root, path)
+        if (exists != null && (actual != null) != exists) return false
+        equalsJson?.let { expectedJson ->
+            if (actual != JsonValues.parse(expectedJson)) return false
+        }
+        return exists != null || equalsJson != null || actual != null
+    }
+
+    private fun describeItemExpectation(
+        id: String?,
+        count: Int?,
+        slot: Int?,
+        minCount: Int?,
+        maxCount: Int?,
+        componentsPath: String?,
+        componentsEquals: String?,
+        componentsExists: Boolean?,
+        nbtPath: String?,
+        nbtEquals: String?,
+        nbtExists: Boolean?,
+    ): String =
         listOfNotNull(
             id?.let { "id=$it" },
             count?.let { "count=$it" },
             minCount?.let { "minCount=$it" },
             maxCount?.let { "maxCount=$it" },
             slot?.let { "slot=$it" },
+            componentsPath?.let { "componentsPath=$it" },
+            componentsEquals?.let { "componentsEquals=$it" },
+            componentsExists?.let { "componentsExists=$it" },
+            nbtPath?.let { "nbtPath=$it" },
+            nbtEquals?.let { "nbtEquals=$it" },
+            nbtExists?.let { "nbtExists=$it" },
         ).ifEmpty { listOf("<any item>") }.joinToString(", ")
 
     /**

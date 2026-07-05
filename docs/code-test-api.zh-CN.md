@@ -270,7 +270,7 @@ class MyDatapackTest {
 | `assertEntityCountAtLeast(minimum, type, tag)` | 断言匹配实体数量下界。 |
 | `assertEntityCountAtMost(maximum, type, tag)` | 断言匹配实体数量上界。 |
 | `assertEntityCountRange(min, max, type, tag)` | 断言匹配实体数量的可选上下界。 |
-| `assertItem(player, id, count, slot, exists, minCount, maxCount)` | 断言玩家背包中的匹配物品。 |
+| `assertItem(player, id, count, slot, exists, minCount, maxCount, componentsPath, componentsEquals, componentsExists, nbtPath, nbtEquals, nbtExists)` | 断言玩家背包中的匹配物品。 |
 | `assertPlayerXp(player, expected)` | 断言玩家 XP。 |
 | `assertPlayerLastInput(player, device, code, action)` | 断言玩家最后一次输入。 |
 | `assertAdvancementDone(player, id, expected)` | 断言 advancement 是否完成。 |
@@ -288,6 +288,9 @@ class MyDatapackTest {
 | `matchingOutputs(...)` | 返回匹配结构化期望的输出事件。 |
 | `report()` | 返回 `SandboxQuickTestReport`，不抛异常。 |
 | `requirePassed()` | 返回报告；如果失败则抛异常。 |
+
+`assertItem` 的 path 检查使用和 manifest item 断言相同的 `JsonPaths`
+语义。`componentsEquals` 和 `nbtEquals` 接受 JSON/SNBT-lite 文本。
 
 ## 输出断言
 

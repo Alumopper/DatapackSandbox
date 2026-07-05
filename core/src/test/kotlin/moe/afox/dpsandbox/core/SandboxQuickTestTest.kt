@@ -99,6 +99,31 @@ class SandboxQuickTestTest {
     }
 
     @Test
+    fun `quick item path assertions explain failures`() {
+        val report = SandboxQuickTest.create(listOf(fixturePack()), version = "26.1.2")
+            .world {
+                player(
+                    "Alex",
+                    inventory = listOf(
+                        item(
+                            "minecraft:stick",
+                            2,
+                            components = JsonValues.parse("{custom:{ready:true}}").asJsonObject,
+                            nbt = JsonValues.parse("{tag:{level:2}}").asJsonObject,
+                        ),
+                    ),
+                )
+            }
+            .assertItem("Alex", "minecraft:stick", componentsPath = "custom.ready", componentsEquals = "false")
+            .assertItem("Alex", "minecraft:stick", nbtPath = "tag.missing", nbtExists = true)
+            .report()
+
+        assertTrue(!report.passed)
+        assertTrue(report.failures.any { "componentsPath=custom.ready" in it }, report.failures.joinToString())
+        assertTrue(report.failures.any { "nbtPath=tag.missing" in it }, report.failures.joinToString())
+    }
+
+    @Test
     fun `records keyboard and mouse player input events`() {
         val scenario = SandboxQuickTest.create(listOf(fixturePack()), version = "26.1.2")
             .keyInput("Steve", "key.jump")
@@ -389,7 +414,21 @@ class SandboxQuickTestTest {
                 biome(0, 64, 0, "minecraft:plains")
                 block(0, 64, 0, "minecraft:chest", nbt = "{Items:[]}")
                 entity("minecraft:pig", 1.0, 64.0, 0.0, tags = listOf("fixture"))
-                player("Alex", x = 2.0, y = 65.0, z = 3.0, xp = 5, inventory = listOf(item("minecraft:stick", 2)))
+                player(
+                    "Alex",
+                    x = 2.0,
+                    y = 65.0,
+                    z = 3.0,
+                    xp = 5,
+                    inventory = listOf(
+                        item(
+                            "minecraft:stick",
+                            2,
+                            components = JsonValues.parse("{custom:{ready:true}}").asJsonObject,
+                            nbt = JsonValues.parse("{tag:{level:2}}").asJsonObject,
+                        ),
+                    ),
+                )
                 playerEffect("Alex", "minecraft:speed", durationTicks = 40, amplifier = 1)
                 playerRecipe("Alex", "minecraft:bread")
                 playerStat("Alex", "minecraft:jump", 3)
@@ -419,7 +458,17 @@ class SandboxQuickTestTest {
                 stat = "minecraft:jump",
                 statValue = 3,
             )
-            .assertItem("Alex", "minecraft:stick", 2, minCount = 1, maxCount = 3)
+            .assertItem(
+                "Alex",
+                "minecraft:stick",
+                2,
+                minCount = 1,
+                maxCount = 3,
+                componentsPath = "custom.ready",
+                componentsEquals = "true",
+                nbtPath = "tag.level",
+                nbtEquals = "2",
+            )
             .assertScore("#fixture", "ready", 1)
             .assertScoreAtLeast("#fixture", "ready", 1)
             .assertScoreAtMost("#fixture", "ready", 1)
