@@ -18,6 +18,8 @@ data class PredicateContext(
     val world: SandboxWorld,
     /** Origin position for distance and location predicates. */
     val origin: Position? = null,
+    /** Execution or event dimension for location predicates. */
+    val dimension: ResourceLocation? = null,
     /** `this` entity target in predicate JSON. */
     val thisEntity: SandboxEntity? = null,
     /** Direct attacker entity context. */
@@ -219,7 +221,8 @@ class PredicateEngine(private val datapack: Datapack) {
         }
         predicate.string("dimension")?.let {
             val player = context.player ?: context.thisEntity as? SandboxPlayer
-            if (player == null || player.dimension != ResourceLocation.parse(it)) return false
+            val dimension = context.dimension ?: player?.dimension
+            if (dimension != ResourceLocation.parse(it)) return false
         }
         predicate.string("biome")?.let {
             // Biome is not simulated; require exact explicit context in a future world model.

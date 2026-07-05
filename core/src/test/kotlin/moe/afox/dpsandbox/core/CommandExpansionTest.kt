@@ -71,6 +71,34 @@ class CommandExpansionTest {
         assertTrue(sandbox.world.requirePlayer("Steve").inventory.any { it.id == ResourceLocation.parse("minecraft:diamond") })
     }
 
+    @Test
+    fun `execute conditions cover predicate dimension biome and loaded state`() {
+        val pack = writePredicatePack(Files.createTempDirectory("dps-execute-conditions-pack"))
+        val sandbox = createSandbox("26.2", listOf(pack))
+
+        sandbox.executeCommand("scoreboard objectives add checks dummy")
+        sandbox.executeCommand("execute if dimension minecraft:overworld run scoreboard players add #pass checks 1")
+        sandbox.executeCommand("execute in minecraft:the_nether if dimension minecraft:the_nether run scoreboard players add #pass checks 1")
+        sandbox.executeCommand("execute in minecraft:the_nether unless dimension minecraft:overworld run scoreboard players add #pass checks 1")
+        sandbox.executeCommand("forceload add 0 0")
+        sandbox.executeCommand("execute if loaded 1 64 1 run scoreboard players add #pass checks 1")
+        sandbox.executeCommand("execute unless loaded 32 64 32 run scoreboard players add #pass checks 1")
+        sandbox.executeCommand("fillbiome 0 64 0 0 64 0 minecraft:forest")
+        sandbox.executeCommand("execute if biome 0 64 0 minecraft:forest run scoreboard players add #pass checks 1")
+        sandbox.executeCommand("execute unless biome 0 64 0 minecraft:desert run scoreboard players add #pass checks 1")
+        sandbox.executeCommand("execute as Steve if predicate demo:is_player run scoreboard players add #pass checks 1")
+        sandbox.executeCommand("execute in minecraft:the_nether if predicate demo:in_nether run scoreboard players add #pass checks 1")
+        sandbox.executeCommand("execute unless predicate demo:false run scoreboard players add #pass checks 1")
+        sandbox.executeCommand("execute if dimension minecraft:the_nether run scoreboard players add #fail checks 1")
+        sandbox.executeCommand("execute if loaded 32 64 32 run scoreboard players add #fail checks 1")
+        sandbox.executeCommand("execute if biome 0 64 0 minecraft:desert run scoreboard players add #fail checks 1")
+        sandbox.executeCommand("execute if predicate demo:in_nether run scoreboard players add #fail checks 1")
+        sandbox.executeCommand("execute if predicate demo:false run scoreboard players add #fail checks 1")
+
+        assertEquals(10, sandbox.world.getScore("#pass", "checks"))
+        assertEquals(0, sandbox.world.getScore("#fail", "checks"))
+    }
+
     private fun fixturePack(): Path =
         Path.of("src/test/resources/packs/counter")
 
@@ -107,6 +135,47 @@ class CommandExpansionTest {
             }
             """.trimIndent(),
         )
+        return root
+    }
+
+    private fun writePredicatePack(root: Path): Path {
+        Files.writeString(
+            root.resolve("pack.mcmeta").also { Files.createDirectories(it.parent) },
+            """
+            {
+              "pack": {
+                "pack_format": 107.1,
+                "description": "execute condition test"
+              }
+            }
+            """.trimIndent(),
+        )
+        val predicateRoot = root.resolve("data").resolve("demo").resolve("predicate")
+        Files.createDirectories(predicateRoot)
+        Files.writeString(
+            predicateRoot.resolve("is_player.json"),
+            """
+            {
+              "condition": "minecraft:entity_properties",
+              "entity": "this",
+              "predicate": {
+                "type": "minecraft:player"
+              }
+            }
+            """.trimIndent(),
+        )
+        Files.writeString(
+            predicateRoot.resolve("in_nether.json"),
+            """
+            {
+              "condition": "minecraft:location_check",
+              "predicate": {
+                "dimension": "minecraft:the_nether"
+              }
+            }
+            """.trimIndent(),
+        )
+        Files.writeString(predicateRoot.resolve("false.json"), "false")
         return root
     }
 }

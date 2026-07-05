@@ -21,6 +21,8 @@ data class ExecutionContext(
     val entity: SandboxEntity? = null,
     /** Base position for relative coordinates. Defaults to [entity]'s position or the origin. */
     val position: Position = entity?.position ?: Position.zero,
+    /** Current execution dimension. Non-player entities default to the overworld in the sparse sandbox. */
+    val dimension: ResourceLocation = (entity as? SandboxPlayer)?.dimension ?: ResourceLocation("minecraft", "overworld"),
 )
 
 /**
@@ -890,7 +892,7 @@ class DatapackSandbox(
                     requireIndex(tokens, index + 1, "execute as <selector>", location)
                     contexts = contexts.flatMap { ctx ->
                         EntitySelectors.select(world, tokens[index + 1].text, ctx, location).map {
-                            ctx.copy(entity = it, position = it.position)
+                            ctx.copy(entity = it, position = it.position, dimension = entityDimension(it))
                         }
                     }
                     index += 2
@@ -899,7 +901,7 @@ class DatapackSandbox(
                     requireIndex(tokens, index + 1, "execute at <selector>", location)
                     contexts = contexts.flatMap { ctx ->
                         EntitySelectors.select(world, tokens[index + 1].text, ctx, location).map {
-                            ctx.copy(position = it.position)
+                            ctx.copy(position = it.position, dimension = entityDimension(it))
                         }
                     }
                     index += 2
@@ -932,6 +934,7 @@ class DatapackSandbox(
                 }
                 "in" -> {
                     requireIndex(tokens, index + 1, "execute in <dimension>", location)
+                    contexts = contexts.map { ctx -> ctx.copy(dimension = ResourceLocation.parse(tokens[index + 1].text)) }
                     index += 2
                 }
                 "rotated" -> {
@@ -973,9 +976,43 @@ class DatapackSandbox(
                 val pos = parseBlockPos(tokens, index + 1, context.position, location)
                 (matchesBlock(pos, tokens[index + 4].text, location) to index + 5)
             }
+            "predicate" -> {
+                requireIndex(tokens, index + 1, "execute if|unless predicate <id>", location)
+                predicates.test(ResourceLocation.parse(tokens[index + 1].text), executePredicateContext(context)) to index + 2
+            }
+            "dimension" -> {
+                requireIndex(tokens, index + 1, "execute if|unless dimension <id>", location)
+                (context.dimension == ResourceLocation.parse(tokens[index + 1].text)) to index + 2
+            }
+            "biome" -> {
+                requireSizeFrom(tokens, index, 5, "execute if|unless biome <pos> <biome>", location)
+                val pos = parseBlockPos(tokens, index + 1, context.position, location)
+                (world.biomes[pos] == ResourceLocation.parse(tokens[index + 4].text)) to index + 5
+            }
+            "loaded" -> {
+                requireSizeFrom(tokens, index, 4, "execute if|unless loaded <pos>", location)
+                val pos = parseBlockPos(tokens, index + 1, context.position, location)
+                (ChunkPos(Math.floorDiv(pos.x, 16), Math.floorDiv(pos.z, 16)) in world.forcedChunks) to index + 4
+            }
             else -> unsupportedFeature("Unsupported execute condition '${tokens[index].text}'", profile.id, location)
         }
     }
+
+    private fun executePredicateContext(context: ExecutionContext): PredicateContext {
+        val player = context.entity as? SandboxPlayer
+        return PredicateContext(
+            world = world,
+            origin = context.position,
+            dimension = context.dimension,
+            thisEntity = context.entity,
+            player = player,
+            tool = player?.selectedItem,
+            weather = WeatherState(raining = world.weather == "rain" || world.weather == "thunder", thundering = world.weather == "thunder"),
+        )
+    }
+
+    private fun entityDimension(entity: SandboxEntity): ResourceLocation =
+        (entity as? SandboxPlayer)?.dimension ?: ResourceLocation("minecraft", "overworld")
 
     private fun evaluateScoreCondition(tokens: List<CommandToken>, index: Int, location: SourceLocation?): Boolean {
         requireSizeFrom(tokens, index, 5, "execute if score <target> <objective> matches <range>", location)
