@@ -71,6 +71,9 @@ trace output:
 java -jar cli/build/libs/datapack-sandbox-cli.jar run --pack ./my_pack --function demo:main --trace --trace-file trace.jsonl
 ```
 
+Use `--trace-filter root=scoreboard` or `--trace-filter contains=reward` to
+keep only the relevant trace events in both console output and JSONL files.
+
 To inspect state changes before and after a run, print a snapshot diff:
 
 ```bash

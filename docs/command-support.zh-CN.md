@@ -136,6 +136,7 @@ JSON text component 支持 `text`、`score`、`selector`、`translate`、`keybin
 | `rerun last` | 重新执行上一条被跟踪 REPL 命令。 |
 | `reset world` | 用全新的 sparse world 替换当前 REPL 世界。 |
 | CLI `loot --table <id> --context <context>` | 直接生成 loot table。 |
+| CLI `run --trace --trace-filter <filter>` | 只打印或写出匹配的 trace 事件；过滤器支持 `root=`、`command=`、`contains=`、`function=`、`file=`、`success=` 和 `outputs=`。 |
 | CLI `run --snapshot-diff` | 输出执行前后的状态差异，可配合 `--snapshot-diff-file` 写出 JSON。 |
 | CLI `run --stdin` | 从标准输入读取 `.mcfunction` 文本；`--stdin-mode commands` 会按原始命令行执行 stdin。 |
 | CLI `run --world` | 执行前应用 manifest-style world JSON fixture。 |

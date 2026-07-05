@@ -8,6 +8,7 @@ import java.nio.file.Path
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 import kotlin.test.Test
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class RunCommandTest {
@@ -246,6 +247,36 @@ class RunCommandTest {
         assertTrue("\"command\": \"say traced from cli\"" in traceJson, traceJson)
         assertTrue("\"root\": \"say\"" in traceJson, traceJson)
         assertTrue("\"success\": true" in traceJson, traceJson)
+    }
+
+    @Test
+    fun `run filters printed and written command traces`() {
+        val traceFile = Files.createTempFile("dps-cli-filtered-trace", ".jsonl")
+
+        val output = captureStdout {
+            main(
+                arrayOf(
+                    "run",
+                    "--version",
+                    "26.2",
+                    "--mcfunction-text",
+                    "say hidden from filtered trace\nscoreboard objectives add runs dummy\nscoreboard players set #filtered runs 1",
+                    "--trace",
+                    "--trace-filter",
+                    "root=scoreboard",
+                    "--trace-file",
+                    traceFile.toString(),
+                ),
+            )
+        }
+
+        assertTrue("trace OK scoreboard objectives add runs dummy" in output, output)
+        assertTrue("trace OK scoreboard players set #filtered runs 1" in output, output)
+        assertFalse("trace OK say hidden from filtered trace" in output, output)
+        val traceJson = Files.readString(traceFile)
+        assertTrue("\"root\": \"scoreboard\"" in traceJson, traceJson)
+        assertTrue("\"command\": \"scoreboard players set #filtered runs 1\"" in traceJson, traceJson)
+        assertFalse("\"command\": \"say hidden from filtered trace\"" in traceJson, traceJson)
     }
 
     @Test

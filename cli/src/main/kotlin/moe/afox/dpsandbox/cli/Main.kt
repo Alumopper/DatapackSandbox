@@ -14,6 +14,7 @@ import com.github.ajalt.clikt.parameters.types.long
 import com.github.ajalt.clikt.parameters.types.path
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
+import moe.afox.dpsandbox.core.CommandTraceEvent
 import moe.afox.dpsandbox.core.DiagnosticCode
 import moe.afox.dpsandbox.core.DatapackSandbox
 import moe.afox.dpsandbox.core.FunctionSource
@@ -131,6 +132,7 @@ class RunCommand : CliktCommand(name = "run") {
     private val snapshotDiffFile by option("--snapshot-diff-file").path()
     private val trace by option("--trace").flag(default = false)
     private val traceFile by option("--trace-file").path()
+    private val traceFilters by option("--trace-filter").multiple()
     private val unsupported by option("--unsupported").default("warn")
 
     override fun run() {
@@ -191,8 +193,9 @@ class RunCommand : CliktCommand(name = "run") {
                     SourceLocation(file = "<arg:--command>", line = index + 1, command = normalized),
                 ).commandsExecuted
             }
+            val traces = filteredTraces(sandbox.world.traces)
             OutputRenderer.print(sandbox.world.outputs)
-            if (trace) TraceRenderer.print(sandbox.world.traces)
+            if (trace) TraceRenderer.print(traces)
             if (snapshot) println(sandbox.snapshotString())
             snapshotFile?.let {
                 Files.writeString(it, sandbox.snapshotString(), StandardCharsets.UTF_8)
@@ -205,7 +208,7 @@ class RunCommand : CliktCommand(name = "run") {
                 println(ConsoleStyle.green("snapshot diff written: $it"))
             }
             traceFile?.let {
-                val content = sandbox.world.traces.joinToString(separator = System.lineSeparator()) { event ->
+                val content = traces.joinToString(separator = System.lineSeparator()) { event ->
                     JsonValues.render(event.toJson())
                 }
                 Files.writeString(it, content, StandardCharsets.UTF_8)
@@ -312,6 +315,39 @@ class RunCommand : CliktCommand(name = "run") {
         }
         return total
     }
+
+    private fun filteredTraces(traces: List<CommandTraceEvent>): List<CommandTraceEvent> =
+        if (traceFilters.isEmpty()) {
+            traces
+        } else {
+            traces.filter { event -> traceFilters.all { filter -> traceMatchesFilter(event, filter) } }
+        }
+
+    private fun traceMatchesFilter(event: CommandTraceEvent, raw: String): Boolean {
+        val splitAt = raw.indexOf('=')
+        if (splitAt < 0) return traceContains(event, raw)
+        val key = raw.substring(0, splitAt).trim().lowercase()
+        val value = raw.substring(splitAt + 1).trim()
+        return when (key) {
+            "root" -> event.root == value
+            "command" -> event.command == value
+            "contains" -> value in event.command || value in (event.errorMessage ?: "")
+            "function" -> event.source?.functionStack?.any { value in it.id.toString() } == true
+            "file", "source" -> value in (event.source?.file ?: "")
+            "success" -> value.toBooleanStrictOrNull()?.let { event.success == it } ?: false
+            "output", "outputs" -> value.toIntOrNull()?.let { event.outputs == it }
+                ?: value.toBooleanStrictOrNull()?.let { if (it) event.outputs > 0 else event.outputs == 0 }
+                ?: false
+            else -> traceContains(event, raw)
+        }
+    }
+
+    private fun traceContains(event: CommandTraceEvent, value: String): Boolean =
+        value in event.command ||
+            value == event.root ||
+            value in (event.source?.file ?: "") ||
+            event.source?.functionStack?.any { value in it.id.toString() } == true ||
+            value in (event.errorMessage ?: "")
 
     private fun String.sanitizeFunctionPath(): String =
         lowercase()

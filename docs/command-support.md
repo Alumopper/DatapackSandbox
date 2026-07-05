@@ -151,6 +151,7 @@ These are tooling commands, not vanilla commands:
 | `rerun last` | Re-execute the last tracked REPL command. |
 | `reset world` | Replace the current REPL world with a fresh sparse world. |
 | CLI `loot --table <id> --context <context>` | Generate a loot table directly. |
+| CLI `run --trace --trace-filter <filter>` | Print or write only matching trace events; filters support `root=`, `command=`, `contains=`, `function=`, `file=`, `success=`, and `outputs=`. |
 | CLI `run --snapshot-diff` | Print before/after state changes; use `--snapshot-diff-file` to write JSON. |
 | CLI `run --stdin` | Read `.mcfunction` text from standard input; `--stdin-mode commands` executes stdin as raw command lines. |
 | CLI `run --world` | Apply a manifest-style world JSON fixture before execution. |
