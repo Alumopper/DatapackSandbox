@@ -42,6 +42,14 @@ class DatapackResourceIndexTest {
             assertTrue(kind in datapack.rawResources.keys, "missing raw resource kind $kind")
             assertTrue(datapack.resourceIndex.any { it.type == kind && it.active }, "missing resource index for $kind")
         }
+
+        sandbox.executeCommand("datapack list")
+        val payload = sandbox.world.outputs.single { it.command == "datapack list" }.payload?.asJsonObject
+            ?: error("missing datapack list payload")
+        assertEquals(datapack.rawResources.size, payload.get("rawResourceKinds").asInt)
+        assertEquals(datapack.rawResources.values.sumOf { it.size }, payload.get("rawResources").asInt)
+        assertEquals(datapack.tags.size, payload.get("tags").asInt)
+        assertEquals(datapack.resourceIndex.count { it.active }, payload.get("activeResources").asInt)
     }
 
     @Test

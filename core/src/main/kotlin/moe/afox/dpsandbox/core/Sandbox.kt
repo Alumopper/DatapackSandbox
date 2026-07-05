@@ -650,6 +650,13 @@ class DatapackSandbox(
                 payload.addProperty("lootTables", datapack.lootTables.size)
                 payload.addProperty("predicates", datapack.predicates.size)
                 payload.addProperty("advancements", datapack.advancements.size)
+                payload.addProperty("recipes", datapack.recipes.size)
+                payload.addProperty("itemModifiers", datapack.itemModifiers.size)
+                payload.addProperty("tags", datapack.tags.size)
+                payload.addProperty("rawResourceKinds", datapack.rawResources.size)
+                payload.addProperty("rawResources", datapack.rawResources.values.sumOf { it.size })
+                payload.addProperty("resourceIndex", datapack.resourceIndex.size)
+                payload.addProperty("activeResources", datapack.resourceIndex.count { it.active })
                 world.recordOutput("datapack list", "data", text = "Loaded datapack resources", payload = payload)
             }
             "enable", "disable" -> {
