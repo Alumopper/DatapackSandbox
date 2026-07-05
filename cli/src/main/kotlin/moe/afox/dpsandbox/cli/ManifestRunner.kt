@@ -610,14 +610,32 @@ object ManifestRunner {
             }
             assertion.has("entityCount") -> {
                 val entity = assertion.getAsJsonObject("entityCount")
-                val expected = entity.get("equals").asInt
                 val actual = sandbox.world.entities.count { sandboxEntity ->
                     val typeOk = entity.manifestString("type")?.let { sandboxEntity.type == ResourceLocation.parse(it) } ?: true
                     val tagOk = entity.manifestString("tag")?.let { it in sandboxEntity.tags } ?: true
                     typeOk && tagOk
                 }
-                if (actual != expected) {
-                    failures += "entityCount expected $expected but was $actual"
+                var checked = false
+                entity.get("equals")?.let { expected ->
+                    checked = true
+                    if (actual != expected.asInt) {
+                        failures += "entityCount ${describeEntityCountExpectation(entity)} expected ${expected.asInt} but was $actual"
+                    }
+                }
+                entity.get("min")?.let { expected ->
+                    checked = true
+                    if (actual < expected.asInt) {
+                        failures += "entityCount ${describeEntityCountExpectation(entity)} expected >= ${expected.asInt} but was $actual"
+                    }
+                }
+                entity.get("max")?.let { expected ->
+                    checked = true
+                    if (actual > expected.asInt) {
+                        failures += "entityCount ${describeEntityCountExpectation(entity)} expected <= ${expected.asInt} but was $actual"
+                    }
+                }
+                if (!checked) {
+                    failures += "entityCount ${describeEntityCountExpectation(entity)} assertion requires equals, min, or max"
                 }
             }
             assertion.has("world") -> {
@@ -959,6 +977,12 @@ object ManifestRunner {
             item.get("count")?.let { "count=${it.asInt}" },
             item.get("slot")?.let { "slot=${it.asInt}" },
         ).ifEmpty { listOf("<any item>") }.joinToString(", ")
+
+    private fun describeEntityCountExpectation(entity: JsonObject): String =
+        listOfNotNull(
+            entity.manifestString("type")?.let { "type=$it" },
+            entity.manifestString("tag")?.let { "tag=$it" },
+        ).ifEmpty { listOf("<any entity>") }.joinToString(", ")
 
     private fun evaluateTraceAssertion(trace: JsonObject, sandbox: DatapackSandbox): List<String> {
         return TraceAssertions.failures(

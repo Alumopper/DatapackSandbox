@@ -158,6 +158,25 @@ class ManifestRunnerTest {
     }
 
     @Test
+    fun `manifest schema documents entity count range assertions`() {
+        val schema = JsonParser.parseString(Files.readString(Path.of("../docs/dps-manifest.schema.json"))).asJsonObject
+        val defs = schema.getAsJsonObject("\$defs")
+        val assertionRef = defs.getAsJsonObject("assertion")
+            .getAsJsonObject("properties")
+            .getAsJsonObject("entityCount")
+        val entityCountAssertion = defs.getAsJsonObject("entityCountAssertion")
+        val properties = entityCountAssertion.getAsJsonObject("properties")
+        val requiredAlternatives = entityCountAssertion.getAsJsonArray("anyOf").map {
+            it.asJsonObject.getAsJsonArray("required").single().asString
+        }
+
+        assertEquals("#/\$defs/entityCountAssertion", assertionRef.get("\$ref").asString)
+        assertTrue(requiredAlternatives.containsAll(listOf("equals", "min", "max")))
+        assertEquals("integer", properties.getAsJsonObject("min").get("type").asString)
+        assertEquals("integer", properties.getAsJsonObject("max").get("type").asString)
+    }
+
+    @Test
     fun `runs a manifest check`() {
         val path = Path.of("src/test/resources/cases/counter.dps.json")
 
@@ -756,6 +775,38 @@ class ManifestRunnerTest {
 
         assertFalse(result.passed)
         assertTrue(result.messages.any { "expected >= 6 but was 5" in it }, result.messages.joinToString())
+    }
+
+    @Test
+    fun `runs entity count min max assertions`() {
+        val dir = Files.createTempDirectory("dps-entity-count-range-manifest")
+        val pack = Path.of("../core/src/test/resources/packs/counter").toAbsolutePath().normalize().toString().replace("\\", "\\\\")
+        val manifest = dir.resolve("entity-count-range.dps.json")
+        Files.writeString(
+            manifest,
+            """
+            {
+              "version": "26.1.2",
+              "packs": ["$pack"],
+              "world": {
+                "entities": [
+                  { "type": "minecraft:pig", "tags": ["range"] },
+                  { "type": "minecraft:pig", "tags": ["range"] }
+                ]
+              },
+              "steps": [],
+              "assertions": [
+                { "entityCount": { "type": "minecraft:pig", "tag": "range", "min": 2, "max": 3 } },
+                { "entityCount": { "type": "minecraft:pig", "tag": "range", "max": 1 } }
+              ]
+            }
+            """.trimIndent(),
+        )
+
+        val result = ManifestRunner.run(manifest)
+
+        assertFalse(result.passed)
+        assertTrue(result.messages.any { "entityCount type=minecraft:pig, tag=range expected <= 1 but was 2" in it }, result.messages.joinToString())
     }
 
     @Test

@@ -428,7 +428,7 @@
       "properties": {
         "score": { "$ref": "#/$defs/scoreAssertion" },
         "storage": { "type": "object" },
-        "entityCount": { "type": "object" },
+        "entityCount": { "$ref": "#/$defs/entityCountAssertion" },
         "world": { "$ref": "#/$defs/worldAssertion" },
         "player": { "$ref": "#/$defs/playerAssertion" },
         "team": { "$ref": "#/$defs/teamAssertion" },
@@ -485,6 +485,22 @@
           "additionalProperties": false
         },
         "worldSpawn": { "$ref": "#/$defs/spawnPoint" }
+      },
+      "additionalProperties": false
+    },
+    "entityCountAssertion": {
+      "type": "object",
+      "anyOf": [
+        { "required": ["equals"] },
+        { "required": ["min"] },
+        { "required": ["max"] }
+      ],
+      "properties": {
+        "type": { "type": "string" },
+        "tag": { "type": "string" },
+        "equals": { "type": "integer", "minimum": 0 },
+        "min": { "type": "integer", "minimum": 0 },
+        "max": { "type": "integer", "minimum": 0 }
       },
       "additionalProperties": false
     },

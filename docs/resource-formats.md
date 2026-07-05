@@ -146,6 +146,10 @@ diagnostic, and snapshot diff checks:
 ```
 
 ```json
+{ "entityCount": { "type": "minecraft:pig", "tag": "fixture", "min": 1, "max": 3 } }
+```
+
+```json
 { "world": { "difficulty": "hard", "forcedChunk": [0, 0] } }
 ```
 
