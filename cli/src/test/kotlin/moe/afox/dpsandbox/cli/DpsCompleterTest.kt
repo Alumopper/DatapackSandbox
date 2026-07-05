@@ -44,6 +44,10 @@ class DpsCompleterTest {
 
         assertSuggests(completer, "attr", "attribute")
         assertSuggests(completer, "bo", "bossbar")
+        assertSuggests(completer, "gamem", "gamemode")
+        assertSuggests(completer, "seed", "seed")
+        assertSuggests(completer, "setworld", "setworldspawn")
+        assertSuggests(completer, "trigger", "trigger")
         assertSuggests(completer, "worldb", "worldborder")
         assertSuggests(completer, "scoreboard players ", "list")
         assertSuggests(completer, "scoreboard players ", "reset")
@@ -99,9 +103,30 @@ class DpsCompleterTest {
     @Test
     fun `catalog describes implemented partial root commands`() {
         val commands = DpsCommandCatalog.rootCommands(VersionProfiles.default).associateBy { it.value }
+        val implementedRoots = listOf(
+            "attribute",
+            "defaultgamemode",
+            "difficulty",
+            "fillbiome",
+            "forceload",
+            "gamemode",
+            "seed",
+            "setworldspawn",
+            "spawnpoint",
+            "spectate",
+            "spreadplayers",
+            "trigger",
+            "worldborder",
+        )
 
         assertEquals("read or edit stored entity attributes", commands.getValue("attribute").description)
         assertEquals("edit stored world border state", commands.getValue("worldborder").description)
+        implementedRoots.forEach { root ->
+            assertFalse(
+                commands.getValue(root).description.startsWith("vanilla command:"),
+                "$root should be listed as an implemented sandbox command",
+            )
+        }
     }
 
     private fun assertSuggests(completer: DpsCompleter, line: String, expected: String) {

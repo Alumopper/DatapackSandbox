@@ -27,12 +27,17 @@ object DpsCommandCatalog {
         command("clone", "copy sparse sandbox blocks"),
         command("damage", "apply sandbox health damage"),
         command("data", "read or mutate storage/entity/block NBT"),
+        command("defaultgamemode", "edit world default game mode"),
+        command("difficulty", "edit world difficulty"),
         command("effect", "give or clear player effects"),
         command("enchant", "write enchantment components"),
         command("execute", "run a command in a modified context"),
         command("experience", "edit player XP"),
         command("xp", "edit player XP"),
         command("fill", "fill sparse sandbox blocks"),
+        command("fillbiome", "store sparse biome overrides"),
+        command("forceload", "edit forced chunk state"),
+        command("gamemode", "edit player game mode"),
         command("gamerule", "edit stored gamerule values"),
         command("give", "add items to players"),
         command("item", "replace entity item slots"),
@@ -44,7 +49,12 @@ object DpsCommandCatalog {
         command("rotate", "edit entity yaw and pitch"),
         command("schedule", "schedule or clear functions"),
         command("scoreboard", "edit objectives and player scores"),
+        command("seed", "report sandbox seed"),
         command("setblock", "place one sparse sandbox block"),
+        command("setworldspawn", "edit world spawn point"),
+        command("spawnpoint", "edit player spawn points"),
+        command("spectate", "record spectator target"),
+        command("spreadplayers", "deterministically spread entities"),
         command("summon", "create an entity"),
         command("tag", "edit entity tags"),
         command("team", "edit team state"),
@@ -55,6 +65,7 @@ object DpsCommandCatalog {
         command("worldborder", "edit stored world border state"),
         command("tellraw", "record a raw JSON chat output"),
         command("title", "record title output"),
+        command("trigger", "edit trigger objective scores"),
         command("say", "record chat output"),
         command("me", "record chat output"),
         command("msg", "record private chat output"),
@@ -67,17 +78,7 @@ object DpsCommandCatalog {
         command("particle", "record a visual output"),
         unsupported("datapack"),
         unsupported("debug"),
-        unsupported("defaultgamemode"),
-        unsupported("difficulty"),
-        unsupported("fillbiome"),
-        unsupported("forceload"),
-        unsupported("gamemode"),
         unsupported("place"),
-        unsupported("seed"),
-        unsupported("spawnpoint"),
-        unsupported("spectate"),
-        unsupported("spreadplayers"),
-        unsupported("trigger"),
     ).distinctBy { it.value }.sortedBy { it.value }
 
     fun rootCommands(profile: VersionProfile = VersionProfiles.default): List<CompletionSuggestion> {
@@ -112,10 +113,21 @@ object DpsCommandCatalog {
             "bossbar" -> " <add|remove|list|get|set> ..."
             "give" -> " <players> <item> [count]"
             "effect" -> " <give|clear> <players> ..."
+            "defaultgamemode" -> " <mode>"
+            "difficulty" -> " [peaceful|easy|normal|hard]"
+            "fillbiome" -> " <from> <to> <biome> [replace <filter>]"
+            "forceload" -> " <add|remove|query> ..."
+            "gamemode" -> " <mode> [targets]"
             "advancement" -> " <grant|revoke|test> <players> ..."
             "schedule" -> " <function|clear> ..."
+            "seed" -> ""
             "setblock" -> " <x> <y> <z> <block>"
+            "setworldspawn" -> " [pos] [angle]"
+            "spawnpoint" -> " [targets] [pos] [angle]"
+            "spectate" -> " [target] [player]"
+            "spreadplayers" -> " <center> <spreadDistance> <maxRange> <respectTeams> <targets>"
             "fill" -> " <from> <to> <block>"
+            "trigger" -> " <objective> [add|set] [value]"
             "weather" -> " <clear|rain|thunder> [duration]"
             "time" -> " <set|add|query> ..."
             "worldborder" -> " <get|set|add|center|damage|warning> ..."
