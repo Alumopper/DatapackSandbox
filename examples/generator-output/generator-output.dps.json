@@ -1,0 +1,29 @@
+{
+  "version": "26.2",
+  "packs": ["pack"],
+  "steps": [
+    {
+      "mcfunction": "generated.mcfunction"
+    }
+  ],
+  "assertions": [
+    {
+      "score": {
+        "target": "#generator",
+        "objective": "generated",
+        "equals": 4
+      }
+    },
+    {
+      "output": {
+        "command": "tellraw",
+        "text": "generated command output",
+        "segment": {
+          "text": "generated command output",
+          "color": "green"
+        },
+        "count": 1
+      }
+    }
+  ]
+}

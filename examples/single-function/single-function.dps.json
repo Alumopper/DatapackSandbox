@@ -1,0 +1,26 @@
+{
+  "version": "26.2",
+  "packs": ["pack"],
+  "steps": [
+    {
+      "functionText": "scoreboard objectives add smoke dummy\nscoreboard players set #single smoke 1\nsay single function ok",
+      "source": "<example:single-function>"
+    }
+  ],
+  "assertions": [
+    {
+      "score": {
+        "target": "#single",
+        "objective": "smoke",
+        "equals": 1
+      }
+    },
+    {
+      "output": {
+        "command": "say",
+        "contains": "single function ok",
+        "count": 1
+      }
+    }
+  ]
+}

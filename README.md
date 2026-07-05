@@ -276,13 +276,16 @@ generation, redstone, entity AI, full combat, physics, or the vanilla server
 threading model. Entities do not tick AI by default, but the runtime does not
 write `NoAI:1b` unless test data does so explicitly.
 
-## Full-Stack Example
+## Examples
 
 Run all example manifests:
 
 ```powershell
 java -jar cli/build/libs/datapack-sandbox-cli.jar check examples
 ```
+
+The `examples/` directory covers full-stack datapack events, single-function
+scratch tests, command-generator output, and multi-version manifests.
 
 Generate a loot table:
 

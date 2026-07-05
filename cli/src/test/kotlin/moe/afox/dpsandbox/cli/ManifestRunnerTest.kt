@@ -143,6 +143,18 @@ class ManifestRunnerTest {
     }
 
     @Test
+    fun `runs all example manifests`() {
+        val manifests = ManifestRunner.discover(listOf(Path.of("../examples")))
+        val exampleKinds = manifests.map { it.parent.fileName.toString() }.toSet()
+
+        assertTrue(exampleKinds.containsAll(listOf("full-stack", "single-function", "generator-output", "multi-version")))
+
+        val results = manifests.map { ManifestRunner.run(it) }
+        val failures = results.flatMap { result -> result.messages.map { "${result.path}: $it" } }
+        assertTrue(results.all { it.passed }, failures.joinToString())
+    }
+
+    @Test
     fun `runs manifest output assertions`() {
         val dir = Files.createTempDirectory("dps-output-manifest")
         val pack = Path.of("../examples/full-stack/pack").toAbsolutePath().normalize().toString().replace("\\", "\\\\")
