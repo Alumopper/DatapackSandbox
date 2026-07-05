@@ -86,6 +86,19 @@ class SandboxQuickTestTest {
     }
 
     @Test
+    fun `quick item count range assertions explain failures`() {
+        val report = SandboxQuickTest.create(listOf(fixturePack()), version = "26.1.2")
+            .world {
+                player("Alex", inventory = listOf(item("minecraft:stick", 2)))
+            }
+            .assertItem("Alex", "minecraft:stick", minCount = 3)
+            .report()
+
+        assertTrue(!report.passed)
+        assertTrue(report.failures.any { "item for player Alex expected id=minecraft:stick, minCount=3" in it }, report.failures.joinToString())
+    }
+
+    @Test
     fun `records keyboard and mouse player input events`() {
         val scenario = SandboxQuickTest.create(listOf(fixturePack()), version = "26.1.2")
             .keyInput("Steve", "key.jump")
@@ -406,7 +419,7 @@ class SandboxQuickTestTest {
                 stat = "minecraft:jump",
                 statValue = 3,
             )
-            .assertItem("Alex", "minecraft:stick", 2)
+            .assertItem("Alex", "minecraft:stick", 2, minCount = 1, maxCount = 3)
             .assertScore("#fixture", "ready", 1)
             .assertScoreAtLeast("#fixture", "ready", 1)
             .assertScoreAtMost("#fixture", "ready", 1)

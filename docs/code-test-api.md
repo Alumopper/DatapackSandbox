@@ -200,7 +200,7 @@ SandboxQuickTest.create(
     .assertEntityCount(expected = 1, type = "minecraft:pig", tag = "fixture")
     .assertEntityCountRange(min = 1, max = 3, type = "minecraft:pig", tag = "fixture")
     .assertPlayer("Alex", xp = 5, recipe = "minecraft:bread", effect = "minecraft:speed")
-    .assertItem("Alex", "minecraft:stick", 2)
+    .assertItem("Alex", "minecraft:stick", 2, minCount = 1, maxCount = 3)
     .assertScore("#fixture", "ready", 1)
     .assertScoreRange("#fixture", "ready", min = 1, max = 3)
     .assertStorageExists("demo:env", "ready")
@@ -296,7 +296,7 @@ class MyDatapackTest {
 | `assertEntityCountAtLeast(minimum, type, tag)` | Assert a matching entity count lower bound |
 | `assertEntityCountAtMost(maximum, type, tag)` | Assert a matching entity count upper bound |
 | `assertEntityCountRange(min, max, type, tag)` | Assert optional matching entity count bounds |
-| `assertItem(player, id, count, slot, exists)` | Assert a matching player inventory item |
+| `assertItem(player, id, count, slot, exists, minCount, maxCount)` | Assert a matching player inventory item |
 | `assertPlayerXp(player, expected)` | Assert player XP |
 | `assertPlayerLastInput(player, device, code, action)` | Assert the latest player input |
 | `assertAdvancementDone(player, id, expected)` | Assert advancement completion |

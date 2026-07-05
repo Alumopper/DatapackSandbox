@@ -187,7 +187,8 @@ path, for example `assertion 1 (/assertions/0): ...`.
 `player` assertions can also check existence, dimension, game mode, health,
 food, selected slot, recipe, effect, stat, position, last input, and spawn point. `team` and
 `bossbar` assertions inspect their stored runtime state. `item` assertions can
-check player inventory by slot, id, count, components path, and NBT path.
+check player inventory by slot, id, exact/min/max count, components path, and
+NBT path.
 `storage` assertions can compare a path with `equals` or check `exists` and
 `missing` for storage roots or nested paths.
 `output` assertions can check command/channel/targets, text/contains,

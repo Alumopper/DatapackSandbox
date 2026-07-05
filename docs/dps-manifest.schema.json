@@ -613,6 +613,8 @@
         "player": { "type": "string" },
         "id": { "type": "string" },
         "count": { "type": "integer", "minimum": 0 },
+        "minCount": { "type": "integer", "minimum": 0 },
+        "maxCount": { "type": "integer", "minimum": 0 },
         "slot": { "type": "integer", "minimum": 0 },
         "exists": { "type": "boolean" },
         "components": { "$ref": "#/$defs/pathExpectation" },

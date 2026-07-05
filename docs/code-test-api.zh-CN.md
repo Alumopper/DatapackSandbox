@@ -176,7 +176,7 @@ SandboxQuickTest.create(
     .assertEntityCount(expected = 1, type = "minecraft:pig", tag = "fixture")
     .assertEntityCountRange(min = 1, max = 3, type = "minecraft:pig", tag = "fixture")
     .assertPlayer("Alex", xp = 5, recipe = "minecraft:bread", effect = "minecraft:speed")
-    .assertItem("Alex", "minecraft:stick", 2)
+    .assertItem("Alex", "minecraft:stick", 2, minCount = 1, maxCount = 3)
     .assertScore("#fixture", "ready", 1)
     .assertScoreRange("#fixture", "ready", min = 1, max = 3)
     .assertStorageExists("demo:env", "ready")
@@ -270,7 +270,7 @@ class MyDatapackTest {
 | `assertEntityCountAtLeast(minimum, type, tag)` | 断言匹配实体数量下界。 |
 | `assertEntityCountAtMost(maximum, type, tag)` | 断言匹配实体数量上界。 |
 | `assertEntityCountRange(min, max, type, tag)` | 断言匹配实体数量的可选上下界。 |
-| `assertItem(player, id, count, slot, exists)` | 断言玩家背包中的匹配物品。 |
+| `assertItem(player, id, count, slot, exists, minCount, maxCount)` | 断言玩家背包中的匹配物品。 |
 | `assertPlayerXp(player, expected)` | 断言玩家 XP。 |
 | `assertPlayerLastInput(player, device, code, action)` | 断言玩家最后一次输入。 |
 | `assertAdvancementDone(player, id, expected)` | 断言 advancement 是否完成。 |

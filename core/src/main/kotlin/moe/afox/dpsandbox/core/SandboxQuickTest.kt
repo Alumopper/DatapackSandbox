@@ -397,8 +397,16 @@ class SandboxQuickTestMatrix private constructor(
      * Applies an inventory item assertion to every scenario.
      */
     @JvmOverloads
-    fun assertItem(playerName: String, id: String? = null, count: Int? = null, slot: Int? = null, exists: Boolean = true): SandboxQuickTestMatrix = apply {
-        scenarios.values.forEach { it.assertItem(playerName, id, count, slot, exists) }
+    fun assertItem(
+        playerName: String,
+        id: String? = null,
+        count: Int? = null,
+        slot: Int? = null,
+        exists: Boolean = true,
+        minCount: Int? = null,
+        maxCount: Int? = null,
+    ): SandboxQuickTestMatrix = apply {
+        scenarios.values.forEach { it.assertItem(playerName, id, count, slot, exists, minCount, maxCount) }
     }
 
     /**
@@ -1101,21 +1109,41 @@ class SandboxQuickTest private constructor(
      * Asserts that a player's inventory contains or does not contain a matching item.
      */
     @JvmOverloads
-    fun assertItem(playerName: String, id: String? = null, count: Int? = null, slot: Int? = null, exists: Boolean = true): SandboxQuickTest = apply {
+    fun assertItem(
+        playerName: String,
+        id: String? = null,
+        count: Int? = null,
+        slot: Int? = null,
+        exists: Boolean = true,
+        minCount: Int? = null,
+        maxCount: Int? = null,
+    ): SandboxQuickTest = apply {
         val player = sandbox.world.requirePlayer(playerName)
         val expectedId = id?.let(ResourceLocation::parse)
         val candidates = slot?.let { player.inventory.getOrNull(it)?.let(::listOf) ?: emptyList() } ?: player.inventory
         val matches = candidates.filter { item ->
             (expectedId == null || item.id == expectedId) &&
-                (count == null || item.count == count)
+                (count == null || item.count == count) &&
+                (minCount == null || item.count >= minCount) &&
+                (maxCount == null || item.count <= maxCount)
         }
+        val expectation = describeItemExpectation(id, count, slot, minCount, maxCount)
         if (exists && matches.isEmpty()) {
-            failures += "item for player $playerName expected ${id ?: "<any>"}${count?.let { " x$it" }.orEmpty()} but inventory was ${player.inventory.map { "${it.id}x${it.count}" }}"
+            failures += "item for player $playerName expected $expectation but inventory was ${player.inventory.map { "${it.id}x${it.count}" }}"
         }
         if (!exists && matches.isNotEmpty()) {
-            failures += "item for player $playerName expected missing ${id ?: "<any>"} but found ${matches.map { "${it.id}x${it.count}" }}"
+            failures += "item for player $playerName expected missing $expectation but found ${matches.map { "${it.id}x${it.count}" }}"
         }
     }
+
+    private fun describeItemExpectation(id: String?, count: Int?, slot: Int?, minCount: Int?, maxCount: Int?): String =
+        listOfNotNull(
+            id?.let { "id=$it" },
+            count?.let { "count=$it" },
+            minCount?.let { "minCount=$it" },
+            maxCount?.let { "maxCount=$it" },
+            slot?.let { "slot=$it" },
+        ).ifEmpty { listOf("<any item>") }.joinToString(", ")
 
     /**
      * Asserts whether an advancement is complete for a player.

@@ -944,10 +944,14 @@ object ManifestRunner {
         val candidates = slot?.let { player.inventory.getOrNull(it)?.let(::listOf) ?: emptyList() } ?: player.inventory
         val expectedId = item.manifestString("id")?.let(ResourceLocation::parse)
         val expectedCount = item.get("count")?.asInt
+        val minCount = item.get("minCount")?.asInt
+        val maxCount = item.get("maxCount")?.asInt
         val exists = item.get("exists")?.asBoolean ?: true
         val matches = candidates.filter { stack ->
             (expectedId == null || stack.id == expectedId) &&
                 (expectedCount == null || stack.count == expectedCount) &&
+                (minCount == null || stack.count >= minCount) &&
+                (maxCount == null || stack.count <= maxCount) &&
                 itemPathMatches(stack.components, item.getAsJsonObject("components")) &&
                 itemPathMatches(stack.nbt, item.getAsJsonObject("nbt"))
         }
@@ -977,6 +981,8 @@ object ManifestRunner {
         listOfNotNull(
             item.manifestString("id")?.let { "id=$it" },
             item.get("count")?.let { "count=${it.asInt}" },
+            item.get("minCount")?.let { "minCount=${it.asInt}" },
+            item.get("maxCount")?.let { "maxCount=${it.asInt}" },
             item.get("slot")?.let { "slot=${it.asInt}" },
         ).ifEmpty { listOf("<any item>") }.joinToString(", ")
 

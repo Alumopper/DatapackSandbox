@@ -208,6 +208,19 @@ class ManifestRunnerTest {
     }
 
     @Test
+    fun `manifest schema documents item count range assertions`() {
+        val schema = JsonParser.parseString(Files.readString(Path.of("../docs/dps-manifest.schema.json"))).asJsonObject
+        val properties = schema.getAsJsonObject("\$defs")
+            .getAsJsonObject("itemAssertion")
+            .getAsJsonObject("properties")
+
+        assertEquals("integer", properties.getAsJsonObject("minCount").get("type").asString)
+        assertEquals("integer", properties.getAsJsonObject("maxCount").get("type").asString)
+        assertEquals(0, properties.getAsJsonObject("minCount").get("minimum").asInt)
+        assertEquals(0, properties.getAsJsonObject("maxCount").get("minimum").asInt)
+    }
+
+    @Test
     fun `runs a manifest check`() {
         val path = Path.of("src/test/resources/cases/counter.dps.json")
 
@@ -388,7 +401,7 @@ class ManifestRunnerTest {
                     "spawn": { "pos": [2, 66, 3], "dimension": "minecraft:overworld" }
                   }
                 },
-                { "item": { "player": "Alex", "id": "minecraft:stick", "count": 2 } },
+                { "item": { "player": "Alex", "id": "minecraft:stick", "count": 2, "minCount": 1, "maxCount": 3 } },
                 {
                   "team": {
                     "name": "red",
@@ -656,7 +669,7 @@ class ManifestRunnerTest {
               ],
               "assertions": [
                 { "score": { "target": "#generated", "objective": "runs", "equals": 4 } },
-                { "item": { "player": "Steve", "id": "minecraft:apple", "count": 3 } },
+                { "item": { "player": "Steve", "id": "minecraft:apple", "minCount": 2, "maxCount": 4 } },
                 { "trace": { "root": "scoreboard", "count": 4 } },
                 { "trace": { "contains": "give Steve", "fileContains": "generated.mcfunction", "success": true, "count": 1 } }
               ]
@@ -904,6 +917,42 @@ class ManifestRunnerTest {
 
         assertFalse(result.passed)
         assertTrue(result.messages.any { "player Alex expected missing but exists" in it }, result.messages.joinToString())
+    }
+
+    @Test
+    fun `runs item count range assertions`() {
+        val dir = Files.createTempDirectory("dps-item-count-range-manifest")
+        val pack = Path.of("../core/src/test/resources/packs/counter").toAbsolutePath().normalize().toString().replace("\\", "\\\\")
+        val manifest = dir.resolve("item-count-range.dps.json")
+        Files.writeString(
+            manifest,
+            """
+            {
+              "version": "26.1.2",
+              "packs": ["$pack"],
+              "world": {
+                "players": [
+                  {
+                    "name": "Alex",
+                    "inventory": [
+                      { "id": "minecraft:stick", "count": 2 }
+                    ]
+                  }
+                ]
+              },
+              "steps": [],
+              "assertions": [
+                { "item": { "player": "Alex", "id": "minecraft:stick", "minCount": 1, "maxCount": 3 } },
+                { "item": { "player": "Alex", "id": "minecraft:stick", "minCount": 3 } }
+              ]
+            }
+            """.trimIndent(),
+        )
+
+        val result = ManifestRunner.run(manifest)
+
+        assertFalse(result.passed)
+        assertTrue(result.messages.any { "item for player Alex expected id=minecraft:stick, minCount=3" in it }, result.messages.joinToString())
     }
 
     @Test
