@@ -18,6 +18,8 @@ import moe.afox.dpsandbox.core.SandboxEntity
 import moe.afox.dpsandbox.core.SandboxBlock
 import moe.afox.dpsandbox.core.SnapshotDiff
 import moe.afox.dpsandbox.core.SourceLocation
+import moe.afox.dpsandbox.core.TraceAssertions
+import moe.afox.dpsandbox.core.TraceExpectation
 import moe.afox.dpsandbox.core.UnsupportedFeatureMode
 import moe.afox.dpsandbox.core.VersionProfiles
 import moe.afox.dpsandbox.core.createSandbox
@@ -552,38 +554,19 @@ object ManifestRunner {
         ).ifEmpty { listOf("<any item>") }.joinToString(", ")
 
     private fun evaluateTraceAssertion(trace: JsonObject, sandbox: DatapackSandbox): List<String> {
-        val matches = sandbox.world.traces.filter { event ->
-            trace.manifestString("command")?.let { event.command == it } ?: true
-        }.filter { event ->
-            trace.manifestString("root")?.let { event.root == it } ?: true
-        }.filter { event ->
-            trace.manifestString("contains")?.let { it in event.command } ?: true
-        }.filter { event ->
-            trace.get("success")?.asBoolean?.let { event.success == it } ?: true
-        }.filter { event ->
-            trace.manifestString("fileContains")?.let { expected -> event.source?.file?.contains(expected) == true } ?: true
-        }.filter { event ->
-            trace.manifestString("function")?.let { expected -> event.source?.functionStack?.any { frame -> frame.id.toString() == expected } == true } ?: true
-        }
-        val count = trace.get("count")?.asInt
-        if (count != null && matches.size != count) {
-            return listOf("trace expected $count match(es) but found ${matches.size}: ${describeTraceExpectation(trace)}")
-        }
-        if (count == null && matches.isEmpty()) {
-            return listOf("trace expected at least one match: ${describeTraceExpectation(trace)}")
-        }
-        return emptyList()
+        return TraceAssertions.failures(
+            traces = sandbox.world.traces,
+            expectation = TraceExpectation(
+                command = trace.manifestString("command"),
+                root = trace.manifestString("root"),
+                contains = trace.manifestString("contains"),
+                success = trace.get("success")?.asBoolean,
+                fileContains = trace.manifestString("fileContains"),
+                function = trace.manifestString("function"),
+                count = trace.get("count")?.asInt,
+            ),
+        )
     }
-
-    private fun describeTraceExpectation(trace: JsonObject): String =
-        listOfNotNull(
-            trace.manifestString("command")?.let { "command=$it" },
-            trace.manifestString("root")?.let { "root=$it" },
-            trace.manifestString("contains")?.let { "contains=$it" },
-            trace.get("success")?.let { "success=${it.asBoolean}" },
-            trace.manifestString("fileContains")?.let { "fileContains=$it" },
-            trace.manifestString("function")?.let { "function=$it" },
-        ).ifEmpty { listOf("<any trace>") }.joinToString(", ")
 
     private fun parseEvent(event: JsonObject, sandbox: DatapackSandbox): PlayerEvent {
         val playerName = event.requiredManifestString("player")

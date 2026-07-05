@@ -216,6 +216,83 @@ class SandboxQuickTestMatrix private constructor(
     }
 
     /**
+     * Applies a world-level state assertion to every scenario.
+     */
+    @JvmOverloads
+    fun assertWorld(
+        gameTime: Long? = null,
+        dayTime: Long? = null,
+        weather: String? = null,
+        difficulty: String? = null,
+        defaultGameMode: String? = null,
+        seed: Long? = null,
+    ): SandboxQuickTestMatrix = apply {
+        scenarios.values.forEach { it.assertWorld(gameTime, dayTime, weather, difficulty, defaultGameMode, seed) }
+    }
+
+    /**
+     * Applies a player state assertion to every scenario.
+     */
+    fun assertPlayer(
+        name: String,
+        exists: Boolean = true,
+        position: Position? = null,
+        dimension: String? = null,
+        gameMode: String? = null,
+        xp: Int? = null,
+        health: Double? = null,
+        food: Int? = null,
+        selectedSlot: Int? = null,
+        inventoryCount: Int? = null,
+        recipe: String? = null,
+        effect: String? = null,
+        stat: String? = null,
+        statValue: Int? = null,
+    ): SandboxQuickTestMatrix = apply {
+        scenarios.values.forEach {
+            it.assertPlayer(name, exists, position, dimension, gameMode, xp, health, food, selectedSlot, inventoryCount, recipe, effect, stat, statValue)
+        }
+    }
+
+    /**
+     * Applies a sparse-world block assertion to every scenario.
+     */
+    @JvmOverloads
+    fun assertBlock(x: Int, y: Int, z: Int, id: String? = null, exists: Boolean = true): SandboxQuickTestMatrix = apply {
+        scenarios.values.forEach { it.assertBlock(x, y, z, id, exists) }
+    }
+
+    /**
+     * Applies an entity existence/count assertion to every scenario.
+     */
+    fun assertEntity(
+        type: String? = null,
+        tag: String? = null,
+        uuid: String? = null,
+        position: Position? = null,
+        exists: Boolean = true,
+        count: Int? = null,
+    ): SandboxQuickTestMatrix = apply {
+        scenarios.values.forEach { it.assertEntity(type, tag, uuid, position, exists, count) }
+    }
+
+    /**
+     * Applies an entity count assertion to every scenario.
+     */
+    @JvmOverloads
+    fun assertEntityCount(expected: Int, type: String? = null, tag: String? = null): SandboxQuickTestMatrix = apply {
+        scenarios.values.forEach { it.assertEntityCount(expected, type, tag) }
+    }
+
+    /**
+     * Applies an inventory item assertion to every scenario.
+     */
+    @JvmOverloads
+    fun assertItem(playerName: String, id: String? = null, count: Int? = null, slot: Int? = null, exists: Boolean = true): SandboxQuickTestMatrix = apply {
+        scenarios.values.forEach { it.assertItem(playerName, id, count, slot, exists) }
+    }
+
+    /**
      * Asserts that every scenario recorded at least one output event containing [text].
      */
     fun assertOutputContains(text: String): SandboxQuickTestMatrix = apply {
@@ -252,6 +329,38 @@ class SandboxQuickTestMatrix private constructor(
                 target = target,
                 text = text,
                 contains = contains,
+                count = count,
+            ),
+        )
+
+    /**
+     * Applies a structured trace assertion to every scenario.
+     */
+    fun assertTrace(expectation: TraceExpectation): SandboxQuickTestMatrix = apply {
+        scenarios.values.forEach { it.assertTrace(expectation) }
+    }
+
+    /**
+     * Builds and applies a structured trace assertion to every scenario.
+     */
+    @JvmOverloads
+    fun assertTrace(
+        command: String? = null,
+        root: String? = null,
+        contains: String? = null,
+        success: Boolean? = null,
+        fileContains: String? = null,
+        function: String? = null,
+        count: Int? = null,
+    ): SandboxQuickTestMatrix =
+        assertTrace(
+            TraceExpectation(
+                command = command,
+                root = root,
+                contains = contains,
+                success = success,
+                fileContains = fileContains,
+                function = function,
                 count = count,
             ),
         )
@@ -564,6 +673,65 @@ class SandboxQuickTest private constructor(
     }
 
     /**
+     * Asserts selected player state.
+     *
+     * Null parameters are ignored. When [stat] is set without [statValue], the
+     * assertion only requires that the stat exists.
+     */
+    fun assertPlayer(
+        name: String,
+        exists: Boolean = true,
+        position: Position? = null,
+        dimension: String? = null,
+        gameMode: String? = null,
+        xp: Int? = null,
+        health: Double? = null,
+        food: Int? = null,
+        selectedSlot: Int? = null,
+        inventoryCount: Int? = null,
+        recipe: String? = null,
+        effect: String? = null,
+        stat: String? = null,
+        statValue: Int? = null,
+    ): SandboxQuickTest = apply {
+        val player = sandbox.world.players[name]
+        if (!exists) {
+            if (player != null) failures += "player $name expected missing but exists"
+            return@apply
+        }
+        if (player == null) {
+            failures += "player $name expected to exist"
+            return@apply
+        }
+
+        position?.let { if (player.position != it) failures += "player $name position expected $it but was ${player.position}" }
+        dimension?.let { if (player.dimension != ResourceLocation.parse(it)) failures += "player $name dimension expected $it but was ${player.dimension}" }
+        gameMode?.let { if (player.gameMode != it) failures += "player $name gameMode expected $it but was ${player.gameMode}" }
+        xp?.let { if (player.xp != it) failures += "player $name xp expected $it but was ${player.xp}" }
+        health?.let { if (player.health != it) failures += "player $name health expected $it but was ${player.health}" }
+        food?.let { if (player.food != it) failures += "player $name food expected $it but was ${player.food}" }
+        selectedSlot?.let { if (player.selectedSlot != it) failures += "player $name selectedSlot expected $it but was ${player.selectedSlot}" }
+        inventoryCount?.let { if (player.inventory.size != it) failures += "player $name inventoryCount expected $it but was ${player.inventory.size}" }
+        recipe?.let {
+            val id = ResourceLocation.parse(it)
+            if (id !in player.recipes) failures += "player $name expected recipe $id"
+        }
+        effect?.let {
+            val id = ResourceLocation.parse(it)
+            if (id !in player.effects) failures += "player $name expected effect $id"
+        }
+        stat?.let {
+            val id = ResourceLocation.parse(it)
+            val actualValue = player.stats[id]
+            if (statValue == null) {
+                if (actualValue == null) failures += "player $name expected stat $id"
+            } else if ((actualValue ?: 0) != statValue) {
+                failures += "player $name stat $id expected $statValue but was ${actualValue ?: 0}"
+            }
+        }
+    }
+
+    /**
      * Asserts selected world-level state.
      *
      * Null parameters are ignored.
@@ -598,6 +766,38 @@ class SandboxQuickTest private constructor(
         id?.let {
             val expected = ResourceLocation.parse(it)
             if (actual?.id != expected) failures += "block $pos id expected $expected but was ${actual?.id ?: "void"}"
+        }
+    }
+
+    /**
+     * Asserts that at least one entity, no entity, or exactly [count] entities
+     * match the optional filters.
+     */
+    fun assertEntity(
+        type: String? = null,
+        tag: String? = null,
+        uuid: String? = null,
+        position: Position? = null,
+        exists: Boolean = true,
+        count: Int? = null,
+    ): SandboxQuickTest = apply {
+        val expectedType = type?.let(ResourceLocation::parse)
+        val matches = sandbox.world.entities.filter { entity ->
+            (expectedType == null || entity.type == expectedType) &&
+                (tag == null || tag in entity.tags) &&
+                (uuid == null || entity.uuid == uuid) &&
+                (position == null || entity.position == position)
+        }
+        val description = describeEntityExpectation(type, tag, uuid, position)
+        if (count != null) {
+            if (matches.size != count) failures += "entity expected $count match(es) but found ${matches.size}: $description"
+            return@apply
+        }
+        if (exists && matches.isEmpty()) {
+            failures += "entity expected at least one match: $description"
+        }
+        if (!exists && matches.isNotEmpty()) {
+            failures += "entity expected missing but found ${matches.size} match(es): $description"
         }
     }
 
@@ -693,6 +893,41 @@ class SandboxQuickTest private constructor(
         )
 
     /**
+     * Applies a structured trace assertion.
+     */
+    fun assertTrace(expectation: TraceExpectation): SandboxQuickTest = apply {
+        failures += TraceAssertions.failures(sandbox.world.traces, expectation)
+    }
+
+    /**
+     * Builds and applies a structured trace assertion.
+     *
+     * Null parameters are wildcards. When [count] is provided, exactly that many
+     * events must match; otherwise at least one match is required.
+     */
+    @JvmOverloads
+    fun assertTrace(
+        command: String? = null,
+        root: String? = null,
+        contains: String? = null,
+        success: Boolean? = null,
+        fileContains: String? = null,
+        function: String? = null,
+        count: Int? = null,
+    ): SandboxQuickTest =
+        assertTrace(
+            TraceExpectation(
+                command = command,
+                root = root,
+                contains = contains,
+                success = success,
+                fileContains = fileContains,
+                function = function,
+                count = count,
+            ),
+        )
+
+    /**
      * Returns a defensive copy of all output events recorded so far.
      */
     fun outputs(): List<OutputEvent> =
@@ -703,6 +938,35 @@ class SandboxQuickTest private constructor(
      */
     fun traces(): List<CommandTraceEvent> =
         sandbox.world.traces.toList()
+
+    /**
+     * Returns command trace events matching [expectation] without registering a failure.
+     */
+    fun matchingTraces(expectation: TraceExpectation): List<CommandTraceEvent> =
+        TraceAssertions.matching(sandbox.world.traces, expectation)
+
+    /**
+     * Builds a trace expectation and returns matching events without registering a failure.
+     */
+    @JvmOverloads
+    fun matchingTraces(
+        command: String? = null,
+        root: String? = null,
+        contains: String? = null,
+        success: Boolean? = null,
+        fileContains: String? = null,
+        function: String? = null,
+    ): List<CommandTraceEvent> =
+        matchingTraces(
+            TraceExpectation(
+                command = command,
+                root = root,
+                contains = contains,
+                success = success,
+                fileContains = fileContains,
+                function = function,
+            ),
+        )
 
     /**
      * Returns output events matching [expectation] without registering a failure.
@@ -730,6 +994,14 @@ class SandboxQuickTest private constructor(
                 contains = contains,
             ),
         )
+
+    private fun describeEntityExpectation(type: String?, tag: String?, uuid: String?, position: Position?): String =
+        listOfNotNull(
+            type?.let { "type=$it" },
+            tag?.let { "tag=$it" },
+            uuid?.let { "uuid=$it" },
+            position?.let { "position=$it" },
+        ).ifEmpty { listOf("<any entity>") }.joinToString(", ")
 
     /**
      * Builds an immutable report for the current scenario state.

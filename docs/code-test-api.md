@@ -65,6 +65,9 @@ val report = SandboxQuickTest.singleFunctionText(
 println(report.traces.single().command)
 ```
 
+The same matcher is available as `assertTrace(...)` for fluent assertions and
+`matchingTraces(...)` for inspection without registering a failure.
+
 When you need to compare two states, use `SnapshotDiff.diff(before, after)` for
 stable JSON Pointer paths or `SnapshotDiff.render(...)` for readable failure
 logs.
@@ -182,7 +185,9 @@ SandboxQuickTest.create(
     }
     .assertWorld(difficulty = "hard", defaultGameMode = "creative", seed = 123)
     .assertBlock(0, 64, 0, "minecraft:chest")
+    .assertEntity(type = "minecraft:pig", tag = "fixture")
     .assertEntityCount(expected = 1, type = "minecraft:pig", tag = "fixture")
+    .assertPlayer("Alex", xp = 5, recipe = "minecraft:bread", effect = "minecraft:speed")
     .assertItem("Alex", "minecraft:stick", 2)
     .assertScore("#fixture", "ready", 1)
     .assertPlayerXp("Alex", 5)
@@ -264,7 +269,9 @@ class MyDatapackTest {
 | `assertScore(target, objective, expected)` | Assert scoreboard state |
 | `assertStorageEquals(id, path, expectedJson)` | Assert a storage path |
 | `assertWorld(...)` | Assert selected world-level state |
+| `assertPlayer(...)` | Assert selected player state |
 | `assertBlock(x, y, z, id, exists)` | Assert a sparse-world block |
+| `assertEntity(type, tag, uuid, position, exists, count)` | Assert matching entity existence or count |
 | `assertEntityCount(expected, type, tag)` | Assert matching entity count |
 | `assertItem(player, id, count, slot, exists)` | Assert a matching player inventory item |
 | `assertPlayerXp(player, expected)` | Assert player XP |
@@ -272,8 +279,10 @@ class MyDatapackTest {
 | `assertAdvancementDone(player, id, expected)` | Assert advancement completion |
 | `assertOutputContains(text)` | Assert output event text |
 | `assertOutput(...)` | Assert command/channel/target/text/count for output events |
+| `assertTrace(...)` | Assert command/root/source/success/count for trace events |
 | `outputs()` | Return recorded output events |
 | `traces()` | Return recorded structured command trace events |
+| `matchingTraces(...)` | Return trace events matching a structured expectation |
 | `matchingOutputs(...)` | Return output events matching a structured expectation |
 | `report()` | Return `SandboxQuickTestReport` without throwing |
 | `requirePassed()` | Return report or throw an assertion error |

@@ -58,6 +58,8 @@ val report = SandboxQuickTest.singleFunctionText(
 println(report.traces.single().command)
 ```
 
+同一套 matcher 也可以通过 `assertTrace(...)` 做 fluent 断言，或通过 `matchingTraces(...)` 只检查匹配事件而不登记失败。
+
 需要比较两个状态时，可以用 `SnapshotDiff.diff(before, after)` 获得稳定 JSON Pointer 路径差异，或用 `SnapshotDiff.render(...)` 输出适合测试失败日志的文本。
 
 `unsupportedFeatureMode` 可选值：
@@ -170,7 +172,9 @@ SandboxQuickTest.create(
     }
     .assertWorld(difficulty = "hard", defaultGameMode = "creative", seed = 123)
     .assertBlock(0, 64, 0, "minecraft:chest")
+    .assertEntity(type = "minecraft:pig", tag = "fixture")
     .assertEntityCount(expected = 1, type = "minecraft:pig", tag = "fixture")
+    .assertPlayer("Alex", xp = 5, recipe = "minecraft:bread", effect = "minecraft:speed")
     .assertItem("Alex", "minecraft:stick", 2)
     .assertScore("#fixture", "ready", 1)
     .assertPlayerXp("Alex", 5)
@@ -250,7 +254,9 @@ class MyDatapackTest {
 | `assertScore(target, objective, expected)` | 断言 scoreboard。 |
 | `assertStorageEquals(id, path, expectedJson)` | 断言 storage 路径。 |
 | `assertWorld(...)` | 断言选定的世界级状态。 |
+| `assertPlayer(...)` | 断言选定的玩家状态。 |
 | `assertBlock(x, y, z, id, exists)` | 断言 sparse world 中的方块。 |
+| `assertEntity(type, tag, uuid, position, exists, count)` | 断言匹配实体存在性或数量。 |
 | `assertEntityCount(expected, type, tag)` | 断言匹配实体数量。 |
 | `assertItem(player, id, count, slot, exists)` | 断言玩家背包中的匹配物品。 |
 | `assertPlayerXp(player, expected)` | 断言玩家 XP。 |
@@ -258,8 +264,10 @@ class MyDatapackTest {
 | `assertAdvancementDone(player, id, expected)` | 断言 advancement 是否完成。 |
 | `assertOutputContains(text)` | 断言输出事件包含文本。 |
 | `assertOutput(...)` | 按 command/channel/target/text/count 断言输出事件。 |
+| `assertTrace(...)` | 按 command/root/source/success/count 断言 trace 事件。 |
 | `outputs()` | 返回记录的输出事件。 |
 | `traces()` | 返回记录的结构化命令 trace。 |
+| `matchingTraces(...)` | 返回匹配结构化期望的 trace 事件。 |
 | `matchingOutputs(...)` | 返回匹配结构化期望的输出事件。 |
 | `report()` | 返回 `SandboxQuickTestReport`，不抛异常。 |
 | `requirePassed()` | 返回报告；如果失败则抛异常。 |

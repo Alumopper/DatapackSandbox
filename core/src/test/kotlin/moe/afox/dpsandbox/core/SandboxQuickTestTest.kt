@@ -189,6 +189,27 @@ class SandboxQuickTestTest {
     }
 
     @Test
+    fun `quick tests can get and assert structured traces`() {
+        val scenario = SandboxQuickTest.singleFunctionText(
+            """
+            say traced from quick test
+            scoreboard objectives add traced dummy
+            """.trimIndent(),
+            version = "26.2",
+        )
+            .function()
+            .assertTrace(root = "say", contains = "quick test", success = true)
+            .assertTrace(TraceExpectation(root = "scoreboard", count = 1))
+
+        val traces = scenario.traces()
+        val scoreboardTraces = scenario.matchingTraces(root = "scoreboard")
+
+        assertEquals(2, traces.size)
+        assertEquals(1, scoreboardTraces.size)
+        scenario.requirePassed()
+    }
+
+    @Test
     fun `quick tests can predefine world state`() {
         val report = SandboxQuickTest.create(listOf(fixturePack()), version = "26.1.2", defaultPlayerName = null)
             .world {
@@ -213,7 +234,20 @@ class SandboxQuickTestTest {
             }
             .assertWorld(difficulty = "hard", defaultGameMode = "creative", seed = 123)
             .assertBlock(0, 64, 0, "minecraft:chest")
+            .assertEntity(type = "minecraft:pig", tag = "fixture", position = Position(1.0, 64.0, 0.0))
             .assertEntityCount(expected = 1, type = "minecraft:pig", tag = "fixture")
+            .assertPlayer(
+                name = "Alex",
+                position = Position(2.0, 65.0, 3.0),
+                dimension = "minecraft:overworld",
+                gameMode = "survival",
+                xp = 5,
+                inventoryCount = 1,
+                recipe = "minecraft:bread",
+                effect = "minecraft:speed",
+                stat = "minecraft:jump",
+                statValue = 3,
+            )
             .assertItem("Alex", "minecraft:stick", 2)
             .assertScore("#fixture", "ready", 1)
             .assertStorageEquals("demo:env", "ready", "true")
