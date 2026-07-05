@@ -587,7 +587,7 @@ class RunCommandTest {
                     "--version",
                     "26.2",
                     "--mcfunction-text",
-                    "say report artifact",
+                    "scoreboard objectives add runs dummy\nscoreboard players set #report runs 4\nsay report artifact",
                     "--event",
                     "player Steve key_input key.jump press",
                     "--assert",
@@ -609,6 +609,9 @@ class RunCommandTest {
         assertTrue("\"eventTraces\"" in reportJson, reportJson)
         assertTrue("\"type\": \"key_input\"" in reportJson, reportJson)
         assertTrue("\"snapshot\"" in reportJson, reportJson)
+        assertTrue("\"#report\": 4" in reportJson, reportJson)
+        assertTrue("\"snapshotDiffs\"" in reportJson, reportJson)
+        assertTrue("\"path\": \"/scores/runs\"" in reportJson, reportJson)
     }
 
     @Test

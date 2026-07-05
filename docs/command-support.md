@@ -153,7 +153,7 @@ These are tooling commands, not vanilla commands:
 | CLI `loot --table <id> --context <context>` | Generate a loot table directly. |
 | CLI `run --trace --trace-filter <filter>` | Print or write only matching trace events; filters support `root=`, `command=`, `contains=`, `function=`, `file=`, `success=`, and `outputs=`. |
 | CLI `run --outputs-file <file>` | Write observable output events as JSONL for CI artifacts or generated-command regression tests. |
-| CLI `run --report-file <file>` | Write a combined JSON report with pass/fail status, assertion failures, outputs, traces, event traces, and the final snapshot. |
+| CLI `run --report-file <file>` | Write a combined JSON report with pass/fail status, assertion failures, outputs, traces, event traces, the final snapshot, and snapshot diffs. |
 | CLI `run --snapshot-diff` | Print before/after state changes; use `--snapshot-diff-file` to write JSON. |
 | CLI `run --stdin` | Read `.mcfunction` text from standard input; `--stdin-mode commands` executes stdin as raw command lines. |
 | CLI `run --command-file <file>` | Execute one or more raw command files in argument order, useful for command-generator output. |

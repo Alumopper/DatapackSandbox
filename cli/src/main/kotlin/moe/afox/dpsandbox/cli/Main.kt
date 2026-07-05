@@ -191,6 +191,7 @@ private fun writeRunReportFile(
     commandsExecuted: Int,
     assertionFailures: List<String>,
     traces: List<CommandTraceEvent>,
+    beforeSnapshot: JsonObject,
 ) {
     val json = JsonObject().also { report ->
         report.addProperty("version", sandbox.profile.id)
@@ -208,7 +209,9 @@ private fun writeRunReportFile(
         report.add("eventTraces", JsonArray().also { array ->
             sandbox.world.playerEventTraces.forEach { array.add(it.toJson()) }
         })
-        report.add("snapshot", sandbox.snapshotJson())
+        val snapshot = sandbox.snapshotJson()
+        report.add("snapshot", snapshot)
+        report.add("snapshotDiffs", SnapshotDiff.toJson(SnapshotDiff.diff(beforeSnapshot, snapshot)))
     }
     Files.writeString(path, JsonValues.render(json), StandardCharsets.UTF_8)
     println(ConsoleStyle.green("report written: $path"))
@@ -440,7 +443,7 @@ class RunCommand : CliktCommand(name = "run") {
             }
             outputsFile?.let { writeOutputsFile(it, sandbox.world.outputs) }
             val assertionFailures = ManifestRunner.evaluateAssertions(parseAssertions(), sandbox, beforeSnapshot)
-            reportFile?.let { writeRunReportFile(it, sandbox, total, assertionFailures, traces) }
+            reportFile?.let { writeRunReportFile(it, sandbox, total, assertionFailures, traces, beforeSnapshot) }
             if (assertionFailures.isNotEmpty()) {
                 assertionFailures.forEach { println(ConsoleStyle.red(it)) }
                 exitProcess(ExitCodes.ASSERTION_FAILED)
