@@ -90,6 +90,13 @@ Write observable command outputs as JSONL for CI artifacts:
 java -jar cli/build/libs/datapack-sandbox-cli.jar run --pack ./my_pack --function demo:main --outputs-file outputs.jsonl
 ```
 
+Write a combined JSON report with assertion failures, outputs, traces, event
+traces, and the final snapshot:
+
+```bash
+java -jar cli/build/libs/datapack-sandbox-cli.jar run --pack ./my_pack --function demo:main --report-file run-report.json
+```
+
 Use `--trace-filter root=scoreboard` or `--trace-filter contains=reward` to
 keep only the relevant trace events in both console output and JSONL files.
 

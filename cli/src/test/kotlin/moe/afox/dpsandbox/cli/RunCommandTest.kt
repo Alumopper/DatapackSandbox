@@ -577,6 +577,41 @@ class RunCommandTest {
     }
 
     @Test
+    fun `run writes structured report files`() {
+        val reportFile = Files.createTempFile("dps-cli-report", ".json")
+
+        val output = captureStdout {
+            main(
+                arrayOf(
+                    "run",
+                    "--version",
+                    "26.2",
+                    "--mcfunction-text",
+                    "say report artifact",
+                    "--event",
+                    "player Steve key_input key.jump press",
+                    "--assert",
+                    "output:report artifact",
+                    "--report-file",
+                    reportFile.toString(),
+                ),
+            )
+        }
+
+        assertTrue("report written: $reportFile" in output, output)
+        val reportJson = Files.readString(reportFile)
+        assertTrue("\"version\": \"26.2\"" in reportJson, reportJson)
+        assertTrue("\"passed\": true" in reportJson, reportJson)
+        assertTrue("\"assertionFailures\": []" in reportJson, reportJson)
+        assertTrue("\"outputs\"" in reportJson, reportJson)
+        assertTrue("\"text\": \"<Server> report artifact\"" in reportJson, reportJson)
+        assertTrue("\"traces\"" in reportJson, reportJson)
+        assertTrue("\"eventTraces\"" in reportJson, reportJson)
+        assertTrue("\"type\": \"key_input\"" in reportJson, reportJson)
+        assertTrue("\"snapshot\"" in reportJson, reportJson)
+    }
+
+    @Test
     fun `run filters printed and written command traces`() {
         val traceFile = Files.createTempFile("dps-cli-filtered-trace", ".jsonl")
 

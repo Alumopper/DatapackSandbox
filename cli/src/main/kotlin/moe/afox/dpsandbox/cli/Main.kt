@@ -171,6 +171,35 @@ private fun writeOutputsFile(path: Path, outputs: List<OutputEvent>) {
     println(ConsoleStyle.green("outputs written: $path"))
 }
 
+private fun writeRunReportFile(
+    path: Path,
+    sandbox: DatapackSandbox,
+    commandsExecuted: Int,
+    assertionFailures: List<String>,
+    traces: List<CommandTraceEvent>,
+) {
+    val json = JsonObject().also { report ->
+        report.addProperty("version", sandbox.profile.id)
+        report.addProperty("passed", assertionFailures.isEmpty())
+        report.addProperty("gameTime", sandbox.world.gameTime)
+        report.addProperty("commands", commandsExecuted)
+        report.addProperty("entities", sandbox.world.entities.size)
+        report.add("assertionFailures", stringArray(assertionFailures))
+        report.add("outputs", JsonArray().also { array ->
+            sandbox.world.outputs.forEach { array.add(it.toJson()) }
+        })
+        report.add("traces", JsonArray().also { array ->
+            traces.forEach { array.add(it.toJson()) }
+        })
+        report.add("eventTraces", JsonArray().also { array ->
+            sandbox.world.playerEventTraces.forEach { array.add(it.toJson()) }
+        })
+        report.add("snapshot", sandbox.snapshotJson())
+    }
+    Files.writeString(path, JsonValues.render(json), StandardCharsets.UTF_8)
+    println(ConsoleStyle.green("report written: $path"))
+}
+
 private fun writeManifestReportFile(path: Path, results: List<ManifestResult>) {
     val json = JsonArray()
     results.forEach { json.add(it.toReportJson()) }
@@ -274,6 +303,7 @@ class RunCommand : CliktCommand(name = "run") {
     private val eventTraceFile by option("--event-trace-file").path()
     private val traceFilters by option("--trace-filter").multiple()
     private val outputsFile by option("--outputs-file").path()
+    private val reportFile by option("--report-file").path()
     private val unsupported by option("--unsupported").default("warn")
 
     override fun run() {
@@ -300,7 +330,8 @@ class RunCommand : CliktCommand(name = "run") {
                 trace ||
                 traceFile != null ||
                 eventTraceFile != null ||
-                outputsFile != null
+                outputsFile != null ||
+                reportFile != null
             val sandbox = when {
                 functionSources.isNotEmpty() -> {
                     createFunctionSandbox(
@@ -377,6 +408,7 @@ class RunCommand : CliktCommand(name = "run") {
             }
             outputsFile?.let { writeOutputsFile(it, sandbox.world.outputs) }
             val assertionFailures = ManifestRunner.evaluateAssertions(parseAssertions(), sandbox, beforeSnapshot)
+            reportFile?.let { writeRunReportFile(it, sandbox, total, assertionFailures, traces) }
             if (assertionFailures.isNotEmpty()) {
                 assertionFailures.forEach { println(ConsoleStyle.red(it)) }
                 exitProcess(ExitCodes.ASSERTION_FAILED)
