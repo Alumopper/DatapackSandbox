@@ -639,9 +639,15 @@ object ManifestRunner {
             }
             assertion.has("player") -> {
                 val player = assertion.getAsJsonObject("player")
-                val actual = sandbox.world.players[player.requiredManifestString("name")]
+                val name = player.requiredManifestString("name")
+                val actual = sandbox.world.players[name]
+                val expectedExists = player.get("exists")?.asBoolean ?: true
+                if (!expectedExists) {
+                    if (actual != null) failures += "player $name expected missing but exists"
+                    return failures
+                }
                 if (actual == null) {
-                    failures += "player ${player.requiredManifestString("name")} expected to exist"
+                    failures += "player $name expected to exist"
                 } else {
                     player.get("xp")?.let { if (actual.xp != it.asInt) failures += "player ${actual.name} xp expected ${it.asInt} but was ${actual.xp}" }
                     player.get("inventoryCount")?.let { if (actual.inventory.size != it.asInt) failures += "player ${actual.name} inventoryCount expected ${it.asInt} but was ${actual.inventory.size}" }

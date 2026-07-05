@@ -198,6 +198,16 @@ class ManifestRunnerTest {
     }
 
     @Test
+    fun `manifest schema documents player existence assertions`() {
+        val schema = JsonParser.parseString(Files.readString(Path.of("../docs/dps-manifest.schema.json"))).asJsonObject
+        val properties = schema.getAsJsonObject("\$defs")
+            .getAsJsonObject("playerAssertion")
+            .getAsJsonObject("properties")
+
+        assertEquals("boolean", properties.getAsJsonObject("exists").get("type").asString)
+    }
+
+    @Test
     fun `runs a manifest check`() {
         val path = Path.of("src/test/resources/cases/counter.dps.json")
 
@@ -863,6 +873,37 @@ class ManifestRunnerTest {
 
         assertFalse(result.passed)
         assertTrue(result.messages.any { "storage demo:env ready expected missing but was true" in it }, result.messages.joinToString())
+    }
+
+    @Test
+    fun `runs player existence assertions`() {
+        val dir = Files.createTempDirectory("dps-player-existence-manifest")
+        val pack = Path.of("../core/src/test/resources/packs/counter").toAbsolutePath().normalize().toString().replace("\\", "\\\\")
+        val manifest = dir.resolve("player-existence.dps.json")
+        Files.writeString(
+            manifest,
+            """
+            {
+              "version": "26.1.2",
+              "packs": ["$pack"],
+              "world": {
+                "players": [
+                  { "name": "Alex" }
+                ]
+              },
+              "steps": [],
+              "assertions": [
+                { "player": { "name": "Steve", "exists": false } },
+                { "player": { "name": "Alex", "exists": false } }
+              ]
+            }
+            """.trimIndent(),
+        )
+
+        val result = ManifestRunner.run(manifest)
+
+        assertFalse(result.passed)
+        assertTrue(result.messages.any { "player Alex expected missing but exists" in it }, result.messages.joinToString())
     }
 
     @Test
