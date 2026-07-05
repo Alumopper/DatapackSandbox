@@ -433,7 +433,7 @@
         "player": { "$ref": "#/$defs/playerAssertion" },
         "team": { "$ref": "#/$defs/teamAssertion" },
         "bossbar": { "$ref": "#/$defs/bossbarAssertion" },
-        "block": { "type": "object" },
+        "block": { "$ref": "#/$defs/blockAssertion" },
         "advancement": { "type": "object" },
         "predicate": { "type": "object" },
         "loot": { "type": "object" },
@@ -603,6 +603,17 @@
         "path": { "type": "string" },
         "equals": {},
         "exists": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "blockAssertion": {
+      "type": "object",
+      "required": ["pos"],
+      "properties": {
+        "pos": { "$ref": "#/$defs/blockPos" },
+        "id": { "type": "string" },
+        "exists": { "type": "boolean" },
+        "nbt": { "$ref": "#/$defs/pathExpectation" }
       },
       "additionalProperties": false
     },

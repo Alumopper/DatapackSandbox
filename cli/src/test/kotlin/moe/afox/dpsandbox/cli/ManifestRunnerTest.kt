@@ -221,6 +221,22 @@ class ManifestRunnerTest {
     }
 
     @Test
+    fun `manifest schema documents block nbt assertions`() {
+        val schema = JsonParser.parseString(Files.readString(Path.of("../docs/dps-manifest.schema.json"))).asJsonObject
+        val defs = schema.getAsJsonObject("\$defs")
+        val assertionRef = defs.getAsJsonObject("assertion")
+            .getAsJsonObject("properties")
+            .getAsJsonObject("block")
+        val properties = defs.getAsJsonObject("blockAssertion").getAsJsonObject("properties")
+
+        assertEquals("#/\$defs/blockAssertion", assertionRef.get("\$ref").asString)
+        assertEquals("#/\$defs/blockPos", properties.getAsJsonObject("pos").get("\$ref").asString)
+        assertEquals("string", properties.getAsJsonObject("id").get("type").asString)
+        assertEquals("boolean", properties.getAsJsonObject("exists").get("type").asString)
+        assertEquals("#/\$defs/pathExpectation", properties.getAsJsonObject("nbt").get("\$ref").asString)
+    }
+
+    @Test
     fun `runs a manifest check`() {
         val path = Path.of("src/test/resources/cases/counter.dps.json")
 
@@ -383,7 +399,7 @@ class ManifestRunnerTest {
                     "biome": { "pos": [0, 64, 0], "id": "minecraft:plains" }
                   }
                 },
-                { "block": { "pos": [0, 64, 0], "id": "minecraft:chest" } },
+                { "block": { "pos": [0, 64, 0], "id": "minecraft:chest", "nbt": { "path": "Items", "exists": true, "equals": [] } } },
                 { "entityCount": { "type": "minecraft:pig", "tag": "fixture", "equals": 1 } },
                 {
                   "player": {
@@ -953,6 +969,37 @@ class ManifestRunnerTest {
 
         assertFalse(result.passed)
         assertTrue(result.messages.any { "item for player Alex expected id=minecraft:stick, minCount=3" in it }, result.messages.joinToString())
+    }
+
+    @Test
+    fun `runs block nbt existence assertions`() {
+        val dir = Files.createTempDirectory("dps-block-nbt-manifest")
+        val pack = Path.of("../core/src/test/resources/packs/counter").toAbsolutePath().normalize().toString().replace("\\", "\\\\")
+        val manifest = dir.resolve("block-nbt.dps.json")
+        Files.writeString(
+            manifest,
+            """
+            {
+              "version": "26.1.2",
+              "packs": ["$pack"],
+              "world": {
+                "blocks": [
+                  { "pos": [0, 64, 0], "id": "minecraft:chest", "nbt": { "Items": [] } }
+                ]
+              },
+              "steps": [],
+              "assertions": [
+                { "block": { "pos": [0, 64, 0], "id": "minecraft:chest", "nbt": { "path": "Items", "exists": true, "equals": [] } } },
+                { "block": { "pos": [0, 64, 0], "nbt": { "path": "Missing", "exists": true } } }
+              ]
+            }
+            """.trimIndent(),
+        )
+
+        val result = ManifestRunner.run(manifest)
+
+        assertFalse(result.passed)
+        assertTrue(result.messages.any { "block 0 64 0 nbt Missing exists expected true but was false" in it }, result.messages.joinToString())
     }
 
     @Test

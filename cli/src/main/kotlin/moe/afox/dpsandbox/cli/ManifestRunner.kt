@@ -711,6 +711,12 @@ object ManifestRunner {
                         val path = expected.manifestString("path")
                         val expectedValue = expected.get("equals")
                         val actualValue = actual?.fullNbt(pos, sandbox.profile)?.let { JsonPaths.get(it, path) }
+                        expected.get("exists")?.let { expectedExists ->
+                            val actualExists = actualValue != null
+                            if (actualExists != expectedExists.asBoolean) {
+                                failures += "block $pos nbt ${path ?: "<root>"} exists expected ${expectedExists.asBoolean} but was $actualExists"
+                            }
+                        }
                         if (expectedValue != null && actualValue != expectedValue) {
                             failures += "block $pos nbt ${path ?: "<root>"} expected ${JsonValues.render(expectedValue)} but was ${actualValue?.let(JsonValues::render) ?: "<missing>"}"
                         }
