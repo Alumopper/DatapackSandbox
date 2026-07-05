@@ -37,7 +37,7 @@ import java.nio.file.Path
 import kotlin.system.exitProcess
 
 fun main(args: Array<String>) = DatapackSandboxCli()
-    .subcommands(ReplCommand(), CheckCommand(), RunCommand(), LootCommand(), AdvancementCommand(), EventCommand(), VersionCommand())
+    .subcommands(ReplCommand(), CheckCommand(), RunCommand(), LootCommand(), AdvancementCommand(), EventCommand(), ManifestSchemaCommand(), VersionCommand())
     .main(args)
 
 class DatapackSandboxCli : CliktCommand(
@@ -427,6 +427,27 @@ class EventCommand : CliktCommand(name = "event") {
                 updates.forEach { println(it) }
             }
             println(sandbox.snapshotString())
+        } catch (error: SandboxException) {
+            println(ConsoleStyle.diagnostic(error.render()))
+            exitProcess(ExitCodes.forException(error))
+        }
+    }
+}
+
+class ManifestSchemaCommand : CliktCommand(name = "schema") {
+    private val output by option("--output", "-o").path()
+
+    override fun run() {
+        try {
+            val schema = ManifestSchema.readText()
+            val outputPath = output
+            if (outputPath == null) {
+                print(schema)
+            } else {
+                outputPath.parent?.let(Files::createDirectories)
+                Files.writeString(outputPath, schema, StandardCharsets.UTF_8)
+                println(ConsoleStyle.green("schema written: $outputPath"))
+            }
         } catch (error: SandboxException) {
             println(ConsoleStyle.diagnostic(error.render()))
             exitProcess(ExitCodes.forException(error))

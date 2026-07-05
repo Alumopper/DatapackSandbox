@@ -157,3 +157,4 @@ These are tooling commands, not vanilla commands:
 | CLI `run --world` | Apply a manifest-style world JSON fixture before execution. |
 | CLI `run --assert` | Evaluate one inline manifest assertion JSON object after execution, including before/after `snapshotDiff` assertions. |
 | CLI `check <manifest-or-directory>` | Run `.dps.json` manifests; `--verbose` prints resource summaries, overlay entries, missing references, and output events; use `--snapshot-diff-on-fail` for state changes, plus `--trace-file` and `--trace-filter` for JSONL command traces. |
+| CLI `schema [--output <file>]` | Print or write the bundled `.dps.json` manifest JSON Schema for editor and CI integration. |

@@ -142,3 +142,4 @@ JSON text component 支持 `text`、`score`、`selector`、`translate`、`keybin
 | CLI `run --world` | 执行前应用 manifest-style world JSON fixture。 |
 | CLI `run --assert` | 执行后评估一个内联 manifest assertion JSON 对象，包括需要执行前后上下文的 `snapshotDiff` 断言。 |
 | CLI `check <manifest-or-directory>` | 运行 `.dps.json` 清单；`--verbose` 会打印资源摘要、覆盖条目、缺失引用和输出事件；可用 `--snapshot-diff-on-fail` 输出状态差异，也可用 `--trace-file` 和 `--trace-filter` 写出过滤后的 JSONL 命令 trace。 |
+| CLI `schema [--output <file>]` | 打印或写出内置 `.dps.json` manifest JSON Schema，用于编辑器和 CI 集成。 |

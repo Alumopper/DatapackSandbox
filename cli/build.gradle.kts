@@ -27,6 +27,10 @@ application {
     mainClass.set("moe.afox.dpsandbox.cli.MainKt")
 }
 
+tasks.processResources {
+    from(rootProject.layout.projectDirectory.file("docs/dps-manifest.schema.json"))
+}
+
 tasks.register<Jar>("fatJar") {
     group = "build"
     description = "Builds a standalone CLI jar."
@@ -73,6 +77,21 @@ val smokeCliJarVersion = registerCliJarSmokeTask(
     "version",
 )
 
+val smokeSchemaOutput = layout.buildDirectory.file("smoke/dps-manifest.schema.json")
+val smokeCliJarSchema = registerCliJarSmokeTask(
+    name = "smokeCliJarSchema",
+    descriptionText = "Exports the bundled manifest JSON Schema from the standalone CLI jar.",
+    "schema",
+    "--output",
+    smokeSchemaOutput.get().asFile.absolutePath,
+)
+smokeCliJarSchema.configure {
+    outputs.file(smokeSchemaOutput)
+    doFirst {
+        smokeSchemaOutput.get().asFile.parentFile.mkdirs()
+    }
+}
+
 val smokeCliJarExamples = registerCliJarSmokeTask(
     name = "smokeCliJarExamples",
     descriptionText = "Runs all example manifests through the standalone CLI jar.",
@@ -86,7 +105,7 @@ smokeCliJarExamples.configure {
 tasks.register("smokeCliJar") {
     group = "verification"
     description = "Builds the standalone CLI jar and runs release smoke checks."
-    dependsOn(smokeCliJarVersion, smokeCliJarExamples)
+    dependsOn(smokeCliJarVersion, smokeCliJarSchema, smokeCliJarExamples)
 }
 
 tasks.named("check") {

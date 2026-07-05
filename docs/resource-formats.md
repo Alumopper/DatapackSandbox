@@ -67,6 +67,12 @@ Manifests may contain `version` or `versions`, `unsupported`, `packs`, `world`,
 docs/dps-manifest.schema.json
 ```
 
+The standalone CLI also bundles the schema:
+
+```bash
+java -jar cli/build/libs/datapack-sandbox-cli.jar schema --output dps-manifest.schema.json
+```
+
 `include` accepts a relative manifest path string or an array of paths. Included
 manifests are applied before the including manifest. Their `world`, `steps`, and
 `assertions` are concatenated in order, and their `version`/`versions`, `packs`,

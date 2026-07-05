@@ -112,6 +112,12 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar run --version 26.2 ^
 java -jar cli/build/libs/datapack-sandbox-cli.jar check ./sandbox-cases
 ```
 
+导出随 CLI 打包的 manifest JSON Schema，供编辑器或 CI 工具使用：
+
+```bash
+java -jar cli/build/libs/datapack-sandbox-cli.jar schema --output dps-manifest.schema.json
+```
+
 断言失败时可以同时输出最终 snapshot 或最小 snapshot diff：
 
 ```bash

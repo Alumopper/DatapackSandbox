@@ -197,6 +197,12 @@ JSON Schema 位于：
 docs/dps-manifest.schema.json
 ```
 
+standalone CLI 也会内置该 schema：
+
+```bash
+java -jar cli/build/libs/datapack-sandbox-cli.jar schema --output dps-manifest.schema.json
+```
+
 `include` 可以写一个相对清单路径，也可以写路径数组。被 include 的清单会先应用；它们的 `world`、`steps` 和 `assertions` 会按顺序拼接，`version`/`versions`、`packs` 和 `unsupported` 会在当前清单省略这些字段时作为默认值。include 文件里的 world setup 和 step 相对路径会按 include 文件所在目录解析。
 
 最小示例：
