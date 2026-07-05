@@ -33,7 +33,7 @@ run continues. Use `--unsupported error`, manifest `"unsupported": "error"`, or
 | `clear` | Partial | Removes matching item stacks from sandbox player inventories. |
 | `clone` | Partial | Copies sparse sandbox block state/NBT; no updates, drops, or overlap physics. |
 | `damage` | Partial | Reduces entity/player health; no armor, invulnerability, death loot, or combat rules. |
-| `data` | Partial | `get`, `merge`, `modify`, `remove` for `storage`, `entity`, and `block`; top-level NBT is schema-checked. |
+| `data` | Partial | `get`, `merge`, `modify`, `remove` for `storage`, `entity`, and `block`; `modify` supports `value` and `from` sources; top-level NBT is schema-checked. |
 | `datapack` | Partial | `list` reports loaded resource counts; `enable`/`disable` are accepted as no-op because pack order is fixed at sandbox creation. |
 | `debug`, `jfr`, `perf` | Unsupported | Profiling commands do not apply to this runtime. |
 | `defaultgamemode` | Supported | Stores world default game mode. |

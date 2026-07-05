@@ -26,7 +26,7 @@
 | `clear` | 部分支持 | 从沙盒玩家背包移除匹配物品。 |
 | `clone` | 部分支持 | 复制稀疏世界中的方块状态和方块实体 NBT；不执行更新、掉落或重叠区物理。 |
 | `damage` | 部分支持 | 降低实体或玩家生命值；不计算盔甲、无敌帧、死亡掉落和完整战斗规则。 |
-| `data` | 部分支持 | `get`、`merge`、`modify`、`remove`，目标支持 `storage`、`entity`、`block`；顶层 NBT 字段经过 schema 校验。 |
+| `data` | 部分支持 | `get`、`merge`、`modify`、`remove`，目标支持 `storage`、`entity`、`block`；`modify` 支持 `value` 和 `from` 来源；顶层 NBT 字段经过 schema 校验。 |
 | `datapack` | 部分支持 | `list` 报告已加载资源数量；`enable`/`disable` 作为 no-op 接受，因为沙盒创建后 pack 顺序固定。 |
 | `debug`、`jfr`、`perf` | 未支持 | 原版 profiling 不适用于此运行时。 |
 | `defaultgamemode` | 支持 | 存储世界默认游戏模式。 |

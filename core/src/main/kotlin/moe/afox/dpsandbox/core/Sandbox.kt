@@ -1099,34 +1099,50 @@ class DatapackSandbox(
         requireIndex(tokens, pathIndex + 1, "data modify <target> <path> <operation>", location)
         val path = tokens[pathIndex].text
         val mutation = tokens[pathIndex + 1].text
-        val valueStart = when (mutation) {
-            "set", "merge", "append", "prepend" -> {
-                requireIndex(tokens, pathIndex + 3, "data modify ... $mutation value <value>", location)
-                if (tokens[pathIndex + 2].text != "value") {
-                    unsupportedFeature("Only 'data modify ... $mutation value ...' is implemented", profile.id, location, command)
-                }
-                pathIndex + 3
-            }
-            "insert" -> {
-                requireIndex(tokens, pathIndex + 4, "data modify ... insert <index> value <value>", location)
-                if (tokens[pathIndex + 3].text != "value") {
-                    unsupportedFeature("Only 'data modify ... insert <index> value ...' is implemented", profile.id, location, command)
-                }
-                pathIndex + 4
-            }
+        val insertIndex = if (mutation == "insert") {
+            requireIndex(tokens, pathIndex + 3, "data modify ... insert <index> <value|from> ...", location)
+            parseInt(tokens[pathIndex + 2].text, "insert index", location)
+        } else {
+            null
+        }
+        val sourceKindIndex = when (mutation) {
+            "set", "merge", "append", "prepend" -> pathIndex + 2
+            "insert" -> pathIndex + 3
             else -> unsupportedFeature("Unsupported data modify operation '$mutation'", profile.id, location, command)
         }
-        val value = JsonValues.parse(CommandTokenizer.tailFrom(command, tokens[valueStart]), location)
+        requireIndex(tokens, sourceKindIndex, "data modify ... $mutation <value|from> ...", location)
+        val value = readDataModifyValue(command, tokens, sourceKindIndex, context, location)
         mutateDataTarget(target, location) { targetNbt ->
             when (mutation) {
                 "set" -> JsonPaths.set(targetNbt, path, value)
                 "merge" -> JsonPaths.merge(targetNbt, path, value)
                 "append" -> JsonPaths.append(targetNbt, path, value)
                 "prepend" -> JsonPaths.prepend(targetNbt, path, value)
-                "insert" -> JsonPaths.insert(targetNbt, path, parseInt(tokens[pathIndex + 2].text, "insert index", location), value)
+                "insert" -> JsonPaths.insert(targetNbt, path, insertIndex ?: 0, value)
             }
         }
     }
+
+    private fun readDataModifyValue(
+        command: String,
+        tokens: List<CommandToken>,
+        sourceKindIndex: Int,
+        context: ExecutionContext,
+        location: SourceLocation?,
+    ): JsonElement =
+        when (tokens[sourceKindIndex].text) {
+            "value" -> {
+                requireIndex(tokens, sourceKindIndex + 1, "data modify ... value <value>", location)
+                JsonValues.parse(CommandTokenizer.tailFrom(command, tokens[sourceKindIndex + 1]), location)
+            }
+            "from" -> {
+                val (sourceTarget, sourcePathIndex) = parseDataTarget(tokens, sourceKindIndex + 1, context, location)
+                val sourcePath = tokens.getOrNull(sourcePathIndex)?.text
+                dataTargetNbtValues(sourceTarget, location).firstOrNull()?.let { JsonPaths.get(it, sourcePath)?.deepCopy() }
+                    ?: throw SandboxException(DiagnosticCode.COMMAND_ERROR, "Data modify source did not resolve", location)
+            }
+            else -> unsupportedFeature("Unsupported data modify source '${tokens[sourceKindIndex].text}'", profile.id, location, command)
+        }
 
     private fun executeDataMerge(command: String, tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext) {
         requireSize(tokens, 4, "data merge <storage|entity|block> <target> <nbt>", location)

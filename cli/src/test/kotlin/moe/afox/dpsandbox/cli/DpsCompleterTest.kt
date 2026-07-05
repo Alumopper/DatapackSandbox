@@ -52,6 +52,8 @@ class DpsCompleterTest {
         assertSuggests(completer, "execute unless ", "loaded")
         assertSuggests(completer, "execute if dimension ", "minecraft:overworld")
         assertSuggests(completer, "execute if biome 0 64 0 ", "minecraft:plains")
+        assertSuggests(completer, "data modify storage demo:dst path set ", "from")
+        assertSuggests(completer, "data modify storage demo:dst path set from ", "storage")
         assertSuggests(completer, "give Steve ", "minecraft:apple")
         assertSuggests(completer, "effect give Steve ", "minecraft:speed")
         assertSuggests(completer, "item replace entity Steve ", "hotbar.0")

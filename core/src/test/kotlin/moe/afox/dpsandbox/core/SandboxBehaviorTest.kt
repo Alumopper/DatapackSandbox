@@ -293,6 +293,32 @@ class SandboxBehaviorTest {
     }
 
     @Test
+    fun `data modify copies values from source paths`() {
+        val sandbox = createSandbox("26.1.2", listOf(fixturePack()))
+
+        sandbox.executeCommand("""data merge storage demo:src {value:{foo:1},list:[1,2],merge:{a:1}}""")
+        sandbox.executeCommand("data modify storage demo:dst copied set from storage demo:src value")
+        sandbox.executeCommand("data modify storage demo:dst list set value []")
+        sandbox.executeCommand("data modify storage demo:dst list append from storage demo:src value")
+        sandbox.executeCommand("data modify storage demo:dst list prepend from storage demo:src merge")
+        sandbox.executeCommand("data modify storage demo:dst list insert 1 from storage demo:src value.foo")
+        sandbox.executeCommand("data modify storage demo:dst merged merge from storage demo:src merge")
+
+        val dst = sandbox.world.storage(ResourceLocation.parse("demo:dst"))
+        assertEquals(1, JsonPaths.get(dst, "copied.foo")?.asInt)
+        assertEquals(1, JsonPaths.get(dst, "merged.a")?.asInt)
+        val list = JsonPaths.get(dst, "list")?.asJsonArray ?: error("missing list")
+        assertEquals(3, list.size())
+        assertEquals(1, list[1].asInt)
+        assertEquals(1, list[2].asJsonObject.get("foo").asInt)
+
+        val error = assertFailsWith<SandboxException> {
+            sandbox.executeCommand("data modify storage demo:dst missing set from storage demo:src nope")
+        }
+        assertEquals(DiagnosticCode.COMMAND_ERROR, error.code)
+    }
+
+    @Test
     fun `uses generated vanilla mcdoc block entity mappings and item stack fields`() {
         val sandbox = createSandbox("26.1.2", listOf(fixturePack()))
 
