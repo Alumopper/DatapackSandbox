@@ -6,17 +6,21 @@ import com.google.gson.JsonElement
  * Predicate for matching one resolved text segment inside an [OutputEvent].
  *
  * Null properties are wildcards. Text matching can be exact through [text] or
- * substring-based through [contains].
+ * substring-based through [contains], or regex-based through [textMatches].
  */
 data class OutputSegmentExpectation(
     /** Exact segment text to match. */
     val text: String? = null,
     /** Substring that must appear in the segment text. */
     val contains: String? = null,
+    /** Regex that must match somewhere in the segment text. */
+    val textMatches: String? = null,
     /** Exact segment text after whitespace is collapsed and trimmed. */
     val normalizedText: String? = null,
     /** Substring that must appear after both values have whitespace collapsed and trimmed. */
     val normalizedContains: String? = null,
+    /** Regex that must match the normalized segment text. */
+    val normalizedMatches: String? = null,
     /** Minecraft text color name, for example `yellow` or `dark_green`. */
     val color: String? = null,
     /** Expected bold flag, or `null` to ignore it. */
@@ -36,8 +40,10 @@ data class OutputSegmentExpectation(
     fun matches(segment: OutputTextSegment): Boolean =
         (text == null || segment.text == text) &&
             (contains == null || contains in segment.text) &&
+            (textMatches == null || Regex(textMatches).containsMatchIn(segment.text)) &&
             (normalizedText == null || normalizeOutputText(segment.text) == normalizeOutputText(normalizedText)) &&
             (normalizedContains == null || normalizeOutputText(normalizedContains) in normalizeOutputText(segment.text)) &&
+            (normalizedMatches == null || Regex(normalizedMatches).containsMatchIn(normalizeOutputText(segment.text))) &&
             (color == null || segment.color == color) &&
             (bold == null || segment.bold == bold) &&
             (italic == null || segment.italic == italic) &&
@@ -67,10 +73,14 @@ data class OutputExpectation(
     val text: String? = null,
     /** Substring that must appear in the event plain text. */
     val contains: String? = null,
+    /** Regex that must match somewhere in the event plain text. */
+    val textMatches: String? = null,
     /** Exact plain text after whitespace is collapsed and trimmed. */
     val normalizedText: String? = null,
     /** Substring that must appear after both values have whitespace collapsed and trimmed. */
     val normalizedContains: String? = null,
+    /** Regex that must match the normalized event plain text. */
+    val normalizedMatches: String? = null,
     /** Optional JSON path inside the event payload. */
     val payloadPath: String? = null,
     /** Expected JSON value at [payloadPath], or any value when null and [payloadPath] is set. */
@@ -92,8 +102,10 @@ data class OutputExpectation(
             targets.all { it in event.targets } &&
             (text == null || event.text == text) &&
             (contains == null || contains in event.text) &&
+            (textMatches == null || Regex(textMatches).containsMatchIn(event.text)) &&
             (normalizedText == null || normalizeOutputText(event.text) == normalizeOutputText(normalizedText)) &&
             (normalizedContains == null || normalizeOutputText(normalizedContains) in normalizeOutputText(event.text)) &&
+            (normalizedMatches == null || Regex(normalizedMatches).containsMatchIn(normalizeOutputText(event.text))) &&
             payloadMatches(event) &&
             (segment == null || event.segments.any(segment::matches))
 
@@ -132,8 +144,10 @@ data class OutputExpectation(
             targets.takeIf { it.isNotEmpty() }?.let { "targets=${it.sorted()}" },
             text?.let { "text=${quote(it)}" },
             contains?.let { "contains=${quote(it)}" },
+            textMatches?.let { "matches=${quote(it)}" },
             normalizedText?.let { "normalizedText=${quote(it)}" },
             normalizedContains?.let { "normalizedContains=${quote(it)}" },
+            normalizedMatches?.let { "normalizedMatches=${quote(it)}" },
             payloadPath?.let { "payload.$it=${payloadEquals?.let(JsonValues::render) ?: "<exists>"}" },
             segment?.let { "segment=$it" },
             order?.let { "order=$it" },

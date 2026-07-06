@@ -22,8 +22,10 @@ object ManifestOutputAssertions {
             targets = output.stringArray("targets").toSet(),
             text = output.string("text") ?: output.string("equals"),
             contains = output.string("contains"),
+            textMatches = output.regexString("matches"),
             normalizedText = output.string("normalizedText") ?: output.string("normalizedEquals"),
             normalizedContains = output.string("normalizedContains"),
+            normalizedMatches = output.regexString("normalizedMatches"),
             payloadPath = output.string("payloadPath") ?: payload?.string("path"),
             payloadEquals = output.get("payloadEquals") ?: payload?.get("equals"),
             segment = output.getAsJsonObject("segment")?.let(::parseSegment),
@@ -36,8 +38,10 @@ object ManifestOutputAssertions {
         OutputSegmentExpectation(
             text = segment.string("text") ?: segment.string("equals"),
             contains = segment.string("contains"),
+            textMatches = segment.regexString("matches"),
             normalizedText = segment.string("normalizedText") ?: segment.string("normalizedEquals"),
             normalizedContains = segment.string("normalizedContains"),
+            normalizedMatches = segment.regexString("normalizedMatches"),
             color = segment.string("color"),
             bold = segment.boolean("bold"),
             italic = segment.boolean("italic"),
@@ -48,6 +52,15 @@ object ManifestOutputAssertions {
 
     private fun JsonObject.string(name: String): String? =
         get(name)?.takeIf { it.isJsonPrimitive }?.asString
+
+    private fun JsonObject.regexString(name: String): String? =
+        string(name)?.also { pattern ->
+            try {
+                Regex(pattern)
+            } catch (error: IllegalArgumentException) {
+                throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Output assertion '$name' must be a valid regex", cause = error)
+            }
+        }
 
     private fun JsonObject.boolean(name: String): Boolean? =
         get(name)?.takeIf { it.isJsonPrimitive }?.asBoolean

@@ -230,13 +230,17 @@ class ManifestRunnerTest {
         assertEquals("#/\$defs/outputAssertion", outputRef.get("\$ref").asString)
         assertEquals("integer", outputProperties.getAsJsonObject("order").get("type").asString)
         assertEquals(1, outputProperties.getAsJsonObject("order").get("minimum").asInt)
+        assertEquals("string", outputProperties.getAsJsonObject("matches").get("type").asString)
         assertEquals("string", outputProperties.getAsJsonObject("normalizedText").get("type").asString)
         assertEquals("string", outputProperties.getAsJsonObject("normalizedContains").get("type").asString)
+        assertEquals("string", outputProperties.getAsJsonObject("normalizedMatches").get("type").asString)
         assertEquals("string", outputProperties.getAsJsonObject("payloadPath").get("type").asString)
         val payloadProperties = outputProperties.getAsJsonObject("payload").getAsJsonObject("properties")
         assertEquals("string", payloadProperties.getAsJsonObject("path").get("type").asString)
         val segmentProperties = outputProperties.getAsJsonObject("segment").getAsJsonObject("properties")
+        assertEquals("string", segmentProperties.getAsJsonObject("matches").get("type").asString)
         assertEquals("string", segmentProperties.getAsJsonObject("normalizedText").get("type").asString)
+        assertEquals("string", segmentProperties.getAsJsonObject("normalizedMatches").get("type").asString)
     }
 
     @Test
@@ -387,6 +391,8 @@ class ManifestRunnerTest {
                     "channel": "chat",
                     "target": "Steve",
                     "contains": "hello from manifest",
+                    "matches": "hello\\s+from\\s+manifest",
+                    "normalizedMatches": "hello from manifest",
                     "order": 1,
                     "count": 1
                   }
@@ -408,8 +414,11 @@ class ManifestRunnerTest {
                     "command": "tellraw",
                     "normalizedText": "hello generated output",
                     "normalizedContains": "generated output",
+                    "normalizedMatches": "hello generated output",
                     "segment": {
-                      "normalizedText": "hello generated output"
+                      "matches": "hello\\s+generated\\s+output",
+                      "normalizedText": "hello generated output",
+                      "normalizedMatches": "generated output"
                     },
                     "count": 1
                   }

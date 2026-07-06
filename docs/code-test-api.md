@@ -427,7 +427,7 @@ class MyDatapackTest {
 | `assertPlayerLastInput(player, device, code, action)` | Assert the latest player input |
 | `assertAdvancementDone(player, id, expected)` | Assert advancement completion |
 | `assertOutputContains(text)` | Assert output event text |
-| `assertOutput(...)` | Assert command/channel/target/text/normalized text/payload path/count/order for output events |
+| `assertOutput(...)` | Assert command/channel/target/text/regex/normalized text/payload path/count/order for output events |
 | `assertTrace(...)` | Assert command/root/source/success/output count/output text/output target/diff path/diff kind/count for trace events |
 | `assertPlayerEventTrace(...)` | Assert player event trace player/type/success/context/advancement/failed advancement/count |
 | `assertSnapshotDiff(...)` | Assert before/after snapshot path/kind/rendered text/count |
