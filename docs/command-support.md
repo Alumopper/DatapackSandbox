@@ -46,7 +46,8 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar commands --json --output build
 ```
 
 `commands --check` verifies that each version-scoped root command appears in
-the document with the matching behavior level.
+the document with the matching behavior level. The Gradle `check` lifecycle
+runs this through the standalone jar smoke task.
 
 ## Vanilla Command Matrix
 

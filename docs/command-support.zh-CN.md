@@ -35,7 +35,7 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar commands --json --version 26.2
 java -jar cli/build/libs/datapack-sandbox-cli.jar commands --json --output build/command-catalog.json --version 26.2
 ```
 
-`commands --check` 会校验按版本裁剪后的每个根命令都出现在文档中，并带有匹配的行为等级。
+`commands --check` 会校验按版本裁剪后的每个根命令都出现在文档中，并带有匹配的行为等级。Gradle `check` 生命周期会通过 standalone jar smoke task 运行这个检查。
 
 ## 原版命令矩阵
 

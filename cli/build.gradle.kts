@@ -92,6 +92,18 @@ smokeCliJarVersionDocs.configure {
     inputs.file(versionProfileDoc)
 }
 
+val commandSupportDoc = rootProject.layout.projectDirectory.file("docs/command-support.md")
+val smokeCliJarCommandDocs = registerCliJarSmokeTask(
+    name = "smokeCliJarCommandDocs",
+    descriptionText = "Checks that command support docs cover the command behavior catalog.",
+    "commands",
+    "--check",
+    commandSupportDoc.asFile.absolutePath,
+)
+smokeCliJarCommandDocs.configure {
+    inputs.file(commandSupportDoc)
+}
+
 val examplesDir = rootProject.layout.projectDirectory.dir("examples")
 val fullStackExamplePack = examplesDir.dir("full-stack/pack")
 
@@ -197,6 +209,7 @@ tasks.register("smokeCliJar") {
     dependsOn(
         smokeCliJarVersion,
         smokeCliJarVersionDocs,
+        smokeCliJarCommandDocs,
         smokeCliJarSchema,
         smokeCliJarExamples,
         smokeCliJarReadmeLoot,
