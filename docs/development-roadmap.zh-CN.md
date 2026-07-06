@@ -213,7 +213,7 @@
 
 验收标准：
 
-- README 中每类场景有一个最短示例。
+- README/README.zh-CN 中已为 JVM 单元调试、随手小测试、命令生成器输出、full-stack、single-function、generator-output 和 multi-version 示例提供最短入口。
 - `examples/` 至少包含 full-stack、single-function、generator-output、multi-version 四类示例。
 - CLI 和 quick-test 对同一清单行为输出一致结果。
 

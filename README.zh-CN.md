@@ -32,6 +32,18 @@ cli/build/libs/datapack-sandbox-cli.jar
 
 ## CLI 示例
 
+也可以在 JVM 单元测试里直接使用同一套运行时：
+
+```kotlin
+SandboxQuickTest.singleFunctionText(
+    "scoreboard objectives add runs dummy\nscoreboard players set #unit runs 1",
+    version = "26.2",
+)
+    .function()
+    .assertScore("#unit", "runs", 1)
+    .requirePassed()
+```
+
 启动 REPL：
 
 ```bash
@@ -204,6 +216,29 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar run --version 26.2 \
   --assert-file ./assertions.json
 ```
 
+常见的随手检查也可以直接写 shorthand，适合命令生成器输出的快速回归：
+
+```bash
+java -jar cli/build/libs/datapack-sandbox-cli.jar run --version 26.2 \
+  --command "scoreboard objectives add runs dummy" \
+  --command "scoreboard players set #fixture runs 1" \
+  --command "data merge storage demo:env {ready:true}" \
+  --command "give Steve minecraft:stick 3" \
+  --command "summon minecraft:pig 0 0 0 {Tags:[\"fixture\"]}" \
+  --command "place structure demo:ruin 1 64 2" \
+  --command "tellraw Steve {\"text\":\"styled output\",\"color\":\"yellow\",\"bold\":true}" \
+  --command "say generated ok" \
+  --assert "score:#fixture:runs=1" \
+  --assert "storage:demo:env:ready=true" \
+  --assert "player:Steve?" \
+  --assert "item:Steve:minecraft:stick=3" \
+  --assert "entity:minecraft:pig@fixture=1" \
+  --assert "trace-output:generated ok@Steve" \
+  --assert "output-normalized:generated ok" \
+  --assert "output-segment:styled output|color=yellow|bold=true@Steve" \
+  --assert "output-payload:place structure:id=demo:ruin"
+```
+
 world fixture 可以用 `fixture`、`fixtures` 或 `extends` 引用可复用 fixture 文件；
 被引用文件会先应用，再由当前文件里的字段覆盖公共 setup。
 
@@ -324,6 +359,15 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar check examples
 ```
 
 `examples/` 目录覆盖完整数据包事件、单函数随手测试、命令生成器输出、golden snapshot 断言和多版本 manifest。
+
+每类常见工作流都可以用一个最短示例直接运行：
+
+```powershell
+java -jar cli/build/libs/datapack-sandbox-cli.jar check examples/full-stack/full-stack.dps.json
+java -jar cli/build/libs/datapack-sandbox-cli.jar check examples/single-function/single-function.dps.json
+java -jar cli/build/libs/datapack-sandbox-cli.jar check examples/generator-output/generator-output.dps.json
+java -jar cli/build/libs/datapack-sandbox-cli.jar check examples/multi-version/multi-version.dps.json
+```
 
 直接生成一个 loot table 结果：
 

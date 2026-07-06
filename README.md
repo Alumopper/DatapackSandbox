@@ -43,6 +43,18 @@ cli/build/libs/datapack-sandbox-cli.jar
 
 ## CLI Examples
 
+Use the same runtime directly from JVM tests:
+
+```kotlin
+SandboxQuickTest.singleFunctionText(
+    "scoreboard objectives add runs dummy\nscoreboard players set #unit runs 1",
+    version = "26.2",
+)
+    .function()
+    .assertScore("#unit", "runs", 1)
+    .requirePassed()
+```
+
 Start a REPL:
 
 ```bash
@@ -280,6 +292,7 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar run --version 26.2 \
   --command "give Steve minecraft:stick 3" \
   --command "summon minecraft:pig 0 0 0 {Tags:[\"fixture\"]}" \
   --command "place structure demo:ruin 1 64 2" \
+  --command "tellraw Steve {\"text\":\"styled output\",\"color\":\"yellow\",\"bold\":true}" \
   --command "say generated ok" \
   --assert "score:#fixture:runs=1" \
   --assert "storage:demo:env:ready=true" \
@@ -292,6 +305,7 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar run --version 26.2 \
   --assert "trace-output:generated ok@Steve" \
   --assert "output:generated ok" \
   --assert "output-normalized:generated ok" \
+  --assert "output-segment:styled output|color=yellow|bold=true@Steve" \
   --assert "output-payload:place structure:id=demo:ruin"
 ```
 
@@ -446,6 +460,15 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar check examples
 The `examples/` directory covers full-stack datapack events, single-function
 scratch tests, command-generator output, golden snapshot assertions, and
 multi-version manifests.
+
+Run the shortest example for each common workflow:
+
+```powershell
+java -jar cli/build/libs/datapack-sandbox-cli.jar check examples/full-stack/full-stack.dps.json
+java -jar cli/build/libs/datapack-sandbox-cli.jar check examples/single-function/single-function.dps.json
+java -jar cli/build/libs/datapack-sandbox-cli.jar check examples/generator-output/generator-output.dps.json
+java -jar cli/build/libs/datapack-sandbox-cli.jar check examples/multi-version/multi-version.dps.json
+```
 
 Generate a loot table:
 
