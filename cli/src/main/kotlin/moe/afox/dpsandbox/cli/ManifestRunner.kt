@@ -479,7 +479,7 @@ object ManifestRunner {
             step.has("event") -> sandbox.handlePlayerEvent(parseEvent(step.getAsJsonObject("event"), sandbox))
             step.has("snapshot") -> runSnapshotStep(step.get("snapshot"), sandbox, base)
             step.has("trace") -> runTraceStep(step.get("trace"), sandbox, base)
-            step.has("reset") -> return resetSandbox(step.get("reset"), sandbox)
+            step.has("reset") -> return resetSandbox(step.get("reset"), sandbox, options)
             step.has("loot") -> {
                 val loot = step.getAsJsonObject("loot")
                 sandbox.generateLoot(
@@ -494,9 +494,17 @@ object ManifestRunner {
         return sandbox
     }
 
-    private fun resetSandbox(reset: JsonElement, sandbox: DatapackSandbox): DatapackSandbox {
+    private fun resetSandbox(reset: JsonElement, sandbox: DatapackSandbox, options: ManifestOptions): DatapackSandbox {
         if (reset.isJsonPrimitive && !reset.asBoolean) return sandbox
-        return DatapackSandbox(sandbox.profile, sandbox.datapack, SandboxWorld().also { it.createPlayer("Steve") }, sandbox.unsupportedFeatureMode)
+        return DatapackSandbox(
+            sandbox.profile,
+            sandbox.datapack,
+            SandboxWorld().also { world ->
+                world.seed = options.seed
+                world.createPlayer("Steve")
+            },
+            sandbox.unsupportedFeatureMode,
+        )
     }
 
     private fun runSnapshotStep(snapshot: JsonElement, sandbox: DatapackSandbox, base: Path) {

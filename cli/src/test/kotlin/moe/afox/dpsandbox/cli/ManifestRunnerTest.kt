@@ -801,6 +801,7 @@ class ManifestRunnerTest {
             """
             {
               "version": "26.1.2",
+              "seed": 44,
               "packs": ["$pack"],
               "steps": [
                 { "command": "scoreboard objectives add runs dummy" },
@@ -815,6 +816,7 @@ class ManifestRunnerTest {
               ],
               "assertions": [
                 { "score": { "target": "#before_reset", "objective": "runs", "equals": 0 } },
+                { "world": { "seed": 44 } },
                 { "player": { "name": "Steve" } },
                 { "player": { "name": "Alex", "xp": 7 } },
                 { "trace": { "root": "list", "success": true, "count": 1 } },

@@ -131,7 +131,7 @@ Event steps require `player` and `type`. Optional context fields include
 `snapshot` and `trace` steps accept `true` to record a debug output event, a
 relative file path string to write an artifact, or an object with `file` and
 `output`. `reset` replaces the current world with a fresh sparse world and the
-default `Steve` player while keeping the loaded packs.
+default `Steve` player while keeping the loaded packs and manifest default seed.
 
 Add `"allowFailure": true` to a step when the failure itself is expected and
 should be asserted later with a `diagnostic` assertion.
