@@ -183,16 +183,17 @@ object ManifestRunner {
         evaluateAssertions(assertions, sandbox, beforeSnapshot = null)
 
     internal fun evaluateAssertions(assertions: List<JsonObject>, sandbox: DatapackSandbox, beforeSnapshot: JsonObject?): List<String> =
-        evaluateAssertions(assertions, sandbox, emptyList(), beforeSnapshot)
+        evaluateAssertions(assertions, sandbox, emptyList(), beforeSnapshot, defaultLootSeed = 0)
 
     private fun evaluateAssertions(
         assertions: List<JsonObject>,
         sandbox: DatapackSandbox,
         diagnostics: List<ManifestDiagnostic>,
         beforeSnapshot: JsonObject?,
+        defaultLootSeed: Long,
     ): List<String> =
         assertions.flatMapIndexed { index, assertion ->
-            evaluateAssertion(assertion, sandbox, diagnostics, beforeSnapshot).map { "${assertionLabel(index)}: $it" }
+            evaluateAssertion(assertion, sandbox, diagnostics, beforeSnapshot, defaultLootSeed).map { "${assertionLabel(index)}: $it" }
         }
 
     private fun runOne(
@@ -236,7 +237,7 @@ object ManifestRunner {
             if (!assertion.element.isJsonObject) {
                 failures += "${assertionLabel(index)}: Assertion must be an object"
             } else {
-                failures += evaluateAssertion(assertion.element.asJsonObject, sandbox, diagnostics, beforeSnapshot).map { "${assertionLabel(index)}: $it" }
+                failures += evaluateAssertion(assertion.element.asJsonObject, sandbox, diagnostics, beforeSnapshot, options.seed).map { "${assertionLabel(index)}: $it" }
             }
         }
         if (failures.isNotEmpty() && options.snapshotOnFail) {
@@ -592,6 +593,7 @@ object ManifestRunner {
         sandbox: DatapackSandbox,
         diagnostics: List<ManifestDiagnostic> = emptyList(),
         beforeSnapshot: JsonObject? = null,
+        defaultLootSeed: Long = 0,
     ): List<String> {
         val failures = mutableListOf<String>()
         when {
@@ -782,7 +784,7 @@ object ManifestRunner {
                     ResourceLocation.parse(loot.requiredManifestString("table")),
                     ResourceLocation.parse(loot.manifestString("context") ?: "minecraft:empty"),
                     loot.manifestString("player")?.let { sandbox.world.requirePlayer(it) },
-                    loot.get("seed")?.asLong ?: 0,
+                    loot.get("seed")?.asLong ?: defaultLootSeed,
                 )
                 loot.get("count")?.let { if (result.items.size != it.asInt) failures += "loot count expected ${it.asInt} but was ${result.items.size}" }
                 loot.manifestString("item")?.let { expected ->

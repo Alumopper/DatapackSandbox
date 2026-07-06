@@ -1,11 +1,14 @@
 ﻿package moe.afox.dpsandbox.cli
 
 import com.google.gson.JsonParser
+import moe.afox.dpsandbox.core.ResourceLocation
+import moe.afox.dpsandbox.core.createSandbox
 import java.nio.file.Path
 import java.nio.file.Files
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
 
 class ManifestRunnerTest {
@@ -522,6 +525,43 @@ class ManifestRunnerTest {
               "packs": ["$pack"],
               "assertions": [
                 { "world": { "seed": 321 } }
+              ]
+            }
+            """.trimIndent(),
+        )
+
+        val result = ManifestRunner.run(manifest)
+
+        assertTrue(result.passed, result.messages.joinToString())
+    }
+
+    @Test
+    fun `manifest top-level seed is default for loot assertions`() {
+        val dir = Files.createTempDirectory("dps-manifest-loot-seed")
+        val pack = writeWeightedLootPack(dir.resolve("pack"))
+        val sandbox = createSandbox("26.2", listOf(pack))
+        fun itemFor(seed: Long): String =
+            sandbox.generateLoot(
+                ResourceLocation.parse("demo:choice"),
+                ResourceLocation.parse("minecraft:empty"),
+                seed = seed,
+            ).items.single().id.toString()
+
+        val defaultItem = itemFor(0)
+        val manifestSeed = (1L..200L).first { itemFor(it) != defaultItem }
+        val expectedItem = itemFor(manifestSeed)
+        assertNotEquals(defaultItem, expectedItem)
+
+        val manifest = dir.resolve("loot-seed.dps.json")
+        Files.writeString(
+            manifest,
+            """
+            {
+              "version": "26.2",
+              "seed": $manifestSeed,
+              "packs": ["${pack.toEscapedPath()}"],
+              "assertions": [
+                { "loot": { "table": "demo:choice", "context": "minecraft:empty", "item": "$expectedItem", "count": 1 } }
               ]
             }
             """.trimIndent(),
@@ -1376,6 +1416,40 @@ class ManifestRunnerTest {
         val tagRoot = root.resolve("data").resolve("minecraft").resolve("tags").resolve(functionDir)
         Files.createDirectories(tagRoot)
         Files.writeString(tagRoot.resolve("load.json"), """{"values":["demo:load"]}""")
+        return root
+    }
+
+    private fun writeWeightedLootPack(root: Path): Path {
+        Files.createDirectories(root)
+        Files.writeString(
+            root.resolve("pack.mcmeta"),
+            """
+            {
+              "pack": {
+                "pack_format": 107.1,
+                "description": "weighted loot seed test"
+              }
+            }
+            """.trimIndent(),
+        )
+        val lootRoot = root.resolve("data").resolve("demo").resolve("loot_table")
+        Files.createDirectories(lootRoot)
+        Files.writeString(
+            lootRoot.resolve("choice.json"),
+            """
+            {
+              "pools": [
+                {
+                  "rolls": 1,
+                  "entries": [
+                    { "type": "minecraft:item", "name": "minecraft:diamond", "weight": 1 },
+                    { "type": "minecraft:item", "name": "minecraft:emerald", "weight": 1 }
+                  ]
+                }
+              ]
+            }
+            """.trimIndent(),
+        )
         return root
     }
 
