@@ -112,7 +112,7 @@ class PredicateEngine(
             "inverted" -> !testElement(root.get("term") ?: root.get("predicate"), context)
             "reference" -> test(ResourceLocation.parse(root.requiredString("name")), context)
             "random_chance" -> context.random.nextDouble() < root.number("chance", 0.0)
-            "random_chance_with_enchanted_bonus" -> context.random.nextDouble() < root.number("unenchanted_chance", root.number("chance", 0.0))
+            "random_chance_with_enchanted_bonus", "random_chance_with_looting" -> testRandomChanceWithEnchantedBonus(root, context)
             "survives_explosion" -> true
             "time_check" -> testRange(context.world.gameTime, root.get("value") ?: root.get("period"))
             "weather_check" -> {
@@ -143,6 +143,88 @@ class PredicateEngine(
             else -> throw SandboxException(DiagnosticCode.UNSUPPORTED_FEATURE, "Predicate condition '$type' is not implemented")
         }
     }
+
+    private fun testRandomChanceWithEnchantedBonus(root: JsonObject, context: PredicateContext): Boolean {
+        val unenchantedChance = root.number("unenchanted_chance", root.number("chance", 0.0))
+        val level = predicateEnchantment(root)?.let { toolEnchantmentLevel(context.tool, it) } ?: 0
+        val chance = if (level <= 0) {
+            unenchantedChance
+        } else {
+            root.get("enchanted_chance")?.let { enchantmentLevelValue(it, level) }
+                ?: legacyEnchantedChance(root, unenchantedChance, level)
+        }
+        return context.random.nextDouble() < chance.coerceIn(0.0, 1.0)
+    }
+
+    private fun predicateEnchantment(root: JsonObject): ResourceLocation? =
+        root.string("enchantment")?.let { ResourceLocation.parse(it) }
+            ?: ResourceLocation.parse("minecraft:looting").takeIf {
+                root.get("looting_multiplier") != null || canonical(root.string("condition") ?: "") == "random_chance_with_looting"
+            }
+
+    private fun legacyEnchantedChance(root: JsonObject, unenchantedChance: Double, level: Int): Double {
+        val baseChance = root.number("chance", unenchantedChance)
+        val multiplier = root.numberOrNull("looting_multiplier")
+            ?: root.numberOrNull("enchanted_bonus_multiplier")
+            ?: root.numberOrNull("bonus_multiplier")
+            ?: root.numberOrNull("enchanted_bonus")
+            ?: return unenchantedChance
+        return baseChance + level * multiplier
+    }
+
+    private fun enchantmentLevelValue(element: JsonElement?, level: Int): Double {
+        if (element == null || element.isJsonNull) return 0.0
+        if (element.isJsonPrimitive) return element.asDouble
+        if (!element.isJsonObject) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Enchanted chance value must be a number or object")
+        }
+        val root = element.asJsonObject
+        return when (root.string("type")?.let(::canonical)) {
+            null -> root.get("value")?.let { enchantmentLevelValue(it, level) }
+                ?: root.numberOrNull("chance")
+                ?: root.numberOrNull("base")
+                ?: 0.0
+            "constant" -> root.number("value", 0.0)
+            "linear" -> root.number("base", 0.0) +
+                root.number("per_level_above_first", root.number("perLevelAboveFirst", 0.0)) * (level - 1).coerceAtLeast(0)
+            "clamped" -> {
+                val value = enchantmentLevelValue(root.get("value"), level)
+                value.coerceIn(root.number("min", Double.NEGATIVE_INFINITY), root.number("max", Double.POSITIVE_INFINITY))
+            }
+            "fraction" -> {
+                val denominator = enchantmentLevelValue(root.get("denominator"), level)
+                if (denominator == 0.0) 0.0 else enchantmentLevelValue(root.get("numerator"), level) / denominator
+            }
+            "levels_squared" -> level.toDouble() * level + root.number("added", 0.0)
+            "lookup" -> {
+                val values = root.getAsJsonArray("values")
+                val indexed = if (values != null && level > 0 && level <= values.size()) values[level - 1] else null
+                indexed?.let { enchantmentLevelValue(it, level) }
+                    ?: root.get("fallback")?.let { enchantmentLevelValue(it, level) }
+                    ?: 0.0
+            }
+            else -> throw SandboxException(DiagnosticCode.UNSUPPORTED_FEATURE, "Enchanted chance value type '${root.string("type")}' is not implemented")
+        }
+    }
+
+    private fun toolEnchantmentLevel(tool: ItemStack?, enchantment: ResourceLocation): Int {
+        val enchantments = tool?.components?.getAsJsonObject("minecraft:enchantments") ?: return 0
+        return enchantmentLevel(enchantments, enchantment)
+            ?: enchantments.getAsJsonObject("levels")?.let { enchantmentLevel(it, enchantment) }
+            ?: 0
+    }
+
+    private fun enchantmentLevel(enchantments: JsonObject, enchantment: ResourceLocation): Int? =
+        enchantmentLevelElement(enchantments.get(enchantment.toString()))
+            ?: enchantmentLevelElement(enchantments.get(enchantment.path))
+
+    private fun enchantmentLevelElement(element: JsonElement?): Int? =
+        when {
+            element == null || element.isJsonNull -> null
+            element.isJsonPrimitive -> element.asInt
+            element.isJsonObject -> element.asJsonObject.get("level")?.takeIf { it.isJsonPrimitive }?.asInt
+            else -> null
+        }
 
     private fun testEntityPredicate(entity: SandboxEntity?, predicate: JsonObject, context: PredicateContext): Boolean {
         val actual = requireContext(entity, "Entity predicate requires an entity context")
@@ -381,6 +463,9 @@ class PredicateEngine(
 
     private fun JsonObject.number(name: String, default: Double): Double =
         get(name)?.takeIf { it.isJsonPrimitive }?.asDouble ?: default
+
+    private fun JsonObject.numberOrNull(name: String): Double? =
+        get(name)?.takeIf { it.isJsonPrimitive }?.asDouble
 
     private fun JsonObject.optionalBoolean(name: String): Boolean? =
         get(name)?.takeIf { it.isJsonPrimitive }?.asBoolean

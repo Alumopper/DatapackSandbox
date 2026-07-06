@@ -90,7 +90,7 @@ this through the standalone jar smoke task.
 | `function` | `modeled` | mcfunction execution, trace source locations, and missing-reference checks |
 | `tag/function` | `modeled` | load/tick/function tag execution and replace semantics |
 | `loot_table` | `modeled` | deterministic loot generation for supported contexts and commands |
-| `predicate` | `modeled` | predicate command/API checks, advancement conditions, loot conditions, and item modifiers |
+| `predicate` | `modeled` | predicate command/API checks, advancement conditions, loot conditions, item modifiers, and enchantment-aware random chance |
 | `advancement` | `modeled` | player progress, criteria matching, rewards, output, and event trace |
 | `recipe` | `modeled` | resource index entries plus player recipe state for commands and rewards |
 | `item_modifier` | `modeled` | common item modifier functions applied by item modify |
@@ -321,7 +321,11 @@ overlay behavior, and can be inspected from API or REPL. Loot tables can expand
 item tag entries, including nested tags and optional values; `expand=false`
 emits the full tag and `expand=true` makes tag items selectable entries. Loot functions include
 common count/item/component/enchantment mutations, tool-driven `apply_bonus`, and
-`copy_components` from the active tool with `include`/`exclude` filters. `item modify entity`
+`copy_components` from the active tool with `include`/`exclude` filters. Loot
+conditions and predicates can read the active tool's `minecraft:enchantments`
+component for `random_chance_with_enchanted_bonus`, including flat and `levels`
+component forms, modern `enchanted_chance` level values, and legacy looting or
+bonus multipliers. `item modify entity`
 models common item modifier functions such as `set_components`,
 `set_custom_data`, `set_count`, `limit_count`, `set_item`, `discard`,
 `set_damage`, `set_name`, `set_lore`, `filtered`, `reference`, and `sequence`.
