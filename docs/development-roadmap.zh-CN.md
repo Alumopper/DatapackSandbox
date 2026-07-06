@@ -64,6 +64,7 @@
 - 扩展 `recipe`、`advancement`、`attribute`、`damage`、`effect`、`enchant`、`random`、`team`、`bossbar`、`worldborder` 的子命令覆盖。
   - `summon` 已记录结构化创建输出，便于命令生成器、manifest assertion 和随手测试确认实体类型、位置、维度、tag 与输入 NBT。
   - `teleport`/`tp` 已记录结构化移动输出，便于调试传送前后坐标、维度和旋转变化。
+  - `rotate` 已记录结构化前后旋转输出，便于调试 `execute rotated/facing`、局部坐标和传送旋转链路。
   - `setblock` 已记录结构化前后方块输出，便于调试方块状态、方块实体 NBT 和 `keep`/`replace` 等模式的实际效果。
   - `fill` 已记录结构化区域输出，便于调试填充体积、实际变化位置、目标方块和填充模式。
   - `clone` 已记录结构化复制输出，便于调试源区域、目标区域、复制数量、移动源清除和实际变化位置。

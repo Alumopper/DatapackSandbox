@@ -2288,10 +2288,41 @@ class DatapackSandbox(
         requireSize(tokens, 4, "rotate <targets> <yaw> <pitch>", location)
         val yaw = tokens[2].text.toDoubleOrNull() ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Invalid yaw '${tokens[2].text}'", location)
         val pitch = tokens[3].text.toDoubleOrNull() ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Invalid pitch '${tokens[3].text}'", location)
-        EntitySelectors.select(world, tokens[1].text, context, location).forEach {
-            it.yaw = yaw
-            it.pitch = pitch
+        val rotated = EntitySelectors.select(world, tokens[1].text, context, location).map { entity ->
+            val before = Rotation(entity.yaw, entity.pitch)
+            entity.yaw = yaw
+            entity.pitch = pitch
+            entity to before
         }
+        world.recordOutput(
+            "rotate",
+            "data",
+            targets = rotated.map { it.first.scoreHolder },
+            text = rotated.size.toString(),
+            payload = JsonObject().also { payload ->
+                payload.addProperty("count", rotated.size)
+                payload.addProperty("yaw", yaw)
+                payload.addProperty("pitch", pitch)
+                payload.add(
+                    "targets",
+                    JsonArray().also { targets ->
+                        rotated.forEach { (entity, before) ->
+                            targets.add(
+                                JsonObject().also { entry ->
+                                    entry.addProperty("target", entity.scoreHolder)
+                                    entry.addProperty("uuid", entity.uuid)
+                                    entry.addProperty("type", entity.type.toString())
+                                    entry.addProperty("beforeYaw", before.yaw)
+                                    entry.addProperty("beforePitch", before.pitch)
+                                    entry.addProperty("afterYaw", entity.yaw)
+                                    entry.addProperty("afterPitch", entity.pitch)
+                                },
+                            )
+                        }
+                    },
+                )
+            },
+        )
     }
 
     private fun executeItem(tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext) {

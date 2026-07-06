@@ -563,6 +563,17 @@ class CommandExpansionTest {
 
         assertEquals(40.0, anchor.yaw)
         assertEquals(3.0, anchor.pitch)
+        val rotateOutput = sandbox.world.outputs.single { it.command == "rotate" }
+        val rotatePayload = rotateOutput.payload?.asJsonObject ?: error("missing rotate payload")
+        val rotated = rotatePayload.getAsJsonArray("targets")[0].asJsonObject
+        assertEquals("1", rotateOutput.text)
+        assertEquals(listOf(anchor.uuid), rotateOutput.targets)
+        assertEquals(30.0, rotatePayload.get("yaw").asDouble)
+        assertEquals(5.0, rotatePayload.get("pitch").asDouble)
+        assertEquals(90.0, rotated.get("beforeYaw").asDouble)
+        assertEquals(15.0, rotated.get("beforePitch").asDouble)
+        assertEquals(30.0, rotated.get("afterYaw").asDouble)
+        assertEquals(5.0, rotated.get("afterPitch").asDouble)
     }
 
     @Test
