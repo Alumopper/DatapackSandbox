@@ -27,7 +27,7 @@
 - 为新增资源建立 typed model 或至少建立稳定的 raw JSON resource model，包含 resource id、文件路径、版本、资源类型和原始 JSON。
 - 增加资源索引能力，按 namespace、类型、id、来源 pack 和覆盖顺序查询；`resources --pack <path>` 已可导出实际加载索引，支持 type/id/namespace/source-pack/order/active/overridden 过滤和 JSON artifact。
 - 扩展 pack overlay 诊断：当后加载 pack 覆盖前一个资源时，可在 verbose/trace 中显示覆盖关系。
-- 增加资源格式校验：JSON 解析、必填字段、resource location、版本目录布局、`pack.mcmeta` 格式范围、标签 `replace` 语义。
+- 增加资源格式校验：JSON 解析、必填字段、resource location、版本目录布局、`pack.mcmeta` 格式范围、标签 `replace` 语义；function tag 和普通 tag 已对 `replace`、`required`、`values`、`id` 类型和 resource location 做带文件/版本的诊断。
 - 扩展 `inspect registry/resource` 或新增等价 CLI/REPL 命令，列出资源和来源。
 
 优先资源：

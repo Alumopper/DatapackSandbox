@@ -593,18 +593,23 @@ object DatapackLoader {
 
         return candidates.filter { it.exists() }.map { tagPath ->
             val json = try {
-                JsonParser.parseString(Files.readString(tagPath, StandardCharsets.UTF_8)).asJsonObject
+                val parsed = JsonParser.parseString(Files.readString(tagPath, StandardCharsets.UTF_8))
+                if (!parsed.isJsonObject) {
+                    throw IllegalArgumentException("Function tag must be a JSON object")
+                }
+                parsed.asJsonObject
             } catch (error: Exception) {
                 throw SandboxException(
                     code = DiagnosticCode.INPUT_FORMAT,
                     message = "Invalid function tag ${tagPath}: ${error.message}",
                     location = SourceLocation(file = tagPath.toString()),
+                    version = profile.id,
                     cause = error,
                 )
             }
             FunctionTagDefinition(
-                replace = json.get("replace")?.takeIf { it.isJsonPrimitive }?.asBoolean ?: false,
-                values = readFunctionTagValues(json, tagPath),
+                replace = json.optionalBoolean("replace", "Function tag", tagPath.toString(), profile) ?: false,
+                values = readFunctionTagValues(json, tagPath, profile),
             )
         }
     }
@@ -622,36 +627,38 @@ object DatapackLoader {
     ): List<ResourceLocation> =
         entries.filter { it.required || it.id in functions }.map { it.id }
 
-    private fun readFunctionTagValues(json: JsonObject, tagPath: Path): List<FunctionTagEntry> {
+    private fun readFunctionTagValues(json: JsonObject, tagPath: Path, profile: VersionProfile): List<FunctionTagEntry> {
         val values = json.get("values")
         if (values !is JsonArray) {
             throw SandboxException(
                 code = DiagnosticCode.INPUT_FORMAT,
                 message = "Function tag must contain a 'values' array",
                 location = SourceLocation(file = tagPath.toString()),
+                version = profile.id,
             )
         }
 
-        return values.map { entry ->
+        return values.mapIndexed { index, entry ->
             val id: String
             val required: Boolean
             when {
-                entry.isJsonPrimitive -> {
+                entry.isJsonPrimitive && entry.asJsonPrimitive.isString -> {
                     id = entry.asString
                     required = true
                 }
-                entry.isJsonObject && entry.asJsonObject.has("id") -> {
+                entry.isJsonObject -> {
                     val obj = entry.asJsonObject
-                    id = obj.get("id").asString
-                    required = obj.get("required")?.takeIf { it.isJsonPrimitive }?.asBoolean ?: true
+                    id = obj.requiredString("id", "Function tag values[$index]", tagPath.toString(), profile)
+                    required = obj.optionalBoolean("required", "Function tag values[$index]", tagPath.toString(), profile) ?: true
                 }
                 else -> throw SandboxException(
                     code = DiagnosticCode.INPUT_FORMAT,
-                    message = "Function tag entries must be strings or objects with an 'id'",
+                    message = "Function tag values[$index] must be a string or object",
                     location = SourceLocation(file = tagPath.toString()),
+                    version = profile.id,
                 )
             }
-            FunctionTagEntry(ResourceLocation.parse(id), required)
+            FunctionTagEntry(parseResourceLocation(id, "Function tag values[$index]", tagPath.toString(), profile), required)
         }
     }
 
@@ -757,7 +764,7 @@ object DatapackLoader {
         return TagDefinition(
             key = key,
             file = file,
-            replace = json.get("replace")?.takeIf { it.isJsonPrimitive }?.asBoolean ?: false,
+            replace = json.optionalBoolean("replace", "Tag '$key'", file, profile) ?: false,
             values = values.mapIndexed { index, entry -> parseTagValue(key, index, entry, file, profile) },
         )
     }
@@ -772,14 +779,8 @@ object DatapackLoader {
             }
             entry.isJsonObject -> {
                 val obj = entry.asJsonObject
-                id = obj.optionalString("id")
-                    ?: throw SandboxException(
-                        code = DiagnosticCode.INPUT_FORMAT,
-                        message = "Tag '$key' values[$index] object must contain string 'id'",
-                        location = SourceLocation(file = file),
-                        version = profile.id,
-                    )
-                required = obj.get("required")?.takeIf { it.isJsonPrimitive }?.asBoolean ?: true
+                id = obj.requiredString("id", "Tag '$key' values[$index]", file, profile)
+                required = obj.optionalBoolean("required", "Tag '$key' values[$index]", file, profile) ?: true
             }
             else -> throw SandboxException(
                 code = DiagnosticCode.INPUT_FORMAT,
@@ -790,7 +791,7 @@ object DatapackLoader {
         }
 
         val parsedId = id.removePrefix("#")
-        ResourceLocation.parse(parsedId)
+        parseResourceLocation(parsedId, "Tag '$key' values[$index]", file, profile)
         return TagValue(id, required)
     }
 
@@ -902,6 +903,45 @@ object DatapackLoader {
 
     private fun JsonObject.optionalString(name: String): String? =
         get(name)?.takeIf { it.isJsonPrimitive }?.asString
+
+    private fun JsonObject.requiredString(name: String, label: String, file: String, profile: VersionProfile): String {
+        val value = get(name)
+        if (value == null || !value.isJsonPrimitive || !value.asJsonPrimitive.isString) {
+            throw SandboxException(
+                code = DiagnosticCode.INPUT_FORMAT,
+                message = "$label object must contain string '$name'",
+                location = SourceLocation(file = file),
+                version = profile.id,
+            )
+        }
+        return value.asString
+    }
+
+    private fun JsonObject.optionalBoolean(name: String, label: String, file: String, profile: VersionProfile): Boolean? {
+        val value = get(name) ?: return null
+        if (!value.isJsonPrimitive || !value.asJsonPrimitive.isBoolean) {
+            throw SandboxException(
+                code = DiagnosticCode.INPUT_FORMAT,
+                message = "$label '$name' must be a boolean",
+                location = SourceLocation(file = file),
+                version = profile.id,
+            )
+        }
+        return value.asBoolean
+    }
+
+    private fun parseResourceLocation(value: String, label: String, file: String, profile: VersionProfile): ResourceLocation =
+        try {
+            ResourceLocation.parse(value)
+        } catch (error: Exception) {
+            throw SandboxException(
+                code = DiagnosticCode.INPUT_FORMAT,
+                message = "$label has invalid resource location '$value': ${error.message}",
+                location = SourceLocation(file = file),
+                version = profile.id,
+                cause = error,
+            )
+        }
 
     private fun JsonObject.arrayStrings(name: String): List<String> {
         val value = get(name) ?: return emptyList()

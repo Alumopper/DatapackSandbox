@@ -7,6 +7,7 @@ import java.util.zip.ZipOutputStream
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertFailsWith
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
@@ -197,6 +198,46 @@ class DatapackResourceIndexTest {
     }
 
     @Test
+    fun `function tag validation reports typed field errors with location and version`() {
+        val pack = writeFunctionTagPack(
+            name = "invalid-function-tag-required",
+            replace = false,
+            functionName = "present_load",
+            message = "present load",
+            valuesJson = """{ "id": "demo:present_load", "required": "no" }""",
+        )
+
+        val error = assertFailsWith<SandboxException> {
+            createSandbox("26.2", listOf(pack))
+        }
+
+        assertEquals(DiagnosticCode.INPUT_FORMAT, error.code)
+        assertEquals("26.2", error.version)
+        assertTrue(error.message.contains("Function tag values[0] 'required' must be a boolean"), error.render())
+        assertTrue(error.location?.file?.endsWith("load.json") == true, error.render())
+    }
+
+    @Test
+    fun `function tag validation reports invalid resource locations with location and version`() {
+        val pack = writeFunctionTagPack(
+            name = "invalid-function-tag-id",
+            replace = false,
+            functionName = "present_load",
+            message = "present load",
+            valuesJson = """{ "id": "Demo:present_load" }""",
+        )
+
+        val error = assertFailsWith<SandboxException> {
+            createSandbox("26.2", listOf(pack))
+        }
+
+        assertEquals(DiagnosticCode.INPUT_FORMAT, error.code)
+        assertEquals("26.2", error.version)
+        assertTrue(error.message.contains("Function tag values[0] has invalid resource location 'Demo:present_load'"), error.render())
+        assertTrue(error.location?.file?.endsWith("load.json") == true, error.render())
+    }
+
+    @Test
     fun `regular tag replace resets earlier values and records overlay`() {
         val first = writeTagPack("tag-first", replace = false, value = "minecraft:stick")
         val second = writeTagPack("tag-second", replace = true, value = "minecraft:diamond")
@@ -214,6 +255,28 @@ class DatapackResourceIndexTest {
         assertTrue(entries[0].overriddenBy?.contains("tag-second") == true, entries[0].toString())
         assertTrue(entries[1].active)
         assertTrue(entries[1].overrides?.contains("tag-first") == true, entries[1].toString())
+    }
+
+    @Test
+    fun `regular tag validation reports replace type errors with location and version`() {
+        val pack = writeRawTagPack(
+            name = "invalid-tag-replace",
+            body = """
+            {
+              "replace": "yes",
+              "values": ["minecraft:stick"]
+            }
+            """.trimIndent(),
+        )
+
+        val error = assertFailsWith<SandboxException> {
+            createSandbox("26.2", listOf(pack))
+        }
+
+        assertEquals(DiagnosticCode.INPUT_FORMAT, error.code)
+        assertEquals("26.2", error.version)
+        assertTrue(error.message.contains("Tag 'item/demo:replace_items' 'replace' must be a boolean"), error.render())
+        assertTrue(error.location?.file?.endsWith("replace_items.json") == true, error.render())
     }
 
     private fun writePack(
@@ -346,6 +409,25 @@ class DatapackResourceIndexTest {
             }
             """.trimIndent(),
         )
+        return root
+    }
+
+    private fun writeRawTagPack(name: String, body: String): Path {
+        val root = Files.createTempDirectory("dps-$name-pack")
+        Files.writeString(
+            root.resolve("pack.mcmeta"),
+            """
+            {
+              "pack": {
+                "pack_format": 107.1,
+                "description": "temporary $name pack"
+              }
+            }
+            """.trimIndent(),
+        )
+        val tagRoot = root.resolve("data").resolve("demo").resolve("tags").resolve("item")
+        Files.createDirectories(tagRoot)
+        Files.writeString(tagRoot.resolve("replace_items.json"), body)
         return root
     }
 
