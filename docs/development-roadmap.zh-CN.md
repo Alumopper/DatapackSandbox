@@ -149,6 +149,7 @@
   - `--trace`：记录每条命令、上下文、结果、错误、输出事件。
   - `--trace-file`：写出 JSONL，适合 CI artifact。
   - `--trace-filter`：按 command、function、selector、output、score/storage 变化过滤。
+  - quick-test `TraceExpectation` 已支持按输出数量、是否产生 snapshot diff、diff path、diff kind 和 diff 渲染文本匹配，便于定位命令副作用。
 - 增加 snapshot diff：
   - 对比执行前后 world、score、storage、player、entity、block、outputs。
   - manifest 失败时可显示最小差异，而不是只输出最终 snapshot。

@@ -21,6 +21,16 @@ data class TraceExpectation(
     val function: String? = null,
     /** Exact expected number of matching trace events, or null to require at least one. */
     val count: Int? = null,
+    /** Exact number of output events produced by the traced command. */
+    val outputs: Int? = null,
+    /** Whether the traced command produced at least one snapshot diff entry. */
+    val hasDiff: Boolean? = null,
+    /** Snapshot diff JSON Pointer path to match. */
+    val diffPath: String? = null,
+    /** Snapshot diff kind to match. */
+    val diffKind: SnapshotDiffKind? = null,
+    /** Substring that must appear in a rendered snapshot diff line. */
+    val diffContains: String? = null,
 ) {
     /**
      * Returns whether one [event] satisfies this expectation.
@@ -31,7 +41,10 @@ data class TraceExpectation(
             (contains == null || contains in event.command) &&
             (success == null || event.success == success) &&
             (fileContains == null || event.source?.file?.contains(fileContains) == true) &&
-            (function == null || event.source?.functionStack?.any { it.id.toString() == function } == true)
+            (function == null || event.source?.functionStack?.any { it.id.toString() == function } == true) &&
+            (outputs == null || event.outputs == outputs) &&
+            (hasDiff == null || event.snapshotDiffs.isNotEmpty() == hasDiff) &&
+            diffMatches(event)
 
     /**
      * Returns every trace event that satisfies this expectation.
@@ -66,7 +79,21 @@ data class TraceExpectation(
             success?.let { "success=$it" },
             fileContains?.let { "fileContains=$it" },
             function?.let { "function=$it" },
+            outputs?.let { "outputs=$it" },
+            hasDiff?.let { "hasDiff=$it" },
+            diffPath?.let { "diffPath=$it" },
+            diffKind?.let { "diffKind=$it" },
+            diffContains?.let { "diffContains=$it" },
         ).ifEmpty { listOf("<any trace>") }.joinToString(", ")
+
+    private fun diffMatches(event: CommandTraceEvent): Boolean {
+        if (diffPath == null && diffKind == null && diffContains == null) return true
+        return event.snapshotDiffs.any { diff ->
+            (diffPath == null || diff.path == diffPath) &&
+                (diffKind == null || diff.kind == diffKind) &&
+                (diffContains == null || diffContains in diff.render())
+        }
+    }
 
     private fun actualTraces(traces: List<CommandTraceEvent>): String {
         if (traces.isEmpty()) return "actual traces: <none>"
@@ -74,8 +101,9 @@ data class TraceExpectation(
             val status = if (trace.success) "OK" else "ERR"
             val source = trace.source?.file?.let { " file=$it" }.orEmpty()
             val line = trace.source?.line?.let { ":$it" }.orEmpty()
+            val stats = " commands=${trace.commandsExecuted} outputs=${trace.outputs} diffs=${trace.snapshotDiffs.size}"
             val error = trace.errorCode?.let { " error=$it" }.orEmpty()
-            "#${index + 1} [$status] root=${trace.root} command=${quote(trace.command.truncateForAssertion())}$source$line$error"
+            "#${index + 1} [$status] root=${trace.root} command=${quote(trace.command.truncateForAssertion())}$stats$source$line$error"
         }
         val suffix = if (traces.size > rendered.size) "; ... +${traces.size - rendered.size} more" else ""
         return "actual traces: ${rendered.joinToString("; ")}$suffix"

@@ -844,6 +844,11 @@ class SandboxQuickTestMatrix private constructor(
         fileContains: String? = null,
         function: String? = null,
         count: Int? = null,
+        outputs: Int? = null,
+        hasDiff: Boolean? = null,
+        diffPath: String? = null,
+        diffKind: SnapshotDiffKind? = null,
+        diffContains: String? = null,
     ): SandboxQuickTestMatrix =
         assertTrace(
             TraceExpectation(
@@ -854,6 +859,11 @@ class SandboxQuickTestMatrix private constructor(
                 fileContains = fileContains,
                 function = function,
                 count = count,
+                outputs = outputs,
+                hasDiff = hasDiff,
+                diffPath = diffPath,
+                diffKind = diffKind,
+                diffContains = diffContains,
             ),
         )
 
@@ -2167,6 +2177,11 @@ class SandboxQuickTest private constructor(
         fileContains: String? = null,
         function: String? = null,
         count: Int? = null,
+        outputs: Int? = null,
+        hasDiff: Boolean? = null,
+        diffPath: String? = null,
+        diffKind: SnapshotDiffKind? = null,
+        diffContains: String? = null,
     ): SandboxQuickTest =
         assertTrace(
             TraceExpectation(
@@ -2177,6 +2192,11 @@ class SandboxQuickTest private constructor(
                 fileContains = fileContains,
                 function = function,
                 count = count,
+                outputs = outputs,
+                hasDiff = hasDiff,
+                diffPath = diffPath,
+                diffKind = diffKind,
+                diffContains = diffContains,
             ),
         )
 
@@ -2275,6 +2295,11 @@ class SandboxQuickTest private constructor(
         success: Boolean? = null,
         fileContains: String? = null,
         function: String? = null,
+        outputs: Int? = null,
+        hasDiff: Boolean? = null,
+        diffPath: String? = null,
+        diffKind: SnapshotDiffKind? = null,
+        diffContains: String? = null,
     ): List<CommandTraceEvent> =
         matchingTraces(
             TraceExpectation(
@@ -2284,6 +2309,11 @@ class SandboxQuickTest private constructor(
                 success = success,
                 fileContains = fileContains,
                 function = function,
+                outputs = outputs,
+                hasDiff = hasDiff,
+                diffPath = diffPath,
+                diffKind = diffKind,
+                diffContains = diffContains,
             ),
         )
 

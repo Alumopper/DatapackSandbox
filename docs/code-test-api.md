@@ -395,7 +395,7 @@ class MyDatapackTest {
 | `assertAdvancementDone(player, id, expected)` | Assert advancement completion |
 | `assertOutputContains(text)` | Assert output event text |
 | `assertOutput(...)` | Assert command/channel/target/text/normalized text/count/order for output events |
-| `assertTrace(...)` | Assert command/root/source/success/count for trace events |
+| `assertTrace(...)` | Assert command/root/source/success/output count/diff path/diff kind/count for trace events |
 | `assertPlayerEventTrace(...)` | Assert player event trace player/type/success/advancement/criterion/count |
 | `assertSnapshotDiff(...)` | Assert before/after snapshot path/kind/rendered text/count |
 | `outputs()` | Return recorded output events |
@@ -430,6 +430,36 @@ val report = SandboxQuickTest.singleFunction(Path.of("scratch/output.mcfunction"
     .requirePassed()
 
 val tellrawEvents = report.outputs.filter { it.command == "tellraw" }
+```
+
+Structured command payloads can be matched by path:
+
+```kotlin
+SandboxQuickTest.singleFunctionText("tick query", "26.2")
+    .function()
+    .assertOutput(
+        OutputExpectation(
+            command = "tick query",
+            payloadPath = "rate",
+            payloadEquals = JsonPrimitive(20.0),
+        ),
+    )
+    .requirePassed()
+```
+
+Trace assertions can also match command side effects:
+
+```kotlin
+SandboxQuickTest.singleFunctionText("scoreboard players set #gen runs 1", "26.2")
+    .function()
+    .assertTrace(
+        command = "scoreboard players set #gen runs 1",
+        outputs = 0,
+        hasDiff = true,
+        diffPath = "/scores/runs/#gen",
+        diffKind = SnapshotDiffKind.ADDED,
+    )
+    .requirePassed()
 ```
 
 ## Keyboard/Mouse Input Tests

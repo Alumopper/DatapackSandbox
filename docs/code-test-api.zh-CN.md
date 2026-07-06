@@ -369,7 +369,7 @@ class MyDatapackTest {
 | `assertAdvancementDone(player, id, expected)` | 断言 advancement 是否完成。 |
 | `assertOutputContains(text)` | 断言输出事件包含文本。 |
 | `assertOutput(...)` | 按 command/channel/target/text/规范化文本/count/order 断言输出事件。 |
-| `assertTrace(...)` | 按 command/root/source/success/count 断言 trace 事件。 |
+| `assertTrace(...)` | 按 command/root/source/success/输出数量/diff path/diff kind/count 断言 trace 事件。 |
 | `assertPlayerEventTrace(...)` | 按 player/type/success/advancement/criterion/count 断言玩家事件 trace。 |
 | `assertSnapshotDiff(...)` | 按 before/after snapshot 的 path/kind/渲染文本/count 断言状态变化。 |
 | `outputs()` | 返回记录的输出事件。 |
@@ -405,6 +405,36 @@ val report = SandboxQuickTest.singleFunction(Path.of("scratch/output.mcfunction"
     .requirePassed()
 
 val tellrawEvents = report.outputs.filter { it.command == "tellraw" }
+```
+
+结构化命令 payload 可以按 path 匹配：
+
+```kotlin
+SandboxQuickTest.singleFunctionText("tick query", "26.2")
+    .function()
+    .assertOutput(
+        OutputExpectation(
+            command = "tick query",
+            payloadPath = "rate",
+            payloadEquals = JsonPrimitive(20.0),
+        ),
+    )
+    .requirePassed()
+```
+
+Trace 断言也可以直接匹配命令副作用：
+
+```kotlin
+SandboxQuickTest.singleFunctionText("scoreboard players set #gen runs 1", "26.2")
+    .function()
+    .assertTrace(
+        command = "scoreboard players set #gen runs 1",
+        outputs = 0,
+        hasDiff = true,
+        diffPath = "/scores/runs/#gen",
+        diffKind = SnapshotDiffKind.ADDED,
+    )
+    .requirePassed()
 ```
 
 ## 键盘/鼠标输入测试

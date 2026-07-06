@@ -500,18 +500,38 @@ class SandboxQuickTestTest {
             """
             say traced from quick test
             scoreboard objectives add traced dummy
+            scoreboard players set #trace traced 3
             """.trimIndent(),
             version = "26.2",
         )
             .function()
-            .assertTrace(root = "say", contains = "quick test", success = true)
-            .assertTrace(TraceExpectation(root = "scoreboard", count = 1))
+            .assertTrace(
+                root = "say",
+                contains = "quick test",
+                success = true,
+                outputs = 1,
+                hasDiff = true,
+                diffPath = "/outputs/0",
+                diffKind = SnapshotDiffKind.ADDED,
+            )
+            .assertTrace(TraceExpectation(root = "scoreboard", count = 2))
+            .assertTrace(
+                command = "scoreboard players set #trace traced 3",
+                outputs = 0,
+                hasDiff = true,
+                diffPath = "/scores/traced",
+                diffKind = SnapshotDiffKind.ADDED,
+                diffContains = "#trace",
+                count = 1,
+            )
 
         val traces = scenario.traces()
         val scoreboardTraces = scenario.matchingTraces(root = "scoreboard")
+        val scoreWriteTraces = scenario.matchingTraces(diffPath = "/scores/traced", hasDiff = true)
 
-        assertEquals(2, traces.size)
-        assertEquals(1, scoreboardTraces.size)
+        assertEquals(3, traces.size)
+        assertEquals(2, scoreboardTraces.size)
+        assertEquals(1, scoreWriteTraces.size)
         scenario.requirePassed()
     }
 
