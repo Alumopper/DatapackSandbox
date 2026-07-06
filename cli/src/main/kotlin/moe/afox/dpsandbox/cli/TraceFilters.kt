@@ -1,6 +1,7 @@
 package moe.afox.dpsandbox.cli
 
 import moe.afox.dpsandbox.core.CommandTraceEvent
+import moe.afox.dpsandbox.core.JsonPaths
 import moe.afox.dpsandbox.core.JsonValues
 import moe.afox.dpsandbox.core.OutputEvent
 
@@ -27,6 +28,8 @@ object TraceFilters {
             "success" -> value.toBooleanStrictOrNull()?.let { event.success == it } ?: false
             "outputs" -> outputCountMatches(event, value)
             "output" -> outputCountMatches(event, value) || event.outputEvents.any { outputMatches(it, value) }
+            "output-channel" -> event.outputEvents.any { it.channel == value }
+            "output-payload" -> event.outputEvents.any { outputPayloadMatches(it, value) }
             "diff", "path", "state" -> event.snapshotDiffs.any { value in it.path || value in it.render() }
             "score", "scores" -> event.snapshotDiffs.any { it.path.startsWith("/scores") && (value in it.path || value in it.render()) }
             "storage" -> event.snapshotDiffs.any { it.path.startsWith("/storage") && (value in it.path || value in it.render()) }
@@ -61,4 +64,30 @@ object TraceFilters {
             value == output.channel ||
             output.targets.any { value in it } ||
             output.payload?.let { value in JsonValues.render(it) } == true
+
+    private fun outputPayloadMatches(output: OutputEvent, value: String): Boolean {
+        val payload = output.payload?.takeIf { it.isJsonObject }?.asJsonObject ?: return false
+        val splitAt = value.indexOf('=')
+        if (splitAt < 0) {
+            return try {
+                JsonPaths.exists(payload, value.trim())
+            } catch (_: Exception) {
+                false
+            }
+        }
+        val path = value.substring(0, splitAt).trim()
+        val expectedText = value.substring(splitAt + 1).trim()
+        if (path.isEmpty() || expectedText.isEmpty()) return false
+        val expected = try {
+            JsonValues.parse(expectedText)
+        } catch (_: Exception) {
+            return false
+        }
+        val actual = try {
+            JsonPaths.get(payload, path)
+        } catch (_: Exception) {
+            return false
+        }
+        return actual == expected
+    }
 }

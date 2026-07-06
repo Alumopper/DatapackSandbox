@@ -101,10 +101,11 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar run --pack ./my_pack --functio
 ```
 
 Use `--trace-filter root=scoreboard`, `--trace-filter score=#clock`,
-`--trace-filter output=generated ok`, or `--trace-filter selector=Steve` to keep
-only the relevant trace events in both console output and JSONL files. Trace
-entries include per-command `outputEvents` and `snapshotDiffs`, so filters can
-target output text, output targets, state paths, and command text.
+`--trace-filter output=generated ok`, `--trace-filter output-payload=id=demo:ruin`,
+or `--trace-filter selector=Steve` to keep only the relevant trace events in both
+console output and JSONL files. Trace entries include per-command `outputEvents`
+and `snapshotDiffs`, so filters can target output text, structured output
+payloads, output targets, state paths, and command text.
 
 To inspect state changes before and after a run, print a snapshot diff:
 

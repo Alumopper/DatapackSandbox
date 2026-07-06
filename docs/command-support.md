@@ -167,7 +167,7 @@ These are tooling commands, not vanilla commands:
 | `rerun last` | Re-execute the last tracked REPL command. |
 | `reset world` | Replace the current REPL world with a fresh sparse world. |
 | CLI `loot --table <id> --context <context>` | Generate a loot table directly. |
-| CLI `run --trace --trace-filter <filter>` | Print or write only matching trace events; filters support `root=`, `command=`, `contains=`, `function=`, `file=`, `selector=`/`target=`, `success=`, `output=` text, `outputs=` count/boolean, `diff=`, `path=`, `score=`, and `storage=`. Trace JSONL entries include per-command output events and snapshot diffs for state changed by that command. |
+| CLI `run --trace --trace-filter <filter>` | Print or write only matching trace events; filters support `root=`, `command=`, `contains=`, `function=`, `file=`, `selector=`/`target=`, `success=`, `output=` text, `outputs=` count/boolean, `output-channel=`, `output-payload=<path>[=<json>]`, `diff=`, `path=`, `score=`, and `storage=`. Trace JSONL entries include per-command output events and snapshot diffs for state changed by that command. |
 | CLI `run --outputs-file <file>` | Write observable output events as JSONL for CI artifacts or generated-command regression tests. |
 | CLI `run --report-file <file>` | Write a combined JSON report with pass/fail status, assertion failures, outputs, traces, event traces, the final snapshot, snapshot diffs, and resource summary details. |
 | CLI `run --resources` | Print deterministic resource counts, overlay diagnostics, and missing direct resource references for quick pack checks. |

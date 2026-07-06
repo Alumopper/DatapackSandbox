@@ -893,6 +893,39 @@ class RunCommandTest {
     }
 
     @Test
+    fun `run filters traces by structured output payloads`() {
+        val traceFile = Files.createTempFile("dps-cli-output-payload-filtered-trace", ".jsonl")
+
+        val output = captureStdout {
+            main(
+                arrayOf(
+                    "run",
+                    "--version",
+                    "26.2",
+                    "--mcfunction-text",
+                    "say hidden payload trace\nplace structure demo:ruin 1 64 2\nscoreboard objectives add runs dummy",
+                    "--trace",
+                    "--trace-filter",
+                    "output-channel=worldgen",
+                    "--trace-filter",
+                    "output-payload=id=demo:ruin",
+                    "--trace-file",
+                    traceFile.toString(),
+                ),
+            )
+        }
+
+        assertTrue("trace OK place structure demo:ruin 1 64 2" in output, output)
+        assertFalse("trace OK say hidden payload trace" in output, output)
+        assertFalse("trace OK scoreboard objectives add runs dummy" in output, output)
+        val traceJson = Files.readString(traceFile)
+        assertTrue("\"channel\": \"worldgen\"" in traceJson, traceJson)
+        assertTrue("\"id\": \"demo:ruin\"" in traceJson, traceJson)
+        assertFalse("\"root\": \"say\"" in traceJson, traceJson)
+        assertFalse("\"root\": \"scoreboard\"" in traceJson, traceJson)
+    }
+
+    @Test
     fun `run inline assertions can check snapshot diffs`() {
         val output = captureStdout {
             main(
