@@ -112,6 +112,7 @@ class CommandExpansionTest {
         assertEquals("tagged", item.components.get("demo:tag").asString)
         assertEquals("Marked Stick", item.components.getAsJsonObject("minecraft:custom_name").get("text").asString)
         assertEquals("debuggable", item.components.getAsJsonArray("minecraft:lore")[0].asJsonObject.get("text").asString)
+        assertEquals(3.0, item.components.get("minecraft:damage").asDouble)
     }
 
     @Test
@@ -596,6 +597,10 @@ class CommandExpansionTest {
               {
                 "function": "minecraft:set_count",
                 "count": 2
+              },
+              {
+                "function": "minecraft:set_damage",
+                "damage": 3
               },
               {
                 "function": "minecraft:set_name",

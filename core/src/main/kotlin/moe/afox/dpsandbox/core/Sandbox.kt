@@ -2011,6 +2011,7 @@ class DatapackSandbox(
                     JsonPaths.merge(stack.nbt, null, parsed)
                 }
                 "set_count" -> stack = stack.copy(count = itemModifierCount(function.get("count"), stack.count).coerceAtLeast(0))
+                "set_damage" -> stack.components.addProperty("minecraft:damage", itemModifierNumber(function.get("damage"), 0.0))
                 "set_name" -> stack.components.add("minecraft:custom_name", itemModifierText(function, "name", type, location))
                 "set_lore" -> stack.components.add("minecraft:lore", itemModifierLore(function, location))
                 else -> unsupportedFeature("Item modifier function '$type' is not implemented", profile.id, location)
@@ -2051,6 +2052,14 @@ class DatapackSandbox(
             element == null || element.isJsonNull -> fallback
             element.isJsonPrimitive && element.asJsonPrimitive.isNumber -> element.asInt
             element.isJsonObject -> element.asJsonObject.get("min")?.asInt ?: element.asJsonObject.get("base")?.asInt ?: fallback
+            else -> fallback
+        }
+
+    private fun itemModifierNumber(element: JsonElement?, fallback: Double): Double =
+        when {
+            element == null || element.isJsonNull -> fallback
+            element.isJsonPrimitive && element.asJsonPrimitive.isNumber -> element.asDouble
+            element.isJsonObject -> element.asJsonObject.get("min")?.asDouble ?: element.asJsonObject.get("base")?.asDouble ?: fallback
             else -> fallback
         }
 
