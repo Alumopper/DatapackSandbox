@@ -152,10 +152,23 @@ data class OutputExpectation(
     private fun actualOutputs(outputs: List<OutputEvent>): String {
         if (outputs.isEmpty()) return "actual outputs: <none>"
         val rendered = outputs.take(5).mapIndexed { index, output ->
-            "#${index + 1} command=${output.command} channel=${output.channel} targets=${output.targets.sorted()} text=${quote(output.text.truncateForAssertion())}"
+            "#${index + 1} command=${output.command} channel=${output.channel} targets=${output.targets.sorted()} text=${quote(output.text.truncateForAssertion())}${payloadSummary(output)}"
         }
         val suffix = if (outputs.size > rendered.size) "; ... +${outputs.size - rendered.size} more" else ""
         return "actual outputs: ${rendered.joinToString("; ")}$suffix"
+    }
+
+    private fun payloadSummary(output: OutputEvent): String {
+        val payload = output.payload ?: return ""
+        if (payloadPath != null) {
+            if (!payload.isJsonObject) return " payload.$payloadPath=<non-object>"
+            val actual = JsonPaths.get(payload.asJsonObject, payloadPath)
+            return " payload.$payloadPath=${actual?.let(JsonValues::render)?.truncateForAssertion() ?: "<missing>"}"
+        }
+        if (payloadEquals != null) {
+            return " payload=${JsonValues.render(payload).truncateForAssertion()}"
+        }
+        return ""
     }
 
     private fun String.truncateForAssertion(): String =

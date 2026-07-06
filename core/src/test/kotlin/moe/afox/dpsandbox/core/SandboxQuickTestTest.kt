@@ -505,6 +505,26 @@ class SandboxQuickTestTest {
     }
 
     @Test
+    fun `payload assertion failures include actual payload candidates`() {
+        val error = assertFailsWith<SandboxQuickTestAssertionError> {
+            SandboxQuickTest.singleFunctionText("place structure demo:ruin 1 64 2", version = "26.2")
+                .function()
+                .assertOutput(
+                    command = "place structure",
+                    channel = "worldgen",
+                    payloadPath = "id",
+                    payloadEquals = JsonPrimitive("demo:other"),
+                )
+                .requirePassed()
+        }
+        val message = error.message.orEmpty()
+
+        assertTrue("actual outputs:" in message, message)
+        assertTrue("channel=worldgen" in message, message)
+        assertTrue("payload.id=\"demo:ruin\"" in message, message)
+    }
+
+    @Test
     fun `quick output helpers support normalized text matching`() {
         val scenario = SandboxQuickTest.singleFunctionText("tellraw Steve {\"text\":\"generated     output\"}", version = "26.2")
             .function()

@@ -478,6 +478,9 @@ SandboxQuickTest.singleFunctionText("place structure demo:ruin 1 64 2", "26.2")
     .requirePassed()
 ```
 
+When a payload assertion fails, the failure message includes the candidate
+output's actual payload value at that path.
+
 Trace assertions can also match command side effects:
 
 ```kotlin

@@ -450,6 +450,8 @@ SandboxQuickTest.singleFunctionText("place structure demo:ruin 1 64 2", "26.2")
     .requirePassed()
 ```
 
+payload 断言失败时，失败消息会带上候选输出在该 path 上的实际 payload 值。
+
 Trace 断言也可以直接匹配命令副作用：
 
 ```kotlin
