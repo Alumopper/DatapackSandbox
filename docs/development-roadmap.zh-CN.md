@@ -64,6 +64,7 @@
   - `summon` 已记录结构化创建输出，便于命令生成器、manifest assertion 和随手测试确认实体类型、位置、维度、tag 与输入 NBT。
   - `teleport`/`tp` 已记录结构化移动输出，便于调试传送前后坐标、维度和旋转变化。
   - `setblock` 已记录结构化前后方块输出，便于调试方块状态、方块实体 NBT 和 `keep`/`replace` 等模式的实际效果。
+  - `fill` 已记录结构化区域输出，便于调试填充体积、实际变化位置、目标方块和填充模式。
   - `damage` 已记录结构化生命值变化输出，便于 report/assertion 调试。
   - `kill` 已记录结构化目标输出，便于确认选择器命中、实体移除和 advancement 触发结果。
   - `enchant` 已覆盖玩家选中物品和非玩家实体主手装备的附魔组件写入，并记录结构化输出；`effect give/clear` 已记录结构化输出，便于 report/assertion 调试。

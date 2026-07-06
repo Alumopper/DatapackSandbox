@@ -3098,8 +3098,10 @@ class DatapackSandbox(
         if (volume > 32768) {
             throw SandboxException(DiagnosticCode.COMMAND_ERROR, "Fill volume $volume exceeds sandbox limit 32768", location)
         }
+        val changed = mutableListOf<BlockPos>()
         for (x in xs) for (y in ys) for (z in zs) {
             val pos = BlockPos(x, y, z)
+            val before = world.block(pos)?.copyForClone()
             val boundary = x == xs.first || x == xs.last || y == ys.first || y == ys.last || z == zs.first || z == zs.last
             when {
                 mode == "keep" && world.block(pos) != null -> Unit
@@ -3107,8 +3109,53 @@ class DatapackSandbox(
                 mode == "hollow" && !boundary -> world.setBlock(pos, null)
                 else -> world.setBlock(pos, block.toBlock(pos, profile, location))
             }
+            val after = world.block(pos)?.copyForClone()
+            if (!sameBlock(before, after)) changed += pos
         }
+        recordFillOutput(from, to, block, mode, volume, changed)
     }
+
+    private fun recordFillOutput(
+        from: BlockPos,
+        to: BlockPos,
+        block: BlockArgument,
+        mode: String,
+        volume: Int,
+        changed: List<BlockPos>,
+    ) {
+        world.recordOutput(
+            "fill",
+            "data",
+            targets = changed.map { it.toString() },
+            text = changed.size.toString(),
+            payload = JsonObject().also { payload ->
+                payload.addProperty("mode", mode)
+                payload.addProperty("volume", volume)
+                payload.addProperty("changed", changed.size)
+                payload.add("from", blockPosOutput(from))
+                payload.add("to", blockPosOutput(to))
+                payload.add("block", blockArgumentOutput(block))
+                payload.add(
+                    "positions",
+                    JsonArray().also { positions ->
+                        changed.forEach { pos -> positions.add(pos.toString()) }
+                    },
+                )
+            },
+        )
+    }
+
+    private fun blockArgumentOutput(block: BlockArgument): JsonObject =
+        JsonObject().also { json ->
+            json.addProperty("id", block.id.toString())
+            json.add(
+                "properties",
+                JsonObject().also { properties ->
+                    block.properties.toSortedMap().forEach { (key, value) -> properties.addProperty(key, value) }
+                },
+            )
+            json.add("nbt", block.nbt.deepCopy())
+        }
 
     private fun executeTellraw(command: String, tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext) {
         requireSize(tokens, 3, "tellraw <targets> <message>", location)

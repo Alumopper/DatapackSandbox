@@ -713,6 +713,15 @@ class CommandExpansionTest {
         sandbox.executeCommand("""execute positioned 10 64 10 rotated 0 0 run fill ^ ^ ^1 ^1 ^ ^1 minecraft:dirt""")
         assertEquals(ResourceLocation.parse("minecraft:dirt"), sandbox.world.requireBlock(BlockPos(10, 64, 11)).id)
         assertEquals(ResourceLocation.parse("minecraft:dirt"), sandbox.world.requireBlock(BlockPos(11, 64, 11)).id)
+        val fillOutput = sandbox.world.outputs.single { it.command == "fill" }
+        val fillPayload = fillOutput.payload?.asJsonObject ?: error("missing fill payload")
+        assertEquals("2", fillOutput.text)
+        assertEquals(listOf("10 64 11", "11 64 11"), fillOutput.targets)
+        assertEquals(2, fillPayload.get("volume").asInt)
+        assertEquals(2, fillPayload.get("changed").asInt)
+        assertEquals("replace", fillPayload.get("mode").asString)
+        assertEquals("minecraft:dirt", fillPayload.getAsJsonObject("block").get("id").asString)
+        assertEquals("10 64 11", fillPayload.getAsJsonArray("positions")[0].asString)
 
         sandbox.executeCommand("""execute positioned 10 64 10 rotated 0 0 if block ^ ^ ^1 minecraft:dirt run scoreboard players add #local checks 1""")
         sandbox.executeCommand("""execute positioned 10 64 10 rotated 0 0 unless block ^ ^ ^1 minecraft:stone run scoreboard players add #local checks 1""")
