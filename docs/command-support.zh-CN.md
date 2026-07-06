@@ -40,7 +40,7 @@
 | `fillbiome` | 部分支持 | 为显式方块范围记录 biome 覆盖；不模拟区块 biome 容器或生成效果。 |
 | `forceload` | 部分支持 | `add`、`remove`、`remove all`、`query`、`query <pos>`；记录强加载 chunk 坐标，并为 query 记录结构化输出。 |
 | `function` | 支持 | `function <id>`。 |
-| `gamemode` | 支持 | `gamemode <mode> [targets]`；更新沙盒玩家游戏模式。 |
+| `gamemode` | 支持 | `gamemode <mode> [targets]`；更新沙盒玩家游戏模式，并记录结构化前后输出。 |
 | `gamerule` | 部分支持 | 存储任意 gamerule 字符串值，并为查询记录结构化输出；不执行具体游戏规则副作用。 |
 | `give` | 部分支持 | 向玩家背包添加物品，记录可用于 report/assertion 的结构化输出，并触发 inventory advancement 事件；item argument 支持沙盒 JSON/SNBT-lite NBT 和 components payload。 |
 | `help` | 部分支持 | 输出命令根节点和基础沙盒帮助。 |

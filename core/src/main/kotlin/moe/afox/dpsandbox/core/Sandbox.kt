@@ -882,7 +882,34 @@ class DatapackSandbox(
         val mode = normalizeGameMode(tokens[1].text, location)
         val targets = tokens.getOrNull(2)?.text?.let { resolvePlayers(it, location, context) }
             ?: listOf(context.entity as? SandboxPlayer ?: throw SandboxException(DiagnosticCode.COMMAND_ERROR, "gamemode without targets requires a player execution context", location))
+        val changes = targets.map { player -> player to player.gameMode }
         targets.forEach { it.gameMode = mode }
+        world.recordOutput(
+            "gamemode",
+            "data",
+            targets = targets.map { it.name },
+            text = targets.size.toString(),
+            payload = JsonObject().also { payload ->
+                payload.addProperty("mode", mode)
+                payload.addProperty("count", targets.size)
+                payload.add(
+                    "players",
+                    JsonArray().also { players ->
+                        changes.forEach { (player, before) ->
+                            players.add(
+                                JsonObject().also { entry ->
+                                    entry.addProperty("player", player.name)
+                                    entry.addProperty("uuid", player.uuid)
+                                    entry.addProperty("before", before)
+                                    entry.addProperty("after", player.gameMode)
+                                    entry.addProperty("changed", before != player.gameMode)
+                                },
+                            )
+                        }
+                    },
+                )
+            },
+        )
     }
 
     private fun executeAttribute(tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext) {

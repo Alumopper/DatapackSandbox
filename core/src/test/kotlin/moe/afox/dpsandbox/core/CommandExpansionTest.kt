@@ -33,6 +33,15 @@ class CommandExpansionTest {
         assertEquals("creative", snapshot.get("defaultGameMode").asString)
         assertEquals("adventure", snapshot.getAsJsonObject("players").getAsJsonObject("Steve").get("gameMode").asString)
         assertEquals("creative", snapshot.getAsJsonObject("players").getAsJsonObject("Builder").get("gameMode").asString)
+        val gamemodeOutput = sandbox.world.outputs.single { it.command == "gamemode" }
+        val gamemodePayload = gamemodeOutput.payload?.asJsonObject ?: error("missing gamemode payload")
+        val gamemodePlayer = gamemodePayload.getAsJsonArray("players")[0].asJsonObject
+        assertEquals("1", gamemodeOutput.text)
+        assertEquals(listOf("Steve"), gamemodeOutput.targets)
+        assertEquals("adventure", gamemodePayload.get("mode").asString)
+        assertEquals("survival", gamemodePlayer.get("before").asString)
+        assertEquals("adventure", gamemodePlayer.get("after").asString)
+        assertEquals(true, gamemodePlayer.get("changed").asBoolean)
         val difficultyOutput = sandbox.world.outputs.single { it.command == "difficulty" }
         val difficultyPayload = difficultyOutput.payload?.asJsonObject ?: error("missing difficulty payload")
         assertEquals("hard", difficultyOutput.text)
