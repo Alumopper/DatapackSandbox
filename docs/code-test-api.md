@@ -243,6 +243,8 @@ SandboxQuickTest.create(
         dimension = "minecraft:the_nether",
         health = 8.0,
         vehicle = "00000000-0000-0000-0000-000000000102",
+        nbtPath = "Health",
+        nbtEquals = "8.0",
     )
     .assertEntity(
         type = "minecraft:cow",
@@ -366,7 +368,7 @@ class MyDatapackTest {
 | `assertPredicate(id, expected, playerName)` | Assert a loaded predicate result |
 | `assertLoot(table, context, playerName, seed, count, item)` | Assert deterministic loot generation |
 | `assertBlock(x, y, z, id, exists, nbtPath, nbtEquals, nbtExists)` | Assert a sparse-world block |
-| `assertEntity(type, tag, uuid, position, exists, count, dimension, health, vehicle, passenger, passengerCount)` | Assert matching entity existence or count |
+| `assertEntity(type, tag, uuid, position, exists, count, dimension, health, vehicle, passenger, passengerCount, nbtPath, nbtEquals, nbtExists)` | Assert matching entity existence, count, and full-NBT path filters |
 | `assertEntityEquipment(slot, type, tag, uuid, position, id, count, exists, minCount, maxCount, componentsPath, componentsEquals, componentsExists, nbtPath, nbtEquals, nbtExists, dimension)` | Assert non-player entity equipment |
 | `assertEntityEffect(effect, type, tag, uuid, position, exists, durationTicks, amplifier, hideParticles, dimension)` | Assert a non-player entity active effect |
 | `assertEntityAttribute(attribute, type, tag, uuid, position, exists, value, min, max, dimension)` | Assert a non-player entity attribute |

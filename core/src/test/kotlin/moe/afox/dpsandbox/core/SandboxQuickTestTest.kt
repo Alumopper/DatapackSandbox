@@ -662,6 +662,8 @@ class SandboxQuickTestTest {
                 dimension = "minecraft:the_nether",
                 health = 8.0,
                 vehicle = vehicleUuid,
+                nbtPath = "Health",
+                nbtEquals = "8.0",
             )
             .assertEntity(type = "minecraft:cow", tag = "fixture_vehicle", uuid = vehicleUuid, passenger = riderUuid, passengerCount = 1)
             .assertEntityEquipment(

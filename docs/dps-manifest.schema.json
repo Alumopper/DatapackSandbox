@@ -620,6 +620,7 @@
         "vehicle": { "type": "string" },
         "passenger": { "type": "string" },
         "passengerCount": { "type": "integer", "minimum": 0 },
+        "nbt": { "$ref": "#/$defs/pathExpectation" },
         "exists": { "type": "boolean" },
         "count": { "type": "integer", "minimum": 0 },
         "equipment": { "$ref": "#/$defs/entityEquipmentAssertion" },

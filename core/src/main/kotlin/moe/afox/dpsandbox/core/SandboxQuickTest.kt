@@ -456,6 +456,9 @@ class SandboxQuickTestMatrix private constructor(
         vehicle: String? = null,
         passenger: String? = null,
         passengerCount: Int? = null,
+        nbtPath: String? = null,
+        nbtEquals: String? = null,
+        nbtExists: Boolean? = null,
     ): SandboxQuickTestMatrix = apply {
         scenarios.values.forEach {
             it.assertEntity(
@@ -470,6 +473,9 @@ class SandboxQuickTestMatrix private constructor(
                 vehicle = vehicle,
                 passenger = passenger,
                 passengerCount = passengerCount,
+                nbtPath = nbtPath,
+                nbtEquals = nbtEquals,
+                nbtExists = nbtExists,
             )
         }
     }
@@ -1557,6 +1563,9 @@ class SandboxQuickTest private constructor(
         vehicle: String? = null,
         passenger: String? = null,
         passengerCount: Int? = null,
+        nbtPath: String? = null,
+        nbtEquals: String? = null,
+        nbtExists: Boolean? = null,
     ): SandboxQuickTest = apply {
         val expectedType = type?.let(ResourceLocation::parse)
         val expectedDimension = dimension?.let(ResourceLocation::parse)
@@ -1569,9 +1578,23 @@ class SandboxQuickTest private constructor(
                 (health == null || entityHealth(entity) == health) &&
                 (vehicle == null || entity.vehicle == vehicle) &&
                 (passenger == null || passenger in entity.passengers) &&
-                (passengerCount == null || entity.passengers.size == passengerCount)
+                (passengerCount == null || entity.passengers.size == passengerCount) &&
+                entityNbtMatches(entity, nbtPath, nbtEquals, nbtExists)
         }
-        val description = describeEntityExpectation(type, tag, uuid, position, dimension, health, vehicle, passenger, passengerCount)
+        val description = describeEntityExpectation(
+            type = type,
+            tag = tag,
+            uuid = uuid,
+            position = position,
+            dimension = dimension,
+            health = health,
+            vehicle = vehicle,
+            passenger = passenger,
+            passengerCount = passengerCount,
+            nbtPath = nbtPath,
+            nbtEquals = nbtEquals,
+            nbtExists = nbtExists,
+        )
         if (count != null) {
             if (matches.size != count) failures += "entity expected $count match(es) but found ${matches.size}: $description"
             return@apply
@@ -2281,6 +2304,9 @@ class SandboxQuickTest private constructor(
     private fun entityHealth(entity: SandboxEntity): Double? =
         entity.fullNbt(sandbox.profile).get("Health")?.takeIf { it.isJsonPrimitive }?.asDouble
 
+    private fun entityNbtMatches(entity: SandboxEntity, path: String?, equalsJson: String?, exists: Boolean?): Boolean =
+        jsonPathMatches(entity.fullNbt(sandbox.profile), path, equalsJson, exists)
+
     private fun describeEntityExpectation(
         type: String?,
         tag: String?,
@@ -2291,6 +2317,9 @@ class SandboxQuickTest private constructor(
         vehicle: String? = null,
         passenger: String? = null,
         passengerCount: Int? = null,
+        nbtPath: String? = null,
+        nbtEquals: String? = null,
+        nbtExists: Boolean? = null,
     ): String =
         listOfNotNull(
             type?.let { "type=$it" },
@@ -2302,6 +2331,9 @@ class SandboxQuickTest private constructor(
             vehicle?.let { "vehicle=$it" },
             passenger?.let { "passenger=$it" },
             passengerCount?.let { "passengerCount=$it" },
+            nbtPath?.let { "nbtPath=$it" },
+            nbtEquals?.let { "nbtEquals=$it" },
+            nbtExists?.let { "nbtExists=$it" },
         ).ifEmpty { listOf("<any entity>") }.joinToString(", ")
 
     private fun describeSnapshotDiffExpectation(path: String?, kind: SnapshotDiffKind?, contains: String?): String =

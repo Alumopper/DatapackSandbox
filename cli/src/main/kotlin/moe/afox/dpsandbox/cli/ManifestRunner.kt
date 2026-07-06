@@ -1199,6 +1199,7 @@ object ManifestRunner {
         val expectedVehicle = entity.manifestString("vehicle")
         val expectedPassenger = entity.manifestString("passenger")
         val expectedPassengerCount = entity.get("passengerCount")?.asInt
+        val expectedNbt = entity.getAsJsonObject("nbt")
         return sandbox.world.entities.filter { sandboxEntity ->
             (expectedType == null || sandboxEntity.type == expectedType) &&
                 (expectedTag == null || expectedTag in sandboxEntity.tags) &&
@@ -1208,12 +1209,16 @@ object ManifestRunner {
                 (expectedHealth == null || manifestEntityHealth(sandboxEntity, sandbox) == expectedHealth) &&
                 (expectedVehicle == null || sandboxEntity.vehicle == expectedVehicle) &&
                 (expectedPassenger == null || expectedPassenger in sandboxEntity.passengers) &&
-                (expectedPassengerCount == null || sandboxEntity.passengers.size == expectedPassengerCount)
+                (expectedPassengerCount == null || sandboxEntity.passengers.size == expectedPassengerCount) &&
+                entityNbtMatches(sandboxEntity, sandbox, expectedNbt)
         }
     }
 
     private fun manifestEntityHealth(entity: SandboxEntity, sandbox: DatapackSandbox): Double? =
         entity.fullNbt(sandbox.profile).get("Health")?.takeIf { it.isJsonPrimitive }?.asDouble
+
+    private fun entityNbtMatches(entity: SandboxEntity, sandbox: DatapackSandbox, expectation: JsonObject?): Boolean =
+        itemPathMatches(entity.fullNbt(sandbox.profile), expectation)
 
     private fun evaluateEntityEquipmentAssertion(equipment: JsonObject, entities: List<SandboxEntity>, entity: JsonObject): List<String> {
         val slot = equipment.requiredManifestString("slot")
@@ -1353,7 +1358,15 @@ object ManifestRunner {
             entity.manifestString("vehicle")?.let { "vehicle=$it" },
             entity.manifestString("passenger")?.let { "passenger=$it" },
             entity.get("passengerCount")?.let { "passengerCount=${it.asInt}" },
+            entity.getAsJsonObject("nbt")?.let { describePathExpectation("nbt", it) },
         ).ifEmpty { listOf("<any entity>") }.joinToString(", ")
+
+    private fun describePathExpectation(label: String, expectation: JsonObject): String =
+        listOfNotNull(
+            expectation.manifestString("path")?.let { "$label.path=$it" },
+            expectation.get("equals")?.let { "$label.equals=${JsonValues.render(it)}" },
+            expectation.get("exists")?.let { "$label.exists=${it.asBoolean}" },
+        ).joinToString(", ")
 
     private fun describeEntityCountExpectation(entity: JsonObject): String =
         listOfNotNull(

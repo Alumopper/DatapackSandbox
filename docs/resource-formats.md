@@ -164,7 +164,7 @@ path, for example `assertion 1 (/assertions/0): ...`.
 ```
 
 ```json
-{ "entity": { "type": "minecraft:pig", "tag": "fixture", "dimension": "minecraft:the_nether", "health": 8.0, "vehicle": "00000000-0000-0000-0000-000000000102", "equipment": { "slot": "weapon.mainhand", "id": "minecraft:iron_sword" }, "effect": { "id": "minecraft:strength", "duration": 80 }, "attribute": { "id": "minecraft:max_health", "equals": 12.0 } } }
+{ "entity": { "type": "minecraft:pig", "tag": "fixture", "dimension": "minecraft:the_nether", "health": 8.0, "vehicle": "00000000-0000-0000-0000-000000000102", "nbt": { "path": "Health", "equals": 8.0 }, "equipment": { "slot": "weapon.mainhand", "id": "minecraft:iron_sword" }, "effect": { "id": "minecraft:strength", "duration": 80 }, "attribute": { "id": "minecraft:max_health", "equals": 12.0 } } }
 ```
 
 ```json
@@ -196,7 +196,7 @@ path, for example `assertion 1 (/assertions/0): ...`.
 ```
 
 `entity` assertions can check existence/count after type/tag/uuid/position/dimension/health/vehicle/passenger
-filtering, plus equipment item id/count/components/NBT, active effect
+filtering, plus full entity NBT path checks, equipment item id/count/components/NBT, active effect
 duration/amplifier/particle state, and explicit attribute values. `player` assertions can also check existence, dimension, game mode, health,
 food, selected slot, recipe, effect, stat, position, last input, and spawn point. `team` and
 `bossbar` assertions inspect their stored runtime state. `item` assertions can

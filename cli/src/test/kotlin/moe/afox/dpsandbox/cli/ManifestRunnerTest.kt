@@ -511,6 +511,7 @@ class ManifestRunnerTest {
                     "dimension": "minecraft:the_nether",
                     "health": 8.0,
                     "vehicle": "00000000-0000-0000-0000-000000000102",
+                    "nbt": { "path": "Health", "equals": 8.0 },
                     "count": 1,
                     "equipment": {
                       "slot": "weapon.mainhand",
