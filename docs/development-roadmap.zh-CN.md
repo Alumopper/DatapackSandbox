@@ -127,6 +127,7 @@
   - item used、item consumed、entity interacted、entity killed、block placed、block broken、changed dimension、tick、damage、death、inventory changed。
   - keyboard/mouse input 保留 device、code、action、坐标、tick、source。
   - `entity_killed`、`block_placed`、`block_broken` 等路线图自然命名已作为事件别名接入 advancement 匹配、CLI completion、REPL/CLI/manifest 简写输入和 event trace。
+  - `PlayerEventTraceExpectation`、QuickTest API 和 manifest `eventTrace` 已可按 item/entity/block/recipe、from/to dimension、damage source/amount、input device/code/action 匹配事件输入上下文。
 - 为事件建立 manifest step、CLI command、REPL command 和 quick-test API。
 - 事件可以触发 advancement、predicate、loot、scoreboard、storage 和输出命令。
 - 增加事件 trace：事件输入、匹配到的 advancement criteria、执行的 reward、失败原因。

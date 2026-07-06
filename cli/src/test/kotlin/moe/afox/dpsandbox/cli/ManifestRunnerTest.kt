@@ -88,6 +88,30 @@ class ManifestRunnerTest {
                 .get("type")
                 .asString,
         )
+        assertEquals(
+            "string",
+            defs.getAsJsonObject("eventTraceAssertion")
+                .getAsJsonObject("properties")
+                .getAsJsonObject("item")
+                .get("type")
+                .asString,
+        )
+        assertEquals(
+            "number",
+            defs.getAsJsonObject("eventTraceAssertion")
+                .getAsJsonObject("properties")
+                .getAsJsonObject("damageAmount")
+                .get("type")
+                .asString,
+        )
+        assertEquals(
+            "string",
+            defs.getAsJsonObject("eventTraceAssertion")
+                .getAsJsonObject("properties")
+                .getAsJsonObject("inputCode")
+                .get("type")
+                .asString,
+        )
     }
 
     @Test
@@ -856,7 +880,18 @@ class ManifestRunnerTest {
               ],
               "assertions": [
                 { "advancement": { "player": "Steve", "id": "demo:fall_damage", "criterion": "fell", "criterionDone": true } },
-                { "eventTrace": { "player": "Steve", "type": "damage", "success": true, "advancement": "demo:fall_damage", "criterion": "fell", "count": 1 } }
+                {
+                  "eventTrace": {
+                    "player": "Steve",
+                    "type": "damage",
+                    "success": true,
+                    "advancement": "demo:fall_damage",
+                    "criterion": "fell",
+                    "damageSource": "minecraft:fall",
+                    "amount": 4.5,
+                    "count": 1
+                  }
+                }
               ]
             }
             """.trimIndent(),

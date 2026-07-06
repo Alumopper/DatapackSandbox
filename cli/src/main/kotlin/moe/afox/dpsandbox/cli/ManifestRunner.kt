@@ -1493,6 +1493,23 @@ object ManifestRunner {
                 success = trace.get("success")?.asBoolean,
                 advancement = trace.manifestString("advancement")?.let(ResourceLocation::parse),
                 criterion = trace.manifestString("criterion"),
+                item = trace.manifestString("item")?.let(ResourceLocation::parse),
+                entity = trace.manifestString("entity")?.let(ResourceLocation::parse),
+                block = trace.manifestString("block")?.let(ResourceLocation::parse),
+                recipe = trace.manifestString("recipe")?.let(ResourceLocation::parse),
+                fromDimension = trace.manifestString("from")?.let(ResourceLocation::parse),
+                toDimension = trace.manifestString("to")?.let(ResourceLocation::parse),
+                damageSource = (trace.manifestString("damageSource") ?: trace.manifestString("damageType"))
+                    ?.let(ResourceLocation::parse),
+                damageAmount = trace.get("damageAmount")?.asDouble
+                    ?: trace.get("amount")?.asDouble
+                    ?: trace.get("damage")?.asDouble,
+                inputDevice = trace.manifestString("inputDevice") ?: trace.manifestString("device"),
+                inputCode = trace.manifestString("inputCode")
+                    ?: trace.manifestString("key")
+                    ?: trace.manifestString("button")
+                    ?: trace.manifestString("mouseButton"),
+                inputAction = trace.manifestString("inputAction") ?: trace.manifestString("action"),
                 count = trace.get("count")?.asInt,
             ),
         )

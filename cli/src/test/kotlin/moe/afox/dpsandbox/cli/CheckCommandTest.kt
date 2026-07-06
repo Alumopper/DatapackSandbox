@@ -203,7 +203,17 @@ class CheckCommandTest {
                 { "event": { "player": "Steve", "type": "key_input", "key": "key.jump", "action": "release" } }
               ],
               "assertions": [
-                { "eventTrace": { "player": "Steve", "type": "key_input", "success": true, "count": 1 } }
+                {
+                  "eventTrace": {
+                    "player": "Steve",
+                    "type": "key_input",
+                    "success": true,
+                    "device": "keyboard",
+                    "key": "key.jump",
+                    "action": "release",
+                    "count": 1
+                  }
+                }
               ]
             }
             """.trimIndent(),

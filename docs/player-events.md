@@ -137,4 +137,6 @@ Events update per-player advancement progress and may run advancement rewards
 such as function, loot, experience, and recipe rewards. After dispatching an
 event, inspect results with `inspect player <name>`, `inspect advancement`,
 `inspect outputs`, `snapshot` `playerEventTraces`, or manifest `eventTrace`
-assertions.
+assertions. `eventTrace` can filter by player/type/success, advancement
+criterion, item/entity/block/recipe ids, dimension changes, damage
+source/amount, and keyboard/mouse input device/code/action.

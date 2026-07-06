@@ -405,7 +405,7 @@ class RunCommandTest {
                     "--assert",
                     """{"player":{"name":"Steve","lastInput":{"device":"keyboard","code":"key.jump","action":"release"}}}""",
                     "--assert",
-                    """{"eventTrace":{"player":"Steve","type":"key_input","success":true,"count":1}}""",
+                    """{"eventTrace":{"player":"Steve","type":"key_input","success":true,"inputDevice":"keyboard","inputCode":"key.jump","inputAction":"release","count":1}}""",
                 ),
             )
         }

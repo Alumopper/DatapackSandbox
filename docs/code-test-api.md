@@ -57,7 +57,8 @@ Reports returned by `report()` and `requirePassed()` also include structured
 command traces and player event traces. Command traces record the command text,
 root command, success flag, executed command count, output count, source
 file/line, function stack, executor, and position. Player event traces record
-the dispatched event context and advancement criteria matched by that event.
+the dispatched event context, item/entity/block/recipe/dimension/damage/input
+metadata, and advancement criteria matched by that event.
 This is useful for debugging generated commands, function call chains, and
 event-driven datapacks:
 
@@ -396,7 +397,7 @@ class MyDatapackTest {
 | `assertOutputContains(text)` | Assert output event text |
 | `assertOutput(...)` | Assert command/channel/target/text/normalized text/count/order for output events |
 | `assertTrace(...)` | Assert command/root/source/success/output count/diff path/diff kind/count for trace events |
-| `assertPlayerEventTrace(...)` | Assert player event trace player/type/success/advancement/criterion/count |
+| `assertPlayerEventTrace(...)` | Assert player event trace player/type/success/context/advancement/criterion/count |
 | `assertSnapshotDiff(...)` | Assert before/after snapshot path/kind/rendered text/count |
 | `outputs()` | Return recorded output events |
 | `traces()` | Return recorded structured command trace events |

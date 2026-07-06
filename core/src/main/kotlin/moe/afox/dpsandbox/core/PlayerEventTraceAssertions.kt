@@ -19,6 +19,28 @@ data class PlayerEventTraceExpectation(
     val criterion: String? = null,
     /** Exact expected number of matching event traces, or null to require at least one. */
     val count: Int? = null,
+    /** Item id recorded on the event trace. */
+    val item: ResourceLocation? = null,
+    /** Entity type recorded on the event trace. */
+    val entity: ResourceLocation? = null,
+    /** Block id recorded on the event trace. */
+    val block: ResourceLocation? = null,
+    /** Recipe id recorded on the event trace. */
+    val recipe: ResourceLocation? = null,
+    /** Source dimension recorded on a dimension-change event trace. */
+    val fromDimension: ResourceLocation? = null,
+    /** Destination dimension recorded on a dimension-change event trace. */
+    val toDimension: ResourceLocation? = null,
+    /** Damage source id recorded on a damage/death event trace. */
+    val damageSource: ResourceLocation? = null,
+    /** Exact damage amount recorded on a damage/death event trace. */
+    val damageAmount: Double? = null,
+    /** Input device recorded on keyboard/mouse event traces. */
+    val inputDevice: String? = null,
+    /** Input key/button code recorded on keyboard/mouse event traces. */
+    val inputCode: String? = null,
+    /** Input action recorded on keyboard/mouse event traces. */
+    val inputAction: String? = null,
 ) {
     private val normalizedType: String? = type?.replace('-', '_')
 
@@ -30,7 +52,18 @@ data class PlayerEventTraceExpectation(
             (normalizedType == null || event.type == normalizedType) &&
             (success == null || event.success == success) &&
             (advancement == null || event.advancements.any { it.advancement == advancement }) &&
-            (criterion == null || event.advancements.any { it.criterion == criterion })
+            (criterion == null || event.advancements.any { it.criterion == criterion }) &&
+            (item == null || event.item == item) &&
+            (entity == null || event.entity == entity) &&
+            (block == null || event.block == block) &&
+            (recipe == null || event.recipe == recipe) &&
+            (fromDimension == null || event.fromDimension == fromDimension) &&
+            (toDimension == null || event.toDimension == toDimension) &&
+            (damageSource == null || event.damageSource == damageSource) &&
+            (damageAmount == null || event.damageAmount == damageAmount) &&
+            (inputDevice == null || event.input?.device == inputDevice) &&
+            (inputCode == null || event.input?.code == inputCode) &&
+            (inputAction == null || event.input?.action == inputAction)
 
     /**
      * Returns every player event trace that satisfies this expectation.
@@ -64,6 +97,17 @@ data class PlayerEventTraceExpectation(
             success?.let { "success=$it" },
             advancement?.let { "advancement=$it" },
             criterion?.let { "criterion=$it" },
+            item?.let { "item=$it" },
+            entity?.let { "entity=$it" },
+            block?.let { "block=$it" },
+            recipe?.let { "recipe=$it" },
+            fromDimension?.let { "from=$it" },
+            toDimension?.let { "to=$it" },
+            damageSource?.let { "damageSource=$it" },
+            damageAmount?.let { "damageAmount=$it" },
+            inputDevice?.let { "inputDevice=$it" },
+            inputCode?.let { "inputCode=$it" },
+            inputAction?.let { "inputAction=$it" },
         ).ifEmpty { listOf("<any event trace>") }.joinToString(", ")
 
     private fun actualEvents(events: List<PlayerEventTraceEvent>): String {

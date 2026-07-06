@@ -186,6 +186,59 @@ class PlayerEventsTest {
     }
 
     @Test
+    fun `player event trace expectations filter recorded event context`() {
+        val sandbox = DatapackSandbox(
+            profile = VersionProfiles.default,
+            datapack = Datapack(
+                functions = emptyMap(),
+                loadFunctions = emptyList(),
+                tickFunctions = emptyList(),
+            ),
+        )
+        sandbox.createPlayer("Steve")
+
+        sandbox.handlePlayerEvent(PlayerEvents.shorthand("Steve", "item_used", "minecraft:carrot"))
+        sandbox.handlePlayerEvent(PlayerEvents.shorthand("Steve", "entity_killed", "minecraft:zombie"))
+        sandbox.handlePlayerEvent(PlayerEvents.shorthand("Steve", "block_placed", "minecraft:stone"))
+        sandbox.handlePlayerEvent(PlayerEvents.shorthand("Steve", "recipe_unlocked", "demo:toast"))
+        sandbox.handlePlayerEvent(
+            PlayerEvents.shorthand("Steve", "changed_dimension", "minecraft:overworld", "minecraft:the_nether"),
+        )
+        sandbox.handlePlayerEvent(PlayerEvents.shorthand("Steve", "damage", "minecraft:fall", "4.5"))
+
+        assertEventTraceCount(
+            sandbox,
+            PlayerEventTraceExpectation(item = ResourceLocation.parse("minecraft:carrot")),
+        )
+        assertEventTraceCount(
+            sandbox,
+            PlayerEventTraceExpectation(entity = ResourceLocation.parse("minecraft:zombie")),
+        )
+        assertEventTraceCount(
+            sandbox,
+            PlayerEventTraceExpectation(block = ResourceLocation.parse("minecraft:stone")),
+        )
+        assertEventTraceCount(
+            sandbox,
+            PlayerEventTraceExpectation(recipe = ResourceLocation.parse("demo:toast")),
+        )
+        assertEventTraceCount(
+            sandbox,
+            PlayerEventTraceExpectation(
+                fromDimension = ResourceLocation.parse("minecraft:overworld"),
+                toDimension = ResourceLocation.parse("minecraft:the_nether"),
+            ),
+        )
+        assertEventTraceCount(
+            sandbox,
+            PlayerEventTraceExpectation(
+                damageSource = ResourceLocation.parse("minecraft:fall"),
+                damageAmount = 4.5,
+            ),
+        )
+    }
+
+    @Test
     fun `damage command with source entity fires killed player advancement event`() {
         val criterion = Criterion(
             name = "killed_by_zombie",
@@ -259,6 +312,14 @@ class PlayerEventsTest {
         assertEquals("minecraft:cow", payload.getAsJsonArray("targets")[0].asJsonObject.get("type").asString)
         assertEquals(8.0, payload.getAsJsonArray("targets")[0].asJsonObject.get("beforeHealth").asDouble)
         assertEquals(4.0, payload.getAsJsonArray("targets")[0].asJsonObject.get("afterHealth").asDouble)
+    }
+
+    private fun assertEventTraceCount(
+        sandbox: DatapackSandbox,
+        expectation: PlayerEventTraceExpectation,
+        count: Int = 1,
+    ) {
+        assertEquals(count, PlayerEventTraceAssertions.matching(sandbox.world.playerEventTraces, expectation).size)
     }
 
     private fun sandboxWithAdvancement(id: ResourceLocation, criterion: Criterion): DatapackSandbox =

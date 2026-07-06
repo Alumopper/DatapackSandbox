@@ -93,6 +93,45 @@ private fun formatMatrixQuickTestFailure(report: SandboxQuickTestMatrixReport): 
         }
     }.joinToString(separator = "\n")
 
+private fun playerEventTraceExpectation(
+    player: String?,
+    type: String?,
+    success: Boolean?,
+    advancement: String?,
+    criterion: String?,
+    count: Int?,
+    item: String?,
+    entity: String?,
+    block: String?,
+    recipe: String?,
+    fromDimension: String?,
+    toDimension: String?,
+    damageSource: String?,
+    damageAmount: Double?,
+    inputDevice: String?,
+    inputCode: String?,
+    inputAction: String?,
+): PlayerEventTraceExpectation =
+    PlayerEventTraceExpectation(
+        player = player,
+        type = type,
+        success = success,
+        advancement = advancement?.let(ResourceLocation::parse),
+        criterion = criterion,
+        item = item?.let(ResourceLocation::parse),
+        entity = entity?.let(ResourceLocation::parse),
+        block = block?.let(ResourceLocation::parse),
+        recipe = recipe?.let(ResourceLocation::parse),
+        fromDimension = fromDimension?.let(ResourceLocation::parse),
+        toDimension = toDimension?.let(ResourceLocation::parse),
+        damageSource = damageSource?.let(ResourceLocation::parse),
+        damageAmount = damageAmount,
+        inputDevice = inputDevice,
+        inputCode = inputCode,
+        inputAction = inputAction,
+        count = count,
+    )
+
 /**
  * Fluent quick-test runner for executing the same scenario across multiple
  * Minecraft version profiles.
@@ -885,15 +924,37 @@ class SandboxQuickTestMatrix private constructor(
         advancement: String? = null,
         criterion: String? = null,
         count: Int? = null,
+        item: String? = null,
+        entity: String? = null,
+        block: String? = null,
+        recipe: String? = null,
+        fromDimension: String? = null,
+        toDimension: String? = null,
+        damageSource: String? = null,
+        damageAmount: Double? = null,
+        inputDevice: String? = null,
+        inputCode: String? = null,
+        inputAction: String? = null,
     ): SandboxQuickTestMatrix =
         assertPlayerEventTrace(
-            PlayerEventTraceExpectation(
+            playerEventTraceExpectation(
                 player = player,
                 type = type,
                 success = success,
-                advancement = advancement?.let(ResourceLocation::parse),
+                advancement = advancement,
                 criterion = criterion,
                 count = count,
+                item = item,
+                entity = entity,
+                block = block,
+                recipe = recipe,
+                fromDimension = fromDimension,
+                toDimension = toDimension,
+                damageSource = damageSource,
+                damageAmount = damageAmount,
+                inputDevice = inputDevice,
+                inputCode = inputCode,
+                inputAction = inputAction,
             ),
         )
 
@@ -2222,15 +2283,37 @@ class SandboxQuickTest private constructor(
         advancement: String? = null,
         criterion: String? = null,
         count: Int? = null,
+        item: String? = null,
+        entity: String? = null,
+        block: String? = null,
+        recipe: String? = null,
+        fromDimension: String? = null,
+        toDimension: String? = null,
+        damageSource: String? = null,
+        damageAmount: Double? = null,
+        inputDevice: String? = null,
+        inputCode: String? = null,
+        inputAction: String? = null,
     ): SandboxQuickTest =
         assertPlayerEventTrace(
-            PlayerEventTraceExpectation(
+            playerEventTraceExpectation(
                 player = player,
                 type = type,
                 success = success,
-                advancement = advancement?.let(ResourceLocation::parse),
+                advancement = advancement,
                 criterion = criterion,
                 count = count,
+                item = item,
+                entity = entity,
+                block = block,
+                recipe = recipe,
+                fromDimension = fromDimension,
+                toDimension = toDimension,
+                damageSource = damageSource,
+                damageAmount = damageAmount,
+                inputDevice = inputDevice,
+                inputCode = inputCode,
+                inputAction = inputAction,
             ),
         )
 
@@ -2268,14 +2351,38 @@ class SandboxQuickTest private constructor(
         success: Boolean? = null,
         advancement: String? = null,
         criterion: String? = null,
+        count: Int? = null,
+        item: String? = null,
+        entity: String? = null,
+        block: String? = null,
+        recipe: String? = null,
+        fromDimension: String? = null,
+        toDimension: String? = null,
+        damageSource: String? = null,
+        damageAmount: Double? = null,
+        inputDevice: String? = null,
+        inputCode: String? = null,
+        inputAction: String? = null,
     ): List<PlayerEventTraceEvent> =
         matchingPlayerEventTraces(
-            PlayerEventTraceExpectation(
+            playerEventTraceExpectation(
                 player = player,
                 type = type,
                 success = success,
-                advancement = advancement?.let(ResourceLocation::parse),
+                advancement = advancement,
                 criterion = criterion,
+                count = count,
+                item = item,
+                entity = entity,
+                block = block,
+                recipe = recipe,
+                fromDimension = fromDimension,
+                toDimension = toDimension,
+                damageSource = damageSource,
+                damageAmount = damageAmount,
+                inputDevice = inputDevice,
+                inputCode = inputCode,
+                inputAction = inputAction,
             ),
         )
 
