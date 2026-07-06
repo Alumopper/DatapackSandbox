@@ -2076,29 +2076,63 @@ class DatapackSandbox(
         when (tokens[2].text) {
             "entity" -> {
                 requireSize(tokens, 6, "item modify entity <targets> <slot> <modifier>", location)
-                val modifier = datapack.itemModifier(ResourceLocation.parse(tokens[5].text))
+                val modifierId = ResourceLocation.parse(tokens[5].text)
+                val modifier = datapack.itemModifier(modifierId)
+                val modified = mutableListOf<Pair<String, ItemStack>>()
                 EntitySelectors.select(world, tokens[3].text, context, location).forEach { entity ->
                     val access = entityItemAccess(entity, tokens[4].text, location)
                     val item = access.get() ?: return@forEach
                     if (item.id == ResourceLocation("minecraft", "air") || item.count <= 0) return@forEach
                     val updated = applyItemModifier(item, modifier.root, { stack -> itemModifierPredicateContext(entity, stack) }, location)
                     access.set(updated)
+                    modified += entity.scoreHolder to updated.copyStack()
                     if (entity is SandboxPlayer) {
                         advancements.handle(PlayerEvent(entity.name, "inventory_changed", item = updated))
                     }
                 }
+                recordItemModifyOutput("entity", tokens[4].text, modifierId, modified)
             }
             "block" -> {
                 requireSize(tokens, 8, "item modify block <pos> <slot> <modifier>", location)
                 val pos = parseBlockPos(tokens, 3, context, location)
                 val slot = inventorySlot(tokens[6].text)
-                val modifier = datapack.itemModifier(ResourceLocation.parse(tokens[7].text))
-                val item = blockItem(pos, slot, location) ?: return
-                if (item.id == ResourceLocation("minecraft", "air") || item.count <= 0) return
-                replaceBlockItem(pos, slot, applyItemModifier(item, modifier.root, { stack -> itemModifierPredicateContext(pos, stack) }, location), location)
+                val modifierId = ResourceLocation.parse(tokens[7].text)
+                val modifier = datapack.itemModifier(modifierId)
+                val item = blockItem(pos, slot, location)
+                val modified = if (item != null && item.id != ResourceLocation("minecraft", "air") && item.count > 0) {
+                    val updated = applyItemModifier(item, modifier.root, { stack -> itemModifierPredicateContext(pos, stack) }, location)
+                    replaceBlockItem(pos, slot, updated, location)
+                    listOf(pos.toString() to updated.copyStack())
+                } else {
+                    emptyList()
+                }
+                recordItemModifyOutput("block", tokens[6].text, modifierId, modified)
             }
             else -> unsupportedFeature("Unsupported item modify target '${tokens[2].text}'", profile.id, location)
         }
+    }
+
+    private fun recordItemModifyOutput(targetKind: String, slot: String, modifier: ResourceLocation, modified: List<Pair<String, ItemStack>>) {
+        world.recordOutput(
+            "item modify",
+            "data",
+            targets = modified.map { it.first },
+            text = modified.size.toString(),
+            payload = JsonObject().also { payload ->
+                payload.addProperty("targetKind", targetKind)
+                payload.addProperty("slot", slot)
+                payload.addProperty("modifier", modifier.toString())
+                payload.addProperty("modified", modified.size)
+                payload.add("items", JsonArray().also { items ->
+                    modified.forEach { (target, item) ->
+                        items.add(JsonObject().also { entry ->
+                            entry.addProperty("target", target)
+                            entry.add("item", item.toJson())
+                        })
+                    }
+                })
+            },
+        )
     }
 
     private fun executeItemReplace(tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext) {

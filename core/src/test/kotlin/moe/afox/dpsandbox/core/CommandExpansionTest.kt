@@ -170,6 +170,15 @@ class CommandExpansionTest {
         val discarded = sandbox.world.requirePlayer("Steve").inventory[2]
         assertEquals(ResourceLocation.parse("minecraft:air"), discarded.id)
         assertEquals(0, discarded.count)
+
+        val modifyOutputs = sandbox.world.outputs.filter { it.command == "item modify" }
+        assertEquals(4, modifyOutputs.size)
+        val firstModifyPayload = modifyOutputs.first().payload?.asJsonObject ?: error("missing item modify payload")
+        assertEquals("entity", firstModifyPayload.get("targetKind").asString)
+        assertEquals("hotbar.0", firstModifyPayload.get("slot").asString)
+        assertEquals("demo:mark", firstModifyPayload.get("modifier").asString)
+        assertEquals(1, firstModifyPayload.get("modified").asInt)
+        assertEquals("minecraft:stick", firstModifyPayload.getAsJsonArray("items")[0].asJsonObject.getAsJsonObject("item").get("id").asString)
     }
 
     @Test
@@ -188,6 +197,13 @@ class CommandExpansionTest {
         assertEquals(4, item.get("count").asInt)
         assertEquals("tagged", item.getAsJsonObject("components").get("demo:tag").asString)
         assertEquals(true, item.getAsJsonObject("components").getAsJsonObject("minecraft:custom_data").get("marked").asBoolean)
+
+        val modifyOutput = sandbox.world.outputs.single { it.command == "item modify" }
+        val payload = modifyOutput.payload?.asJsonObject ?: error("missing item modify payload")
+        assertEquals("block", payload.get("targetKind").asString)
+        assertEquals("container.0", payload.get("slot").asString)
+        assertEquals("demo:mark", payload.get("modifier").asString)
+        assertEquals("0 64 0", payload.getAsJsonArray("items")[0].asJsonObject.get("target").asString)
     }
 
     @Test
