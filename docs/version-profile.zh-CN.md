@@ -2,27 +2,27 @@
 
 沙盒支持多个 Minecraft Java 数据包 profile。默认 profile 是 `26.2`，`26.1.2` 仍可用于兼容测试，最低支持的旧数据包 profile 是 `1.20.4`。
 
-| Profile | Java | Data version | Data pack format | 资源目录 |
-|---|---:|---:|---:|---|
-| `1.20.4` | 17 | 3700 | 26 | `functions`、`loot_tables`、`predicates`、`advancements` |
-| `1.20.5` | 21 | 3837 | 41 | `function`、`loot_table`、`predicate`、`advancement`，允许旧别名 |
-| `1.20.6` | 21 | 3839 | 41 | `function`、`loot_table`、`predicate`、`advancement`，允许旧别名 |
-| `1.21` | 21 | 3953 | 48 | `function`、`loot_table`、`predicate`、`advancement`，允许旧别名 |
-| `1.21.1` | 21 | 3955 | 48 | `function`、`loot_table`、`predicate`、`advancement`，允许旧别名 |
-| `1.21.2` | 21 | 4080 | 57 | `function`、`loot_table`、`predicate`、`advancement`，允许旧别名 |
-| `1.21.3` | 21 | 4082 | 57 | `function`、`loot_table`、`predicate`、`advancement`，允许旧别名 |
-| `1.21.4` | 21 | 4189 | 61 | `function`、`loot_table`、`predicate`、`advancement`，允许旧别名 |
-| `1.21.5` | 21 | 4325 | 71 | `function`、`loot_table`、`predicate`、`advancement`，允许旧别名 |
-| `1.21.6` | 21 | 4435 | 80 | `function`、`loot_table`、`predicate`、`advancement`，允许旧别名 |
-| `1.21.7` | 21 | 4438 | 81 | `function`、`loot_table`、`predicate`、`advancement`，允许旧别名 |
-| `1.21.8` | 21 | 4440 | 81 | `function`、`loot_table`、`predicate`、`advancement`，允许旧别名 |
-| `1.21.9` | 21 | 4554 | 88 | `function`、`loot_table`、`predicate`、`advancement`，允许旧别名 |
-| `1.21.10` | 21 | 4556 | 88 | `function`、`loot_table`、`predicate`、`advancement`，允许旧别名 |
-| `1.21.11` | 21 | 4671 | 94.1 | `function`、`loot_table`、`predicate`、`advancement`，允许旧别名 |
-| `26.1` | 25 | 4786 | 101.1 | `function`、`loot_table`、`predicate`、`advancement`，允许旧别名 |
-| `26.1.1` | 25 | 4788 | 101.1 | `function`、`loot_table`、`predicate`、`advancement`，允许旧别名 |
-| `26.1.2` | 25 | 4790 | 101.1 | `function`、`loot_table`、`predicate`、`advancement`，允许旧别名 |
-| `26.2` | 25 | 4903 | 107.1 | `function`、`loot_table`、`predicate`、`advancement`，允许旧别名 |
+| Profile | Java | Data version | Data pack format | NBT schema | 资源目录 |
+|---|---:|---:|---:|---|---|
+| `1.20.4` | 17 | 3700 | 26 | `1.20.4:1.20.4` | `functions`、`loot_tables`、`predicates`、`advancements` |
+| `1.20.5` | 21 | 3837 | 41 | `1.20.5:1.20.5` | `function`、`loot_table`、`predicate`、`advancement`，允许旧别名 `functions`、`loot_tables`、`predicates`、`advancements` |
+| `1.20.6` | 21 | 3839 | 41 | `1.20.6:1.20.6` | `function`、`loot_table`、`predicate`、`advancement`，允许旧别名 `functions`、`loot_tables`、`predicates`、`advancements` |
+| `1.21` | 21 | 3953 | 48 | `1.21:1.21` | `function`、`loot_table`、`predicate`、`advancement`，允许旧别名 `functions`、`loot_tables`、`predicates`、`advancements` |
+| `1.21.1` | 21 | 3955 | 48 | `1.21.1:1.21.1` | `function`、`loot_table`、`predicate`、`advancement`，允许旧别名 `functions`、`loot_tables`、`predicates`、`advancements` |
+| `1.21.2` | 21 | 4080 | 57 | `1.21.2:1.21.2` | `function`、`loot_table`、`predicate`、`advancement`，允许旧别名 `functions`、`loot_tables`、`predicates`、`advancements` |
+| `1.21.3` | 21 | 4082 | 57 | `1.21.3:1.21.3` | `function`、`loot_table`、`predicate`、`advancement`，允许旧别名 `functions`、`loot_tables`、`predicates`、`advancements` |
+| `1.21.4` | 21 | 4189 | 61 | `1.21.4:1.21.4` | `function`、`loot_table`、`predicate`、`advancement`，允许旧别名 `functions`、`loot_tables`、`predicates`、`advancements` |
+| `1.21.5` | 21 | 4325 | 71 | `1.21.5:1.21.5` | `function`、`loot_table`、`predicate`、`advancement`，允许旧别名 `functions`、`loot_tables`、`predicates`、`advancements` |
+| `1.21.6` | 21 | 4435 | 80 | `1.21.6:1.21.6` | `function`、`loot_table`、`predicate`、`advancement`，允许旧别名 `functions`、`loot_tables`、`predicates`、`advancements` |
+| `1.21.7` | 21 | 4438 | 81 | `1.21.7:1.21.7` | `function`、`loot_table`、`predicate`、`advancement`，允许旧别名 `functions`、`loot_tables`、`predicates`、`advancements` |
+| `1.21.8` | 21 | 4440 | 81 | `1.21.8:1.21.8` | `function`、`loot_table`、`predicate`、`advancement`，允许旧别名 `functions`、`loot_tables`、`predicates`、`advancements` |
+| `1.21.9` | 21 | 4554 | 88 | `1.21.9:1.21.9` | `function`、`loot_table`、`predicate`、`advancement`，允许旧别名 `functions`、`loot_tables`、`predicates`、`advancements` |
+| `1.21.10` | 21 | 4556 | 88 | `1.21.10:1.21.10` | `function`、`loot_table`、`predicate`、`advancement`，允许旧别名 `functions`、`loot_tables`、`predicates`、`advancements` |
+| `1.21.11` | 21 | 4671 | 94.1 | `1.21.11:1.21.11` | `function`、`loot_table`、`predicate`、`advancement`，允许旧别名 `functions`、`loot_tables`、`predicates`、`advancements` |
+| `26.1` | 25 | 4786 | 101.1 | `26.1:26.1` | `function`、`loot_table`、`predicate`、`advancement`，允许旧别名 `functions`、`loot_tables`、`predicates`、`advancements` |
+| `26.1.1` | 25 | 4788 | 101.1 | `26.1.1:26.1.1` | `function`、`loot_table`、`predicate`、`advancement`，允许旧别名 `functions`、`loot_tables`、`predicates`、`advancements` |
+| `26.1.2` | 25 | 4790 | 101.1 | `26.1.2:26.1.2` | `function`、`loot_table`、`predicate`、`advancement`，允许旧别名 `functions`、`loot_tables`、`predicates`、`advancements` |
+| `26.2` | 25 | 4903 | 107.1 | `26.2:26.2` | `function`、`loot_table`、`predicate`、`advancement`，允许旧别名 `functions`、`loot_tables`、`predicates`、`advancements` |
 
 ## Profile 控制的内容
 
@@ -52,6 +52,7 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar version
 
 ```bash
 java -jar cli/build/libs/datapack-sandbox-cli.jar version --docs
+java -jar cli/build/libs/datapack-sandbox-cli.jar version --docs --output docs/version-profile-table.md
 ```
 
 比较两个 profile，查看 pack format、NBT schema、资源目录、命令根和 registry 差异：
@@ -65,6 +66,7 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar version 1.20.4 26.2
 ```bash
 java -jar cli/build/libs/datapack-sandbox-cli.jar version --json
 java -jar cli/build/libs/datapack-sandbox-cli.jar version --json 1.20.4 26.2
+java -jar cli/build/libs/datapack-sandbox-cli.jar version --json --output build/profile-diff.json 1.20.4 26.2
 ```
 
 ## 多版本清单

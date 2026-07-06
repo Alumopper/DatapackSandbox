@@ -55,8 +55,10 @@ List supported version profiles and their data pack formats:
 java -jar cli/build/libs/datapack-sandbox-cli.jar version
 java -jar cli/build/libs/datapack-sandbox-cli.jar version --json
 java -jar cli/build/libs/datapack-sandbox-cli.jar version --docs
+java -jar cli/build/libs/datapack-sandbox-cli.jar version --docs --output docs/version-profile-table.md
 java -jar cli/build/libs/datapack-sandbox-cli.jar version 1.20.4 26.2
 java -jar cli/build/libs/datapack-sandbox-cli.jar version --json 1.20.4 26.2
+java -jar cli/build/libs/datapack-sandbox-cli.jar version --json --output build/profile-diff.json 1.20.4 26.2
 ```
 
 The REPL supports TAB completion, live multi-line suggestions while typing,

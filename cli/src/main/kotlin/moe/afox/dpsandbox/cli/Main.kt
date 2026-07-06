@@ -1192,6 +1192,7 @@ class VersionCommand : CliktCommand(name = "version") {
     private val versions by argument("version").multiple(required = false)
     private val docs by option("--docs").flag(default = false)
     private val json by option("--json").flag(default = false)
+    private val output by option("--output", "-o").path()
 
     override fun run() {
         try {
@@ -1202,37 +1203,51 @@ class VersionCommand : CliktCommand(name = "version") {
                 if (versions.isNotEmpty()) {
                     throw SandboxException(DiagnosticCode.INPUT_FORMAT, "version --docs does not accept profile arguments")
                 }
-                println(VersionProfileDocs.renderMarkdownTable())
+                emit(VersionProfileDocs.renderMarkdownTable())
                 return
             }
             if (json) {
-                when (versions.size) {
-                    0 -> println(VersionProfileJson.profiles())
+                val report = when (versions.size) {
+                    0 -> VersionProfileJson.profiles()
                     2 -> {
                         val from = VersionProfiles.get(versions[0])
                         val to = VersionProfiles.get(versions[1])
-                        println(VersionProfileJson.diff(VersionProfileDiffs.diff(from, to)))
+                        VersionProfileJson.diff(VersionProfileDiffs.diff(from, to))
                     }
                     else -> throw SandboxException(DiagnosticCode.INPUT_FORMAT, "version --json accepts either no arguments or two profile ids to diff")
                 }
+                emit(JsonValues.render(report))
                 return
             }
             when (versions.size) {
-                0 -> VersionProfiles.all.forEach { profile ->
-                    val marker = if (profile == VersionProfiles.default) " default" else ""
-                    val dataVersion = profile.dataVersion?.let { " data=$it" }.orEmpty()
-                    println("${profile.id} java=${profile.javaMajor} pack_format=${profile.dataPackFormat}$dataVersion$marker - ${profile.description}")
-                }
+                0 -> emit(
+                    VersionProfiles.all.joinToString(System.lineSeparator()) { profile ->
+                        val marker = if (profile == VersionProfiles.default) " default" else ""
+                        val dataVersion = profile.dataVersion?.let { " data=$it" }.orEmpty()
+                        "${profile.id} java=${profile.javaMajor} pack_format=${profile.dataPackFormat}$dataVersion$marker - ${profile.description}"
+                    },
+                )
                 2 -> {
                     val from = VersionProfiles.get(versions[0])
                     val to = VersionProfiles.get(versions[1])
-                    println(VersionProfileDiffs.render(VersionProfileDiffs.diff(from, to)))
+                    emit(VersionProfileDiffs.render(VersionProfileDiffs.diff(from, to)))
                 }
                 else -> throw SandboxException(DiagnosticCode.INPUT_FORMAT, "version accepts either no arguments or two profile ids to diff")
             }
         } catch (error: SandboxException) {
             println(ConsoleStyle.diagnostic(error.render()))
             exitProcess(ExitCodes.forException(error))
+        }
+    }
+
+    private fun emit(content: String) {
+        val outputPath = output
+        if (outputPath == null) {
+            println(content)
+        } else {
+            outputPath.parent?.let(Files::createDirectories)
+            Files.writeString(outputPath, content, StandardCharsets.UTF_8)
+            println(ConsoleStyle.green("version output written: $outputPath"))
         }
     }
 }

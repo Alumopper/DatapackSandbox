@@ -247,6 +247,7 @@
   - 通过公开资料和 `vanilla-mcdoc` 生成 schema，不分发 Mojang 服务端代码。
 - 增加版本 profile 差异报告：
   - 哪些资源目录变化、命令根变化、NBT 字段变化、注册表项变化。
+  - `version --docs/--json --output <file>` 已可把 Markdown 表格、profile 元数据和差异报告写入 UTF-8 文件，便于文档更新、CI artifact 和本地脚本复核。
 - 增加多版本测试矩阵：
   - 同一行为在 `1.20.4`、中间版本和默认最新版本运行。
   - 对 pack format 不同的示例使用 per-version pack。
@@ -254,7 +255,7 @@
 验收标准：
 
 - 新增版本只需改 profile 数据和生成资源，核心逻辑尽量无需修改。
-- `docs/version-profile.zh-CN.md` 自动或半自动更新。
+- `docs/version-profile.zh-CN.md` 可通过 `version --docs --output` 半自动更新，表格包含 NBT schema 选择摘要。
 - 版本不兼容错误清晰说明当前 pack format 和期望 format。
 
 ## 阶段 9：差分验证与可信度提升

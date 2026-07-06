@@ -1075,6 +1075,19 @@ class RunCommandTest {
     }
 
     @Test
+    fun `version writes markdown docs table to file`() {
+        val reportFile = Files.createTempFile("dps-version-docs", ".md")
+        val output = captureStdout {
+            main(arrayOf("version", "--docs", "--output", reportFile.toString()))
+        }
+        val report = Files.readString(reportFile)
+
+        assertTrue("version output written: $reportFile" in output, output)
+        assertTrue("| Profile | Java | Data version | Data pack format | NBT schema | Resource directories |" in report, report)
+        assertTrue("| `26.2` | 25 | 4903 | 107.1 | `26.2:26.2` |" in report, report)
+    }
+
+    @Test
     fun `version renders profile list json`() {
         val output = captureStdout {
             main(arrayOf("version", "--json"))
@@ -1100,6 +1113,20 @@ class RunCommandTest {
         assertEquals("1.20.4:1.20.4", json.getAsJsonObject("nbtSchema").get("from").asString)
         assertEquals("26.2:26.2", json.getAsJsonObject("nbtSchema").get("to").asString)
         assertTrue(json.getAsJsonObject("commandRoots").getAsJsonArray("added").map { it.asString }.contains("transfer"))
+    }
+
+    @Test
+    fun `version writes profile diff json to file`() {
+        val reportFile = Files.createTempFile("dps-version-diff", ".json")
+        val output = captureStdout {
+            main(arrayOf("version", "--json", "--output", reportFile.toString(), "1.20.4", "26.2"))
+        }
+        val json = JsonParser.parseString(Files.readString(reportFile)).asJsonObject
+
+        assertTrue("version output written: $reportFile" in output, output)
+        assertEquals("1.20.4", json.get("from").asString)
+        assertEquals("26.2", json.get("to").asString)
+        assertEquals("26.2:26.2", json.getAsJsonObject("nbtSchema").get("to").asString)
     }
 
     private fun captureStdout(stdin: String? = null, block: () -> Unit): String {
