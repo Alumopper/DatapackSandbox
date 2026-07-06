@@ -1714,7 +1714,20 @@ class DatapackSandbox(
             "query" -> {
                 requireSize(tokens, 4, "${tokens[0].text} query <target> <points|levels>", location)
                 val player = resolvePlayers(tokens[2].text, location, context).first()
-                world.recordOutput("${tokens[0].text} query", "data", text = player.xp.toString())
+                val kind = tokens[3].text
+                if (kind !in setOf("points", "levels")) {
+                    unsupportedFeature("Unsupported ${tokens[0].text} query type '$kind'", profile.id, location)
+                }
+                world.recordOutput(
+                    "${tokens[0].text} query",
+                    "data",
+                    text = player.xp.toString(),
+                    payload = JsonObject().also { payload ->
+                        payload.addProperty("player", player.name)
+                        payload.addProperty("kind", kind)
+                        payload.addProperty("value", player.xp)
+                    },
+                )
             }
             else -> unsupportedFeature("Unsupported ${tokens[0].text} action '${tokens[1].text}'", profile.id, location)
         }

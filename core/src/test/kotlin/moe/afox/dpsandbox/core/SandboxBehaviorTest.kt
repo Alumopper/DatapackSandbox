@@ -102,6 +102,9 @@ class SandboxBehaviorTest {
         sandbox.executeCommand("effect give Steve minecraft:speed 10 1 true")
         sandbox.executeCommand("enchant Steve minecraft:sharpness 2")
         sandbox.executeCommand("xp add Steve 7 points")
+        sandbox.executeCommand("xp query Steve points")
+        sandbox.executeCommand("scoreboard objectives add xp_copy dummy")
+        sandbox.executeCommand("execute store result score #xp xp_copy run experience query Steve levels")
         sandbox.executeCommand("recipe give Steve minecraft:bread")
 
         val player = sandbox.world.requirePlayer("Steve")
@@ -115,6 +118,13 @@ class SandboxBehaviorTest {
         assertEquals(3, player.inventory.single().count)
         assertTrue(ResourceLocation.parse("minecraft:speed") in player.effects)
         assertEquals(7, player.xp)
+        val xpOutput = sandbox.world.outputs.first { it.command == "xp query" }
+        val xpPayload = xpOutput.payload?.asJsonObject ?: error("missing xp query payload")
+        assertEquals("7", xpOutput.text)
+        assertEquals("Steve", xpPayload.get("player").asString)
+        assertEquals("points", xpPayload.get("kind").asString)
+        assertEquals(7, xpPayload.get("value").asInt)
+        assertEquals(7, sandbox.world.getScore("#xp", "xp_copy"))
         assertTrue(ResourceLocation.parse("minecraft:bread") in player.recipes)
         assertEquals(2, player.selectedItem?.components?.getAsJsonObject("minecraft:enchantments")?.get("minecraft:sharpness")?.asInt)
     }
