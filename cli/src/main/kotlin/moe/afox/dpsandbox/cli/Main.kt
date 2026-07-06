@@ -399,6 +399,10 @@ class RunCommand : CliktCommand(name = "run") {
     private val reportFile by option("--report-file").path()
     private val resources by option("--resources").flag(default = false)
     private val strict by option("--strict").flag(default = false)
+    private val allowCommandFailure by option(
+        "--allow-command-failure",
+        help = "Continue after direct --command, --command-file, or stdin command errors so diagnostic assertions can inspect them.",
+    ).flag(default = false)
     private val unsupported by option("--unsupported").default("warn")
     private val maxCommands by option("--max-commands").int()
     private val maxFunctionDepth by option("--max-function-depth").int()
@@ -473,10 +477,11 @@ class RunCommand : CliktCommand(name = "run") {
             }
             commands.forEachIndexed { index, command ->
                 val normalized = command.trim().removePrefix("/")
-                total += sandbox.executeCommand(
+                total += executeDirectCommand(
+                    sandbox,
                     normalized,
                     SourceLocation(file = "<arg:--command>", line = index + 1, command = normalized),
-                ).commandsExecuted
+                )
             }
             eventFiles.forEach { file ->
                 applyPlayerEventLines(sandbox, Files.readAllLines(file, StandardCharsets.UTF_8), "--event-file $file")
@@ -631,6 +636,8 @@ class RunCommand : CliktCommand(name = "run") {
             trimmed.startsWith("event-trace:") -> parseEventTraceAssertion(trimmed.removePrefix("event-trace:"), label)
             trimmed.startsWith("trace:") -> parseTraceAssertion(trimmed.removePrefix("trace:"), label)
             trimmed.startsWith("trace-output:") -> parseTraceOutputAssertion(trimmed.removePrefix("trace-output:"), label)
+            trimmed.startsWith("diagnostic:") -> parseDiagnosticAssertion(trimmed.removePrefix("diagnostic:"), label)
+            trimmed.startsWith("diagnostic=") -> parseDiagnosticCountAssertion(trimmed.removePrefix("diagnostic="), label)
             trimmed.startsWith("warning:") -> parseWarningContainsAssertion(trimmed.removePrefix("warning:"), label)
             trimmed.startsWith("warning=") -> parseWarningCountAssertion(trimmed.removePrefix("warning="), label)
             trimmed.startsWith("unsupported:") -> parseUnsupportedContainsAssertion(trimmed.removePrefix("unsupported:"), label)
@@ -652,7 +659,7 @@ class RunCommand : CliktCommand(name = "run") {
             trimmed.startsWith("output:") -> parseOutputAssertion(trimmed.removePrefix("output:"), label)
             else -> throw SandboxException(
                 DiagnosticCode.INPUT_FORMAT,
-                "$label must be a JSON object or shorthand score:<target>:<objective>=N, storage:<id>[:<path>]=<json>, advancement:<player>:<id>[=<true|false>], entity:<type|*>[@tag]=N, block:<x>,<y>,<z>=<id>, block:<x>,<y>,<z>?, block:<x>,<y>,<z>!, biome:<x>,<y>,<z>=<id>, team:<name>[?|!|=N|@member], bossbar:<id>[?|!|:<field>=<value>], item:<player>:<id>[@slot]=N, player:<name>[:<field>=<value>], world:<field>=<value>, gamerule:<rule>=<value>, gamerule:<rule>?, gamerule:<rule>!, random-sequence:<name>=N, snapshot:<path>=<json>, snapshot:<path>?, snapshot:<path>!, diff:<json-pointer>[=<kind>], event-trace:<player>:<type>[=N], trace:<root>=N, trace:<text>, trace-output:<text>[@target], warning=N, warning:<text>, unsupported=N, unsupported:<text>, output:<text>, output-count:<text>=N, output-order:<N>:<text>, output-exact:<text>, output-matches:<regex>, output-command:<command>[=N|?|!], output-channel:<channel>[=N|?|!], output-target:<target>[=N|?|!], output-normalized:<text>, output-normalized-exact:<text>, output-normalized-matches:<regex>, output-segment:<text>[|color=<color>|bold=<true|false>][@target], output-segment-exact:<text>[...], output-segment-matches:<regex>[...], or output-payload:<command>:<path>[=<json>]",
+                "$label must be a JSON object or shorthand score:<target>:<objective>=N, storage:<id>[:<path>]=<json>, advancement:<player>:<id>[=<true|false>], entity:<type|*>[@tag]=N, block:<x>,<y>,<z>=<id>, block:<x>,<y>,<z>?, block:<x>,<y>,<z>!, biome:<x>,<y>,<z>=<id>, team:<name>[?|!|=N|@member], bossbar:<id>[?|!|:<field>=<value>], item:<player>:<id>[@slot]=N, player:<name>[:<field>=<value>], world:<field>=<value>, gamerule:<rule>=<value>, gamerule:<rule>?, gamerule:<rule>!, random-sequence:<name>=N, snapshot:<path>=<json>, snapshot:<path>?, snapshot:<path>!, diff:<json-pointer>[=<kind>], event-trace:<player>:<type>[=N], trace:<root>=N, trace:<text>, trace-output:<text>[@target], diagnostic=N, diagnostic:<code>[=N], diagnostic:<code>:<text>[=N], warning=N, warning:<text>, unsupported=N, unsupported:<text>, output:<text>, output-count:<text>=N, output-order:<N>:<text>, output-exact:<text>, output-matches:<regex>, output-command:<command>[=N|?|!], output-channel:<channel>[=N|?|!], output-target:<target>[=N|?|!], output-normalized:<text>, output-normalized-exact:<text>, output-normalized-matches:<regex>, output-segment:<text>[|color=<color>|bold=<true|false>][@target], output-segment-exact:<text>[...], output-segment-matches:<regex>[...], or output-payload:<command>:<path>[=<json>]",
             )
         }
     }
@@ -1229,6 +1236,55 @@ class RunCommand : CliktCommand(name = "run") {
         return JsonObject().also { it.add("trace", trace) }
     }
 
+    private fun parseDiagnosticCountAssertion(count: String, label: String): JsonObject {
+        val expected = count.trim().toIntOrNull()
+            ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label diagnostic shorthand expected integer but got '${count.trim()}'")
+        val diagnostic = JsonObject().also { it.addProperty("count", expected) }
+        return JsonObject().also { it.add("diagnostic", diagnostic) }
+    }
+
+    private fun parseDiagnosticAssertion(spec: String, label: String): JsonObject {
+        val trimmed = spec.trim()
+        if (trimmed.isEmpty()) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label diagnostic shorthand must be diagnostic:<code>[=N], diagnostic:<code>:<text>[=N], or diagnostic:<text>")
+        }
+        val splitAt = trimmed.lastIndexOf('=')
+        val left = if (splitAt < 0) trimmed else trimmed.substring(0, splitAt).trim()
+        val count = splitAt.takeIf { it >= 0 }?.let {
+            val countText = trimmed.substring(it + 1).trim()
+            countText.toIntOrNull()
+                ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label diagnostic count must be an integer")
+        }
+        if (left.isEmpty()) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label diagnostic shorthand must include a code or text")
+        }
+        val colon = left.indexOf(':')
+        val code = when {
+            colon > 0 -> diagnosticCodeName(left.substring(0, colon))
+            else -> diagnosticCodeName(left)
+        }
+        val contains = when {
+            colon > 0 && code != null -> left.substring(colon + 1).trim()
+            code == null -> left
+            else -> null
+        }
+        if (colon > 0 && code == null) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label diagnostic code '${left.substring(0, colon)}' is not supported")
+        }
+        if (contains != null && contains.isEmpty()) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label diagnostic contains text must not be empty")
+        }
+        val diagnostic = JsonObject().also { json ->
+            code?.let { json.addProperty("code", it) }
+            contains?.let { json.addProperty("contains", it) }
+            count?.let { json.addProperty("count", it) }
+        }
+        return JsonObject().also { it.add("diagnostic", diagnostic) }
+    }
+
+    private fun diagnosticCodeName(raw: String): String? =
+        runCatching { DiagnosticCode.valueOf(raw.trim().uppercase()).name }.getOrNull()
+
     private fun storageAssertionObject(location: String, label: String): JsonObject {
         val trimmed = location.trim()
         val firstColon = trimmed.indexOf(':')
@@ -1552,14 +1608,27 @@ class RunCommand : CliktCommand(name = "run") {
             val command = raw.removePrefix("\uFEFF").trim()
             if (command.isNotEmpty() && !command.startsWith("#")) {
                 val normalized = command.removePrefix("/")
-                total += sandbox.executeCommand(
+                total += executeDirectCommand(
+                    sandbox,
                     normalized,
                     SourceLocation(file = sourceName, line = index + 1, command = normalized),
-                ).commandsExecuted
+                )
             }
         }
         return total
     }
+
+    private fun executeDirectCommand(sandbox: DatapackSandbox, command: String, location: SourceLocation): Int =
+        try {
+            sandbox.executeCommand(command, location).commandsExecuted
+        } catch (error: SandboxException) {
+            if (!allowCommandFailure) throw error
+            sandbox.world.traces.lastOrNull {
+                it.command == command &&
+                    it.source?.file == location.file &&
+                    it.source?.line == location.line
+            }?.commandsExecuted ?: 0
+        }
 
     private fun String.sanitizeFunctionPath(): String =
         lowercase()

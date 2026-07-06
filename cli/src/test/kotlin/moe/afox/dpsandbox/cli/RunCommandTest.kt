@@ -524,6 +524,36 @@ class RunCommandTest {
     }
 
     @Test
+    fun `run accepts diagnostic shorthand for allowed command failures`() {
+        val output = captureStdout {
+            main(
+                arrayOf(
+                    "run",
+                    "--version",
+                    "26.2",
+                    "--allow-command-failure",
+                    "--command",
+                    "scoreboard players set #bad missing 1",
+                    "--command",
+                    "say after allowed failure",
+                    "--assert",
+                    "diagnostic=1",
+                    "--assert",
+                    "diagnostic:COMMAND_ERROR=1",
+                    "--assert",
+                    "diagnostic:COMMAND_ERROR:Unknown scoreboard objective 'missing'=1",
+                    "--assert",
+                    "diagnostic:Unknown scoreboard objective",
+                    "--assert",
+                    "output:after allowed failure",
+                ),
+            )
+        }
+
+        assertTrue("OK version=26.2" in output, output)
+    }
+
+    @Test
     fun `run accepts team and bossbar shorthand inline assertions`() {
         val output = captureStdout {
             main(
