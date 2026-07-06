@@ -635,14 +635,16 @@ class RunCommand : CliktCommand(name = "run") {
             trimmed.startsWith("warning=") -> parseWarningCountAssertion(trimmed.removePrefix("warning="), label)
             trimmed.startsWith("unsupported:") -> parseUnsupportedContainsAssertion(trimmed.removePrefix("unsupported:"), label)
             trimmed.startsWith("unsupported=") -> parseUnsupportedCountAssertion(trimmed.removePrefix("unsupported="), label)
+            trimmed.startsWith("output-command:") -> parseOutputFieldAssertion(trimmed.removePrefix("output-command:"), "command", "output-command", label)
             trimmed.startsWith("output-channel:") -> parseOutputChannelAssertion(trimmed.removePrefix("output-channel:"), label)
+            trimmed.startsWith("output-target:") -> parseOutputFieldAssertion(trimmed.removePrefix("output-target:"), "target", "output-target", label)
             trimmed.startsWith("output-normalized:") -> parseNormalizedOutputAssertion(trimmed.removePrefix("output-normalized:"), label)
             trimmed.startsWith("output-segment:") -> parseOutputSegmentAssertion(trimmed.removePrefix("output-segment:"), label)
             trimmed.startsWith("output-payload:") -> parseOutputPayloadAssertion(trimmed.removePrefix("output-payload:"), label)
             trimmed.startsWith("output:") -> parseOutputAssertion(trimmed.removePrefix("output:"), label)
             else -> throw SandboxException(
                 DiagnosticCode.INPUT_FORMAT,
-                "$label must be a JSON object or shorthand score:<target>:<objective>=N, storage:<id>[:<path>]=<json>, advancement:<player>:<id>[=<true|false>], entity:<type|*>[@tag]=N, block:<x>,<y>,<z>=<id>, block:<x>,<y>,<z>?, block:<x>,<y>,<z>!, biome:<x>,<y>,<z>=<id>, team:<name>[?|!|=N|@member], bossbar:<id>[?|!|:<field>=<value>], item:<player>:<id>[@slot]=N, player:<name>[:<field>=<value>], world:<field>=<value>, gamerule:<rule>=<value>, gamerule:<rule>?, gamerule:<rule>!, random-sequence:<name>=N, snapshot:<path>=<json>, snapshot:<path>?, snapshot:<path>!, diff:<json-pointer>[=<kind>], event-trace:<player>:<type>[=N], trace:<root>=N, trace:<text>, trace-output:<text>[@target], warning=N, warning:<text>, unsupported=N, unsupported:<text>, output:<text>, output-channel:<channel>[=N|?|!], output-normalized:<text>, output-segment:<text>[|color=<color>|bold=<true|false>][@target], or output-payload:<command>:<path>[=<json>]",
+                "$label must be a JSON object or shorthand score:<target>:<objective>=N, storage:<id>[:<path>]=<json>, advancement:<player>:<id>[=<true|false>], entity:<type|*>[@tag]=N, block:<x>,<y>,<z>=<id>, block:<x>,<y>,<z>?, block:<x>,<y>,<z>!, biome:<x>,<y>,<z>=<id>, team:<name>[?|!|=N|@member], bossbar:<id>[?|!|:<field>=<value>], item:<player>:<id>[@slot]=N, player:<name>[:<field>=<value>], world:<field>=<value>, gamerule:<rule>=<value>, gamerule:<rule>?, gamerule:<rule>!, random-sequence:<name>=N, snapshot:<path>=<json>, snapshot:<path>?, snapshot:<path>!, diff:<json-pointer>[=<kind>], event-trace:<player>:<type>[=N], trace:<root>=N, trace:<text>, trace-output:<text>[@target], warning=N, warning:<text>, unsupported=N, unsupported:<text>, output:<text>, output-command:<command>[=N|?|!], output-channel:<channel>[=N|?|!], output-target:<target>[=N|?|!], output-normalized:<text>, output-segment:<text>[|color=<color>|bold=<true|false>][@target], or output-payload:<command>:<path>[=<json>]",
             )
         }
     }
@@ -1256,33 +1258,37 @@ class RunCommand : CliktCommand(name = "run") {
     }
 
     private fun parseOutputChannelAssertion(spec: String, label: String): JsonObject {
+        return parseOutputFieldAssertion(spec, "channel", "output-channel", label)
+    }
+
+    private fun parseOutputFieldAssertion(spec: String, fieldName: String, shorthandName: String, label: String): JsonObject {
         val trimmed = spec.trim()
         if (trimmed.isEmpty()) {
-            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label output channel shorthand must be output-channel:<channel>[=N|?|!]")
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label $shorthandName shorthand must be $shorthandName:<value>[=N|?|!]")
         }
         val output = when {
-            trimmed.endsWith("?") -> outputChannelObject(trimmed.dropLast(1), label)
-            trimmed.endsWith("!") -> outputChannelObject(trimmed.dropLast(1), label).also { it.addProperty("count", 0) }
+            trimmed.endsWith("?") -> outputFieldObject(trimmed.dropLast(1), fieldName, shorthandName, label)
+            trimmed.endsWith("!") -> outputFieldObject(trimmed.dropLast(1), fieldName, shorthandName, label).also { it.addProperty("count", 0) }
             else -> {
                 val splitAt = trimmed.indexOf('=')
                 if (splitAt <= 0 || splitAt == trimmed.lastIndex) {
-                    throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label output channel shorthand must be output-channel:<channel>[=N|?|!]")
+                    throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label $shorthandName shorthand must be $shorthandName:<value>[=N|?|!]")
                 }
                 val countText = trimmed.substring(splitAt + 1).trim()
                 val count = countText.toIntOrNull()
-                    ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label output channel count must be an integer")
-                outputChannelObject(trimmed.substring(0, splitAt), label).also { it.addProperty("count", count) }
+                    ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label $shorthandName count must be an integer")
+                outputFieldObject(trimmed.substring(0, splitAt), fieldName, shorthandName, label).also { it.addProperty("count", count) }
             }
         }
         return JsonObject().also { it.add("output", output) }
     }
 
-    private fun outputChannelObject(channel: String, label: String): JsonObject {
-        val trimmed = channel.trim()
+    private fun outputFieldObject(value: String, fieldName: String, shorthandName: String, label: String): JsonObject {
+        val trimmed = value.trim()
         if (trimmed.isEmpty()) {
-            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label output channel must not be empty")
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label $shorthandName value must not be empty")
         }
-        return JsonObject().also { it.addProperty("channel", trimmed) }
+        return JsonObject().also { it.addProperty(fieldName, trimmed) }
     }
 
     private fun parseOutputSegmentAssertion(spec: String, label: String): JsonObject {
