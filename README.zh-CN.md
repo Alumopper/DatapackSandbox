@@ -153,6 +153,7 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar run --pack ./my_pack --resourc
 
 ```bash
 java -jar cli/build/libs/datapack-sandbox-cli.jar resources --pack ./my_pack --type function --namespace demo
+java -jar cli/build/libs/datapack-sandbox-cli.jar resources --pack ./my_pack --id demo:main --source-pack ./my_pack --active-only
 java -jar cli/build/libs/datapack-sandbox-cli.jar resources --pack ./my_pack --active-only
 java -jar cli/build/libs/datapack-sandbox-cli.jar resources --pack ./my_pack --json --output build/loaded-resources.json
 ```

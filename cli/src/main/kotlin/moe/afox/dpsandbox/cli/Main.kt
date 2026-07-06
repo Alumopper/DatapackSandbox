@@ -1766,7 +1766,11 @@ class ResourcesCommand : CliktCommand(name = "resources") {
     private val version by option("--version", "-v").default(VersionProfiles.default.id)
     private val packs by option("--pack", "-p").path(mustExist = true).multiple()
     private val types by option("--type").multiple()
+    private val ids by option("--id").multiple()
     private val namespaces by option("--namespace").multiple()
+    private val sourcePacks by option("--source-pack").multiple()
+    private val orderMin by option("--order-min").int()
+    private val orderMax by option("--order-max").int()
     private val activeOnly by option("--active-only").flag(default = false)
     private val overriddenOnly by option("--overridden-only").flag(default = false)
     private val docs by option("--docs").flag(default = false)
@@ -1809,22 +1813,31 @@ class ResourcesCommand : CliktCommand(name = "resources") {
                 "resources accepts only one state filter: --active-only or --overridden-only",
             )
         }
+        if (orderMin != null && orderMin!! < 0) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "resources --order-min must be >= 0")
+        }
+        if (orderMax != null && orderMax!! < 0) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "resources --order-max must be >= 0")
+        }
+        if (orderMin != null && orderMax != null && orderMin!! > orderMax!!) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "resources --order-min cannot be greater than --order-max")
+        }
         if (packs.isNotEmpty() && docs) {
             throw SandboxException(DiagnosticCode.INPUT_FORMAT, "resources --docs describes the catalog and cannot be combined with --pack")
         }
         if (packs.isNotEmpty() && check != null) {
             throw SandboxException(DiagnosticCode.INPUT_FORMAT, "resources --check validates docs and cannot be combined with --pack")
         }
-        if (check != null && (types.isNotEmpty() || namespaces.isNotEmpty() || activeOnly || overriddenOnly)) {
+        if (check != null && hasFilters()) {
             throw SandboxException(DiagnosticCode.INPUT_FORMAT, "resources --check always validates the full catalog and accepts no filters")
         }
     }
 
     private fun validateCatalogFilters() {
-        if (namespaces.isNotEmpty() || activeOnly || overriddenOnly) {
+        if (ids.isNotEmpty() || namespaces.isNotEmpty() || sourcePacks.isNotEmpty() || orderMin != null || orderMax != null || activeOnly || overriddenOnly) {
             throw SandboxException(
                 DiagnosticCode.INPUT_FORMAT,
-                "resources resource-index filters require --pack: --namespace, --active-only, --overridden-only",
+                "resources resource-index filters require --pack: --id, --namespace, --source-pack, --order-min, --order-max, --active-only, --overridden-only",
             )
         }
     }
@@ -1848,14 +1861,35 @@ class ResourcesCommand : CliktCommand(name = "resources") {
 
     private fun filterLoadedResources(entries: List<ResourceIndexEntry>): List<ResourceIndexEntry> {
         val typeSet = types.toSet()
+        val idSet = ids.map { ResourceLocation.parse(it) }.toSet()
         val namespaceSet = namespaces.toSet()
+        val sourcePackSet = sourcePackFilters()
         return entries.filter { entry ->
             (typeSet.isEmpty() || entry.type in typeSet) &&
+                (idSet.isEmpty() || entry.id in idSet) &&
                 (namespaceSet.isEmpty() || entry.id.namespace in namespaceSet) &&
+                (sourcePackSet.isEmpty() || entry.pack in sourcePackSet) &&
+                (orderMin == null || entry.order >= orderMin!!) &&
+                (orderMax == null || entry.order <= orderMax!!) &&
                 (!activeOnly || entry.active) &&
                 (!overriddenOnly || !entry.active)
         }
     }
+
+    private fun sourcePackFilters(): Set<String> =
+        sourcePacks.flatMap { value ->
+            listOf(value, Path.of(value).toAbsolutePath().normalize().toString())
+        }.toSet()
+
+    private fun hasFilters(): Boolean =
+        types.isNotEmpty() ||
+            ids.isNotEmpty() ||
+            namespaces.isNotEmpty() ||
+            sourcePacks.isNotEmpty() ||
+            orderMin != null ||
+            orderMax != null ||
+            activeOnly ||
+            overriddenOnly
 
     private fun renderLoadedPlain(summary: ManifestResourceSummary, entries: List<ResourceIndexEntry>): String =
         buildString {
@@ -1915,7 +1949,11 @@ class ResourcesCommand : CliktCommand(name = "resources") {
     private fun renderFiltersJson(): JsonObject =
         JsonObject().also { json ->
             json.add("types", stringArray(types))
+            json.add("ids", stringArray(ids))
             json.add("namespaces", stringArray(namespaces))
+            json.add("sourcePacks", stringArray(sourcePacks))
+            orderMin?.let { json.addProperty("orderMin", it) }
+            orderMax?.let { json.addProperty("orderMax", it) }
             json.addProperty("activeOnly", activeOnly)
             json.addProperty("overriddenOnly", overriddenOnly)
         }

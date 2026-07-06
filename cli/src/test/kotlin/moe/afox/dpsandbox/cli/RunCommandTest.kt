@@ -1551,6 +1551,38 @@ class RunCommandTest {
         assertTrue("overriddenBy=" in output, output)
     }
 
+    @Test
+    fun `resources can filter loaded pack index by id source pack and order`() {
+        val first = writeDependencyPack(Files.createTempDirectory("dps-resources-source-first"), "main", "say first")
+        val second = writeDependencyPack(Files.createTempDirectory("dps-resources-source-second"), "main", "say second")
+
+        val output = captureStdout {
+            main(
+                arrayOf(
+                    "resources",
+                    "--version",
+                    "26.2",
+                    "--pack",
+                    first.toString(),
+                    "--pack",
+                    second.toString(),
+                    "--id",
+                    "demo:main",
+                    "--source-pack",
+                    second.toString(),
+                    "--order-min",
+                    "1",
+                    "--order-max",
+                    "1",
+                ),
+            )
+        }
+
+        assertTrue("resources version=26.2 packs=2 resourceIndex=2 active=1 overridden=1 selected=1" in output, output)
+        assertTrue("resource function demo:main modeled active pack=${second.toAbsolutePath().normalize()}" in output, output)
+        assertTrue("overrides=" in output, output)
+    }
+
     private fun captureStdout(stdin: String? = null, block: () -> Unit): String {
         val original = System.out
         val originalIn = System.`in`

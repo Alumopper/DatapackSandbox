@@ -167,7 +167,7 @@ JSON text component 支持 `text`、`score`、`selector`、`translate`、`keybin
 | CLI `run --outputs-file <file>` | | 将可观察输出事件写成 JSONL，适合作为 CI artifact 或命令生成器回归测试产物。 |
 | CLI `run --report-file <file>` | | 写出综合 JSON 报告，包括通过状态、断言失败、输出、trace、事件 trace、最终 snapshot、snapshot diff 和资源摘要明细。 |
 | CLI `run --resources` | | 在轻量验包中打印确定性的资源数量、覆盖诊断和直接缺失资源引用。 |
-| CLI `resources --pack <path>` | | 检查一个或多个数据包的已加载资源索引，包含类型、namespace/id、来源文件、pack 标签、active/overridden 状态、覆盖关系、过滤器（`--type`、`--namespace`、`--active-only`、`--overridden-only`）以及 JSON artifact 输出。 |
+| CLI `resources --pack <path>` | | 检查一个或多个数据包的已加载资源索引，包含类型、namespace/id、来源文件、pack 标签、加载顺序、active/overridden 状态、覆盖关系、过滤器（`--type`、`--id`、`--namespace`、`--source-pack`、`--order-min`、`--order-max`、`--active-only`、`--overridden-only`）以及 JSON artifact 输出。 |
 | CLI `run --snapshot-diff` | | 输出执行前后的状态差异，可配合 `--snapshot-diff-file` 写出 JSON。 |
 | CLI `run --stdin` | | 从标准输入读取 `.mcfunction` 文本；`--stdin-mode commands` 会按原始命令行执行 stdin。 |
 | CLI `run --command-file <file>` | | 按参数顺序执行一个或多个原始命令文件，适合命令生成器输出。 |

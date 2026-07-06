@@ -25,7 +25,7 @@
 
 - 扩展 `DatapackLoader` 的资源读取范围，按版本 profile 支持当前目录名和历史别名。
 - 为新增资源建立 typed model 或至少建立稳定的 raw JSON resource model，包含 resource id、文件路径、版本、资源类型和原始 JSON。
-- 增加资源索引能力，按 namespace、类型、id、来源 pack 和覆盖顺序查询；`resources --pack <path>` 已可导出实际加载索引，支持 type/namespace/active/overridden 过滤和 JSON artifact。
+- 增加资源索引能力，按 namespace、类型、id、来源 pack 和覆盖顺序查询；`resources --pack <path>` 已可导出实际加载索引，支持 type/id/namespace/source-pack/order/active/overridden 过滤和 JSON artifact。
 - 扩展 pack overlay 诊断：当后加载 pack 覆盖前一个资源时，可在 verbose/trace 中显示覆盖关系。
 - 增加资源格式校验：JSON 解析、必填字段、resource location、版本目录布局、`pack.mcmeta` 格式范围、标签 `replace` 语义。
 - 扩展 `inspect registry/resource` 或新增等价 CLI/REPL 命令，列出资源和来源。
@@ -279,7 +279,7 @@
   - `observed-noop`：接受命令并记录输出/诊断，不改变真实副作用。
   - `unsupported`：按策略 warn/error/ignore。
   - `commands` CLI 已可按版本导出命令目录、行为等级和描述，支持 plain、Markdown、JSON、`--output <file>` artifact 输出和 `--check <file>` 文档覆盖检查；standalone jar smoke task 已接入 Gradle `check`，便于文档生成和 CI 复核。
-  - `ResourceCatalog` 已集中维护资源类型与行为等级，`DatapackLoader` 的额外 raw JSON 资源读取复用该目录，`resources` CLI 已可导出 plain、Markdown、JSON、`--output <file>` artifact 和 `--check <file>` 文档覆盖检查；同一命令带 `--pack` 时可导出已加载资源索引、来源文件、覆盖状态和过滤后的 JSON artifact；standalone jar smoke task 已接入 Gradle `check`，避免 loader、文档和后续检查工具分叉。
+  - `ResourceCatalog` 已集中维护资源类型与行为等级，`DatapackLoader` 的额外 raw JSON 资源读取复用该目录，`resources` CLI 已可导出 plain、Markdown、JSON、`--output <file>` artifact 和 `--check <file>` 文档覆盖检查；同一命令带 `--pack` 时可导出已加载资源索引、来源文件、覆盖状态、加载顺序和按 type/id/namespace/source-pack/order/state 过滤后的 JSON artifact；standalone jar smoke task 已接入 Gradle `check`，避免 loader、文档和后续检查工具分叉。
 
 验收标准：
 
