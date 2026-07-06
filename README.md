@@ -199,11 +199,13 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar check ./sandbox-cases --trace-
 ```
 
 For ad hoc checks without a full manifest, `run` can apply a manifest-style
-world fixture and one or more inline JSON assertions:
+world fixture, override its seed, and evaluate one or more inline JSON
+assertions:
 
 ```bash
 java -jar cli/build/libs/datapack-sandbox-cli.jar run --version 26.2 \
   --world ./fixture-world.json \
+  --seed 42 \
   --assert '{"world":{"seed":42}}' \
   --assert '{"score":{"target":"#fixture","objective":"ready","equals":1}}' \
   --assert-file ./assertions.json

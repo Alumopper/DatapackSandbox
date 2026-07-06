@@ -182,6 +182,32 @@ class RunCommandTest {
     }
 
     @Test
+    fun `run can override world fixture seed`() {
+        val worldFile = Files.createTempFile("dps-cli-world-seed", ".json")
+        Files.writeString(worldFile, """{"seed":42}""")
+
+        val output = captureStdout {
+            main(
+                arrayOf(
+                    "run",
+                    "--version",
+                    "26.2",
+                    "--world",
+                    worldFile.toString(),
+                    "--seed",
+                    "99",
+                    "--assert",
+                    """{"world":{"seed":99}}""",
+                    "--snapshot",
+                ),
+            )
+        }
+
+        assertTrue("OK version=26.2" in output, output)
+        assertTrue("\"seed\": 99" in output, output)
+    }
+
+    @Test
     fun `run accepts shorthand inline assertions`() {
         val output = captureStdout {
             main(

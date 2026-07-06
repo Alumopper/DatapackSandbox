@@ -161,6 +161,7 @@ These are tooling commands, not vanilla commands:
 | CLI `run --event "<event>"` | Inject player events in quick runs using `player <name> <type> [id] [detail/action]`, then assert player state or `eventTrace`. |
 | CLI `run --event-file <file>` | Inject one player event per non-empty, non-comment line, using the same `--event` shorthand. |
 | CLI `run --event-trace-file <file>` | Write player event trace JSONL for event-driven datapack debugging and CI artifacts. |
+| CLI `run --seed <long>` | Override the quick-run world seed after world fixtures are applied. |
 | CLI `run --world` | Apply a manifest-style world JSON fixture, including fixture references, before execution. |
 | CLI `run --assert`, `run --assert-file` | Evaluate inline or file-backed manifest assertions after execution, including before/after `snapshotDiff` assertions. `--assert-file` accepts JSON object/array files or one shorthand per non-empty, non-comment line. Shorthands include `score:<target>:<objective>=N`, `score:<target>:<objective>>=N`, `score:<target>:<objective><=N`, `storage:<id>[:<path>]=<json>`, `storage:<id>[:<path>]?`, `storage:<id>[:<path>]!`, `player:<name>[:<field>=<value>]`, `item:<player>:<id>[@slot]=N`, `entity:<type|*>[@tag]=N`, `trace:<root>=N`, `trace:<text>`, `warning=N`, `warning:<text>`, and `output:<text>`. |
 | CLI `run --fail-on-missing-resources` | Fail a quick run when direct load/tick tag or advancement reward references point at missing resources, useful before creating a full manifest. |

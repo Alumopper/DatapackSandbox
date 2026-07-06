@@ -161,11 +161,12 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar check ./sandbox-cases --trace-
 
 `--trace-filter` 也可以按命令造成的状态变化过滤，例如 `score=#clock`、`storage=demo:env` 或 `path=/scores/runs`；trace JSONL 条目会带上每条命令的 `snapshotDiffs`。
 
-不想写完整 manifest 时，`run` 可以直接加载 manifest-style world fixture，并接受一个或多个内联 JSON assertion：
+不想写完整 manifest 时，`run` 可以直接加载 manifest-style world fixture、覆盖 seed，并接受一个或多个内联 JSON assertion：
 
 ```bash
 java -jar cli/build/libs/datapack-sandbox-cli.jar run --version 26.2 \
   --world ./fixture-world.json \
+  --seed 42 \
   --assert '{"world":{"seed":42}}' \
   --assert '{"score":{"target":"#fixture","objective":"ready","equals":1}}' \
   --assert-file ./assertions.json

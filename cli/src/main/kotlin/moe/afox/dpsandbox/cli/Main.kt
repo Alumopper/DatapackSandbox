@@ -326,6 +326,7 @@ class RunCommand : CliktCommand(name = "run") {
     private val stdin by option("--stdin").flag(default = false)
     private val stdinMode by option("--stdin-mode").default("function")
     private val worldFiles by option("--world").path(mustExist = true).multiple()
+    private val seed by option("--seed").long()
     private val shouldLoad by option("--load").flag(default = false)
     private val ticks by option("--ticks").int().default(0)
     private val functions by option("--function", "-f").multiple()
@@ -397,6 +398,7 @@ class RunCommand : CliktCommand(name = "run") {
                 )
             }
             applyWorldFixtures(sandbox)
+            seed?.let { sandbox.world.seed = it }
             val beforeSnapshot = sandbox.snapshotJson()
             var total = 0
             if (functionSources.isNotEmpty()) total += sandbox.runFunction(mcfunctionId).commandsExecuted

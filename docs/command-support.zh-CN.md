@@ -146,6 +146,7 @@ JSON text component 支持 `text`、`score`、`selector`、`translate`、`keybin
 | CLI `run --event "<event>"` | 在轻量 run 流程中注入玩家事件，格式为 `player <name> <type> [id] [detail/action]`，之后可断言玩家状态或 `eventTrace`。 |
 | CLI `run --event-file <file>` | 按文件中的非空、非注释行逐条注入玩家事件，格式与 `--event` 相同。 |
 | CLI `run --event-trace-file <file>` | 写出玩家事件 trace JSONL，适合作为事件驱动数据包调试和 CI artifact。 |
+| CLI `run --seed <long>` | 在 world fixture 应用后覆盖轻量运行的世界 seed。 |
 | CLI `run --world` | 执行前应用 manifest-style world JSON fixture，包括 fixture 引用链。 |
 | CLI `run --assert`、`run --assert-file` | 执行后评估内联或文件形式的 manifest assertion，包括需要执行前后上下文的 `snapshotDiff` 断言。`--assert-file` 支持 JSON object/array 文件，也支持非空、非注释行逐行写 shorthand。简写包括 `score:<target>:<objective>=N`、`score:<target>:<objective>>=N`、`score:<target>:<objective><=N`、`storage:<id>[:<path>]=<json>`、`storage:<id>[:<path>]?`、`storage:<id>[:<path>]!`、`player:<name>[:<field>=<value>]`、`item:<player>:<id>[@slot]=N`、`entity:<type|*>[@tag]=N`、`trace:<root>=N`、`trace:<text>`、`warning=N`、`warning:<text>` 和 `output:<text>`。 |
 | CLI `run --fail-on-missing-resources` | 在轻量 run 中把 load/tick 标签和 advancement reward 的直接缺失资源引用视为失败，适合在编写完整 manifest 前快速验包。 |
