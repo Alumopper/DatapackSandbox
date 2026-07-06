@@ -112,6 +112,54 @@ class PredicateEngineTest {
         assertFalse(engine.testElement(wrongState, context))
     }
 
+    @Test
+    fun `entity distance predicate uses real absolute horizontal and axis distances`() {
+        val engine = PredicateEngine(Datapack(emptyMap(), emptyList(), emptyList()))
+        val pig = SandboxEntity(
+            type = ResourceLocation.parse("minecraft:pig"),
+            position = Position(3.0, 4.0, 12.0),
+        )
+        val predicate = JsonValues.parse(
+            """
+            {
+              condition: "minecraft:entity_properties",
+              entity: "this",
+              predicate: {
+                type: "minecraft:pig",
+                distance: {
+                  absolute: {min: 13, max: 13},
+                  horizontal: {min: 12.36, max: 12.37},
+                  x: 3,
+                  y: 4,
+                  z: 12
+                }
+              }
+            }
+            """.trimIndent(),
+        )
+        val tooClose = JsonValues.parse(
+            """
+            {
+              condition: "minecraft:entity_properties",
+              entity: "this",
+              predicate: {
+                distance: {
+                  absolute: {max: 12}
+                }
+              }
+            }
+            """.trimIndent(),
+        )
+        val context = PredicateContext(
+            world = SandboxWorld(),
+            origin = Position.zero,
+            thisEntity = pig,
+        )
+
+        assertTrue(engine.testElement(predicate, context))
+        assertFalse(engine.testElement(tooClose, context))
+    }
+
     private fun context(tool: ItemStack?): PredicateContext =
         PredicateContext(
             world = SandboxWorld(),

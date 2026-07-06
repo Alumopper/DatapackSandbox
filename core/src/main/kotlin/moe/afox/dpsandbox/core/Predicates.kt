@@ -4,7 +4,9 @@ import com.google.gson.JsonArray
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 import com.google.gson.JsonPrimitive
+import kotlin.math.abs
 import kotlin.math.floor
+import kotlin.math.sqrt
 import kotlin.random.Random
 
 /**
@@ -244,7 +246,7 @@ class PredicateEngine(
             val dx = actual.position.x - origin.x
             val dy = actual.position.y - origin.y
             val dz = actual.position.z - origin.z
-            if (!testRange(dx * dx + dy * dy + dz * dz, distance.get("absolute") ?: distance.get("horizontal"))) return false
+            if (!testDistancePredicate(dx, dy, dz, distance)) return false
         }
         (predicate.getAsJsonObject("player") ?: predicate.getAsJsonObject("type_specific")?.takeIf {
             it.string("type") == "minecraft:player" || it.string("type") == "player"
@@ -282,6 +284,19 @@ class PredicateEngine(
                 if (it.asBoolean != effect.hideParticles) return false
             }
         }
+        return true
+    }
+
+    private fun testDistancePredicate(dx: Double, dy: Double, dz: Double, predicate: JsonObject): Boolean {
+        predicate.get("absolute")?.let {
+            if (!testRange(sqrt(dx * dx + dy * dy + dz * dz), it)) return false
+        }
+        predicate.get("horizontal")?.let {
+            if (!testRange(sqrt(dx * dx + dz * dz), it)) return false
+        }
+        predicate.get("x")?.let { if (!testRange(abs(dx), it)) return false }
+        predicate.get("y")?.let { if (!testRange(abs(dy), it)) return false }
+        predicate.get("z")?.let { if (!testRange(abs(dz), it)) return false }
         return true
     }
 
