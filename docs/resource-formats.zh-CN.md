@@ -61,10 +61,11 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar resources
 java -jar cli/build/libs/datapack-sandbox-cli.jar resources --docs
 java -jar cli/build/libs/datapack-sandbox-cli.jar resources --docs --output docs/resource-catalog.md
 java -jar cli/build/libs/datapack-sandbox-cli.jar resources --check docs/resource-formats.md
+java -jar cli/build/libs/datapack-sandbox-cli.jar resources --docs --locale zh-CN --check docs/resource-formats.zh-CN.md
 java -jar cli/build/libs/datapack-sandbox-cli.jar resources --json --output build/resource-catalog.json
 ```
 
-`resources --check` 会校验目录里的每个资源类型都出现在文档中，并带有匹配的行为等级。Gradle `check` 生命周期会通过 standalone jar smoke task 运行这个检查。
+`resources --check` 会校验目录里的每个资源类型都出现在文档中，并带有匹配的行为等级。默认检查英文目录；加上 `--locale zh-CN` 可检查中文本地化目录。Gradle `check` 生命周期会通过 standalone jar smoke task 同时运行英文和中文文档检查。
 
 | 等级 | 含义 |
 |---|---|

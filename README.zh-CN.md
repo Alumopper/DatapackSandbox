@@ -165,9 +165,10 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar run --version 26.2 ^
 java -jar cli/build/libs/datapack-sandbox-cli.jar run --pack ./my_pack --resources --fail-on-missing-resources
 ```
 
-需要单独检查某个数据包实际加载了哪些资源时，可以导出资源索引，并按类型、namespace 或覆盖状态过滤：
+需要单独检查内置资源目录支持状态，或查看某个数据包实际加载了哪些资源时，可以导出资源目录/资源索引，并按类型、namespace 或覆盖状态过滤：
 
 ```bash
+java -jar cli/build/libs/datapack-sandbox-cli.jar resources --docs --locale zh-CN --check docs/resource-formats.zh-CN.md
 java -jar cli/build/libs/datapack-sandbox-cli.jar resources --pack ./my_pack --type function --namespace demo
 java -jar cli/build/libs/datapack-sandbox-cli.jar resources --pack ./my_pack --id demo:main --source-pack ./my_pack --active-only
 java -jar cli/build/libs/datapack-sandbox-cli.jar resources --pack ./my_pack --active-only

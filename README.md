@@ -93,6 +93,7 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar resources
 java -jar cli/build/libs/datapack-sandbox-cli.jar resources --docs
 java -jar cli/build/libs/datapack-sandbox-cli.jar resources --docs --output docs/resource-catalog.md
 java -jar cli/build/libs/datapack-sandbox-cli.jar resources --check docs/resource-formats.md
+java -jar cli/build/libs/datapack-sandbox-cli.jar resources --docs --locale zh-CN --check docs/resource-formats.zh-CN.md
 java -jar cli/build/libs/datapack-sandbox-cli.jar resources --json --output build/resource-catalog.json
 java -jar cli/build/libs/datapack-sandbox-cli.jar resources --pack ./my_pack --type function --namespace demo
 java -jar cli/build/libs/datapack-sandbox-cli.jar resources --pack ./my_pack --id demo:main --source-pack ./my_pack --active-only

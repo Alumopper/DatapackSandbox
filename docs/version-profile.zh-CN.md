@@ -57,7 +57,7 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar version --docs --check docs/ve
 java -jar cli/build/libs/datapack-sandbox-cli.jar version --docs --locale zh-CN --check docs/version-profile.zh-CN.md
 ```
 
-`--check` 可用于 CI：如果生成的 Markdown 表格不再出现在已提交文档中，命令会失败。默认检查英文表格；加上 `--locale zh-CN` 可检查中文本地化表格。Gradle `check` 生命周期会通过 standalone jar smoke task 运行英文文档检查。
+`--check` 可用于 CI：如果生成的 Markdown 表格不再出现在已提交文档中，命令会失败。默认检查英文表格；加上 `--locale zh-CN` 可检查中文本地化表格。Gradle `check` 生命周期会通过 standalone jar smoke task 同时运行英文和中文文档检查。
 
 比较两个 profile，查看 pack format、NBT schema、资源目录、命令根和 registry 差异：
 

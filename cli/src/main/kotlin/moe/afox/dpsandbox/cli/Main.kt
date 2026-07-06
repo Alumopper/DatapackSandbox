@@ -2332,10 +2332,12 @@ class ResourcesCommand : CliktCommand(name = "resources") {
     private val json by option("--json").flag(default = false)
     private val output by option("--output", "-o").path()
     private val check by option("--check").path()
+    private val docsLocale by option("--locale").default("en")
 
     override fun run() {
         try {
             validateModes()
+            val locale = normalizedDocsLocale(docsLocale)
             if (packs.isNotEmpty()) {
                 emitLoadedResources()
                 return
@@ -2344,8 +2346,8 @@ class ResourcesCommand : CliktCommand(name = "resources") {
             val entries = filterCatalog(ResourceCatalog.all)
             val checkPath = check
             when {
-                checkPath != null -> checkResourceDocs(checkPath, ResourceCatalog.all)
-                docs -> emit(renderMarkdown(entries))
+                checkPath != null -> checkResourceDocs(checkPath, ResourceCatalog.all, locale)
+                docs -> emit(renderMarkdown(entries, locale))
                 json -> emit(JsonValues.render(renderJson(entries)))
                 else -> emit(renderPlain(entries))
             }
@@ -2385,6 +2387,9 @@ class ResourcesCommand : CliktCommand(name = "resources") {
         }
         if (check != null && hasFilters()) {
             throw SandboxException(DiagnosticCode.INPUT_FORMAT, "resources --check always validates the full catalog and accepts no filters")
+        }
+        if (!docs && check == null && docsLocale != "en") {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "resources --locale is only supported with --docs or --check")
         }
     }
 
@@ -2518,14 +2523,34 @@ class ResourcesCommand : CliktCommand(name = "resources") {
             "${entry.type} ${entry.behaviorLevel.id} - ${entry.summary}"
         }
 
-    private fun renderMarkdown(entries: List<ResourceCatalogEntry>): String =
-        buildString {
-            appendLine("| Resource | Behavior | Runtime/debug surface |")
+    private fun renderMarkdown(entries: List<ResourceCatalogEntry>, locale: String): String {
+        val zh = locale.isZhCnDocsLocale()
+        val resourceHeader = if (zh) "资源" else "Resource"
+        val behaviorHeader = if (zh) "行为等级" else "Behavior"
+        val surfaceHeader = if (zh) "运行时 / debug 表面" else "Runtime/debug surface"
+        return buildString {
+            appendLine("| $resourceHeader | $behaviorHeader | $surfaceHeader |")
             appendLine("|---|---|---|")
             entries.forEach { entry ->
-                appendLine("| `${markdownCell(entry.type)}` | `${entry.behaviorLevel.id}` | ${markdownCell(entry.summary)} |")
+                appendLine("| `${markdownCell(entry.type)}` | `${entry.behaviorLevel.id}` | ${markdownCell(resourceSummary(entry, locale))} |")
             }
         }.trimEnd()
+    }
+
+    private fun resourceSummary(entry: ResourceCatalogEntry, locale: String): String {
+        if (!locale.isZhCnDocsLocale()) return entry.summary
+        return when (entry.type) {
+            "function" -> "mcfunction 执行、trace source location 和缺失引用检查。"
+            "tag/function" -> "load/tick/function tag 执行和 `replace` 语义。"
+            "loot_table" -> "支持上下文内的确定性 loot 生成和命令输出。"
+            "predicate" -> "predicate 命令/API、advancement 条件、loot 条件和 item modifier。"
+            "advancement" -> "玩家 progress、criteria 匹配、rewards、output 和事件 trace。"
+            "recipe" -> "进入资源索引和玩家 recipe 状态，供命令与 rewards 使用。"
+            "item_modifier" -> "`item modify` 会应用常用 item modifier 函数。"
+            "tag/<registry>" -> "普通 tag 保留 `replace` 语义，并进入资源索引供 inspect。"
+            else -> "经版本校验的 raw JSON 资源，进入索引供 inspect。"
+        }
+    }
 
     private fun renderJson(entries: List<ResourceCatalogEntry>): JsonObject =
         JsonObject().also { root ->
@@ -2559,7 +2584,7 @@ class ResourcesCommand : CliktCommand(name = "resources") {
         }
     }
 
-    private fun checkResourceDocs(path: Path, entries: List<ResourceCatalogEntry>) {
+    private fun checkResourceDocs(path: Path, entries: List<ResourceCatalogEntry>, locale: String) {
         if (!Files.exists(path)) {
             throw SandboxException(DiagnosticCode.INPUT_FORMAT, "resources check file does not exist: $path")
         }
@@ -2572,7 +2597,7 @@ class ResourcesCommand : CliktCommand(name = "resources") {
         if (missing.isNotEmpty()) {
             throw SandboxException(
                 DiagnosticCode.INPUT_FORMAT,
-                "resources docs are out of date: $path; missing ${missing.joinToString()}",
+                "resources docs are out of date: $path; missing ${missing.joinToString()}; regenerate with resources --docs ${localeOption(locale)}--output <file>",
             )
         }
         println(ConsoleStyle.green("resources docs cover catalog: $path"))
@@ -2580,6 +2605,19 @@ class ResourcesCommand : CliktCommand(name = "resources") {
 
     private fun normalizeDoc(value: String): String =
         value.replace("\r\n", "\n").replace('\r', '\n')
+
+    private fun normalizedDocsLocale(value: String): String =
+        when (value.lowercase().replace('_', '-')) {
+            "en", "en-us" -> "en"
+            "zh", "zh-cn", "zh-hans", "zh-hans-cn" -> "zh-CN"
+            else -> throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Unsupported resources docs locale '$value'; expected en or zh-CN")
+        }
+
+    private fun localeOption(locale: String): String =
+        if (locale == "en") "" else "--locale $locale "
+
+    private fun String.isZhCnDocsLocale(): Boolean =
+        lowercase().replace('_', '-') in setOf("zh", "zh-cn", "zh-hans", "zh-hans-cn")
 }
 
 fun unsupportedFeatureMode(value: String): UnsupportedFeatureMode =

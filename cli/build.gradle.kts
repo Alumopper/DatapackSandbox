@@ -92,6 +92,21 @@ smokeCliJarVersionDocs.configure {
     inputs.file(versionProfileDoc)
 }
 
+val versionProfileZhDoc = rootProject.layout.projectDirectory.file("docs/version-profile.zh-CN.md")
+val smokeCliJarVersionDocsZh = registerCliJarSmokeTask(
+    name = "smokeCliJarVersionDocsZh",
+    descriptionText = "Checks that the generated localized version profile docs table is current.",
+    "version",
+    "--docs",
+    "--locale",
+    "zh-CN",
+    "--check",
+    versionProfileZhDoc.asFile.absolutePath,
+)
+smokeCliJarVersionDocsZh.configure {
+    inputs.file(versionProfileZhDoc)
+}
+
 val commandSupportDoc = rootProject.layout.projectDirectory.file("docs/command-support.md")
 val smokeCliJarCommandDocs = registerCliJarSmokeTask(
     name = "smokeCliJarCommandDocs",
@@ -114,6 +129,20 @@ val smokeCliJarResourceDocs = registerCliJarSmokeTask(
 )
 smokeCliJarResourceDocs.configure {
     inputs.file(resourceFormatsDoc)
+}
+
+val resourceFormatsZhDoc = rootProject.layout.projectDirectory.file("docs/resource-formats.zh-CN.md")
+val smokeCliJarResourceDocsZh = registerCliJarSmokeTask(
+    name = "smokeCliJarResourceDocsZh",
+    descriptionText = "Checks that localized resource format docs cover the resource behavior catalog.",
+    "resources",
+    "--check",
+    resourceFormatsZhDoc.asFile.absolutePath,
+    "--locale",
+    "zh-CN",
+)
+smokeCliJarResourceDocsZh.configure {
+    inputs.file(resourceFormatsZhDoc)
 }
 
 val examplesDir = rootProject.layout.projectDirectory.dir("examples")
@@ -326,8 +355,10 @@ tasks.register("smokeCliJar") {
     dependsOn(
         smokeCliJarVersion,
         smokeCliJarVersionDocs,
+        smokeCliJarVersionDocsZh,
         smokeCliJarCommandDocs,
         smokeCliJarResourceDocs,
+        smokeCliJarResourceDocsZh,
         smokeCliJarResourcesLoaded,
         smokeCliJarSchema,
         smokeCliJarDiff,

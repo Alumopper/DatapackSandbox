@@ -71,12 +71,15 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar resources
 java -jar cli/build/libs/datapack-sandbox-cli.jar resources --docs
 java -jar cli/build/libs/datapack-sandbox-cli.jar resources --docs --output docs/resource-catalog.md
 java -jar cli/build/libs/datapack-sandbox-cli.jar resources --check docs/resource-formats.md
+java -jar cli/build/libs/datapack-sandbox-cli.jar resources --docs --locale zh-CN --check docs/resource-formats.zh-CN.md
 java -jar cli/build/libs/datapack-sandbox-cli.jar resources --json --output build/resource-catalog.json
 ```
 
 `resources --check` verifies that each cataloged resource type appears in the
-document with the matching behavior level. The Gradle `check` lifecycle runs
-this through the standalone jar smoke task.
+document with the matching behavior level. Use `--locale zh-CN` to generate or
+check the localized catalog table in the Chinese document. The Gradle `check`
+lifecycle runs both English and localized docs checks through standalone jar
+smoke tasks.
 
 | Level | Meaning |
 |---|---|

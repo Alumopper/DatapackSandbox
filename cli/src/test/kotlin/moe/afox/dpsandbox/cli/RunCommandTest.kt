@@ -1886,6 +1886,17 @@ class RunCommandTest {
     }
 
     @Test
+    fun `resources render localized markdown docs table`() {
+        val output = captureStdout {
+            main(arrayOf("resources", "--docs", "--locale", "zh-CN"))
+        }
+
+        assertTrue("| 资源 | 行为等级 | 运行时 / debug 表面 |" in output, output)
+        assertTrue("| `function` | `modeled` | mcfunction 执行、trace source location 和缺失引用检查。" in output, output)
+        assertTrue("| `worldgen/structure` | `observed-noop` | 经版本校验的 raw JSON 资源，进入索引供 inspect。" in output, output)
+    }
+
+    @Test
     fun `resources write markdown docs table to file`() {
         val reportFile = Files.createTempFile("dps-resources-docs", ".md")
         val output = captureStdout {
@@ -1908,6 +1919,21 @@ class RunCommandTest {
 
         val output = captureStdout {
             main(arrayOf("resources", "--check", docsFile.toString()))
+        }
+
+        assertTrue("resources docs cover catalog: $docsFile" in output, output)
+    }
+
+    @Test
+    fun `resources check localized markdown docs table in file`() {
+        val docsFile = Files.createTempFile("dps-resources-zh-check", ".md")
+        val docs = captureStdout {
+            main(arrayOf("resources", "--docs", "--locale", "zh-CN"))
+        }
+        Files.writeString(docsFile, docs)
+
+        val output = captureStdout {
+            main(arrayOf("resources", "--check", docsFile.toString(), "--locale", "zh-CN"))
         }
 
         assertTrue("resources docs cover catalog: $docsFile" in output, output)

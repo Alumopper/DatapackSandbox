@@ -269,7 +269,7 @@
 - 增加版本 profile 差异报告：
   - 哪些资源目录变化、命令根变化、NBT 字段变化、注册表项变化。
   - `version --docs/--json --output <file>` 已可把 Markdown 表格、profile 元数据和差异报告写入 UTF-8 文件，便于文档更新、CI artifact 和本地脚本复核。
-  - `version --docs --check <file>` 和 `version --docs --locale zh-CN --check <file>` 已可在 CI 中校验英文/中文文档是否包含当前生成表格，且 standalone jar smoke task 已接入 Gradle `check`，防止 profile 文档过期。
+  - `version --docs --check <file>` 和 `version --docs --locale zh-CN --check <file>` 已可在 CI 中校验英文/中文文档是否包含当前生成表格，且英文/中文 standalone jar smoke task 已接入 Gradle `check`，防止 profile 文档过期。
 - 增加多版本测试矩阵：
   - 同一行为在 `1.20.4`、中间版本和默认最新版本运行。
   - 对 pack format 不同的示例使用 per-version pack。
@@ -300,7 +300,7 @@
   - `observed-noop`：接受命令并记录输出/诊断，不改变真实副作用。
   - `unsupported`：按策略 warn/error/ignore。
   - `commands` CLI 已可按版本导出命令目录、行为等级和描述，支持 plain、Markdown、JSON、`--output <file>` artifact 输出和 `--check <file>` 文档覆盖检查；standalone jar smoke task 已接入 Gradle `check`，便于文档生成和 CI 复核。
-  - `ResourceCatalog` 已集中维护资源类型与行为等级，`DatapackLoader` 的额外 raw JSON 资源读取复用该目录，`resources` CLI 已可导出 plain、Markdown、JSON、`--output <file>` artifact 和 `--check <file>` 文档覆盖检查；同一命令带 `--pack` 时可导出已加载资源索引、来源文件、覆盖状态、加载顺序和按 type/id/namespace/source-pack/order/state 过滤后的 JSON artifact；standalone jar smoke task 已接入 Gradle `check`，避免 loader、文档和后续检查工具分叉。
+  - `ResourceCatalog` 已集中维护资源类型与行为等级，`DatapackLoader` 的额外 raw JSON 资源读取复用该目录，`resources` CLI 已可导出 plain、Markdown、JSON、`--output <file>` artifact，以及英文/中文 `--check <file>` 文档覆盖检查；同一命令带 `--pack` 时可导出已加载资源索引、来源文件、覆盖状态、加载顺序和按 type/id/namespace/source-pack/order/state 过滤后的 JSON artifact；英文/中文 standalone jar smoke task 已接入 Gradle `check`，避免 loader、文档和后续检查工具分叉。
 
 验收标准：
 

@@ -53,7 +53,8 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar version --docs --locale zh-CN 
 Use `--check` in CI to fail when the generated English Markdown table no
 longer appears in the checked-in document. Use `--locale zh-CN` to generate or
 check the localized profile table in the Chinese document. The Gradle `check`
-lifecycle runs this through the standalone jar smoke task.
+lifecycle runs both English and localized docs checks through standalone jar
+smoke tasks.
 
 Compare two profiles to inspect pack format, NBT schema, resource directory,
 command-root, and registry differences:
