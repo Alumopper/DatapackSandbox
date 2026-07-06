@@ -210,6 +210,40 @@ class CommandExpansionTest {
     }
 
     @Test
+    fun `item commands support non-player entity equipment slots`() {
+        val pack = writeItemModifierPack(Files.createTempDirectory("dps-entity-equipment-pack"))
+        val sandbox = createSandbox("26.2", listOf(pack))
+
+        sandbox.executeCommand("summon minecraft:zombie 0 64 0")
+        sandbox.executeCommand("item replace entity @e[type=minecraft:zombie,limit=1] weapon.mainhand with minecraft:stick 1")
+        sandbox.executeCommand("item modify entity @e[type=minecraft:zombie,limit=1] weapon.mainhand demo:mark")
+        sandbox.executeCommand("item replace entity Steve hotbar.3 from entity @e[type=minecraft:zombie,limit=1] weapon.mainhand")
+
+        val zombie = sandbox.world.entities.first { it.type == ResourceLocation.parse("minecraft:zombie") }
+        val equipped = zombie.equipment[EquipmentSlots.MAINHAND] ?: error("missing zombie mainhand equipment")
+        assertEquals(ResourceLocation.parse("minecraft:stick"), equipped.id)
+        assertEquals(4, equipped.count)
+        assertEquals(true, equipped.nbt.get("marked").asBoolean)
+
+        val handItem = zombie.fullNbt(sandbox.profile).getAsJsonArray("HandItems")[0].asJsonObject
+        assertEquals("minecraft:stick", handItem.get("id").asString)
+        assertEquals(4, handItem.get("count").asInt)
+        assertEquals(true, handItem.getAsJsonObject("components").getAsJsonObject("minecraft:custom_data").get("marked").asBoolean)
+
+        val copiedToPlayer = sandbox.world.requirePlayer("Steve").inventory[3]
+        assertEquals(ResourceLocation.parse("minecraft:stick"), copiedToPlayer.id)
+        assertEquals(4, copiedToPlayer.count)
+        assertEquals(true, copiedToPlayer.nbt.get("marked").asBoolean)
+
+        val snapshotEquipment = sandbox.snapshotJson()
+            .getAsJsonArray("entities")
+            .single { it.asJsonObject.get("uuid").asString == zombie.uuid }
+            .asJsonObject
+            .getAsJsonObject("equipment")
+        assertEquals("minecraft:stick", snapshotEquipment.getAsJsonObject("weapon.mainhand").get("id").asString)
+    }
+
+    @Test
     fun `execute conditions cover predicate dimension biome and loaded state`() {
         val pack = writePredicatePack(Files.createTempDirectory("dps-execute-conditions-pack"))
         val sandbox = createSandbox("26.2", listOf(pack))

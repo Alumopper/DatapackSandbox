@@ -124,6 +124,28 @@ data class ItemStack(
         json.add("nbt", nbt.deepCopy())
         return json
     }
+
+    /**
+     * Serializes this item stack into the item compound shape used by command NBT.
+     */
+    fun toNbtJson(): JsonObject {
+        val json = toJson()
+        json.remove("nbt")
+        if (nbt.entrySet().isNotEmpty()) {
+            json.getAsJsonObject("components").add("minecraft:custom_data", nbt.deepCopy())
+        }
+        return json
+    }
+}
+
+internal fun itemStackFromNbtJson(json: JsonObject): ItemStack? {
+    val id = json.get("id")?.takeIf { it.isJsonPrimitive }?.asString ?: return null
+    val count = (json.get("count") ?: json.get("Count"))?.takeIf { it.isJsonPrimitive }?.asInt ?: 1
+    val components = json.getAsJsonObject("components")?.deepCopy() ?: JsonObject()
+    val nbt = (json.getAsJsonObject("nbt")
+        ?: json.getAsJsonObject("tag")
+        ?: components.getAsJsonObject("minecraft:custom_data"))?.deepCopy() ?: JsonObject()
+    return ItemStack(ResourceLocation.parse(id), count, components, nbt)
 }
 
 /**
@@ -176,6 +198,7 @@ open class SandboxEntity(
 ) {
     open val scoreHolder: String get() = uuid
     val attributes: MutableMap<ResourceLocation, Double> = linkedMapOf()
+    val equipment: MutableMap<String, ItemStack> = linkedMapOf()
 
     /**
      * Returns the entity NBT view using the default version profile.
@@ -974,6 +997,9 @@ fun SandboxEntity.toJson(profile: VersionProfile = VersionProfiles.default): Jso
     tags.sorted().forEach { tagsJson.add(it) }
     json.add("tags", tagsJson)
     json.add("nbt", fullNbt(profile))
+    val equipmentJson = JsonObject()
+    equipment.toSortedMap().forEach { (slot, item) -> equipmentJson.add(slot, item.toJson()) }
+    json.add("equipment", equipmentJson)
     val attributesJson = JsonObject()
     attributes.toSortedMap().forEach { (id, value) -> attributesJson.addProperty(id.toString(), value) }
     json.add("attributes", attributesJson)

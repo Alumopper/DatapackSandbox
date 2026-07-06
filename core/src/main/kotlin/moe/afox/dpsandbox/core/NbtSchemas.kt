@@ -188,6 +188,7 @@ object NbtSchemas {
         val json = JsonObject()
         addEntityDefaults(entity, profile, json)
         entity.nbt.entrySet().forEach { (key, value) -> json.add(key, value.deepCopy()) }
+        addEquipmentNbt(entity, profile, json)
         if (entity.attributes.isNotEmpty()) {
             json.add("Attributes", JsonArray().also { array ->
                 entity.attributes.toSortedMap().forEach { (id, base) ->
@@ -219,10 +220,12 @@ object NbtSchemas {
         updated.getAsJsonArray("Tags")?.let { tags ->
             entity.tags.replaceWith(tags.mapNotNull { tag -> tag.takeIf { it.isJsonPrimitive }?.asString })
         }
+        syncEquipmentFromNbt(entity, profile, updated)
 
         entity.nbt.clearObject()
         updated.entrySet()
             .filterNot { (key, _) -> key in generatedEntityKeys }
+            .filterNot { (key, _) -> key == "HandItems" || key == "ArmorItems" }
             .filterNot { (key, value) -> isDefaultEntityKey(key) && isDefaultEntityValue(key, value) }
             .forEach { (key, value) -> entity.nbt.add(key, value.deepCopy()) }
     }
@@ -342,6 +345,60 @@ object NbtSchemas {
             json.addIfAllowed(allowed, "ArmorDropChances", JsonArray().also { repeat(4) { _ -> it.add(0.085) } })
             json.addPropertyIfAllowed(allowed, "CanPickUpLoot", false)
             json.addPropertyIfAllowed(allowed, "PersistenceRequired", false)
+        }
+    }
+
+    private fun addEquipmentNbt(entity: SandboxEntity, profile: VersionProfile, json: JsonObject) {
+        if (entity.equipment.isEmpty()) return
+        val allowed = allowedEntityKeys(entity, profile)
+        if ("HandItems" in allowed) {
+            json.add("HandItems", JsonArray().also { items ->
+                repeat(2) { index ->
+                    val slot = EquipmentSlots.handSlot(index)
+                    items.add(equipmentItemJson(slot?.let { entity.equipment[it] }))
+                }
+            })
+        }
+        if ("ArmorItems" in allowed) {
+            json.add("ArmorItems", JsonArray().also { items ->
+                repeat(4) { index ->
+                    val slot = EquipmentSlots.armorSlot(index)
+                    items.add(equipmentItemJson(slot?.let { entity.equipment[it] }))
+                }
+            })
+        }
+    }
+
+    private fun equipmentItemJson(item: ItemStack?): JsonObject =
+        if (item != null && item.count > 0 && item.id != ResourceLocation("minecraft", "air")) {
+            item.toNbtJson()
+        } else {
+            JsonObject()
+        }
+
+    private fun syncEquipmentFromNbt(entity: SandboxEntity, profile: VersionProfile, nbt: JsonObject) {
+        val allowed = allowedEntityKeys(entity, profile)
+        if ("HandItems" in allowed) {
+            entity.equipment.remove(EquipmentSlots.MAINHAND)
+            entity.equipment.remove(EquipmentSlots.OFFHAND)
+            nbt.getAsJsonArray("HandItems")?.forEachIndexed { index, element ->
+                EquipmentSlots.handSlot(index)?.let { slot -> syncEquipmentItem(entity, slot, element) }
+            }
+        }
+        if ("ArmorItems" in allowed) {
+            listOf(EquipmentSlots.FEET, EquipmentSlots.LEGS, EquipmentSlots.CHEST, EquipmentSlots.HEAD)
+                .forEach { entity.equipment.remove(it) }
+            nbt.getAsJsonArray("ArmorItems")?.forEachIndexed { index, element ->
+                EquipmentSlots.armorSlot(index)?.let { slot -> syncEquipmentItem(entity, slot, element) }
+            }
+        }
+    }
+
+    private fun syncEquipmentItem(entity: SandboxEntity, slot: String, element: JsonElement) {
+        if (!element.isJsonObject || element.asJsonObject.entrySet().isEmpty()) return
+        val item = itemStackFromNbtJson(element.asJsonObject) ?: return
+        if (item.count > 0 && item.id != ResourceLocation("minecraft", "air")) {
+            entity.equipment[slot] = item
         }
     }
 

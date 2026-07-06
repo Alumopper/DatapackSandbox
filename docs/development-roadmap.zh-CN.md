@@ -79,7 +79,7 @@
   - 方块状态、方块实体 NBT、biome override、强加载 chunk、世界边界、时间、天气、难度、gamerule、spawn。
   - 支持区域 fixture、结构 fixture、从 Java Anvil 存档按 chunk 或坐标范围导入。
 - 完善实体模型：
-  - 类型、UUID、位置、旋转、维度、tag、score holder、attributes、effects、passengers/vehicle、equipment、health、custom NBT。
+  - 类型、UUID、位置、旋转、维度、tag、score holder、attributes、effects、passengers/vehicle、equipment、health、custom NBT；`item replace/modify entity` 已覆盖非玩家实体 `weapon.*`/`armor.*` 装备槽读写、复制、snapshot 与 NBT 投影。
   - 不执行 AI tick，但保留数据包可读写字段和明确的 no-AI 语义说明。
 - 完善玩家模型：
   - inventory、selected slot、ender items、recipes、stats、xp、health、food、gamemode、spawn、advancement progress、last input。
@@ -306,4 +306,3 @@ P2 按需求推进：
 3. `0.4`：玩家事件和 world fixture 大幅增强，examples 覆盖主要使用场景。
 4. `0.5`：多版本 profile 更新流程稳定，P0/P1 资源覆盖完成。
 5. `1.0`：核心 API 稳定、CLI 行为稳定、文档示例可验证、CI 覆盖完整，适合作为数据包本地回归测试工具长期使用。
-

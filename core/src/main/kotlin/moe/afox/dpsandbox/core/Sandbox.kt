@@ -693,12 +693,7 @@ class DatapackSandbox(
     }
 
     private fun blockItemJson(item: ItemStack): JsonObject {
-        val json = item.toJson()
-        json.remove("nbt")
-        if (item.nbt.entrySet().isNotEmpty()) {
-            json.getAsJsonObject("components").add("minecraft:custom_data", item.nbt.deepCopy())
-        }
-        return json
+        return item.toNbtJson()
     }
 
     private fun spawnLootItems(position: Position, items: List<ItemStack>) {
@@ -2013,13 +2008,16 @@ class DatapackSandbox(
         when (tokens[2].text) {
             "entity" -> {
                 requireSize(tokens, 6, "item modify entity <targets> <slot> <modifier>", location)
-                val slot = inventorySlot(tokens[4].text)
                 val modifier = datapack.itemModifier(ResourceLocation.parse(tokens[5].text))
-                resolvePlayers(tokens[3].text, location, context).forEach { player ->
-                    val item = player.inventory.getOrNull(slot) ?: return@forEach
+                EntitySelectors.select(world, tokens[3].text, context, location).forEach { entity ->
+                    val access = entityItemAccess(entity, tokens[4].text, location)
+                    val item = access.get() ?: return@forEach
                     if (item.id == ResourceLocation("minecraft", "air") || item.count <= 0) return@forEach
-                    player.inventory[slot] = applyItemModifier(item, modifier.root, { stack -> itemModifierPredicateContext(player, stack) }, location)
-                    advancements.handle(PlayerEvent(player.name, "inventory_changed", item = player.inventory[slot]))
+                    val updated = applyItemModifier(item, modifier.root, { stack -> itemModifierPredicateContext(entity, stack) }, location)
+                    access.set(updated)
+                    if (entity is SandboxPlayer) {
+                        advancements.handle(PlayerEvent(entity.name, "inventory_changed", item = updated))
+                    }
                 }
             }
             "block" -> {
@@ -2040,7 +2038,6 @@ class DatapackSandbox(
         when (tokens[2].text) {
             "entity" -> {
                 requireSize(tokens, 6, "item replace entity <targets> <slot> <with|from> ...", location)
-                val slot = inventorySlot(tokens[4].text)
                 val item = when (tokens[5].text) {
                     "with" -> {
                         requireSize(tokens, 7, "item replace entity <targets> <slot> with <item> [count]", location)
@@ -2049,8 +2046,8 @@ class DatapackSandbox(
                     "from" -> readItemSource(tokens, 6, context, location)
                     else -> unsupportedFeature("Expected 'with' or 'from' in item replace entity", profile.id, location)
                 }
-                resolvePlayers(tokens[3].text, location, context).forEach { player ->
-                    replacePlayerItem(player, slot, item)
+                EntitySelectors.select(world, tokens[3].text, context, location).forEach { entity ->
+                    entityItemAccess(entity, tokens[4].text, location).set(item)
                 }
             }
             "block" -> {
@@ -2076,14 +2073,44 @@ class DatapackSandbox(
         player.inventory[slot] = item?.copyStack() ?: ItemStack(ResourceLocation("minecraft", "air"), 0)
     }
 
+    private data class EntityItemAccess(
+        val get: () -> ItemStack?,
+        val set: (ItemStack?) -> Unit,
+    )
+
+    private fun entityItemAccess(entity: SandboxEntity, rawSlot: String, location: SourceLocation?): EntityItemAccess {
+        if (entity is SandboxPlayer) {
+            val slot = inventorySlot(rawSlot)
+            return EntityItemAccess(
+                get = { entity.inventory.getOrNull(slot)?.copyStack() },
+                set = { item -> replacePlayerItem(entity, slot, item) },
+            )
+        }
+
+        val slot = EquipmentSlots.canonical(rawSlot)
+            ?: unsupportedFeature("Entity slot '$rawSlot' is only supported for players or equipment slots", profile.id, location)
+        return EntityItemAccess(
+            get = { entity.equipment[slot]?.copyStack() },
+            set = { item -> replaceEntityEquipmentItem(entity, slot, item) },
+        )
+    }
+
+    private fun replaceEntityEquipmentItem(entity: SandboxEntity, slot: String, item: ItemStack?) {
+        if (item != null && item.count > 0 && item.id != ResourceLocation("minecraft", "air")) {
+            entity.equipment[slot] = item.copyStack()
+        } else {
+            entity.equipment.remove(slot)
+        }
+    }
+
     private fun readItemSource(tokens: List<CommandToken>, index: Int, context: ExecutionContext, location: SourceLocation?): ItemStack? {
         requireIndex(tokens, index, "item source <entity|block>", location)
         return when (tokens[index].text) {
             "entity" -> {
                 requireSizeFrom(tokens, index, 3, "item source entity <source> <slot>", location)
-                val source = resolvePlayers(tokens[index + 1].text, location, context).firstOrNull()
-                    ?: throw SandboxException(DiagnosticCode.COMMAND_ERROR, "Item source entity '${tokens[index + 1].text}' did not match a player", location)
-                source.inventory.getOrNull(inventorySlot(tokens[index + 2].text))?.copyStack()
+                val source = EntitySelectors.select(world, tokens[index + 1].text, context, location).firstOrNull()
+                    ?: throw SandboxException(DiagnosticCode.COMMAND_ERROR, "Item source entity '${tokens[index + 1].text}' did not match an entity", location)
+                entityItemAccess(source, tokens[index + 2].text, location).get()
             }
             "block" -> {
                 requireSizeFrom(tokens, index, 5, "item source block <pos> <slot>", location)
@@ -2106,13 +2133,7 @@ class DatapackSandbox(
     }
 
     private fun itemStackFromJson(json: JsonObject): ItemStack? {
-        val id = json.get("id")?.takeIf { it.isJsonPrimitive }?.asString ?: return null
-        val count = (json.get("count") ?: json.get("Count"))?.takeIf { it.isJsonPrimitive }?.asInt ?: 1
-        val components = json.getAsJsonObject("components")?.deepCopy() ?: JsonObject()
-        val nbt = (json.getAsJsonObject("nbt")
-            ?: json.getAsJsonObject("tag")
-            ?: components.getAsJsonObject("minecraft:custom_data"))?.deepCopy() ?: JsonObject()
-        return ItemStack(ResourceLocation.parse(id), count, components, nbt)
+        return itemStackFromNbtJson(json)
     }
 
     private fun applyItemModifier(
@@ -2246,6 +2267,20 @@ class DatapackSandbox(
             weather = currentWeatherState(),
         )
 
+    private fun itemModifierPredicateContext(entity: SandboxEntity, stack: ItemStack): PredicateContext =
+        if (entity is SandboxPlayer) {
+            itemModifierPredicateContext(entity, stack)
+        } else {
+            PredicateContext(
+                world = world,
+                thisEntity = entity,
+                origin = entity.position,
+                dimension = ResourceLocation("minecraft", "overworld"),
+                tool = stack,
+                weather = currentWeatherState(),
+            )
+        }
+
     private fun itemModifierType(function: JsonObject, location: SourceLocation?): String {
         val raw = function.get("function")?.takeIf { it.isJsonPrimitive }?.asString
             ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Item modifier function is missing", location)
@@ -2326,8 +2361,10 @@ class DatapackSandbox(
         }
         val nbt = if (tokens.size > nbtStartIndex) parseSummonNbt(CommandTokenizer.tailFrom(command, tokens[nbtStartIndex]), location) else JsonObject()
         val tags = extractTags(nbt).toMutableSet()
-        val entity = SandboxEntity(type = type, position = position, tags = tags, nbt = nbt)
-        entity.fullNbt(profile, location)
+        val entity = SandboxEntity(type = type, position = position, tags = tags)
+        val fullNbt = entity.fullNbt(profile, location)
+        nbt.entrySet().forEach { (key, value) -> fullNbt.add(key, value.deepCopy()) }
+        entity.writeFullNbt(profile, fullNbt, location)
         world.entities += entity
     }
 
