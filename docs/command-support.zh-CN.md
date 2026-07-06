@@ -80,7 +80,7 @@
 | `tag` | 支持 | `add`、`remove`、`list`。 |
 | `team` | 部分支持 | `add`、`remove`、`list`、`join`、`leave`、`empty`、`modify`；不执行 gameplay 副作用。 |
 | `teammsg`、`tm` | 支持 | 记录为 team chat 输出事件。 |
-| `teleport`、`tp` | 部分支持 | 支持坐标和目标传送；局部坐标/facing 语义仍不完整。 |
+| `teleport`、`tp` | 部分支持 | 支持带可选旋转的坐标传送，以及复制目标实体旋转的目标传送；局部坐标/facing 语义仍不完整。 |
 | `tellraw` | 支持 | 解析 JSON text component 并记录输出事件。 |
 | `tick` | 部分支持 | `query`、`rate`、`freeze`、`unfreeze`、`step`、`sprint`、`stop`；更新沙盒 tick 状态，可推进 tick。 |
 | `time` | 部分支持 | `set`、`add`、`query daytime|gametime|day`。 |

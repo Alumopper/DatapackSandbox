@@ -221,6 +221,25 @@ class CommandExpansionTest {
     }
 
     @Test
+    fun `teleporting to an entity copies destination rotation`() {
+        val sandbox = createFunctionSandboxFromString(
+            version = "26.2",
+            functionText = "",
+            functionId = "demo:empty",
+        )
+
+        sandbox.executeCommand("""summon minecraft:pig 0 0 0 {Tags:["traveler"]}""")
+        sandbox.executeCommand("""summon minecraft:marker 4 2 1 {Tags:["destination"]}""")
+        sandbox.executeCommand("""rotate @e[tag=destination,limit=1] -45 12""")
+        sandbox.executeCommand("""tp @e[tag=traveler,limit=1] @e[tag=destination,limit=1]""")
+
+        val traveler = sandbox.world.entities.single { "traveler" in it.tags }
+        assertEquals(Position(4.0, 2.0, 1.0), traveler.position)
+        assertEquals(-45.0, traveler.yaw)
+        assertEquals(12.0, traveler.pitch)
+    }
+
+    @Test
     fun `execute blocks condition compares sparse block regions`() {
         val sandbox = createSandbox("26.1.2", listOf(fixturePack()))
 

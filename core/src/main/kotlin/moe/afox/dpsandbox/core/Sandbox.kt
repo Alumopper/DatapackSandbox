@@ -2100,7 +2100,7 @@ class DatapackSandbox(
                 val targets = EntitySelectors.select(world, tokens[1].text, context, location)
                 val destination = EntitySelectors.select(world, tokens[2].text, context, location).firstOrNull()
                     ?: throw SandboxException(DiagnosticCode.COMMAND_ERROR, "Teleport destination '${tokens[2].text}' did not match an entity", location)
-                moveEntities(targets, destination.position)
+                moveEntities(targets, destination.position, Rotation(destination.yaw, destination.pitch))
             }
             else -> unsupportedFeature("Unsupported ${tokens[0].text} form", profile.id, location)
         }
