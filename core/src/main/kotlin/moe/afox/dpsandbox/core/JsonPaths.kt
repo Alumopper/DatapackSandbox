@@ -123,8 +123,10 @@ private data class NbtPath(val parts: List<PathPart>) {
         parts.forEach { part ->
             current = when (part) {
                 is PathPart.Field -> if (current.isJsonObject) current.asJsonObject.get(part.name) ?: return null else return null
-                is PathPart.Index -> if (current.isJsonArray && part.index in 0 until current.asJsonArray.size()) {
-                    current.asJsonArray[part.index]
+                is PathPart.Index -> if (current.isJsonArray) {
+                    val array = current.asJsonArray
+                    val normalized = existingIndex(part.index, array.size()) ?: return null
+                    array[normalized]
                 } else {
                     return null
                 }
@@ -161,8 +163,14 @@ private data class NbtPath(val parts: List<PathPart>) {
                 is PathPart.Index -> {
                     if (!current.isJsonArray) throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Path segment [${part.index}] is not an array")
                     val array = current.asJsonArray
-                    while (array.size() <= part.index) array.add(JsonObject())
-                    array[part.index]
+                    val index = if (part.index < 0) {
+                        existingIndex(part.index, array.size())
+                            ?: throw SandboxException(DiagnosticCode.COMMAND_ERROR, "Path index [${part.index}] did not match any array entry")
+                    } else {
+                        while (array.size() <= part.index) array.add(JsonObject())
+                        part.index
+                    }
+                    array[index]
                 }
                 is PathPart.Match -> {
                     if (!current.isJsonArray) throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Path object matcher is not applied to an array")
@@ -180,8 +188,14 @@ private data class NbtPath(val parts: List<PathPart>) {
             is PathPart.Index -> {
                 if (!current.isJsonArray) throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Path target [${last.index}] is not an array")
                 val array = current.asJsonArray
-                while (array.size() <= last.index) array.add(JsonNull.INSTANCE)
-                array.set(last.index, value.deepCopy())
+                val index = if (last.index < 0) {
+                    existingIndex(last.index, array.size())
+                        ?: throw SandboxException(DiagnosticCode.COMMAND_ERROR, "Path index [${last.index}] did not match any array entry")
+                } else {
+                    while (array.size() <= last.index) array.add(JsonNull.INSTANCE)
+                    last.index
+                }
+                array.set(index, value.deepCopy())
             }
             is PathPart.Match -> {
                 if (!current.isJsonArray) throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Path object matcher target is not an array")
@@ -199,8 +213,10 @@ private data class NbtPath(val parts: List<PathPart>) {
         parts.dropLast(1).forEach { part ->
             current = when (part) {
                 is PathPart.Field -> if (current.isJsonObject) current.asJsonObject.get(part.name) ?: return false else return false
-                is PathPart.Index -> if (current.isJsonArray && part.index in 0 until current.asJsonArray.size()) {
-                    current.asJsonArray[part.index]
+                is PathPart.Index -> if (current.isJsonArray) {
+                    val array = current.asJsonArray
+                    val normalized = existingIndex(part.index, array.size()) ?: return false
+                    array[normalized]
                 } else {
                     return false
                 }
@@ -213,7 +229,12 @@ private data class NbtPath(val parts: List<PathPart>) {
         }
         return when (val last = parts.last()) {
             is PathPart.Field -> current.isJsonObject && current.asJsonObject.remove(last.name) != null
-            is PathPart.Index -> current.isJsonArray && last.index in 0 until current.asJsonArray.size() && current.asJsonArray.remove(current.asJsonArray[last.index])
+            is PathPart.Index -> {
+                if (!current.isJsonArray) return false
+                val array = current.asJsonArray
+                val index = existingIndex(last.index, array.size()) ?: return false
+                array.remove(array[index])
+            }
             is PathPart.Match -> {
                 if (!current.isJsonArray) return false
                 val array = current.asJsonArray
@@ -245,6 +266,11 @@ private data class NbtPath(val parts: List<PathPart>) {
             actual.isBoolean && expected.isBoolean -> actual.asBoolean == expected.asBoolean
             else -> actual.asString == expected.asString
         }
+
+    private fun existingIndex(index: Int, size: Int): Int? {
+        val normalized = if (index < 0) size + index else index
+        return normalized.takeIf { it in 0 until size }
+    }
 
     companion object {
         fun parse(path: String): NbtPath {

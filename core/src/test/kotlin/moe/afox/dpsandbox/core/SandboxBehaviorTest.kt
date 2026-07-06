@@ -441,6 +441,28 @@ class SandboxBehaviorTest {
     }
 
     @Test
+    fun `data paths support negative list indexes`() {
+        val sandbox = createSandbox("26.1.2", listOf(fixturePack()))
+
+        sandbox.executeCommand("""data merge storage demo:path {list:[{id:"first",count:1},{id:"last",count:2}]}""")
+        sandbox.executeCommand("data modify storage demo:path list[-1].count set value 5")
+        sandbox.executeCommand("data modify storage demo:path beforeLast set from storage demo:path list[-2].id")
+        sandbox.executeCommand("data remove storage demo:path list[-2]")
+
+        val storage = sandbox.world.storage(ResourceLocation.parse("demo:path"))
+        assertEquals("first", JsonPaths.get(storage, "beforeLast")?.asString)
+        val list = JsonPaths.get(storage, "list")?.asJsonArray ?: error("missing list")
+        assertEquals(1, list.size())
+        assertEquals("last", list[0].asJsonObject.get("id").asString)
+        assertEquals(5, list[0].asJsonObject.get("count").asInt)
+
+        val error = assertFailsWith<SandboxException> {
+            sandbox.executeCommand("data modify storage demo:path list[-2].count set value 9")
+        }
+        assertEquals(DiagnosticCode.COMMAND_ERROR, error.code)
+    }
+
+    @Test
     fun `data get scales numeric path output`() {
         val sandbox = createSandbox("26.1.2", listOf(fixturePack()))
 
