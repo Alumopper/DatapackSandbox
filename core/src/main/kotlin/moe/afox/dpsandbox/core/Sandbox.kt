@@ -349,7 +349,7 @@ class DatapackSandbox(
     private fun applyPlayerEventState(event: PlayerEvent, player: SandboxPlayer) {
         when (event.type) {
             "item_consumed", "consume_item" -> applyConsumedItemEvent(player, event.item)
-            "item_picked_up", "item_added" -> event.item?.let { player.inventory += it.copyForInventory() }
+            "inventory_changed", "item_picked_up", "item_added" -> event.item?.let { player.inventory += it.copyForInventory() }
             "changed_dimension" -> event.toDimension?.let { player.dimension = it }
             "damage" -> event.damageAmount?.takeIf { it > 0.0 }?.let { amount ->
                 player.health = (player.health - amount).coerceAtLeast(0.0)

@@ -306,6 +306,7 @@ class PlayerEventsTest {
 
         sandbox.handlePlayerEvent(PlayerEvents.shorthand("Steve", "item_consumed", "minecraft:apple"))
         sandbox.handlePlayerEvent(PlayerEvents.shorthand("Steve", "item_picked_up", "minecraft:bread"))
+        sandbox.handlePlayerEvent(PlayerEvents.shorthand("Steve", "inventory_changed", "minecraft:carrot"))
         sandbox.handlePlayerEvent(PlayerEvents.shorthand("Steve", "changed_dimension", "minecraft:overworld", "minecraft:the_nether"))
         sandbox.handlePlayerEvent(PlayerEvents.shorthand("Steve", "damage", "minecraft:fall", "4.5"))
         sandbox.handlePlayerEvent(PlayerEvents.shorthand("Steve", "recipe_unlocked", "demo:toast"))
@@ -313,11 +314,12 @@ class PlayerEventsTest {
         assertEquals(1, player.inventory.single { it.id == ResourceLocation.parse("minecraft:apple") }.count)
         assertEquals(20, player.food)
         assertTrue(player.inventory.any { it.id == ResourceLocation.parse("minecraft:bread") && it.count == 1 })
+        assertTrue(player.inventory.any { it.id == ResourceLocation.parse("minecraft:carrot") && it.count == 1 })
         assertEquals(ResourceLocation.parse("minecraft:the_nether"), player.dimension)
         assertEquals(15.5, player.health)
         assertTrue(ResourceLocation.parse("demo:toast") in player.recipes)
         assertEquals(
-            listOf("item_consumed", "item_picked_up", "changed_dimension", "damage", "recipe_unlocked"),
+            listOf("item_consumed", "item_picked_up", "inventory_changed", "changed_dimension", "damage", "recipe_unlocked"),
             sandbox.world.playerEventTraces.map { it.type },
         )
         assertTrue(sandbox.world.playerEventTraces.all { it.success })
