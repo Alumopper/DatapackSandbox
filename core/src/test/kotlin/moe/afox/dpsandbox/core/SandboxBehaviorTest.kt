@@ -538,7 +538,17 @@ class SandboxBehaviorTest {
         )
         assertEquals(7, sandbox.world.bossbars[ResourceLocation.parse("demo:stored")]?.value)
         assertEquals(1, sandbox.world.bossbars[ResourceLocation.parse("demo:stored")]?.max)
-        assertTrue(sandbox.world.outputs.any { it.command == "random value" && it.text == "3" })
+        val randomOutput = sandbox.world.outputs.first { it.command == "random value" && it.text == "3" }
+        val randomPayload = randomOutput.payload?.asJsonObject ?: error("missing random value payload")
+        assertEquals(listOf("default"), randomOutput.targets)
+        assertEquals("value", randomPayload.get("action").asString)
+        assertEquals("3..3", randomPayload.get("range").asString)
+        assertEquals(3, randomPayload.get("min").asInt)
+        assertEquals(3, randomPayload.get("max").asInt)
+        assertEquals("default", randomPayload.get("sequence").asString)
+        assertEquals(3, randomPayload.get("value").asInt)
+        assertTrue(randomPayload.has("sequenceStateBefore"))
+        assertTrue(randomPayload.has("sequenceStateAfter"))
     }
 
     @Test
@@ -551,6 +561,53 @@ class SandboxBehaviorTest {
 
         assertEquals(randomValue(123), randomValue(123))
         assertNotEquals(randomValue(123), randomValue(456))
+    }
+
+    @Test
+    fun `random commands record sequence state and reset output`() {
+        val sandbox = createSandbox("26.1.2", listOf(fixturePack()), world = SandboxWorld().apply { seed = 99 })
+
+        sandbox.executeCommand("random value 1..1 demo:seq")
+        val valueOutput = sandbox.world.outputs.single { it.command == "random value" }
+        val valuePayload = valueOutput.payload?.asJsonObject ?: error("missing random value payload")
+        val stateAfterValue = valuePayload.get("sequenceStateAfter").asLong
+        assertEquals(listOf("demo:seq"), valueOutput.targets)
+        assertEquals(1, valuePayload.get("value").asInt)
+        assertEquals(stateAfterValue, sandbox.world.randomSequences.getValue("demo:seq"))
+        assertEquals(stateAfterValue, sandbox.snapshotJson().getAsJsonObject("randomSequences").get("demo:seq").asLong)
+
+        sandbox.executeCommand("random reset demo:seq 42")
+        val resetOutput = sandbox.world.outputs.single { it.command == "random reset" }
+        val resetPayload = resetOutput.payload?.asJsonObject ?: error("missing random reset payload")
+        assertEquals("42", resetOutput.text)
+        assertEquals(listOf("demo:seq"), resetOutput.targets)
+        assertEquals("reset", resetPayload.get("action").asString)
+        assertEquals("demo:seq", resetPayload.get("sequence").asString)
+        assertEquals(42L, resetPayload.get("seed").asLong)
+        assertEquals(true, resetPayload.get("explicitSeed").asBoolean)
+        assertEquals(true, resetPayload.get("hadPrevious").asBoolean)
+        assertEquals(stateAfterValue, resetPayload.get("previousState").asLong)
+
+        sandbox.executeCommand("random roll 2..2 demo:seq")
+        val rollOutput = sandbox.world.outputs.single { it.command == "random roll" }
+        val rollPayload = rollOutput.payload?.asJsonObject ?: error("missing random roll payload")
+        assertEquals("roll", rollPayload.get("action").asString)
+        assertEquals(42L, rollPayload.get("sequenceStateBefore").asLong)
+        assertEquals(2, rollPayload.get("value").asInt)
+
+        sandbox.executeCommand("random reset")
+        val clearOutput = sandbox.world.outputs.last { it.command == "random reset" }
+        val clearPayload = clearOutput.payload?.asJsonObject ?: error("missing random clear payload")
+        assertEquals("1", clearOutput.text)
+        assertEquals(1, clearPayload.get("cleared").asInt)
+        assertEquals("demo:seq", clearPayload.getAsJsonArray("sequences")[0].asString)
+        assertTrue(sandbox.world.randomSequences.isEmpty())
+
+        val error = assertFailsWith<SandboxException> {
+            sandbox.executeCommand("random reset demo:seq not-a-seed")
+        }
+        assertEquals(DiagnosticCode.INPUT_FORMAT, error.code)
+        assertTrue(error.message.contains("Invalid random seed"))
     }
 
     @Test

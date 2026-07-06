@@ -1541,16 +1541,66 @@ class DatapackSandbox(
                 requireSize(tokens, 3, "random ${tokens[1].text} <range> [sequence]", location)
                 val (min, max) = parseIntRange(tokens[2].text, location)
                 val sequence = tokens.getOrNull(3)?.text ?: "default"
-                val seed = world.randomSequences.getOrPut(sequence) { randomSequenceSeed(sequence) }
-                val random = Random(seed + world.gameTime + world.outputs.size)
+                val stateBefore = world.randomSequences.getOrPut(sequence) { randomSequenceSeed(sequence) }
+                val random = Random(stateBefore)
                 val value = if (max <= min) min else random.nextInt(min, max + 1)
-                world.recordOutput("random ${tokens[1].text}", "data", text = value.toString())
+                val stateAfter = random.nextLong()
+                world.randomSequences[sequence] = stateAfter
+                world.recordOutput(
+                    "random ${tokens[1].text}",
+                    "data",
+                    targets = listOf(sequence),
+                    text = value.toString(),
+                    payload = JsonObject().also { payload ->
+                        payload.addProperty("action", tokens[1].text)
+                        payload.addProperty("range", tokens[2].text)
+                        payload.addProperty("min", min)
+                        payload.addProperty("max", max)
+                        payload.addProperty("sequence", sequence)
+                        payload.addProperty("worldSeed", world.seed)
+                        payload.addProperty("gameTime", world.gameTime)
+                        payload.addProperty("sequenceStateBefore", stateBefore)
+                        payload.addProperty("sequenceStateAfter", stateAfter)
+                        payload.addProperty("value", value)
+                    },
+                )
             }
             "reset" -> {
                 tokens.getOrNull(2)?.text?.let { sequence ->
-                    world.randomSequences[sequence] = tokens.getOrNull(3)?.text?.toLongOrNull() ?: randomSequenceSeed(sequence)
+                    val before = world.randomSequences[sequence]
+                    val explicitSeed = tokens.getOrNull(3)?.let { parseLong(it.text, "random seed", location) }
+                    val seed = explicitSeed ?: randomSequenceSeed(sequence)
+                    world.randomSequences[sequence] = seed
+                    world.recordOutput(
+                        "random reset",
+                        "data",
+                        targets = listOf(sequence),
+                        text = seed.toString(),
+                        payload = JsonObject().also { payload ->
+                            payload.addProperty("action", "reset")
+                            payload.addProperty("sequence", sequence)
+                            payload.addProperty("seed", seed)
+                            payload.addProperty("explicitSeed", explicitSeed != null)
+                            payload.addProperty("hadPrevious", before != null)
+                            before?.let { payload.addProperty("previousState", it) }
+                            payload.addProperty("worldSeed", world.seed)
+                            payload.addProperty("gameTime", world.gameTime)
+                        },
+                    )
+                } ?: run {
+                    val sequences = world.randomSequences.keys.sorted()
+                    world.randomSequences.clear()
+                    world.recordOutput(
+                        "random reset",
+                        "data",
+                        text = sequences.size.toString(),
+                        payload = JsonObject().also { payload ->
+                            payload.addProperty("action", "reset")
+                            payload.addProperty("cleared", sequences.size)
+                            payload.add("sequences", JsonArray().also { array -> sequences.forEach { array.add(it) } })
+                        },
+                    )
                 }
-                    ?: world.randomSequences.clear()
             }
             else -> unsupportedFeature("Unsupported random action '${tokens[1].text}'", profile.id, location)
         }

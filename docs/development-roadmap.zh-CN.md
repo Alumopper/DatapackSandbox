@@ -82,6 +82,7 @@
   - `bossbar add/remove/set` 已记录结构化前后状态输出，便于调试 UI 状态、玩家目标、字段输入和生成器输出。
   - `attribute modifier add/remove/value get` 已建模实体属性修饰器、total 计算、结构化输出和 `execute store` 结果，便于调试属性命令生成器和快照中的属性状态。
   - `advancement grant/revoke` 已展开 `from`、`through`、`until` 的 parent/child 树，并记录结构化 criterion 更新输出，便于调试进度树批量修改和 `execute store` 结果。
+  - `random value/roll/reset` 已记录结构化序列状态输出，随机序列 state 会进入 snapshot，便于调试 deterministic random、reset seed 和 `execute store` 链路。
   - `gamerule <rule> <value>` 已记录结构化修改输出，便于调试规则值输入、前值和 query 链路。
   - `team add/remove/list/join/leave/empty/modify` 已记录结构化队伍状态输出，便于调试成员变化、显示名和选项输入。
   - `place feature|jigsaw|structure|template` 已作为 observed-noop 接受并记录结构化 worldgen 输出，便于命令生成器验证放置目标、位置和额外参数。

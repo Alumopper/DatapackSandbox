@@ -1024,6 +1024,10 @@ class SandboxWorld {
         gamerules.toSortedMap().forEach { (key, value) -> gameruleJson.addProperty(key, value) }
         root.add("gamerules", gameruleJson)
 
+        val randomJson = JsonObject()
+        randomSequences.toSortedMap().forEach { (key, value) -> randomJson.addProperty(key, value) }
+        root.add("randomSequences", randomJson)
+
         val teamJson = JsonObject()
         teams.toSortedMap().forEach { (name, team) -> teamJson.add(name, team.toJson()) }
         root.add("teams", teamJson)

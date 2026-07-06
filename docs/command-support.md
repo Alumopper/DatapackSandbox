@@ -91,7 +91,7 @@ runs this through the standalone jar smoke task.
 | `place` | Partial | `observed-noop` | Accepts `feature`, `jigsaw`, `structure`, and `template`; records kind, resource id, position, and extra placement arguments as structured worldgen output, but does not mutate the world. |
 | `playsound` | Partial | `observed-noop` | Recorded as sound output event. |
 | `publish` | Unsupported | `unsupported` | LAN/networking is not simulated. |
-| `random` | Partial | `modeled` | `value`, `roll`, `reset`; deterministic sandbox sequence state seeded from the world seed unless explicitly reset. |
+| `random` | Partial | `modeled` | `value`, `roll`, `reset`; deterministic sandbox sequence state seeded from the world seed unless explicitly reset; value/roll/reset record structured sequence-state output for assertions and `execute store result`. |
 | `recipe` | Partial | `modeled` | `give`, `take`; supports `*` for loaded datapack recipes, updates per-player recipe sets, and records changed counts. |
 | `reload` | No-op | `observed-noop` | Accepted and recorded; REPL `reload` performs real datapack reload, vanilla command does not mutate this immutable sandbox instance. |
 | `return` | Supported | `modeled` | Stops the current function; supports `return <value>`, `return fail`, and `return run <command>` for function conditions and store result tests. |

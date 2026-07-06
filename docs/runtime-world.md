@@ -32,7 +32,8 @@ state before any `steps` or commands run. Supported fixture inputs include:
 - `players` with position, dimension, game mode, inventory, ender items,
   advancement progress, XP points/levels, health, and food; newly created
   players start with the current `defaultGameMode`.
-- `scores`, `storage`, `gamerules`, `gameTime`, `dayTime`, and `weather`.
+- `scores`, `storage`, `gamerules`, deterministic `randomSequences`,
+  `gameTime`, `dayTime`, and `weather`.
 
 Example manifest:
 
