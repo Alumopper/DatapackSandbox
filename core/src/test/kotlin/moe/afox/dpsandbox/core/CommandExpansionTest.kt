@@ -197,6 +197,9 @@ class CommandExpansionTest {
         sandbox.executeCommand("place structure demo:ruin 1 64 2")
         sandbox.executeCommand("place template demo:room ~ ~1 ~ clockwise_90 front_back 0.5 123")
         sandbox.executeCommand("datapack list")
+        sandbox.executeCommand("debug start")
+        sandbox.executeCommand("jfr start")
+        sandbox.executeCommand("perf start")
         sandbox.executeCommand("publish true creative 25566")
         sandbox.executeCommand("reload")
         sandbox.executeCommand("stop")
@@ -221,6 +224,13 @@ class CommandExpansionTest {
         assertEquals(1.0, placeTemplatePayload.getAsJsonObject("position").get("y").asDouble)
         assertEquals(listOf("clockwise_90", "front_back", "0.5", "123"), placeTemplatePayload.getAsJsonArray("extra").map { it.asString })
         assertTrue(sandbox.world.outputs.any { it.command == "datapack list" })
+        listOf("debug", "jfr", "perf").forEach { command ->
+            val profilingOutput = sandbox.world.outputs.single { it.command == command }
+            val profilingPayload = profilingOutput.payload?.asJsonObject ?: error("missing $command payload")
+            assertEquals("debug", profilingOutput.channel)
+            assertEquals("start", profilingPayload.get("action").asString)
+            assertEquals(true, profilingPayload.get("noOp").asBoolean)
+        }
         val publishPayload = sandbox.world.outputs.single { it.command == "publish" }.payload?.asJsonObject
             ?: error("missing publish payload")
         assertEquals("debug", sandbox.world.outputs.single { it.command == "publish" }.channel)

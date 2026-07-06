@@ -489,6 +489,7 @@ class DatapackSandbox(
                 "clone" -> executeClone(tokens, location, context)
                 "damage" -> executeDamage(tokens, location, context)
                 "datapack" -> executeDatapack(tokens, location)
+                "debug", "jfr", "perf" -> executeProfilingNoop(tokens, location)
                 "defaultgamemode" -> executeDefaultGameMode(tokens, location)
                 "difficulty" -> executeDifficulty(tokens, location)
                 "execute" -> return executeExecute(command, tokens, location, context)
@@ -4378,6 +4379,18 @@ class DatapackSandbox(
         payload.addProperty("noOp", true)
         payload.addProperty("reason", "LAN/network publishing is not simulated by the sandbox")
         world.recordOutput("publish", "debug", text = port?.toString().orEmpty(), payload = payload)
+    }
+
+    private fun executeProfilingNoop(tokens: List<CommandToken>, location: SourceLocation?) {
+        requireSize(tokens, 2, "${tokens[0].text} <action> [...]", location)
+        val arguments = JsonArray()
+        tokens.drop(1).forEach { arguments.add(it.text) }
+        val payload = JsonObject()
+        payload.addProperty("action", tokens[1].text)
+        payload.add("arguments", arguments)
+        payload.addProperty("noOp", true)
+        payload.addProperty("reason", "Profiling and flight recording are not simulated by the sandbox")
+        world.recordOutput(tokens[0].text, "debug", text = tokens.drop(1).joinToString(" ") { it.text }, payload = payload)
     }
 
     private fun executeStop(tokens: List<CommandToken>, location: SourceLocation?) {
