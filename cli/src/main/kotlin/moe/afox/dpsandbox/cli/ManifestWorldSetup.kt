@@ -7,6 +7,8 @@ import com.google.gson.JsonParser
 import moe.afox.dpsandbox.core.ChunkPos
 import moe.afox.dpsandbox.core.DatapackSandbox
 import moe.afox.dpsandbox.core.DiagnosticCode
+import moe.afox.dpsandbox.core.ItemStack
+import moe.afox.dpsandbox.core.PlayerEffect
 import moe.afox.dpsandbox.core.Position
 import moe.afox.dpsandbox.core.ResourceLocation
 import moe.afox.dpsandbox.core.SandboxException
@@ -117,6 +119,8 @@ object ManifestWorldSetup {
             nbt = parseManifestNbtObject(entity.get("nbt"), "world entity nbt"),
             yaw = entity.get("yaw")?.asDouble ?: 0.0,
             pitch = entity.get("pitch")?.asDouble ?: 0.0,
+            equipment = parseEntityEquipment(entity),
+            effects = entity.manifestArray("effects", "world entity effects").map { parseManifestEffect(it, "world entity effects") },
         )
     }
 
@@ -212,19 +216,39 @@ object ManifestWorldSetup {
     }
 
     private fun setupPlayerEffect(setup: SandboxWorldSetup, name: String, element: JsonElement) {
+        val effect = parseManifestEffect(element, "world player effects")
+        setup.playerEffect(
+            name = name,
+            effect = effect.id.toString(),
+            durationTicks = effect.durationTicks,
+            amplifier = effect.amplifier,
+            hideParticles = effect.hideParticles,
+        )
+    }
+
+    private fun parseManifestEffect(element: JsonElement, label: String): PlayerEffect =
         when {
-            element.isJsonPrimitive && element.asJsonPrimitive.isString -> setup.playerEffect(name, element.asString)
+            element.isJsonPrimitive && element.asJsonPrimitive.isString ->
+                PlayerEffect(ResourceLocation.parse(element.asString))
             element.isJsonObject -> {
                 val effect = element.asJsonObject
-                setup.playerEffect(
-                    name = name,
-                    effect = effect.requiredManifestString("id"),
-                    durationTicks = effect.get("duration")?.asInt ?: -1,
+                PlayerEffect(
+                    id = ResourceLocation.parse(effect.requiredManifestString("id")),
+                    durationTicks = effect.get("durationTicks")?.asInt ?: effect.get("duration")?.asInt ?: -1,
                     amplifier = effect.get("amplifier")?.asInt ?: 0,
                     hideParticles = effect.get("hideParticles")?.asBoolean ?: false,
                 )
             }
-            else -> throw SandboxException(DiagnosticCode.INPUT_FORMAT, "world player effects entries must be strings or objects")
+            else -> throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label entries must be strings or objects")
+        }
+
+    private fun parseEntityEquipment(entity: JsonObject): Map<String, ItemStack> {
+        val equipment = entity.getAsJsonObject("equipment") ?: return emptyMap()
+        return equipment.entrySet().associate { (slot, value) ->
+            if (!value.isJsonObject) {
+                throw SandboxException(DiagnosticCode.INPUT_FORMAT, "world entity equipment '$slot' must be an item object")
+            }
+            slot to parseManifestItem(value.asJsonObject)
         }
     }
 

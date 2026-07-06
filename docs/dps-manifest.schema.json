@@ -249,7 +249,15 @@
         "tags": { "$ref": "#/$defs/stringArray" },
         "nbt": true,
         "yaw": { "type": "number" },
-        "pitch": { "type": "number" }
+        "pitch": { "type": "number" },
+        "equipment": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/itemFixture" }
+        },
+        "effects": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/effectFixture" }
+        }
       },
       "additionalProperties": false
     },
@@ -264,7 +272,7 @@
       },
       "additionalProperties": false
     },
-    "playerEffectFixture": {
+    "effectFixture": {
       "oneOf": [
         { "type": "string" },
         {
@@ -273,6 +281,7 @@
           "properties": {
             "id": { "type": "string" },
             "duration": { "type": "integer" },
+            "durationTicks": { "type": "integer" },
             "amplifier": { "type": "integer" },
             "hideParticles": { "type": "boolean" }
           },
@@ -280,6 +289,7 @@
         }
       ]
     },
+    "playerEffectFixture": { "$ref": "#/$defs/effectFixture" },
     "playerFixture": {
       "type": "object",
       "required": ["name"],
@@ -438,6 +448,7 @@
         { "required": ["score"] },
         { "required": ["storage"] },
         { "required": ["entityCount"] },
+        { "required": ["entity"] },
         { "required": ["world"] },
         { "required": ["player"] },
         { "required": ["team"] },
@@ -457,6 +468,7 @@
         "score": { "$ref": "#/$defs/scoreAssertion" },
         "storage": { "$ref": "#/$defs/storageAssertion" },
         "entityCount": { "$ref": "#/$defs/entityCountAssertion" },
+        "entity": { "$ref": "#/$defs/entityAssertion" },
         "world": { "$ref": "#/$defs/worldAssertion" },
         "player": { "$ref": "#/$defs/playerAssertion" },
         "team": { "$ref": "#/$defs/teamAssertion" },
@@ -584,6 +596,58 @@
         "max": { "type": "integer", "minimum": 0 }
       },
       "additionalProperties": false
+    },
+    "entityAssertion": {
+      "type": "object",
+      "properties": {
+        "type": { "type": "string" },
+        "tag": { "type": "string" },
+        "uuid": { "type": "string" },
+        "pos": { "$ref": "#/$defs/position" },
+        "position": { "$ref": "#/$defs/position" },
+        "exists": { "type": "boolean" },
+        "count": { "type": "integer", "minimum": 0 },
+        "equipment": { "$ref": "#/$defs/entityEquipmentAssertion" },
+        "effect": { "$ref": "#/$defs/entityEffectAssertion" },
+        "effects": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/entityEffectAssertion" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "entityEquipmentAssertion": {
+      "type": "object",
+      "required": ["slot"],
+      "properties": {
+        "slot": { "type": "string" },
+        "id": { "type": "string" },
+        "count": { "type": "integer", "minimum": 0 },
+        "minCount": { "type": "integer", "minimum": 0 },
+        "maxCount": { "type": "integer", "minimum": 0 },
+        "exists": { "type": "boolean" },
+        "components": { "$ref": "#/$defs/pathExpectation" },
+        "nbt": { "$ref": "#/$defs/pathExpectation" }
+      },
+      "additionalProperties": false
+    },
+    "entityEffectAssertion": {
+      "oneOf": [
+        { "type": "string" },
+        {
+          "type": "object",
+          "required": ["id"],
+          "properties": {
+            "id": { "type": "string" },
+            "duration": { "type": "integer" },
+            "durationTicks": { "type": "integer" },
+            "amplifier": { "type": "integer" },
+            "hideParticles": { "type": "boolean" },
+            "exists": { "type": "boolean" }
+          },
+          "additionalProperties": false
+        }
+      ]
     },
     "playerAssertion": {
       "type": "object",

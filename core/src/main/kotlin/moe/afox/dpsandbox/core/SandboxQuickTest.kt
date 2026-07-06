@@ -456,6 +456,80 @@ class SandboxQuickTestMatrix private constructor(
     }
 
     /**
+     * Applies an entity equipment assertion to every scenario.
+     */
+    @JvmOverloads
+    fun assertEntityEquipment(
+        slot: String,
+        type: String? = null,
+        tag: String? = null,
+        uuid: String? = null,
+        position: Position? = null,
+        id: String? = null,
+        count: Int? = null,
+        exists: Boolean = true,
+        minCount: Int? = null,
+        maxCount: Int? = null,
+        componentsPath: String? = null,
+        componentsEquals: String? = null,
+        componentsExists: Boolean? = null,
+        nbtPath: String? = null,
+        nbtEquals: String? = null,
+        nbtExists: Boolean? = null,
+    ): SandboxQuickTestMatrix = apply {
+        scenarios.values.forEach {
+            it.assertEntityEquipment(
+                slot = slot,
+                type = type,
+                tag = tag,
+                uuid = uuid,
+                position = position,
+                id = id,
+                count = count,
+                exists = exists,
+                minCount = minCount,
+                maxCount = maxCount,
+                componentsPath = componentsPath,
+                componentsEquals = componentsEquals,
+                componentsExists = componentsExists,
+                nbtPath = nbtPath,
+                nbtEquals = nbtEquals,
+                nbtExists = nbtExists,
+            )
+        }
+    }
+
+    /**
+     * Applies an entity active-effect assertion to every scenario.
+     */
+    @JvmOverloads
+    fun assertEntityEffect(
+        effect: String,
+        type: String? = null,
+        tag: String? = null,
+        uuid: String? = null,
+        position: Position? = null,
+        exists: Boolean = true,
+        durationTicks: Int? = null,
+        amplifier: Int? = null,
+        hideParticles: Boolean? = null,
+    ): SandboxQuickTestMatrix = apply {
+        scenarios.values.forEach {
+            it.assertEntityEffect(
+                effect = effect,
+                type = type,
+                tag = tag,
+                uuid = uuid,
+                position = position,
+                exists = exists,
+                durationTicks = durationTicks,
+                amplifier = amplifier,
+                hideParticles = hideParticles,
+            )
+        }
+    }
+
+    /**
      * Applies an entity count assertion to every scenario.
      */
     @JvmOverloads
@@ -1424,6 +1498,108 @@ class SandboxQuickTest private constructor(
     }
 
     /**
+     * Asserts that a matching entity has, or does not have, a matching item in an equipment slot.
+     */
+    @JvmOverloads
+    fun assertEntityEquipment(
+        slot: String,
+        type: String? = null,
+        tag: String? = null,
+        uuid: String? = null,
+        position: Position? = null,
+        id: String? = null,
+        count: Int? = null,
+        exists: Boolean = true,
+        minCount: Int? = null,
+        maxCount: Int? = null,
+        componentsPath: String? = null,
+        componentsEquals: String? = null,
+        componentsExists: Boolean? = null,
+        nbtPath: String? = null,
+        nbtEquals: String? = null,
+        nbtExists: Boolean? = null,
+    ): SandboxQuickTest = apply {
+        val canonicalSlot = EquipmentSlots.canonical(slot)
+            ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Entity equipment slot '$slot' is not supported")
+        val expectedType = type?.let(ResourceLocation::parse)
+        val expectedId = id?.let(ResourceLocation::parse)
+        val entities = sandbox.world.entities.filter { entity ->
+            (expectedType == null || entity.type == expectedType) &&
+                (tag == null || tag in entity.tags) &&
+                (uuid == null || entity.uuid == uuid) &&
+                (position == null || entity.position == position)
+        }
+        val equipped = entities.mapNotNull { entity -> entity.equipment[canonicalSlot]?.let { item -> entity to item } }
+        val matches = equipped.filter { (_, item) ->
+            (expectedId == null || item.id == expectedId) &&
+                (count == null || item.count == count) &&
+                (minCount == null || item.count >= minCount) &&
+                (maxCount == null || item.count <= maxCount) &&
+                jsonPathMatches(item.components, componentsPath, componentsEquals, componentsExists) &&
+                jsonPathMatches(item.nbt, nbtPath, nbtEquals, nbtExists)
+        }
+        val entityDescription = describeEntityExpectation(type, tag, uuid, position)
+        val itemDescription = describeItemExpectation(
+            id = id,
+            count = count,
+            slot = null,
+            minCount = minCount,
+            maxCount = maxCount,
+            componentsPath = componentsPath,
+            componentsEquals = componentsEquals,
+            componentsExists = componentsExists,
+            nbtPath = nbtPath,
+            nbtEquals = nbtEquals,
+            nbtExists = nbtExists,
+        )
+        if (exists && matches.isEmpty()) {
+            failures += "entity equipment $entityDescription slot=$canonicalSlot expected $itemDescription but found ${equipped.map { "${it.second.id}x${it.second.count}" }}"
+        }
+        if (!exists && matches.isNotEmpty()) {
+            failures += "entity equipment $entityDescription slot=$canonicalSlot expected missing $itemDescription but found ${matches.map { "${it.second.id}x${it.second.count}" }}"
+        }
+    }
+
+    /**
+     * Asserts that a matching entity has, or does not have, an active effect.
+     */
+    @JvmOverloads
+    fun assertEntityEffect(
+        effect: String,
+        type: String? = null,
+        tag: String? = null,
+        uuid: String? = null,
+        position: Position? = null,
+        exists: Boolean = true,
+        durationTicks: Int? = null,
+        amplifier: Int? = null,
+        hideParticles: Boolean? = null,
+    ): SandboxQuickTest = apply {
+        val expectedType = type?.let(ResourceLocation::parse)
+        val id = ResourceLocation.parse(effect)
+        val entities = sandbox.world.entities.filter { entity ->
+            (expectedType == null || entity.type == expectedType) &&
+                (tag == null || tag in entity.tags) &&
+                (uuid == null || entity.uuid == uuid) &&
+                (position == null || entity.position == position)
+        }
+        val effects = entities.mapNotNull { entity -> entity.activeEffects[id]?.let { active -> entity to active } }
+        val matches = effects.filter { (_, active) ->
+            (durationTicks == null || active.durationTicks == durationTicks) &&
+                (amplifier == null || active.amplifier == amplifier) &&
+                (hideParticles == null || active.hideParticles == hideParticles)
+        }
+        val entityDescription = describeEntityExpectation(type, tag, uuid, position)
+        val effectDescription = describeEffectExpectation(effect, durationTicks, amplifier, hideParticles)
+        if (exists && matches.isEmpty()) {
+            failures += "entity effect $entityDescription expected $effectDescription but found ${effects.map { it.second.toJson() }}"
+        }
+        if (!exists && matches.isNotEmpty()) {
+            failures += "entity effect $entityDescription expected missing $effectDescription but found ${matches.map { it.second.toJson() }}"
+        }
+    }
+
+    /**
      * Asserts the number of entities matching optional type and tag filters.
      */
     @JvmOverloads
@@ -1608,6 +1784,14 @@ class SandboxQuickTest private constructor(
             nbtEquals?.let { "nbtEquals=$it" },
             nbtExists?.let { "nbtExists=$it" },
         ).ifEmpty { listOf("<any item>") }.joinToString(", ")
+
+    private fun describeEffectExpectation(effect: String, durationTicks: Int?, amplifier: Int?, hideParticles: Boolean?): String =
+        listOfNotNull(
+            "id=$effect",
+            durationTicks?.let { "durationTicks=$it" },
+            amplifier?.let { "amplifier=$it" },
+            hideParticles?.let { "hideParticles=$it" },
+        ).joinToString(", ")
 
     /**
      * Asserts the result of evaluating a loaded predicate.

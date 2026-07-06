@@ -234,6 +234,8 @@ class SandboxWorldSetup {
         nbt: String? = null,
         yaw: Double = 0.0,
         pitch: Double = 0.0,
+        equipment: Map<String, ItemStack> = emptyMap(),
+        effects: Iterable<PlayerEffect> = emptyList(),
     ): SandboxWorldSetup =
         entity(
             type = ResourceLocation.parse(type),
@@ -242,6 +244,8 @@ class SandboxWorldSetup {
             nbt = nbt?.let { JsonValues.parse(it).asJsonObject },
             yaw = yaw,
             pitch = pitch,
+            equipment = equipment,
+            effects = effects,
         )
 
     /**
@@ -257,7 +261,11 @@ class SandboxWorldSetup {
         nbt: JsonObject? = null,
         yaw: Double = 0.0,
         pitch: Double = 0.0,
+        equipment: Map<String, ItemStack> = emptyMap(),
+        effects: Iterable<PlayerEffect> = emptyList(),
     ): SandboxWorldSetup = apply {
+        val equipmentCopies = equipment.map { (slot, item) -> slot to item.copyForSetup() }
+        val effectCopies = effects.map { it.copy() }
         operations += { world, profile ->
             val entity = SandboxEntity(type = type, position = position, tags = tags.toMutableSet(), yaw = yaw, pitch = pitch)
             if (nbt != null && nbt.entrySet().isNotEmpty()) {
@@ -267,6 +275,12 @@ class SandboxWorldSetup {
             } else {
                 entity.fullNbt(profile)
             }
+            equipmentCopies.forEach { (rawSlot, item) ->
+                val slot = EquipmentSlots.canonical(rawSlot)
+                    ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Entity equipment slot '$rawSlot' is not supported")
+                entity.equipment[slot] = item.copyForSetup()
+            }
+            effectCopies.forEach { effect -> entity.activeEffects[effect.id] = effect.copy() }
             world.entities += entity
         }
     }
@@ -374,6 +388,13 @@ class SandboxWorldSetup {
     @JvmOverloads
     fun item(id: String, count: Int = 1, components: JsonObject = JsonObject(), nbt: JsonObject = JsonObject()): ItemStack =
         ItemStack(ResourceLocation.parse(id), count, components.deepCopy(), nbt.deepCopy())
+
+    /**
+     * Creates an active effect helper for non-player entity fixtures.
+     */
+    @JvmOverloads
+    fun effect(id: String, durationTicks: Int = -1, amplifier: Int = 0, hideParticles: Boolean = false): PlayerEffect =
+        PlayerEffect(ResourceLocation.parse(id), durationTicks, amplifier, hideParticles)
 
     /**
      * Creates an objective if necessary and sets a scoreboard value.
@@ -533,6 +554,9 @@ class SandboxWorldSetup {
     ): SandboxWorldSetup =
         importSave(path, chunksInBlockRange(from, to), dimension, includeBlocks, includeBlockEntities, includeEntities)
 }
+
+private fun ItemStack.copyForSetup(): ItemStack =
+    copy(components = components.deepCopy(), nbt = nbt.deepCopy())
 
 /**
  * Applies a [SandboxWorldSetup] to this world with [profile] validation.

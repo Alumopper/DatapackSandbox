@@ -160,7 +160,15 @@ SandboxQuickTest.create(
         biome(0, 64, 0, "minecraft:plains")
         worldBorder(centerX = 5.0, centerZ = -6.0, size = 100.0, warningDistance = 8)
         block(0, 64, 0, "minecraft:chest", nbt = "{Items:[]}")
-        entity("minecraft:pig", 1.0, 64.0, 0.0, tags = listOf("fixture"))
+        entity(
+            "minecraft:pig",
+            1.0,
+            64.0,
+            0.0,
+            tags = listOf("fixture"),
+            equipment = mapOf("weapon.mainhand" to item("minecraft:iron_sword")),
+            effects = listOf(effect("minecraft:strength", durationTicks = 80, amplifier = 2)),
+        )
         player("Alex", x = 2.0, y = 65.0, z = 3.0, xp = 5, inventory = listOf(item("minecraft:stick", 2)))
         playerEffect("Alex", "minecraft:speed", durationTicks = 40, amplifier = 1)
         playerRecipe("Alex", "minecraft:bread")
@@ -192,6 +200,8 @@ SandboxQuickTest.create(
     )
     .assertBlock(0, 64, 0, "minecraft:chest", nbtPath = "Items", nbtEquals = "[]")
     .assertEntity(type = "minecraft:pig", tag = "fixture")
+    .assertEntityEquipment("weapon.mainhand", type = "minecraft:pig", tag = "fixture", id = "minecraft:iron_sword")
+    .assertEntityEffect("minecraft:strength", type = "minecraft:pig", tag = "fixture", durationTicks = 80, amplifier = 2)
     .assertEntityCount(expected = 1, type = "minecraft:pig", tag = "fixture")
     .assertEntityCountRange(min = 1, max = 3, type = "minecraft:pig", tag = "fixture")
     .assertPlayer(

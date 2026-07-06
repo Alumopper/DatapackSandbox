@@ -805,6 +805,9 @@ object ManifestRunner {
                     failures += "entityCount ${describeEntityCountExpectation(entity)} assertion requires equals, min, or max"
                 }
             }
+            assertion.has("entity") -> {
+                failures += evaluateEntityAssertion(assertion.getAsJsonObject("entity"), sandbox)
+            }
             assertion.has("world") -> {
                 failures += evaluateWorldAssertion(assertion.getAsJsonObject("world"), sandbox)
             }
@@ -1150,23 +1153,110 @@ object ManifestRunner {
         return failures
     }
 
+    private fun evaluateEntityAssertion(entity: JsonObject, sandbox: DatapackSandbox): List<String> {
+        val matches = matchingManifestEntities(entity, sandbox)
+        val failures = mutableListOf<String>()
+        entity.get("count")?.let { expected ->
+            if (matches.size != expected.asInt) {
+                failures += "entity ${describeEntityExpectation(entity)} expected ${expected.asInt} match(es) but found ${matches.size}"
+            }
+        }
+
+        val exists = entity.get("exists")?.asBoolean
+        if (exists == false) {
+            if (matches.isNotEmpty()) failures += "entity ${describeEntityExpectation(entity)} expected missing but found ${matches.size} match(es)"
+            return failures
+        }
+        val needsEntity = exists == true || entity.get("count") == null || entity.has("equipment") || entity.has("effect") || entity.has("effects")
+        if (matches.isEmpty() && needsEntity) {
+            failures += "entity ${describeEntityExpectation(entity)} expected to exist"
+            return failures
+        }
+
+        entity.getAsJsonObject("equipment")?.let { failures += evaluateEntityEquipmentAssertion(it, matches, entity) }
+        entity.get("effect")?.let { failures += evaluateEntityEffectAssertion(it, matches, entity) }
+        entity.manifestArray("effects", "entity assertion effects").forEach {
+            failures += evaluateEntityEffectAssertion(it, matches, entity)
+        }
+        return failures
+    }
+
+    private fun matchingManifestEntities(entity: JsonObject, sandbox: DatapackSandbox): List<SandboxEntity> {
+        val expectedType = entity.manifestString("type")?.let(ResourceLocation::parse)
+        val expectedPosition = entity.getAsJsonArray("pos")?.let { parseManifestPosition(it) }
+            ?: entity.getAsJsonArray("position")?.let { parseManifestPosition(it) }
+        val expectedUuid = entity.manifestString("uuid")
+        val expectedTag = entity.manifestString("tag")
+        return sandbox.world.entities.filter { sandboxEntity ->
+            (expectedType == null || sandboxEntity.type == expectedType) &&
+                (expectedTag == null || expectedTag in sandboxEntity.tags) &&
+                (expectedUuid == null || sandboxEntity.uuid == expectedUuid) &&
+                (expectedPosition == null || sandboxEntity.position == expectedPosition)
+        }
+    }
+
+    private fun evaluateEntityEquipmentAssertion(equipment: JsonObject, entities: List<SandboxEntity>, entity: JsonObject): List<String> {
+        val slot = equipment.requiredManifestString("slot")
+        val candidates = entities.mapNotNull { it.equipment[slot] }
+        val matches = candidates.filter { itemMatches(it, equipment) }
+        val exists = equipment.get("exists")?.asBoolean ?: true
+        if (exists && matches.isEmpty()) {
+            return listOf("entity ${describeEntityExpectation(entity)} equipment $slot expected ${describeItemExpectation(equipment)} but found ${candidates.map { "${it.id}x${it.count}" }}")
+        }
+        if (!exists && matches.isNotEmpty()) {
+            return listOf("entity ${describeEntityExpectation(entity)} equipment $slot expected missing ${describeItemExpectation(equipment)} but found ${matches.map { "${it.id}x${it.count}" }}")
+        }
+        return emptyList()
+    }
+
+    private fun evaluateEntityEffectAssertion(effect: JsonElement, entities: List<SandboxEntity>, entity: JsonObject): List<String> {
+        val expectation = parseEffectExpectation(effect, "entity assertion effect")
+        val candidates = entities.mapNotNull { it.activeEffects[expectation.id] }
+        val matches = candidates.filter { active ->
+            (expectation.durationTicks == null || active.durationTicks == expectation.durationTicks) &&
+                (expectation.amplifier == null || active.amplifier == expectation.amplifier) &&
+                (expectation.hideParticles == null || active.hideParticles == expectation.hideParticles)
+        }
+        if (expectation.exists && matches.isEmpty()) {
+            return listOf("entity ${describeEntityExpectation(entity)} expected effect ${describeEffectExpectation(expectation)} but found ${candidates.map { it.toJson() }}")
+        }
+        if (!expectation.exists && matches.isNotEmpty()) {
+            return listOf("entity ${describeEntityExpectation(entity)} expected missing effect ${describeEffectExpectation(expectation)} but found ${matches.map { it.toJson() }}")
+        }
+        return emptyList()
+    }
+
+    private fun parseEffectExpectation(effect: JsonElement, label: String): ManifestEffectExpectation =
+        when {
+            effect.isJsonPrimitive && effect.asJsonPrimitive.isString ->
+                ManifestEffectExpectation(ResourceLocation.parse(effect.asString))
+            effect.isJsonObject -> {
+                val root = effect.asJsonObject
+                ManifestEffectExpectation(
+                    id = ResourceLocation.parse(root.requiredManifestString("id")),
+                    durationTicks = root.get("durationTicks")?.asInt ?: root.get("duration")?.asInt,
+                    amplifier = root.get("amplifier")?.asInt,
+                    hideParticles = root.get("hideParticles")?.asBoolean,
+                    exists = root.get("exists")?.asBoolean ?: true,
+                )
+            }
+            else -> throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label must be a string or object")
+        }
+
+    private data class ManifestEffectExpectation(
+        val id: ResourceLocation,
+        val durationTicks: Int? = null,
+        val amplifier: Int? = null,
+        val hideParticles: Boolean? = null,
+        val exists: Boolean = true,
+    )
+
     private fun evaluateItemAssertion(item: JsonObject, sandbox: DatapackSandbox): List<String> {
         val player = sandbox.world.requirePlayer(item.requiredManifestString("player"))
         val slot = item.get("slot")?.asInt
         val candidates = slot?.let { player.inventory.getOrNull(it)?.let(::listOf) ?: emptyList() } ?: player.inventory
-        val expectedId = item.manifestString("id")?.let(ResourceLocation::parse)
-        val expectedCount = item.get("count")?.asInt
-        val minCount = item.get("minCount")?.asInt
-        val maxCount = item.get("maxCount")?.asInt
         val exists = item.get("exists")?.asBoolean ?: true
-        val matches = candidates.filter { stack ->
-            (expectedId == null || stack.id == expectedId) &&
-                (expectedCount == null || stack.count == expectedCount) &&
-                (minCount == null || stack.count >= minCount) &&
-                (maxCount == null || stack.count <= maxCount) &&
-                itemPathMatches(stack.components, item.getAsJsonObject("components")) &&
-                itemPathMatches(stack.nbt, item.getAsJsonObject("nbt"))
-        }
+        val matches = candidates.filter { stack -> itemMatches(stack, item) }
         if (exists && matches.isEmpty()) {
             return listOf("item for player ${player.name} expected ${describeItemExpectation(item)} but inventory was ${player.inventory.map { "${it.id}x${it.count}" }}")
         }
@@ -1174,6 +1264,19 @@ object ManifestRunner {
             return listOf("item for player ${player.name} expected missing ${describeItemExpectation(item)} but found ${matches.map { "${it.id}x${it.count}" }}")
         }
         return emptyList()
+    }
+
+    private fun itemMatches(stack: ItemStack, item: JsonObject): Boolean {
+        val expectedId = item.manifestString("id")?.let(ResourceLocation::parse)
+        val expectedCount = item.get("count")?.asInt
+        val minCount = item.get("minCount")?.asInt
+        val maxCount = item.get("maxCount")?.asInt
+        return (expectedId == null || stack.id == expectedId) &&
+            (expectedCount == null || stack.count == expectedCount) &&
+            (minCount == null || stack.count >= minCount) &&
+            (maxCount == null || stack.count <= maxCount) &&
+            itemPathMatches(stack.components, item.getAsJsonObject("components")) &&
+            itemPathMatches(stack.nbt, item.getAsJsonObject("nbt"))
     }
 
     private fun itemPathMatches(root: JsonObject, expectation: JsonObject?): Boolean {
@@ -1195,14 +1298,30 @@ object ManifestRunner {
             item.get("count")?.let { "count=${it.asInt}" },
             item.get("minCount")?.let { "minCount=${it.asInt}" },
             item.get("maxCount")?.let { "maxCount=${it.asInt}" },
-            item.get("slot")?.let { "slot=${it.asInt}" },
+            item.get("slot")?.let { "slot=${manifestPrimitiveString(it)}" },
         ).ifEmpty { listOf("<any item>") }.joinToString(", ")
+
+    private fun describeEntityExpectation(entity: JsonObject): String =
+        listOfNotNull(
+            entity.manifestString("type")?.let { "type=$it" },
+            entity.manifestString("tag")?.let { "tag=$it" },
+            entity.manifestString("uuid")?.let { "uuid=$it" },
+            (entity.getAsJsonArray("pos") ?: entity.getAsJsonArray("position"))?.let { "position=${parseManifestPosition(it)}" },
+        ).ifEmpty { listOf("<any entity>") }.joinToString(", ")
 
     private fun describeEntityCountExpectation(entity: JsonObject): String =
         listOfNotNull(
             entity.manifestString("type")?.let { "type=$it" },
             entity.manifestString("tag")?.let { "tag=$it" },
         ).ifEmpty { listOf("<any entity>") }.joinToString(", ")
+
+    private fun describeEffectExpectation(effect: ManifestEffectExpectation): String =
+        listOfNotNull(
+            "id=${effect.id}",
+            effect.durationTicks?.let { "durationTicks=$it" },
+            effect.amplifier?.let { "amplifier=$it" },
+            effect.hideParticles?.let { "hideParticles=$it" },
+        ).joinToString(", ")
 
     private fun evaluateStorageAssertion(storage: JsonObject, sandbox: DatapackSandbox): List<String> {
         val id = ResourceLocation.parse(storage.requiredManifestString("id"))

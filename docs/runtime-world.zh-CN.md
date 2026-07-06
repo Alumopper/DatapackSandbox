@@ -30,7 +30,7 @@ snapshot 会包含用于测试的确定性状态，包括：
 `.dps.json` 清单和 quick-test API 都可以在执行步骤前定义初始世界。支持的 fixture 包括：
 
 - `blocks`：方块 id、state properties 和校验后的方块实体 NBT。
-- `entities`：实体类型、位置、tag、旋转和校验后的实体 NBT。
+- `entities`：实体类型、位置、tag、旋转、装备、active effects 和校验后的实体 NBT。
 - `players`：位置、维度、游戏模式、背包、XP、生命值、饥饿值。
 - `scores`、`storage`、`gamerules`、`gameTime`、`dayTime`、`weather`。
 
@@ -45,7 +45,17 @@ snapshot 会包含用于测试的确定性状态，包括：
       { "pos": [0, 64, 0], "id": "minecraft:chest", "nbt": { "Items": [] } }
     ],
     "entities": [
-      { "type": "minecraft:pig", "pos": [1, 64, 0], "tags": ["fixture"] }
+      {
+        "type": "minecraft:pig",
+        "pos": [1, 64, 0],
+        "tags": ["fixture"],
+        "equipment": {
+          "weapon.mainhand": { "id": "minecraft:iron_sword" }
+        },
+        "effects": [
+          { "id": "minecraft:strength", "duration": 80, "amplifier": 2 }
+        ]
+      }
     ],
     "players": [
       { "name": "Alex", "position": [2, 65, 3], "xp": 5 }
@@ -55,7 +65,16 @@ snapshot 会包含用于测试的确定性状态，包括：
     }
   },
   "steps": [],
-  "assertions": []
+  "assertions": [
+    {
+      "entity": {
+        "type": "minecraft:pig",
+        "tag": "fixture",
+        "equipment": { "slot": "weapon.mainhand", "id": "minecraft:iron_sword" },
+        "effect": { "id": "minecraft:strength", "duration": 80, "amplifier": 2 }
+      }
+    }
+  ]
 }
 ```
 

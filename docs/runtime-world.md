@@ -27,7 +27,8 @@ Both `.dps.json` manifests and the quick-test API can define initial world
 state before any `steps` or commands run. Supported fixture inputs include:
 
 - `blocks` with block id, state properties, and validated block entity NBT.
-- `entities` with type, position, tags, rotation, and validated entity NBT.
+- `entities` with type, position, tags, rotation, equipment, active effects,
+  and validated entity NBT.
 - `players` with position, dimension, game mode, inventory, XP, health, and
   food.
 - `scores`, `storage`, `gamerules`, `gameTime`, `dayTime`, and `weather`.
@@ -43,7 +44,17 @@ Example manifest:
       { "pos": [0, 64, 0], "id": "minecraft:chest", "nbt": { "Items": [] } }
     ],
     "entities": [
-      { "type": "minecraft:pig", "pos": [1, 64, 0], "tags": ["fixture"] }
+      {
+        "type": "minecraft:pig",
+        "pos": [1, 64, 0],
+        "tags": ["fixture"],
+        "equipment": {
+          "weapon.mainhand": { "id": "minecraft:iron_sword" }
+        },
+        "effects": [
+          { "id": "minecraft:strength", "duration": 80, "amplifier": 2 }
+        ]
+      }
     ],
     "players": [
       { "name": "Alex", "position": [2, 65, 3], "xp": 5 }
@@ -53,7 +64,16 @@ Example manifest:
     }
   },
   "steps": [],
-  "assertions": []
+  "assertions": [
+    {
+      "entity": {
+        "type": "minecraft:pig",
+        "tag": "fixture",
+        "equipment": { "slot": "weapon.mainhand", "id": "minecraft:iron_sword" },
+        "effect": { "id": "minecraft:strength", "duration": 80, "amplifier": 2 }
+      }
+    }
+  ]
 }
 ```
 

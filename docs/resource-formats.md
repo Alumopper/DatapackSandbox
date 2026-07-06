@@ -138,13 +138,14 @@ default `Steve` player while keeping the loaded packs and manifest default seed.
 Add `"allowFailure": true` to a step when the failure itself is expected and
 should be asserted later with a `diagnostic` assertion.
 
-`world` can predefine sparse blocks/entities/players, scoreboards, storage,
+`world` can predefine sparse blocks/entities/players, including non-player
+entity equipment and active effects, plus scoreboards, storage,
 gamerules, time/weather, seed/difficulty/default game mode, world/player spawn
 points, world border, forced chunks, biome overrides, teams, bossbars, and scoped Java save
 imports.
 
 Assertions support score, storage, world, player, team, bossbar, block,
-entityCount, advancement, predicate, loot, output, item, trace, event trace,
+entity, entityCount, advancement, predicate, loot, output, item, trace, event trace,
 diagnostic, and snapshot diff checks:
 
 Assertion failures are prefixed with the merged assertion index and JSON Pointer
@@ -160,6 +161,10 @@ path, for example `assertion 1 (/assertions/0): ...`.
 
 ```json
 { "entityCount": { "type": "minecraft:pig", "tag": "fixture", "min": 1, "max": 3 } }
+```
+
+```json
+{ "entity": { "type": "minecraft:pig", "tag": "fixture", "equipment": { "slot": "weapon.mainhand", "id": "minecraft:iron_sword" }, "effect": { "id": "minecraft:strength", "duration": 80 } } }
 ```
 
 ```json
@@ -190,7 +195,9 @@ path, for example `assertion 1 (/assertions/0): ...`.
 { "snapshotDiff": { "path": "/scores/runs/#clock", "kind": "changed", "after": 20, "count": 1 } }
 ```
 
-`player` assertions can also check existence, dimension, game mode, health,
+`entity` assertions can check existence/count after type/tag/uuid/position
+filtering, plus equipment item id/count/components/NBT and active effect
+duration/amplifier/particle state. `player` assertions can also check existence, dimension, game mode, health,
 food, selected slot, recipe, effect, stat, position, last input, and spawn point. `team` and
 `bossbar` assertions inspect their stored runtime state. `item` assertions can
 check player inventory by slot, id, exact/min/max count, components path, and

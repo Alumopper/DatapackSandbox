@@ -412,7 +412,22 @@ class ManifestRunnerTest {
                   { "pos": [0, 64, 0], "id": "minecraft:chest", "nbt": { "Items": [] } }
                 ],
                 "entities": [
-                  { "type": "minecraft:pig", "pos": [1, 64, 0], "tags": ["fixture"] }
+                  {
+                    "type": "minecraft:pig",
+                    "pos": [1, 64, 0],
+                    "tags": ["fixture"],
+                    "equipment": {
+                      "weapon.mainhand": {
+                        "id": "minecraft:iron_sword",
+                        "count": 1,
+                        "components": { "custom": { "fixture": true } },
+                        "nbt": { "tag": { "level": 4 } }
+                      }
+                    },
+                    "effects": [
+                      { "id": "minecraft:strength", "duration": 80, "amplifier": 2, "hideParticles": true }
+                    ]
+                  }
                 ],
                 "players": [
                   {
@@ -473,6 +488,27 @@ class ManifestRunnerTest {
                 },
                 { "block": { "pos": [0, 64, 0], "id": "minecraft:chest", "nbt": { "path": "Items", "exists": true, "equals": [] } } },
                 { "entityCount": { "type": "minecraft:pig", "tag": "fixture", "equals": 1 } },
+                {
+                  "entity": {
+                    "type": "minecraft:pig",
+                    "tag": "fixture",
+                    "position": [1, 64, 0],
+                    "count": 1,
+                    "equipment": {
+                      "slot": "weapon.mainhand",
+                      "id": "minecraft:iron_sword",
+                      "components": { "path": "custom.fixture", "equals": true },
+                      "nbt": { "path": "tag.level", "equals": 4 }
+                    }
+                  }
+                },
+                {
+                  "entity": {
+                    "type": "minecraft:pig",
+                    "tag": "fixture",
+                    "effect": { "id": "minecraft:strength", "duration": 80, "amplifier": 2, "hideParticles": true }
+                  }
+                },
                 {
                   "player": {
                     "name": "Alex",
