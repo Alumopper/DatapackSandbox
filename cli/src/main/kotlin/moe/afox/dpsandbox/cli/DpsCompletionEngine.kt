@@ -541,6 +541,7 @@ class DpsCompletionEngine(private val sandbox: () -> DatapackSandbox) {
             "resources",
             "registry",
             "outputs",
+            "event-traces",
         )
         private val chatTargetCommands = setOf("tellraw", "msg", "tell", "w", "stopsound")
         private val soundSources = listOf("master", "music", "record", "weather", "block", "hostile", "neutral", "player", "ambient", "voice")

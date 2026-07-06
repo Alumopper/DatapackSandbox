@@ -86,6 +86,7 @@ class DpsCompleterTest {
         assertSuggests(completer, "load ", "fixture")
         assertSuggests(completer, "inspect ", "raw")
         assertSuggests(completer, "inspect ", "random")
+        assertSuggests(completer, "inspect ", "event-traces")
         assertSuggests(completer, "inspect resources ", "function")
 
         val randomSandbox = createSandbox("26.1.2", listOf(Path.of("../core/src/test/resources/packs/counter")))
