@@ -11,7 +11,9 @@ entity AI, and full combat systems remain outside the runtime boundary.
 Unsupported vanilla root commands do not fail by default. The default
 unsupported policy is `warn`: the command records a warning output event and the
 run continues. Use `--unsupported error`, manifest `"unsupported": "error"`, or
-`UnsupportedFeatureMode.ERROR` when strict validation is required.
+`UnsupportedFeatureMode.ERROR` when strict validation is required. For quick
+generator-output checks, `run --strict` combines unsupported errors with missing
+resource reference failures.
 
 ## Status Meanings
 
@@ -164,6 +166,7 @@ These are tooling commands, not vanilla commands:
 | CLI `run --event-trace-file <file>` | Write player event trace JSONL for event-driven datapack debugging and CI artifacts. |
 | CLI `run --seed <long>` | Override the quick-run world seed after world fixtures are applied. |
 | CLI `run --world` | Apply a manifest-style world JSON fixture, including fixture references, before execution. |
+| CLI `run --strict` | Treat unsupported vanilla commands as errors and fail the run on direct missing resource references, without needing separate `--unsupported error` and `--fail-on-missing-resources` flags. |
 | CLI `run --assert`, `run --assert-file` | Evaluate inline or file-backed manifest assertions after execution, including before/after `snapshotDiff` assertions. `--assert-file` accepts JSON object/array files or one shorthand per non-empty, non-comment line. Shorthands include `score:<target>:<objective>=N`, `score:<target>:<objective>>=N`, `score:<target>:<objective><=N`, `storage:<id>[:<path>]=<json>`, `storage:<id>[:<path>]?`, `storage:<id>[:<path>]!`, `advancement:<player>:<id>[=<true\|false>]`, `player:<name>[:<field>=<value>]`, `item:<player>:<id>[@slot]=N`, `entity:<type|*>[@tag]=N`, `diff:<json-pointer>[=<kind>]`, `event-trace:<player>:<type>[=N]`, `trace:<root>=N`, `trace:<text>`, `trace-output:<text>[@target]`, `warning=N`, `warning:<text>`, `unsupported=N`, `unsupported:<text>`, `output:<text>`, and `output-normalized:<text>`. |
 | CLI `run --fail-on-missing-resources` | Fail a quick run when direct load/tick tag, advancement parent/reward, predicate references in predicate/loot/item modifier resources, or nested loot table references point at missing resources, useful before creating a full manifest. |
 | CLI `check <manifest-or-directory>` | Run `.dps.json` manifests; `--validate-schema` checks manifest structure before execution; `--fail-on-missing-resources` turns direct missing resource references into failures; `--verbose` prints resource summaries, overlay entries, missing references, and output events; use `--snapshot-diff-on-fail` for state changes, plus `--trace-file`, `--trace-filter`, `--outputs-file`, `--event-trace-file`, and `--report-file` for CI artifacts. Report JSON includes output, command trace, player event trace, final snapshot, snapshot diff, and resource summary details per attempt. |

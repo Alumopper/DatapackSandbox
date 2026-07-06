@@ -716,6 +716,37 @@ class RunCommandTest {
     }
 
     @Test
+    fun `run strict mode fails unsupported commands and missing resource references`() {
+        val unsupportedResult = runCliProcess(
+            "run",
+            "--version",
+            "26.2",
+            "--strict",
+            "--command",
+            "ban Steve",
+        )
+        assertEquals(ExitCodes.UNSUPPORTED_OR_VERSION, unsupportedResult.exitCode, unsupportedResult.output)
+        assertTrue("Command 'ban' is not implemented" in unsupportedResult.output, unsupportedResult.output)
+
+        val dir = Files.createTempDirectory("dps-cli-strict-missing-resource")
+        val pack = writeMissingReferencePack(dir.resolve("pack"))
+        val missingResult = runCliProcess(
+            "run",
+            "--version",
+            "26.2",
+            "--pack",
+            pack.toString(),
+            "--strict",
+        )
+
+        assertEquals(ExitCodes.ASSERTION_FAILED, missingResult.exitCode, missingResult.output)
+        assertTrue(
+            "missing-reference #minecraft:load -> function demo:missing_load" in missingResult.output,
+            missingResult.output,
+        )
+    }
+
+    @Test
     fun `run can print resource summaries`() {
         val dir = Files.createTempDirectory("dps-cli-resource-summary")
         val pack = writeMissingReferencePack(dir.resolve("pack"))

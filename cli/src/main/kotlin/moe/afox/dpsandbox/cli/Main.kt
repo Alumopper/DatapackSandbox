@@ -348,10 +348,12 @@ class RunCommand : CliktCommand(name = "run") {
     private val outputsFile by option("--outputs-file").path()
     private val reportFile by option("--report-file").path()
     private val resources by option("--resources").flag(default = false)
+    private val strict by option("--strict").flag(default = false)
     private val unsupported by option("--unsupported").default("warn")
 
     override fun run() {
         try {
+            val effectiveUnsupportedMode = if (strict) UnsupportedFeatureMode.ERROR else unsupportedFeatureMode(unsupported)
             val stdinText = if (stdin) String(System.`in`.readAllBytes(), StandardCharsets.UTF_8) else null
             val stdinAsFunction = stdinText?.takeIf { stdinMode == "function" }
             val stdinAsCommands = stdinText?.takeIf { stdinMode == "commands" }
@@ -383,14 +385,14 @@ class RunCommand : CliktCommand(name = "run") {
                         version = version,
                         packs = packs,
                         functionSources = functionSources,
-                        unsupportedFeatureMode = unsupportedFeatureMode(unsupported),
+                        unsupportedFeatureMode = effectiveUnsupportedMode,
                     )
                 }
-                packs.isNotEmpty() -> createSandbox(version, packs, unsupportedFeatureMode = unsupportedFeatureMode(unsupported))
+                packs.isNotEmpty() -> createSandbox(version, packs, unsupportedFeatureMode = effectiveUnsupportedMode)
                 canUseEmptySandbox -> createFunctionSandbox(
                     version = version,
                     functionSources = listOf(FunctionSource.text(mcfunctionId, "", "<empty:$mcfunctionId>")),
-                    unsupportedFeatureMode = unsupportedFeatureMode(unsupported),
+                    unsupportedFeatureMode = effectiveUnsupportedMode,
                 )
                 else -> throw SandboxException(
                     DiagnosticCode.INPUT_FORMAT,
@@ -454,7 +456,7 @@ class RunCommand : CliktCommand(name = "run") {
                 ResourceSummaryRenderer.print(sandbox.profile.id, resourceSummary)
             }
             val assertionFailures = ManifestRunner.evaluateAssertions(parseAssertions(), sandbox, beforeSnapshot) +
-                if (failOnMissingResources) {
+                if (failOnMissingResources || strict) {
                     ManifestRunner.missingResourceFailures(resourceSummary)
                 } else {
                     emptyList()

@@ -369,7 +369,8 @@ for datapack-visible logic:
 - observable output commands such as `tellraw`, `title`, `say`, `msg`,
   `playsound`, `stopsound`, and `particle`
 - configurable unsupported-command policy: `warn` by default, `error` for strict
-  validation, `ignore` for silent skipping
+  validation, `ignore` for silent skipping; `run --strict` also fails missing
+  resource references during quick generator-output checks
 
 The sandbox does not simulate networking, client UI, permissions, chunk
 generation, redstone, entity AI, full combat, physics, or the vanilla server
