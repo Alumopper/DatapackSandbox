@@ -818,6 +818,11 @@
         "contains": { "type": "string" },
         "success": { "type": "boolean" },
         "count": { "type": "integer", "minimum": 0 },
+        "outputs": { "type": "integer", "minimum": 0 },
+        "hasDiff": { "type": "boolean" },
+        "diffPath": { "type": "string" },
+        "diffKind": { "enum": ["added", "removed", "changed", "ADDED", "REMOVED", "CHANGED"] },
+        "diffContains": { "type": "string" },
         "fileContains": { "type": "string" },
         "function": { "type": "string" }
       },

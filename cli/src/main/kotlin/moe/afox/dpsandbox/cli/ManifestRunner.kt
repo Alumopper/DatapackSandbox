@@ -27,6 +27,7 @@ import moe.afox.dpsandbox.core.SandboxWorld
 import moe.afox.dpsandbox.core.SandboxWorldBorder
 import moe.afox.dpsandbox.core.SnapshotDiff
 import moe.afox.dpsandbox.core.SnapshotDiffEntry
+import moe.afox.dpsandbox.core.SnapshotDiffKind
 import moe.afox.dpsandbox.core.SourceLocation
 import moe.afox.dpsandbox.core.TraceAssertions
 import moe.afox.dpsandbox.core.TraceExpectation
@@ -1469,9 +1470,19 @@ object ManifestRunner {
                 fileContains = trace.manifestString("fileContains"),
                 function = trace.manifestString("function"),
                 count = trace.get("count")?.asInt,
+                outputs = trace.get("outputs")?.asInt,
+                hasDiff = trace.get("hasDiff")?.asBoolean,
+                diffPath = trace.manifestString("diffPath"),
+                diffKind = trace.manifestString("diffKind")?.let(::parseTraceDiffKind),
+                diffContains = trace.manifestString("diffContains"),
             ),
         )
     }
+
+    private fun parseTraceDiffKind(value: String): SnapshotDiffKind =
+        runCatching { SnapshotDiffKind.valueOf(value.uppercase()) }.getOrElse {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Trace assertion diffKind must be added, removed, or changed")
+        }
 
     private fun evaluateEventTraceAssertion(trace: JsonObject, sandbox: DatapackSandbox): List<String> {
         return PlayerEventTraceAssertions.failures(

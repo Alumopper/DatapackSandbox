@@ -127,10 +127,12 @@ class CheckCommandTest {
               "packs": ["$pack"],
               "steps": [
                 { "command": "say traced from check" },
-                { "command": "scoreboard objectives add filtered_check dummy" }
+                { "command": "scoreboard objectives add filtered_check dummy" },
+                { "command": "scoreboard players set #check filtered_check 4" }
               ],
               "assertions": [
-                { "trace": { "command": "say traced from check", "success": true, "count": 1 } }
+                { "trace": { "command": "say traced from check", "success": true, "outputs": 1, "hasDiff": true, "diffPath": "/outputs/0", "diffKind": "added", "count": 1 } },
+                { "trace": { "command": "scoreboard players set #check filtered_check 4", "outputs": 0, "hasDiff": true, "diffPath": "/scores/filtered_check", "diffContains": "#check", "count": 1 } }
               ]
             }
             """.trimIndent(),
@@ -143,11 +145,13 @@ class CheckCommandTest {
         assertTrue("PASS $manifest" in output, output)
         assertTrue("trace OK say traced from check" in output, output)
         assertTrue("scoreboard objectives add filtered_check dummy" !in output, output)
+        assertTrue("scoreboard players set #check filtered_check 4" !in output, output)
         assertTrue("trace written: $traceFile" in output, output)
         val traceJson = Files.readString(traceFile)
         assertTrue("\"command\": \"say traced from check\"" in traceJson, traceJson)
         assertTrue("\"root\": \"say\"" in traceJson, traceJson)
         assertTrue("scoreboard objectives add filtered_check dummy" !in traceJson, traceJson)
+        assertTrue("scoreboard players set #check filtered_check 4" !in traceJson, traceJson)
     }
 
     @Test
