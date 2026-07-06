@@ -43,6 +43,8 @@ data class PredicateContext(
     val tool: ItemStack? = null,
     /** Block id context for block-state predicates. */
     val block: ResourceLocation? = null,
+    /** Full sparse block context for block-state property predicates when available. */
+    val blockState: SandboxBlock? = null,
     /** Damage source id context for damage-source predicates. */
     val damageSource: ResourceLocation? = null,
     /** Deterministic random source for random-chance predicates. */
@@ -143,8 +145,13 @@ class PredicateEngine(
                 root.getAsJsonObject("predicate")?.string("type")?.let { ResourceLocation.parse(it) == source } ?: true
             }
             "block_state_property" -> {
-                val block = requireContext(context.block, "block_state_property requires block context")
-                root.string("block")?.let { ResourceLocation.parse(it) == block } ?: true
+                val blockId = context.blockState?.id ?: requireContext(context.block, "block_state_property requires block context")
+                if (root.string("block")?.let { ResourceLocation.parse(it) != blockId } == true) return false
+                root.getAsJsonObject("properties")?.let {
+                    val block = context.blockState ?: return false
+                    if (!testBlockProperties(block, it)) return false
+                }
+                true
             }
             else -> throw SandboxException(DiagnosticCode.UNSUPPORTED_FEATURE, "Predicate condition '$type' is not implemented")
         }

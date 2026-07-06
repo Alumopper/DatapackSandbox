@@ -353,6 +353,8 @@ conditions read explicit sparse blocks by id, block tag, state/property values,
 and block entity NBT at the tested location. Its biome conditions read the
 sparse biome overrides declared by `fillbiome`, world fixtures, manifests, or
 quick-test setup; unassigned positions do not imply a generated biome.
+`block_state_property` checks the current block id and, when a full sparse block
+context is available, its state properties.
 
 Current directories:
 

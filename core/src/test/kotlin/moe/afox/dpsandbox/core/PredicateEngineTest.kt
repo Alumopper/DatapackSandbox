@@ -277,6 +277,42 @@ class PredicateEngineTest {
         assertFalse(engine.testElement(matchTool, PredicateContext(world = SandboxWorld(), tool = apple)))
     }
 
+    @Test
+    fun `block state property condition matches block properties`() {
+        val engine = PredicateEngine(Datapack(emptyMap(), emptyList(), emptyList()))
+        val block = SandboxBlock(
+            id = ResourceLocation.parse("minecraft:stone"),
+            properties = mutableMapOf("variant" to "smooth", "level" to "3"),
+        )
+        val pass = JsonValues.parse(
+            """
+            {
+              condition: "minecraft:block_state_property",
+              block: "minecraft:stone",
+              properties: {
+                variant: "smooth",
+                level: {min: 2, max: 4}
+              }
+            }
+            """.trimIndent(),
+        )
+        val fail = JsonValues.parse(
+            """
+            {
+              condition: "minecraft:block_state_property",
+              block: "minecraft:stone",
+              properties: {
+                variant: "rough"
+              }
+            }
+            """.trimIndent(),
+        )
+        val context = PredicateContext(world = SandboxWorld(), block = block.id, blockState = block)
+
+        assertTrue(engine.testElement(pass, context))
+        assertFalse(engine.testElement(fail, context))
+    }
+
     private fun context(tool: ItemStack?): PredicateContext =
         PredicateContext(
             world = SandboxWorld(),

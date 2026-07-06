@@ -295,7 +295,7 @@ class CommandExpansionTest {
         val pack = writeLootSourcePack(Files.createTempDirectory("dps-loot-source-pack"))
         val sandbox = createSandbox("26.2", listOf(pack))
 
-        sandbox.executeCommand("setblock 0 64 0 minecraft:stone")
+        sandbox.executeCommand("setblock 0 64 0 minecraft:stone[variant=smooth]")
         sandbox.executeCommand("loot give Steve fish demo:fish 0 64 0 minecraft:stick")
         sandbox.executeCommand("loot give Steve mine 0 64 0 minecraft:stick")
         sandbox.executeCommand("summon minecraft:zombie 2 64 0")
@@ -1321,7 +1321,10 @@ class CommandExpansionTest {
                   "conditions": [
                     {
                       "condition": "minecraft:block_state_property",
-                      "block": "minecraft:stone"
+                      "block": "minecraft:stone",
+                      "properties": {
+                        "variant": "smooth"
+                      }
                     }
                   ],
                   "entries": [

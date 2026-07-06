@@ -911,7 +911,7 @@ class DatapackSandbox(
                 if (table == null) {
                     listOf(ItemStack(block.id))
                 } else {
-                    generateLootItems(table, ResourceLocation("minecraft", "block"), context, origin = Position(pos.x.toDouble(), pos.y.toDouble(), pos.z.toDouble()), tool = tool, block = block.id)
+                    generateLootItems(table, ResourceLocation("minecraft", "block"), context, origin = Position(pos.x.toDouble(), pos.y.toDouble(), pos.z.toDouble()), tool = tool, blockState = block)
                 }
             }
             "kill" -> {
@@ -936,7 +936,7 @@ class DatapackSandbox(
                 val pos = parseBlockPos(tokens, index + 2, context, location)
                 val block = world.block(pos) ?: return emptyList()
                 val tool = tokens.getOrNull(index + 5)?.text?.let { lootTool(it, location) }
-                generateLootItems(table, ResourceLocation("minecraft", "block"), context, origin = Position(pos.x.toDouble(), pos.y.toDouble(), pos.z.toDouble()), tool = tool, block = block.id)
+                generateLootItems(table, ResourceLocation("minecraft", "block"), context, origin = Position(pos.x.toDouble(), pos.y.toDouble(), pos.z.toDouble()), tool = tool, blockState = block)
             }
             "equipment" -> {
                 requireSizeFrom(tokens, index, 4, "loot source equipment <table> <target> <slot>", location)
@@ -957,7 +957,7 @@ class DatapackSandbox(
         origin: Position = execution.position,
         thisEntity: SandboxEntity? = execution.entity,
         tool: ItemStack? = (execution.entity as? SandboxPlayer)?.selectedItem,
-        block: ResourceLocation? = null,
+        blockState: SandboxBlock? = null,
     ): List<ItemStack> {
         val player = thisEntity as? SandboxPlayer ?: execution.entity as? SandboxPlayer
         return loot.generate(
@@ -973,7 +973,8 @@ class DatapackSandbox(
                     attackingPlayer = execution.entity as? SandboxPlayer,
                     interactingEntity = execution.entity,
                     tool = tool,
-                    block = block,
+                    block = blockState?.id,
+                    blockState = blockState,
                     weather = currentWeatherState(),
                 ),
                 seed = world.gameTime,
@@ -3621,6 +3622,7 @@ class DatapackSandbox(
             dimension = ResourceLocation("minecraft", "overworld"),
             tool = stack,
             block = world.block(pos)?.id,
+            blockState = world.block(pos),
             weather = currentWeatherState(),
         )
 
