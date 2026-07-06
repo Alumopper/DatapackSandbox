@@ -1017,6 +1017,7 @@ class RunCommandTest {
         assertTrue("profile diff 1.20.4 -> 26.2" in output, output)
         assertTrue("java: 17 -> 25" in output, output)
         assertTrue("pack_format: 26 -> 107.1" in output, output)
+        assertTrue("nbt_schema: 1.20.4:1.20.4 -> 26.2:26.2" in output, output)
         assertTrue("command_roots: added=transfer" in output, output)
     }
 

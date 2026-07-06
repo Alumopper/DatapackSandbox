@@ -6,6 +6,7 @@ data class VersionProfileDiff(
     val javaMajor: ValueChange<Int>,
     val dataVersion: ValueChange<Int?>,
     val dataPackFormat: ValueChange<String>,
+    val nbtSchema: ValueChange<String>,
     val resourceDirectories: Map<String, SetChange>,
     val commandRoots: SetChange,
     val registries: Map<String, SetChange>,
@@ -34,6 +35,7 @@ object VersionProfileDiffs {
             javaMajor = ValueChange(from.javaMajor, to.javaMajor),
             dataVersion = ValueChange(from.dataVersion, to.dataVersion),
             dataPackFormat = ValueChange(from.dataPackFormat.toString(), to.dataPackFormat.toString()),
+            nbtSchema = ValueChange(NbtSchemas.schemaSummary(from), NbtSchemas.schemaSummary(to)),
             resourceDirectories = resourceDirectoryDiffs(from.resourceDirectories, to.resourceDirectories),
             commandRoots = setDiff(from.commands.roots, to.commands.roots),
             registries = registryDiffs(from.registryView, to.registryView),
@@ -45,6 +47,7 @@ object VersionProfileDiffs {
             appendLine("java: ${renderChange(diff.javaMajor)}")
             appendLine("data_version: ${renderChange(diff.dataVersion)}")
             appendLine("pack_format: ${renderChange(diff.dataPackFormat)}")
+            appendLine("nbt_schema: ${renderChange(diff.nbtSchema)}")
             appendLine("resource_directories:")
             diff.resourceDirectories.forEach { (name, change) ->
                 appendLine("  $name: ${renderSetChange(change)}")
