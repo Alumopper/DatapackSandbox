@@ -308,6 +308,7 @@ class CommandExpansionTest {
         sandbox.executeCommand("loot give Steve block demo:apply_bonus 0 64 0 minecraft:diamond_pickaxe[minecraft:enchantments={\"minecraft:fortune\":2}]")
         sandbox.executeCommand("loot give Steve equipment demo:equipment_context @e[type=minecraft:zombie,limit=1] weapon.mainhand")
         sandbox.executeCommand("loot give Steve loot demo:enchanted")
+        sandbox.executeCommand("loot give Steve loot demo:tag_items")
         sandbox.executeCommand("loot replace entity @e[type=minecraft:zombie,limit=1] weapon.offhand loot demo:fish")
 
         val zombie = sandbox.world.entities.first { it.type == ResourceLocation.parse("minecraft:zombie") }
@@ -323,6 +324,12 @@ class CommandExpansionTest {
         assertTrue(!copied.components.has("demo:skip"))
         val bonus = sandbox.world.requirePlayer("Steve").inventory.first { it.id == ResourceLocation.parse("minecraft:raw_gold") }
         assertEquals(4, bonus.count)
+        val rawGoldCounts = sandbox.world.requirePlayer("Steve").inventory
+            .filter { it.id == ResourceLocation.parse("minecraft:raw_gold") }
+            .map { it.count }
+        assertTrue(2 in rawGoldCounts)
+        val emerald = sandbox.world.requirePlayer("Steve").inventory.first { it.id == ResourceLocation.parse("minecraft:emerald") }
+        assertEquals(2, emerald.count)
         val enchanted = sandbox.world.requirePlayer("Steve").inventory.first { it.id == ResourceLocation.parse("minecraft:experience_bottle") }
         val enchantments = enchanted.components.getAsJsonObject("minecraft:enchantments")
         assertEquals(1, enchantments.get("minecraft:sharpness").asInt)
@@ -335,7 +342,7 @@ class CommandExpansionTest {
         assertEquals(ResourceLocation.parse("minecraft:the_nether"), spawnedItem.dimension)
 
         val lootGiveOutputs = sandbox.world.outputs.filter { it.command == "loot give" }
-        assertEquals(9, lootGiveOutputs.size)
+        assertEquals(10, lootGiveOutputs.size)
         assertEquals("players", lootGiveOutputs.first().payload?.asJsonObject?.get("targetKind")?.asString)
         assertEquals("minecraft:diamond", lootGiveOutputs.first().payload?.asJsonObject?.getAsJsonArray("items")?.get(0)?.asJsonObject?.get("id")?.asString)
         val copiedOutputItem = lootGiveOutputs.first {
@@ -356,6 +363,13 @@ class CommandExpansionTest {
             } == true
         }.payload?.asJsonObject?.getAsJsonArray("items")?.get(0)?.asJsonObject ?: error("missing enchanted loot output")
         assertEquals(3, enchantedOutputItem.getAsJsonObject("components").getAsJsonObject("minecraft:enchantments").get("minecraft:unbreaking").asInt)
+        val tagOutput = lootGiveOutputs.first {
+            it.payload?.asJsonObject?.getAsJsonArray("items")?.any { item ->
+                item.asJsonObject.get("id").asString == "minecraft:emerald"
+            } == true
+        }.payload?.asJsonObject ?: error("missing tag loot output")
+        assertEquals(2, tagOutput.getAsJsonArray("items").size())
+        assertEquals(4, tagOutput.get("totalCount").asInt)
         val lootSpawnOutput = sandbox.world.outputs.single { it.command == "loot spawn" }
         assertEquals("minecraft:the_nether", lootSpawnOutput.payload?.asJsonObject?.get("dimension")?.asString)
         val lootReplaceOutput = sandbox.world.outputs.single { it.command == "loot replace" }
@@ -1281,6 +1295,56 @@ class CommandExpansionTest {
                     }
                   ]
                 }
+              ]
+            }
+            """.trimIndent(),
+        )
+        Files.writeString(
+            lootRoot.resolve("tag_items.json"),
+            """
+            {
+              "type": "minecraft:command",
+              "pools": [
+                {
+                  "rolls": 1,
+                  "entries": [
+                    {
+                      "type": "minecraft:tag",
+                      "name": "demo:ore_drops",
+                      "expand": true,
+                      "functions": [
+                        {
+                          "function": "minecraft:set_count",
+                          "count": 2
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+            """.trimIndent(),
+        )
+        val itemTagRoot = root.resolve("data").resolve("demo").resolve("tags").resolve("item")
+        Files.createDirectories(itemTagRoot)
+        Files.writeString(
+            itemTagRoot.resolve("ore_drops.json"),
+            """
+            {
+              "values": [
+                "minecraft:raw_gold",
+                "#demo:bonus_drops",
+                { "id": "#demo:missing_optional", "required": false }
+              ]
+            }
+            """.trimIndent(),
+        )
+        Files.writeString(
+            itemTagRoot.resolve("bonus_drops.json"),
+            """
+            {
+              "values": [
+                "minecraft:emerald"
               ]
             }
             """.trimIndent(),

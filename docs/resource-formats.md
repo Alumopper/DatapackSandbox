@@ -315,7 +315,8 @@ Recipes, item modifiers, and additional registry resources are loaded as raw
 JSON resources and included in the resource index. The sandbox does not yet
 execute the full crafting system, every item modifier function, or worldgen
 semantics, but these resources are version-profile checked, participate in pack
-overlay behavior, and can be inspected from API or REPL. Loot functions include
+overlay behavior, and can be inspected from API or REPL. Loot tables can expand
+item tag entries, including nested tags and optional values. Loot functions include
 common count/item/component/enchantment mutations, tool-driven `apply_bonus`, and
 `copy_components` from the active tool with `include`/`exclude` filters. `item modify entity`
 models common item modifier functions such as `set_components`,

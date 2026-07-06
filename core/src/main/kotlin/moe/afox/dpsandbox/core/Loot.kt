@@ -128,11 +128,45 @@ class LootEngine(
                 output
             }
             "dynamic" -> emptyList()
-            "tag" -> throw SandboxException(DiagnosticCode.MISSING_CONTEXT, "Loot tag entries require item tag registry expansion: ${entry.string("name")}")
+            "tag" -> expandItemTag(ResourceLocation.parse(entry.requiredString("name")), mutableSetOf()).map { ItemStack(it) }
             else -> throw SandboxException(DiagnosticCode.UNSUPPORTED_FEATURE, "Loot entry type '${entry.requiredString("type")}' is not implemented")
         }
         return applyFunctions(base, functions, context, random)
     }
+
+    private fun expandItemTag(id: ResourceLocation, stack: MutableSet<ResourceLocation>): List<ResourceLocation> {
+        if (!stack.add(id)) {
+            throw SandboxException(DiagnosticCode.COMMAND_ERROR, "Recursive item tag reference: $id")
+        }
+        try {
+            val tag = itemTag(id)
+            return tag.values.flatMap { value ->
+                if (value.id.startsWith("#")) {
+                    val nested = ResourceLocation.parse(value.id.removePrefix("#"))
+                    val nestedTag = findItemTag(nested)
+                    if (nestedTag == null) {
+                        if (value.required) {
+                            throw SandboxException(DiagnosticCode.RESOURCE_NOT_FOUND, "Item tag '$nested' referenced by '$id' was not found")
+                        }
+                        emptyList()
+                    } else {
+                        expandItemTag(nestedTag.key.id, stack)
+                    }
+                } else {
+                    listOf(ResourceLocation.parse(value.id))
+                }
+            }
+        } finally {
+            stack.remove(id)
+        }
+    }
+
+    private fun itemTag(id: ResourceLocation): TagDefinition =
+        findItemTag(id)
+            ?: throw SandboxException(DiagnosticCode.RESOURCE_NOT_FOUND, "Item tag '$id' was not found")
+
+    private fun findItemTag(id: ResourceLocation): TagDefinition? =
+        datapack.tags[TagKey("item", id)] ?: datapack.tags[TagKey("items", id)]
 
     private fun testConditions(conditions: JsonElement?, context: LootContext): Boolean =
         predicates.testConditions(conditions, context.predicateContext)
