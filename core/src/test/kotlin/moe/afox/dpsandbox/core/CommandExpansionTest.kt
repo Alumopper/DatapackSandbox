@@ -306,6 +306,7 @@ class CommandExpansionTest {
         sandbox.executeCommand("loot give Steve block demo:block_context 0 64 0 minecraft:diamond_pickaxe")
         sandbox.executeCommand("loot give Steve block demo:copy_components 0 64 0 minecraft:diamond_pickaxe[minecraft:damage=7,demo:copied=true,demo:skip=true]")
         sandbox.executeCommand("loot give Steve equipment demo:equipment_context @e[type=minecraft:zombie,limit=1] weapon.mainhand")
+        sandbox.executeCommand("loot give Steve loot demo:enchanted")
         sandbox.executeCommand("loot replace entity @e[type=minecraft:zombie,limit=1] weapon.offhand loot demo:fish")
 
         val zombie = sandbox.world.entities.first { it.type == ResourceLocation.parse("minecraft:zombie") }
@@ -319,6 +320,10 @@ class CommandExpansionTest {
         assertEquals(7, copied.components.get("minecraft:damage").asInt)
         assertEquals(true, copied.components.get("demo:copied").asBoolean)
         assertTrue(!copied.components.has("demo:skip"))
+        val enchanted = sandbox.world.requirePlayer("Steve").inventory.first { it.id == ResourceLocation.parse("minecraft:experience_bottle") }
+        val enchantments = enchanted.components.getAsJsonObject("minecraft:enchantments")
+        assertEquals(1, enchantments.get("minecraft:sharpness").asInt)
+        assertEquals(3, enchantments.get("minecraft:unbreaking").asInt)
         assertEquals(ResourceLocation.parse("minecraft:diamond"), zombie.equipment[EquipmentSlots.OFFHAND]?.id)
         val spawnedItem = sandbox.world.entities.first {
             it.type == ResourceLocation.parse("minecraft:item") &&
@@ -327,7 +332,7 @@ class CommandExpansionTest {
         assertEquals(ResourceLocation.parse("minecraft:the_nether"), spawnedItem.dimension)
 
         val lootGiveOutputs = sandbox.world.outputs.filter { it.command == "loot give" }
-        assertEquals(7, lootGiveOutputs.size)
+        assertEquals(8, lootGiveOutputs.size)
         assertEquals("players", lootGiveOutputs.first().payload?.asJsonObject?.get("targetKind")?.asString)
         assertEquals("minecraft:diamond", lootGiveOutputs.first().payload?.asJsonObject?.getAsJsonArray("items")?.get(0)?.asJsonObject?.get("id")?.asString)
         val copiedOutputItem = lootGiveOutputs.first {
@@ -336,6 +341,12 @@ class CommandExpansionTest {
             } == true
         }.payload?.asJsonObject?.getAsJsonArray("items")?.get(0)?.asJsonObject ?: error("missing copied loot output")
         assertEquals(7, copiedOutputItem.getAsJsonObject("components").get("minecraft:damage").asInt)
+        val enchantedOutputItem = lootGiveOutputs.first {
+            it.payload?.asJsonObject?.getAsJsonArray("items")?.any { item ->
+                item.asJsonObject.get("id").asString == "minecraft:experience_bottle"
+            } == true
+        }.payload?.asJsonObject?.getAsJsonArray("items")?.get(0)?.asJsonObject ?: error("missing enchanted loot output")
+        assertEquals(3, enchantedOutputItem.getAsJsonObject("components").getAsJsonObject("minecraft:enchantments").get("minecraft:unbreaking").asInt)
         val lootSpawnOutput = sandbox.world.outputs.single { it.command == "loot spawn" }
         assertEquals("minecraft:the_nether", lootSpawnOutput.payload?.asJsonObject?.get("dimension")?.asString)
         val lootReplaceOutput = sandbox.world.outputs.single { it.command == "loot replace" }
@@ -1184,6 +1195,40 @@ class CommandExpansionTest {
                     {
                       "type": "minecraft:item",
                       "name": "minecraft:apple"
+                    }
+                  ]
+                }
+              ]
+            }
+            """.trimIndent(),
+        )
+        Files.writeString(
+            lootRoot.resolve("enchanted.json"),
+            """
+            {
+              "type": "minecraft:command",
+              "pools": [
+                {
+                  "rolls": 1,
+                  "entries": [
+                    {
+                      "type": "minecraft:item",
+                      "name": "minecraft:experience_bottle",
+                      "functions": [
+                        {
+                          "function": "minecraft:enchant_randomly",
+                          "options": [
+                            "minecraft:sharpness"
+                          ]
+                        },
+                        {
+                          "function": "minecraft:enchant_with_levels",
+                          "options": [
+                            "minecraft:unbreaking"
+                          ],
+                          "levels": 3
+                        }
+                      ]
                     }
                   ]
                 }

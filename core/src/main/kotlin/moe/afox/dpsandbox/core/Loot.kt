@@ -162,8 +162,12 @@ class LootEngine(
                 "copy_nbt", "copy_components" -> copyFromContext(stack, function, context)
                 "explosion_decay" -> stack.count = if (context.predicateContext.random.nextBoolean()) stack.count else 0
                 "apply_bonus" -> Unit
-                "enchant_randomly" -> stack.components.addProperty("minecraft:enchantments", "random")
-                "enchant_with_levels" -> stack.components.addProperty("minecraft:enchantment_level", rollCount(function.root.get("levels"), random))
+                "enchant_randomly" -> addEnchantment(stack, chooseEnchantment(function.root, random), 1)
+                "enchant_with_levels" -> addEnchantment(
+                    stack,
+                    chooseEnchantment(function.root, random),
+                    rollCount(function.root.get("levels"), random).coerceAtLeast(1),
+                )
                 "filtered" -> {
                     val itemFilter = function.root.getAsJsonObject("item_filter") ?: function.root.getAsJsonObject("filter")
                     if (itemFilter != null && !predicates.testItemPredicate(stack, itemFilter)) return emptyList()
@@ -180,6 +184,36 @@ class LootEngine(
             }
         }
         return if (stack.count <= 0) emptyList() else listOf(stack)
+    }
+
+    private fun chooseEnchantment(root: JsonObject, random: Random): ResourceLocation {
+        val options = enchantmentOptions(root.get("options") ?: root.get("enchantments") ?: root.get("enchantment"))
+        return if (options.size == 1) options.single() else options[random.nextInt(options.size)]
+    }
+
+    private fun enchantmentOptions(element: JsonElement?): List<ResourceLocation> =
+        when {
+            element == null || element.isJsonNull -> registry.enchantments.sorted()
+            element.isJsonPrimitive && element.asJsonPrimitive.isString -> listOf(ResourceLocation.parse(element.asString))
+            element.isJsonArray -> element.asJsonArray.mapIndexed { index, entry ->
+                if (!entry.isJsonPrimitive || !entry.asJsonPrimitive.isString) {
+                    throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Loot enchantment option at index $index must be a string")
+                }
+                ResourceLocation.parse(entry.asString)
+            }.ifEmpty {
+                throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Loot enchantment options must not be empty")
+            }
+            else -> throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Loot enchantment options must be a string or array of strings")
+        }
+
+    private fun addEnchantment(stack: ItemStack, enchantment: ResourceLocation, level: Int) {
+        val existing = stack.components.get("minecraft:enchantments")
+        val enchantments = if (existing != null && existing.isJsonObject) {
+            existing.asJsonObject
+        } else {
+            JsonObject().also { stack.components.add("minecraft:enchantments", it) }
+        }
+        enchantments.addProperty(enchantment.toString(), level.coerceAtLeast(1))
     }
 
     private fun copyFromContext(stack: ItemStack, function: LootFunction, context: LootContext) {
