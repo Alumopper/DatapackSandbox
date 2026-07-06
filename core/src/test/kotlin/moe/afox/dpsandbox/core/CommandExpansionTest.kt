@@ -441,12 +441,24 @@ class CommandExpansionTest {
         assertEquals(1, sandbox.world.getScore("#nbt", "effects"))
         assertEquals(2, sandbox.world.getScore("#predicate", "effects"))
 
+        val giveOutput = sandbox.world.outputs.first { it.command == "effect give" }
+        val givePayload = giveOutput.payload?.asJsonObject ?: error("missing effect give payload")
+        assertEquals("minecraft:speed", givePayload.getAsJsonObject("effect").get("id").asString)
+        assertEquals(140, givePayload.getAsJsonObject("effect").get("duration").asInt)
+        assertEquals(2, givePayload.getAsJsonObject("effect").get("amplifier").asInt)
+        assertEquals(true, givePayload.getAsJsonObject("effect").get("hideParticles").asBoolean)
+
         sandbox.executeCommand("effect clear @e[type=minecraft:zombie,limit=1] minecraft:speed")
         assertTrue(ResourceLocation.parse("minecraft:speed") !in zombie.activeEffects)
 
         sandbox.executeCommand("effect give @e[type=minecraft:zombie,limit=1] minecraft:strength 5 1 false")
         sandbox.executeCommand("effect clear @e[type=minecraft:zombie,limit=1]")
         assertTrue(zombie.activeEffects.isEmpty())
+
+        val clearOutputs = sandbox.world.outputs.filter { it.command == "effect clear" }
+        assertEquals("minecraft:speed", clearOutputs.first().payload?.asJsonObject?.get("effect")?.asString)
+        assertEquals(false, clearOutputs.first().payload?.asJsonObject?.get("all")?.asBoolean)
+        assertEquals(true, clearOutputs.last().payload?.asJsonObject?.get("all")?.asBoolean)
     }
 
     @Test

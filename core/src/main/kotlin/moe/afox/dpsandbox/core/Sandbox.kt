@@ -1779,16 +1779,21 @@ class DatapackSandbox(
                 val duration = tokens.getOrNull(4)?.text?.let { parseInt(it, "effect seconds", location) * 20 } ?: 600
                 val amplifier = tokens.getOrNull(5)?.text?.let { parseInt(it, "effect amplifier", location) } ?: 0
                 val hide = tokens.getOrNull(6)?.text?.let { parseBoolean(it, "hide particles", location) } ?: false
-                EntitySelectors.select(world, tokens[2].text, context, location).forEach { entity ->
-                    applyEffect(entity, PlayerEffect(effect, duration, amplifier, hide))
+                val entities = EntitySelectors.select(world, tokens[2].text, context, location)
+                val effectState = PlayerEffect(effect, duration, amplifier, hide)
+                entities.forEach { entity ->
+                    applyEffect(entity, effectState)
                 }
+                recordEffectOutput("effect give", entities, effectState)
             }
             "clear" -> {
                 requireSize(tokens, 3, "effect clear <targets> [effect]", location)
                 val effect = tokens.getOrNull(3)?.text?.let(ResourceLocation::parse)
-                EntitySelectors.select(world, tokens[2].text, context, location).forEach { entity ->
+                val entities = EntitySelectors.select(world, tokens[2].text, context, location)
+                entities.forEach { entity ->
                     clearEffect(entity, effect)
                 }
+                recordEffectClearOutput(entities, effect)
             }
             else -> unsupportedFeature("Unsupported effect action '${tokens[1].text}'", profile.id, location)
         }
@@ -1819,6 +1824,35 @@ class DatapackSandbox(
         } else {
             entity.activeEffects.remove(effect)
         }
+    }
+
+    private fun recordEffectOutput(command: String, entities: List<SandboxEntity>, effect: PlayerEffect) {
+        world.recordOutput(
+            command,
+            "data",
+            targets = entities.map { it.scoreHolder },
+            text = entities.size.toString(),
+            payload = JsonObject().also { payload ->
+                payload.add("targets", JsonArray().also { array -> entities.forEach { array.add(it.scoreHolder) } })
+                payload.add("effect", effect.toJson())
+                payload.addProperty("count", entities.size)
+            },
+        )
+    }
+
+    private fun recordEffectClearOutput(entities: List<SandboxEntity>, effect: ResourceLocation?) {
+        world.recordOutput(
+            "effect clear",
+            "data",
+            targets = entities.map { it.scoreHolder },
+            text = entities.size.toString(),
+            payload = JsonObject().also { payload ->
+                payload.add("targets", JsonArray().also { array -> entities.forEach { array.add(it.scoreHolder) } })
+                effect?.let { payload.addProperty("effect", it.toString()) }
+                payload.addProperty("all", effect == null)
+                payload.addProperty("count", entities.size)
+            },
+        )
     }
 
     private fun executeEnchant(tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext) {
