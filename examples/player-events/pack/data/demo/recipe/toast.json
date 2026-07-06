@@ -1,0 +1,11 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "food",
+  "ingredients": [
+    "minecraft:bread"
+  ],
+  "result": {
+    "id": "minecraft:bread",
+    "count": 1
+  }
+}

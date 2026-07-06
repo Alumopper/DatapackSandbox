@@ -471,14 +471,16 @@ Run all example manifests:
 java -jar cli/build/libs/datapack-sandbox-cli.jar check examples
 ```
 
-The `examples/` directory covers full-stack datapack events, single-function
-scratch tests, command-generator output, a reusable generator-output template,
-golden snapshot assertions, and multi-version manifests.
+The `examples/` directory covers full-stack datapack events, a player-event
+matrix, single-function scratch tests, command-generator output, a reusable
+generator-output template, golden snapshot assertions, and multi-version
+manifests.
 
 Run the shortest example for each common workflow:
 
 ```powershell
 java -jar cli/build/libs/datapack-sandbox-cli.jar check examples/full-stack/full-stack.dps.json
+java -jar cli/build/libs/datapack-sandbox-cli.jar check examples/player-events/player-events.dps.json
 java -jar cli/build/libs/datapack-sandbox-cli.jar check examples/single-function/single-function.dps.json
 java -jar cli/build/libs/datapack-sandbox-cli.jar check examples/generator-output/generator-output.dps.json
 java -jar cli/build/libs/datapack-sandbox-cli.jar check examples/generator-template/generator-template.dps.json

@@ -142,6 +142,7 @@
   - `item_consumed`、`inventory_changed`、`item_picked_up`/`item_added`、`changed_dimension`、`damage`/`death` 和 `recipe_unlocked` 已同步更新玩家可观察状态，包括背包数量、food、维度、health 和 recipe 集合，可通过 snapshot、inspect、manifest assertion 与 QuickTest assertion 检查。
   - 带 `blockPos` 的 `block_placed`/`block_broken` 玩家事件已可更新 sparse world 方块状态，并在 event trace 中暴露目标 block 坐标，便于事件驱动数据包测试直接断言方块变化。
   - CLI/REPL 玩家事件简写已支持 `x y z`、`pos=x,y,z`、`blockPos=x,y,z` 和 `@x,y,z` 四种 block 坐标输入，可用于随手小测、`--event-file` 和独立 `event` 命令。
+  - `examples/player-events` 已提供玩家事件矩阵 full-stack manifest，覆盖 tick、背包变化、物品使用/消耗/拾取、键鼠输入、实体交互、伤害/死亡、击杀、location、维度切换、方块放置/破坏、recipe unlock 和 effects changed，并断言 advancement、event trace、玩家状态、物品和方块状态。
 - 为事件建立 manifest step、CLI command、REPL command 和 quick-test API。
 - 事件可以触发 advancement、predicate、loot、scoreboard、storage 和输出命令，也可以在不需要客户端物理的范围内更新玩家状态。
 - 增加事件 trace：事件输入、匹配到的 advancement criteria、执行的 reward、失败原因。
@@ -149,7 +150,7 @@
 
 验收标准：
 
-- 每类 P0 事件至少有一个 full-stack 示例和一个 manifest 测试。
+- 每类 P0 事件至少有一个 full-stack 示例和一个 manifest 测试；`examples/player-events/player-events.dps.json` 已接入示例 manifest 回归。
 - 输入事件可被 `assertPlayerLastInput`、snapshot、`inspect player` 检查。
 - advancement 条件不满足时能解释缺少的上下文或失败字段。
 
@@ -225,8 +226,8 @@
 
 验收标准：
 
-- README/README.zh-CN 中已为 JVM 单元调试、随手小测试、命令生成器输出、full-stack、single-function、generator-output 和 multi-version 示例提供最短入口。
-- `examples/` 至少包含 full-stack、single-function、generator-output、generator-template、multi-version 五类示例。
+- README/README.zh-CN 中已为 JVM 单元调试、随手小测试、命令生成器输出、full-stack、player-events、single-function、generator-output 和 multi-version 示例提供最短入口。
+- `examples/` 至少包含 full-stack、player-events、single-function、generator-output、generator-template、multi-version 六类示例。
 - CLI 和 quick-test 对同一清单行为输出一致结果。
 
 ## 阶段 7：Manifest 格式演进

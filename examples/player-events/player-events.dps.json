@@ -1,0 +1,76 @@
+{
+  "version": "26.2",
+  "packs": ["pack"],
+  "world": {
+    "blocks": [
+      { "pos": [4, 64, 5], "id": "minecraft:bee_nest" }
+    ]
+  },
+  "steps": [
+    {
+      "player": {
+        "name": "Steve",
+        "inventory": [
+          { "id": "minecraft:carrot_on_a_stick", "count": 1 },
+          { "id": "minecraft:apple", "count": 2 }
+        ]
+      }
+    },
+    { "event": { "player": "Steve", "type": "tick" } },
+    { "event": { "player": "Steve", "type": "inventory_changed", "item": "minecraft:emerald" } },
+    { "event": { "player": "Steve", "type": "item_used", "item": "minecraft:carrot_on_a_stick" } },
+    { "event": { "player": "Steve", "type": "item_consumed", "item": "minecraft:apple" } },
+    { "event": { "player": "Steve", "type": "item_picked_up", "item": "minecraft:diamond" } },
+    { "event": { "player": "Steve", "type": "key_input", "key": "key.jump", "action": "press" } },
+    { "event": { "player": "Steve", "type": "mouse_input", "button": "left", "action": "click", "x": 12, "y": 8 } },
+    { "event": { "player": "Steve", "type": "entity_interacted", "entity": "minecraft:villager" } },
+    { "event": { "player": "Steve", "type": "damage", "damageSource": "minecraft:fall", "amount": 4.5 } },
+    { "event": { "player": "Steve", "type": "player_hurt_entity", "entity": "minecraft:zombie", "amount": 2.0 } },
+    { "event": { "player": "Steve", "type": "killed_entity", "entity": "minecraft:zombie" } },
+    { "event": { "player": "Steve", "type": "entity_killed_player", "entity": "minecraft:skeleton", "damageSource": "minecraft:arrow", "amount": 6.0 } },
+    { "event": { "player": "Steve", "type": "location" } },
+    { "event": { "player": "Steve", "type": "changed_dimension", "from": "minecraft:overworld", "to": "minecraft:the_nether" } },
+    { "event": { "player": "Steve", "type": "block_placed", "block": "minecraft:stone", "blockPos": [2, 64, 3] } },
+    { "event": { "player": "Steve", "type": "block_broken", "block": "minecraft:bee_nest", "blockPos": [4, 64, 5] } },
+    { "event": { "player": "Steve", "type": "recipe_unlocked", "recipe": "demo:toast" } },
+    { "event": { "player": "Steve", "type": "effects_changed" } },
+    { "event": { "player": "Steve", "type": "death", "damageSource": "minecraft:void", "amount": 99.0 } }
+  ],
+  "assertions": [
+    { "advancement": { "player": "Steve", "id": "demo:event_matrix", "done": true } },
+    {
+      "player": {
+        "name": "Steve",
+        "inventoryCount": 4,
+        "dimension": "minecraft:the_nether",
+        "health": 0.0,
+        "recipe": "demo:toast",
+        "lastInput": { "device": "mouse", "code": "left", "action": "click" }
+      }
+    },
+    { "item": { "player": "Steve", "id": "minecraft:apple", "count": 1 } },
+    { "item": { "player": "Steve", "id": "minecraft:emerald", "count": 1 } },
+    { "item": { "player": "Steve", "id": "minecraft:diamond", "count": 1 } },
+    { "block": { "pos": [2, 64, 3], "id": "minecraft:stone" } },
+    { "block": { "pos": [4, 64, 5], "exists": false } },
+    { "eventTrace": { "player": "Steve", "type": "tick", "success": true, "count": 1 } },
+    { "eventTrace": { "player": "Steve", "type": "inventory_changed", "success": true, "item": "minecraft:emerald", "count": 1 } },
+    { "eventTrace": { "player": "Steve", "type": "item_used", "success": true, "item": "minecraft:carrot_on_a_stick", "count": 1 } },
+    { "eventTrace": { "player": "Steve", "type": "item_consumed", "success": true, "item": "minecraft:apple", "count": 1 } },
+    { "eventTrace": { "player": "Steve", "type": "item_picked_up", "success": true, "item": "minecraft:diamond", "count": 1 } },
+    { "eventTrace": { "player": "Steve", "type": "key_input", "success": true, "inputDevice": "keyboard", "inputCode": "key.jump", "inputAction": "press", "count": 1 } },
+    { "eventTrace": { "player": "Steve", "type": "mouse_input", "success": true, "inputDevice": "mouse", "inputCode": "left", "inputAction": "click", "count": 1 } },
+    { "eventTrace": { "player": "Steve", "type": "entity_interacted", "success": true, "entity": "minecraft:villager", "count": 1 } },
+    { "eventTrace": { "player": "Steve", "type": "damage", "success": true, "damageSource": "minecraft:fall", "amount": 4.5, "count": 1 } },
+    { "eventTrace": { "player": "Steve", "type": "player_hurt_entity", "success": true, "entity": "minecraft:zombie", "amount": 2.0, "count": 1 } },
+    { "eventTrace": { "player": "Steve", "type": "killed_entity", "success": true, "entity": "minecraft:zombie", "count": 1 } },
+    { "eventTrace": { "player": "Steve", "type": "entity_killed_player", "success": true, "entity": "minecraft:skeleton", "damageSource": "minecraft:arrow", "amount": 6.0, "count": 1 } },
+    { "eventTrace": { "player": "Steve", "type": "location", "success": true, "count": 1 } },
+    { "eventTrace": { "player": "Steve", "type": "changed_dimension", "success": true, "from": "minecraft:overworld", "to": "minecraft:the_nether", "count": 1 } },
+    { "eventTrace": { "player": "Steve", "type": "block_placed", "success": true, "block": "minecraft:stone", "blockX": 2, "blockY": 64, "blockZ": 3, "count": 1 } },
+    { "eventTrace": { "player": "Steve", "type": "block_broken", "success": true, "block": "minecraft:bee_nest", "blockX": 4, "blockY": 64, "blockZ": 5, "count": 1 } },
+    { "eventTrace": { "player": "Steve", "type": "recipe_unlocked", "success": true, "recipe": "demo:toast", "count": 1 } },
+    { "eventTrace": { "player": "Steve", "type": "effects_changed", "success": true, "count": 1 } },
+    { "eventTrace": { "player": "Steve", "type": "death", "success": true, "damageSource": "minecraft:void", "amount": 99.0, "count": 1 } }
+  ]
+}

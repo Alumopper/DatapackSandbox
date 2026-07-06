@@ -1,0 +1,144 @@
+{
+  "criteria": {
+    "tick": {
+      "trigger": "minecraft:tick"
+    },
+    "inventory_emerald": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          { "items": "minecraft:emerald" }
+        ]
+      }
+    },
+    "use_carrot": {
+      "trigger": "minecraft:using_item",
+      "conditions": {
+        "item": { "items": "minecraft:carrot_on_a_stick" }
+      }
+    },
+    "consume_apple": {
+      "trigger": "minecraft:consume_item",
+      "conditions": {
+        "item": { "items": "minecraft:apple" }
+      }
+    },
+    "pickup_diamond": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          { "items": "minecraft:diamond" }
+        ]
+      }
+    },
+    "key_jump": {
+      "trigger": "minecraft:key_input",
+      "conditions": {
+        "key": "key.jump",
+        "action": "press"
+      }
+    },
+    "mouse_left": {
+      "trigger": "minecraft:mouse_input",
+      "conditions": {
+        "button": "left",
+        "action": "click"
+      }
+    },
+    "interact_villager": {
+      "trigger": "minecraft:player_interacted_with_entity",
+      "conditions": {
+        "entity": { "type": "minecraft:villager" }
+      }
+    },
+    "fall_damage": {
+      "trigger": "minecraft:entity_hurt_player",
+      "conditions": {
+        "damage": {
+          "type": { "type": "minecraft:fall" },
+          "dealt": { "min": 4.0 }
+        }
+      }
+    },
+    "hurt_zombie": {
+      "trigger": "minecraft:player_hurt_entity",
+      "conditions": {
+        "entity": { "type": "minecraft:zombie" },
+        "damage": {
+          "dealt": { "min": 2.0 }
+        }
+      }
+    },
+    "kill_zombie": {
+      "trigger": "minecraft:player_killed_entity",
+      "conditions": {
+        "entity": { "type": "minecraft:zombie" }
+      }
+    },
+    "killed_by_skeleton": {
+      "trigger": "minecraft:entity_killed_player",
+      "conditions": {
+        "entity": { "type": "minecraft:skeleton" },
+        "damage_source": "minecraft:arrow"
+      }
+    },
+    "location": {
+      "trigger": "minecraft:location"
+    },
+    "enter_nether": {
+      "trigger": "minecraft:changed_dimension",
+      "conditions": {
+        "from": "minecraft:overworld",
+        "to": "minecraft:the_nether"
+      }
+    },
+    "place_stone": {
+      "trigger": "minecraft:placed_block",
+      "conditions": {
+        "block": "minecraft:stone"
+      }
+    },
+    "break_bee_nest": {
+      "trigger": "minecraft:bee_nest_destroyed",
+      "conditions": {
+        "block": "minecraft:bee_nest"
+      }
+    },
+    "unlock_toast": {
+      "trigger": "minecraft:recipe_unlocked",
+      "conditions": {
+        "recipe": "demo:toast"
+      }
+    },
+    "effects_changed": {
+      "trigger": "minecraft:effects_changed"
+    },
+    "death_void": {
+      "trigger": "minecraft:death",
+      "conditions": {
+        "damage_source": "minecraft:void"
+      }
+    }
+  },
+  "requirements": [
+    ["tick"],
+    ["inventory_emerald"],
+    ["use_carrot"],
+    ["consume_apple"],
+    ["pickup_diamond"],
+    ["key_jump"],
+    ["mouse_left"],
+    ["interact_villager"],
+    ["fall_damage"],
+    ["hurt_zombie"],
+    ["kill_zombie"],
+    ["killed_by_skeleton"],
+    ["location"],
+    ["enter_nether"],
+    ["place_stone"],
+    ["break_bee_nest"],
+    ["unlock_toast"],
+    ["effects_changed"],
+    ["death_void"]
+  ]
+}

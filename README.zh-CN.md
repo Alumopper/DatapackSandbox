@@ -363,12 +363,13 @@ world fixture 可以用 `fixture`、`fixtures` 或 `extends` 引用可复用 fix
 java -jar cli/build/libs/datapack-sandbox-cli.jar check examples
 ```
 
-`examples/` 目录覆盖完整数据包事件、单函数随手测试、命令生成器输出、可复用命令生成器模板、golden snapshot 断言和多版本 manifest。
+`examples/` 目录覆盖完整数据包事件、玩家事件矩阵、单函数随手测试、命令生成器输出、可复用命令生成器模板、golden snapshot 断言和多版本 manifest。
 
 每类常见工作流都可以用一个最短示例直接运行：
 
 ```powershell
 java -jar cli/build/libs/datapack-sandbox-cli.jar check examples/full-stack/full-stack.dps.json
+java -jar cli/build/libs/datapack-sandbox-cli.jar check examples/player-events/player-events.dps.json
 java -jar cli/build/libs/datapack-sandbox-cli.jar check examples/single-function/single-function.dps.json
 java -jar cli/build/libs/datapack-sandbox-cli.jar check examples/generator-output/generator-output.dps.json
 java -jar cli/build/libs/datapack-sandbox-cli.jar check examples/generator-template/generator-template.dps.json
