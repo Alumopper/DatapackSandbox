@@ -566,6 +566,33 @@ class RunCommandTest {
     }
 
     @Test
+    fun `run accepts gamerule shorthand inline assertions`() {
+        val output = captureStdout {
+            main(
+                arrayOf(
+                    "run",
+                    "--version",
+                    "26.2",
+                    "--command",
+                    "gamerule doDaylightCycle false",
+                    "--command",
+                    "gamerule maxEntityCramming 0",
+                    "--assert",
+                    "gamerule:doDaylightCycle=false",
+                    "--assert",
+                    "gamerule:doDaylightCycle?",
+                    "--assert",
+                    "gamerule:maxEntityCramming=0",
+                    "--assert",
+                    "gamerule:missingRule!",
+                ),
+            )
+        }
+
+        assertTrue("OK version=26.2" in output, output)
+    }
+
+    @Test
     fun `run injects player events for inline assertions`() {
         val output = captureStdout {
             main(

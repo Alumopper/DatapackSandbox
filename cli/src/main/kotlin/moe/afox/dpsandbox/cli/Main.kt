@@ -16,6 +16,7 @@ import com.google.gson.JsonArray
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
+import com.google.gson.JsonPrimitive
 import moe.afox.dpsandbox.core.CommandTraceEvent
 import moe.afox.dpsandbox.core.DiagnosticCode
 import moe.afox.dpsandbox.core.DatapackSandbox
@@ -622,6 +623,7 @@ class RunCommand : CliktCommand(name = "run") {
             trimmed.startsWith("item:") -> parseItemAssertion(trimmed.removePrefix("item:"), label)
             trimmed.startsWith("player:") -> parsePlayerAssertion(trimmed.removePrefix("player:"), label)
             trimmed.startsWith("world:") -> parseWorldAssertion(trimmed.removePrefix("world:"), label)
+            trimmed.startsWith("gamerule:") -> parseGameruleAssertion(trimmed.removePrefix("gamerule:"), label)
             trimmed.startsWith("random-sequence:") -> parseRandomSequenceAssertion(trimmed.removePrefix("random-sequence:"), label)
             trimmed.startsWith("snapshot:") -> parseSnapshotAssertion(trimmed.removePrefix("snapshot:"), label)
             trimmed.startsWith("diff:") -> parseSnapshotDiffAssertion(trimmed.removePrefix("diff:"), label)
@@ -638,7 +640,7 @@ class RunCommand : CliktCommand(name = "run") {
             trimmed.startsWith("output:") -> parseOutputAssertion(trimmed.removePrefix("output:"), label)
             else -> throw SandboxException(
                 DiagnosticCode.INPUT_FORMAT,
-                "$label must be a JSON object or shorthand score:<target>:<objective>=N, storage:<id>[:<path>]=<json>, advancement:<player>:<id>[=<true|false>], entity:<type|*>[@tag]=N, block:<x>,<y>,<z>=<id>, block:<x>,<y>,<z>?, block:<x>,<y>,<z>!, team:<name>[?|!|=N|@member], bossbar:<id>[?|!|:<field>=<value>], item:<player>:<id>[@slot]=N, player:<name>[:<field>=<value>], world:<field>=<value>, random-sequence:<name>=N, snapshot:<path>=<json>, snapshot:<path>?, snapshot:<path>!, diff:<json-pointer>[=<kind>], event-trace:<player>:<type>[=N], trace:<root>=N, trace:<text>, trace-output:<text>[@target], warning=N, warning:<text>, unsupported=N, unsupported:<text>, output:<text>, output-normalized:<text>, output-segment:<text>[|color=<color>|bold=<true|false>][@target], or output-payload:<command>:<path>[=<json>]",
+                "$label must be a JSON object or shorthand score:<target>:<objective>=N, storage:<id>[:<path>]=<json>, advancement:<player>:<id>[=<true|false>], entity:<type|*>[@tag]=N, block:<x>,<y>,<z>=<id>, block:<x>,<y>,<z>?, block:<x>,<y>,<z>!, team:<name>[?|!|=N|@member], bossbar:<id>[?|!|:<field>=<value>], item:<player>:<id>[@slot]=N, player:<name>[:<field>=<value>], world:<field>=<value>, gamerule:<rule>=<value>, gamerule:<rule>?, gamerule:<rule>!, random-sequence:<name>=N, snapshot:<path>=<json>, snapshot:<path>?, snapshot:<path>!, diff:<json-pointer>[=<kind>], event-trace:<player>:<type>[=N], trace:<root>=N, trace:<text>, trace-output:<text>[@target], warning=N, warning:<text>, unsupported=N, unsupported:<text>, output:<text>, output-normalized:<text>, output-segment:<text>[|color=<color>|bold=<true|false>][@target], or output-payload:<command>:<path>[=<json>]",
             )
         }
     }
@@ -1004,6 +1006,34 @@ class RunCommand : CliktCommand(name = "run") {
     private fun parseWorldInt(value: String, field: String, label: String): Int =
         value.toIntOrNull()
             ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label world field '$field' expected integer but got '$value'")
+
+    private fun parseGameruleAssertion(spec: String, label: String): JsonObject {
+        val trimmed = spec.trim()
+        if (trimmed.isEmpty()) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label gamerule shorthand must be gamerule:<rule>=<value>, gamerule:<rule>?, or gamerule:<rule>!")
+        }
+        val snapshot = when {
+            trimmed.endsWith("?") -> gameruleSnapshotAssertion(trimmed.dropLast(1), label).also { it.addProperty("exists", true) }
+            trimmed.endsWith("!") -> gameruleSnapshotAssertion(trimmed.dropLast(1), label).also { it.addProperty("missing", true) }
+            else -> {
+                val splitAt = trimmed.indexOf('=')
+                if (splitAt <= 0 || splitAt == trimmed.lastIndex) {
+                    throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label gamerule shorthand must be gamerule:<rule>=<value>, gamerule:<rule>?, or gamerule:<rule>!")
+                }
+                val value = trimmed.substring(splitAt + 1).trim()
+                gameruleSnapshotAssertion(trimmed.substring(0, splitAt), label).also { it.add("equals", JsonPrimitive(value)) }
+            }
+        }
+        return JsonObject().also { it.add("snapshot", snapshot) }
+    }
+
+    private fun gameruleSnapshotAssertion(rule: String, label: String): JsonObject {
+        val trimmed = rule.trim()
+        if (trimmed.isEmpty() || '.' in trimmed || '[' in trimmed || ']' in trimmed) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label gamerule name must be a non-empty simple path segment")
+        }
+        return JsonObject().also { it.addProperty("path", "gamerules.$trimmed") }
+    }
 
     private fun parseRandomSequenceAssertion(spec: String, label: String): JsonObject {
         val splitAt = spec.indexOf('=')
