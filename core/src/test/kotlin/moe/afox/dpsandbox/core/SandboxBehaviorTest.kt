@@ -562,6 +562,9 @@ class SandboxBehaviorTest {
         sandbox.executeCommand("execute store result storage demo:typed longValue long 2 run random value 7..7")
         sandbox.executeCommand("execute store result storage demo:typed floatValue float 0.5 run random value 7..7")
         sandbox.executeCommand("execute store result storage demo:typed doubleValue double 0.25 run random value 7..7")
+        sandbox.executeCommand("execute store result storage demo:typed byteWrapped byte 20 run random value 7..7")
+        sandbox.executeCommand("execute store result storage demo:typed shortWrapped short 40000 run random value 1..1")
+        sandbox.executeCommand("execute store result storage demo:typed negativeTruncated int -0.5 run random value 7..7")
 
         val storage = sandbox.world.storage(ResourceLocation.parse("demo:typed"))
         assertEquals(120, JsonPaths.get(storage, "byteValue")?.asInt)
@@ -570,6 +573,9 @@ class SandboxBehaviorTest {
         assertEquals(14L, JsonPaths.get(storage, "longValue")?.asLong)
         assertEquals(3.5, JsonPaths.get(storage, "floatValue")?.asDouble)
         assertEquals(1.75, JsonPaths.get(storage, "doubleValue")?.asDouble)
+        assertEquals(-116, JsonPaths.get(storage, "byteWrapped")?.asInt)
+        assertEquals(-25536, JsonPaths.get(storage, "shortWrapped")?.asInt)
+        assertEquals(-3, JsonPaths.get(storage, "negativeTruncated")?.asInt)
 
         val strictSandbox = createFunctionSandbox("26.2", functionSources, unsupportedFeatureMode = UnsupportedFeatureMode.ERROR)
         val error = assertFailsWith<SandboxException> {

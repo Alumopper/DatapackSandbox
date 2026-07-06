@@ -5249,23 +5249,15 @@ class DatapackSandbox(
         }
         val scaled = value * scale
         return when (typeText) {
-            "byte" -> JsonPrimitive(coerceStoreInteger(scaled, Byte.MIN_VALUE.toLong(), Byte.MAX_VALUE.toLong()).toInt())
-            "short" -> JsonPrimitive(coerceStoreInteger(scaled, Short.MIN_VALUE.toLong(), Short.MAX_VALUE.toLong()).toInt())
-            "int" -> JsonPrimitive(coerceStoreInteger(scaled, Int.MIN_VALUE.toLong(), Int.MAX_VALUE.toLong()).toInt())
-            "long" -> JsonPrimitive(coerceStoreInteger(scaled, Long.MIN_VALUE, Long.MAX_VALUE))
+            "byte" -> JsonPrimitive(scaled.toInt().toByte().toInt())
+            "short" -> JsonPrimitive(scaled.toInt().toShort().toInt())
+            "int" -> JsonPrimitive(scaled.toInt())
+            "long" -> JsonPrimitive(scaled.toLong())
             "float" -> JsonPrimitive(scaled.toFloat())
             "double" -> JsonPrimitive(scaled)
             else -> unsupportedFeature("Unsupported execute store numeric type '$typeText'", profile.id, location)
         }
     }
-
-    private fun coerceStoreInteger(value: Double, min: Long, max: Long): Long =
-        when {
-            value.isNaN() -> 0
-            value <= min.toDouble() -> min
-            value >= max.toDouble() -> max
-            else -> value.toLong()
-        }
 
     private fun executeStoreValue(
         storeType: String,
