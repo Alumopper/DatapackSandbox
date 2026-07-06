@@ -2574,7 +2574,16 @@ class DatapackSandbox(
             val id = ResourceLocation.parse(tokens[2].text)
             val removed = world.scheduledFunctions.count { it.id == id }
             world.scheduledFunctions.removeIf { it.id == id }
-            world.recordOutput("schedule clear", "data", text = removed.toString())
+            world.recordOutput(
+                "schedule clear",
+                "data",
+                text = removed.toString(),
+                payload = JsonObject().also { payload ->
+                    payload.addProperty("id", id.toString())
+                    payload.addProperty("removed", removed)
+                    payload.addProperty("remaining", world.scheduledFunctions.size)
+                },
+            )
             return
         }
         requireSize(tokens, 4, "schedule function <id> <time> [append|replace]", location)
@@ -2584,12 +2593,28 @@ class DatapackSandbox(
         val id = ResourceLocation.parse(tokens[2].text)
         val delay = parseTime(tokens[3].text, location)
         val mode = tokens.getOrNull(4)?.text ?: "replace"
+        var replaced = 0
         if (mode == "replace") {
+            replaced = world.scheduledFunctions.count { it.id == id }
             world.scheduledFunctions.removeIf { it.id == id }
         } else if (mode != "append") {
             unsupportedFeature("Unsupported schedule mode '$mode'", profile.id, location)
         }
-        world.scheduledFunctions += ScheduledFunction(id, world.gameTime + delay)
+        val dueTick = world.gameTime + delay
+        world.scheduledFunctions += ScheduledFunction(id, dueTick)
+        world.recordOutput(
+            "schedule function",
+            "data",
+            text = dueTick.toString(),
+            payload = JsonObject().also { payload ->
+                payload.addProperty("id", id.toString())
+                payload.addProperty("delay", delay)
+                payload.addProperty("dueTick", dueTick)
+                payload.addProperty("mode", mode)
+                payload.addProperty("replaced", replaced)
+                payload.addProperty("scheduledCount", world.scheduledFunctions.size)
+            },
+        )
     }
 
     private fun executeSetWorldSpawn(tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext) {

@@ -57,11 +57,26 @@ class SandboxBehaviorTest {
         sandbox.runLoad()
         sandbox.runTicks(20)
         sandbox.runFunction("demo:main")
+        val scheduleOutput = sandbox.world.outputs.single { it.command == "schedule function" }
+        val schedulePayload = scheduleOutput.payload?.asJsonObject ?: error("missing schedule payload")
+        assertEquals("demo:scheduled", schedulePayload.get("id").asString)
+        assertEquals(1, schedulePayload.get("delay").asLong)
+        assertEquals(21, schedulePayload.get("dueTick").asLong)
+        assertEquals("replace", schedulePayload.get("mode").asString)
+        assertEquals(0, schedulePayload.get("replaced").asInt)
         sandbox.runTicks(1)
 
         assertEquals(26, sandbox.world.getScore("#clock", "ticks"))
         assertEquals(1, sandbox.world.entities.count { it.type == ResourceLocation.parse("minecraft:marker") && "active" in it.tags })
         assertEquals(true, sandbox.world.storages[ResourceLocation.parse("demo:state")]?.get("scheduled")?.asBoolean)
+
+        sandbox.executeCommand("schedule function demo:scheduled 5t append")
+        sandbox.executeCommand("schedule clear demo:scheduled")
+        val clearPayload = sandbox.world.outputs.last { it.command == "schedule clear" }.payload?.asJsonObject
+            ?: error("missing schedule clear payload")
+        assertEquals("demo:scheduled", clearPayload.get("id").asString)
+        assertEquals(1, clearPayload.get("removed").asInt)
+        assertEquals(0, clearPayload.get("remaining").asInt)
     }
 
     @Test
