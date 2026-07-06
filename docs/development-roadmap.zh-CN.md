@@ -111,7 +111,7 @@
 
 - 完善 sparse world：
   - 方块状态、方块实体 NBT、biome override、强加载 chunk、世界边界、时间、天气、难度、gamerule、spawn、deterministic random sequence；predicate `location_check` 的 block 条件已可读取显式 sparse block 的 id、block tag、state/property 和方块实体 NBT，random sequence state 已进入 snapshot，并可通过 world fixture、manifest assertion、QuickTest assertion 和 REPL `inspect random` 声明/检查。
-  - 支持区域 fixture、结构 fixture、从 Java Anvil 存档按 chunk 或坐标范围导入；区域 fixture 已在 QuickTest world builder、manifest `world.regions` 和 JSON Schema 中接入，可用 `from`/`to` 闭区间批量铺设 sparse blocks，并允许单点 `blocks` 覆盖区域局部；结构 fixture 已在 QuickTest world builder、manifest `world.structures` 和 JSON Schema 中接入，可用 origin 加相对 block/entity offset 声明小型结构，展开后复用普通 block/entity snapshot 与断言。
+  - 支持区域 fixture、结构 fixture、从 Java Anvil 存档按 chunk 或坐标范围导入；区域 fixture 已在 QuickTest world builder、manifest `world.regions` 和 JSON Schema 中接入，可用 `from`/`to` 闭区间批量铺设 sparse blocks，并允许单点 `blocks` 覆盖区域局部；结构 fixture 已在 QuickTest world builder、manifest `world.structures` 和 JSON Schema 中接入，可用 origin 加相对 block/entity offset 声明小型结构，展开后复用普通 block/entity snapshot 与断言；Java Anvil save import 已在 QuickTest world builder、manifest `world.save`/`world.saves` 和 JSON Schema 中接入，可按单 chunk、chunk 列表或 `from`/`to` block 范围导入 blocks、block entities 和 entities。
 - 完善实体模型：
   - 类型、UUID、位置、旋转、维度、tag、score holder、attributes、attribute modifiers、effects、passengers/vehicle、equipment、health、custom NBT；`item replace/modify entity` 已覆盖非玩家实体 `weapon.*`/`armor.*` 装备槽读写、复制、snapshot 与 NBT 投影，`attribute modifier` 已进入 snapshot 与 `Attributes[].modifiers` NBT 投影，`effect give/clear` 已覆盖非玩家实体 active effects，entity predicate 的 `equipment`、`effects`、`distance` 和 `nbt` 条件也复用该模型，其中 `distance` 覆盖 `absolute`、`horizontal` 与 `x/y/z` 轴向范围；world fixture、manifest world 和 quick-test world builder 均可直接声明非玩家实体装备、active effects、attributes、dimension、health 与 passengers/vehicle，并通过 entity assertion/quick-test assertion 验证完整 NBT path。
   - 不执行 AI tick，但保留数据包可读写字段和明确的 no-AI 语义说明。
@@ -241,7 +241,7 @@
 
 - 增加 manifest schema 文档和 JSON Schema。
 - 扩展 `world`：
-  - 支持 fixture 引用、模板继承、局部覆盖、save import 范围、多个玩家和多个维度。
+  - 支持 fixture 引用、模板继承、局部覆盖、save import 范围、多个玩家和多个维度；`world.save`/`world.saves` 已通过 schema 和 manifest 回归测试覆盖 `from`/`to` 范围导入。
 - 扩展 `steps`：
   - 支持 `commands` 数组、`functionText`、`mcfunction`、`event`、`trace`、`snapshot`、`reset`。
 - 扩展 `assertions`：

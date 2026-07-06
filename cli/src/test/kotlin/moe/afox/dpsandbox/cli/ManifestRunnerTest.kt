@@ -2,10 +2,16 @@
 
 import com.google.gson.JsonParser
 import moe.afox.dpsandbox.core.BlockPos
+import moe.afox.dpsandbox.core.ChunkPos
 import moe.afox.dpsandbox.core.ResourceLocation
 import moe.afox.dpsandbox.core.createSandbox
+import java.io.ByteArrayOutputStream
+import java.io.DataOutputStream
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import java.nio.file.Path
 import java.nio.file.Files
+import java.util.zip.DeflaterOutputStream
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -59,6 +65,14 @@ class ManifestRunnerTest {
         assertEquals(
             "#/\$defs/worldBorder",
             worldAssertionProperties.getAsJsonObject("worldBorder").get("\$ref").asString,
+        )
+        assertEquals(
+            "#/\$defs/saveImport",
+            worldProperties.getAsJsonObject("save").get("\$ref").asString,
+        )
+        assertEquals(
+            "#/\$defs/saveImport",
+            worldProperties.getAsJsonObject("saves").getAsJsonObject("items").get("\$ref").asString,
         )
     }
 
@@ -881,6 +895,42 @@ class ManifestRunnerTest {
                 { "block": { "pos": [1, 64, 0], "id": "minecraft:stone" } },
                 { "block": { "pos": [0, 64, 1], "id": "minecraft:stone" } },
                 { "block": { "pos": [1, 64, 1], "id": "minecraft:diamond_ore" } }
+              ]
+            }
+            """.trimIndent(),
+        )
+
+        val schemaFailures = ManifestSchemaValidator.validate(JsonParser.parseString(Files.readString(manifest)))
+        val result = ManifestRunner.run(manifest)
+
+        assertTrue(schemaFailures.isEmpty(), schemaFailures.joinToString())
+        assertTrue(result.passed, result.messages.joinToString())
+    }
+
+    @Test
+    fun `runs manifests with world save imports by block range`() {
+        val dir = Files.createTempDirectory("dps-world-save-manifest")
+        val save = dir.resolve("save")
+        writeManifestRegion(save.resolve("region"), ChunkPos(0, 0), manifestBlockChunkNbt())
+        writeManifestRegion(save.resolve("entities"), ChunkPos(0, 0), manifestEntityChunkNbt())
+        val pack = Path.of("../core/src/test/resources/packs/counter").toAbsolutePath().normalize().toString().replace("\\", "\\\\")
+        val manifest = dir.resolve("world-save.dps.json")
+        Files.writeString(
+            manifest,
+            """
+            {
+              "version": "26.1.2",
+              "packs": ["$pack"],
+              "world": {
+                "save": {
+                  "path": "${save.toEscapedPath()}",
+                  "from": [0, 64, 0],
+                  "to": [0, 64, 0]
+                }
+              },
+              "assertions": [
+                { "block": { "pos": [0, 64, 0], "id": "minecraft:stone" } },
+                { "entity": { "type": "minecraft:pig", "tag": "imported", "position": [2.0, 64.0, 2.0] } }
               ]
             }
             """.trimIndent(),
@@ -2150,8 +2200,161 @@ class ManifestRunnerTest {
         return root
     }
 
+    private fun manifestBlockChunkNbt(): ByteArray =
+        nbtRoot {
+            tagInt("xPos", 0)
+            tagInt("zPos", 0)
+            tagListCompound("sections") {
+                compound {
+                    tagByte("Y", 4)
+                    tagCompound("block_states") {
+                        tagListCompound("palette") {
+                            compound {
+                                tagString("Name", "minecraft:stone")
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+    private fun manifestEntityChunkNbt(): ByteArray =
+        nbtRoot {
+            tagListCompound("Entities") {
+                compound {
+                    tagString("id", "minecraft:pig")
+                    tagListDouble("Pos", 2.0, 64.0, 2.0)
+                    tagListString("Tags", "imported")
+                }
+            }
+        }
+
+    private fun writeManifestRegion(regionDir: Path, chunk: ChunkPos, nbt: ByteArray) {
+        Files.createDirectories(regionDir)
+        val payload = zlib(nbt)
+        val chunkRecord = ByteArray(5 + payload.size)
+        ByteBuffer.wrap(chunkRecord).order(ByteOrder.BIG_ENDIAN).putInt(payload.size + 1)
+        chunkRecord[4] = 2
+        payload.copyInto(chunkRecord, destinationOffset = 5)
+
+        val sectors = (chunkRecord.size + 4095) / 4096
+        val bytes = ByteArray((2 + sectors) * 4096)
+        val localX = Math.floorMod(chunk.x, 32)
+        val localZ = Math.floorMod(chunk.z, 32)
+        val locationIndex = (localX + localZ * 32) * 4
+        ByteBuffer.wrap(bytes).order(ByteOrder.BIG_ENDIAN).putInt(locationIndex, (2 shl 8) or sectors)
+        chunkRecord.copyInto(bytes, destinationOffset = 2 * 4096)
+
+        val regionX = Math.floorDiv(chunk.x, 32)
+        val regionZ = Math.floorDiv(chunk.z, 32)
+        Files.write(regionDir.resolve("r.$regionX.$regionZ.mca"), bytes)
+    }
+
+    private fun zlib(bytes: ByteArray): ByteArray {
+        val out = ByteArrayOutputStream()
+        DeflaterOutputStream(out).use { it.write(bytes) }
+        return out.toByteArray()
+    }
+
+    private fun nbtRoot(block: NbtWriter.() -> Unit): ByteArray {
+        val out = ByteArrayOutputStream()
+        val data = DataOutputStream(out)
+        data.writeByte(TAG_COMPOUND)
+        data.writeNbtString("")
+        NbtWriter(data).compoundPayload(block)
+        return out.toByteArray()
+    }
+
+    private class NbtWriter(private val data: DataOutputStream) {
+        fun compoundPayload(block: NbtWriter.() -> Unit) {
+            block()
+            data.writeByte(TAG_END)
+        }
+
+        fun compound(block: NbtWriter.() -> Unit) {
+            compoundPayload(block)
+        }
+
+        fun tagByte(name: String, value: Int) {
+            tag(TAG_BYTE, name)
+            data.writeByte(value)
+        }
+
+        fun tagInt(name: String, value: Int) {
+            tag(TAG_INT, name)
+            data.writeInt(value)
+        }
+
+        fun tagString(name: String, value: String) {
+            tag(TAG_STRING, name)
+            writeNbtString(value)
+        }
+
+        fun tagCompound(name: String, block: NbtWriter.() -> Unit) {
+            tag(TAG_COMPOUND, name)
+            compoundPayload(block)
+        }
+
+        fun tagListCompound(name: String, block: ListBuilder.() -> Unit) {
+            val entries = ListBuilder().apply(block).entries
+            tag(TAG_LIST, name)
+            data.writeByte(TAG_COMPOUND)
+            data.writeInt(entries.size)
+            entries.forEach { compoundPayload(it) }
+        }
+
+        fun tagListDouble(name: String, vararg values: Double) {
+            tag(TAG_LIST, name)
+            data.writeByte(TAG_DOUBLE)
+            data.writeInt(values.size)
+            values.forEach(data::writeDouble)
+        }
+
+        fun tagListString(name: String, vararg values: String) {
+            tag(TAG_LIST, name)
+            data.writeByte(TAG_STRING)
+            data.writeInt(values.size)
+            values.forEach(::writeNbtString)
+        }
+
+        private fun tag(type: Int, name: String) {
+            data.writeByte(type)
+            writeNbtString(name)
+        }
+
+        private fun writeNbtString(value: String) {
+            val bytes = value.toByteArray(Charsets.UTF_8)
+            data.writeShort(bytes.size)
+            data.write(bytes)
+        }
+    }
+
+    private class ListBuilder {
+        val entries = mutableListOf<NbtWriter.() -> Unit>()
+
+        fun compound(block: NbtWriter.() -> Unit) {
+            entries += block
+        }
+    }
+
     private fun Path.toEscapedPath(): String =
         toAbsolutePath().normalize().toString().replace("\\", "\\\\")
+
+    private fun DataOutputStream.writeNbtString(value: String) {
+        val bytes = value.toByteArray(Charsets.UTF_8)
+        writeShort(bytes.size)
+        write(bytes)
+    }
+
+    private companion object {
+        const val TAG_END = 0
+        const val TAG_BYTE = 1
+        const val TAG_INT = 3
+        const val TAG_DOUBLE = 6
+        const val TAG_STRING = 8
+        const val TAG_LIST = 9
+        const val TAG_COMPOUND = 10
+    }
 
     @Test
     fun `discovers manifests in directories`() {
