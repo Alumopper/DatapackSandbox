@@ -77,7 +77,7 @@
   - `difficulty` 和 `defaultgamemode` 已记录结构化前后输出，便于调试世界级默认状态变化。
   - `gamemode` 已记录结构化玩家模式前后输出，便于调试玩家状态变更和目标选择。
   - `forceload add/remove/remove all` 已记录结构化 chunk 修改输出，便于调试强加载区域和变化数量。
-  - `fillbiome` 已记录结构化 biome 覆盖输出，便于调试区域、过滤条件、目标 biome 和实际变化位置。
+  - `fillbiome` 已记录结构化 biome 覆盖输出，便于调试区域、过滤条件、目标 biome 和实际变化位置；显式 biome 覆盖也会被 `execute if biome` 和 predicate `location_check` 的 biome 条件读取。
   - `tick rate/freeze/unfreeze/step/sprint` 已记录结构化 tick 状态和推进输出，便于调试 tick rate、冻结状态、gameTime 前后变化和命令生成器结果。
   - `worldborder set/add/center/damage/warning` 已记录结构化前后状态输出，便于调试边界尺寸、中心点、伤害参数和警告参数变化。
   - `bossbar add/remove/set` 已记录结构化前后状态输出，便于调试 UI 状态、玩家目标、字段输入和生成器输出。

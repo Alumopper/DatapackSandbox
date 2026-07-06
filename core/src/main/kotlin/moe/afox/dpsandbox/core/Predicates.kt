@@ -4,6 +4,7 @@ import com.google.gson.JsonArray
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 import com.google.gson.JsonPrimitive
+import kotlin.math.floor
 import kotlin.random.Random
 
 /**
@@ -390,8 +391,9 @@ class PredicateEngine(
             if (dimension != ResourceLocation.parse(it)) return false
         }
         predicate.string("biome")?.let {
-            // Biome is not simulated; require exact explicit context in a future world model.
-            throw MissingPredicateContext("Location biome predicate requires biome context")
+            val expected = ResourceLocation.parse(it)
+            val pos = BlockPos(floor(x).toInt(), floor(y).toInt(), floor(z).toInt())
+            if (context.world.biomes[pos] != expected) return false
         }
         return true
     }

@@ -754,14 +754,16 @@ class CommandExpansionTest {
         sandbox.executeCommand("execute unless biome 0 64 0 minecraft:desert run scoreboard players add #pass checks 1")
         sandbox.executeCommand("execute as Steve if predicate demo:is_player run scoreboard players add #pass checks 1")
         sandbox.executeCommand("execute in minecraft:the_nether if predicate demo:in_nether run scoreboard players add #pass checks 1")
+        sandbox.executeCommand("execute positioned 0 64 0 if predicate demo:in_forest run scoreboard players add #pass checks 1")
         sandbox.executeCommand("execute unless predicate demo:false run scoreboard players add #pass checks 1")
         sandbox.executeCommand("execute if dimension minecraft:the_nether run scoreboard players add #fail checks 1")
         sandbox.executeCommand("execute if loaded 32 64 32 run scoreboard players add #fail checks 1")
         sandbox.executeCommand("execute if biome 0 64 0 minecraft:desert run scoreboard players add #fail checks 1")
         sandbox.executeCommand("execute if predicate demo:in_nether run scoreboard players add #fail checks 1")
+        sandbox.executeCommand("execute positioned 0 64 0 if predicate demo:in_desert run scoreboard players add #fail checks 1")
         sandbox.executeCommand("execute if predicate demo:false run scoreboard players add #fail checks 1")
 
-        assertEquals(10, sandbox.world.getScore("#pass", "checks"))
+        assertEquals(11, sandbox.world.getScore("#pass", "checks"))
         assertEquals(0, sandbox.world.getScore("#fail", "checks"))
     }
 
@@ -1921,6 +1923,28 @@ class CommandExpansionTest {
               "condition": "minecraft:location_check",
               "predicate": {
                 "dimension": "minecraft:the_nether"
+              }
+            }
+            """.trimIndent(),
+        )
+        Files.writeString(
+            predicateRoot.resolve("in_forest.json"),
+            """
+            {
+              "condition": "minecraft:location_check",
+              "predicate": {
+                "biome": "minecraft:forest"
+              }
+            }
+            """.trimIndent(),
+        )
+        Files.writeString(
+            predicateRoot.resolve("in_desert.json"),
+            """
+            {
+              "condition": "minecraft:location_check",
+              "predicate": {
+                "biome": "minecraft:desert"
               }
             }
             """.trimIndent(),
