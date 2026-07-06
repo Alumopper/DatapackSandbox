@@ -90,7 +90,7 @@ run continues. Use `--unsupported error`, manifest `"unsupported": "error"`, or
 | `teleport`, `tp` | Partial | Coordinate teleport supports local coordinates, optional rotation, and `facing`; destination-entity teleport copies rotation. |
 | `tellraw` | Supported | Resolves JSON text components into output events. |
 | `tick` | Partial | `query`, `rate`, `freeze`, `unfreeze`, `step`, `sprint`, `stop`; updates sandbox tick state and can advance ticks. |
-| `time` | Partial | `set`, `add`, `query daytime|gametime|day`. |
+| `time` | Partial | `set`, `add`, `query daytime|gametime|day`; query records structured data output for assertions and `execute store result`. |
 | `title` | Supported | `clear`, `reset`, `title`, `subtitle`, `actionbar`, `times` output events. |
 | `transfer` | Unsupported | Networking/server transfer is not simulated. |
 | `trigger` | Partial | `trigger <objective> [add|set] [value]`; uses current/default sandbox player. |

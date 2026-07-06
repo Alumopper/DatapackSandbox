@@ -1004,13 +1004,22 @@ class DatapackSandbox(
             }
             "query" -> {
                 requireSize(tokens, 3, "time query <daytime|gametime|day>", location)
-                val value = when (tokens[2].text) {
+                val query = tokens[2].text
+                val value = when (query) {
                     "daytime" -> world.dayTime
                     "gametime" -> world.gameTime
                     "day" -> world.gameTime / 24000
-                    else -> unsupportedFeature("Unsupported time query '${tokens[2].text}'", profile.id, location)
+                    else -> unsupportedFeature("Unsupported time query '$query'", profile.id, location)
                 }
-                world.recordOutput("time query", "data", text = value.toString())
+                world.recordOutput(
+                    "time query",
+                    "data",
+                    text = value.toString(),
+                    payload = JsonObject().also { payload ->
+                        payload.addProperty("query", query)
+                        payload.addProperty("value", value)
+                    },
+                )
             }
             else -> unsupportedFeature("Unsupported time action '${tokens[1].text}'", profile.id, location)
         }
