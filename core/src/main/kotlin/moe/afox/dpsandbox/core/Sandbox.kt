@@ -1693,10 +1693,23 @@ class DatapackSandbox(
         requireSize(tokens, 3, "give <targets> <item> [count]", location)
         val count = tokens.getOrNull(3)?.text?.let { parseInt(it, "item count", location) } ?: 1
         val item = parseItemStackArgument(tokens[2].text, count.coerceAtLeast(0), location)
-        resolvePlayers(tokens[1].text, location, context).forEach { player ->
+        val players = resolvePlayers(tokens[1].text, location, context)
+        players.forEach { player ->
             player.inventory += item.copyStack()
             advancements.handle(PlayerEvent(player.name, "inventory_changed", item = item.copyStack()))
         }
+        world.recordOutput(
+            "give",
+            "data",
+            targets = players.map { it.name },
+            text = (item.count * players.size).toString(),
+            payload = JsonObject().also { payload ->
+                payload.add("targets", JsonArray().also { array -> players.forEach { array.add(it.name) } })
+                payload.add("item", item.toJson())
+                payload.addProperty("count", item.count)
+                payload.addProperty("totalCount", item.count * players.size)
+            },
+        )
     }
 
     private fun executeEffect(tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext) {

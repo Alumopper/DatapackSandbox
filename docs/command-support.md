@@ -49,7 +49,7 @@ run continues. Use `--unsupported error`, manifest `"unsupported": "error"`, or
 | `function` | Supported | `function <id>`. |
 | `gamemode` | Supported | `gamemode <mode> [targets]`; updates sandbox player game mode. |
 | `gamerule` | Partial | Stores arbitrary gamerule string values and records structured query output; no gameplay side effects. |
-| `give` | Partial | Adds item stacks to player inventories and fires inventory advancement events; item arguments accept sandbox JSON/SNBT-lite NBT and component payloads. |
+| `give` | Partial | Adds item stacks to player inventories, records structured output for reports/assertions, and fires inventory advancement events; item arguments accept sandbox JSON/SNBT-lite NBT and component payloads. |
 | `help` | Partial | Reports command roots and basic sandbox help text. |
 | `item` | Partial | `replace entity|block ... with <item> [count]` and `from entity|block ...`; item arguments accept sandbox JSON/SNBT-lite NBT and component payloads; entity slots cover player inventory/selected-mainhand/`enderchest.*` slots and non-player equipment slots; `modify entity|block ... <modifier>` applies common item modifier functions (`set_components`, `set_custom_data`, `set_count`, `limit_count`, `set_item`, `discard`, `set_damage`, `set_name`, `set_lore`, `filtered`, `reference`, `sequence`). |
 | `kick` | Unsupported | Network sessions are not simulated. |

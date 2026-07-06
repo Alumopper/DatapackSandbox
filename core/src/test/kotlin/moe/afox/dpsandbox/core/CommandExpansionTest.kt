@@ -242,6 +242,11 @@ class CommandExpansionTest {
         assertEquals(true, nbtItem.nbt.get("marked").asBoolean)
         assertEquals("old value", nbtItem.nbt.get("label").asString)
 
+        val giveOutput = sandbox.world.outputs.single { it.command == "give" }
+        assertEquals("2", giveOutput.text)
+        assertEquals("minecraft:stick", giveOutput.payload?.asJsonObject?.getAsJsonObject("item")?.get("id")?.asString)
+        assertEquals("old value", giveOutput.payload?.asJsonObject?.getAsJsonObject("item")?.getAsJsonObject("nbt")?.get("label")?.asString)
+
         val componentItem = player.inventory[1]
         assertEquals(ResourceLocation.parse("minecraft:diamond"), componentItem.id)
         assertEquals(4, componentItem.count)
