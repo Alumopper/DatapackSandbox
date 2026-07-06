@@ -504,12 +504,12 @@ class DatapackSandbox(
             }
             "insert" -> {
                 requireSize(tokens, 7, "loot insert <pos> loot <table>", location)
-                val pos = parseBlockPos(tokens, 2, context.position, location)
+                val pos = parseBlockPos(tokens, 2, context, location)
                 insertLootIntoBlock(pos, parseLootSource(tokens, 5, context, location), location)
             }
             "spawn" -> {
                 requireSize(tokens, 7, "loot spawn <pos> loot <table>", location)
-                val pos = parsePosition(tokens, 2, context.position, location)
+                val pos = parsePosition(tokens, 2, context.position, location, context.yaw, context.pitch)
                 spawnLootItems(pos, parseLootSource(tokens, 5, context, location))
             }
             "replace" -> executeLootReplace(tokens, location, context)
@@ -576,7 +576,7 @@ class DatapackSandbox(
             }
             "block" -> {
                 requireSize(tokens, 9, "loot replace block <pos> <slot> [count] loot <table>", location)
-                val pos = parseBlockPos(tokens, 3, context.position, location)
+                val pos = parseBlockPos(tokens, 3, context, location)
                 val slot = inventorySlot(tokens[6].text)
                 val sourceIndex = if (tokens[7].text == "loot") 7 else 8
                 val count = if (sourceIndex == 8) parseInt(tokens[7].text, "loot replace count", location) else 1
@@ -596,13 +596,13 @@ class DatapackSandbox(
             }
             "fish" -> {
                 requireSizeFrom(tokens, index, 5, "loot source fish <table> <pos> [tool]", location)
-                val origin = parsePosition(tokens, index + 2, context.position, location)
+                val origin = parsePosition(tokens, index + 2, context.position, location, context.yaw, context.pitch)
                 val tool = tokens.getOrNull(index + 5)?.text?.let(::lootTool)
                 generateLootItems(ResourceLocation.parse(tokens[index + 1].text), ResourceLocation("minecraft", "fishing"), context, origin = origin, tool = tool)
             }
             "mine" -> {
                 requireSizeFrom(tokens, index, 4, "loot source mine <pos> [tool]", location)
-                val pos = parseBlockPos(tokens, index + 1, context.position, location)
+                val pos = parseBlockPos(tokens, index + 1, context, location)
                 val block = world.block(pos) ?: return emptyList()
                 val tool = tokens.getOrNull(index + 4)?.text?.let(::lootTool)
                 val table = block.nbt.get("LootTable")?.takeIf { it.isJsonPrimitive }?.asString?.let(ResourceLocation::parse)
@@ -1187,7 +1187,7 @@ class DatapackSandbox(
             "data" -> evaluateDataCondition(tokens, index, location, context)
             "block" -> {
                 requireSizeFrom(tokens, index, 5, "execute if|unless block <pos> <block>", location)
-                val pos = parseBlockPos(tokens, index + 1, context.position, location)
+                val pos = parseBlockPos(tokens, index + 1, context, location)
                 (matchesBlock(pos, tokens[index + 4].text, location) to index + 5)
             }
             "blocks" -> evaluateBlocksCondition(tokens, index, location, context)
@@ -1205,12 +1205,12 @@ class DatapackSandbox(
             }
             "biome" -> {
                 requireSizeFrom(tokens, index, 5, "execute if|unless biome <pos> <biome>", location)
-                val pos = parseBlockPos(tokens, index + 1, context.position, location)
+                val pos = parseBlockPos(tokens, index + 1, context, location)
                 (world.biomes[pos] == ResourceLocation.parse(tokens[index + 4].text)) to index + 5
             }
             "loaded" -> {
                 requireSizeFrom(tokens, index, 4, "execute if|unless loaded <pos>", location)
-                val pos = parseBlockPos(tokens, index + 1, context.position, location)
+                val pos = parseBlockPos(tokens, index + 1, context, location)
                 (ChunkPos(Math.floorDiv(pos.x, 16), Math.floorDiv(pos.z, 16)) in world.forcedChunks) to index + 4
             }
             else -> unsupportedFeature("Unsupported execute condition '${tokens[index].text}'", profile.id, location)
@@ -1313,9 +1313,9 @@ class DatapackSandbox(
 
     private fun evaluateBlocksCondition(tokens: List<CommandToken>, index: Int, location: SourceLocation?, context: ExecutionContext): Pair<Boolean, Int> {
         requireSizeFrom(tokens, index, 11, "execute if|unless blocks <begin> <end> <destination> <all|masked>", location)
-        val from = parseBlockPos(tokens, index + 1, context.position, location)
-        val to = parseBlockPos(tokens, index + 4, context.position, location)
-        val dest = parseBlockPos(tokens, index + 7, context.position, location)
+        val from = parseBlockPos(tokens, index + 1, context, location)
+        val to = parseBlockPos(tokens, index + 4, context, location)
+        val dest = parseBlockPos(tokens, index + 7, context, location)
         val mode = tokens[index + 10].text
         if (mode !in setOf("all", "masked")) {
             unsupportedFeature("Unsupported execute blocks mode '$mode'", profile.id, location)
@@ -1509,7 +1509,7 @@ class DatapackSandbox(
             }
             "block" -> {
                 requireSizeFrom(tokens, index, 4, "data block <x> <y> <z>", location)
-                DataTargetSpec.Block(parseBlockPos(tokens, index + 1, context.position, location)) to index + 4
+                DataTargetSpec.Block(parseBlockPos(tokens, index + 1, context, location)) to index + 4
             }
             else -> unsupportedFeature("Unsupported data target '${tokens[index].text}'", profile.id, location)
         }
@@ -1732,8 +1732,8 @@ class DatapackSandbox(
 
     private fun executeFillBiome(tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext) {
         requireSize(tokens, 8, "fillbiome <from> <to> <biome> [replace <filter>]", location)
-        val from = parseBlockPos(tokens, 1, context.position, location)
-        val to = parseBlockPos(tokens, 4, context.position, location)
+        val from = parseBlockPos(tokens, 1, context, location)
+        val to = parseBlockPos(tokens, 4, context, location)
         val biome = ResourceLocation.parse(tokens[7].text)
         val filter = if (tokens.getOrNull(8)?.text == "replace") tokens.getOrNull(9)?.text?.let(ResourceLocation::parse) else null
         val xs = minOf(from.x, to.x)..maxOf(from.x, to.x)
@@ -1901,7 +1901,7 @@ class DatapackSandbox(
             }
             "block" -> {
                 requireSize(tokens, 8, "item modify block <pos> <slot> <modifier>", location)
-                val pos = parseBlockPos(tokens, 3, context.position, location)
+                val pos = parseBlockPos(tokens, 3, context, location)
                 val slot = inventorySlot(tokens[6].text)
                 val modifier = datapack.itemModifier(ResourceLocation.parse(tokens[7].text))
                 val item = blockItem(pos, slot, location) ?: return
@@ -1932,7 +1932,7 @@ class DatapackSandbox(
                 if (tokens[7].text != "with") {
                     unsupportedFeature("Expected 'with' in item replace block", profile.id, location)
                 }
-                val pos = parseBlockPos(tokens, 3, context.position, location)
+                val pos = parseBlockPos(tokens, 3, context, location)
                 val slot = inventorySlot(tokens[6].text)
                 val item = ItemStack(ResourceLocation.parse(tokens[8].text), tokens.getOrNull(9)?.text?.let { parseInt(it, "item count", location) } ?: 1)
                 replaceBlockItem(pos, slot, item, location)
@@ -2127,7 +2127,7 @@ class DatapackSandbox(
 
     private fun executeSetBlock(tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext) {
         requireSize(tokens, 5, "setblock <pos> <block> [destroy|keep|replace]", location)
-        val pos = parseBlockPos(tokens, 1, context.position, location)
+        val pos = parseBlockPos(tokens, 1, context, location)
         val block = parseBlockArgument(tokens[4].text, location)
         when (val mode = tokens.getOrNull(5)?.text ?: "replace") {
             "replace", "destroy", "strict" -> world.setBlock(pos, block.toBlock(pos, profile, location))
@@ -2138,9 +2138,9 @@ class DatapackSandbox(
 
     private fun executeClone(tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext) {
         requireSize(tokens, 10, "clone <begin> <end> <destination> [replace|masked|filtered] [force|move|normal]", location)
-        val from = parseBlockPos(tokens, 1, context.position, location)
-        val to = parseBlockPos(tokens, 4, context.position, location)
-        val dest = parseBlockPos(tokens, 7, context.position, location)
+        val from = parseBlockPos(tokens, 1, context, location)
+        val to = parseBlockPos(tokens, 4, context, location)
+        val dest = parseBlockPos(tokens, 7, context, location)
         val maskMode = tokens.getOrNull(10)?.text ?: "replace"
         val cloneMode = tokens.getOrNull(11)?.text ?: "normal"
         val xs = minOf(from.x, to.x)..maxOf(from.x, to.x)
@@ -2163,8 +2163,8 @@ class DatapackSandbox(
 
     private fun executeFill(tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext) {
         requireSize(tokens, 8, "fill <from> <to> <block> [replace|keep|destroy|hollow|outline]", location)
-        val from = parseBlockPos(tokens, 1, context.position, location)
-        val to = parseBlockPos(tokens, 4, context.position, location)
+        val from = parseBlockPos(tokens, 1, context, location)
+        val to = parseBlockPos(tokens, 4, context, location)
         val block = parseBlockArgument(tokens[7].text, location)
         val mode = tokens.getOrNull(8)?.text ?: "replace"
         if (mode !in setOf("replace", "keep", "destroy", "hollow", "outline")) {
@@ -2629,8 +2629,18 @@ class DatapackSandbox(
             else -> throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Invalid local $label coordinate '$raw'", location)
         }
 
-    private fun parseBlockPos(tokens: List<CommandToken>, index: Int, base: Position, location: SourceLocation?): BlockPos {
-        val pos = parsePosition(tokens, index, base, location)
+    private fun parseBlockPos(tokens: List<CommandToken>, index: Int, context: ExecutionContext, location: SourceLocation?): BlockPos =
+        parseBlockPos(tokens, index, context.position, location, context.yaw, context.pitch)
+
+    private fun parseBlockPos(
+        tokens: List<CommandToken>,
+        index: Int,
+        base: Position,
+        location: SourceLocation?,
+        yaw: Double = 0.0,
+        pitch: Double = 0.0,
+    ): BlockPos {
+        val pos = parsePosition(tokens, index, base, location, yaw, pitch)
         return BlockPos(floor(pos.x).toInt(), floor(pos.y).toInt(), floor(pos.z).toInt())
     }
 
@@ -2839,7 +2849,7 @@ class DatapackSandbox(
             }
             "block" -> {
                 requireSizeFrom(tokens, index, 8, "execute store ${tokens[index].text} block <pos> <path> <type> <scale>", location)
-                val pos = parseBlockPos(tokens, index + 2, context.position, location)
+                val pos = parseBlockPos(tokens, index + 2, context, location)
                 val block = world.requireBlock(pos)
                 val scaled = scaledStoreValue(valueToStore, tokens[index + 7].text, location)
                 val updated = block.fullNbt(pos, profile, location)

@@ -34,9 +34,9 @@
 | `deop`、`op` | 未支持 | 不模拟权限系统。 |
 | `effect` | 部分支持 | `give`、`clear`；更新玩家效果状态并触发相关 advancement 事件。 |
 | `enchant` | 部分支持 | 向选中物品写入附魔组件；不检查可附魔性。 |
-| `execute` | 部分支持 | 支持 `as`、`at`、`positioned <pos>`、`positioned as <selector>`、`align`、`anchored`、`facing`、`in`、`rotated`、`store`、`if`、`unless`、`run` 的核心路径；`as` 只切换执行者，`at` 和 `positioned as` 会移动执行位置；`rotated` 和 `facing` 会更新命令旋转上下文，供 `tp` 的相对旋转参数使用；`store` 目标覆盖 score、storage、entity NBT、block NBT 和 bossbar value/max；条件覆盖 `entity`、`score`、`data`、`block`、`blocks`、`predicate`、`function`、`dimension`、`biome` 和 `loaded`。 |
+| `execute` | 部分支持 | 支持 `as`、`at`、`positioned <pos>`、`positioned as <selector>`、`align`、`anchored`、`facing`、`in`、`rotated`、`store`、`if`、`unless`、`run` 的核心路径；`as` 只切换执行者，`at` 和 `positioned as` 会移动执行位置；`rotated` 和 `facing` 会更新命令旋转上下文，供 `tp` 的相对旋转参数和局部坐标使用；`store` 目标覆盖 score、storage、entity NBT、block NBT 和 bossbar value/max；条件覆盖 `entity`、`score`、`data`、`block`、`blocks`、`predicate`、`function`、`dimension`、`biome` 和 `loaded`。 |
 | `experience`、`xp` | 部分支持 | `add`、`set`、`query`；沙盒内 points/levels 共用玩家 XP 整数字段。 |
-| `fill` | 部分支持 | `fill <from> <to> <block[state]{nbt}> [replace|keep|destroy|hollow|outline]`；不执行更新或掉落。 |
+| `fill` | 部分支持 | `fill <from> <to> <block[state]{nbt}> [replace|keep|destroy|hollow|outline]`；位置参数支持局部坐标；不执行更新或掉落。 |
 | `fillbiome` | 部分支持 | 为显式方块范围记录 biome 覆盖；不模拟区块 biome 容器或生成效果。 |
 | `forceload` | 部分支持 | `add`、`remove`、`remove all`、`query`；记录强加载 chunk 坐标。 |
 | `function` | 支持 | `function <id>`。 |
@@ -68,7 +68,7 @@
 | `schedule` | 部分支持 | `schedule function <id> <time> [append|replace]`、`schedule clear <id>`。 |
 | `scoreboard` | 部分支持 | objectives 支持 `add`、`remove`、`list`；players 支持 `set`、`add`、`remove`、`get`、`reset`、`list`、`enable`、`operation`。 |
 | `seed` | 支持 | 报告确定性的沙盒 seed。 |
-| `setblock` | 部分支持 | 修改稀疏世界方块状态和方块实体 NBT；不执行邻居更新。 |
+| `setblock` | 部分支持 | 修改稀疏世界方块状态和方块实体 NBT；位置参数支持局部坐标；不执行邻居更新。 |
 | `setidletimeout` | 未支持 | 服务器管理命令。 |
 | `setworldspawn` | 部分支持 | 存储世界出生点和角度。 |
 | `spawnpoint` | 部分支持 | 存储玩家出生点和角度。 |

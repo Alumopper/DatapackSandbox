@@ -41,9 +41,9 @@ run continues. Use `--unsupported error`, manifest `"unsupported": "error"`, or
 | `deop`, `op` | Unsupported | Permission system is not simulated. |
 | `effect` | Partial | `give`, `clear`; updates player effect state and advancement events. |
 | `enchant` | Partial | Writes enchantment components to selected item; no enchantability checks. |
-| `execute` | Partial | `as`, `at`, `positioned <pos>`, `positioned as <selector>`, `align`, `anchored`, `facing`, `in`, `rotated`, `store`, `if`, `unless`, `run`; `as` changes only the executor while `at` and `positioned as` move the execution position; `rotated` and `facing` update the command rotation context used by relative `tp` rotations; `store` targets score, storage, entity NBT, block NBT, and bossbar value/max; conditions support `entity`, `score`, `data`, `block`, `blocks`, `predicate`, `function`, `dimension`, `biome`, and `loaded`. |
+| `execute` | Partial | `as`, `at`, `positioned <pos>`, `positioned as <selector>`, `align`, `anchored`, `facing`, `in`, `rotated`, `store`, `if`, `unless`, `run`; `as` changes only the executor while `at` and `positioned as` move the execution position; `rotated` and `facing` update the command rotation context used by relative `tp` rotations and local coordinates; `store` targets score, storage, entity NBT, block NBT, and bossbar value/max; conditions support `entity`, `score`, `data`, `block`, `blocks`, `predicate`, `function`, `dimension`, `biome`, and `loaded`. |
 | `experience`, `xp` | Partial | `add`, `set`, `query`; points and levels share the sandbox XP integer. |
-| `fill` | Partial | `fill <from> <to> <block[state]{nbt}> [replace|keep|destroy|hollow|outline]`; no updates/drops. |
+| `fill` | Partial | `fill <from> <to> <block[state]{nbt}> [replace|keep|destroy|hollow|outline]`; position arguments accept local coordinates; no updates/drops. |
 | `fillbiome` | Partial | Stores biome overrides for explicit block ranges; no chunk biome container or generation effects. |
 | `forceload` | Partial | `add`, `remove`, `remove all`, `query`; stores forced chunk coordinates. |
 | `function` | Supported | `function <id>`. |
@@ -75,7 +75,7 @@ run continues. Use `--unsupported error`, manifest `"unsupported": "error"`, or
 | `schedule` | Partial | `schedule function <id> <time> [append|replace]`, `schedule clear <id>`. |
 | `scoreboard` | Partial | Objectives `add`, `remove`, `list`; players `set`, `add`, `remove`, `get`, `reset`, `list`, `enable`, `operation`. |
 | `seed` | Supported | Reports deterministic sandbox seed. |
-| `setblock` | Partial | Mutates sparse block state/NBT; no neighbor updates. |
+| `setblock` | Partial | Mutates sparse block state/NBT; position arguments accept local coordinates; no neighbor updates. |
 | `setidletimeout` | Unsupported | Server administration command. |
 | `setworldspawn` | Partial | Stores sandbox world spawn position and angle. |
 | `spawnpoint` | Partial | Stores per-player spawn point and angle. |

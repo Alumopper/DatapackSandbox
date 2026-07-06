@@ -299,6 +299,27 @@ class CommandExpansionTest {
     }
 
     @Test
+    fun `block position commands support local coordinates from execution rotation`() {
+        val sandbox = createFunctionSandboxFromString(
+            version = "26.2",
+            functionText = "",
+            functionId = "demo:empty",
+        )
+
+        sandbox.executeCommand("scoreboard objectives add checks dummy")
+        sandbox.executeCommand("""execute positioned 10 64 10 rotated -90 0 run setblock ^ ^ ^1 minecraft:stone""")
+        assertEquals(ResourceLocation.parse("minecraft:stone"), sandbox.world.requireBlock(BlockPos(11, 64, 10)).id)
+
+        sandbox.executeCommand("""execute positioned 10 64 10 rotated 0 0 run fill ^ ^ ^1 ^1 ^ ^1 minecraft:dirt""")
+        assertEquals(ResourceLocation.parse("minecraft:dirt"), sandbox.world.requireBlock(BlockPos(10, 64, 11)).id)
+        assertEquals(ResourceLocation.parse("minecraft:dirt"), sandbox.world.requireBlock(BlockPos(11, 64, 11)).id)
+
+        sandbox.executeCommand("""execute positioned 10 64 10 rotated 0 0 if block ^ ^ ^1 minecraft:dirt run scoreboard players add #local checks 1""")
+        sandbox.executeCommand("""execute positioned 10 64 10 rotated 0 0 unless block ^ ^ ^1 minecraft:stone run scoreboard players add #local checks 1""")
+        assertEquals(2, sandbox.world.getScore("#local", "checks"))
+    }
+
+    @Test
     fun `execute blocks condition compares sparse block regions`() {
         val sandbox = createSandbox("26.1.2", listOf(fixturePack()))
 
