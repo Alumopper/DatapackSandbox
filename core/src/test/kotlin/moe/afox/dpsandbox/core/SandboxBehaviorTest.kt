@@ -594,6 +594,20 @@ class SandboxBehaviorTest {
         assertEquals(true, mergeResult.get("changed").asBoolean)
         assertEquals("demo:src", mergeResult.get("target").asString)
         assertEquals(1, mergeResult.getAsJsonObject("after").getAsJsonObject("value").get("foo").asInt)
+        val modifyOutputs = sandbox.world.outputs.filter { it.command == "data modify" }
+        val mergedOutput = modifyOutputs.last()
+        val mergedPayload = mergedOutput.payload?.asJsonObject ?: error("missing data modify payload")
+        val mergedDetails = mergedPayload.getAsJsonObject("details")
+        val mergedResult = mergedPayload.getAsJsonArray("results")[0].asJsonObject
+        assertEquals(6, modifyOutputs.size)
+        assertEquals("1", mergedOutput.text)
+        assertEquals(listOf("demo:dst"), mergedOutput.targets)
+        assertEquals("storage", mergedPayload.get("targetKind").asString)
+        assertEquals("merge", mergedDetails.get("operation").asString)
+        assertEquals("merged", mergedDetails.get("path").asString)
+        assertEquals(1, mergedPayload.getAsJsonObject("value").get("a").asInt)
+        assertEquals(true, mergedResult.get("changed").asBoolean)
+        assertEquals(1, mergedResult.getAsJsonObject("after").getAsJsonObject("merged").get("a").asInt)
 
         val error = assertFailsWith<SandboxException> {
             sandbox.executeCommand("data modify storage demo:dst missing set from storage demo:src nope")

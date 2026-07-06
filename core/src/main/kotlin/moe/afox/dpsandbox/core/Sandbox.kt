@@ -1561,6 +1561,7 @@ class DatapackSandbox(
         }
         requireIndex(tokens, sourceKindIndex, "data modify ... $mutation <value|from> ...", location)
         val value = readDataModifyValue(command, tokens, sourceKindIndex, context, location)
+        val before = dataTargetNbtValues(target, location).map { it.deepCopy() }
         mutateDataTarget(target, location) { targetNbt ->
             when (mutation) {
                 "set" -> JsonPaths.set(targetNbt, path, value)
@@ -1570,6 +1571,19 @@ class DatapackSandbox(
                 "insert" -> JsonPaths.insert(targetNbt, path, insertIndex ?: 0, value)
             }
         }
+        val after = dataTargetNbtValues(target, location).map { it.deepCopy() }
+        recordDataMutationOutput(
+            "data modify",
+            target,
+            value,
+            before,
+            after,
+            JsonObject().also { details ->
+                details.addProperty("operation", mutation)
+                details.addProperty("path", path)
+                insertIndex?.let { details.addProperty("insertIndex", it) }
+            },
+        )
     }
 
     private fun readDataModifyValue(
@@ -1693,6 +1707,7 @@ class DatapackSandbox(
         value: JsonElement,
         before: List<JsonObject>,
         after: List<JsonObject>,
+        details: JsonObject? = null,
     ) {
         val targetNames = dataTargetNames(target)
         val changed = before.zip(after).count { (beforeValue, afterValue) -> beforeValue != afterValue }
@@ -1707,6 +1722,7 @@ class DatapackSandbox(
                 payload.addProperty("changed", changed)
                 payload.add("targets", JsonArray().also { array -> targetNames.forEach { array.add(it) } })
                 payload.add("value", value.deepCopy())
+                details?.let { payload.add("details", it) }
                 payload.add(
                     "results",
                     JsonArray().also { results ->
