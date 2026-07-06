@@ -1021,7 +1021,10 @@ class CommandExpansionTest {
                   "mainhand": {
                     "items": "minecraft:stick",
                     "count": 4,
-                    "nbt": "{marked:true}"
+                    "nbt": "{marked:true}",
+                    "enchantments": {
+                      "minecraft:sharpness": 3
+                    }
                   }
                 }
               }

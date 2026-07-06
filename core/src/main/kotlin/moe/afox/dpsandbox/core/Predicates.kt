@@ -276,6 +276,21 @@ class PredicateEngine(
         predicate.getAsJsonObject("components")?.let {
             if (!containsAll(item.components, it)) return false
         }
+        predicate.getAsJsonObject("enchantments")?.let {
+            if (!testEnchantments(item, "minecraft:enchantments", it)) return false
+        }
+        predicate.getAsJsonObject("stored_enchantments")?.let {
+            if (!testEnchantments(item, "minecraft:stored_enchantments", it)) return false
+        }
+        return true
+    }
+
+    private fun testEnchantments(item: ItemStack, component: String, predicate: JsonObject): Boolean {
+        val actual = item.components.getAsJsonObject(component) ?: return false
+        predicate.entrySet().forEach { (id, range) ->
+            val level = actual.get(id)?.takeIf { it.isJsonPrimitive } ?: return false
+            if (!testRange(level.asLong, range)) return false
+        }
         return true
     }
 
