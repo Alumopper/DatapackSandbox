@@ -217,7 +217,7 @@ class RunCommandTest {
                     "--version",
                     "26.2",
                     "--mcfunction-text",
-                    "scoreboard objectives add runs dummy\nscoreboard players set #short runs 5\nsay shorthand    ok",
+                    "scoreboard objectives add runs dummy\nscoreboard players set #short runs 5\nsay shorthand    ok\nplace structure demo:ruin 1 64 2",
                     "--assert",
                     "score:#short:runs=5",
                     "--assert",
@@ -228,6 +228,12 @@ class RunCommandTest {
                     "output:shorthand",
                     "--assert",
                     "output-normalized:shorthand ok",
+                    "--assert",
+                    "output-payload:place structure:placed=false",
+                    "--assert",
+                    "output-payload:place structure:id=demo:ruin",
+                    "--assert",
+                    "output-payload:place structure:position.y=64.0",
                 ),
             )
         }
