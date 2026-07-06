@@ -867,7 +867,7 @@ object DatapackLoader {
                                         cause = error,
                                     )
                                 }
-                                resources[id] = ResourceJson(id, file.toString(), element)
+                                resources[id] = ResourceJson(id, file.toString(), element, kind)
                             }
                     }
                 }
@@ -925,7 +925,7 @@ object DatapackLoader {
 
     private fun JsonElement.asObjectOrError(resource: ResourceJson, profile: VersionProfile, kind: String): JsonObject {
         if (!isJsonObject) {
-            throw resourceError(resource, profile, "$kind resource '$resource.id' must be a JSON object")
+            throw resourceError(resource, profile, "$kind must be a JSON object")
         }
         return asJsonObject
     }
@@ -981,7 +981,7 @@ object DatapackLoader {
     private fun resourceError(resource: ResourceJson, profile: VersionProfile, message: String): SandboxException =
         SandboxException(
             code = DiagnosticCode.INPUT_FORMAT,
-            message = message,
+            message = "Invalid ${resource.kind} resource '${resource.id}': $message",
             location = SourceLocation(file = resource.file),
             version = profile.id,
         )

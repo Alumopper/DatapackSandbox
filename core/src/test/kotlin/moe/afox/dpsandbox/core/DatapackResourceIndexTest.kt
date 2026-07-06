@@ -314,6 +314,44 @@ class DatapackResourceIndexTest {
         assertTrue(error.location?.file?.endsWith("marker.json") == true, error.render())
     }
 
+    @Test
+    fun `p0 json resource parse failures report type id location and version`() {
+        val cases = listOf(
+            InvalidJsonResourceCase("loot table", "loot_table"),
+            InvalidJsonResourceCase("predicate", "predicate"),
+            InvalidJsonResourceCase("advancement", "advancement"),
+            InvalidJsonResourceCase("recipe", "recipe"),
+            InvalidJsonResourceCase("item modifier", "item_modifier"),
+        )
+
+        cases.forEach { case ->
+            val error = assertFailsWith<SandboxException> {
+                createSandbox("26.2", listOf(writeInvalidJsonResourcePack(case.directory)))
+            }
+
+            assertEquals(DiagnosticCode.INPUT_FORMAT, error.code)
+            assertEquals("26.2", error.version)
+            assertTrue(error.message.contains("Invalid ${case.label} JSON for 'demo:broken'"), error.render())
+            assertTrue(error.message.contains("demo:broken"), error.render())
+            assertTrue(error.location?.file?.endsWith("broken.json") == true, error.render())
+        }
+    }
+
+    @Test
+    fun `advancement semantic validation reports type id location and version`() {
+        val pack = writeInvalidAdvancementPack()
+
+        val error = assertFailsWith<SandboxException> {
+            createSandbox("26.2", listOf(pack))
+        }
+
+        assertEquals(DiagnosticCode.INPUT_FORMAT, error.code)
+        assertEquals("26.2", error.version)
+        assertTrue(error.message.contains("Invalid advancement resource 'demo:broken'"), error.render())
+        assertTrue(error.message.contains("must contain a criteria object"), error.render())
+        assertTrue(error.location?.file?.endsWith("broken.json") == true, error.render())
+    }
+
     private fun writePack(
         name: String,
         packFormat: String,
@@ -472,6 +510,44 @@ class DatapackResourceIndexTest {
             }
             """.trimIndent(),
         )
+        return root
+    }
+
+    private fun writeInvalidJsonResourcePack(directory: String): Path {
+        val root = Files.createTempDirectory("dps-invalid-json-$directory-pack")
+        Files.writeString(
+            root.resolve("pack.mcmeta"),
+            """
+            {
+              "pack": {
+                "pack_format": 107.1,
+                "description": "temporary invalid json pack"
+              }
+            }
+            """.trimIndent(),
+        )
+        val resourceRoot = root.resolve("data").resolve("demo").resolve(directory)
+        Files.createDirectories(resourceRoot)
+        Files.writeString(resourceRoot.resolve("broken.json"), "{")
+        return root
+    }
+
+    private fun writeInvalidAdvancementPack(): Path {
+        val root = Files.createTempDirectory("dps-invalid-advancement-pack")
+        Files.writeString(
+            root.resolve("pack.mcmeta"),
+            """
+            {
+              "pack": {
+                "pack_format": 107.1,
+                "description": "temporary invalid advancement pack"
+              }
+            }
+            """.trimIndent(),
+        )
+        val advancementRoot = root.resolve("data").resolve("demo").resolve("advancement")
+        Files.createDirectories(advancementRoot)
+        Files.writeString(advancementRoot.resolve("broken.json"), "{}")
         return root
     }
 
@@ -677,6 +753,11 @@ class DatapackResourceIndexTest {
             "banner_pattern" to "debug_banner",
             "wolf_variant" to "debug_wolf",
             "painting_variant" to "debug_painting",
+        )
+
+        data class InvalidJsonResourceCase(
+            val label: String,
+            val directory: String,
         )
 
         data class ResourceLayout(

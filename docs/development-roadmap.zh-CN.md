@@ -40,7 +40,7 @@
 验收标准：
 
 - 每种 P0 资源有 loader 测试、路径映射测试、zip/目录双形态测试和版本别名测试；`DatapackResourceIndexTest` 已用 P0 资源矩阵覆盖 current directory 与 legacy alias zip 布局。
-- 加载失败包含文件、resource id、版本、资源类型和具体原因。
+- 加载失败包含文件、resource id、版本、资源类型和具体原因；P0 JSON 资源解析失败矩阵已覆盖 loot table、predicate、advancement、recipe 和 item modifier，advancement 语义校验失败也会保留资源类型和 id。
 - `check --verbose` 或 REPL inspect 能展示资源数量、重复覆盖和缺失引用。
 
 ## 阶段 2：命令执行语义扩展

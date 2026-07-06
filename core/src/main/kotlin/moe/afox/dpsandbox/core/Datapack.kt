@@ -87,6 +87,7 @@ data class ResourceJson(
     val id: ResourceLocation,
     val file: String,
     val root: JsonElement,
+    val kind: String = "resource",
 )
 
 /**
