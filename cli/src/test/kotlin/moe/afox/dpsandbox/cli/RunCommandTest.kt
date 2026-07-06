@@ -1027,6 +1027,59 @@ class RunCommandTest {
     }
 
     @Test
+    fun `run report files include resource overlay details`() {
+        val dir = Files.createTempDirectory("dps-cli-report-overlays")
+        val first = writeResourceOverlayPack(dir.resolve("first"), "first", includeMissingLoad = true)
+        val second = writeResourceOverlayPack(dir.resolve("second"), "second", includeMissingLoad = false)
+        val reportFile = Files.createTempFile("dps-cli-overlay-report", ".json")
+
+        val output = captureStdout {
+            main(
+                arrayOf(
+                    "run",
+                    "--version",
+                    "26.2",
+                    "--pack",
+                    first.toString(),
+                    "--pack",
+                    second.toString(),
+                    "--report-file",
+                    reportFile.toString(),
+                ),
+            )
+        }
+
+        assertTrue("report written: $reportFile" in output, output)
+        val resources = JsonParser.parseString(Files.readString(reportFile)).asJsonObject.getAsJsonObject("resources")
+        val overlays = resources.getAsJsonArray("overlays").map { it.asJsonObject }
+        assertTrue(
+            overlays.any { overlay ->
+                overlay.get("type").asString == "recipe" &&
+                    overlay.get("id").asString == "demo:marker" &&
+                    overlay.get("active").asBoolean
+            },
+            overlays.toString(),
+        )
+        assertTrue(
+            overlays.any { overlay ->
+                overlay.get("type").asString == "recipe" &&
+                    overlay.get("id").asString == "demo:marker" &&
+                    !overlay.get("active").asBoolean
+            },
+            overlays.toString(),
+        )
+        val missingReferences = resources.getAsJsonArray("missingReferences").map { it.asJsonObject }
+        assertTrue(
+            missingReferences.any { reference ->
+                reference.get("source").asString == "#minecraft:load" &&
+                    reference.get("type").asString == "function" &&
+                    reference.get("id").asString == "demo:missing_load"
+            },
+            missingReferences.toString(),
+        )
+    }
+
+    @Test
     fun `run strict mode fails unsupported commands and missing resource references`() {
         val unsupportedResult = runCliProcess(
             "run",
@@ -1977,6 +2030,46 @@ class RunCommandTest {
         val tagRoot = root.resolve("data").resolve("minecraft").resolve("tags").resolve("function")
         Files.createDirectories(tagRoot)
         Files.writeString(tagRoot.resolve("load.json"), """{"values":["demo:missing_load"]}""")
+        return root
+    }
+
+    private fun writeResourceOverlayPack(root: Path, marker: String, includeMissingLoad: Boolean): Path {
+        Files.createDirectories(root)
+        Files.writeString(
+            root.resolve("pack.mcmeta"),
+            """
+            {
+              "pack": {
+                "pack_format": 107.1,
+                "description": "overlay report $marker"
+              }
+            }
+            """.trimIndent(),
+        )
+
+        val functionRoot = root.resolve("data").resolve("demo").resolve("function")
+        Files.createDirectories(functionRoot)
+        Files.writeString(functionRoot.resolve("noop.mcfunction"), "say $marker")
+
+        val recipeRoot = root.resolve("data").resolve("demo").resolve("recipe")
+        Files.createDirectories(recipeRoot)
+        Files.writeString(
+            recipeRoot.resolve("marker.json"),
+            """
+            {
+              "type": "minecraft:crafting_shapeless",
+              "marker": "$marker",
+              "ingredients": [],
+              "result": { "id": "minecraft:stone", "count": 1 }
+            }
+            """.trimIndent(),
+        )
+
+        if (includeMissingLoad) {
+            val tagRoot = root.resolve("data").resolve("minecraft").resolve("tags").resolve("function")
+            Files.createDirectories(tagRoot)
+            Files.writeString(tagRoot.resolve("load.json"), """{"values":["demo:missing_load"]}""")
+        }
         return root
     }
 
