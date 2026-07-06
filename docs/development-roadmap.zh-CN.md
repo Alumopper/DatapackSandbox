@@ -109,7 +109,7 @@
   - 类型、UUID、位置、旋转、维度、tag、score holder、attributes、attribute modifiers、effects、passengers/vehicle、equipment、health、custom NBT；`item replace/modify entity` 已覆盖非玩家实体 `weapon.*`/`armor.*` 装备槽读写、复制、snapshot 与 NBT 投影，`attribute modifier` 已进入 snapshot 与 `Attributes[].modifiers` NBT 投影，`effect give/clear` 已覆盖非玩家实体 active effects，entity predicate 的 `equipment`、`effects` 和 `nbt` 条件也复用该模型；world fixture、manifest world 和 quick-test world builder 均可直接声明非玩家实体装备、active effects、attributes、dimension、health 与 passengers/vehicle，并通过 entity assertion/quick-test assertion 验证完整 NBT path。
   - 不执行 AI tick，但保留数据包可读写字段和明确的 no-AI 语义说明。
 - 完善玩家模型：
-  - inventory、selected slot、ender items、recipes、stats、xp、health、food、gamemode、spawn、advancement progress、last input。
+  - inventory、selected slot、ender items、recipes、stats、xp points/levels、health、food、gamemode、spawn、advancement progress、last input。
   - 玩家 NBT 默认只读；可通过命令、fixture 或事件改变玩家状态；NBT 视图会投影当前非空主手 `SelectedItem`；新建玩家会使用当前 `defaultGameMode`；world fixture、manifest world 和 quick-test world builder 可声明玩家末影箱物品和 advancement progress，`item`/`loot replace entity` 可按 `selectedSlot` 读写当前主手并可读写 `enderchest.*` 槽，通过 snapshot、完整 NBT path、`assertPlayer`/manifest player assertion、`assertItem`/manifest item assertion 和 advancement assertion 检查。
 - 完善 item stack：
   - 兼容旧版 NBT 和新版 components；命令 item argument 可直接输入 JSON/SNBT-lite NBT 与 components payload，并在括号 payload 内保留空格用于解析。

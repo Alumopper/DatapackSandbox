@@ -724,6 +724,7 @@ class SandboxQuickTestTest {
                     y = 65.0,
                     z = 3.0,
                     xp = 5,
+                    xpLevels = 4,
                     inventory = listOf(
                         item(
                             "minecraft:stick",
@@ -817,6 +818,7 @@ class SandboxQuickTestTest {
                 dimension = "minecraft:overworld",
                 gameMode = "survival",
                 xp = 5,
+                xpLevels = 4,
                 inventoryCount = 1,
                 enderItemCount = 1,
                 recipe = "minecraft:bread",
@@ -858,6 +860,7 @@ class SandboxQuickTestTest {
             .assertStorageEquals("demo:env", "ready", "true")
             .assertStorageMissing("demo:env", "absent")
             .assertPlayerXp("Alex", 5)
+            .assertPlayerXpLevels("Alex", 4)
             .requirePassed()
 
         val snapshot = report.snapshot.asJsonObject
@@ -884,6 +887,7 @@ class SandboxQuickTestTest {
                 .get("id")
                 .asString,
         )
+        assertEquals(4, snapshot.getAsJsonObject("players").getAsJsonObject("Alex").get("xpLevels").asInt)
         assertEquals("Alex", snapshot.get("teams").asJsonObject.get("red").asJsonObject.getAsJsonArray("members")[0].asString)
         assertEquals(3, snapshot.get("bossbars").asJsonObject.get("demo:bar").asJsonObject.get("value").asInt)
     }
@@ -903,10 +907,11 @@ class SandboxQuickTestTest {
             ),
         )
             .load()
-            .world { player("Alex", xp = 5) }
+            .world { player("Alex", xp = 5, xpLevels = 2) }
             .keyInput("Alex", "jump")
             .assertScore("#matrix", "runs", 6)
             .assertPlayerXp("Alex", 5)
+            .assertPlayerXpLevels("Alex", 2)
             .assertPlayerLastInput("Alex", "keyboard", "jump", "press")
             .requirePassed()
 

@@ -234,6 +234,7 @@ SandboxQuickTest.create(
             y = 65.0,
             z = 3.0,
             xp = 5,
+            xpLevels = 4,
             inventory = listOf(item("minecraft:stick", 2)),
             enderItems = listOf(item("minecraft:ender_pearl", 4)),
         )
@@ -290,6 +291,7 @@ SandboxQuickTest.create(
     .assertPlayer(
         "Alex",
         xp = 5,
+        xpLevels = 4,
         recipe = "minecraft:bread",
         effect = "minecraft:speed",
         spawn = Position(2.0, 66.0, 3.0),
@@ -307,6 +309,7 @@ SandboxQuickTest.create(
     .assertStorageExists("demo:env", "ready")
     .assertStorageMissing("demo:env", "debug.last")
     .assertPlayerXp("Alex", 5)
+    .assertPlayerXpLevels("Alex", 4)
     .requirePassed()
 ```
 
@@ -340,10 +343,11 @@ SandboxQuickTest.matrix(
     ),
 )
     .load()
-    .world { player("Alex", xp = 5) }
+    .world { player("Alex", xp = 5, xpLevels = 2) }
     .keyInput("Alex", "jump")
     .assertScore("#clock", "ticks", 0)
     .assertPlayerXp("Alex", 5)
+    .assertPlayerXpLevels("Alex", 2)
     .assertPlayerLastInput("Alex", "keyboard", "jump", "press")
     .requirePassed()
 ```
@@ -411,7 +415,8 @@ class MyDatapackTest {
 | `assertEntityCountAtMost(maximum, type, tag, dimension)` | Assert a matching entity count upper bound |
 | `assertEntityCountRange(min, max, type, tag, dimension)` | Assert optional matching entity count bounds |
 | `assertItem(player, id, count, slot, exists, minCount, maxCount, componentsPath, componentsEquals, componentsExists, nbtPath, nbtEquals, nbtExists, container)` | Assert a matching player inventory or enderItems item |
-| `assertPlayerXp(player, expected)` | Assert player XP |
+| `assertPlayerXp(player, expected)` | Assert player XP points |
+| `assertPlayerXpLevels(player, expected)` | Assert player XP levels |
 | `assertPlayerLastInput(player, device, code, action)` | Assert the latest player input |
 | `assertAdvancementDone(player, id, expected)` | Assert advancement completion |
 | `assertOutputContains(text)` | Assert output event text |

@@ -756,6 +756,7 @@ object ManifestRunner {
         player.getAsJsonArray("position")?.let { sandboxPlayer.position = parseManifestPosition(it) }
         player.manifestString("dimension")?.let { sandboxPlayer.dimension = ResourceLocation.parse(it) }
         player.get("xp")?.let { sandboxPlayer.xp = it.asInt }
+        (player.get("xpLevels") ?: player.get("xpLevel"))?.let { sandboxPlayer.xpLevels = it.asInt }
     }
 
     private fun runBlockStep(block: JsonObject, sandbox: DatapackSandbox) {
@@ -864,6 +865,9 @@ object ManifestRunner {
                     failures += "player $name expected to exist"
                 } else {
                     player.get("xp")?.let { if (actual.xp != it.asInt) failures += "player ${actual.name} xp expected ${it.asInt} but was ${actual.xp}" }
+                    (player.get("xpLevels") ?: player.get("xpLevel"))?.let {
+                        if (actual.xpLevels != it.asInt) failures += "player ${actual.name} xpLevels expected ${it.asInt} but was ${actual.xpLevels}"
+                    }
                     player.get("inventoryCount")?.let { if (actual.inventory.size != it.asInt) failures += "player ${actual.name} inventoryCount expected ${it.asInt} but was ${actual.inventory.size}" }
                     player.get("enderItemCount")?.let { if (actual.enderItems.size != it.asInt) failures += "player ${actual.name} enderItemCount expected ${it.asInt} but was ${actual.enderItems.size}" }
                     player.manifestString("dimension")?.let { if (actual.dimension != ResourceLocation.parse(it)) failures += "player ${actual.name} dimension expected $it but was ${actual.dimension}" }

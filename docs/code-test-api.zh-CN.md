@@ -207,6 +207,7 @@ SandboxQuickTest.create(
             y = 65.0,
             z = 3.0,
             xp = 5,
+            xpLevels = 4,
             inventory = listOf(item("minecraft:stick", 2)),
             enderItems = listOf(item("minecraft:ender_pearl", 4)),
         )
@@ -263,6 +264,7 @@ SandboxQuickTest.create(
     .assertPlayer(
         "Alex",
         xp = 5,
+        xpLevels = 4,
         recipe = "minecraft:bread",
         effect = "minecraft:speed",
         spawn = Position(2.0, 66.0, 3.0),
@@ -280,6 +282,7 @@ SandboxQuickTest.create(
     .assertStorageExists("demo:env", "ready")
     .assertStorageMissing("demo:env", "debug.last")
     .assertPlayerXp("Alex", 5)
+    .assertPlayerXpLevels("Alex", 4)
     .requirePassed()
 ```
 
@@ -311,10 +314,11 @@ SandboxQuickTest.matrix(
     ),
 )
     .load()
-    .world { player("Alex", xp = 5) }
+    .world { player("Alex", xp = 5, xpLevels = 2) }
     .keyInput("Alex", "jump")
     .assertScore("#clock", "ticks", 0)
     .assertPlayerXp("Alex", 5)
+    .assertPlayerXpLevels("Alex", 2)
     .assertPlayerLastInput("Alex", "keyboard", "jump", "press")
     .requirePassed()
 ```
@@ -382,7 +386,8 @@ class MyDatapackTest {
 | `assertEntityCountAtMost(maximum, type, tag, dimension)` | 断言匹配实体数量上界。 |
 | `assertEntityCountRange(min, max, type, tag, dimension)` | 断言匹配实体数量的可选上下界。 |
 | `assertItem(player, id, count, slot, exists, minCount, maxCount, componentsPath, componentsEquals, componentsExists, nbtPath, nbtEquals, nbtExists, container)` | 断言玩家背包或末影箱中的匹配物品。 |
-| `assertPlayerXp(player, expected)` | 断言玩家 XP。 |
+| `assertPlayerXp(player, expected)` | 断言玩家 XP points。 |
+| `assertPlayerXpLevels(player, expected)` | 断言玩家 XP levels。 |
 | `assertPlayerLastInput(player, device, code, action)` | 断言玩家最后一次输入。 |
 | `assertAdvancementDone(player, id, expected)` | 断言 advancement 是否完成。 |
 | `assertOutputContains(text)` | 断言输出事件包含文本。 |

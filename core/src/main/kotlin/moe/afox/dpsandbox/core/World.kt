@@ -278,6 +278,7 @@ class SandboxPlayer(
     dimension: ResourceLocation = ResourceLocation("minecraft", "overworld"),
     var gameMode: String = "survival",
     var xp: Int = 0,
+    var xpLevels: Int = 0,
     var health: Double = 20.0,
     var food: Int = 20,
 ) : SandboxEntity(uuid = uuid, type = ResourceLocation("minecraft", "player"), position = position, dimension = dimension) {
@@ -322,7 +323,7 @@ class SandboxPlayer(
         json.addProperty("foodTickTimer", 0)
         json.addProperty("foodSaturationLevel", 5.0)
         json.addProperty("foodExhaustionLevel", 0.0)
-        json.addProperty("XpLevel", 0)
+        json.addProperty("XpLevel", xpLevels)
         json.addProperty("XpP", 0.0)
         json.addProperty("XpTotal", xp)
         json.addProperty("XpSeed", 0)
@@ -1120,6 +1121,7 @@ fun SandboxPlayer.toPlayerJson(profile: VersionProfile = VersionProfiles.default
     json.addProperty("name", name)
     json.addProperty("gameMode", gameMode)
     json.addProperty("xp", xp)
+    json.addProperty("xpLevels", xpLevels)
     json.addProperty("health", health)
     json.addProperty("food", food)
     json.addProperty("selectedSlot", selectedSlot)

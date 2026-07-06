@@ -144,6 +144,7 @@ object ManifestWorldSetup {
             dimension = player.manifestString("dimension") ?: "minecraft:overworld",
             gameMode = player.manifestString("gameMode") ?: player.manifestString("gamemode") ?: "survival",
             xp = player.get("xp")?.asInt ?: 0,
+            xpLevels = player.get("xpLevels")?.asInt ?: player.get("xpLevel")?.asInt ?: 0,
             health = player.get("health")?.asDouble ?: 20.0,
             food = player.get("food")?.asInt ?: 20,
             selectedSlot = player.get("selectedSlot")?.asInt ?: 0,

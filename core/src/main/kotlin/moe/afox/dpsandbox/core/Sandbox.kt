@@ -2405,33 +2405,86 @@ class DatapackSandbox(
             "add" -> {
                 requireSize(tokens, 4, "${tokens[0].text} add <targets> <amount> [points|levels]", location)
                 val amount = parseInt(tokens[3].text, "experience amount", location)
-                resolvePlayers(tokens[2].text, location, context).forEach { it.xp += amount }
+                val kind = experienceKind(tokens.getOrNull(4)?.text ?: "points", tokens[0].text, location)
+                val players = resolvePlayers(tokens[2].text, location, context)
+                players.forEach { player ->
+                    when (kind) {
+                        "points" -> player.xp += amount
+                        "levels" -> player.xpLevels += amount
+                    }
+                }
+                recordExperienceOutput("${tokens[0].text} add", players, kind, amount)
             }
             "set" -> {
                 requireSize(tokens, 4, "${tokens[0].text} set <targets> <amount> [points|levels]", location)
                 val amount = parseInt(tokens[3].text, "experience amount", location)
-                resolvePlayers(tokens[2].text, location, context).forEach { it.xp = amount }
+                val kind = experienceKind(tokens.getOrNull(4)?.text ?: "points", tokens[0].text, location)
+                val players = resolvePlayers(tokens[2].text, location, context)
+                players.forEach { player ->
+                    when (kind) {
+                        "points" -> player.xp = amount
+                        "levels" -> player.xpLevels = amount
+                    }
+                }
+                recordExperienceOutput("${tokens[0].text} set", players, kind, amount)
             }
             "query" -> {
                 requireSize(tokens, 4, "${tokens[0].text} query <target> <points|levels>", location)
                 val player = resolvePlayers(tokens[2].text, location, context).first()
-                val kind = tokens[3].text
-                if (kind !in setOf("points", "levels")) {
-                    unsupportedFeature("Unsupported ${tokens[0].text} query type '$kind'", profile.id, location)
-                }
+                val kind = experienceKind(tokens[3].text, tokens[0].text, location)
+                val value = experienceValue(player, kind)
                 world.recordOutput(
                     "${tokens[0].text} query",
                     "data",
-                    text = player.xp.toString(),
+                    text = value.toString(),
                     payload = JsonObject().also { payload ->
                         payload.addProperty("player", player.name)
                         payload.addProperty("kind", kind)
-                        payload.addProperty("value", player.xp)
+                        payload.addProperty("value", value)
+                        payload.addProperty("points", player.xp)
+                        payload.addProperty("levels", player.xpLevels)
                     },
                 )
             }
             else -> unsupportedFeature("Unsupported ${tokens[0].text} action '${tokens[1].text}'", profile.id, location)
         }
+    }
+
+    private fun experienceKind(raw: String, command: String, location: SourceLocation?): String =
+        when (raw) {
+            "points", "levels" -> raw
+            else -> unsupportedFeature("Unsupported $command experience type '$raw'", profile.id, location)
+        }
+
+    private fun experienceValue(player: SandboxPlayer, kind: String): Int =
+        when (kind) {
+            "points" -> player.xp
+            "levels" -> player.xpLevels
+            else -> player.xp
+        }
+
+    private fun recordExperienceOutput(command: String, players: List<SandboxPlayer>, kind: String, amount: Int) {
+        world.recordOutput(
+            command,
+            "data",
+            targets = players.map { it.name },
+            text = amount.toString(),
+            payload = JsonObject().also { payload ->
+                payload.addProperty("kind", kind)
+                payload.addProperty("amount", amount)
+                payload.add("players", JsonArray().also { array ->
+                    players.sortedBy { it.name }.forEach { player ->
+                        array.add(
+                            JsonObject().also { item ->
+                                item.addProperty("name", player.name)
+                                item.addProperty("points", player.xp)
+                                item.addProperty("levels", player.xpLevels)
+                            },
+                        )
+                    }
+                })
+            },
+        )
     }
 
     private fun executeRecipe(tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext) {

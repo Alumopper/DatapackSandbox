@@ -814,14 +814,14 @@ class RunCommand : CliktCommand(name = "run") {
         }
         return playerAssertionObject(name, label).also { player ->
             when (field) {
-                "xp", "food", "inventoryCount" -> player.addProperty(field, parsePlayerInt(value, field, label))
+                "xp", "xpLevels", "xpLevel", "food", "inventoryCount" -> player.addProperty(field, parsePlayerInt(value, field, label))
                 "selectedSlot", "slot" -> player.addProperty("selectedSlot", parsePlayerInt(value, field, label))
                 "health" -> player.addProperty("health", parsePlayerDouble(value, field, label))
                 "gameMode", "gamemode" -> player.addProperty("gameMode", value)
                 "dimension" -> player.addProperty("dimension", value)
                 else -> throw SandboxException(
                     DiagnosticCode.INPUT_FORMAT,
-                    "$label unsupported player shorthand field '$field'; use xp, health, food, selectedSlot, slot, inventoryCount, gameMode, gamemode, or dimension",
+                    "$label unsupported player shorthand field '$field'; use xp, xpLevels, health, food, selectedSlot, slot, inventoryCount, gameMode, gamemode, or dimension",
                 )
             }
         }

@@ -30,8 +30,8 @@ state before any `steps` or commands run. Supported fixture inputs include:
 - `entities` with type, UUID, position, dimension, health, tags, rotation,
   vehicle/passengers, equipment, active effects, attributes, and validated entity NBT.
 - `players` with position, dimension, game mode, inventory, ender items,
-  advancement progress, XP, health, and food; newly created players start with
-  the current `defaultGameMode`.
+  advancement progress, XP points/levels, health, and food; newly created
+  players start with the current `defaultGameMode`.
 - `scores`, `storage`, `gamerules`, `gameTime`, `dayTime`, and `weather`.
 
 Example manifest:
@@ -72,7 +72,7 @@ Example manifest:
       }
     ],
     "players": [
-      { "name": "Alex", "position": [2, 65, 3], "xp": 5 }
+      { "name": "Alex", "position": [2, 65, 3], "xp": 5, "xpLevels": 4 }
     ],
     "storage": {
       "demo:env": { "ready": true }

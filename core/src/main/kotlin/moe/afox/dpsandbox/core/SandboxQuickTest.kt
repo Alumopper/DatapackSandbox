@@ -418,6 +418,7 @@ class SandboxQuickTestMatrix private constructor(
         dimension: String? = null,
         gameMode: String? = null,
         xp: Int? = null,
+        xpLevels: Int? = null,
         health: Double? = null,
         food: Int? = null,
         selectedSlot: Int? = null,
@@ -443,6 +444,7 @@ class SandboxQuickTestMatrix private constructor(
                 dimension = dimension,
                 gameMode = gameMode,
                 xp = xp,
+                xpLevels = xpLevels,
                 health = health,
                 food = food,
                 selectedSlot = selectedSlot,
@@ -468,6 +470,13 @@ class SandboxQuickTestMatrix private constructor(
      */
     fun assertPlayerXp(playerName: String, expected: Int): SandboxQuickTestMatrix = apply {
         scenarios.values.forEach { it.assertPlayerXp(playerName, expected) }
+    }
+
+    /**
+     * Applies a player XP level assertion to every scenario.
+     */
+    fun assertPlayerXpLevels(playerName: String, expected: Int): SandboxQuickTestMatrix = apply {
+        scenarios.values.forEach { it.assertPlayerXpLevels(playerName, expected) }
     }
 
     /**
@@ -1356,6 +1365,16 @@ class SandboxQuickTest private constructor(
     }
 
     /**
+     * Asserts the current XP level integer stored on a player.
+     */
+    fun assertPlayerXpLevels(playerName: String, expected: Int): SandboxQuickTest = apply {
+        val actual = sandbox.world.requirePlayer(playerName).xpLevels
+        if (actual != expected) {
+            failures += "player $playerName xpLevels expected $expected but was $actual"
+        }
+    }
+
+    /**
      * Asserts the latest recorded keyboard or mouse input for a player.
      */
     fun assertPlayerLastInput(playerName: String, device: String, code: String, action: String): SandboxQuickTest = apply {
@@ -1380,6 +1399,7 @@ class SandboxQuickTest private constructor(
         dimension: String? = null,
         gameMode: String? = null,
         xp: Int? = null,
+        xpLevels: Int? = null,
         health: Double? = null,
         food: Int? = null,
         selectedSlot: Int? = null,
@@ -1411,6 +1431,7 @@ class SandboxQuickTest private constructor(
         dimension?.let { if (player.dimension != ResourceLocation.parse(it)) failures += "player $name dimension expected $it but was ${player.dimension}" }
         gameMode?.let { if (player.gameMode != it) failures += "player $name gameMode expected $it but was ${player.gameMode}" }
         xp?.let { if (player.xp != it) failures += "player $name xp expected $it but was ${player.xp}" }
+        xpLevels?.let { if (player.xpLevels != it) failures += "player $name xpLevels expected $it but was ${player.xpLevels}" }
         health?.let { if (player.health != it) failures += "player $name health expected $it but was ${player.health}" }
         food?.let { if (player.food != it) failures += "player $name food expected $it but was ${player.food}" }
         selectedSlot?.let { if (player.selectedSlot != it) failures += "player $name selectedSlot expected $it but was ${player.selectedSlot}" }

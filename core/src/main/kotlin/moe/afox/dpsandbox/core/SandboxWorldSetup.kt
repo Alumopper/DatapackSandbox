@@ -346,6 +346,7 @@ class SandboxWorldSetup {
         dimension: String = "minecraft:overworld",
         gameMode: String = "survival",
         xp: Int = 0,
+        xpLevels: Int = 0,
         health: Double = 20.0,
         food: Int = 20,
         selectedSlot: Int = 0,
@@ -358,6 +359,7 @@ class SandboxWorldSetup {
             player.dimension = ResourceLocation.parse(dimension)
             player.gameMode = gameMode
             player.xp = xp
+            player.xpLevels = xpLevels
             player.health = health
             player.food = food
             player.selectedSlot = selectedSlot.coerceAtLeast(0)
