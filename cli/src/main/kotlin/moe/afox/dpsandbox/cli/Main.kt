@@ -619,6 +619,7 @@ class RunCommand : CliktCommand(name = "run") {
             trimmed.startsWith("entity:") -> parseEntityCountAssertion(trimmed.removePrefix("entity:"), label)
             trimmed.startsWith("item:") -> parseItemAssertion(trimmed.removePrefix("item:"), label)
             trimmed.startsWith("player:") -> parsePlayerAssertion(trimmed.removePrefix("player:"), label)
+            trimmed.startsWith("random-sequence:") -> parseRandomSequenceAssertion(trimmed.removePrefix("random-sequence:"), label)
             trimmed.startsWith("diff:") -> parseSnapshotDiffAssertion(trimmed.removePrefix("diff:"), label)
             trimmed.startsWith("event-trace:") -> parseEventTraceAssertion(trimmed.removePrefix("event-trace:"), label)
             trimmed.startsWith("trace:") -> parseTraceAssertion(trimmed.removePrefix("trace:"), label)
@@ -632,7 +633,7 @@ class RunCommand : CliktCommand(name = "run") {
             trimmed.startsWith("output:") -> parseOutputAssertion(trimmed.removePrefix("output:"), label)
             else -> throw SandboxException(
                 DiagnosticCode.INPUT_FORMAT,
-                "$label must be a JSON object or shorthand score:<target>:<objective>=N, storage:<id>[:<path>]=<json>, advancement:<player>:<id>[=<true|false>], entity:<type|*>[@tag]=N, item:<player>:<id>[@slot]=N, player:<name>[:<field>=<value>], diff:<json-pointer>[=<kind>], event-trace:<player>:<type>[=N], trace:<root>=N, trace:<text>, trace-output:<text>[@target], warning=N, warning:<text>, unsupported=N, unsupported:<text>, output:<text>, output-normalized:<text>, or output-payload:<command>:<path>[=<json>]",
+                "$label must be a JSON object or shorthand score:<target>:<objective>=N, storage:<id>[:<path>]=<json>, advancement:<player>:<id>[=<true|false>], entity:<type|*>[@tag]=N, item:<player>:<id>[@slot]=N, player:<name>[:<field>=<value>], random-sequence:<name>=N, diff:<json-pointer>[=<kind>], event-trace:<player>:<type>[=N], trace:<root>=N, trace:<text>, trace-output:<text>[@target], warning=N, warning:<text>, unsupported=N, unsupported:<text>, output:<text>, output-normalized:<text>, or output-payload:<command>:<path>[=<json>]",
             )
         }
     }
@@ -842,6 +843,23 @@ class RunCommand : CliktCommand(name = "run") {
     private fun parsePlayerDouble(value: String, field: String, label: String): Double =
         value.toDoubleOrNull()
             ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label player field '$field' expected number but got '$value'")
+
+    private fun parseRandomSequenceAssertion(spec: String, label: String): JsonObject {
+        val splitAt = spec.indexOf('=')
+        if (splitAt <= 0 || splitAt == spec.lastIndex) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label random sequence shorthand must be random-sequence:<name>=N")
+        }
+        val name = spec.substring(0, splitAt).trim()
+        val valueText = spec.substring(splitAt + 1).trim()
+        if (name.isEmpty()) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label random sequence shorthand name must not be empty")
+        }
+        val expected = valueText.toLongOrNull()
+            ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label random sequence shorthand expected integer but got '$valueText'")
+        val randomSequences = JsonObject().also { it.addProperty(name, expected) }
+        val world = JsonObject().also { it.add("randomSequences", randomSequences) }
+        return JsonObject().also { it.add("world", world) }
+    }
 
     private fun parseTraceAssertion(spec: String, label: String): JsonObject {
         val trimmed = spec.trim()

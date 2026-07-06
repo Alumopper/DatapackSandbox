@@ -284,6 +284,7 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar run --version 26.2 \
   --assert "score:#fixture:runs=1" \
   --assert "storage:demo:env:ready=true" \
   --assert "player:Steve?" \
+  --assert "random-sequence:demo:seq=42" \
   --assert "item:Steve:minecraft:stick=3" \
   --assert "entity:minecraft:pig@fixture=1" \
   --assert "diff:/scores/runs=added" \
