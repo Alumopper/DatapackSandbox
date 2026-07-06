@@ -76,9 +76,9 @@ object DpsCommandCatalog {
         command("playsound", "record a sound output", CommandBehaviorLevel.OBSERVED_NOOP),
         command("stopsound", "record a stop-sound output", CommandBehaviorLevel.OBSERVED_NOOP),
         command("particle", "record a visual output", CommandBehaviorLevel.OBSERVED_NOOP),
+        command("place", "record a worldgen placement intent", CommandBehaviorLevel.OBSERVED_NOOP),
         command("datapack", "inspect loaded datapack resources"),
         unsupported("debug"),
-        unsupported("place"),
     ).distinctBy { it.value }.sortedBy { it.value }
 
     fun rootCommands(profile: VersionProfile = VersionProfiles.default): List<CompletionSuggestion> {
@@ -116,6 +116,7 @@ object DpsCommandCatalog {
             "defaultgamemode" -> " <mode>"
             "difficulty" -> " [peaceful|easy|normal|hard]"
             "fillbiome" -> " <from> <to> <biome> [replace <filter>]"
+            "place" -> " <feature|jigsaw|structure|template> ..."
             "forceload" -> " <add|remove|query> ..."
             "gamemode" -> " <mode> [targets]"
             "advancement" -> " <grant|revoke|test> <players> ..."

@@ -77,6 +77,7 @@ class DpsCompleterTest {
         assertSuggests(completer, "give Steve ", "minecraft:apple")
         assertSuggests(completer, "effect give Steve ", "minecraft:speed")
         assertSuggests(completer, "item replace entity Steve ", "hotbar.0")
+        assertSuggests(completer, "place ", "structure")
         assertSuggests(completer, "tr", "trace")
         assertSuggests(completer, "trace ", "on")
         assertSuggests(completer, "diff ", "last")
@@ -125,6 +126,7 @@ class DpsCompleterTest {
             "fillbiome",
             "forceload",
             "gamemode",
+            "place",
             "seed",
             "setworldspawn",
             "spawnpoint",
@@ -137,6 +139,7 @@ class DpsCompleterTest {
         assertEquals("read or edit stored entity attributes", commands.getValue("attribute").description)
         assertEquals(CommandBehaviorLevel.MODELED, commands.getValue("attribute").behaviorLevel)
         assertEquals(CommandBehaviorLevel.OBSERVED_NOOP, commands.getValue("playsound").behaviorLevel)
+        assertEquals(CommandBehaviorLevel.OBSERVED_NOOP, commands.getValue("place").behaviorLevel)
         assertEquals(CommandBehaviorLevel.UNSUPPORTED, commands.getValue("ban").behaviorLevel)
         assertEquals("edit stored world border state", commands.getValue("worldborder").description)
         implementedRoots.forEach { root ->

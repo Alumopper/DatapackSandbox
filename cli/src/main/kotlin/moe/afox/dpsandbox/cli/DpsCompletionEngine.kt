@@ -52,6 +52,7 @@ class DpsCompletionEngine(private val sandbox: () -> DatapackSandbox) {
             first == "gamerule" -> gameruleSuggestions(context)
             first == "give" -> giveSuggestions(context)
             first == "item" -> itemSuggestions(words, context)
+            first == "place" -> placeSuggestions(words, context)
             first == "random" -> randomSuggestions(context)
             first == "recipe" -> recipeSuggestions(context)
             first == "ride" -> rideSuggestions(context)
@@ -343,6 +344,21 @@ class DpsCompletionEngine(private val sandbox: () -> DatapackSandbox) {
         when (context.wordIndex) {
             1 -> playerTargets().suggest("players/selectors", appendSpace = true)
             2 -> sandbox().profile.registryView.items.mapResource("items")
+            else -> emptyList()
+        }
+
+    private fun placeSuggestions(words: List<String>, context: CompletionContext): List<CompletionSuggestion> =
+        when {
+            context.wordIndex == 1 -> listOf("feature", "jigsaw", "structure", "template").suggest("place kinds", appendSpace = true)
+            words.getOrNull(1) == "feature" && context.wordIndex == 2 ->
+                (rawResourceIds("worldgen/placed_feature") + rawResourceIds("worldgen/configured_feature"))
+                    .distinct()
+                    .sorted()
+                    .suggest("features")
+            words.getOrNull(1) == "jigsaw" && context.wordIndex == 2 ->
+                rawResourceIds("worldgen/template_pool").suggest("template pools")
+            words.getOrNull(1) == "structure" && context.wordIndex == 2 ->
+                rawResourceIds("worldgen/structure").suggest("structures")
             else -> emptyList()
         }
 
