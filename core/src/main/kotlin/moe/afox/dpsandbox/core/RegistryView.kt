@@ -70,10 +70,12 @@ data class RegistryView(
             ),
             lootFunctions = ids(
                 "set_count",
+                "set_item",
                 "set_components",
                 "set_custom_data",
                 "set_name",
                 "set_lore",
+                "discard",
                 "copy_components",
                 "copy_nbt",
                 "set_damage",

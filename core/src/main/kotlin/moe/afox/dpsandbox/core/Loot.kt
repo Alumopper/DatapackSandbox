@@ -153,6 +153,8 @@ class LootEngine(
                     val parsed = JsonValues.parse(it)
                     if (parsed.isJsonObject) JsonPaths.merge(stack.nbt, null, parsed)
                 }
+                "set_item" -> stack = stack.copy(id = ResourceLocation.parse(function.root.requiredString("item")))
+                "discard" -> return emptyList()
                 "set_damage" -> stack.components.addProperty("minecraft:damage", rollDouble(function.root.get("damage"), random))
                 "set_name" -> stack.components.add("minecraft:custom_name", lootFunctionText(function.root, "name", function.type))
                 "set_lore" -> stack.components.add("minecraft:lore", lootFunctionLore(function.root))

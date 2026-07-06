@@ -69,9 +69,9 @@ class CommandExpansionTest {
 
         val zombie = sandbox.world.entities.first { it.type == ResourceLocation.parse("minecraft:zombie") }
         assertEquals(40.0, zombie.attributes[ResourceLocation.parse("minecraft:max_health")])
-        val diamond = sandbox.world.requirePlayer("Steve").inventory.first { it.id == ResourceLocation.parse("minecraft:diamond") }
-        assertEquals("Gift", diamond.components.getAsJsonObject("minecraft:custom_name").get("text").asString)
-        assertEquals("from loot", diamond.components.getAsJsonArray("minecraft:lore")[0].asJsonObject.get("text").asString)
+        val emerald = sandbox.world.requirePlayer("Steve").inventory.first { it.id == ResourceLocation.parse("minecraft:emerald") }
+        assertEquals("Gift", emerald.components.getAsJsonObject("minecraft:custom_name").get("text").asString)
+        assertEquals("from loot", emerald.components.getAsJsonArray("minecraft:lore")[0].asJsonObject.get("text").asString)
     }
 
     @Test
@@ -123,6 +123,19 @@ class CommandExpansionTest {
         val unmatched = sandbox.world.requirePlayer("Steve").inventory[1]
         assertTrue(!unmatched.components.has("demo:filtered"))
         assertEquals("fail", unmatched.components.get("demo:filtered_fail").asString)
+
+        sandbox.executeCommand("item replace entity Steve hotbar.2 with minecraft:stick 2")
+        sandbox.executeCommand("item modify entity Steve hotbar.2 demo:change_item")
+
+        val changed = sandbox.world.requirePlayer("Steve").inventory[2]
+        assertEquals(ResourceLocation.parse("minecraft:carrot"), changed.id)
+        assertEquals(2, changed.count)
+
+        sandbox.executeCommand("item modify entity Steve hotbar.2 demo:discard")
+
+        val discarded = sandbox.world.requirePlayer("Steve").inventory[2]
+        assertEquals(ResourceLocation.parse("minecraft:air"), discarded.id)
+        assertEquals(0, discarded.count)
     }
 
     @Test
@@ -489,6 +502,10 @@ class CommandExpansionTest {
                       "name": "minecraft:diamond",
                       "functions": [
                         {
+                          "function": "minecraft:set_item",
+                          "item": "minecraft:emerald"
+                        },
+                        {
                           "function": "minecraft:set_name",
                           "name": { "text": "Gift" }
                         },
@@ -618,6 +635,23 @@ class CommandExpansionTest {
         )
         val modifierRoot = root.resolve("data").resolve("demo").resolve("item_modifier")
         Files.createDirectories(modifierRoot)
+        Files.writeString(
+            modifierRoot.resolve("change_item.json"),
+            """
+            {
+              "function": "minecraft:set_item",
+              "item": "minecraft:carrot"
+            }
+            """.trimIndent(),
+        )
+        Files.writeString(
+            modifierRoot.resolve("discard.json"),
+            """
+            {
+              "function": "minecraft:discard"
+            }
+            """.trimIndent(),
+        )
         Files.writeString(
             modifierRoot.resolve("filtered_pass.json"),
             """

@@ -2062,11 +2062,13 @@ class DatapackSandbox(
                 }
                 "set_count" -> stack = stack.copy(count = itemModifierCount(function.get("count"), stack.count).coerceAtLeast(0))
                 "limit_count" -> stack = stack.copy(count = itemModifierLimit(stack.count, function.get("limit")).coerceAtLeast(0))
+                "set_item" -> stack = stack.copy(id = itemModifierResource(function, "item", type, location))
+                "discard" -> stack = ItemStack(ResourceLocation("minecraft", "air"), 0)
                 "set_damage" -> stack.components.addProperty("minecraft:damage", itemModifierNumber(function.get("damage"), 0.0))
                 "set_name" -> stack.components.add("minecraft:custom_name", itemModifierText(function, "name", type, location))
                 "set_lore" -> stack.components.add("minecraft:lore", itemModifierLore(function, location))
                 "reference" -> {
-                    val id = itemModifierReference(function, type, location)
+                    val id = itemModifierResource(function, "name", type, location)
                     stack = applyReferencedItemModifier(stack, id, predicateContext, location, activeReferences)
                 }
                 "filtered" -> {
@@ -2147,9 +2149,9 @@ class DatapackSandbox(
         return ResourceLocation.parse(raw).path
     }
 
-    private fun itemModifierReference(function: JsonObject, type: String, location: SourceLocation?): ResourceLocation {
-        val raw = function.get("name")?.takeIf { it.isJsonPrimitive && it.asJsonPrimitive.isString }?.asString
-            ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Item modifier '$type' requires string 'name'", location)
+    private fun itemModifierResource(function: JsonObject, key: String, type: String, location: SourceLocation?): ResourceLocation {
+        val raw = function.get(key)?.takeIf { it.isJsonPrimitive && it.asJsonPrimitive.isString }?.asString
+            ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Item modifier '$type' requires string '$key'", location)
         return ResourceLocation.parse(raw)
     }
 
