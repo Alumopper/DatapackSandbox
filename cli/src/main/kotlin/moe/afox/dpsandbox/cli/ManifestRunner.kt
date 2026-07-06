@@ -155,6 +155,7 @@ object ManifestRunner {
         val configs = runConfigs(document.root, document.base, document.path)
         val unsupportedMode = document.root.manifestString("unsupported")?.let(::unsupportedFeatureMode) ?: options.unsupportedFeatureMode
         val effectiveOptions = options.copy(
+            seed = document.root.get("seed")?.asLong ?: options.seed,
             failOnMissingResources = document.root.get("failOnMissingResources")?.asBoolean ?: options.failOnMissingResources,
         )
         val attempts = configs.map { config ->
@@ -201,6 +202,7 @@ object ManifestRunner {
         options: ManifestOptions,
     ): ManifestAttemptResult {
         var sandbox = createSandbox(config.version, config.packs, unsupportedFeatureMode = unsupportedMode)
+        sandbox.world.seed = options.seed
         document.worlds.forEach { world ->
             if (!world.element.isJsonObject) {
                 throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Manifest world must be an object: ${document.path}")
@@ -363,7 +365,7 @@ object ManifestRunner {
 
     private fun manifestRootWithIncludedDefaults(json: JsonObject, included: List<ResolvedManifest>): JsonObject {
         val root = json.deepCopy()
-        listOf("version", "versions", "unsupported", "failOnMissingResources").forEach { key ->
+        listOf("version", "versions", "unsupported", "seed", "failOnMissingResources").forEach { key ->
             if (!root.has(key)) {
                 included.firstOrNull { it.root.has(key) }?.let { root.add(key, it.root.get(key).deepCopy()) }
             }

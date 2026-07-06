@@ -60,7 +60,7 @@ range.
 
 ## `.dps.json` Manifests
 
-Manifests may contain `version` or `versions`, `unsupported`,
+Manifests may contain `version` or `versions`, `unsupported`, `seed`,
 `failOnMissingResources`, `packs`, `world`, `include`, `steps`, and
 `assertions`. The JSON Schema is available at:
 
@@ -83,9 +83,13 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar check ./sandbox-cases --valida
 `include` accepts a relative manifest path string or an array of paths. Included
 manifests are applied before the including manifest. Their `world`, `steps`, and
 `assertions` are concatenated in order, and their `version`/`versions`, `packs`,
-`unsupported`, and `failOnMissingResources` fields act as defaults when the
+`unsupported`, `seed`, and `failOnMissingResources` fields act as defaults when the
 including manifest omits them. Relative paths inside included world setup and
 steps are resolved from the included file's directory.
+
+Set top-level `"seed"` to define the default deterministic world and loot seed
+for the manifest. A `world.seed` fixture value overrides the top-level default
+for world state.
 
 Set top-level `"failOnMissingResources": true`, or pass
 `check --fail-on-missing-resources`, to fail a manifest when loaded resources

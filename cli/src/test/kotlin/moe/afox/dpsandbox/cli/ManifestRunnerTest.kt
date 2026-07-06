@@ -46,6 +46,7 @@ class ManifestRunnerTest {
             assertEquals("string", variants[0].asJsonObject.get("type").asString)
             assertEquals("#/\$defs/stringArray", variants[1].asJsonObject.get("\$ref").asString)
         }
+        assertEquals("integer", rootProperties.getAsJsonObject("seed").get("type").asString)
         assertEquals("boolean", rootProperties.getAsJsonObject("failOnMissingResources").get("type").asString)
         assertEquals(
             "#/\$defs/worldBorder",
@@ -497,6 +498,30 @@ class ManifestRunnerTest {
                 { "bossbar": { "id": "demo:bar", "name": "Demo", "value": 3, "max": 10, "player": "Alex" } },
                 { "score": { "target": "#fixture", "objective": "ready", "equals": 1 } },
                 { "storage": { "id": "demo:env", "path": "ready", "equals": true } }
+              ]
+            }
+            """.trimIndent(),
+        )
+
+        val result = ManifestRunner.run(manifest)
+
+        assertTrue(result.passed, result.messages.joinToString())
+    }
+
+    @Test
+    fun `manifest top-level seed sets default world seed`() {
+        val dir = Files.createTempDirectory("dps-manifest-seed")
+        val pack = Path.of("../core/src/test/resources/packs/counter").toAbsolutePath().normalize().toString().replace("\\", "\\\\")
+        val manifest = dir.resolve("seed.dps.json")
+        Files.writeString(
+            manifest,
+            """
+            {
+              "version": "26.1.2",
+              "seed": 321,
+              "packs": ["$pack"],
+              "assertions": [
+                { "world": { "seed": 321 } }
               ]
             }
             """.trimIndent(),
@@ -1202,11 +1227,13 @@ class ManifestRunnerTest {
             """
             {
               "version": "26.1.2",
+              "seed": 88,
               "packs": ["$pack"],
               "steps": [
                 { "mcfunction": "generated/common.mcfunction" }
               ],
               "assertions": [
+                { "world": { "seed": 88 } },
                 { "score": { "target": "#included", "objective": "runs", "equals": 2 } }
               ]
             }

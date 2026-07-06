@@ -22,6 +22,7 @@
       "type": "string",
       "enum": ["warn", "warning", "ignore", "silent", "error", "strict"]
     },
+    "seed": { "type": "integer" },
     "failOnMissingResources": { "type": "boolean" },
     "packs": {
       "oneOf": [

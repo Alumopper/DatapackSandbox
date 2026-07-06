@@ -186,6 +186,7 @@ Items[{Slot:0b}].id
 - `version` 或 `versions`
 - `include`
 - `unsupported`
+- `seed`
 - `failOnMissingResources`
 - `packs`
 - `world`
@@ -210,7 +211,9 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar schema --output dps-manifest.s
 java -jar cli/build/libs/datapack-sandbox-cli.jar check ./sandbox-cases --validate-schema
 ```
 
-`include` 可以写一个相对清单路径，也可以写路径数组。被 include 的清单会先应用；它们的 `world`、`steps` 和 `assertions` 会按顺序拼接，`version`/`versions`、`packs`、`unsupported` 和 `failOnMissingResources` 会在当前清单省略这些字段时作为默认值。include 文件里的 world setup 和 step 相对路径会按 include 文件所在目录解析。
+`include` 可以写一个相对清单路径，也可以写路径数组。被 include 的清单会先应用；它们的 `world`、`steps` 和 `assertions` 会按顺序拼接，`version`/`versions`、`packs`、`unsupported`、`seed` 和 `failOnMissingResources` 会在当前清单省略这些字段时作为默认值。include 文件里的 world setup 和 step 相对路径会按 include 文件所在目录解析。
+
+顶层 `"seed"` 会设置 manifest 默认的确定性 world seed 和 loot seed。`world.seed` fixture 值会覆盖这个顶层默认 world seed。
 
 顶层设置 `"failOnMissingResources": true`，或在 CLI 使用
 `check --fail-on-missing-resources`，可以在已加载资源直接引用缺失的 load/tick
