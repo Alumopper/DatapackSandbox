@@ -316,8 +316,8 @@ JSON resources and included in the resource index. The sandbox does not yet
 execute the full crafting system, every item modifier function, or worldgen
 semantics, but these resources are version-profile checked, participate in pack
 overlay behavior, and can be inspected from API or REPL. Loot functions include
-common count/item/component/enchantment mutations and `copy_components` from the
-active tool with `include`/`exclude` filters. `item modify entity`
+common count/item/component/enchantment mutations, tool-driven `apply_bonus`, and
+`copy_components` from the active tool with `include`/`exclude` filters. `item modify entity`
 models common item modifier functions such as `set_components`,
 `set_custom_data`, `set_count`, `limit_count`, `set_item`, `discard`,
 `set_damage`, `set_name`, `set_lore`, `filtered`, `reference`, and `sequence`.

@@ -161,7 +161,7 @@ class LootEngine(
                 "set_lore" -> stack.components.add("minecraft:lore", lootFunctionLore(function.root))
                 "copy_nbt", "copy_components" -> copyFromContext(stack, function, context)
                 "explosion_decay" -> stack.count = if (context.predicateContext.random.nextBoolean()) stack.count else 0
-                "apply_bonus" -> Unit
+                "apply_bonus" -> stack.count = applyBonus(stack.count, function.root, context, random).coerceAtLeast(0)
                 "enchant_randomly" -> addEnchantment(stack, chooseEnchantment(function.root, random), 1)
                 "enchant_with_levels" -> addEnchantment(
                     stack,
@@ -184,6 +184,41 @@ class LootEngine(
             }
         }
         return if (stack.count <= 0) emptyList() else listOf(stack)
+    }
+
+    private fun applyBonus(count: Int, root: JsonObject, context: LootContext, random: Random): Int {
+        val enchantment = ResourceLocation.parse(root.requiredString("enchantment"))
+        val level = toolEnchantmentLevel(context.tool, enchantment)
+        if (level <= 0) return count
+        val formula = root.string("formula")?.let(::canonical) ?: "uniform_bonus_count"
+        val parameters = root.getAsJsonObject("parameters") ?: JsonObject()
+        return when (formula) {
+            "binomial_with_bonus_count" -> {
+                var result = count
+                val extra = parameters.get("extra")?.asInt ?: 0
+                val probability = parameters.get("probability")?.asDouble ?: 0.0
+                repeat((level + extra).coerceAtLeast(0)) {
+                    if (random.nextDouble() < probability) result++
+                }
+                result
+            }
+            "uniform_bonus_count" -> {
+                val multiplier = parameters.get("bonusMultiplier")?.asInt
+                    ?: parameters.get("bonus_multiplier")?.asInt
+                    ?: 1
+                val bound = (level * multiplier).coerceAtLeast(0)
+                count + if (bound == 0) 0 else random.nextInt(bound + 1)
+            }
+            "ore_drops" -> count * random.nextInt(level + 2).coerceAtLeast(1)
+            else -> throw SandboxException(DiagnosticCode.UNSUPPORTED_FEATURE, "Loot apply_bonus formula '$formula' is not implemented")
+        }
+    }
+
+    private fun toolEnchantmentLevel(tool: ItemStack?, enchantment: ResourceLocation): Int {
+        val enchantments = tool?.components?.getAsJsonObject("minecraft:enchantments") ?: return 0
+        return enchantments.get(enchantment.toString())?.takeIf { it.isJsonPrimitive }?.asInt
+            ?: enchantments.get(enchantment.path)?.takeIf { it.isJsonPrimitive }?.asInt
+            ?: 0
     }
 
     private fun chooseEnchantment(root: JsonObject, random: Random): ResourceLocation {

@@ -305,6 +305,7 @@ class CommandExpansionTest {
         sandbox.executeCommand("loot give Steve entity demo:entity_context @e[type=minecraft:zombie,limit=1]")
         sandbox.executeCommand("loot give Steve block demo:block_context 0 64 0 minecraft:diamond_pickaxe")
         sandbox.executeCommand("loot give Steve block demo:copy_components 0 64 0 minecraft:diamond_pickaxe[minecraft:damage=7,demo:copied=true,demo:skip=true]")
+        sandbox.executeCommand("loot give Steve block demo:apply_bonus 0 64 0 minecraft:diamond_pickaxe[minecraft:enchantments={\"minecraft:fortune\":2}]")
         sandbox.executeCommand("loot give Steve equipment demo:equipment_context @e[type=minecraft:zombie,limit=1] weapon.mainhand")
         sandbox.executeCommand("loot give Steve loot demo:enchanted")
         sandbox.executeCommand("loot replace entity @e[type=minecraft:zombie,limit=1] weapon.offhand loot demo:fish")
@@ -320,6 +321,8 @@ class CommandExpansionTest {
         assertEquals(7, copied.components.get("minecraft:damage").asInt)
         assertEquals(true, copied.components.get("demo:copied").asBoolean)
         assertTrue(!copied.components.has("demo:skip"))
+        val bonus = sandbox.world.requirePlayer("Steve").inventory.first { it.id == ResourceLocation.parse("minecraft:raw_gold") }
+        assertEquals(4, bonus.count)
         val enchanted = sandbox.world.requirePlayer("Steve").inventory.first { it.id == ResourceLocation.parse("minecraft:experience_bottle") }
         val enchantments = enchanted.components.getAsJsonObject("minecraft:enchantments")
         assertEquals(1, enchantments.get("minecraft:sharpness").asInt)
@@ -332,7 +335,7 @@ class CommandExpansionTest {
         assertEquals(ResourceLocation.parse("minecraft:the_nether"), spawnedItem.dimension)
 
         val lootGiveOutputs = sandbox.world.outputs.filter { it.command == "loot give" }
-        assertEquals(8, lootGiveOutputs.size)
+        assertEquals(9, lootGiveOutputs.size)
         assertEquals("players", lootGiveOutputs.first().payload?.asJsonObject?.get("targetKind")?.asString)
         assertEquals("minecraft:diamond", lootGiveOutputs.first().payload?.asJsonObject?.getAsJsonArray("items")?.get(0)?.asJsonObject?.get("id")?.asString)
         val copiedOutputItem = lootGiveOutputs.first {
@@ -341,6 +344,12 @@ class CommandExpansionTest {
             } == true
         }.payload?.asJsonObject?.getAsJsonArray("items")?.get(0)?.asJsonObject ?: error("missing copied loot output")
         assertEquals(7, copiedOutputItem.getAsJsonObject("components").get("minecraft:damage").asInt)
+        val bonusOutputItem = lootGiveOutputs.first {
+            it.payload?.asJsonObject?.getAsJsonArray("items")?.any { item ->
+                item.asJsonObject.get("id").asString == "minecraft:raw_gold"
+            } == true
+        }.payload?.asJsonObject?.getAsJsonArray("items")?.get(0)?.asJsonObject ?: error("missing apply_bonus loot output")
+        assertEquals(4, bonusOutputItem.get("count").asInt)
         val enchantedOutputItem = lootGiveOutputs.first {
             it.payload?.asJsonObject?.getAsJsonArray("items")?.any { item ->
                 item.asJsonObject.get("id").asString == "minecraft:experience_bottle"
@@ -1166,6 +1175,46 @@ class CommandExpansionTest {
                           "exclude": [
                             "demo:skip"
                           ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+            """.trimIndent(),
+        )
+        Files.writeString(
+            lootRoot.resolve("apply_bonus.json"),
+            """
+            {
+              "type": "minecraft:block",
+              "pools": [
+                {
+                  "rolls": 1,
+                  "conditions": [
+                    {
+                      "condition": "minecraft:block_state_property",
+                      "block": "minecraft:stone"
+                    }
+                  ],
+                  "entries": [
+                    {
+                      "type": "minecraft:item",
+                      "name": "minecraft:raw_gold",
+                      "functions": [
+                        {
+                          "function": "minecraft:set_count",
+                          "count": 1
+                        },
+                        {
+                          "function": "minecraft:apply_bonus",
+                          "enchantment": "minecraft:fortune",
+                          "formula": "minecraft:binomial_with_bonus_count",
+                          "parameters": {
+                            "extra": 1,
+                            "probability": 1.0
+                          }
                         }
                       ]
                     }
