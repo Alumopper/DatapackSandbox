@@ -152,7 +152,7 @@ data class OutputExpectation(
     private fun actualOutputs(outputs: List<OutputEvent>): String {
         if (outputs.isEmpty()) return "actual outputs: <none>"
         val rendered = outputs.take(5).mapIndexed { index, output ->
-            "#${index + 1} command=${output.command} channel=${output.channel} targets=${output.targets.sorted()} text=${quote(output.text.truncateForAssertion())}${payloadSummary(output)}"
+            "#${index + 1} command=${output.command} channel=${output.channel} targets=${output.targets.sorted()} text=${quote(output.text.truncateForAssertion())}${payloadSummary(output)}${segmentSummary(output)}"
         }
         val suffix = if (outputs.size > rendered.size) "; ... +${outputs.size - rendered.size} more" else ""
         return "actual outputs: ${rendered.joinToString("; ")}$suffix"
@@ -169,6 +169,25 @@ data class OutputExpectation(
             return " payload=${JsonValues.render(payload).truncateForAssertion()}"
         }
         return ""
+    }
+
+    private fun segmentSummary(output: OutputEvent): String {
+        if (segment == null) return ""
+        if (output.segments.isEmpty()) return " segments=<none>"
+        val rendered = output.segments.take(4).map { candidate ->
+            buildString {
+                append("{text=").append(quote(candidate.text.truncateForAssertion()))
+                candidate.color?.let { append(" color=").append(it) }
+                if (candidate.bold) append(" bold=true")
+                if (candidate.italic) append(" italic=true")
+                if (candidate.underlined) append(" underlined=true")
+                if (candidate.strikethrough) append(" strikethrough=true")
+                if (candidate.obfuscated) append(" obfuscated=true")
+                append("}")
+            }
+        }
+        val suffix = if (output.segments.size > rendered.size) " ... +${output.segments.size - rendered.size} more" else ""
+        return " segments=${rendered.joinToString(",")}$suffix"
     }
 
     private fun String.truncateForAssertion(): String =

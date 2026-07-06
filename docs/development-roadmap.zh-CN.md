@@ -168,6 +168,7 @@
 - 增强断言失败解释：
   - 输出最近相关命令、相关 state path、实际值、候选输出事件和建议检查项。
   - 输出 payload 断言失败会在候选输出中显示对应 `payloadPath` 的实际值，便于直接定位结构化输出 mismatch。
+  - 输出 segment style 断言失败会在候选输出中显示已解析文本 segment 的 text/color/bold/italic/underlined/strikethrough/obfuscated，便于直接定位 tellraw/title 样式 mismatch。
   - manifest `diagnostic` 断言失败会列出实际 diagnostic 候选，便于定位预期失败步骤、错误码、命令和消息。
   - manifest `snapshotDiff` 断言失败会列出实际 snapshot diff 候选，便于定位状态路径和 before/after 差异。
 
@@ -194,7 +195,7 @@
   - 支持 `--world` 传入小型 JSON fixture。
   - 支持 `--assert` 传入一两个简单断言。
   - 支持 `--stdin` 从标准输入读取函数或命令。
-  - `--assert`/`--assert-file` 已支持 score、storage、advancement、player、random sequence、item、entity、diff、event-trace、trace、trace-output、warning、unsupported、output、output-normalized 和 output-payload 简写；`output-payload` 支持 path 存在性和等值检查，`examples/generator-output` 已覆盖结构化输出 payload 断言，适合命令生成器结果的快速回归。
+  - `--assert`/`--assert-file` 已支持 score、storage、advancement、player、random sequence、item、entity、diff、event-trace、trace、trace-output、warning、unsupported、output、output-normalized、output-segment 和 output-payload 简写；`output-segment` 支持按解析后的文本片段内容、目标和常用样式字段检查 tellraw/title 输出，`output-payload` 支持 path 存在性和等值检查，`examples/generator-output` 已覆盖结构化输出 payload 断言，适合命令生成器结果的快速回归。
 - 增强 REPL：
   - `inspect` 输出结构更稳定。
   - 支持 `trace on/off`、`diff last`、`rerun last`、`reset world`、`load fixture`。

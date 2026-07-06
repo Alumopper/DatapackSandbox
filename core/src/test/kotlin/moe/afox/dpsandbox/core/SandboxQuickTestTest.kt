@@ -505,6 +505,27 @@ class SandboxQuickTestTest {
     }
 
     @Test
+    fun `segment assertion failures include actual segment candidates`() {
+        val error = assertFailsWith<SandboxQuickTestAssertionError> {
+            SandboxQuickTest.singleFunctionText("""tellraw Steve {"text":"gold","color":"yellow","bold":true}""", version = "26.2")
+                .function()
+                .assertOutput(
+                    OutputExpectation(
+                        command = "tellraw",
+                        segment = OutputSegmentExpectation(text = "gold", color = "blue"),
+                    ),
+                )
+                .requirePassed()
+        }
+        val message = error.message.orEmpty()
+
+        assertTrue("segments=" in message, message)
+        assertTrue("text='gold'" in message, message)
+        assertTrue("color=yellow" in message, message)
+        assertTrue("bold=true" in message, message)
+    }
+
+    @Test
     fun `payload assertion failures include actual payload candidates`() {
         val error = assertFailsWith<SandboxQuickTestAssertionError> {
             SandboxQuickTest.singleFunctionText("place structure demo:ruin 1 64 2", version = "26.2")

@@ -629,11 +629,12 @@ class RunCommand : CliktCommand(name = "run") {
             trimmed.startsWith("unsupported:") -> parseUnsupportedContainsAssertion(trimmed.removePrefix("unsupported:"), label)
             trimmed.startsWith("unsupported=") -> parseUnsupportedCountAssertion(trimmed.removePrefix("unsupported="), label)
             trimmed.startsWith("output-normalized:") -> parseNormalizedOutputAssertion(trimmed.removePrefix("output-normalized:"), label)
+            trimmed.startsWith("output-segment:") -> parseOutputSegmentAssertion(trimmed.removePrefix("output-segment:"), label)
             trimmed.startsWith("output-payload:") -> parseOutputPayloadAssertion(trimmed.removePrefix("output-payload:"), label)
             trimmed.startsWith("output:") -> parseOutputAssertion(trimmed.removePrefix("output:"), label)
             else -> throw SandboxException(
                 DiagnosticCode.INPUT_FORMAT,
-                "$label must be a JSON object or shorthand score:<target>:<objective>=N, storage:<id>[:<path>]=<json>, advancement:<player>:<id>[=<true|false>], entity:<type|*>[@tag]=N, item:<player>:<id>[@slot]=N, player:<name>[:<field>=<value>], random-sequence:<name>=N, diff:<json-pointer>[=<kind>], event-trace:<player>:<type>[=N], trace:<root>=N, trace:<text>, trace-output:<text>[@target], warning=N, warning:<text>, unsupported=N, unsupported:<text>, output:<text>, output-normalized:<text>, or output-payload:<command>:<path>[=<json>]",
+                "$label must be a JSON object or shorthand score:<target>:<objective>=N, storage:<id>[:<path>]=<json>, advancement:<player>:<id>[=<true|false>], entity:<type|*>[@tag]=N, item:<player>:<id>[@slot]=N, player:<name>[:<field>=<value>], random-sequence:<name>=N, diff:<json-pointer>[=<kind>], event-trace:<player>:<type>[=N], trace:<root>=N, trace:<text>, trace-output:<text>[@target], warning=N, warning:<text>, unsupported=N, unsupported:<text>, output:<text>, output-normalized:<text>, output-segment:<text>[|color=<color>|bold=<true|false>][@target], or output-payload:<command>:<path>[=<json>]",
             )
         }
     }
@@ -989,6 +990,60 @@ class RunCommand : CliktCommand(name = "run") {
         val output = JsonObject().also { it.addProperty("normalizedContains", contains) }
         return JsonObject().also { it.add("output", output) }
     }
+
+    private fun parseOutputSegmentAssertion(spec: String, label: String): JsonObject {
+        val trimmed = spec.trim()
+        if (trimmed.isEmpty()) {
+            throw SandboxException(
+                DiagnosticCode.INPUT_FORMAT,
+                "$label output segment shorthand must be output-segment:<text>[|color=<color>|bold=<true|false>|italic=<true|false>|underlined=<true|false>|strikethrough=<true|false>|obfuscated=<true|false>][@target]",
+            )
+        }
+        val targetSplit = trimmed.lastIndexOf('@')
+        val segmentSpec = if (targetSplit < 0) trimmed else trimmed.substring(0, targetSplit).trim()
+        val target = targetSplit.takeIf { it >= 0 }?.let { trimmed.substring(it + 1).trim() }
+        if (segmentSpec.isEmpty() || target?.isEmpty() == true) {
+            throw SandboxException(
+                DiagnosticCode.INPUT_FORMAT,
+                "$label output segment shorthand must be output-segment:<text>[|color=<color>|bold=<true|false>|italic=<true|false>|underlined=<true|false>|strikethrough=<true|false>|obfuscated=<true|false>][@target]",
+            )
+        }
+        val parts = segmentSpec.split('|').map { it.trim() }
+        val contains = parts.first()
+        if (contains.isEmpty()) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label output segment shorthand text must not be empty")
+        }
+        val segment = JsonObject().also { it.addProperty("contains", contains) }
+        parts.drop(1).forEach { option ->
+            val splitAt = option.indexOf('=')
+            if (splitAt <= 0 || splitAt == option.lastIndex) {
+                throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label output segment option must be <name>=<value>")
+            }
+            val name = option.substring(0, splitAt).trim()
+            val value = option.substring(splitAt + 1).trim()
+            when (name) {
+                "color" -> segment.addProperty("color", value)
+                "bold", "italic", "underlined", "strikethrough", "obfuscated" ->
+                    segment.addProperty(name, parseOutputSegmentBoolean(value, name, label))
+                else -> throw SandboxException(
+                    DiagnosticCode.INPUT_FORMAT,
+                    "$label unsupported output segment option '$name'; use color, bold, italic, underlined, strikethrough, or obfuscated",
+                )
+            }
+        }
+        val output = JsonObject().also { json ->
+            target?.let { json.addProperty("target", it) }
+            json.add("segment", segment)
+        }
+        return JsonObject().also { it.add("output", output) }
+    }
+
+    private fun parseOutputSegmentBoolean(value: String, name: String, label: String): Boolean =
+        when (value.lowercase()) {
+            "true" -> true
+            "false" -> false
+            else -> throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label output segment option '$name' expected true or false but got '$value'")
+        }
 
     private fun parseOutputPayloadAssertion(spec: String, label: String): JsonObject {
         val trimmed = spec.trim()

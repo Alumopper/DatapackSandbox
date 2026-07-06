@@ -291,7 +291,9 @@ entity NBT path equality or existence.
 `output` assertions can check command/channel/targets, text/contains,
 whitespace-normalized text/contains, payload path/value, segment style, count,
 and one-based `order`. When an output assertion misses, the failure message
-includes a bounded list of actual output candidates.
+includes a bounded list of actual output candidates, including the requested
+payload path value or resolved text segment styles when those were part of the
+assertion.
 `trace` assertions can check command/root/contains, success, output count,
 output text/target, whether a command produced snapshot diffs, diff
 path/kind/rendered text, count, source file, and function stack. When a trace assertion misses, the failure
