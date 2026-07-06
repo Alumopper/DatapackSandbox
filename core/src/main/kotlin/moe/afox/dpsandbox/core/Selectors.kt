@@ -11,6 +11,7 @@ private data class SelectorOptions(
     val gamemode: Pair<String, Boolean>? = null,
     val team: Pair<String, Boolean>? = null,
     val nbt: Pair<JsonObject, Boolean>? = null,
+    val predicate: Pair<ResourceLocation, Boolean>? = null,
     val scores: Map<String, SelectorScoreRange> = emptyMap(),
     val advancements: Map<ResourceLocation, SelectorAdvancementExpectation> = emptyMap(),
     val level: SelectorScoreRange? = null,
@@ -85,6 +86,17 @@ object EntitySelectors {
         options.nbt?.let { (expected, positive) ->
             result = result.filter { entity ->
                 nbtContains(entity.fullNbt(location), expected) == positive
+            }
+        }
+        options.predicate?.let { (predicate, positive) ->
+            val engine = context.predicateEngine
+                ?: throw SandboxException(
+                    DiagnosticCode.MISSING_CONTEXT,
+                    "Selector predicate requires predicate runtime context",
+                    location = location,
+                )
+            result = result.filter { entity ->
+                engine.test(predicate, selectorPredicateContext(world, entity, origin, context)) == positive
             }
         }
         options.tags.forEach { (tag, positive) ->
@@ -171,6 +183,7 @@ object EntitySelectors {
         var gamemode: Pair<String, Boolean>? = null
         var team: Pair<String, Boolean>? = null
         var nbt: Pair<JsonObject, Boolean>? = null
+        var predicate: Pair<ResourceLocation, Boolean>? = null
         var scores: Map<String, SelectorScoreRange> = emptyMap()
         var advancements: Map<ResourceLocation, SelectorAdvancementExpectation> = emptyMap()
         var level: SelectorScoreRange? = null
@@ -214,6 +227,10 @@ object EntitySelectors {
                     val positive = !value.startsWith("!")
                     nbt = parseSelectorNbt(value.removePrefix("!"), location) to positive
                 }
+                "predicate" -> {
+                    val positive = !value.startsWith("!")
+                    predicate = ResourceLocation.parse(value.removePrefix("!")) to positive
+                }
                 "scores" -> scores = parseSelectorScores(value, location)
                 "advancements" -> advancements = parseSelectorAdvancements(value, location)
                 "level" -> level = parseSelectorIntRange(value, "level", location)
@@ -244,6 +261,7 @@ object EntitySelectors {
             gamemode = gamemode,
             team = team,
             nbt = nbt,
+            predicate = predicate,
             scores = scores,
             advancements = advancements,
             level = level,
@@ -437,6 +455,27 @@ object EntitySelectors {
 
     private fun deterministicSelectorHash(uuid: String, origin: Position): Int =
         "$uuid@${origin.x},${origin.y},${origin.z}".hashCode()
+
+    private fun selectorPredicateContext(
+        world: SandboxWorld,
+        entity: SandboxEntity,
+        origin: Position,
+        context: ExecutionContext,
+    ): PredicateContext {
+        val player = entity as? SandboxPlayer
+        return PredicateContext(
+            world = world,
+            origin = origin,
+            dimension = context.dimension,
+            thisEntity = entity,
+            player = player,
+            tool = player?.selectedItem,
+            weather = WeatherState(
+                raining = world.weather == "rain" || world.weather == "thunder",
+                thundering = world.weather == "thunder",
+            ),
+        )
+    }
 }
 
 private fun Position.distanceSquaredTo(other: Position): Double {

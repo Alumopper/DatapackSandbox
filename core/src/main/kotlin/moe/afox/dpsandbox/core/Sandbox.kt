@@ -33,6 +33,8 @@ data class ExecutionContext(
     val pitch: Double = entity?.pitch ?: 0.0,
     /** Current execution anchor used as the base for local coordinates. */
     val anchor: String = "feet",
+    /** Predicate evaluator available to selector `predicate=` filters. */
+    val predicateEngine: PredicateEngine? = null,
 )
 
 /**
@@ -220,6 +222,7 @@ class DatapackSandbox(
     fun executeCommand(command: String, location: SourceLocation? = null, context: ExecutionContext = ExecutionContext()): ExecutionResult {
         val normalized = command.trim().removePrefix("/")
         if (normalized.isBlank()) return ExecutionResult(0)
+        val runtimeContext = context.copy(predicateEngine = predicates)
         val before = commandsExecuted
         val outputsBefore = world.outputs.size
         val beforeSnapshot = buildSnapshotJson()
@@ -237,7 +240,7 @@ class DatapackSandbox(
         var errorMessage: String? = null
         var afterSnapshot: JsonObject? = null
         try {
-            val commandSuccess = executeOne(normalized, location, context)
+            val commandSuccess = executeOne(normalized, location, runtimeContext)
             checkOutputLimit(location)
             afterSnapshot = buildSnapshotJson()
             checkSnapshotSize(afterSnapshot)
@@ -259,8 +262,8 @@ class DatapackSandbox(
                 command = normalized,
                 root = normalized.substringBefore(' '),
                 source = source,
-                executor = context.entity?.scoreHolder ?: "Server",
-                position = context.position,
+                executor = runtimeContext.entity?.scoreHolder ?: "Server",
+                position = runtimeContext.position,
                 success = success,
                 commandsExecuted = commandsExecuted - before,
                 outputs = world.outputs.size - outputsBefore,

@@ -132,7 +132,7 @@ JSON text component 支持 `text`、`score`、`selector`、`translate`、`keybin
 
 已实现 selector：`@s`、`@a`、`@p`、`@e`、`@n`。
 
-已实现选项：`type`、`tag`、`name`、`gamemode`、`team`、`nbt`、`scores`、`advancements`、`level`、`x_rotation`、`y_rotation`、`limit`、`sort`、`distance`、`x`、`y`、`z`、`dx`、`dy`、`dz`；score 和等级过滤支持 `scores={kills=1..,deaths=..0}`、`level=..5` 这类整数范围，advancement 过滤按玩家当前进度支持整体完成或 criterion 布尔匹配，NBT 过滤使用包含式对象匹配和数值等值比较，旋转过滤支持带符号数值范围；`sort=random` 使用基于原点的确定性顺序，便于重复测试。未支持的 selector 选项会按当前 unsupported 策略产生诊断或 warning。
+已实现选项：`type`、`tag`、`name`、`gamemode`、`team`、`nbt`、`predicate`、`scores`、`advancements`、`level`、`x_rotation`、`y_rotation`、`limit`、`sort`、`distance`、`x`、`y`、`z`、`dx`、`dy`、`dz`；score 和等级过滤支持 `scores={kills=1..,deaths=..0}`、`level=..5` 这类整数范围，advancement 过滤按玩家当前进度支持整体完成或 criterion 布尔匹配，NBT 过滤使用包含式对象匹配和数值等值比较，predicate 过滤会把候选实体作为 `this` 上下文交给已加载数据包 predicate 引擎评估并支持 `!` 取反，旋转过滤支持带符号数值范围；`sort=random` 使用基于原点的确定性顺序，便于重复测试。未支持的 selector 选项会按当前 unsupported 策略产生诊断或 warning。
 
 ## 世界与 NBT 说明
 

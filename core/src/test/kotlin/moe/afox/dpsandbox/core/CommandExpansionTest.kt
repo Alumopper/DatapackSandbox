@@ -767,8 +767,10 @@ class CommandExpansionTest {
 
     @Test
     fun `selector options filter by name distance volume and sort`() {
+        val pack = writePredicatePack(Files.createTempDirectory("dps-selector-predicate-pack"))
         val sandbox = createFunctionSandboxFromString(
             version = "26.2",
+            packs = listOf(pack),
             functionText = "",
             functionId = "demo:empty",
         )
@@ -815,6 +817,9 @@ class CommandExpansionTest {
         sandbox.executeCommand("""execute if entity @e[type=minecraft:pig,nbt={Health:7f},limit=1] run scoreboard players add #nbt selector 1""")
         sandbox.executeCommand("""execute if entity @e[type=minecraft:pig,nbt=!{Health:7f},limit=1] run scoreboard players add #nbt selector 1""")
         sandbox.executeCommand("""execute unless entity @e[type=minecraft:pig,nbt={Health:9f}] run scoreboard players add #nbt selector 1""")
+        sandbox.executeCommand("""execute if entity @a[name=Alex,predicate=demo:is_player] run scoreboard players add #predicate selector 1""")
+        sandbox.executeCommand("""execute if entity @e[type=minecraft:pig,predicate=!demo:is_player,limit=1] run scoreboard players add #predicate selector 1""")
+        sandbox.executeCommand("""execute unless entity @a[name=Alex,predicate=demo:false] run scoreboard players add #predicate selector 1""")
         sandbox.executeCommand("""execute if entity @a[name=Alex,advancements={demo:selector_complete=true}] run scoreboard players add #adv selector 1""")
         sandbox.executeCommand("""execute if entity @a[name=Alex,advancements={demo:selector_partial={visible=true,hidden=false}}] run scoreboard players add #adv selector 1""")
         sandbox.executeCommand("""execute if entity @a[name=Blair,advancements={demo:selector_complete=false}] run scoreboard players add #adv selector 1""")
@@ -836,6 +841,7 @@ class CommandExpansionTest {
         assertEquals(2, sandbox.world.getScore("#name", "selector"))
         assertEquals(4, sandbox.world.getScore("#score", "selector"))
         assertEquals(3, sandbox.world.getScore("#nbt", "selector"))
+        assertEquals(3, sandbox.world.getScore("#predicate", "selector"))
         assertEquals(4, sandbox.world.getScore("#adv", "selector"))
         assertEquals(4, sandbox.world.getScore("#teamlevel", "selector"))
         assertEquals(3, sandbox.world.getScore("#rotation", "selector"))
