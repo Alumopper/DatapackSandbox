@@ -43,7 +43,7 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar commands --json --output build
 |---|---:|---:|---|
 | `advancement` | 部分支持 | `modeled` | `grant`、`revoke`、`test`；`grant`/`revoke` 支持 `only`、`from`、`through`、`until` 和 `everything`，会记录结构化 changed criterion 输出并可供 `execute store result` 使用；`test` 会记录通过数量和逐玩家结果 payload；每个玩家独立记录进度；奖励支持 function、loot、XP 和 recipe，并记录 `advancement reward` 结构化输出。 |
 | `attribute` | 部分支持 | `modeled` | `get`、`base get`、`base set`、`base reset`、`modifier add`、`modifier remove` 和 `modifier value get`；get 命令会记录结构化 data 输出，供断言和 `execute store result` 使用；modifier 状态会进入 snapshot 和实体 NBT。 |
-| `ban`、`ban-ip`、`banlist` | 未支持 | `unsupported` | 不模拟服务器封禁列表。 |
+| `ban`、`ban-ip`、`banlist` | 空操作 | `observed-noop` | 记录请求的封禁目标/IP、原因或列表过滤器为结构化 debug 输出；不存储封禁列表状态。 |
 | `bossbar` | 部分支持 | `modeled` | `add`、`remove`、`list`、`get`、`set`；修改命令和 `get` 都会记录结构化 data 输出，供断言和 `execute store result` 使用；状态进入 snapshot，不模拟客户端 UI。 |
 | `clear` | 部分支持 | `modeled` | 从沙盒玩家背包移除匹配物品，支持 JSON/SNBT-lite NBT 和 components payload 过滤，记录 matched/removed 数量；`maxCount=0` 作为只查询不删除的检查。 |
 | `clone` | 部分支持 | `modeled` | 复制稀疏世界中的方块状态和方块实体 NBT，并记录结构化复制/变化位置输出；不执行更新、掉落或重叠区物理。 |
@@ -53,7 +53,7 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar commands --json --output build
 | `debug`、`jfr`、`perf` | 空操作 | `observed-noop` | 接受 action/参数 token 并记录结构化 debug 输出；不模拟 profiling 和 flight recording。 |
 | `defaultgamemode` | 支持 | `modeled` | 存储世界默认游戏模式，并记录结构化前后输出。 |
 | `difficulty` | 支持 | `modeled` | 存储并报告世界难度，并记录结构化前后输出。 |
-| `deop`、`op` | 未支持 | `unsupported` | 不模拟权限系统。 |
+| `deop`、`op` | 空操作 | `observed-noop` | 记录请求的权限目标为结构化 debug 输出；不存储权限状态。 |
 | `effect` | 部分支持 | `modeled` | `give`、`clear`；更新玩家效果状态并触发相关 advancement 事件，也会更新非玩家实体 active effects，并通过 snapshot 和 `ActiveEffects` NBT 暴露；记录可用于 report/assertion 的结构化输出。 |
 | `enchant` | 部分支持 | `modeled` | 向玩家选中物品和非玩家实体主手装备写入附魔组件，并记录可用于 report/assertion 的结构化输出；不检查可附魔性。 |
 | `execute` | 部分支持 | `modeled` | 支持 `as`、`at`、`positioned <pos>`、`positioned as <selector>`、`align`、`anchored`、`facing`、`in`、`rotated`、`store`、`if`、`unless`、`run` 的核心路径；`as` 只切换执行者，`at` 会把执行位置、维度和旋转移动到目标实体，`positioned as` 只移动执行位置；`align` 会对校验过的 `x`/`y`/`z` 轴取整；`rotated` 和 `facing` 会更新命令旋转上下文，供 `tp` 的相对旋转参数和局部坐标使用；`anchored` 会更新局部坐标基准点；`store` 目标覆盖 score、storage、entity NBT、block NBT 和 bossbar value/max，NBT 目标会按 byte/short/int/long/float/double 类型和 scale 转换数值，整数类型使用窄化转换语义，嵌套条件失败和 `return fail` 会按 success/result `0` 写入；条件覆盖 `entity`、`score`、`data`、`block`、`blocks`、`predicate`、`function`、`dimension`、`biome` 和 `loaded`。 |
@@ -67,14 +67,14 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar commands --json --output build
 | `give` | 部分支持 | `modeled` | 向玩家背包添加物品，记录可用于 report/assertion 的结构化输出，并触发 inventory advancement 事件；item argument 支持沙盒 JSON/SNBT-lite NBT 和 components payload。 |
 | `help` | 部分支持 | `modeled` | 输出命令根节点和基础沙盒帮助。 |
 | `item` | 部分支持 | `modeled` | `replace entity|block ... with <item> [count]` 和 `from entity|block ...`；`replace` 与 `modify` 会记录可用于 report/assertion 的结构化输出；item argument 支持沙盒 JSON/SNBT-lite NBT 和 components payload；container item-stack NBT 校验接受旧/新版 `Count`/`count` 与 `Slot`/`slot` 别名；entity 槽位覆盖玩家背包、当前主手、`enderchest.*` 槽和非玩家实体装备槽；`modify entity|block ... <modifier>` 会应用常用 item modifier 函数（`set_components`、`set_custom_data`、`set_count`、`limit_count`、`set_item`、`discard`、`set_damage`、`set_name`、`set_lore`、`copy_nbt`、`copy_components`、`filtered`、`reference`、`sequence`）。 |
-| `kick` | 未支持 | `unsupported` | 不模拟网络会话。 |
+| `kick` | 空操作 | `observed-noop` | 记录请求的踢出目标和消息为结构化 debug 输出；不移除真实网络会话。 |
 | `kill` | 支持 | `modeled` | 移除选中的沙盒实体，并记录可用于 report/assertion 的结构化目标输出；玩家执行上下文会为非玩家目标触发 `killed_entity` advancement 事件。 |
 | `list` | 支持 | `modeled` | 报告沙盒玩家及 UUID。 |
 | `locate` | 部分支持 | `modeled` | 接受 `biome`、`structure`、`poi`；虚空世界中报告没有结果。 |
 | `loot` | 部分支持 | `modeled` | 支持 `give`、`insert`、`spawn`、`replace entity`、`replace block`，并记录可用于 report/assertion 的结构化 loot 输出；`spawn` 会在当前执行维度创建 item 实体；`replace entity` 可写入玩家背包、当前主手、`enderchest.*` 槽和非玩家实体装备槽；source 支持 `loot <table>`、`fish <table> <pos> [tool]`、`mine <pos> [tool]`，以及实体声明 `DeathLootTable` 时的 `kill <target>`；还支持沙盒上下文 source：`entity <table> <target>`、`block <table> <pos> [tool]`、`equipment <table> <target> <slot>`；entry 覆盖 item、嵌套 loot table、group、alternatives、sequence，以及带嵌套/optional 值的 item tag，其中 `expand=false` 会输出整个 tag，`expand=true` 会把 tag 内物品作为展开候选参与选择；常用函数覆盖 count、item id、discard、components/custom data、工具组件复制、实体名称复制、确定性附魔组件、工具附魔数量奖励、damage、name 和 lore。 |
 | `me` | 支持 | `modeled` | 记录为 chat 输出事件。 |
 | `msg`、`tell`、`w` | 支持 | `modeled` | 记录为私聊输出事件。 |
-| `pardon`、`pardon-ip` | 未支持 | `unsupported` | 不模拟服务器封禁管理。 |
+| `pardon`、`pardon-ip` | 空操作 | `observed-noop` | 记录请求的 pardon 目标/IP 为结构化 debug 输出；不存储封禁列表状态。 |
 | `particle` | 部分支持 | `observed-noop` | 记录为 visual 输出事件；不模拟客户端粒子。 |
 | `place` | 部分支持 | `observed-noop` | 接受 `feature`、`jigsaw`、`structure` 和 `template`；把类型、资源 id、位置和额外放置参数记录为结构化 worldgen 输出，但不修改世界。 |
 | `playsound` | 部分支持 | `observed-noop` | 记录为 sound 输出事件。 |
@@ -85,13 +85,13 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar commands --json --output build
 | `return` | 支持 | `modeled` | 结束当前 function；支持 `return <value>`、`return fail` 和 `return run <command>`，用于 function 条件和 store result 测试。 |
 | `ride` | 部分支持 | `modeled` | 记录载具和乘客关系，并记录结构化 mount/dismount 输出；不模拟控制或物理。 |
 | `rotate` | 部分支持 | `modeled` | 更新 yaw/pitch，并记录结构化前后旋转输出。 |
-| `save-all`、`save-off`、`save-on` | 未支持 | `unsupported` | 沙盒没有真实存档生命周期。 |
+| `save-all`、`save-off`、`save-on` | 空操作 | `observed-noop` | 记录请求的存档生命周期动作，包括 `save-all flush`，为结构化 debug 输出；不修改真实文件保存模式。 |
 | `say` | 支持 | `modeled` | 记录为 chat 输出事件。 |
 | `schedule` | 部分支持 | `modeled` | `schedule function <id> <time> [append|replace]`、`schedule clear <id>`；记录结构化调度和清除输出。 |
 | `scoreboard` | 部分支持 | `modeled` | objectives 支持 `add`、`remove`、`list`；players 支持 `set`、`add`、`remove`、`get`、`reset`、`list`、`enable`、`operation`；`players get` 会记录结构化 data 输出，供断言和 `execute store result` 使用。 |
 | `seed` | 支持 | `modeled` | 报告确定性的沙盒 seed。 |
 | `setblock` | 部分支持 | `modeled` | 修改稀疏世界方块状态和方块实体 NBT，并记录结构化前后方块输出；位置参数支持局部坐标；不执行邻居更新。 |
-| `setidletimeout` | 未支持 | `unsupported` | 服务器管理命令。 |
+| `setidletimeout` | 空操作 | `observed-noop` | 校验并记录请求的 idle timeout 分钟数为结构化 debug 输出；不模拟玩家空闲踢出。 |
 | `setworldspawn` | 部分支持 | `modeled` | 存储世界出生点和角度，并记录结构化出生点输出。 |
 | `spawnpoint` | 部分支持 | `modeled` | 存储玩家出生点和角度，并记录结构化目标输出。 |
 | `spectate` | 部分支持 | `modeled` | 设置旁观模式并记录目标；不模拟客户端镜头状态。 |
@@ -110,7 +110,7 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar commands --json --output build
 | `transfer` | 部分支持 | `observed-noop` | 记录请求的 host、port、目标玩家和接受的语法为结构化 debug 输出；不执行真实网络/server transfer。 |
 | `trigger` | 部分支持 | `modeled` | `trigger <objective> [add|set] [value]`；使用当前/default 玩家。 |
 | `weather` | 部分支持 | `modeled` | `clear`、`rain`、`thunder`；存储状态，并记录结构化天气输出。 |
-| `whitelist` | 未支持 | `unsupported` | 服务器管理命令。 |
+| `whitelist` | 空操作 | `observed-noop` | 接受 `add`、`remove`、`list`、`on`、`off`、`reload`，记录请求的 whitelist 动作为结构化 debug 输出；不存储白名单状态。 |
 | `worldborder` | 部分支持 | `modeled` | `get`、`set`、`add`、`center`、`damage`、`warning`；存储状态，并记录可断言的结构化修改/query 输出。 |
 
 ## 输出命令
@@ -122,7 +122,7 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar commands --json --output build
 - sound：`playsound`、`stopsound`
 - visual：`particle`
 - data：modeled 命令的结构化状态和 query 输出
-- debug：manifest/工具辅助输出，以及 `debug`、`jfr`、`perf`、`transfer`、`publish`、`stop` 等 profiling/网络/生命周期类 observed-noop 请求
+- debug：manifest/工具辅助输出，以及 `debug`、`jfr`、`perf`、`transfer`、`publish`、`stop`、`ban`、`whitelist` 等 profiling/网络/生命周期/服务器管理类 observed-noop 请求
 - worldgen：`place`
 - warning：未支持或 no-op 命令提示
 

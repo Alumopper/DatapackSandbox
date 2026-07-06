@@ -480,6 +480,8 @@ class DatapackSandbox(
 
         try {
             when (tokens[0].text) {
+                "ban", "ban-ip", "banlist", "deop", "kick", "op", "pardon", "pardon-ip", "whitelist" ->
+                    executeServerAdminNoop(command, tokens, location)
                 "function" -> return executeFunction(tokens, location, context).success
                 "return" -> executeReturn(command, tokens, location, context)
                 "attribute" -> executeAttribute(tokens, location, context)
@@ -521,7 +523,9 @@ class DatapackSandbox(
                 "ride" -> executeRide(tokens, location, context)
                 "rotate" -> executeRotate(tokens, location, context)
                 "schedule" -> executeSchedule(tokens, location)
+                "save-all", "save-off", "save-on" -> executeSaveLifecycleNoop(tokens, location)
                 "seed" -> executeSeed(tokens, location)
+                "setidletimeout" -> executeSetIdleTimeout(tokens, location)
                 "setworldspawn" -> executeSetWorldSpawn(tokens, location, context)
                 "spawnpoint" -> executeSpawnPoint(tokens, location, context)
                 "spectate" -> executeSpectate(tokens, location, context)
@@ -4391,6 +4395,101 @@ class DatapackSandbox(
         payload.addProperty("noOp", true)
         payload.addProperty("reason", "Profiling and flight recording are not simulated by the sandbox")
         world.recordOutput(tokens[0].text, "debug", text = tokens.drop(1).joinToString(" ") { it.text }, payload = payload)
+    }
+
+    private fun executeServerAdminNoop(command: String, tokens: List<CommandToken>, location: SourceLocation?) {
+        val root = tokens[0].text
+        fun payload(action: String): JsonObject =
+            JsonObject().also {
+                it.addProperty("action", action)
+                it.addProperty("noOp", true)
+                it.addProperty("noOpReason", "Server administration state is not simulated by the sandbox")
+            }
+
+        when (root) {
+            "ban", "ban-ip", "kick" -> {
+                requireSize(tokens, 2, "$root <target> [reason]", location)
+                val reason = tokens.getOrNull(2)?.let { CommandTokenizer.tailFrom(command, it) }
+                val payload = payload(root)
+                payload.addProperty("target", tokens[1].text)
+                reason?.let { payload.addProperty("message", it) }
+                world.recordOutput(root, "debug", text = tokens[1].text, payload = payload)
+            }
+            "pardon", "pardon-ip", "op", "deop" -> {
+                requireSize(tokens, 2, "$root <target>", location)
+                world.recordOutput(
+                    root,
+                    "debug",
+                    text = tokens[1].text,
+                    payload = payload(root).also { it.addProperty("target", tokens[1].text) },
+                )
+            }
+            "banlist" -> {
+                val filter = tokens.getOrNull(1)?.text ?: "players"
+                if (filter !in setOf("ips", "players")) {
+                    throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Expected: banlist [ips|players]", location)
+                }
+                world.recordOutput(
+                    "banlist",
+                    "debug",
+                    text = filter,
+                    payload = payload("list").also { it.addProperty("filter", filter) },
+                )
+            }
+            "whitelist" -> executeWhitelistNoop(tokens, location, ::payload)
+        }
+    }
+
+    private fun executeWhitelistNoop(
+        tokens: List<CommandToken>,
+        location: SourceLocation?,
+        payloadFactory: (String) -> JsonObject,
+    ) {
+        requireSize(tokens, 2, "whitelist <add|remove|list|on|off|reload> [target]", location)
+        val action = tokens[1].text
+        if (action !in setOf("add", "remove", "list", "on", "off", "reload")) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Expected: whitelist <add|remove|list|on|off|reload> [target]", location)
+        }
+        val payload = payloadFactory(action)
+        if (action in setOf("add", "remove")) {
+            requireSize(tokens, 3, "whitelist $action <target>", location)
+            payload.addProperty("target", tokens[2].text)
+        }
+        world.recordOutput("whitelist $action", "debug", text = tokens.getOrNull(2)?.text.orEmpty(), payload = payload)
+    }
+
+    private fun executeSaveLifecycleNoop(tokens: List<CommandToken>, location: SourceLocation?) {
+        val command = tokens[0].text
+        val payload = JsonObject()
+        payload.addProperty("action", command.removePrefix("save-"))
+        payload.addProperty("noOp", true)
+        payload.addProperty("noOpReason", "World save lifecycle is controlled by the host process")
+        if (command == "save-all") {
+            val flush = tokens.getOrNull(1)?.text?.let {
+                if (it != "flush") throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Expected: save-all [flush]", location)
+                true
+            } ?: false
+            payload.addProperty("flush", flush)
+        }
+        world.recordOutput(command, "debug", text = command, payload = payload)
+    }
+
+    private fun executeSetIdleTimeout(tokens: List<CommandToken>, location: SourceLocation?) {
+        requireSize(tokens, 2, "setidletimeout <minutes>", location)
+        val minutes = parseInt(tokens[1].text, "idle timeout minutes", location)
+        if (minutes < 0) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Invalid idle timeout minutes: '${tokens[1].text}'", location)
+        }
+        world.recordOutput(
+            "setidletimeout",
+            "debug",
+            text = minutes.toString(),
+            payload = JsonObject().also {
+                it.addProperty("minutes", minutes)
+                it.addProperty("noOp", true)
+                it.addProperty("noOpReason", "Player idle timeout enforcement is not simulated by the sandbox")
+            },
+        )
     }
 
     private fun executeStop(tokens: List<CommandToken>, location: SourceLocation?) {

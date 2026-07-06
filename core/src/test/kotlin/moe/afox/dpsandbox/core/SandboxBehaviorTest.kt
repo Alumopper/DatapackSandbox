@@ -80,24 +80,24 @@ class SandboxBehaviorTest {
     }
 
     @Test
-    fun `warns for unsupported vanilla commands by default`() {
+    fun `warns for unsupported command branches by default`() {
         val sandbox = createSandbox("26.1.2", listOf(fixturePack()))
 
-        sandbox.executeCommand("ban Steve")
+        sandbox.executeCommand("schedule noop demo:later 1t")
 
         assertEquals("warning", sandbox.world.outputs.single().channel)
-        assertTrue(sandbox.world.outputs.single().text.contains("ban"))
+        assertTrue(sandbox.world.outputs.single().text.contains("schedule"))
     }
 
     @Test
-    fun `can ignore or error for unsupported vanilla commands`() {
+    fun `can ignore or error for unsupported command branches`() {
         val ignored = createSandbox("26.1.2", listOf(fixturePack()), unsupportedFeatureMode = UnsupportedFeatureMode.IGNORE)
-        ignored.executeCommand("ban Steve")
+        ignored.executeCommand("schedule noop demo:later 1t")
         assertTrue(ignored.world.outputs.isEmpty())
 
         val strict = createSandbox("26.1.2", listOf(fixturePack()), unsupportedFeatureMode = UnsupportedFeatureMode.ERROR)
         val error = assertFailsWith<SandboxException> {
-            strict.executeCommand("ban Steve")
+            strict.executeCommand("schedule noop demo:later 1t")
         }
         assertEquals(DiagnosticCode.UNSUPPORTED_FEATURE, error.code)
     }

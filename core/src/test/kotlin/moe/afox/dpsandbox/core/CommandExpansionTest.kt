@@ -197,12 +197,26 @@ class CommandExpansionTest {
         sandbox.executeCommand("place structure demo:ruin 1 64 2")
         sandbox.executeCommand("place template demo:room ~ ~1 ~ clockwise_90 front_back 0.5 123")
         sandbox.executeCommand("datapack list")
+        sandbox.executeCommand("ban Steve generated reason")
+        sandbox.executeCommand("ban-ip 127.0.0.1 generated ip reason")
+        sandbox.executeCommand("banlist ips")
         sandbox.executeCommand("debug start")
+        sandbox.executeCommand("deop Steve")
         sandbox.executeCommand("jfr start")
+        sandbox.executeCommand("kick Steve generated kick reason")
+        sandbox.executeCommand("op Steve")
+        sandbox.executeCommand("pardon Steve")
+        sandbox.executeCommand("pardon-ip 127.0.0.1")
         sandbox.executeCommand("perf start")
         sandbox.executeCommand("publish true creative 25566")
         sandbox.executeCommand("reload")
+        sandbox.executeCommand("save-all flush")
+        sandbox.executeCommand("save-off")
+        sandbox.executeCommand("save-on")
+        sandbox.executeCommand("setidletimeout 10")
         sandbox.executeCommand("stop")
+        sandbox.executeCommand("whitelist add Steve")
+        sandbox.executeCommand("whitelist list")
         sandbox.executeCommand("scoreboard objectives add trig trigger")
         sandbox.executeCommand("trigger trig set 4")
 
@@ -224,6 +238,16 @@ class CommandExpansionTest {
         assertEquals(1.0, placeTemplatePayload.getAsJsonObject("position").get("y").asDouble)
         assertEquals(listOf("clockwise_90", "front_back", "0.5", "123"), placeTemplatePayload.getAsJsonArray("extra").map { it.asString })
         assertTrue(sandbox.world.outputs.any { it.command == "datapack list" })
+        listOf("ban", "ban-ip", "banlist", "deop", "kick", "op", "pardon", "pardon-ip", "whitelist add", "whitelist list")
+            .forEach { command ->
+                val output = sandbox.world.outputs.single { it.command == command }
+                val payload = output.payload?.asJsonObject ?: error("missing $command payload")
+                assertEquals("debug", output.channel)
+                assertEquals(true, payload.get("noOp").asBoolean)
+            }
+        assertEquals("generated reason", sandbox.world.outputs.single { it.command == "ban" }.payload?.asJsonObject?.get("message")?.asString)
+        assertEquals("ips", sandbox.world.outputs.single { it.command == "banlist" }.payload?.asJsonObject?.get("filter")?.asString)
+        assertEquals("Steve", sandbox.world.outputs.single { it.command == "whitelist add" }.payload?.asJsonObject?.get("target")?.asString)
         listOf("debug", "jfr", "perf").forEach { command ->
             val profilingOutput = sandbox.world.outputs.single { it.command == command }
             val profilingPayload = profilingOutput.payload?.asJsonObject ?: error("missing $command payload")
@@ -239,12 +263,24 @@ class CommandExpansionTest {
         assertEquals(25566, publishPayload.get("port").asInt)
         assertEquals(true, publishPayload.get("noOp").asBoolean)
         assertTrue(sandbox.world.outputs.any { it.command == "reload" })
+        assertEquals(true, sandbox.world.outputs.single { it.command == "save-all" }.payload?.asJsonObject?.get("flush")?.asBoolean)
+        assertEquals(true, sandbox.world.outputs.single { it.command == "save-off" }.payload?.asJsonObject?.get("noOp")?.asBoolean)
+        assertEquals(true, sandbox.world.outputs.single { it.command == "save-on" }.payload?.asJsonObject?.get("noOp")?.asBoolean)
+        assertEquals(10, sandbox.world.outputs.single { it.command == "setidletimeout" }.payload?.asJsonObject?.get("minutes")?.asInt)
         assertEquals(true, sandbox.world.outputs.single { it.command == "stop" }.payload?.asJsonObject?.get("noOp")?.asBoolean)
         val publishError = assertFailsWith<SandboxException> {
             sandbox.executeCommand("publish true creative 70000")
         }
         assertEquals(DiagnosticCode.INPUT_FORMAT, publishError.code)
         assertTrue(publishError.message.contains("publish port"), publishError.message)
+        val whitelistError = assertFailsWith<SandboxException> {
+            sandbox.executeCommand("whitelist add")
+        }
+        assertEquals(DiagnosticCode.INPUT_FORMAT, whitelistError.code)
+        val idleTimeoutError = assertFailsWith<SandboxException> {
+            sandbox.executeCommand("setidletimeout -1")
+        }
+        assertEquals(DiagnosticCode.INPUT_FORMAT, idleTimeoutError.code)
     }
 
     @Test

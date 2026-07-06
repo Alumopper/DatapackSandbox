@@ -55,7 +55,7 @@ runs this through the standalone jar smoke task.
 |---|---:|---:|---|
 | `advancement` | Partial | `modeled` | `grant`, `revoke`, `test`; `grant`/`revoke` support `only`, `from`, `through`, `until`, and `everything`, record structured changed-criterion output, and can feed `execute store result`; `test` records passed counts and per-player result payloads; progress is per player; rewards support functions, loot, XP, and recipes. |
 | `attribute` | Partial | `modeled` | `get`, `base get`, `base set`, `base reset`, `modifier add`, `modifier remove`, and `modifier value get`; get commands record structured data output for assertions and `execute store result`; modifier state is exposed in snapshots and entity NBT. |
-| `ban`, `ban-ip`, `banlist` | Unsupported | `unsupported` | Server administration and ban lists are not simulated. |
+| `ban`, `ban-ip`, `banlist` | No-op | `observed-noop` | Records requested ban target/IP, reason, or list filter as structured debug output; no ban list state is stored. |
 | `bossbar` | Partial | `modeled` | `add`, `remove`, `list`, `get`, `set`; mutations and `get` record structured data output for assertions and `execute store result`; state is stored and appears in snapshots, no real client UI. |
 | `clear` | Partial | `modeled` | Removes matching item stacks from sandbox player inventories, including JSON/SNBT-lite NBT and component payload filters; records the matched/removed count, and treats `maxCount=0` as a query-only check. |
 | `clone` | Partial | `modeled` | Copies sparse sandbox block state/NBT and records structured copied/changed-position output; no updates, drops, or overlap physics. |
@@ -65,7 +65,7 @@ runs this through the standalone jar smoke task.
 | `debug`, `jfr`, `perf` | No-op | `observed-noop` | Accept action/argument tokens and record structured debug output; profiling and flight recording are not simulated. |
 | `defaultgamemode` | Supported | `modeled` | Stores world default game mode and records structured before/after output. |
 | `difficulty` | Supported | `modeled` | Stores and reports world difficulty with structured before/after output. |
-| `deop`, `op` | Unsupported | `unsupported` | Permission system is not simulated. |
+| `deop`, `op` | No-op | `observed-noop` | Records requested permission target as structured debug output; no permission state is stored. |
 | `effect` | Partial | `modeled` | `give`, `clear`; updates player effect state with advancement events and non-player entity active effects visible through snapshot and `ActiveEffects` NBT; records structured output for reports/assertions. |
 | `enchant` | Partial | `modeled` | Writes enchantment components to player selected items and non-player mainhand equipment, with structured output for reports/assertions; no enchantability checks. |
 | `execute` | Partial | `modeled` | `as`, `at`, `positioned <pos>`, `positioned as <selector>`, `align`, `anchored`, `facing`, `in`, `rotated`, `store`, `if`, `unless`, `run`; `as` changes only the executor, `at` moves execution position/dimension/rotation to the target, and `positioned as` moves only the execution position; `align` floors validated `x`/`y`/`z` axes; `rotated` and `facing` update the command rotation context used by relative `tp` rotations and local coordinates; `anchored` updates the local-coordinate base; `store` targets score, storage, entity NBT, block NBT, and bossbar value/max, honors byte/short/int/long/float/double type plus scale for NBT targets with integer narrowing behavior, with nested condition failure and `return fail` stored as success/result `0`; conditions support `entity`, `score`, `data`, `block`, `blocks`, `predicate`, `function`, `dimension`, `biome`, and `loaded`. |
@@ -79,14 +79,14 @@ runs this through the standalone jar smoke task.
 | `give` | Partial | `modeled` | Adds item stacks to player inventories, records structured output for reports/assertions, and fires inventory advancement events; item arguments accept sandbox JSON/SNBT-lite NBT and component payloads. |
 | `help` | Partial | `modeled` | Reports command roots and basic sandbox help text. |
 | `item` | Partial | `modeled` | `replace entity|block ... with <item> [count]` and `from entity|block ...`; `replace` and `modify` record structured output for reports/assertions; item arguments accept sandbox JSON/SNBT-lite NBT and component payloads; container item-stack NBT validation accepts legacy/current `Count`/`count` and `Slot`/`slot` aliases; entity slots cover player inventory/selected-mainhand/`enderchest.*` slots and non-player equipment slots; `modify entity|block ... <modifier>` applies common item modifier functions (`set_components`, `set_custom_data`, `set_count`, `limit_count`, `set_item`, `discard`, `set_damage`, `set_name`, `set_lore`, `copy_nbt`, `copy_components`, `filtered`, `reference`, `sequence`). |
-| `kick` | Unsupported | `unsupported` | Network sessions are not simulated. |
+| `kick` | No-op | `observed-noop` | Records requested kick target and message as structured debug output; no network session is removed. |
 | `kill` | Supported | `modeled` | Removes selected sandbox entities, records structured target output for reports/assertions, and player execution contexts fire `killed_entity` advancement events for non-player targets. |
 | `list` | Supported | `modeled` | Reports sandbox players and UUIDs. |
 | `locate` | Partial | `modeled` | Accepts `biome`, `structure`, `poi`; reports no result in the void world instead of querying worldgen. |
 | `loot` | Partial | `modeled` | Supports `give`, `insert`, `spawn`, `replace entity`, `replace block`, with structured loot output for reports/assertions; `spawn` creates item entities in the current execution dimension; `replace entity` writes player inventory/selected-mainhand/`enderchest.*` slots and non-player equipment slots; sources include `loot <table>`, `fish <table> <pos> [tool]`, `mine <pos> [tool]`, `kill <target>` when entities declare `DeathLootTable`, plus sandbox context sources `entity <table> <target>`, `block <table> <pos> [tool]`, and `equipment <table> <target> <slot>`; entries include item, nested loot table, groups, alternatives, sequences, and item tags with nested/optional tag values where `expand=false` emits the whole tag and `expand=true` selects expanded tag items; common functions include count, item id, discard, components/custom data, copied tool components, entity name copy, deterministic enchantment components, tool-enchantment bonus counts, damage, name, and lore. |
 | `me` | Supported | `modeled` | Recorded as chat output. |
 | `msg`, `tell`, `w` | Supported | `modeled` | Recorded as private chat output. |
-| `pardon`, `pardon-ip` | Unsupported | `unsupported` | Server administration is not simulated. |
+| `pardon`, `pardon-ip` | No-op | `observed-noop` | Records requested pardon target/IP as structured debug output; no ban list state is stored. |
 | `particle` | Partial | `observed-noop` | Recorded as visual output event; no client particles. |
 | `place` | Partial | `observed-noop` | Accepts `feature`, `jigsaw`, `structure`, and `template`; records kind, resource id, position, and extra placement arguments as structured worldgen output, but does not mutate the world. |
 | `playsound` | Partial | `observed-noop` | Recorded as sound output event. |
@@ -97,13 +97,13 @@ runs this through the standalone jar smoke task.
 | `return` | Supported | `modeled` | Stops the current function; supports `return <value>`, `return fail`, and `return run <command>` for function conditions and store result tests. |
 | `ride` | Partial | `modeled` | Tracks vehicle/passenger relationships and records structured mount/dismount output; no physics/control. |
 | `rotate` | Partial | `modeled` | Updates yaw/pitch and records structured before/after rotation output. |
-| `save-all`, `save-off`, `save-on` | Unsupported | `unsupported` | No real world save lifecycle exists. |
+| `save-all`, `save-off`, `save-on` | No-op | `observed-noop` | Records requested save lifecycle action, including `save-all flush`, as structured debug output; no filesystem save mode changes occur. |
 | `say` | Supported | `modeled` | Recorded as chat output. |
 | `schedule` | Partial | `modeled` | `schedule function <id> <time> [append|replace]`, `schedule clear <id>`; records structured scheduling and clearing output. |
 | `scoreboard` | Partial | `modeled` | Objectives `add`, `remove`, `list`; players `set`, `add`, `remove`, `get`, `reset`, `list`, `enable`, `operation`; `players get` records a structured data output for assertions and `execute store result`. |
 | `seed` | Supported | `modeled` | Reports deterministic sandbox seed. |
 | `setblock` | Partial | `modeled` | Mutates sparse block state/NBT and records structured before/after block output; position arguments accept local coordinates; no neighbor updates. |
-| `setidletimeout` | Unsupported | `unsupported` | Server administration command. |
+| `setidletimeout` | No-op | `observed-noop` | Validates and records requested idle timeout minutes as structured debug output; no player idle enforcement is simulated. |
 | `setworldspawn` | Partial | `modeled` | Stores sandbox world spawn position/angle and records structured spawn output. |
 | `spawnpoint` | Partial | `modeled` | Stores per-player spawn point/angle and records structured target output. |
 | `spectate` | Partial | `modeled` | Sets spectator mode and records target; no camera/client state. |
@@ -122,7 +122,7 @@ runs this through the standalone jar smoke task.
 | `transfer` | Partial | `observed-noop` | Records requested host, port, target players, and accepted syntax as structured debug output; no network/server transfer is performed. |
 | `trigger` | Partial | `modeled` | `trigger <objective> [add|set] [value]`; uses current/default sandbox player. |
 | `weather` | Partial | `modeled` | `clear`, `rain`, `thunder`; stores state and records structured weather output. |
-| `whitelist` | Unsupported | `unsupported` | Server administration command. |
+| `whitelist` | No-op | `observed-noop` | Accepts `add`, `remove`, `list`, `on`, `off`, and `reload`, records the requested whitelist action as structured debug output, and stores no whitelist state. |
 | `worldborder` | Partial | `modeled` | `get`, `set`, `add`, `center`, `damage`, `warning`; stores state and records structured mutation/query output for assertions. |
 
 ## Text And Output Commands
@@ -135,7 +135,7 @@ REPL output, `run`, `check --verbose`, and the code test API:
 - sound: `playsound`, `stopsound`
 - visual: `particle`
 - data: structured state and query outputs from modeled commands
-- debug: manifest/tooling helper outputs plus profiling/network/lifecycle observed-noop requests such as `debug`, `jfr`, `perf`, `transfer`, `publish`, and `stop`
+- debug: manifest/tooling helper outputs plus profiling/network/lifecycle/server-admin observed-noop requests such as `debug`, `jfr`, `perf`, `transfer`, `publish`, `stop`, `ban`, and `whitelist`
 - worldgen: `place`
 - warning: unsupported or no-op command notices
 
