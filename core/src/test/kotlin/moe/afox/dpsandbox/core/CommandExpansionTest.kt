@@ -106,12 +106,19 @@ class CommandExpansionTest {
         sandbox.executeCommand("loot give Steve fish demo:fish 0 64 0 minecraft:stick")
         sandbox.executeCommand("loot give Steve mine 0 64 0 minecraft:stick")
         sandbox.executeCommand("summon minecraft:zombie 2 64 0")
+        sandbox.executeCommand("item replace entity @e[type=minecraft:zombie,limit=1] weapon.mainhand with minecraft:stick")
         sandbox.executeCommand("loot give Steve kill @e[type=minecraft:zombie,limit=1]")
         sandbox.executeCommand("loot spawn 1 64 1 mine 0 64 0")
+        sandbox.executeCommand("loot give Steve entity demo:entity_context @e[type=minecraft:zombie,limit=1]")
+        sandbox.executeCommand("loot give Steve block demo:block_context 0 64 0 minecraft:diamond_pickaxe")
+        sandbox.executeCommand("loot give Steve equipment demo:equipment_context @e[type=minecraft:zombie,limit=1] weapon.mainhand")
 
         val inventoryIds = sandbox.world.requirePlayer("Steve").inventory.map { it.id }.toSet()
         assertTrue(ResourceLocation.parse("minecraft:diamond") in inventoryIds)
         assertTrue(ResourceLocation.parse("minecraft:stone") in inventoryIds)
+        assertTrue(ResourceLocation.parse("minecraft:gold_ingot") in inventoryIds)
+        assertTrue(ResourceLocation.parse("minecraft:cobblestone") in inventoryIds)
+        assertTrue(ResourceLocation.parse("minecraft:apple") in inventoryIds)
         assertTrue(
             sandbox.world.entities.any {
                 it.type == ResourceLocation.parse("minecraft:item") &&
@@ -659,6 +666,86 @@ class CommandExpansionTest {
                     {
                       "type": "minecraft:item",
                       "name": "minecraft:diamond"
+                    }
+                  ]
+                }
+              ]
+            }
+            """.trimIndent(),
+        )
+        Files.writeString(
+            lootRoot.resolve("entity_context.json"),
+            """
+            {
+              "type": "minecraft:entity",
+              "pools": [
+                {
+                  "rolls": 1,
+                  "conditions": [
+                    {
+                      "condition": "minecraft:entity_properties",
+                      "entity": "this",
+                      "predicate": {
+                        "type": "minecraft:zombie"
+                      }
+                    }
+                  ],
+                  "entries": [
+                    {
+                      "type": "minecraft:item",
+                      "name": "minecraft:gold_ingot"
+                    }
+                  ]
+                }
+              ]
+            }
+            """.trimIndent(),
+        )
+        Files.writeString(
+            lootRoot.resolve("block_context.json"),
+            """
+            {
+              "type": "minecraft:block",
+              "pools": [
+                {
+                  "rolls": 1,
+                  "conditions": [
+                    {
+                      "condition": "minecraft:block_state_property",
+                      "block": "minecraft:stone"
+                    }
+                  ],
+                  "entries": [
+                    {
+                      "type": "minecraft:item",
+                      "name": "minecraft:cobblestone"
+                    }
+                  ]
+                }
+              ]
+            }
+            """.trimIndent(),
+        )
+        Files.writeString(
+            lootRoot.resolve("equipment_context.json"),
+            """
+            {
+              "type": "minecraft:equipment",
+              "pools": [
+                {
+                  "rolls": 1,
+                  "conditions": [
+                    {
+                      "condition": "minecraft:match_tool",
+                      "predicate": {
+                        "items": "minecraft:stick"
+                      }
+                    }
+                  ],
+                  "entries": [
+                    {
+                      "type": "minecraft:item",
+                      "name": "minecraft:apple"
                     }
                   ]
                 }

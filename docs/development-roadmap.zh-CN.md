@@ -56,7 +56,7 @@
   - 支持更完整的 data path，包括 list/object 匹配、append/prepend/insert、set/from/string/value。
   - 所有写入都经过 NBT schema 或 sandbox state 规则校验。
 - 扩展 `loot`：
-  - 补齐 source：`mine`、`kill`、`fish`、`entity`、`block`、`equipment` 等适合测试的确定性模型。
+  - 补齐 source：`mine`、`kill`、`fish`、`entity`、`block`、`equipment` 等适合测试的确定性模型；命令 source 已覆盖 `fish`、`mine`、`kill`、`entity <table> <target>`、`block <table> <pos> [tool]`、`equipment <table> <target> <slot>`。
   - 输出既能进入玩家/方块/实体，也能作为独立生成结果供 CLI 和 manifest 断言。
 - 扩展 `item` 和 item modifier：
   - 支持 entity/block slot 读写、modifier 应用、components/NBT 兼容差异。

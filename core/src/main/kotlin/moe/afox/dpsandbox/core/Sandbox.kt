@@ -623,6 +623,29 @@ class DatapackSandbox(
                     }.orEmpty()
                 }
             }
+            "entity" -> {
+                requireSizeFrom(tokens, index, 3, "loot source entity <table> <target>", location)
+                val table = ResourceLocation.parse(tokens[index + 1].text)
+                EntitySelectors.select(world, tokens[index + 2].text, context, location).flatMap { entity ->
+                    generateLootItems(table, ResourceLocation("minecraft", "entity"), context, origin = entity.position, thisEntity = entity)
+                }
+            }
+            "block" -> {
+                requireSizeFrom(tokens, index, 5, "loot source block <table> <pos> [tool]", location)
+                val table = ResourceLocation.parse(tokens[index + 1].text)
+                val pos = parseBlockPos(tokens, index + 2, context, location)
+                val block = world.block(pos) ?: return emptyList()
+                val tool = tokens.getOrNull(index + 5)?.text?.let(::lootTool)
+                generateLootItems(table, ResourceLocation("minecraft", "block"), context, origin = Position(pos.x.toDouble(), pos.y.toDouble(), pos.z.toDouble()), tool = tool, block = block.id)
+            }
+            "equipment" -> {
+                requireSizeFrom(tokens, index, 4, "loot source equipment <table> <target> <slot>", location)
+                val table = ResourceLocation.parse(tokens[index + 1].text)
+                EntitySelectors.select(world, tokens[index + 2].text, context, location).flatMap { entity ->
+                    val tool = entityItemAccess(entity, tokens[index + 3].text, location).get()
+                    generateLootItems(table, ResourceLocation("minecraft", "equipment"), context, origin = entity.position, thisEntity = entity, tool = tool)
+                }
+            }
             else -> unsupportedFeature("Unsupported loot source '${tokens[index].text}'", profile.id, location)
         }
     }

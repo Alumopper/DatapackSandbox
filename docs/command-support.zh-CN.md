@@ -49,7 +49,7 @@
 | `kill` | 支持 | 移除选中的沙盒实体；玩家执行上下文会为非玩家目标触发 `killed_entity` advancement 事件。 |
 | `list` | 支持 | 报告沙盒玩家及 UUID。 |
 | `locate` | 部分支持 | 接受 `biome`、`structure`、`poi`；虚空世界中报告没有结果。 |
-| `loot` | 部分支持 | 支持 `give`、`insert`、`spawn`、`replace entity`、`replace block`；source 支持 `loot <table>`、`fish <table> <pos> [tool]`、`mine <pos> [tool]`，以及实体声明 `DeathLootTable` 时的 `kill <target>`；常用函数覆盖 count、item id、discard、components/custom data、damage、name 和 lore。 |
+| `loot` | 部分支持 | 支持 `give`、`insert`、`spawn`、`replace entity`、`replace block`；source 支持 `loot <table>`、`fish <table> <pos> [tool]`、`mine <pos> [tool]`，以及实体声明 `DeathLootTable` 时的 `kill <target>`；还支持沙盒上下文 source：`entity <table> <target>`、`block <table> <pos> [tool]`、`equipment <table> <target> <slot>`；常用函数覆盖 count、item id、discard、components/custom data、damage、name 和 lore。 |
 | `me` | 支持 | 记录为 chat 输出事件。 |
 | `msg`、`tell`、`w` | 支持 | 记录为私聊输出事件。 |
 | `pardon`、`pardon-ip` | 未支持 | 不模拟服务器封禁管理。 |
