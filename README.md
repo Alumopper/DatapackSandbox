@@ -213,7 +213,7 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar run --version 26.2 \
   --assert-file ./assertions.json
 ```
 
-For quick score, storage, advancement, player, item, entity-count, diff, trace, trace-output, warning, and output checks,
+For quick score, storage, advancement, player, item, entity-count, diff, trace, trace-output, warning, output, and normalized output checks,
 `--assert` also accepts compact shorthands. `--assert-file` can contain JSON
 assertions or one shorthand per non-empty, non-comment line:
 
@@ -233,7 +233,8 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar run --version 26.2 \
   --assert "diff:/scores/runs=added" \
   --assert "trace:scoreboard=2" \
   --assert "trace-output:generated ok@Steve" \
-  --assert "output:generated ok"
+  --assert "output:generated ok" \
+  --assert "output-normalized:generated ok"
 ```
 
 Player events can be injected in the same quick `run` flow and checked with

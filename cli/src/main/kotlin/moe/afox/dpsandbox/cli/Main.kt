@@ -565,10 +565,11 @@ class RunCommand : CliktCommand(name = "run") {
             trimmed.startsWith("trace-output:") -> parseTraceOutputAssertion(trimmed.removePrefix("trace-output:"), label)
             trimmed.startsWith("warning:") -> parseWarningContainsAssertion(trimmed.removePrefix("warning:"), label)
             trimmed.startsWith("warning=") -> parseWarningCountAssertion(trimmed.removePrefix("warning="), label)
+            trimmed.startsWith("output-normalized:") -> parseNormalizedOutputAssertion(trimmed.removePrefix("output-normalized:"), label)
             trimmed.startsWith("output:") -> parseOutputAssertion(trimmed.removePrefix("output:"), label)
             else -> throw SandboxException(
                 DiagnosticCode.INPUT_FORMAT,
-                "$label must be a JSON object or shorthand score:<target>:<objective>=N, storage:<id>[:<path>]=<json>, advancement:<player>:<id>[=<true|false>], entity:<type|*>[@tag]=N, item:<player>:<id>[@slot]=N, player:<name>[:<field>=<value>], diff:<json-pointer>[=<kind>], event-trace:<player>:<type>[=N], trace:<root>=N, trace:<text>, trace-output:<text>[@target], warning=N, warning:<text>, or output:<text>",
+                "$label must be a JSON object or shorthand score:<target>:<objective>=N, storage:<id>[:<path>]=<json>, advancement:<player>:<id>[=<true|false>], entity:<type|*>[@tag]=N, item:<player>:<id>[@slot]=N, player:<name>[:<field>=<value>], diff:<json-pointer>[=<kind>], event-trace:<player>:<type>[=N], trace:<root>=N, trace:<text>, trace-output:<text>[@target], warning=N, warning:<text>, output:<text>, or output-normalized:<text>",
             )
         }
     }
@@ -896,6 +897,15 @@ class RunCommand : CliktCommand(name = "run") {
             throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label output shorthand must be output:<text>")
         }
         val output = JsonObject().also { it.addProperty("contains", contains) }
+        return JsonObject().also { it.add("output", output) }
+    }
+
+    private fun parseNormalizedOutputAssertion(text: String, label: String): JsonObject {
+        val contains = text.trim()
+        if (contains.isEmpty()) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label normalized output shorthand must be output-normalized:<text>")
+        }
+        val output = JsonObject().also { it.addProperty("normalizedContains", contains) }
         return JsonObject().also { it.add("output", output) }
     }
 

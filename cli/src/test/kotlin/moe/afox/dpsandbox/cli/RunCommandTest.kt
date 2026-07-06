@@ -216,7 +216,7 @@ class RunCommandTest {
                     "--version",
                     "26.2",
                     "--mcfunction-text",
-                    "scoreboard objectives add runs dummy\nscoreboard players set #short runs 5\nsay shorthand ok",
+                    "scoreboard objectives add runs dummy\nscoreboard players set #short runs 5\nsay shorthand    ok",
                     "--assert",
                     "score:#short:runs=5",
                     "--assert",
@@ -224,7 +224,9 @@ class RunCommandTest {
                     "--assert",
                     "score:#short:runs<=6",
                     "--assert",
-                    "output:shorthand ok",
+                    "output:shorthand",
+                    "--assert",
+                    "output-normalized:shorthand ok",
                 ),
             )
         }
