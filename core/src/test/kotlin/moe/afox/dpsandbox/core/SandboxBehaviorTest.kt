@@ -155,6 +155,27 @@ class SandboxBehaviorTest {
     }
 
     @Test
+    fun `scoreboard players get records output and can be stored`() {
+        val sandbox = createSandbox("26.1.2", listOf(fixturePack()))
+
+        sandbox.executeCommand("scoreboard objectives add points dummy")
+        sandbox.executeCommand("scoreboard objectives add copied dummy")
+        sandbox.executeCommand("scoreboard players set Steve points 42")
+        sandbox.executeCommand("scoreboard players get Steve points")
+
+        val output = sandbox.world.outputs.last { it.command == "scoreboard players get" }
+        val payload = output.payload?.asJsonObject ?: error("missing scoreboard get payload")
+        assertEquals("42", output.text)
+        assertEquals("Steve", payload.get("target").asString)
+        assertEquals("points", payload.get("objective").asString)
+        assertEquals(42, payload.get("value").asInt)
+
+        sandbox.executeCommand("execute store result score #copied copied run scoreboard players get Steve points")
+
+        assertEquals(42, sandbox.world.getScore("#copied", "copied"))
+    }
+
+    @Test
     fun `recipe give star and take report changed counts`() {
         val pack = writeRecipeCommandPack(Files.createTempDirectory("dps-recipe-command-pack"))
         val sandbox = createSandbox("26.2", listOf(pack))

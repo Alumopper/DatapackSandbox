@@ -876,7 +876,20 @@ class DatapackSandbox(
             }
             "get" -> {
                 requireSize(tokens, 5, "scoreboard players get <target> <objective>", location)
-                scoreTargets(tokens[3].text, ExecutionContext(), location).forEach { world.getScore(it, tokens[4].text) }
+                val objective = tokens[4].text
+                scoreTargets(tokens[3].text, ExecutionContext(), location).forEach { target ->
+                    val value = world.getScore(target, objective)
+                    world.recordOutput(
+                        "scoreboard players get",
+                        "data",
+                        text = value.toString(),
+                        payload = JsonObject().also { payload ->
+                            payload.addProperty("target", target)
+                            payload.addProperty("objective", objective)
+                            payload.addProperty("value", value)
+                        },
+                    )
+                }
             }
             "reset" -> {
                 requireSize(tokens, 4, "scoreboard players reset <target> [objective]", location)

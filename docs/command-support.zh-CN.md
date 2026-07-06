@@ -66,7 +66,7 @@
 | `save-all`、`save-off`、`save-on` | 未支持 | 沙盒没有真实存档生命周期。 |
 | `say` | 支持 | 记录为 chat 输出事件。 |
 | `schedule` | 部分支持 | `schedule function <id> <time> [append|replace]`、`schedule clear <id>`。 |
-| `scoreboard` | 部分支持 | objectives 支持 `add`、`remove`、`list`；players 支持 `set`、`add`、`remove`、`get`、`reset`、`list`、`enable`、`operation`。 |
+| `scoreboard` | 部分支持 | objectives 支持 `add`、`remove`、`list`；players 支持 `set`、`add`、`remove`、`get`、`reset`、`list`、`enable`、`operation`；`players get` 会记录结构化 data 输出，供断言和 `execute store result` 使用。 |
 | `seed` | 支持 | 报告确定性的沙盒 seed。 |
 | `setblock` | 部分支持 | 修改稀疏世界方块状态和方块实体 NBT；位置参数支持局部坐标；不执行邻居更新。 |
 | `setidletimeout` | 未支持 | 服务器管理命令。 |

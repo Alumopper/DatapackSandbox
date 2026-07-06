@@ -73,7 +73,7 @@ run continues. Use `--unsupported error`, manifest `"unsupported": "error"`, or
 | `save-all`, `save-off`, `save-on` | Unsupported | No real world save lifecycle exists. |
 | `say` | Supported | Recorded as chat output. |
 | `schedule` | Partial | `schedule function <id> <time> [append|replace]`, `schedule clear <id>`. |
-| `scoreboard` | Partial | Objectives `add`, `remove`, `list`; players `set`, `add`, `remove`, `get`, `reset`, `list`, `enable`, `operation`. |
+| `scoreboard` | Partial | Objectives `add`, `remove`, `list`; players `set`, `add`, `remove`, `get`, `reset`, `list`, `enable`, `operation`; `players get` records a structured data output for assertions and `execute store result`. |
 | `seed` | Supported | Reports deterministic sandbox seed. |
 | `setblock` | Partial | Mutates sparse block state/NBT; position arguments accept local coordinates; no neighbor updates. |
 | `setidletimeout` | Unsupported | Server administration command. |
