@@ -494,7 +494,20 @@ class SandboxBehaviorTest {
         val player = sandbox.world.requirePlayer("Steve")
         assertEquals(Position(10.0, 64.0, -2.0), player.position)
         assertEquals(10.0, sandbox.world.requirePlayer("Steve").fullNbt().getAsJsonArray("Pos")[0].asDouble)
-        assertEquals("get", sandbox.world.outputs.single().command)
+        val teleportOutput = sandbox.world.outputs.single { it.command == "tp" }
+        val teleportPayload = teleportOutput.payload?.asJsonObject ?: error("missing teleport payload")
+        val moved = teleportPayload.getAsJsonArray("targets")[0].asJsonObject
+        val to = moved.getAsJsonObject("to")
+        assertEquals("1", teleportOutput.text)
+        assertEquals(listOf("Steve"), teleportOutput.targets)
+        assertEquals(1, teleportPayload.get("count").asInt)
+        assertEquals("Steve", moved.get("target").asString)
+        assertEquals("minecraft:overworld", moved.get("fromDimension").asString)
+        assertEquals("minecraft:overworld", moved.get("toDimension").asString)
+        assertEquals(10.0, to.get("x").asDouble)
+        assertEquals(64.0, to.get("y").asDouble)
+        assertEquals(-2.0, to.get("z").asDouble)
+        assertEquals("get", sandbox.world.outputs.last { it.command == "get" }.command)
 
         val error = assertFailsWith<SandboxException> {
             sandbox.executeCommand("data modify entity Steve Health set value 1f")

@@ -62,6 +62,7 @@
   - 支持 entity/block slot 读写、modifier 应用、components/NBT 兼容差异；entity item 槽位已覆盖玩家背包、当前主手、`enderchest.*` 和非玩家实体装备；`give`、`clear` 与 `item replace ... with` 已支持 JSON/SNBT-lite NBT 和 components payload，`give`、`item replace` 与 `item modify` 会记录结构化输出便于 report/assertion 调试。
 - 扩展 `recipe`、`advancement`、`attribute`、`damage`、`effect`、`enchant`、`random`、`team`、`bossbar`、`worldborder` 的子命令覆盖。
   - `summon` 已记录结构化创建输出，便于命令生成器、manifest assertion 和随手测试确认实体类型、位置、维度、tag 与输入 NBT。
+  - `teleport`/`tp` 已记录结构化移动输出，便于调试传送前后坐标、维度和旋转变化。
   - `damage` 已记录结构化生命值变化输出，便于 report/assertion 调试。
   - `kill` 已记录结构化目标输出，便于确认选择器命中、实体移除和 advancement 触发结果。
   - `enchant` 已覆盖玩家选中物品和非玩家实体主手装备的附魔组件写入，并记录结构化输出；`effect give/clear` 已记录结构化输出，便于 report/assertion 调试。

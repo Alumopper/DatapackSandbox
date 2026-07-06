@@ -2857,14 +2857,7 @@ class DatapackSandbox(
                 payload.addProperty("uuid", entity.uuid)
                 payload.addProperty("type", entity.type.toString())
                 payload.addProperty("dimension", entity.dimension.toString())
-                payload.add(
-                    "position",
-                    JsonObject().also { pos ->
-                        pos.addProperty("x", entity.position.x)
-                        pos.addProperty("y", entity.position.y)
-                        pos.addProperty("z", entity.position.z)
-                    },
-                )
+                payload.add("position", positionOutput(entity.position))
                 payload.add("tags", JsonArray().also { tagsArray -> entity.tags.forEach { tagsArray.add(it) } })
                 payload.add("nbt", nbt.deepCopy())
             },
@@ -2923,19 +2916,27 @@ class DatapackSandbox(
                     anchoredPosition(entity.position, entity, context.anchor),
                 )
                 val rotation = parseOptionalTeleportRotation(tokens, 4, position, context, location)
-                moveEntities(listOf(entity), position, rotation, context.dimension)
+                val moved = moveEntities(listOf(entity), position, rotation, context.dimension)
+                recordTeleportOutput(tokens[0].text, moved)
             }
             tokens.size >= 5 && isCoordinateTriple(tokens, 2) -> {
                 val targets = EntitySelectors.select(world, tokens[1].text, context, location)
                 val position = parsePosition(tokens, 2, context, location)
                 val rotation = parseOptionalTeleportRotation(tokens, 5, position, context, location)
-                moveEntities(targets, position, rotation, context.dimension)
+                val moved = moveEntities(targets, position, rotation, context.dimension)
+                recordTeleportOutput(tokens[0].text, moved)
             }
             tokens.size >= 3 -> {
                 val targets = EntitySelectors.select(world, tokens[1].text, context, location)
                 val destination = EntitySelectors.select(world, tokens[2].text, context, location).firstOrNull()
                     ?: throw SandboxException(DiagnosticCode.COMMAND_ERROR, "Teleport destination '${tokens[2].text}' did not match an entity", location)
-                moveEntities(targets, destination.position, Rotation(destination.yaw, destination.pitch), destination.dimension)
+                val moved = moveEntities(
+                    targets,
+                    destination.position,
+                    Rotation(destination.yaw, destination.pitch),
+                    destination.dimension,
+                )
+                recordTeleportOutput(tokens[0].text, moved)
             }
             else -> unsupportedFeature("Unsupported ${tokens[0].text} form", profile.id, location)
         }
@@ -2943,8 +2944,28 @@ class DatapackSandbox(
 
     private data class Rotation(val yaw: Double, val pitch: Double)
 
-    private fun moveEntities(entities: List<SandboxEntity>, position: Position, rotation: Rotation? = null, dimension: ResourceLocation? = null) {
-        entities.forEach { entity ->
+    private data class EntityMove(
+        val entity: SandboxEntity,
+        val beforePosition: Position,
+        val beforeDimension: ResourceLocation,
+        val beforeYaw: Double,
+        val beforePitch: Double,
+    )
+
+    private fun moveEntities(
+        entities: List<SandboxEntity>,
+        position: Position,
+        rotation: Rotation? = null,
+        dimension: ResourceLocation? = null,
+    ): List<EntityMove> =
+        entities.map { entity ->
+            val move = EntityMove(
+                entity = entity,
+                beforePosition = entity.position,
+                beforeDimension = entity.dimension,
+                beforeYaw = entity.yaw,
+                beforePitch = entity.pitch,
+            )
             entity.position = position
             dimension?.let { entity.dimension = it }
             rotation?.let {
@@ -2954,8 +2975,49 @@ class DatapackSandbox(
             if (entity is SandboxPlayer) {
                 advancements.handle(PlayerEvent(entity.name, "moved"))
             }
+            move
         }
+
+    private fun recordTeleportOutput(command: String, moved: List<EntityMove>) {
+        world.recordOutput(
+            command,
+            "data",
+            targets = moved.map { it.entity.scoreHolder },
+            text = moved.size.toString(),
+            payload = JsonObject().also { payload ->
+                payload.addProperty("count", moved.size)
+                payload.add(
+                    "targets",
+                    JsonArray().also { targets ->
+                        moved.forEach { move ->
+                            targets.add(
+                                JsonObject().also { entry ->
+                                    entry.addProperty("target", move.entity.scoreHolder)
+                                    entry.addProperty("uuid", move.entity.uuid)
+                                    entry.addProperty("type", move.entity.type.toString())
+                                    entry.add("from", positionOutput(move.beforePosition))
+                                    entry.add("to", positionOutput(move.entity.position))
+                                    entry.addProperty("fromDimension", move.beforeDimension.toString())
+                                    entry.addProperty("toDimension", move.entity.dimension.toString())
+                                    entry.addProperty("beforeYaw", move.beforeYaw)
+                                    entry.addProperty("beforePitch", move.beforePitch)
+                                    entry.addProperty("afterYaw", move.entity.yaw)
+                                    entry.addProperty("afterPitch", move.entity.pitch)
+                                },
+                            )
+                        }
+                    },
+                )
+            },
+        )
     }
+
+    private fun positionOutput(position: Position): JsonObject =
+        JsonObject().also { pos ->
+            pos.addProperty("x", position.x)
+            pos.addProperty("y", position.y)
+            pos.addProperty("z", position.z)
+        }
 
     private fun executeSetBlock(tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext) {
         requireSize(tokens, 5, "setblock <pos> <block> [destroy|keep|replace]", location)

@@ -87,7 +87,7 @@ run continues. Use `--unsupported error`, manifest `"unsupported": "error"`, or
 | `tag` | Supported | `add`, `remove`, `list`. |
 | `team` | Partial | `add`, `remove`, `list`, `join`, `leave`, `empty`, `modify`; no gameplay effects. |
 | `teammsg`, `tm` | Supported | Recorded as team chat output. |
-| `teleport`, `tp` | Partial | Coordinate teleport supports local coordinates, optional rotation, `facing`, and the current execution dimension; destination-entity teleport copies destination position, dimension, and rotation. |
+| `teleport`, `tp` | Partial | Coordinate teleport supports local coordinates, optional rotation, `facing`, and the current execution dimension; destination-entity teleport copies destination position, dimension, and rotation; records structured movement output for reports/assertions. |
 | `tellraw` | Supported | Resolves JSON text components into output events. |
 | `tick` | Partial | `query`, `rate`, `freeze`, `unfreeze`, `step`, `sprint`, `stop`; updates sandbox tick state and can advance ticks. |
 | `time` | Partial | `set`, `add`, `query daytime|gametime|day`; query records structured data output for assertions and `execute store result`. |
