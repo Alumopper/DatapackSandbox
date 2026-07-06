@@ -566,14 +566,12 @@ class DatapackSandbox(
         when (tokens[2].text) {
             "entity" -> {
                 requireSize(tokens, 7, "loot replace entity <entities> <slot> [count] loot <table>", location)
-                val slot = inventorySlot(tokens[4].text)
                 val sourceIndex = if (tokens[5].text == "loot") 5 else 6
                 val count = if (sourceIndex == 6) parseInt(tokens[5].text, "loot replace count", location) else 1
                 val items = parseLootSource(tokens, sourceIndex, context, location).take(count.coerceAtLeast(0))
-                EntitySelectors.select(world, tokens[3].text, context, location).filterIsInstance<SandboxPlayer>().forEach { player ->
+                EntitySelectors.select(world, tokens[3].text, context, location).forEach { entity ->
                     val item = items.firstOrNull() ?: ItemStack(ResourceLocation("minecraft", "air"), 0)
-                    while (player.inventory.size <= slot) player.inventory += ItemStack(ResourceLocation("minecraft", "air"), 0)
-                    player.inventory[slot] = item.copy(components = item.components.deepCopy(), nbt = item.nbt.deepCopy())
+                    entityItemAccess(entity, tokens[4].text, location).set(item)
                 }
             }
             "block" -> {

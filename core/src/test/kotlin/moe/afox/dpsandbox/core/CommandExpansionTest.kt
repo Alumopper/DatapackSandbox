@@ -112,13 +112,16 @@ class CommandExpansionTest {
         sandbox.executeCommand("loot give Steve entity demo:entity_context @e[type=minecraft:zombie,limit=1]")
         sandbox.executeCommand("loot give Steve block demo:block_context 0 64 0 minecraft:diamond_pickaxe")
         sandbox.executeCommand("loot give Steve equipment demo:equipment_context @e[type=minecraft:zombie,limit=1] weapon.mainhand")
+        sandbox.executeCommand("loot replace entity @e[type=minecraft:zombie,limit=1] weapon.offhand loot demo:fish")
 
+        val zombie = sandbox.world.entities.first { it.type == ResourceLocation.parse("minecraft:zombie") }
         val inventoryIds = sandbox.world.requirePlayer("Steve").inventory.map { it.id }.toSet()
         assertTrue(ResourceLocation.parse("minecraft:diamond") in inventoryIds)
         assertTrue(ResourceLocation.parse("minecraft:stone") in inventoryIds)
         assertTrue(ResourceLocation.parse("minecraft:gold_ingot") in inventoryIds)
         assertTrue(ResourceLocation.parse("minecraft:cobblestone") in inventoryIds)
         assertTrue(ResourceLocation.parse("minecraft:apple") in inventoryIds)
+        assertEquals(ResourceLocation.parse("minecraft:diamond"), zombie.equipment[EquipmentSlots.OFFHAND]?.id)
         assertTrue(
             sandbox.world.entities.any {
                 it.type == ResourceLocation.parse("minecraft:item") &&
