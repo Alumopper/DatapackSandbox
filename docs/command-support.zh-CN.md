@@ -38,7 +38,7 @@
 | `experience`、`xp` | 部分支持 | `add`、`set`、`query`；沙盒内 points/levels 共用玩家 XP 整数字段；`query` 会记录结构化 data 输出，供断言和 `execute store result` 使用。 |
 | `fill` | 部分支持 | `fill <from> <to> <block[state]{nbt}> [replace|keep|destroy|hollow|outline]`；位置参数支持局部坐标；不执行更新或掉落。 |
 | `fillbiome` | 部分支持 | 为显式方块范围记录 biome 覆盖；不模拟区块 biome 容器或生成效果。 |
-| `forceload` | 部分支持 | `add`、`remove`、`remove all`、`query`；记录强加载 chunk 坐标。 |
+| `forceload` | 部分支持 | `add`、`remove`、`remove all`、`query`、`query <pos>`；记录强加载 chunk 坐标，并为 query 记录结构化输出。 |
 | `function` | 支持 | `function <id>`。 |
 | `gamemode` | 支持 | `gamemode <mode> [targets]`；更新沙盒玩家游戏模式。 |
 | `gamerule` | 部分支持 | 存储任意 gamerule 字符串值；不执行具体游戏规则副作用。 |

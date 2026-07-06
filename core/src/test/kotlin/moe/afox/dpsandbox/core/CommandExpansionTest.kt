@@ -21,6 +21,8 @@ class CommandExpansionTest {
         sandbox.executeCommand("worldborder set 100")
         sandbox.executeCommand("worldborder center 5 -6")
         sandbox.executeCommand("forceload add 0 0 16 16")
+        sandbox.executeCommand("forceload query 0 0")
+        sandbox.executeCommand("forceload query 48 0")
         sandbox.executeCommand("fillbiome 0 0 0 1 0 1 minecraft:plains")
         sandbox.executeCommand("tick freeze")
         sandbox.executeCommand("tick step 2")
@@ -33,6 +35,14 @@ class CommandExpansionTest {
         assertEquals(2, snapshot.get("gameTime").asLong)
         assertEquals(4, snapshot.getAsJsonArray("biomes").size())
         assertTrue(snapshot.getAsJsonArray("forcedChunks").size() >= 1)
+        val forceQueries = sandbox.world.outputs.filter { it.command == "forceload query" }
+        val loadedPayload = forceQueries[0].payload?.asJsonObject ?: error("missing loaded forceload payload")
+        val unloadedPayload = forceQueries[1].payload?.asJsonObject ?: error("missing unloaded forceload payload")
+        assertEquals(true, loadedPayload.get("forced").asBoolean)
+        assertEquals(0, loadedPayload.getAsJsonObject("chunk").get("x").asInt)
+        assertEquals(0, loadedPayload.getAsJsonObject("chunk").get("z").asInt)
+        assertEquals(false, unloadedPayload.get("forced").asBoolean)
+        assertEquals(3, unloadedPayload.getAsJsonObject("chunk").get("x").asInt)
         assertEquals(100.0, snapshot.getAsJsonObject("worldBorder").get("size").asDouble)
         assertEquals(1.0, snapshot.getAsJsonObject("players").getAsJsonObject("Steve").getAsJsonObject("spawnPoint").get("x").asDouble)
     }

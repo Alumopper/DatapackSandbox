@@ -1807,14 +1807,37 @@ class DatapackSandbox(
                 }
             }
             "query" -> {
-                val payload = JsonArray()
-                world.forcedChunks.sorted().forEach { chunk ->
-                    payload.add(JsonObject().also {
-                        it.addProperty("x", chunk.x)
-                        it.addProperty("z", chunk.z)
-                    })
+                if (tokens.size > 2) {
+                    val pos = parseColumnPos(tokens, 2, context.position, location)
+                    val chunk = ChunkPos(Math.floorDiv(pos.x, 16), Math.floorDiv(pos.z, 16))
+                    val forced = chunk in world.forcedChunks
+                    world.recordOutput(
+                        "forceload query",
+                        "data",
+                        text = forced.toString(),
+                        payload = JsonObject().also { payload ->
+                            payload.add("position", JsonObject().also {
+                                it.addProperty("x", pos.x)
+                                it.addProperty("z", pos.z)
+                            })
+                            payload.add("chunk", JsonObject().also {
+                                it.addProperty("x", chunk.x)
+                                it.addProperty("z", chunk.z)
+                            })
+                            payload.addProperty("forced", forced)
+                            payload.addProperty("forcedCount", world.forcedChunks.size)
+                        },
+                    )
+                } else {
+                    val payload = JsonArray()
+                    world.forcedChunks.sorted().forEach { chunk ->
+                        payload.add(JsonObject().also {
+                            it.addProperty("x", chunk.x)
+                            it.addProperty("z", chunk.z)
+                        })
+                    }
+                    world.recordOutput("forceload query", "data", text = world.forcedChunks.sorted().joinToString { "${it.x},${it.z}" }, payload = payload)
                 }
-                world.recordOutput("forceload query", "data", text = world.forcedChunks.sorted().joinToString { "${it.x},${it.z}" }, payload = payload)
             }
             else -> unsupportedFeature("Unsupported forceload action '${tokens[1].text}'", profile.id, location)
         }
