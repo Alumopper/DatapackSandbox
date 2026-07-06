@@ -4,6 +4,8 @@ private data class SelectorOptions(
     val tags: List<Pair<String, Boolean>> = emptyList(),
     val type: Pair<ResourceLocation, Boolean>? = null,
     val name: Pair<String, Boolean>? = null,
+    val gamemode: Pair<String, Boolean>? = null,
+    val scores: Map<String, SelectorScoreRange> = emptyMap(),
     val limit: Int? = null,
     val sort: String? = null,
     val distance: ClosedFloatingPointRange<Double>? = null,
@@ -14,6 +16,11 @@ private data class SelectorOptions(
     val dy: Double? = null,
     val dz: Double? = null,
 )
+
+private data class SelectorScoreRange(val min: Int? = null, val max: Int? = null) {
+    fun contains(value: Int): Boolean =
+        (min == null || value >= min) && (max == null || value <= max)
+}
 
 object EntitySelectors {
     fun isSelector(value: String): Boolean = value.startsWith("@")
@@ -47,8 +54,21 @@ object EntitySelectors {
         options.name?.let { (name, positive) ->
             result = result.filter { (it.selectorName() == name) == positive }
         }
+        options.gamemode?.let { (mode, positive) ->
+            result = result.filter { entity ->
+                entity is SandboxPlayer && ((entity.gameMode == mode) == positive)
+            }
+        }
         options.tags.forEach { (tag, positive) ->
             result = result.filter { (tag in it.tags) == positive }
+        }
+        if (options.scores.isNotEmpty()) {
+            options.scores.keys.forEach(world::ensureObjective)
+            result = result.filter { entity ->
+                options.scores.all { (objective, range) ->
+                    range.contains(world.getScore(entity.scoreHolder, objective))
+                }
+            }
         }
         options.distance?.let { distance ->
             val minSquared = distance.start * distance.start
@@ -102,6 +122,8 @@ object EntitySelectors {
         val tags = mutableListOf<Pair<String, Boolean>>()
         var type: Pair<ResourceLocation, Boolean>? = null
         var name: Pair<String, Boolean>? = null
+        var gamemode: Pair<String, Boolean>? = null
+        var scores: Map<String, SelectorScoreRange> = emptyMap()
         var limit: Int? = null
         var sort: String? = null
         var distance: ClosedFloatingPointRange<Double>? = null
@@ -111,7 +133,7 @@ object EntitySelectors {
         var dx: Double? = null
         var dy: Double? = null
         var dz: Double? = null
-        optionsText.split(',').filter { it.isNotBlank() }.forEach { rawPart ->
+        splitSelectorOptions(optionsText, location).filter { it.isNotBlank() }.forEach { rawPart ->
             val part = rawPart.trim()
             val key = part.substringBefore("=")
             val value = part.substringAfter("=", missingDelimiterValue = "")
@@ -128,6 +150,11 @@ object EntitySelectors {
                     val positive = !value.startsWith("!")
                     name = value.removePrefix("!") to positive
                 }
+                "gamemode" -> {
+                    val positive = !value.startsWith("!")
+                    gamemode = normalizeSelectorGameMode(value.removePrefix("!"), location) to positive
+                }
+                "scores" -> scores = parseSelectorScores(value, location)
                 "limit" -> limit = value.toIntOrNull()
                     ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Invalid selector limit: $value", location = location)
                 "sort" -> {
@@ -150,6 +177,8 @@ object EntitySelectors {
             tags = tags,
             type = type,
             name = name,
+            gamemode = gamemode,
+            scores = scores,
             limit = limit,
             sort = sort,
             distance = distance,
@@ -160,6 +189,88 @@ object EntitySelectors {
             dy = dy,
             dz = dz,
         )
+    }
+
+    private fun splitSelectorOptions(text: String, location: SourceLocation?): List<String> {
+        val parts = mutableListOf<String>()
+        var depth = 0
+        var quote: Char? = null
+        var escaped = false
+        var start = 0
+        text.forEachIndexed { index, char ->
+            val activeQuote = quote
+            if (activeQuote != null) {
+                when {
+                    escaped -> escaped = false
+                    char == '\\' -> escaped = true
+                    char == activeQuote -> quote = null
+                }
+                return@forEachIndexed
+            }
+            when (char) {
+                '"', '\'' -> quote = char
+                '{', '[', '(' -> depth += 1
+                '}', ']', ')' -> {
+                    depth -= 1
+                    if (depth < 0) {
+                        throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Malformed selector options: $text", location = location)
+                    }
+                }
+                ',' -> if (depth == 0) {
+                    parts += text.substring(start, index)
+                    start = index + 1
+                }
+            }
+        }
+        if (quote != null || depth != 0) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Malformed selector options: $text", location = location)
+        }
+        parts += text.substring(start)
+        return parts
+    }
+
+    private fun normalizeSelectorGameMode(value: String, location: SourceLocation?): String =
+        when (value.lowercase()) {
+            "survival", "s", "0" -> "survival"
+            "creative", "c", "1" -> "creative"
+            "adventure", "a", "2" -> "adventure"
+            "spectator", "sp", "3" -> "spectator"
+            else -> throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Invalid selector gamemode: $value", location = location)
+        }
+
+    private fun parseSelectorScores(value: String, location: SourceLocation?): Map<String, SelectorScoreRange> {
+        if (!value.startsWith("{") || !value.endsWith("}")) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Invalid selector scores: $value", location = location)
+        }
+        val body = value.removePrefix("{").removeSuffix("}")
+        if (body.isBlank()) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Invalid selector scores: $value", location = location)
+        }
+        return splitSelectorOptions(body, location).associate { rawPart ->
+            val part = rawPart.trim()
+            val objective = part.substringBefore("=")
+            val range = part.substringAfter("=", missingDelimiterValue = "")
+            if (objective.isBlank() || range.isBlank()) {
+                throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Invalid selector score entry: $part", location = location)
+            }
+            objective to parseSelectorIntRange(range, "score $objective", location)
+        }
+    }
+
+    private fun parseSelectorIntRange(value: String, label: String, location: SourceLocation?): SelectorScoreRange {
+        if (!value.contains("..")) {
+            val exact = value.toIntOrNull()
+                ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Invalid selector $label: $value", location = location)
+            return SelectorScoreRange(exact, exact)
+        }
+        val startText = value.substringBefore("..")
+        val endText = value.substringAfter("..")
+        val start = startText.takeIf { it.isNotBlank() }?.toIntOrNull()
+        val end = endText.takeIf { it.isNotBlank() }?.toIntOrNull()
+        if ((startText.isNotBlank() && start == null) || (endText.isNotBlank() && end == null) || (start != null && end != null && start > end)) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Invalid selector $label range: $value", location = location)
+        }
+        return SelectorScoreRange(start, end)
     }
 
     private fun parseSelectorDouble(value: String, label: String, location: SourceLocation?): Double =

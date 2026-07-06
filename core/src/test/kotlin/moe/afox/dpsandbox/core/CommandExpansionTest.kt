@@ -779,11 +779,25 @@ class CommandExpansionTest {
         sandbox.executeCommand("""summon minecraft:pig 9 64 0 {Tags:["far"]}""")
         sandbox.executeCommand("""summon minecraft:cow 2 64 0 {Tags:["near"]}""")
         sandbox.executeCommand("scoreboard objectives add selector dummy")
+        sandbox.executeCommand("scoreboard objectives add selector_scores dummy")
+        sandbox.executeCommand("scoreboard objectives add selector_other dummy")
+        sandbox.executeCommand("gamemode creative Alex")
+        sandbox.executeCommand("gamemode adventure Blair")
+        sandbox.executeCommand("scoreboard players set Alex selector_scores 5")
+        sandbox.executeCommand("scoreboard players set Alex selector_other 3")
+        sandbox.executeCommand("scoreboard players set Blair selector_scores 2")
+        sandbox.executeCommand("scoreboard players set Blair selector_other 3")
+        sandbox.executeCommand("""execute as @e[type=minecraft:pig,tag=near,limit=1] run scoreboard players set @s selector_scores 7""")
+        sandbox.executeCommand("""execute as @e[type=minecraft:pig,tag=far,limit=1] run scoreboard players set @s selector_scores 1""")
         sandbox.executeCommand("""tag @e[type=minecraft:pig,x=0,y=64,z=0,dx=2,dy=0,dz=2] add boxed""")
         sandbox.executeCommand("""execute if entity @e[tag=boxed,limit=1] run scoreboard players add #boxed selector 1""")
         sandbox.executeCommand("""execute if entity @e[type=minecraft:pig,x=0,y=64,z=0,distance=..2,limit=1] run scoreboard players add #near selector 1""")
         sandbox.executeCommand("""execute if entity @a[name=Alex,x=0,y=64,z=0,distance=..1,limit=1] run scoreboard players add #name selector 1""")
         sandbox.executeCommand("""execute unless entity @a[name=!Alex,x=0,y=64,z=0,distance=..1] run scoreboard players add #name selector 1""")
+        sandbox.executeCommand("""execute if entity @a[gamemode=creative,scores={selector_scores=5..,selector_other=3}] run scoreboard players add #score selector 1""")
+        sandbox.executeCommand("""execute if entity @a[gamemode=!spectator,scores={selector_scores=2..5,selector_other=3},limit=2] run scoreboard players add #score selector 1""")
+        sandbox.executeCommand("""execute if entity @e[type=minecraft:pig,scores={selector_scores=..1},limit=1] run scoreboard players add #score selector 1""")
+        sandbox.executeCommand("""execute unless entity @e[type=minecraft:pig,scores={selector_scores=2..6}] run scoreboard players add #score selector 1""")
         sandbox.executeCommand("""tag @e[type=minecraft:pig,x=0,y=64,z=0,sort=furthest,limit=1] add furthest""")
         sandbox.executeCommand("""tag @e[type=minecraft:pig,x=0,y=64,z=0,sort=nearest,limit=1] add nearest""")
         sandbox.executeCommand("""execute if entity @e[tag=furthest,tag=far] run scoreboard players add #sort selector 1""")
@@ -792,12 +806,18 @@ class CommandExpansionTest {
         assertEquals(1, sandbox.world.getScore("#boxed", "selector"))
         assertEquals(1, sandbox.world.getScore("#near", "selector"))
         assertEquals(2, sandbox.world.getScore("#name", "selector"))
+        assertEquals(4, sandbox.world.getScore("#score", "selector"))
         assertEquals(2, sandbox.world.getScore("#sort", "selector"))
 
         val invalidDistance = assertFailsWith<SandboxException> {
             sandbox.executeCommand("""execute if entity @e[distance=-1] run say invalid""")
         }
         assertEquals(DiagnosticCode.INPUT_FORMAT, invalidDistance.code)
+
+        val invalidScoreRange = assertFailsWith<SandboxException> {
+            sandbox.executeCommand("""execute if entity @a[scores={selector_scores=5..2}] run say invalid""")
+        }
+        assertEquals(DiagnosticCode.INPUT_FORMAT, invalidScoreRange.code)
     }
 
     @Test

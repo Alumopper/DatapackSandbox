@@ -147,10 +147,11 @@ both plain text and segment metadata.
 
 Implemented selectors: `@s`, `@a`, `@p`, `@e`, `@n`.
 
-Implemented options: `type`, `tag`, `name`, `limit`, `sort`, `distance`, `x`,
-`y`, `z`, `dx`, `dy`, `dz`. `sort=random` uses a deterministic per-origin
-ordering for repeatable tests. Unsupported selector options produce an
-unsupported diagnostic under the active unsupported policy.
+Implemented options: `type`, `tag`, `name`, `gamemode`, `scores`, `limit`,
+`sort`, `distance`, `x`, `y`, `z`, `dx`, `dy`, `dz`. Score filters support
+integer ranges such as `scores={kills=1..,deaths=..0}`. `sort=random` uses a
+deterministic per-origin ordering for repeatable tests. Unsupported selector
+options produce an unsupported diagnostic under the active unsupported policy.
 
 ## World/NBT Notes
 
