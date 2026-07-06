@@ -104,7 +104,7 @@
 主要任务：
 
 - 完善 sparse world：
-  - 方块状态、方块实体 NBT、biome override、强加载 chunk、世界边界、时间、天气、难度、gamerule、spawn。
+  - 方块状态、方块实体 NBT、biome override、强加载 chunk、世界边界、时间、天气、难度、gamerule、spawn、deterministic random sequence；random sequence state 已进入 snapshot，并可通过 world fixture、manifest assertion 和 QuickTest assertion 声明/检查。
   - 支持区域 fixture、结构 fixture、从 Java Anvil 存档按 chunk 或坐标范围导入。
 - 完善实体模型：
   - 类型、UUID、位置、旋转、维度、tag、score holder、attributes、attribute modifiers、effects、passengers/vehicle、equipment、health、custom NBT；`item replace/modify entity` 已覆盖非玩家实体 `weapon.*`/`armor.*` 装备槽读写、复制、snapshot 与 NBT 投影，`attribute modifier` 已进入 snapshot 与 `Attributes[].modifiers` NBT 投影，`effect give/clear` 已覆盖非玩家实体 active effects，entity predicate 的 `equipment`、`effects` 和 `nbt` 条件也复用该模型；world fixture、manifest world 和 quick-test world builder 均可直接声明非玩家实体装备、active effects、attributes、dimension、health 与 passengers/vehicle，并通过 entity assertion/quick-test assertion 验证完整 NBT path。

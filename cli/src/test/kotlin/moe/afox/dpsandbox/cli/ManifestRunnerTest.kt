@@ -447,6 +447,7 @@ class ManifestRunnerTest {
               "packs": ["$pack"],
               "world": {
                 "seed": 123,
+                "randomSequences": { "demo:seq": 42 },
                 "difficulty": "hard",
                 "defaultGameMode": "creative",
                 "worldSpawn": { "pos": [4, 70, 5], "angle": 90, "forced": true },
@@ -544,6 +545,7 @@ class ManifestRunnerTest {
                 {
                   "world": {
                     "seed": 123,
+                    "randomSequences": { "demo:seq": 42 },
                     "difficulty": "hard",
                     "defaultGameMode": "creative",
                     "worldSpawn": { "pos": [4, 70, 5], "dimension": "minecraft:overworld", "angle": 90, "forced": true },

@@ -218,6 +218,10 @@
           "type": "object",
           "additionalProperties": true
         },
+        "randomSequences": {
+          "type": "object",
+          "additionalProperties": { "type": "integer" }
+        },
         "save": { "type": "object" },
         "saves": {
           "type": "array",
@@ -557,6 +561,10 @@
         "difficulty": { "type": "string" },
         "defaultGameMode": { "type": "string" },
         "defaultGamemode": { "type": "string" },
+        "randomSequences": {
+          "type": "object",
+          "additionalProperties": { "type": "integer" }
+        },
         "forcedChunk": { "$ref": "#/$defs/chunk" },
         "biome": {
           "type": "object",

@@ -347,6 +347,13 @@ class SandboxQuickTestMatrix private constructor(
     }
 
     /**
+     * Applies a random sequence state assertion to every scenario.
+     */
+    fun assertRandomSequence(name: String, expected: Long): SandboxQuickTestMatrix = apply {
+        scenarios.values.forEach { it.assertRandomSequence(name, expected) }
+    }
+
+    /**
      * Applies a world-level state assertion to every scenario.
      */
     @JvmOverloads
@@ -1371,6 +1378,16 @@ class SandboxQuickTest private constructor(
         val actual = sandbox.world.requirePlayer(playerName).xpLevels
         if (actual != expected) {
             failures += "player $playerName xpLevels expected $expected but was $actual"
+        }
+    }
+
+    /**
+     * Asserts a deterministic random sequence state.
+     */
+    fun assertRandomSequence(name: String, expected: Long): SandboxQuickTest = apply {
+        val actual = sandbox.world.randomSequences[name]
+        if (actual != expected) {
+            failures += "random sequence $name expected $expected but was ${actual ?: "<missing>"}"
         }
     }
 

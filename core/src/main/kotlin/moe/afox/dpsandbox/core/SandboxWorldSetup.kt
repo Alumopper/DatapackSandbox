@@ -71,6 +71,15 @@ class SandboxWorldSetup {
     }
 
     /**
+     * Sets one deterministic random sequence state.
+     *
+     * @return this setup for fluent chaining.
+     */
+    fun randomSequence(name: String, state: Long): SandboxWorldSetup = apply {
+        operations += { world, _ -> world.randomSequences[name] = state }
+    }
+
+    /**
      * Sets the world's stored difficulty.
      *
      * @return this setup for fluent chaining.

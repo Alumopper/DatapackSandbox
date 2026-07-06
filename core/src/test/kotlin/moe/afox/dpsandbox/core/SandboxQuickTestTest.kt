@@ -672,6 +672,7 @@ class SandboxQuickTestTest {
         val report = SandboxQuickTest.create(listOf(fixturePack()), version = "26.1.2", defaultPlayerName = null)
             .world {
                 seed(123)
+                randomSequence("demo:seq", 42)
                 difficulty("hard")
                 defaultGameMode("creative")
                 worldSpawn(4.0, 70.0, 5.0, angle = 90.0, forced = true)
@@ -859,6 +860,7 @@ class SandboxQuickTestTest {
             .assertStorageExists("demo:env", "ready")
             .assertStorageEquals("demo:env", "ready", "true")
             .assertStorageMissing("demo:env", "absent")
+            .assertRandomSequence("demo:seq", 42)
             .assertPlayerXp("Alex", 5)
             .assertPlayerXpLevels("Alex", 4)
             .requirePassed()
@@ -877,6 +879,7 @@ class SandboxQuickTestTest {
         assertEquals(12.0, pig.getAsJsonObject("attributes").get("minecraft:max_health").asDouble)
         assertEquals(1, snapshot.get("entities").asJsonArray.count { it.asJsonObject.get("type").asString == "minecraft:pig" })
         assertEquals("hard", snapshot.get("difficulty").asString)
+        assertEquals(42L, snapshot.getAsJsonObject("randomSequences").get("demo:seq").asLong)
         assertEquals(1, snapshot.get("forcedChunks").asJsonArray.size())
         assertEquals(
             "minecraft:ender_pearl",

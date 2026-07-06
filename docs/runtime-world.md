@@ -72,6 +72,9 @@ Example manifest:
         "passengers": ["00000000-0000-0000-0000-000000000101"]
       }
     ],
+    "randomSequences": {
+      "demo:seq": 42
+    },
     "players": [
       { "name": "Alex", "position": [2, 65, 3], "xp": 5, "xpLevels": 4 }
     ],

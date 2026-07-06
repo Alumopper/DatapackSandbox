@@ -198,6 +198,7 @@ SandboxQuickTest.create(
 )
     .world {
         seed(123)
+        randomSequence("demo:seq", 42)
         difficulty("hard")
         defaultGameMode("creative")
         worldSpawn(4.0, 70.0, 5.0, forced = true)
@@ -308,6 +309,7 @@ SandboxQuickTest.create(
     .assertScoreRange("#fixture", "ready", min = 1, max = 3)
     .assertStorageExists("demo:env", "ready")
     .assertStorageMissing("demo:env", "debug.last")
+    .assertRandomSequence("demo:seq", 42)
     .assertPlayerXp("Alex", 5)
     .assertPlayerXpLevels("Alex", 4)
     .requirePassed()
@@ -400,6 +402,7 @@ class MyDatapackTest {
 | `assertStorageExists(id, path)` | Assert that a storage root or path exists |
 | `assertStorageMissing(id, path)` | Assert that a storage root or path is absent |
 | `assertWorld(...)` | Assert selected world-level state, forced chunks, biome overrides, world spawn, and world border |
+| `assertRandomSequence(name, expected)` | Assert deterministic random sequence state |
 | `assertPlayer(...)` | Assert selected player state, ender item count, spawn point details, and full-NBT path filters |
 | `assertTeam(...)` | Assert selected team state, members, member count, and options |
 | `assertBossbar(...)` | Assert selected bossbar state and assigned players |

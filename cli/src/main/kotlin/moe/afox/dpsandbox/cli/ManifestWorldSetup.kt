@@ -44,6 +44,9 @@ object ManifestWorldSetup {
         world.getAsJsonObject("gamerules")?.entrySet()?.forEach { (name, value) ->
             setup.gamerule(name, manifestPrimitiveString(value))
         }
+        world.getAsJsonObject("randomSequences")?.entrySet()?.forEach { (name, value) ->
+            setup.randomSequence(name, value.asLong)
+        }
 
         parseManifestChunks(world.getAsJsonArray("forcedChunks") ?: JsonArray(), "world.forcedChunks").forEach { setup.forcedChunk(it.x, it.z) }
         world.manifestArray("biomes", "world.biomes").forEach { setupBiome(setup, it) }

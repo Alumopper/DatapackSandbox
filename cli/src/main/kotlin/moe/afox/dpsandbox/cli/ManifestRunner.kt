@@ -1207,6 +1207,10 @@ object ManifestRunner {
         (world.manifestString("defaultGameMode") ?: world.manifestString("defaultGamemode"))?.let {
             if (sandbox.world.defaultGameMode != it) failures += "world defaultGameMode expected $it but was ${sandbox.world.defaultGameMode}"
         }
+        world.getAsJsonObject("randomSequences")?.entrySet()?.forEach { (name, expected) ->
+            val actual = sandbox.world.randomSequences[name]
+            if (actual != expected.asLong) failures += "world random sequence $name expected ${expected.asLong} but was ${actual ?: "<missing>"}"
+        }
         world.getAsJsonArray("forcedChunk")?.let {
             val chunk = parseManifestChunk(it, "world assertion forcedChunk")
             if (chunk !in sandbox.world.forcedChunks) failures += "world expected forced chunk ${chunk.x},${chunk.z}"
