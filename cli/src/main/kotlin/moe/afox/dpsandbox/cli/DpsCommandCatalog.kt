@@ -6,7 +6,7 @@ import moe.afox.dpsandbox.core.VersionProfiles
 object DpsCommandCatalog {
     private val baseRootCommands: List<CompletionSuggestion> = listOf(
         command("load", "run #minecraft:load"),
-        command("reload", "reload datapack files"),
+        command("reload", "reload datapack files", CommandBehaviorLevel.OBSERVED_NOOP),
         command("tick", "advance sandbox ticks"),
         command("function", "run a loaded function"),
         command("player", "create or reuse a player"),
@@ -73,10 +73,10 @@ object DpsCommandCatalog {
         command("w", "record private chat output"),
         command("teammsg", "record team chat output"),
         command("tm", "record team chat output"),
-        command("playsound", "record a sound output"),
-        command("stopsound", "record a stop-sound output"),
-        command("particle", "record a visual output"),
-        unsupported("datapack"),
+        command("playsound", "record a sound output", CommandBehaviorLevel.OBSERVED_NOOP),
+        command("stopsound", "record a stop-sound output", CommandBehaviorLevel.OBSERVED_NOOP),
+        command("particle", "record a visual output", CommandBehaviorLevel.OBSERVED_NOOP),
+        command("datapack", "inspect loaded datapack resources"),
         unsupported("debug"),
         unsupported("place"),
     ).distinctBy { it.value }.sortedBy { it.value }
@@ -138,11 +138,21 @@ object DpsCommandCatalog {
                 .orEmpty()
         }
 
-    private fun command(value: String, description: String): CompletionSuggestion =
-        CompletionSuggestion(value, description, "commands", appendSpace = true)
+    private fun command(
+        value: String,
+        description: String,
+        behaviorLevel: CommandBehaviorLevel = CommandBehaviorLevel.MODELED,
+    ): CompletionSuggestion =
+        CompletionSuggestion(value, description, "commands", appendSpace = true, behaviorLevel = behaviorLevel)
 
     private fun unsupported(value: String): CompletionSuggestion =
-        CompletionSuggestion(value, "vanilla command: warning unless --unsupported error is set", "vanilla warnings", appendSpace = true)
+        CompletionSuggestion(
+            value,
+            "vanilla command: warning unless --unsupported error is set",
+            "vanilla warnings",
+            appendSpace = true,
+            behaviorLevel = CommandBehaviorLevel.UNSUPPORTED,
+        )
 
     private val sandboxOnlyRoots = setOf(
         "load",

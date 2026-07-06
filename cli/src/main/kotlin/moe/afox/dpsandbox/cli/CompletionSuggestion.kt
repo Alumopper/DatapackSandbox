@@ -5,4 +5,5 @@ data class CompletionSuggestion(
     val description: String = "",
     val group: String = "values",
     val appendSpace: Boolean = false,
+    val behaviorLevel: CommandBehaviorLevel? = null,
 )

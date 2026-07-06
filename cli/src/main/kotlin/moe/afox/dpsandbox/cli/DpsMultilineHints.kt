@@ -11,11 +11,18 @@ object DpsMultilineHints {
         val context = CompletionContext.parse(buffer, cursor)
         val commands = DpsCommandCatalog.rootCommands(profile)
         val command = commandFor(context, commands) ?: return emptyList()
+        val suggestion = commands.firstOrNull { it.value == command }
         val usage = command + DpsCommandCatalog.usageSuffix(command)
         val detail = details[command]
-            ?: commands.firstOrNull { it.value == command }?.description
+            ?: suggestion?.description
             ?: return emptyList()
-        return listOf(title(usage), body(detail))
+        return buildList {
+            add(title(usage))
+            add(body(detail))
+            suggestion?.behaviorLevel?.let { level ->
+                add(body("behavior: ${level.id} - ${level.summary}"))
+            }
+        }
     }
 
     private fun commandFor(context: CompletionContext, commands: List<CompletionSuggestion>): String? {

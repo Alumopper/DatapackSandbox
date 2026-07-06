@@ -111,6 +111,7 @@ class DpsCompleterTest {
         assertTrue(hint.size >= 2, hint.joinToString("\n"))
         assertTrue("function <namespace:path>" in hint[0].toString(), hint[0].toString())
         assertTrue("run one loaded function" in hint[1].toString(), hint[1].toString())
+        assertTrue("behavior: modeled" in hint[2].toString(), hint.joinToString("\n"))
     }
 
     @Test
@@ -118,6 +119,7 @@ class DpsCompleterTest {
         val commands = DpsCommandCatalog.rootCommands(VersionProfiles.default).associateBy { it.value }
         val implementedRoots = listOf(
             "attribute",
+            "datapack",
             "defaultgamemode",
             "difficulty",
             "fillbiome",
@@ -133,6 +135,9 @@ class DpsCompleterTest {
         )
 
         assertEquals("read or edit stored entity attributes", commands.getValue("attribute").description)
+        assertEquals(CommandBehaviorLevel.MODELED, commands.getValue("attribute").behaviorLevel)
+        assertEquals(CommandBehaviorLevel.OBSERVED_NOOP, commands.getValue("playsound").behaviorLevel)
+        assertEquals(CommandBehaviorLevel.UNSUPPORTED, commands.getValue("ban").behaviorLevel)
         assertEquals("edit stored world border state", commands.getValue("worldborder").description)
         implementedRoots.forEach { root ->
             assertFalse(

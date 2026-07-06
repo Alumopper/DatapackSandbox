@@ -1,4 +1,4 @@
-﻿# 命令支持状态
+# 命令支持状态
 
 默认 profile：Minecraft Java `26.2`。兼容 profile 覆盖到 `1.20.4`。
 
@@ -15,81 +15,90 @@
 | 空操作 | 命令会被接受和记录，但沙盒没有对应的可变原版状态。 |
 | 未支持 | 未实现；按当前 unsupported 策略处理。 |
 
+## 行为等级
+
+| 等级 | 含义 |
+|---|---|
+| `exact` | 文档覆盖的行为目标是与原版可观察结果一致。 |
+| `modeled` | 沙盒使用确定性的洁净室模型覆盖数据包可见行为。 |
+| `observed-noop` | 命令会被接受并产生输出或诊断，但真实副作用有意缺省。 |
+| `unsupported` | 命令交给当前 unsupported 策略处理。 |
+
 ## 原版命令矩阵
 
-| 命令 | 状态 | 已实现形式 / 沙盒行为 |
-|---|---:|---|
-| `advancement` | 部分支持 | `grant`、`revoke`、`test`；`test` 会记录通过数量和逐玩家结果 payload；每个玩家独立记录进度；奖励支持 function、loot、XP 和 recipe。 |
-| `attribute` | 部分支持 | `get`、`base get`、`base set`、`base reset`；get 命令会记录结构化 data 输出，供断言和 `execute store result` 使用；modifier 子命令作为 no-op warning 接受。 |
-| `ban`、`ban-ip`、`banlist` | 未支持 | 不模拟服务器封禁列表。 |
-| `bossbar` | 部分支持 | `add`、`remove`、`list`、`get`、`set`；修改命令和 `get` 都会记录结构化 data 输出，供断言和 `execute store result` 使用；状态进入 snapshot，不模拟客户端 UI。 |
-| `clear` | 部分支持 | 从沙盒玩家背包移除匹配物品，支持 JSON/SNBT-lite NBT 和 components payload 过滤，记录 matched/removed 数量；`maxCount=0` 作为只查询不删除的检查。 |
-| `clone` | 部分支持 | 复制稀疏世界中的方块状态和方块实体 NBT，并记录结构化复制/变化位置输出；不执行更新、掉落或重叠区物理。 |
-| `damage` | 部分支持 | 降低实体或玩家生命值，发出沙盒 damage/death advancement 事件，并记录结构化生命值变化输出；不计算盔甲、无敌帧、死亡掉落和完整战斗规则。 |
-| `data` | 部分支持 | 支持带可选数值 scale 的 `get`，以及 `merge`、`modify`、`remove`，目标支持 `storage`、`entity`、`block`；写入类操作会记录结构化前后输出；path 支持字段、正/负数字索引和简单对象匹配；`modify` 支持 `value`、`from` 和 `string` 来源；顶层 NBT 字段经过 schema 校验。 |
-| `datapack` | 部分支持 | `list` 报告已加载 typed/raw/tag/resource-index 资源数量和资源覆盖诊断；`enable`/`disable` 作为 no-op 接受，因为沙盒创建后 pack 顺序固定。 |
-| `debug`、`jfr`、`perf` | 未支持 | 原版 profiling 不适用于此运行时。 |
-| `defaultgamemode` | 支持 | 存储世界默认游戏模式，并记录结构化前后输出。 |
-| `difficulty` | 支持 | 存储并报告世界难度，并记录结构化前后输出。 |
-| `deop`、`op` | 未支持 | 不模拟权限系统。 |
-| `effect` | 部分支持 | `give`、`clear`；更新玩家效果状态并触发相关 advancement 事件，也会更新非玩家实体 active effects，并通过 snapshot 和 `ActiveEffects` NBT 暴露；记录可用于 report/assertion 的结构化输出。 |
-| `enchant` | 部分支持 | 向玩家选中物品和非玩家实体主手装备写入附魔组件，并记录可用于 report/assertion 的结构化输出；不检查可附魔性。 |
-| `execute` | 部分支持 | 支持 `as`、`at`、`positioned <pos>`、`positioned as <selector>`、`align`、`anchored`、`facing`、`in`、`rotated`、`store`、`if`、`unless`、`run` 的核心路径；`as` 只切换执行者，`at` 会把执行位置、维度和旋转移动到目标实体，`positioned as` 只移动执行位置；`align` 会对校验过的 `x`/`y`/`z` 轴取整；`rotated` 和 `facing` 会更新命令旋转上下文，供 `tp` 的相对旋转参数和局部坐标使用；`anchored` 会更新局部坐标基准点；`store` 目标覆盖 score、storage、entity NBT、block NBT 和 bossbar value/max；条件覆盖 `entity`、`score`、`data`、`block`、`blocks`、`predicate`、`function`、`dimension`、`biome` 和 `loaded`。 |
-| `experience`、`xp` | 部分支持 | `add`、`set`、`query`；沙盒内 points/levels 共用玩家 XP 整数字段；`query` 会记录结构化 data 输出，供断言和 `execute store result` 使用。 |
-| `fill` | 部分支持 | `fill <from> <to> <block[state]{nbt}> [replace|keep|destroy|hollow|outline]`；记录结构化变化位置输出；位置参数支持局部坐标；不执行更新或掉落。 |
-| `fillbiome` | 部分支持 | 为显式方块范围记录 biome 覆盖，并记录结构化变化位置输出；不模拟区块 biome 容器或生成效果。 |
-| `forceload` | 部分支持 | `add`、`remove`、`remove all`、`query`、`query <pos>`；记录强加载 chunk 坐标，并为修改和 query 记录结构化输出。 |
-| `function` | 支持 | `function <id>`。 |
-| `gamemode` | 支持 | `gamemode <mode> [targets]`；更新沙盒玩家游戏模式，并记录结构化前后输出。 |
-| `gamerule` | 部分支持 | 存储任意 gamerule 字符串值，并为修改/query 记录结构化输出；不执行具体游戏规则副作用。 |
-| `give` | 部分支持 | 向玩家背包添加物品，记录可用于 report/assertion 的结构化输出，并触发 inventory advancement 事件；item argument 支持沙盒 JSON/SNBT-lite NBT 和 components payload。 |
-| `help` | 部分支持 | 输出命令根节点和基础沙盒帮助。 |
-| `item` | 部分支持 | `replace entity|block ... with <item> [count]` 和 `from entity|block ...`；`replace` 与 `modify` 会记录可用于 report/assertion 的结构化输出；item argument 支持沙盒 JSON/SNBT-lite NBT 和 components payload；entity 槽位覆盖玩家背包、当前主手、`enderchest.*` 槽和非玩家实体装备槽；`modify entity|block ... <modifier>` 会应用常用 item modifier 函数（`set_components`、`set_custom_data`、`set_count`、`limit_count`、`set_item`、`discard`、`set_damage`、`set_name`、`set_lore`、`filtered`、`reference`、`sequence`）。 |
-| `kick` | 未支持 | 不模拟网络会话。 |
-| `kill` | 支持 | 移除选中的沙盒实体，并记录可用于 report/assertion 的结构化目标输出；玩家执行上下文会为非玩家目标触发 `killed_entity` advancement 事件。 |
-| `list` | 支持 | 报告沙盒玩家及 UUID。 |
-| `locate` | 部分支持 | 接受 `biome`、`structure`、`poi`；虚空世界中报告没有结果。 |
-| `loot` | 部分支持 | 支持 `give`、`insert`、`spawn`、`replace entity`、`replace block`，并记录可用于 report/assertion 的结构化 loot 输出；`spawn` 会在当前执行维度创建 item 实体；`replace entity` 可写入玩家背包、当前主手、`enderchest.*` 槽和非玩家实体装备槽；source 支持 `loot <table>`、`fish <table> <pos> [tool]`、`mine <pos> [tool]`，以及实体声明 `DeathLootTable` 时的 `kill <target>`；还支持沙盒上下文 source：`entity <table> <target>`、`block <table> <pos> [tool]`、`equipment <table> <target> <slot>`；常用函数覆盖 count、item id、discard、components/custom data、damage、name 和 lore。 |
-| `me` | 支持 | 记录为 chat 输出事件。 |
-| `msg`、`tell`、`w` | 支持 | 记录为私聊输出事件。 |
-| `pardon`、`pardon-ip` | 未支持 | 不模拟服务器封禁管理。 |
-| `particle` | 部分支持 | 记录为 visual 输出事件；不模拟客户端粒子。 |
-| `place` | 未支持 | 不模拟结构、地物或世界生成放置。 |
-| `playsound` | 部分支持 | 记录为 sound 输出事件。 |
-| `publish` | 未支持 | 不模拟 LAN/网络发布。 |
-| `random` | 部分支持 | `value`、`roll`、`reset`；使用确定性的沙盒随机序列状态，默认混入 world seed，显式 reset seed 时优先使用 reset 值。 |
-| `recipe` | 部分支持 | `give`、`take`；支持对已加载数据包 recipe 使用 `*`，更新玩家 recipe 集合并记录 changed 数量。 |
-| `reload` | 空操作 | 原版命令作为 no-op 记录；REPL 工具命令 `reload` 会真正重载数据包并保留世界状态。 |
-| `return` | 支持 | 结束当前 function；支持 `return <value>`、`return fail` 和 `return run <command>`，用于 function 条件和 store result 测试。 |
-| `ride` | 部分支持 | 记录载具和乘客关系，并记录结构化 mount/dismount 输出；不模拟控制或物理。 |
-| `rotate` | 部分支持 | 更新 yaw/pitch，并记录结构化前后旋转输出。 |
-| `save-all`、`save-off`、`save-on` | 未支持 | 沙盒没有真实存档生命周期。 |
-| `say` | 支持 | 记录为 chat 输出事件。 |
-| `schedule` | 部分支持 | `schedule function <id> <time> [append|replace]`、`schedule clear <id>`；记录结构化调度和清除输出。 |
-| `scoreboard` | 部分支持 | objectives 支持 `add`、`remove`、`list`；players 支持 `set`、`add`、`remove`、`get`、`reset`、`list`、`enable`、`operation`；`players get` 会记录结构化 data 输出，供断言和 `execute store result` 使用。 |
-| `seed` | 支持 | 报告确定性的沙盒 seed。 |
-| `setblock` | 部分支持 | 修改稀疏世界方块状态和方块实体 NBT，并记录结构化前后方块输出；位置参数支持局部坐标；不执行邻居更新。 |
-| `setidletimeout` | 未支持 | 服务器管理命令。 |
-| `setworldspawn` | 部分支持 | 存储世界出生点和角度，并记录结构化出生点输出。 |
-| `spawnpoint` | 部分支持 | 存储玩家出生点和角度，并记录结构化目标输出。 |
-| `spectate` | 部分支持 | 设置旁观模式并记录目标；不模拟客户端镜头状态。 |
-| `spreadplayers` | 部分支持 | 确定性地把选中实体分布到中心附近；不实现原版碰撞/队伍算法。 |
-| `stop` | 未支持 | 运行时生命周期由宿主进程控制。 |
-| `stopsound` | 部分支持 | 记录为 sound 输出事件。 |
-| `summon` | 部分支持 | 在当前执行维度创建带位置、tag 和 schema 校验 NBT 的实体，并记录可用于 report/assertion 的结构化创建输出；实体 AI 不 tick。 |
-| `tag` | 支持 | `add`、`remove`、`list`。 |
-| `team` | 部分支持 | `add`、`remove`、`list`、`join`、`leave`、`empty`、`modify`；记录结构化队伍/成员/选项输出，不执行 gameplay 副作用。 |
-| `teammsg`、`tm` | 支持 | 记录为 team chat 输出事件。 |
-| `teleport`、`tp` | 部分支持 | 坐标传送支持局部坐标、可选旋转、`facing` 和当前执行维度；目标实体传送会复制目标位置、维度和旋转；记录可用于 report/assertion 的结构化移动输出。 |
-| `tellraw` | 支持 | 解析 JSON text component 并记录输出事件。 |
-| `tick` | 部分支持 | `query`、`rate`、`freeze`、`unfreeze`、`step`、`sprint`、`stop`；更新沙盒 tick 状态，可推进 tick，并记录结构化状态/推进输出用于调试。 |
-| `time` | 部分支持 | `set`、`add`、`query daytime|gametime|day`；修改和 query 都会记录结构化 data 输出，供断言和 `execute store result` 使用。 |
-| `title` | 支持 | `clear`、`reset`、`title`、`subtitle`、`actionbar`、`times` 输出事件。 |
-| `transfer` | 未支持 | 不模拟网络/server transfer。 |
-| `trigger` | 部分支持 | `trigger <objective> [add|set] [value]`；使用当前/default 玩家。 |
-| `weather` | 部分支持 | `clear`、`rain`、`thunder`；存储状态，并记录结构化天气输出。 |
-| `whitelist` | 未支持 | 服务器管理命令。 |
-| `worldborder` | 部分支持 | `get`、`set`、`add`、`center`、`damage`、`warning`；存储状态，并记录可断言的结构化修改/query 输出。 |
+| 命令 | 状态 | 行为等级 | 已实现形式 / 沙盒行为 |
+|---|---:|---:|---|
+| `advancement` | 部分支持 | `modeled` | `grant`、`revoke`、`test`；`test` 会记录通过数量和逐玩家结果 payload；每个玩家独立记录进度；奖励支持 function、loot、XP 和 recipe。 |
+| `attribute` | 部分支持 | `modeled` | `get`、`base get`、`base set`、`base reset`；get 命令会记录结构化 data 输出，供断言和 `execute store result` 使用；modifier 子命令作为 no-op warning 接受。 |
+| `ban`、`ban-ip`、`banlist` | 未支持 | `unsupported` | 不模拟服务器封禁列表。 |
+| `bossbar` | 部分支持 | `modeled` | `add`、`remove`、`list`、`get`、`set`；修改命令和 `get` 都会记录结构化 data 输出，供断言和 `execute store result` 使用；状态进入 snapshot，不模拟客户端 UI。 |
+| `clear` | 部分支持 | `modeled` | 从沙盒玩家背包移除匹配物品，支持 JSON/SNBT-lite NBT 和 components payload 过滤，记录 matched/removed 数量；`maxCount=0` 作为只查询不删除的检查。 |
+| `clone` | 部分支持 | `modeled` | 复制稀疏世界中的方块状态和方块实体 NBT，并记录结构化复制/变化位置输出；不执行更新、掉落或重叠区物理。 |
+| `damage` | 部分支持 | `modeled` | 降低实体或玩家生命值，发出沙盒 damage/death advancement 事件，并记录结构化生命值变化输出；不计算盔甲、无敌帧、死亡掉落和完整战斗规则。 |
+| `data` | 部分支持 | `modeled` | 支持带可选数值 scale 的 `get`，以及 `merge`、`modify`、`remove`，目标支持 `storage`、`entity`、`block`；写入类操作会记录结构化前后输出；path 支持字段、正/负数字索引和简单对象匹配；`modify` 支持 `value`、`from` 和 `string` 来源；顶层 NBT 字段经过 schema 校验。 |
+| `datapack` | 部分支持 | `modeled` | `list` 报告已加载 typed/raw/tag/resource-index 资源数量和资源覆盖诊断；`enable`/`disable` 作为 no-op 接受，因为沙盒创建后 pack 顺序固定。 |
+| `debug`、`jfr`、`perf` | 未支持 | `unsupported` | 原版 profiling 不适用于此运行时。 |
+| `defaultgamemode` | 支持 | `modeled` | 存储世界默认游戏模式，并记录结构化前后输出。 |
+| `difficulty` | 支持 | `modeled` | 存储并报告世界难度，并记录结构化前后输出。 |
+| `deop`、`op` | 未支持 | `unsupported` | 不模拟权限系统。 |
+| `effect` | 部分支持 | `modeled` | `give`、`clear`；更新玩家效果状态并触发相关 advancement 事件，也会更新非玩家实体 active effects，并通过 snapshot 和 `ActiveEffects` NBT 暴露；记录可用于 report/assertion 的结构化输出。 |
+| `enchant` | 部分支持 | `modeled` | 向玩家选中物品和非玩家实体主手装备写入附魔组件，并记录可用于 report/assertion 的结构化输出；不检查可附魔性。 |
+| `execute` | 部分支持 | `modeled` | 支持 `as`、`at`、`positioned <pos>`、`positioned as <selector>`、`align`、`anchored`、`facing`、`in`、`rotated`、`store`、`if`、`unless`、`run` 的核心路径；`as` 只切换执行者，`at` 会把执行位置、维度和旋转移动到目标实体，`positioned as` 只移动执行位置；`align` 会对校验过的 `x`/`y`/`z` 轴取整；`rotated` 和 `facing` 会更新命令旋转上下文，供 `tp` 的相对旋转参数和局部坐标使用；`anchored` 会更新局部坐标基准点；`store` 目标覆盖 score、storage、entity NBT、block NBT 和 bossbar value/max；条件覆盖 `entity`、`score`、`data`、`block`、`blocks`、`predicate`、`function`、`dimension`、`biome` 和 `loaded`。 |
+| `experience`、`xp` | 部分支持 | `modeled` | `add`、`set`、`query`；沙盒内 points/levels 共用玩家 XP 整数字段；`query` 会记录结构化 data 输出，供断言和 `execute store result` 使用。 |
+| `fill` | 部分支持 | `modeled` | `fill <from> <to> <block[state]{nbt}> [replace|keep|destroy|hollow|outline]`；记录结构化变化位置输出；位置参数支持局部坐标；不执行更新或掉落。 |
+| `fillbiome` | 部分支持 | `modeled` | 为显式方块范围记录 biome 覆盖，并记录结构化变化位置输出；不模拟区块 biome 容器或生成效果。 |
+| `forceload` | 部分支持 | `modeled` | `add`、`remove`、`remove all`、`query`、`query <pos>`；记录强加载 chunk 坐标，并为修改和 query 记录结构化输出。 |
+| `function` | 支持 | `modeled` | `function <id>`。 |
+| `gamemode` | 支持 | `modeled` | `gamemode <mode> [targets]`；更新沙盒玩家游戏模式，并记录结构化前后输出。 |
+| `gamerule` | 部分支持 | `modeled` | 存储任意 gamerule 字符串值，并为修改/query 记录结构化输出；不执行具体游戏规则副作用。 |
+| `give` | 部分支持 | `modeled` | 向玩家背包添加物品，记录可用于 report/assertion 的结构化输出，并触发 inventory advancement 事件；item argument 支持沙盒 JSON/SNBT-lite NBT 和 components payload。 |
+| `help` | 部分支持 | `modeled` | 输出命令根节点和基础沙盒帮助。 |
+| `item` | 部分支持 | `modeled` | `replace entity|block ... with <item> [count]` 和 `from entity|block ...`；`replace` 与 `modify` 会记录可用于 report/assertion 的结构化输出；item argument 支持沙盒 JSON/SNBT-lite NBT 和 components payload；entity 槽位覆盖玩家背包、当前主手、`enderchest.*` 槽和非玩家实体装备槽；`modify entity|block ... <modifier>` 会应用常用 item modifier 函数（`set_components`、`set_custom_data`、`set_count`、`limit_count`、`set_item`、`discard`、`set_damage`、`set_name`、`set_lore`、`filtered`、`reference`、`sequence`）。 |
+| `kick` | 未支持 | `unsupported` | 不模拟网络会话。 |
+| `kill` | 支持 | `modeled` | 移除选中的沙盒实体，并记录可用于 report/assertion 的结构化目标输出；玩家执行上下文会为非玩家目标触发 `killed_entity` advancement 事件。 |
+| `list` | 支持 | `modeled` | 报告沙盒玩家及 UUID。 |
+| `locate` | 部分支持 | `modeled` | 接受 `biome`、`structure`、`poi`；虚空世界中报告没有结果。 |
+| `loot` | 部分支持 | `modeled` | 支持 `give`、`insert`、`spawn`、`replace entity`、`replace block`，并记录可用于 report/assertion 的结构化 loot 输出；`spawn` 会在当前执行维度创建 item 实体；`replace entity` 可写入玩家背包、当前主手、`enderchest.*` 槽和非玩家实体装备槽；source 支持 `loot <table>`、`fish <table> <pos> [tool]`、`mine <pos> [tool]`，以及实体声明 `DeathLootTable` 时的 `kill <target>`；还支持沙盒上下文 source：`entity <table> <target>`、`block <table> <pos> [tool]`、`equipment <table> <target> <slot>`；常用函数覆盖 count、item id、discard、components/custom data、damage、name 和 lore。 |
+| `me` | 支持 | `modeled` | 记录为 chat 输出事件。 |
+| `msg`、`tell`、`w` | 支持 | `modeled` | 记录为私聊输出事件。 |
+| `pardon`、`pardon-ip` | 未支持 | `unsupported` | 不模拟服务器封禁管理。 |
+| `particle` | 部分支持 | `observed-noop` | 记录为 visual 输出事件；不模拟客户端粒子。 |
+| `place` | 未支持 | `unsupported` | 不模拟结构、地物或世界生成放置。 |
+| `playsound` | 部分支持 | `observed-noop` | 记录为 sound 输出事件。 |
+| `publish` | 未支持 | `unsupported` | 不模拟 LAN/网络发布。 |
+| `random` | 部分支持 | `modeled` | `value`、`roll`、`reset`；使用确定性的沙盒随机序列状态，默认混入 world seed，显式 reset seed 时优先使用 reset 值。 |
+| `recipe` | 部分支持 | `modeled` | `give`、`take`；支持对已加载数据包 recipe 使用 `*`，更新玩家 recipe 集合并记录 changed 数量。 |
+| `reload` | 空操作 | `observed-noop` | 原版命令作为 no-op 记录；REPL 工具命令 `reload` 会真正重载数据包并保留世界状态。 |
+| `return` | 支持 | `modeled` | 结束当前 function；支持 `return <value>`、`return fail` 和 `return run <command>`，用于 function 条件和 store result 测试。 |
+| `ride` | 部分支持 | `modeled` | 记录载具和乘客关系，并记录结构化 mount/dismount 输出；不模拟控制或物理。 |
+| `rotate` | 部分支持 | `modeled` | 更新 yaw/pitch，并记录结构化前后旋转输出。 |
+| `save-all`、`save-off`、`save-on` | 未支持 | `unsupported` | 沙盒没有真实存档生命周期。 |
+| `say` | 支持 | `modeled` | 记录为 chat 输出事件。 |
+| `schedule` | 部分支持 | `modeled` | `schedule function <id> <time> [append|replace]`、`schedule clear <id>`；记录结构化调度和清除输出。 |
+| `scoreboard` | 部分支持 | `modeled` | objectives 支持 `add`、`remove`、`list`；players 支持 `set`、`add`、`remove`、`get`、`reset`、`list`、`enable`、`operation`；`players get` 会记录结构化 data 输出，供断言和 `execute store result` 使用。 |
+| `seed` | 支持 | `modeled` | 报告确定性的沙盒 seed。 |
+| `setblock` | 部分支持 | `modeled` | 修改稀疏世界方块状态和方块实体 NBT，并记录结构化前后方块输出；位置参数支持局部坐标；不执行邻居更新。 |
+| `setidletimeout` | 未支持 | `unsupported` | 服务器管理命令。 |
+| `setworldspawn` | 部分支持 | `modeled` | 存储世界出生点和角度，并记录结构化出生点输出。 |
+| `spawnpoint` | 部分支持 | `modeled` | 存储玩家出生点和角度，并记录结构化目标输出。 |
+| `spectate` | 部分支持 | `modeled` | 设置旁观模式并记录目标；不模拟客户端镜头状态。 |
+| `spreadplayers` | 部分支持 | `modeled` | 确定性地把选中实体分布到中心附近；不实现原版碰撞/队伍算法。 |
+| `stop` | 未支持 | `unsupported` | 运行时生命周期由宿主进程控制。 |
+| `stopsound` | 部分支持 | `observed-noop` | 记录为 sound 输出事件。 |
+| `summon` | 部分支持 | `modeled` | 在当前执行维度创建带位置、tag 和 schema 校验 NBT 的实体，并记录可用于 report/assertion 的结构化创建输出；实体 AI 不 tick。 |
+| `tag` | 支持 | `modeled` | `add`、`remove`、`list`。 |
+| `team` | 部分支持 | `modeled` | `add`、`remove`、`list`、`join`、`leave`、`empty`、`modify`；记录结构化队伍/成员/选项输出，不执行 gameplay 副作用。 |
+| `teammsg`、`tm` | 支持 | `modeled` | 记录为 team chat 输出事件。 |
+| `teleport`、`tp` | 部分支持 | `modeled` | 坐标传送支持局部坐标、可选旋转、`facing` 和当前执行维度；目标实体传送会复制目标位置、维度和旋转；记录可用于 report/assertion 的结构化移动输出。 |
+| `tellraw` | 支持 | `modeled` | 解析 JSON text component 并记录输出事件。 |
+| `tick` | 部分支持 | `modeled` | `query`、`rate`、`freeze`、`unfreeze`、`step`、`sprint`、`stop`；更新沙盒 tick 状态，可推进 tick，并记录结构化状态/推进输出用于调试。 |
+| `time` | 部分支持 | `modeled` | `set`、`add`、`query daytime|gametime|day`；修改和 query 都会记录结构化 data 输出，供断言和 `execute store result` 使用。 |
+| `title` | 支持 | `modeled` | `clear`、`reset`、`title`、`subtitle`、`actionbar`、`times` 输出事件。 |
+| `transfer` | 未支持 | `unsupported` | 不模拟网络/server transfer。 |
+| `trigger` | 部分支持 | `modeled` | `trigger <objective> [add|set] [value]`；使用当前/default 玩家。 |
+| `weather` | 部分支持 | `modeled` | `clear`、`rain`、`thunder`；存储状态，并记录结构化天气输出。 |
+| `whitelist` | 未支持 | `unsupported` | 服务器管理命令。 |
+| `worldborder` | 部分支持 | `modeled` | `get`、`set`、`add`、`center`、`damage`、`warning`；存储状态，并记录可断言的结构化修改/query 输出。 |
 
 ## 输出命令
 

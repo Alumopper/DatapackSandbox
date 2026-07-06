@@ -25,81 +25,90 @@ manifest schema before execution.
 | No-op | Accepted and recorded, but no mutable vanilla-equivalent state exists in the sandbox. |
 | Unsupported | Not implemented; handled by the unsupported policy. |
 
+## Behavior Levels
+
+| Level | Meaning |
+|---|---|
+| `exact` | The documented surface is intended to match vanilla-observable behavior. |
+| `modeled` | The sandbox uses a deterministic clean-room model for datapack-visible behavior. |
+| `observed-noop` | The command is accepted and produces output or diagnostics, but real side effects are intentionally absent. |
+| `unsupported` | The command is routed through the configured unsupported policy. |
+
 ## Vanilla Command Matrix
 
-| Command | Status | Supported forms / sandbox behavior |
-|---|---:|---|
-| `advancement` | Partial | `grant`, `revoke`, `test`; `test` records passed counts and per-player result payloads; progress is per player; rewards support functions, loot, XP, and recipes. |
-| `attribute` | Partial | `get`, `base get`, `base set`, `base reset`; get commands record structured data output for assertions and `execute store result`; modifier subcommands are accepted as no-op warning output. |
-| `ban`, `ban-ip`, `banlist` | Unsupported | Server administration and ban lists are not simulated. |
-| `bossbar` | Partial | `add`, `remove`, `list`, `get`, `set`; mutations and `get` record structured data output for assertions and `execute store result`; state is stored and appears in snapshots, no real client UI. |
-| `clear` | Partial | Removes matching item stacks from sandbox player inventories, including JSON/SNBT-lite NBT and component payload filters; records the matched/removed count, and treats `maxCount=0` as a query-only check. |
-| `clone` | Partial | Copies sparse sandbox block state/NBT and records structured copied/changed-position output; no updates, drops, or overlap physics. |
-| `damage` | Partial | Reduces entity/player health, emits sandbox damage/death advancement events, and records structured health-change output; no armor, invulnerability, death loot, or combat rules. |
-| `data` | Partial | `get` with optional numeric scale, `merge`, `modify`, `remove` for `storage`, `entity`, and `block`; write operations record structured before/after output; paths support fields, positive/negative numeric indexes, and simple object matchers; `modify` supports `value`, `from`, and `string` sources; top-level NBT is schema-checked. |
-| `datapack` | Partial | `list` reports loaded typed/raw/tag/resource-index counts plus resource overlay diagnostics; `enable`/`disable` are accepted as no-op because pack order is fixed at sandbox creation. |
-| `debug`, `jfr`, `perf` | Unsupported | Profiling commands do not apply to this runtime. |
-| `defaultgamemode` | Supported | Stores world default game mode and records structured before/after output. |
-| `difficulty` | Supported | Stores and reports world difficulty with structured before/after output. |
-| `deop`, `op` | Unsupported | Permission system is not simulated. |
-| `effect` | Partial | `give`, `clear`; updates player effect state with advancement events and non-player entity active effects visible through snapshot and `ActiveEffects` NBT; records structured output for reports/assertions. |
-| `enchant` | Partial | Writes enchantment components to player selected items and non-player mainhand equipment, with structured output for reports/assertions; no enchantability checks. |
-| `execute` | Partial | `as`, `at`, `positioned <pos>`, `positioned as <selector>`, `align`, `anchored`, `facing`, `in`, `rotated`, `store`, `if`, `unless`, `run`; `as` changes only the executor, `at` moves execution position/dimension/rotation to the target, and `positioned as` moves only the execution position; `align` floors validated `x`/`y`/`z` axes; `rotated` and `facing` update the command rotation context used by relative `tp` rotations and local coordinates; `anchored` updates the local-coordinate base; `store` targets score, storage, entity NBT, block NBT, and bossbar value/max; conditions support `entity`, `score`, `data`, `block`, `blocks`, `predicate`, `function`, `dimension`, `biome`, and `loaded`. |
-| `experience`, `xp` | Partial | `add`, `set`, `query`; points and levels share the sandbox XP integer; `query` records structured data output for assertions and `execute store result`. |
-| `fill` | Partial | `fill <from> <to> <block[state]{nbt}> [replace|keep|destroy|hollow|outline]`; records structured changed-position output; position arguments accept local coordinates; no updates/drops. |
-| `fillbiome` | Partial | Stores biome overrides for explicit block ranges and records structured changed-position output; no chunk biome container or generation effects. |
-| `forceload` | Partial | `add`, `remove`, `remove all`, `query`, `query <pos>`; stores forced chunk coordinates and records structured mutation/query output. |
-| `function` | Supported | `function <id>`. |
-| `gamemode` | Supported | `gamemode <mode> [targets]`; updates sandbox player game mode and records structured before/after output. |
-| `gamerule` | Partial | Stores arbitrary gamerule string values and records structured mutation/query output; no gameplay side effects. |
-| `give` | Partial | Adds item stacks to player inventories, records structured output for reports/assertions, and fires inventory advancement events; item arguments accept sandbox JSON/SNBT-lite NBT and component payloads. |
-| `help` | Partial | Reports command roots and basic sandbox help text. |
-| `item` | Partial | `replace entity|block ... with <item> [count]` and `from entity|block ...`; `replace` and `modify` record structured output for reports/assertions; item arguments accept sandbox JSON/SNBT-lite NBT and component payloads; entity slots cover player inventory/selected-mainhand/`enderchest.*` slots and non-player equipment slots; `modify entity|block ... <modifier>` applies common item modifier functions (`set_components`, `set_custom_data`, `set_count`, `limit_count`, `set_item`, `discard`, `set_damage`, `set_name`, `set_lore`, `filtered`, `reference`, `sequence`). |
-| `kick` | Unsupported | Network sessions are not simulated. |
-| `kill` | Supported | Removes selected sandbox entities, records structured target output for reports/assertions, and player execution contexts fire `killed_entity` advancement events for non-player targets. |
-| `list` | Supported | Reports sandbox players and UUIDs. |
-| `locate` | Partial | Accepts `biome`, `structure`, `poi`; reports no result in the void world instead of querying worldgen. |
-| `loot` | Partial | Supports `give`, `insert`, `spawn`, `replace entity`, `replace block`, with structured loot output for reports/assertions; `spawn` creates item entities in the current execution dimension; `replace entity` writes player inventory/selected-mainhand/`enderchest.*` slots and non-player equipment slots; sources include `loot <table>`, `fish <table> <pos> [tool]`, `mine <pos> [tool]`, `kill <target>` when entities declare `DeathLootTable`, plus sandbox context sources `entity <table> <target>`, `block <table> <pos> [tool]`, and `equipment <table> <target> <slot>`; common functions include count, item id, discard, components/custom data, damage, name, and lore. |
-| `me` | Supported | Recorded as chat output. |
-| `msg`, `tell`, `w` | Supported | Recorded as private chat output. |
-| `pardon`, `pardon-ip` | Unsupported | Server administration is not simulated. |
-| `particle` | Partial | Recorded as visual output event; no client particles. |
-| `place` | Unsupported | Structure/feature placement and worldgen are not simulated. |
-| `playsound` | Partial | Recorded as sound output event. |
-| `publish` | Unsupported | LAN/networking is not simulated. |
-| `random` | Partial | `value`, `roll`, `reset`; deterministic sandbox sequence state seeded from the world seed unless explicitly reset. |
-| `recipe` | Partial | `give`, `take`; supports `*` for loaded datapack recipes, updates per-player recipe sets, and records changed counts. |
-| `reload` | No-op | Accepted and recorded; REPL `reload` performs real datapack reload, vanilla command does not mutate this immutable sandbox instance. |
-| `return` | Supported | Stops the current function; supports `return <value>`, `return fail`, and `return run <command>` for function conditions and store result tests. |
-| `ride` | Partial | Tracks vehicle/passenger relationships and records structured mount/dismount output; no physics/control. |
-| `rotate` | Partial | Updates yaw/pitch and records structured before/after rotation output. |
-| `save-all`, `save-off`, `save-on` | Unsupported | No real world save lifecycle exists. |
-| `say` | Supported | Recorded as chat output. |
-| `schedule` | Partial | `schedule function <id> <time> [append|replace]`, `schedule clear <id>`; records structured scheduling and clearing output. |
-| `scoreboard` | Partial | Objectives `add`, `remove`, `list`; players `set`, `add`, `remove`, `get`, `reset`, `list`, `enable`, `operation`; `players get` records a structured data output for assertions and `execute store result`. |
-| `seed` | Supported | Reports deterministic sandbox seed. |
-| `setblock` | Partial | Mutates sparse block state/NBT and records structured before/after block output; position arguments accept local coordinates; no neighbor updates. |
-| `setidletimeout` | Unsupported | Server administration command. |
-| `setworldspawn` | Partial | Stores sandbox world spawn position/angle and records structured spawn output. |
-| `spawnpoint` | Partial | Stores per-player spawn point/angle and records structured target output. |
-| `spectate` | Partial | Sets spectator mode and records target; no camera/client state. |
-| `spreadplayers` | Partial | Deterministically distributes selected entities around a center; no collision/team algorithm. |
-| `stop` | Unsupported | Runtime lifecycle is controlled by the host process, not commands. |
-| `stopsound` | Partial | Recorded as sound output event. |
-| `summon` | Partial | Creates entities in the current execution dimension with position, tags, schema-checked NBT, and structured creation output for reports/assertions; AI does not tick. |
-| `tag` | Supported | `add`, `remove`, `list`. |
-| `team` | Partial | `add`, `remove`, `list`, `join`, `leave`, `empty`, `modify`; records structured team/member/option output and has no gameplay effects. |
-| `teammsg`, `tm` | Supported | Recorded as team chat output. |
-| `teleport`, `tp` | Partial | Coordinate teleport supports local coordinates, optional rotation, `facing`, and the current execution dimension; destination-entity teleport copies destination position, dimension, and rotation; records structured movement output for reports/assertions. |
-| `tellraw` | Supported | Resolves JSON text components into output events. |
-| `tick` | Partial | `query`, `rate`, `freeze`, `unfreeze`, `step`, `sprint`, `stop`; updates sandbox tick state, can advance ticks, and records structured state/advance output for debugging. |
-| `time` | Partial | `set`, `add`, `query daytime|gametime|day`; mutations and queries record structured data output for assertions and `execute store result`. |
-| `title` | Supported | `clear`, `reset`, `title`, `subtitle`, `actionbar`, `times` output events. |
-| `transfer` | Unsupported | Networking/server transfer is not simulated. |
-| `trigger` | Partial | `trigger <objective> [add|set] [value]`; uses current/default sandbox player. |
-| `weather` | Partial | `clear`, `rain`, `thunder`; stores state and records structured weather output. |
-| `whitelist` | Unsupported | Server administration command. |
-| `worldborder` | Partial | `get`, `set`, `add`, `center`, `damage`, `warning`; stores state and records structured mutation/query output for assertions. |
+| Command | Status | Behavior | Supported forms / sandbox behavior |
+|---|---:|---:|---|
+| `advancement` | Partial | `modeled` | `grant`, `revoke`, `test`; `test` records passed counts and per-player result payloads; progress is per player; rewards support functions, loot, XP, and recipes. |
+| `attribute` | Partial | `modeled` | `get`, `base get`, `base set`, `base reset`; get commands record structured data output for assertions and `execute store result`; modifier subcommands are accepted as no-op warning output. |
+| `ban`, `ban-ip`, `banlist` | Unsupported | `unsupported` | Server administration and ban lists are not simulated. |
+| `bossbar` | Partial | `modeled` | `add`, `remove`, `list`, `get`, `set`; mutations and `get` record structured data output for assertions and `execute store result`; state is stored and appears in snapshots, no real client UI. |
+| `clear` | Partial | `modeled` | Removes matching item stacks from sandbox player inventories, including JSON/SNBT-lite NBT and component payload filters; records the matched/removed count, and treats `maxCount=0` as a query-only check. |
+| `clone` | Partial | `modeled` | Copies sparse sandbox block state/NBT and records structured copied/changed-position output; no updates, drops, or overlap physics. |
+| `damage` | Partial | `modeled` | Reduces entity/player health, emits sandbox damage/death advancement events, and records structured health-change output; no armor, invulnerability, death loot, or combat rules. |
+| `data` | Partial | `modeled` | `get` with optional numeric scale, `merge`, `modify`, `remove` for `storage`, `entity`, and `block`; write operations record structured before/after output; paths support fields, positive/negative numeric indexes, and simple object matchers; `modify` supports `value`, `from`, and `string` sources; top-level NBT is schema-checked. |
+| `datapack` | Partial | `modeled` | `list` reports loaded typed/raw/tag/resource-index counts plus resource overlay diagnostics; `enable`/`disable` are accepted as no-op because pack order is fixed at sandbox creation. |
+| `debug`, `jfr`, `perf` | Unsupported | `unsupported` | Profiling commands do not apply to this runtime. |
+| `defaultgamemode` | Supported | `modeled` | Stores world default game mode and records structured before/after output. |
+| `difficulty` | Supported | `modeled` | Stores and reports world difficulty with structured before/after output. |
+| `deop`, `op` | Unsupported | `unsupported` | Permission system is not simulated. |
+| `effect` | Partial | `modeled` | `give`, `clear`; updates player effect state with advancement events and non-player entity active effects visible through snapshot and `ActiveEffects` NBT; records structured output for reports/assertions. |
+| `enchant` | Partial | `modeled` | Writes enchantment components to player selected items and non-player mainhand equipment, with structured output for reports/assertions; no enchantability checks. |
+| `execute` | Partial | `modeled` | `as`, `at`, `positioned <pos>`, `positioned as <selector>`, `align`, `anchored`, `facing`, `in`, `rotated`, `store`, `if`, `unless`, `run`; `as` changes only the executor, `at` moves execution position/dimension/rotation to the target, and `positioned as` moves only the execution position; `align` floors validated `x`/`y`/`z` axes; `rotated` and `facing` update the command rotation context used by relative `tp` rotations and local coordinates; `anchored` updates the local-coordinate base; `store` targets score, storage, entity NBT, block NBT, and bossbar value/max; conditions support `entity`, `score`, `data`, `block`, `blocks`, `predicate`, `function`, `dimension`, `biome`, and `loaded`. |
+| `experience`, `xp` | Partial | `modeled` | `add`, `set`, `query`; points and levels share the sandbox XP integer; `query` records structured data output for assertions and `execute store result`. |
+| `fill` | Partial | `modeled` | `fill <from> <to> <block[state]{nbt}> [replace|keep|destroy|hollow|outline]`; records structured changed-position output; position arguments accept local coordinates; no updates/drops. |
+| `fillbiome` | Partial | `modeled` | Stores biome overrides for explicit block ranges and records structured changed-position output; no chunk biome container or generation effects. |
+| `forceload` | Partial | `modeled` | `add`, `remove`, `remove all`, `query`, `query <pos>`; stores forced chunk coordinates and records structured mutation/query output. |
+| `function` | Supported | `modeled` | `function <id>`. |
+| `gamemode` | Supported | `modeled` | `gamemode <mode> [targets]`; updates sandbox player game mode and records structured before/after output. |
+| `gamerule` | Partial | `modeled` | Stores arbitrary gamerule string values and records structured mutation/query output; no gameplay side effects. |
+| `give` | Partial | `modeled` | Adds item stacks to player inventories, records structured output for reports/assertions, and fires inventory advancement events; item arguments accept sandbox JSON/SNBT-lite NBT and component payloads. |
+| `help` | Partial | `modeled` | Reports command roots and basic sandbox help text. |
+| `item` | Partial | `modeled` | `replace entity|block ... with <item> [count]` and `from entity|block ...`; `replace` and `modify` record structured output for reports/assertions; item arguments accept sandbox JSON/SNBT-lite NBT and component payloads; entity slots cover player inventory/selected-mainhand/`enderchest.*` slots and non-player equipment slots; `modify entity|block ... <modifier>` applies common item modifier functions (`set_components`, `set_custom_data`, `set_count`, `limit_count`, `set_item`, `discard`, `set_damage`, `set_name`, `set_lore`, `filtered`, `reference`, `sequence`). |
+| `kick` | Unsupported | `unsupported` | Network sessions are not simulated. |
+| `kill` | Supported | `modeled` | Removes selected sandbox entities, records structured target output for reports/assertions, and player execution contexts fire `killed_entity` advancement events for non-player targets. |
+| `list` | Supported | `modeled` | Reports sandbox players and UUIDs. |
+| `locate` | Partial | `modeled` | Accepts `biome`, `structure`, `poi`; reports no result in the void world instead of querying worldgen. |
+| `loot` | Partial | `modeled` | Supports `give`, `insert`, `spawn`, `replace entity`, `replace block`, with structured loot output for reports/assertions; `spawn` creates item entities in the current execution dimension; `replace entity` writes player inventory/selected-mainhand/`enderchest.*` slots and non-player equipment slots; sources include `loot <table>`, `fish <table> <pos> [tool]`, `mine <pos> [tool]`, `kill <target>` when entities declare `DeathLootTable`, plus sandbox context sources `entity <table> <target>`, `block <table> <pos> [tool]`, and `equipment <table> <target> <slot>`; common functions include count, item id, discard, components/custom data, damage, name, and lore. |
+| `me` | Supported | `modeled` | Recorded as chat output. |
+| `msg`, `tell`, `w` | Supported | `modeled` | Recorded as private chat output. |
+| `pardon`, `pardon-ip` | Unsupported | `unsupported` | Server administration is not simulated. |
+| `particle` | Partial | `observed-noop` | Recorded as visual output event; no client particles. |
+| `place` | Unsupported | `unsupported` | Structure/feature placement and worldgen are not simulated. |
+| `playsound` | Partial | `observed-noop` | Recorded as sound output event. |
+| `publish` | Unsupported | `unsupported` | LAN/networking is not simulated. |
+| `random` | Partial | `modeled` | `value`, `roll`, `reset`; deterministic sandbox sequence state seeded from the world seed unless explicitly reset. |
+| `recipe` | Partial | `modeled` | `give`, `take`; supports `*` for loaded datapack recipes, updates per-player recipe sets, and records changed counts. |
+| `reload` | No-op | `observed-noop` | Accepted and recorded; REPL `reload` performs real datapack reload, vanilla command does not mutate this immutable sandbox instance. |
+| `return` | Supported | `modeled` | Stops the current function; supports `return <value>`, `return fail`, and `return run <command>` for function conditions and store result tests. |
+| `ride` | Partial | `modeled` | Tracks vehicle/passenger relationships and records structured mount/dismount output; no physics/control. |
+| `rotate` | Partial | `modeled` | Updates yaw/pitch and records structured before/after rotation output. |
+| `save-all`, `save-off`, `save-on` | Unsupported | `unsupported` | No real world save lifecycle exists. |
+| `say` | Supported | `modeled` | Recorded as chat output. |
+| `schedule` | Partial | `modeled` | `schedule function <id> <time> [append|replace]`, `schedule clear <id>`; records structured scheduling and clearing output. |
+| `scoreboard` | Partial | `modeled` | Objectives `add`, `remove`, `list`; players `set`, `add`, `remove`, `get`, `reset`, `list`, `enable`, `operation`; `players get` records a structured data output for assertions and `execute store result`. |
+| `seed` | Supported | `modeled` | Reports deterministic sandbox seed. |
+| `setblock` | Partial | `modeled` | Mutates sparse block state/NBT and records structured before/after block output; position arguments accept local coordinates; no neighbor updates. |
+| `setidletimeout` | Unsupported | `unsupported` | Server administration command. |
+| `setworldspawn` | Partial | `modeled` | Stores sandbox world spawn position/angle and records structured spawn output. |
+| `spawnpoint` | Partial | `modeled` | Stores per-player spawn point/angle and records structured target output. |
+| `spectate` | Partial | `modeled` | Sets spectator mode and records target; no camera/client state. |
+| `spreadplayers` | Partial | `modeled` | Deterministically distributes selected entities around a center; no collision/team algorithm. |
+| `stop` | Unsupported | `unsupported` | Runtime lifecycle is controlled by the host process, not commands. |
+| `stopsound` | Partial | `observed-noop` | Recorded as sound output event. |
+| `summon` | Partial | `modeled` | Creates entities in the current execution dimension with position, tags, schema-checked NBT, and structured creation output for reports/assertions; AI does not tick. |
+| `tag` | Supported | `modeled` | `add`, `remove`, `list`. |
+| `team` | Partial | `modeled` | `add`, `remove`, `list`, `join`, `leave`, `empty`, `modify`; records structured team/member/option output and has no gameplay effects. |
+| `teammsg`, `tm` | Supported | `modeled` | Recorded as team chat output. |
+| `teleport`, `tp` | Partial | `modeled` | Coordinate teleport supports local coordinates, optional rotation, `facing`, and the current execution dimension; destination-entity teleport copies destination position, dimension, and rotation; records structured movement output for reports/assertions. |
+| `tellraw` | Supported | `modeled` | Resolves JSON text components into output events. |
+| `tick` | Partial | `modeled` | `query`, `rate`, `freeze`, `unfreeze`, `step`, `sprint`, `stop`; updates sandbox tick state, can advance ticks, and records structured state/advance output for debugging. |
+| `time` | Partial | `modeled` | `set`, `add`, `query daytime|gametime|day`; mutations and queries record structured data output for assertions and `execute store result`. |
+| `title` | Supported | `modeled` | `clear`, `reset`, `title`, `subtitle`, `actionbar`, `times` output events. |
+| `transfer` | Unsupported | `unsupported` | Networking/server transfer is not simulated. |
+| `trigger` | Partial | `modeled` | `trigger <objective> [add|set] [value]`; uses current/default sandbox player. |
+| `weather` | Partial | `modeled` | `clear`, `rain`, `thunder`; stores state and records structured weather output. |
+| `whitelist` | Unsupported | `unsupported` | Server administration command. |
+| `worldborder` | Partial | `modeled` | `get`, `set`, `add`, `center`, `damage`, `warning`; stores state and records structured mutation/query output for assertions. |
 
 ## Text And Output Commands
 
