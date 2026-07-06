@@ -103,6 +103,60 @@ class SandboxBehaviorTest {
     }
 
     @Test
+    fun `execution limits stop runaway command counts`() {
+        val sandbox = createFunctionSandboxFromString(
+            version = "26.2",
+            functionText = """
+            say one
+            say two
+            say three
+            """.trimIndent(),
+            limits = SandboxLimits(maxCommands = 2),
+        )
+
+        val error = assertFailsWith<SandboxException> {
+            sandbox.runFunction(SingleFunctionDatapack.DEFAULT_ID)
+        }
+
+        assertEquals(DiagnosticCode.COMMAND_ERROR, error.code)
+        assertTrue(error.message.contains("Command execution count exceeded sandbox limit 2"))
+        assertEquals(listOf("<Server> one", "<Server> two"), sandbox.world.outputs.map { it.text })
+    }
+
+    @Test
+    fun `execution limits stop oversized tick runs`() {
+        val sandbox = DatapackSandbox(
+            profile = VersionProfiles.default,
+            datapack = Datapack(emptyMap(), emptyList(), emptyList()),
+            limits = SandboxLimits(maxTicksPerRun = 2),
+        )
+
+        val error = assertFailsWith<SandboxException> {
+            sandbox.runTicks(3)
+        }
+
+        assertEquals(DiagnosticCode.COMMAND_ERROR, error.code)
+        assertTrue(error.message.contains("Tick count 3 exceeds sandbox limit 2"))
+        assertEquals(0, sandbox.world.gameTime)
+    }
+
+    @Test
+    fun `execution limits make function depth configurable`() {
+        val sandbox = createFunctionSandbox(
+            version = "26.2",
+            functionSources = listOf(FunctionSource.text("demo:loop", "function demo:loop")),
+            limits = SandboxLimits(maxFunctionDepth = 2),
+        )
+
+        val error = assertFailsWith<SandboxException> {
+            sandbox.runFunction("demo:loop")
+        }
+
+        assertEquals(DiagnosticCode.COMMAND_ERROR, error.code)
+        assertTrue(error.message.contains("Function call depth exceeded sandbox limit 2"))
+    }
+
+    @Test
     fun `supports sandbox state commands for players teams time weather and bossbars`() {
         val sandbox = createSandbox("26.1.2", listOf(fixturePack()))
 

@@ -88,6 +88,19 @@ paths or `SnapshotDiff.render(...)` for readable failure logs.
 `unsupportedFeatureMode` can be `WARN` (default), `IGNORE`, or `ERROR`. Use
 `ERROR` when you want unsupported vanilla commands to fail the test immediately.
 
+Low-level sandbox factories also accept `SandboxLimits` to stop runaway tests
+deterministically. The limits currently cover total command lines executed by a
+sandbox instance, nested function call depth, and the maximum tick count allowed
+in one `runTicks` call:
+
+```kotlin
+val sandbox = createFunctionSandbox(
+    version = "26.2",
+    functionFile = Path.of("scratch/generated.mcfunction"),
+    limits = SandboxLimits(maxCommands = 10_000, maxFunctionDepth = 32, maxTicksPerRun = 5_000),
+)
+```
+
 ## Single Mcfunction Tests
 
 You can test one `.mcfunction` file without creating a datapack directory. The

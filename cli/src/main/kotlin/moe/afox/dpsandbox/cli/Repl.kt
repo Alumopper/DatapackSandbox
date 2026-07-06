@@ -239,7 +239,7 @@ class Repl(
             println(ConsoleStyle.yellow("reload is unavailable because this REPL was created from an existing sandbox instance"))
             return
         }
-        sandbox = createSandbox(version, packs, sandbox.world, unsupportedFeatureMode = unsupportedFeatureMode)
+        sandbox = createSandbox(version, packs, sandbox.world, unsupportedFeatureMode = unsupportedFeatureMode, limits = sandbox.limits)
         packStamp = fingerprintPacks()
         println(
             ConsoleStyle.green(
@@ -252,7 +252,7 @@ class Repl(
         val current = fingerprintPacks()
         if (current > packStamp) {
             try {
-                sandbox = createSandbox(version, packs, sandbox.world, unsupportedFeatureMode = unsupportedFeatureMode)
+                sandbox = createSandbox(version, packs, sandbox.world, unsupportedFeatureMode = unsupportedFeatureMode, limits = sandbox.limits)
                 packStamp = current
                 println(ConsoleStyle.yellow("packs changed; reloaded"))
             } catch (error: SandboxException) {
@@ -302,7 +302,7 @@ class Repl(
 
     private fun resetWorld() {
         val world = SandboxWorld().also { it.createPlayer("Steve") }
-        sandbox = DatapackSandbox(sandbox.profile, sandbox.datapack, world, sandbox.unsupportedFeatureMode)
+        sandbox = DatapackSandbox(sandbox.profile, sandbox.datapack, world, sandbox.unsupportedFeatureMode, sandbox.limits)
         outputCursor = sandbox.world.outputs.size
         traceCursor = sandbox.world.traces.size
         printManualResult("reset world", "gameTime=${sandbox.world.gameTime}, players=${sandbox.world.players.keys.joinToString()}")

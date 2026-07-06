@@ -68,6 +68,18 @@ println(report.traces.single().command)
 - `IGNORE`：静默跳过未支持命令。
 - `ERROR`：严格模式，遇到未支持命令立即失败。
 
+底层 sandbox factory 还可以传入 `SandboxLimits`，用于在单元测试或 CI 中确定性阻止
+runaway 执行。目前限制覆盖一个 sandbox 实例累计执行的命令行数、嵌套 function 调用深度，
+以及单次 `runTicks` 允许推进的最大 tick 数：
+
+```kotlin
+val sandbox = createFunctionSandbox(
+    version = "26.2",
+    functionFile = Path.of("scratch/generated.mcfunction"),
+    limits = SandboxLimits(maxCommands = 10_000, maxFunctionDepth = 32, maxTicksPerRun = 5_000),
+)
+```
+
 ## 单文件 `.mcfunction` 测试
 
 可以不创建完整数据包目录，直接测试一个 `.mcfunction` 文件。API 中必须显式指定 Minecraft 版本；临时函数 id 默认为 `sandbox:main`。

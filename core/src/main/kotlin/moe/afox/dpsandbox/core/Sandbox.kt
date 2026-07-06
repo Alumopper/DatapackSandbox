@@ -46,6 +46,24 @@ data class ExecutionResult(
 )
 
 /**
+ * Execution safety limits used to stop runaway tests deterministically.
+ */
+data class SandboxLimits(
+    /** Maximum command lines that may execute during the lifetime of one sandbox instance. */
+    val maxCommands: Int = 100_000,
+    /** Maximum nested function call depth. */
+    val maxFunctionDepth: Int = 64,
+    /** Maximum tick count accepted by one [DatapackSandbox.runTicks] call. */
+    val maxTicksPerRun: Int = 100_000,
+) {
+    init {
+        require(maxCommands > 0) { "maxCommands must be positive" }
+        require(maxFunctionDepth > 0) { "maxFunctionDepth must be positive" }
+        require(maxTicksPerRun > 0) { "maxTicksPerRun must be positive" }
+    }
+}
+
+/**
  * Policy for vanilla commands that exist in the active profile but are not
  * implemented by the sandbox.
  */
@@ -75,6 +93,8 @@ class DatapackSandbox(
     val world: SandboxWorld = SandboxWorld(),
     /** Policy for recognized but unimplemented vanilla commands. */
     val unsupportedFeatureMode: UnsupportedFeatureMode = UnsupportedFeatureMode.WARN,
+    /** Execution safety limits used to stop runaway tests. */
+    val limits: SandboxLimits = SandboxLimits(),
 ) {
     /** Predicate evaluator bound to the loaded datapack. */
     val predicates = PredicateEngine(datapack, profile)
@@ -113,6 +133,13 @@ class DatapackSandbox(
         if (count < 0) {
             throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Tick count must be non-negative")
         }
+        if (count > limits.maxTicksPerRun) {
+            throw SandboxException(
+                DiagnosticCode.COMMAND_ERROR,
+                "Tick count $count exceeds sandbox limit ${limits.maxTicksPerRun}",
+                version = profile.id,
+            )
+        }
         val before = commandsExecuted
         repeat(count) {
             world.advanceTick()
@@ -135,19 +162,23 @@ class DatapackSandbox(
     /**
      * Runs a loaded function by typed resource location.
      *
-     * Function recursion is capped at depth 64 to avoid runaway test execution.
+     * Function recursion is capped by [limits] to avoid runaway test execution.
      *
      * @param context Executor and position context for relative command semantics.
-     * @throws SandboxException when the function does not exist or call depth exceeds 64.
+     * @throws SandboxException when the function does not exist or call depth exceeds [SandboxLimits.maxFunctionDepth].
      * @return number of command lines executed inside the function.
      */
     fun runFunction(id: ResourceLocation, context: ExecutionContext = ExecutionContext()): ExecutionResult {
         val before = commandsExecuted
         val function = datapack.function(id)
         functionDepth += 1
-        if (functionDepth > 64) {
+        if (functionDepth > limits.maxFunctionDepth) {
             functionDepth -= 1
-            throw SandboxException(DiagnosticCode.COMMAND_ERROR, "Function call depth exceeded 64", version = profile.id)
+            throw SandboxException(
+                DiagnosticCode.COMMAND_ERROR,
+                "Function call depth exceeded sandbox limit ${limits.maxFunctionDepth}",
+                version = profile.id,
+            )
         }
 
         var returnValue: Int? = null
@@ -319,7 +350,7 @@ class DatapackSandbox(
         if (command.isBlank()) return
         val tokens = CommandTokenizer.tokenize(command, location)
         if (tokens.isEmpty()) return
-        commandsExecuted += 1
+        countCommand(location)
 
         try {
             when (tokens[0].text) {
@@ -399,6 +430,18 @@ class DatapackSandbox(
             }
             throw error
         }
+    }
+
+    private fun countCommand(location: SourceLocation?) {
+        if (commandsExecuted >= limits.maxCommands) {
+            throw SandboxException(
+                DiagnosticCode.COMMAND_ERROR,
+                "Command execution count exceeded sandbox limit ${limits.maxCommands}",
+                location = location,
+                version = profile.id,
+            )
+        }
+        commandsExecuted += 1
     }
 
     private fun handleUnknownCommand(root: String, command: String, location: SourceLocation?) {
@@ -4739,6 +4782,7 @@ private fun SandboxBlock.copyForClone(): SandboxBlock =
  * has no players, or `null` to start without an implicit player.
  * @param unsupportedFeatureMode Policy for vanilla commands recognized by the
  * active profile but not implemented by the sandbox.
+ * @param limits Execution safety limits used to stop runaway tests.
  */
 @JvmOverloads
 fun createSandbox(
@@ -4747,11 +4791,12 @@ fun createSandbox(
     world: SandboxWorld = SandboxWorld(),
     defaultPlayerName: String? = "Steve",
     unsupportedFeatureMode: UnsupportedFeatureMode = UnsupportedFeatureMode.WARN,
+    limits: SandboxLimits = SandboxLimits(),
 ): DatapackSandbox {
     val profile = VersionProfiles.get(version)
     val datapack = DatapackLoader.load(packs, profile)
     defaultPlayerName?.let { if (world.players.isEmpty()) world.createPlayer(it) }
-    return DatapackSandbox(profile, datapack, world, unsupportedFeatureMode)
+    return DatapackSandbox(profile, datapack, world, unsupportedFeatureMode, limits)
 }
 
 /**
@@ -4766,6 +4811,7 @@ fun createSandbox(
  * @param defaultPlayerName Name of the initial player to create when [world]
  * has no players, or `null` to start without an implicit player.
  * @param unsupportedFeatureMode Policy for recognized but unimplemented vanilla commands.
+ * @param limits Execution safety limits used to stop runaway tests.
  */
 @JvmOverloads
 fun createFunctionSandbox(
@@ -4774,11 +4820,12 @@ fun createFunctionSandbox(
     world: SandboxWorld = SandboxWorld(),
     defaultPlayerName: String? = "Steve",
     unsupportedFeatureMode: UnsupportedFeatureMode = UnsupportedFeatureMode.WARN,
+    limits: SandboxLimits = SandboxLimits(),
 ): DatapackSandbox {
     val profile = VersionProfiles.get(version)
     val datapack = DatapackLoader.loadFunctionSources(functionSources, profile)
     defaultPlayerName?.let { if (world.players.isEmpty()) world.createPlayer(it) }
-    return DatapackSandbox(profile, datapack, world, unsupportedFeatureMode)
+    return DatapackSandbox(profile, datapack, world, unsupportedFeatureMode, limits)
 }
 
 /**
@@ -4797,11 +4844,12 @@ fun createFunctionSandbox(
     world: SandboxWorld = SandboxWorld(),
     defaultPlayerName: String? = "Steve",
     unsupportedFeatureMode: UnsupportedFeatureMode = UnsupportedFeatureMode.WARN,
+    limits: SandboxLimits = SandboxLimits(),
 ): DatapackSandbox {
     val profile = VersionProfiles.get(version)
     val datapack = DatapackLoader.loadFunctionSources(packs, functionSources, profile)
     defaultPlayerName?.let { if (world.players.isEmpty()) world.createPlayer(it) }
-    return DatapackSandbox(profile, datapack, world, unsupportedFeatureMode)
+    return DatapackSandbox(profile, datapack, world, unsupportedFeatureMode, limits)
 }
 
 /**
@@ -4818,6 +4866,7 @@ fun createFunctionSandbox(
  * @param defaultPlayerName Name of the initial player to create when [world]
  * has no players, or `null` to start without an implicit player.
  * @param unsupportedFeatureMode Policy for recognized but unimplemented vanilla commands.
+ * @param limits Execution safety limits used to stop runaway tests.
  */
 @JvmOverloads
 fun createFunctionSandbox(
@@ -4827,6 +4876,7 @@ fun createFunctionSandbox(
     world: SandboxWorld = SandboxWorld(),
     defaultPlayerName: String? = "Steve",
     unsupportedFeatureMode: UnsupportedFeatureMode = UnsupportedFeatureMode.WARN,
+    limits: SandboxLimits = SandboxLimits(),
 ): DatapackSandbox =
     createFunctionSandbox(
         version = version,
@@ -4834,6 +4884,7 @@ fun createFunctionSandbox(
         world = world,
         defaultPlayerName = defaultPlayerName,
         unsupportedFeatureMode = unsupportedFeatureMode,
+        limits = limits,
     )
 
 /**
@@ -4852,6 +4903,7 @@ fun createFunctionSandboxFromString(
     world: SandboxWorld = SandboxWorld(),
     defaultPlayerName: String? = "Steve",
     unsupportedFeatureMode: UnsupportedFeatureMode = UnsupportedFeatureMode.WARN,
+    limits: SandboxLimits = SandboxLimits(),
 ): DatapackSandbox =
     createFunctionSandbox(
         version = version,
@@ -4859,6 +4911,7 @@ fun createFunctionSandboxFromString(
         world = world,
         defaultPlayerName = defaultPlayerName,
         unsupportedFeatureMode = unsupportedFeatureMode,
+        limits = limits,
     )
 
 /**
@@ -4874,6 +4927,7 @@ fun createFunctionSandboxFromString(
     world: SandboxWorld = SandboxWorld(),
     defaultPlayerName: String? = "Steve",
     unsupportedFeatureMode: UnsupportedFeatureMode = UnsupportedFeatureMode.WARN,
+    limits: SandboxLimits = SandboxLimits(),
 ): DatapackSandbox =
     createFunctionSandbox(
         version = version,
@@ -4882,4 +4936,5 @@ fun createFunctionSandboxFromString(
         world = world,
         defaultPlayerName = defaultPlayerName,
         unsupportedFeatureMode = unsupportedFeatureMode,
+        limits = limits,
     )

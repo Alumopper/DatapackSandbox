@@ -654,6 +654,7 @@ object ManifestRunner {
                 world.createPlayer("Steve")
             },
             sandbox.unsupportedFeatureMode,
+            sandbox.limits,
         )
     }
 
