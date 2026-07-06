@@ -1,0 +1,130 @@
+{
+  "version": "26.2",
+  "unsupported": "error",
+  "failOnMissingResources": true,
+  "seed": 9001,
+  "packs": ["pack"],
+  "world": {
+    "fixture": "world.fixture.json",
+    "storage": {
+      "demo:generator": {
+        "fixture": true,
+        "case": "generator-template"
+      }
+    }
+  },
+  "steps": [
+    {
+      "commands": [
+        "scoreboard objectives add generated dummy",
+        "scoreboard players set #generator generated 1",
+        "data merge storage demo:generator {phase:\"commands\"}"
+      ],
+      "source": "<generator:setup.commands>"
+    },
+    {
+      "functionText": "scoreboard players add #generator generated 2\ngive Steve minecraft:stick 2\nsay generated inline ok",
+      "source": "<generator:inline.mcfunction>"
+    },
+    {
+      "mcfunction": "generated.mcfunction"
+    }
+  ],
+  "assertions": [
+    {
+      "score": {
+        "target": "#generator",
+        "objective": "generated",
+        "equals": 6
+      }
+    },
+    {
+      "score": {
+        "target": "#dependency",
+        "objective": "generated",
+        "equals": 5
+      }
+    },
+    {
+      "storage": {
+        "id": "demo:generator",
+        "path": "fixture",
+        "equals": true
+      }
+    },
+    {
+      "storage": {
+        "id": "demo:generator",
+        "path": "result.ok",
+        "equals": true
+      }
+    },
+    {
+      "item": {
+        "player": "Steve",
+        "id": "minecraft:stick",
+        "count": 2
+      }
+    },
+    {
+      "item": {
+        "player": "Steve",
+        "id": "minecraft:apple",
+        "count": 1
+      }
+    },
+    {
+      "entityCount": {
+        "type": "minecraft:pig",
+        "tag": "fixture",
+        "equals": 1
+      }
+    },
+    {
+      "block": {
+        "pos": [8, 64, 8],
+        "id": "minecraft:stone"
+      }
+    },
+    {
+      "world": {
+        "seed": 9001,
+        "defaultGameMode": "creative"
+      }
+    },
+    {
+      "trace": {
+        "root": "scoreboard",
+        "count": 5
+      }
+    },
+    {
+      "output": {
+        "command": "tellraw",
+        "target": "Steve",
+        "segment": {
+          "text": "generated command output",
+          "color": "green"
+        },
+        "count": 1
+      }
+    },
+    {
+      "output": {
+        "command": "place structure",
+        "channel": "worldgen",
+        "payloadPath": "id",
+        "payloadEquals": "demo:template",
+        "count": 1
+      }
+    },
+    {
+      "output": {
+        "command": "place structure",
+        "payloadPath": "placed",
+        "payloadEquals": false,
+        "count": 1
+      }
+    }
+  ]
+}

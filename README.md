@@ -333,6 +333,12 @@ Manifest `steps` can also contain `commands`, `functionText`, or a relative
 `world`, `team`, `bossbar`, `trace`, whitespace-normalized `output`, and player
 inventory `item` results.
 
+For a reusable generator-output harness, start from
+`examples/generator-template/generator-template.dps.json`. It runs strict
+validation, loads a dependency pack and a reusable world fixture, then checks
+raw command arrays, inline function text, a generated `.mcfunction`, structured
+outputs, trace counts, storage, items, blocks, entities, and world state.
+
 Manifest files use the `.dps.json` suffix:
 
 ```json
@@ -460,8 +466,8 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar check examples
 ```
 
 The `examples/` directory covers full-stack datapack events, single-function
-scratch tests, command-generator output, golden snapshot assertions, and
-multi-version manifests.
+scratch tests, command-generator output, a reusable generator-output template,
+golden snapshot assertions, and multi-version manifests.
 
 Run the shortest example for each common workflow:
 
@@ -469,6 +475,7 @@ Run the shortest example for each common workflow:
 java -jar cli/build/libs/datapack-sandbox-cli.jar check examples/full-stack/full-stack.dps.json
 java -jar cli/build/libs/datapack-sandbox-cli.jar check examples/single-function/single-function.dps.json
 java -jar cli/build/libs/datapack-sandbox-cli.jar check examples/generator-output/generator-output.dps.json
+java -jar cli/build/libs/datapack-sandbox-cli.jar check examples/generator-template/generator-template.dps.json
 java -jar cli/build/libs/datapack-sandbox-cli.jar check examples/multi-version/multi-version.dps.json
 ```
 

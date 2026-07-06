@@ -367,7 +367,7 @@ class ManifestRunnerTest {
         val manifests = ManifestRunner.discover(listOf(Path.of("../examples")))
         val exampleKinds = manifests.map { it.parent.fileName.toString() }.toSet()
 
-        assertTrue(exampleKinds.containsAll(listOf("full-stack", "single-function", "generator-output", "multi-version")))
+        assertTrue(exampleKinds.containsAll(listOf("full-stack", "single-function", "generator-output", "generator-template", "multi-version")))
 
         val results = manifests.map { ManifestRunner.run(it) }
         val failures = results.flatMap { result -> result.messages.map { "${result.path}: $it" } }

@@ -1,0 +1,37 @@
+{
+  "world": {
+    "seed": 9001,
+    "defaultGameMode": "creative",
+    "players": [
+      {
+        "name": "Steve",
+        "position": [0, 64, 0],
+        "inventory": [
+          {
+            "id": "minecraft:bread",
+            "count": 2
+          }
+        ]
+      }
+    ],
+    "blocks": [
+      {
+        "pos": [8, 64, 8],
+        "id": "minecraft:stone"
+      }
+    ],
+    "entities": [
+      {
+        "type": "minecraft:pig",
+        "pos": [1, 64, 1],
+        "tags": ["fixture"],
+        "health": 10.0
+      }
+    ],
+    "storage": {
+      "demo:generator": {
+        "fixture": true
+      }
+    }
+  }
+}

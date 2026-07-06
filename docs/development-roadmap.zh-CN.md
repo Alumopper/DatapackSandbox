@@ -215,9 +215,9 @@
 ### 命令生成器产物测试
 
 - 提供专用模板：
-  - 输入：生成器输出的 command、command file、mcfunction text 或临时 pack。
-  - 环境：声明依赖 pack、版本、world fixture、seed、默认玩家。
-  - 断言：输出文本、score/storage、NBT、实体数量、unsupported warning 数量。
+  - 输入：生成器输出的 command、command file、mcfunction text 或临时 pack；`examples/generator-template` 已提供可直接复制的严格模式模板，覆盖 `commands` 数组、内联 `functionText`、外部 `.mcfunction` 和依赖 pack。
+  - 环境：声明依赖 pack、版本、world fixture、seed、默认玩家；模板使用可复用 `world.fixture.json` 并在 manifest 中做局部 storage 覆盖。
+  - 断言：输出文本、score/storage、NBT、实体数量、unsupported warning 数量；模板覆盖 score、storage path、item、entityCount、block、world、trace 和结构化 output payload/segment style 断言。
 - 提供严格模式：
   - unknown command、unsupported command、schema mismatch、资源缺失都可作为失败。
   - `run --strict`/`check --strict` 已把 unsupported command 设为 error，并自动启用直接缺失资源引用失败；`check --strict` 还会先做 manifest schema 校验，适合命令生成器产物的快速验收。
@@ -226,7 +226,7 @@
 验收标准：
 
 - README/README.zh-CN 中已为 JVM 单元调试、随手小测试、命令生成器输出、full-stack、single-function、generator-output 和 multi-version 示例提供最短入口。
-- `examples/` 至少包含 full-stack、single-function、generator-output、multi-version 四类示例。
+- `examples/` 至少包含 full-stack、single-function、generator-output、generator-template、multi-version 五类示例。
 - CLI 和 quick-test 对同一清单行为输出一致结果。
 
 ## 阶段 7：Manifest 格式演进

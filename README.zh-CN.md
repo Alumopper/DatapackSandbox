@@ -244,6 +244,8 @@ world fixture 可以用 `fixture`、`fixtures` 或 `extends` 引用可复用 fix
 
 清单中的 `steps` 也可以直接包含 `commands`、`functionText` 或相对路径 `mcfunction`，用于验证命令生成器输出；`assertions` 可检查 `world`、`team`、`bossbar`、`trace`、空白规范化后的 `output` 和玩家背包 `item`。
 
+可复用的命令生成器产物测试模板见 `examples/generator-template/generator-template.dps.json`。它启用严格校验，加载依赖 pack 和公共 world fixture，并同时覆盖原始命令数组、内联函数文本、生成的 `.mcfunction`、结构化输出、trace 数量、storage、物品、方块、实体和世界状态断言。
+
 清单文件固定使用 `.dps.json` 后缀：
 
 ```json
@@ -358,7 +360,7 @@ world fixture 可以用 `fixture`、`fixtures` 或 `extends` 引用可复用 fix
 java -jar cli/build/libs/datapack-sandbox-cli.jar check examples
 ```
 
-`examples/` 目录覆盖完整数据包事件、单函数随手测试、命令生成器输出、golden snapshot 断言和多版本 manifest。
+`examples/` 目录覆盖完整数据包事件、单函数随手测试、命令生成器输出、可复用命令生成器模板、golden snapshot 断言和多版本 manifest。
 
 每类常见工作流都可以用一个最短示例直接运行：
 
@@ -366,6 +368,7 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar check examples
 java -jar cli/build/libs/datapack-sandbox-cli.jar check examples/full-stack/full-stack.dps.json
 java -jar cli/build/libs/datapack-sandbox-cli.jar check examples/single-function/single-function.dps.json
 java -jar cli/build/libs/datapack-sandbox-cli.jar check examples/generator-output/generator-output.dps.json
+java -jar cli/build/libs/datapack-sandbox-cli.jar check examples/generator-template/generator-template.dps.json
 java -jar cli/build/libs/datapack-sandbox-cli.jar check examples/multi-version/multi-version.dps.json
 ```
 
