@@ -6,8 +6,10 @@ import com.google.gson.JsonObject
 import com.google.gson.JsonPrimitive
 import java.nio.file.Path
 import kotlin.math.atan2
+import kotlin.math.cos
 import kotlin.math.floor
 import kotlin.math.max
+import kotlin.math.sin
 import kotlin.math.sqrt
 import kotlin.random.Random
 
@@ -1080,7 +1082,7 @@ class DatapackSandbox(
                     } else {
                         requireSizeFrom(tokens, index, 4, "execute positioned <x> <y> <z>", location)
                         contexts = contexts.map { ctx ->
-                            ctx.copy(position = parsePosition(tokens, index + 1, ctx.position, location))
+                            ctx.copy(position = parsePosition(tokens, index + 1, ctx.position, location, ctx.yaw, ctx.pitch))
                         }
                         index += 4
                     }
@@ -1113,7 +1115,7 @@ class DatapackSandbox(
                     } else {
                         requireSizeFrom(tokens, index, 4, "execute facing <x> <y> <z>", location)
                         contexts = contexts.map { ctx ->
-                            ctx.facing(parsePosition(tokens, index + 1, ctx.position, location))
+                            ctx.facing(parsePosition(tokens, index + 1, ctx.position, location, ctx.yaw, ctx.pitch))
                         }
                     }
                     index += 4
@@ -2062,7 +2064,7 @@ class DatapackSandbox(
         var position = context.position
         var nbtStartIndex = 2
         if (isCoordinateTriple(tokens, 2)) {
-            position = parsePosition(tokens, 2, context.position, location)
+            position = parsePosition(tokens, 2, context.position, location, context.yaw, context.pitch)
             nbtStartIndex = 5
         }
         val nbt = if (tokens.size > nbtStartIndex) parseSummonNbt(CommandTokenizer.tailFrom(command, tokens[nbtStartIndex]), location) else JsonObject()
@@ -2089,12 +2091,12 @@ class DatapackSandbox(
             tokens.size >= 4 && isCoordinateTriple(tokens, 1) -> {
                 val entity = context.entity ?: throw SandboxException(DiagnosticCode.COMMAND_ERROR, "${tokens[0].text} <location> requires an execution entity", location)
                 val rotation = parseOptionalRotation(tokens, 4, context, location)
-                moveEntities(listOf(entity), parsePosition(tokens, 1, entity.position, location), rotation)
+                moveEntities(listOf(entity), parsePosition(tokens, 1, entity.position, location, context.yaw, context.pitch), rotation)
             }
             tokens.size >= 5 && isCoordinateTriple(tokens, 2) -> {
                 val targets = EntitySelectors.select(world, tokens[1].text, context, location)
                 val rotation = parseOptionalRotation(tokens, 5, context, location)
-                moveEntities(targets, parsePosition(tokens, 2, context.position, location), rotation)
+                moveEntities(targets, parsePosition(tokens, 2, context.position, location, context.yaw, context.pitch), rotation)
             }
             tokens.size >= 3 -> {
                 val targets = EntitySelectors.select(world, tokens[1].text, context, location)
@@ -2324,7 +2326,7 @@ class DatapackSandbox(
     }
 
     private fun executeSetWorldSpawn(tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext) {
-        val position = if (tokens.size >= 4) parsePosition(tokens, 1, context.position, location) else context.position
+        val position = if (tokens.size >= 4) parsePosition(tokens, 1, context.position, location, context.yaw, context.pitch) else context.position
         val angle = tokens.getOrNull(if (tokens.size >= 4) 4 else 1)?.text?.let { parseDouble(it, "spawn angle", location) }
         world.worldSpawn = SpawnPoint(position = position, dimension = ResourceLocation("minecraft", "overworld"), angle = angle)
     }
@@ -2338,7 +2340,7 @@ class DatapackSandbox(
                 ?: throw SandboxException(DiagnosticCode.COMMAND_ERROR, "spawnpoint requires a target player", location))
         }
         val posIndex = if (targetToken != null && !isCoordinateToken(targetToken)) 2 else 1
-        val position = if (tokens.size >= posIndex + 3) parsePosition(tokens, posIndex, context.position, location) else context.position
+        val position = if (tokens.size >= posIndex + 3) parsePosition(tokens, posIndex, context.position, location, context.yaw, context.pitch) else context.position
         val angle = tokens.getOrNull(posIndex + 3)?.text?.let { parseDouble(it, "spawn angle", location) }
         targets.forEach {
             it.spawnPoint = SpawnPoint(position = position, dimension = it.dimension, angle = angle)
@@ -2569,14 +2571,61 @@ class DatapackSandbox(
         return tags.asJsonArray.mapNotNull { if (it.isJsonPrimitive) it.asString else null }.toSet()
     }
 
-    private fun parsePosition(tokens: List<CommandToken>, index: Int, base: Position, location: SourceLocation?): Position {
+    private fun parsePosition(
+        tokens: List<CommandToken>,
+        index: Int,
+        base: Position,
+        location: SourceLocation?,
+        yaw: Double = 0.0,
+        pitch: Double = 0.0,
+    ): Position {
         requireSizeFrom(tokens, index, 3, "<x> <y> <z>", location)
+        val coordinates = listOf(tokens[index].text, tokens[index + 1].text, tokens[index + 2].text)
+        if (coordinates.any { it.startsWith("^") }) {
+            if (!coordinates.all { it.startsWith("^") }) {
+                throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Cannot mix local coordinates '^' with world coordinates", location)
+            }
+            return localPosition(
+                base,
+                left = parseLocalCoordinate(coordinates[0], "left", location),
+                up = parseLocalCoordinate(coordinates[1], "up", location),
+                forward = parseLocalCoordinate(coordinates[2], "forward", location),
+                yaw = yaw,
+                pitch = pitch,
+            )
+        }
         return Position(
             parseCoordinate(tokens[index].text, base.x, location),
             parseCoordinate(tokens[index + 1].text, base.y, location),
             parseCoordinate(tokens[index + 2].text, base.z, location),
         )
     }
+
+    private fun localPosition(base: Position, left: Double, up: Double, forward: Double, yaw: Double, pitch: Double): Position {
+        val yawRadians = Math.toRadians(yaw)
+        val pitchRadians = Math.toRadians(pitch)
+        val forwardX = -sin(yawRadians) * cos(pitchRadians)
+        val forwardY = -sin(pitchRadians)
+        val forwardZ = cos(yawRadians) * cos(pitchRadians)
+        val leftX = cos(yawRadians)
+        val leftZ = sin(yawRadians)
+        val upX = forwardY * leftZ
+        val upY = forwardZ * leftX - forwardX * leftZ
+        val upZ = -forwardY * leftX
+        return Position(
+            x = base.x + left * leftX + up * upX + forward * forwardX,
+            y = base.y + up * upY + forward * forwardY,
+            z = base.z + left * leftZ + up * upZ + forward * forwardZ,
+        )
+    }
+
+    private fun parseLocalCoordinate(raw: String, label: String, location: SourceLocation?): Double =
+        when {
+            raw == "^" -> 0.0
+            raw.startsWith("^") -> raw.drop(1).takeIf { it.isNotBlank() }?.toDoubleOrNull()
+                ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Invalid local $label coordinate '$raw'", location)
+            else -> throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Invalid local $label coordinate '$raw'", location)
+        }
 
     private fun parseBlockPos(tokens: List<CommandToken>, index: Int, base: Position, location: SourceLocation?): BlockPos {
         val pos = parsePosition(tokens, index, base, location)
@@ -2594,11 +2643,11 @@ class DatapackSandbox(
 
     private fun isCoordinateTriple(tokens: List<CommandToken>, index: Int): Boolean =
         index + 2 < tokens.size && listOf(tokens[index], tokens[index + 1], tokens[index + 2]).all {
-            it.text == "~" || it.text.startsWith("~") || it.text.toDoubleOrNull() != null
+            isCoordinateToken(it.text)
         }
 
     private fun isCoordinateToken(raw: String): Boolean =
-        raw == "~" || raw.startsWith("~") || raw.toDoubleOrNull() != null
+        raw == "~" || raw.startsWith("~") || raw.startsWith("^") || raw.toDoubleOrNull() != null
 
     private fun matchesBlock(pos: BlockPos, rawBlock: String, location: SourceLocation?): Boolean {
         val expected = parseBlockArgument(rawBlock, location)
@@ -2654,7 +2703,7 @@ class DatapackSandbox(
             raw == "~" -> base
             raw.startsWith("~") -> base + (raw.drop(1).takeIf { it.isNotBlank() }?.toDoubleOrNull()
                 ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Invalid relative coordinate '$raw'", location))
-            raw.startsWith("^") -> unsupportedFeature("Local coordinates '^' are not implemented", profile.id, location)
+            raw.startsWith("^") -> throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Local coordinates '^' require a full 3D coordinate triple", location)
             else -> raw.toDoubleOrNull()
                 ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Invalid coordinate '$raw'", location)
         }

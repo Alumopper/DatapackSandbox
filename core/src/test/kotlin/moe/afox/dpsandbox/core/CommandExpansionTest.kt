@@ -4,6 +4,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 class CommandExpansionTest {
@@ -237,6 +238,38 @@ class CommandExpansionTest {
         assertEquals(Position(4.0, 2.0, 1.0), traveler.position)
         assertEquals(-45.0, traveler.yaw)
         assertEquals(12.0, traveler.pitch)
+    }
+
+    @Test
+    fun `teleport supports local coordinates from execution rotation`() {
+        val sandbox = createFunctionSandboxFromString(
+            version = "26.2",
+            functionText = "",
+            functionId = "demo:empty",
+        )
+
+        sandbox.executeCommand("""summon minecraft:pig 10 64 10 {Tags:["traveler"]}""")
+        val traveler = sandbox.world.entities.single { "traveler" in it.tags }
+
+        sandbox.executeCommand("""execute as @e[tag=traveler,limit=1] rotated 0 0 run tp ^ ^ ^2""")
+        assertEquals(10.0, traveler.position.x, 0.0001)
+        assertEquals(64.0, traveler.position.y, 0.0001)
+        assertEquals(12.0, traveler.position.z, 0.0001)
+
+        sandbox.executeCommand("""execute as @e[tag=traveler,limit=1] rotated -90 0 run tp ^ ^ ^3""")
+        assertEquals(13.0, traveler.position.x, 0.0001)
+        assertEquals(64.0, traveler.position.y, 0.0001)
+        assertEquals(12.0, traveler.position.z, 0.0001)
+
+        sandbox.executeCommand("""execute positioned 10 64 10 rotated 0 0 run tp @e[tag=traveler,limit=1] ^1 ^2 ^3""")
+        assertEquals(11.0, traveler.position.x, 0.0001)
+        assertEquals(66.0, traveler.position.y, 0.0001)
+        assertEquals(13.0, traveler.position.z, 0.0001)
+
+        val error = assertFailsWith<SandboxException> {
+            sandbox.executeCommand("""tp @e[tag=traveler,limit=1] ^ ~ ^""")
+        }
+        assertEquals(DiagnosticCode.INPUT_FORMAT, error.code)
     }
 
     @Test
