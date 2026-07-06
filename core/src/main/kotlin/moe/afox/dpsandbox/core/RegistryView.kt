@@ -72,6 +72,8 @@ data class RegistryView(
                 "set_count",
                 "set_components",
                 "set_custom_data",
+                "set_name",
+                "set_lore",
                 "copy_components",
                 "copy_nbt",
                 "set_damage",

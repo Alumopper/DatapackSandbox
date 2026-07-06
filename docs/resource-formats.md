@@ -220,7 +220,7 @@ execute the full crafting system, every item modifier function, or worldgen
 semantics, but these resources are version-profile checked, participate in pack
 overlay behavior, and can be inspected from API or REPL. `item modify entity`
 models common item modifier functions such as `set_components`,
-`set_custom_data`, and `set_count`.
+`set_custom_data`, `set_count`, `set_name`, and `set_lore`.
 
 Current directories:
 

@@ -1,5 +1,6 @@
 ﻿package moe.afox.dpsandbox.core
 
+import com.google.gson.JsonArray
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 import kotlin.math.floor
@@ -153,6 +154,8 @@ class LootEngine(
                     if (parsed.isJsonObject) JsonPaths.merge(stack.nbt, null, parsed)
                 }
                 "set_damage" -> stack.components.addProperty("minecraft:damage", rollDouble(function.root.get("damage"), random))
+                "set_name" -> stack.components.add("minecraft:custom_name", lootFunctionText(function.root, "name", function.type))
+                "set_lore" -> stack.components.add("minecraft:lore", lootFunctionLore(function.root))
                 "copy_nbt", "copy_components" -> copyFromContext(stack, function, context)
                 "explosion_decay" -> stack.count = if (context.predicateContext.random.nextBoolean()) stack.count else 0
                 "apply_bonus" -> Unit
@@ -196,6 +199,18 @@ class LootEngine(
                 JsonPaths.set(stack.nbt, objectOp.requiredString("target"), value)
             }
         }
+    }
+
+    private fun lootFunctionText(root: JsonObject, key: String, type: String): JsonElement =
+        root.get(key)?.deepCopy()
+            ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Loot function '$type' requires '$key'")
+
+    private fun lootFunctionLore(root: JsonObject): JsonArray {
+        val lore = root.get("lore") ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Loot function 'set_lore' requires 'lore'")
+        if (!lore.isJsonArray) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Loot function 'set_lore' lore must be an array")
+        }
+        return lore.deepCopy().asJsonArray
     }
 
     private fun rollCount(element: JsonElement?, random: Random): Int =

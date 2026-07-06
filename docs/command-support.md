@@ -51,12 +51,12 @@ run continues. Use `--unsupported error`, manifest `"unsupported": "error"`, or
 | `gamerule` | Partial | Stores arbitrary gamerule string values; no gameplay side effects. |
 | `give` | Partial | Adds item stacks to player inventories and fires inventory advancement events. |
 | `help` | Partial | Reports command roots and basic sandbox help text. |
-| `item` | Partial | `replace entity|block ... with <item> [count]`; `modify entity|block ... <modifier>` applies common item modifier functions (`set_components`, `set_custom_data`, `set_count`). |
+| `item` | Partial | `replace entity|block ... with <item> [count]`; `modify entity|block ... <modifier>` applies common item modifier functions (`set_components`, `set_custom_data`, `set_count`, `set_name`, `set_lore`). |
 | `kick` | Unsupported | Network sessions are not simulated. |
 | `kill` | Supported | Removes selected sandbox entities; player execution contexts fire `killed_entity` advancement events for non-player targets. |
 | `list` | Supported | Reports sandbox players and UUIDs. |
 | `locate` | Partial | Accepts `biome`, `structure`, `poi`; reports no result in the void world instead of querying worldgen. |
-| `loot` | Partial | Supports `give`, `insert`, `spawn`, `replace entity`, `replace block`; sources include `loot <table>`, `fish <table> <pos> [tool]`, `mine <pos> [tool]`, and `kill <target>` when entities declare `DeathLootTable`. |
+| `loot` | Partial | Supports `give`, `insert`, `spawn`, `replace entity`, `replace block`; sources include `loot <table>`, `fish <table> <pos> [tool]`, `mine <pos> [tool]`, and `kill <target>` when entities declare `DeathLootTable`; common functions include count, components/custom data, damage, name, and lore. |
 | `me` | Supported | Recorded as chat output. |
 | `msg`, `tell`, `w` | Supported | Recorded as private chat output. |
 | `pardon`, `pardon-ip` | Unsupported | Server administration is not simulated. |

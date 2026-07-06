@@ -2011,6 +2011,8 @@ class DatapackSandbox(
                     JsonPaths.merge(stack.nbt, null, parsed)
                 }
                 "set_count" -> stack = stack.copy(count = itemModifierCount(function.get("count"), stack.count).coerceAtLeast(0))
+                "set_name" -> stack.components.add("minecraft:custom_name", itemModifierText(function, "name", type, location))
+                "set_lore" -> stack.components.add("minecraft:lore", itemModifierLore(function, location))
                 else -> unsupportedFeature("Item modifier function '$type' is not implemented", profile.id, location)
             }
         }
@@ -2051,6 +2053,18 @@ class DatapackSandbox(
             element.isJsonObject -> element.asJsonObject.get("min")?.asInt ?: element.asJsonObject.get("base")?.asInt ?: fallback
             else -> fallback
         }
+
+    private fun itemModifierText(function: JsonObject, key: String, type: String, location: SourceLocation?): JsonElement =
+        function.get(key)?.deepCopy()
+            ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Item modifier '$type' requires '$key'", location)
+
+    private fun itemModifierLore(function: JsonObject, location: SourceLocation?): JsonArray {
+        val lore = function.get("lore") ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Item modifier 'set_lore' requires 'lore'", location)
+        if (!lore.isJsonArray) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Item modifier 'set_lore' lore must be an array", location)
+        }
+        return lore.deepCopy().asJsonArray
+    }
 
     private fun executeTag(tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext) {
         requireSize(tokens, 3, "tag <targets> <add|remove|list> [name]", location)

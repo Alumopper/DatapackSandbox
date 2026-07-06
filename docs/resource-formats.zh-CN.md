@@ -116,7 +116,7 @@ data/<namespace>/advancements/**/*.json
 
 ## Raw JSON Resource 与 Tags
 
-Recipe、item modifier 以及更多注册表资源会作为 raw JSON resource 加载并进入资源索引。当前沙盒还不执行完整合成系统、全部 item modifier 函数或 worldgen 语义，但这些资源可以被版本 profile 校验目录布局、被 pack overlay 覆盖，并可通过 API 或 REPL inspect 调试。`item modify entity` 会建模 `set_components`、`set_custom_data`、`set_count` 等常用 item modifier 函数：
+Recipe、item modifier 以及更多注册表资源会作为 raw JSON resource 加载并进入资源索引。当前沙盒还不执行完整合成系统、全部 item modifier 函数或 worldgen 语义，但这些资源可以被版本 profile 校验目录布局、被 pack overlay 覆盖，并可通过 API 或 REPL inspect 调试。`item modify entity` 会建模 `set_components`、`set_custom_data`、`set_count`、`set_name`、`set_lore` 等常用 item modifier 函数：
 
 ```text
 data/<namespace>/recipe/**/*.json

@@ -69,7 +69,9 @@ class CommandExpansionTest {
 
         val zombie = sandbox.world.entities.first { it.type == ResourceLocation.parse("minecraft:zombie") }
         assertEquals(40.0, zombie.attributes[ResourceLocation.parse("minecraft:max_health")])
-        assertTrue(sandbox.world.requirePlayer("Steve").inventory.any { it.id == ResourceLocation.parse("minecraft:diamond") })
+        val diamond = sandbox.world.requirePlayer("Steve").inventory.first { it.id == ResourceLocation.parse("minecraft:diamond") }
+        assertEquals("Gift", diamond.components.getAsJsonObject("minecraft:custom_name").get("text").asString)
+        assertEquals("from loot", diamond.components.getAsJsonArray("minecraft:lore")[0].asJsonObject.get("text").asString)
     }
 
     @Test
@@ -108,6 +110,8 @@ class CommandExpansionTest {
         assertEquals(2, item.count)
         assertEquals(true, item.nbt.get("marked").asBoolean)
         assertEquals("tagged", item.components.get("demo:tag").asString)
+        assertEquals("Marked Stick", item.components.getAsJsonObject("minecraft:custom_name").get("text").asString)
+        assertEquals("debuggable", item.components.getAsJsonArray("minecraft:lore")[0].asJsonObject.get("text").asString)
     }
 
     @Test
@@ -441,7 +445,19 @@ class CommandExpansionTest {
                   "entries": [
                     {
                       "type": "minecraft:item",
-                      "name": "minecraft:diamond"
+                      "name": "minecraft:diamond",
+                      "functions": [
+                        {
+                          "function": "minecraft:set_name",
+                          "name": { "text": "Gift" }
+                        },
+                        {
+                          "function": "minecraft:set_lore",
+                          "lore": [
+                            { "text": "from loot" }
+                          ]
+                        }
+                      ]
                     }
                   ]
                 }
@@ -580,6 +596,16 @@ class CommandExpansionTest {
               {
                 "function": "minecraft:set_count",
                 "count": 2
+              },
+              {
+                "function": "minecraft:set_name",
+                "name": { "text": "Marked Stick" }
+              },
+              {
+                "function": "minecraft:set_lore",
+                "lore": [
+                  { "text": "debuggable" }
+                ]
               }
             ]
             """.trimIndent(),
