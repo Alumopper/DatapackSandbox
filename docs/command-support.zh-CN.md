@@ -150,7 +150,7 @@ JSON text component 支持 `text`、`score`、`selector`、`translate`、`keybin
 |---|---:|---|
 | `event player <name> <type> ...` | `modeled` | 注入玩家事件，用于 advancement/predicate 测试。 |
 | `player <name>` | `modeled` | 创建或复用沙盒玩家。 |
-| `inspect <...>` | `modeled` | 查看 score、storage、entities、blocks、player、loot、predicate、advancement、recipe、item_modifier、raw JSON resource、tags、resource index、registry、outputs。 |
+| `inspect <...>` | `modeled` | 查看 score、storage、random sequence、entities、blocks、player、loot、predicate、advancement、recipe、item_modifier、raw JSON resource、tags、resource index、registry、outputs。 |
 | `snapshot [file]` | `modeled` | 打印或写出确定性的世界 JSON。 |
 | `help` | `modeled` | 显示 REPL 帮助。 |
 | `exit`、`quit` | `modeled` | 退出 REPL。 |

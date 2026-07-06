@@ -171,7 +171,7 @@ These are tooling commands, not vanilla commands:
 |---|---:|---|
 | `event player <name> <type> ...` | `modeled` | Inject player events for advancements/predicates. |
 | `player <name>` | `modeled` | Create or reuse a sandbox player. |
-| `inspect <...>` | `modeled` | Inspect score, storage, entities, blocks, player, loot, predicate, advancement, recipe, item_modifier, raw JSON resources, tags, resource index, registry, outputs. |
+| `inspect <...>` | `modeled` | Inspect score, storage, random sequences, entities, blocks, player, loot, predicate, advancement, recipe, item_modifier, raw JSON resources, tags, resource index, registry, outputs. |
 | `snapshot [file]` | `modeled` | Print or write deterministic world JSON. |
 | `help` | `modeled` | Show REPL help. |
 | `exit`, `quit` | `modeled` | Leave the REPL. |

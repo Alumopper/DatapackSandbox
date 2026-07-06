@@ -232,7 +232,7 @@ class Repl(
         "Commands: load, load fixture <file>, reload, tick [n], function <id>, player <name>, event player <name> <type> [id] [detail/action], trace <on|off|status>, diff last, rerun last, reset world, ${inspectUsage()}, snapshot [file], exit"
 
     private fun inspectUsage(): String =
-        "inspect <score|storage|entities|blocks|player|loot|predicate|advancement|recipe|item_modifier|raw|tags|resources|registry|outputs>"
+        "inspect <score|storage|random|entities|blocks|player|loot|predicate|advancement|recipe|item_modifier|raw|tags|resources|registry|outputs>"
 
     private fun reload() {
         if (packs.isEmpty()) {
@@ -348,6 +348,16 @@ class Repl(
                     sandbox.world.storages.toSortedMap().forEach { (id, value) ->
                         println("$id = ${JsonValues.render(value)}")
                     }
+                }
+            }
+            "random", "random-sequence", "random-sequences" -> {
+                val name = args.getOrNull(1)
+                if (name == null) {
+                    sandbox.world.randomSequences.toSortedMap().forEach { (sequence, state) ->
+                        println("$sequence = $state")
+                    }
+                } else {
+                    println(sandbox.world.randomSequences[name]?.toString() ?: "<missing>")
                 }
             }
             "entities" -> {

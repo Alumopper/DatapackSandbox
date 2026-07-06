@@ -92,6 +92,23 @@ class ReplTest {
     }
 
     @Test
+    fun `inspects random sequence state`() {
+        val sandbox = createSandbox("26.1.2", listOf(Path.of("../core/src/test/resources/packs/counter")))
+        sandbox.world.randomSequences["demo:seq"] = 42
+        val repl = Repl(sandbox)
+
+        val output = captureStdout {
+            repl.handle("inspect random")
+            repl.handle("inspect random demo:seq")
+            repl.handle("inspect random demo:missing")
+        }
+
+        assertTrue(output.contains("demo:seq = 42"), output)
+        assertTrue(output.lines().any { it.trim() == "42" }, output)
+        assertTrue(output.contains("<missing>"), output)
+    }
+
+    @Test
     fun `inspects raw datapack resources`() {
         val pack = Files.createTempDirectory("dps-repl-raw-pack")
         Files.writeString(

@@ -85,7 +85,12 @@ class DpsCompleterTest {
         assertSuggests(completer, "reset ", "world")
         assertSuggests(completer, "load ", "fixture")
         assertSuggests(completer, "inspect ", "raw")
+        assertSuggests(completer, "inspect ", "random")
         assertSuggests(completer, "inspect resources ", "function")
+
+        val randomSandbox = createSandbox("26.1.2", listOf(Path.of("../core/src/test/resources/packs/counter")))
+        randomSandbox.world.randomSequences["demo:seq"] = 42
+        assertSuggests(DpsCompleter { randomSandbox }, "inspect random ", "demo:seq")
     }
 
     @Test
