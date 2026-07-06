@@ -1859,6 +1859,7 @@ class DatapackSandbox(
         requireSize(tokens, 3, "enchant <targets> <enchantment> [level]", location)
         val enchantment = ResourceLocation.parse(tokens[2].text)
         val level = tokens.getOrNull(3)?.text?.let { parseInt(it, "enchantment level", location) } ?: 1
+        val enchanted = mutableListOf<Pair<String, ItemStack>>()
         EntitySelectors.select(world, tokens[1].text, context, location).forEach { entity ->
             val item = if (entity is SandboxPlayer) {
                 playerSelectedItemForEnchant(entity)
@@ -1866,7 +1867,9 @@ class DatapackSandbox(
                 entity.equipment[EquipmentSlots.MAINHAND] ?: return@forEach
             }
             enchantItem(item, enchantment, level)
+            enchanted += entity.scoreHolder to item.copyStack()
         }
+        recordEnchantOutput(enchantment, level, enchanted)
     }
 
     private fun playerSelectedItemForEnchant(player: SandboxPlayer): ItemStack {
@@ -1881,6 +1884,28 @@ class DatapackSandbox(
             item.components.add("minecraft:enchantments", it)
         }
         enchantments.addProperty(enchantment.toString(), level)
+    }
+
+    private fun recordEnchantOutput(enchantment: ResourceLocation, level: Int, enchanted: List<Pair<String, ItemStack>>) {
+        world.recordOutput(
+            "enchant",
+            "data",
+            targets = enchanted.map { it.first },
+            text = enchanted.size.toString(),
+            payload = JsonObject().also { payload ->
+                payload.addProperty("enchantment", enchantment.toString())
+                payload.addProperty("level", level)
+                payload.addProperty("modified", enchanted.size)
+                payload.add("items", JsonArray().also { items ->
+                    enchanted.forEach { (target, item) ->
+                        items.add(JsonObject().also { entry ->
+                            entry.addProperty("target", target)
+                            entry.add("item", item.toJson())
+                        })
+                    }
+                })
+            },
+        )
     }
 
     private fun executeExperience(tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext) {

@@ -404,6 +404,12 @@ class CommandExpansionTest {
         assertEquals("minecraft:stick", snapshotEquipment.getAsJsonObject("weapon.mainhand").get("id").asString)
         assertEquals("minecraft:iron_helmet", snapshotEquipment.getAsJsonObject("armor.head").get("id").asString)
         assertEquals(3, sandbox.world.getScore("#predicate", "equipment"))
+
+        val enchantOutput = sandbox.world.outputs.single { it.command == "enchant" }
+        val enchantPayload = enchantOutput.payload?.asJsonObject ?: error("missing enchant payload")
+        assertEquals("minecraft:sharpness", enchantPayload.get("enchantment").asString)
+        assertEquals(3, enchantPayload.get("level").asInt)
+        assertEquals("minecraft:stick", enchantPayload.getAsJsonArray("items")[0].asJsonObject.getAsJsonObject("item").get("id").asString)
     }
 
     @Test
