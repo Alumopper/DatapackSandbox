@@ -2248,15 +2248,31 @@ class DatapackSandbox(
         if (volume > 32768) {
             throw SandboxException(DiagnosticCode.COMMAND_ERROR, "Fillbiome volume $volume exceeds sandbox limit 32768", location)
         }
-        var changed = 0
+        val changedPositions = mutableListOf<BlockPos>()
         for (x in xs) for (y in ys) for (z in zs) {
             val pos = BlockPos(x, y, z)
             if (filter == null || world.biomes[pos] == filter) {
                 world.biomes[pos] = biome
-                changed += 1
+                changedPositions += pos
             }
         }
-        world.recordOutput("fillbiome", "data", text = changed.toString())
+        world.recordOutput(
+            "fillbiome",
+            "data",
+            targets = changedPositions.map { it.toString() },
+            text = changedPositions.size.toString(),
+            payload = JsonObject().also { payload ->
+                payload.addProperty("biome", biome.toString())
+                filter?.let { payload.addProperty("filter", it.toString()) }
+                payload.addProperty("volume", volume)
+                payload.addProperty("changed", changedPositions.size)
+                payload.add("from", blockPosOutput(from))
+                payload.add("to", blockPosOutput(to))
+                payload.add("positions", JsonArray().also { positions ->
+                    changedPositions.forEach { pos -> positions.add(pos.toString()) }
+                })
+            },
+        )
     }
 
     private fun executeDamage(tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext) {

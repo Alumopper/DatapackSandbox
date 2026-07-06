@@ -57,6 +57,13 @@ class CommandExpansionTest {
         assertEquals(true, snapshot.get("tickFrozen").asBoolean)
         assertEquals(2, snapshot.get("gameTime").asLong)
         assertEquals(4, snapshot.getAsJsonArray("biomes").size())
+        val fillBiomeOutput = sandbox.world.outputs.single { it.command == "fillbiome" }
+        val fillBiomePayload = fillBiomeOutput.payload?.asJsonObject ?: error("missing fillbiome payload")
+        assertEquals("4", fillBiomeOutput.text)
+        assertEquals("minecraft:plains", fillBiomePayload.get("biome").asString)
+        assertEquals(4, fillBiomePayload.get("volume").asInt)
+        assertEquals(4, fillBiomePayload.get("changed").asInt)
+        assertEquals("0 0 0", fillBiomeOutput.targets[0])
         assertTrue(snapshot.getAsJsonArray("forcedChunks").size() >= 1)
         val forceAddOutput = sandbox.world.outputs.single { it.command == "forceload add" }
         val forceAddPayload = forceAddOutput.payload?.asJsonObject ?: error("missing forceload add payload")

@@ -37,7 +37,7 @@
 | `execute` | 部分支持 | 支持 `as`、`at`、`positioned <pos>`、`positioned as <selector>`、`align`、`anchored`、`facing`、`in`、`rotated`、`store`、`if`、`unless`、`run` 的核心路径；`as` 只切换执行者，`at` 会把执行位置、维度和旋转移动到目标实体，`positioned as` 只移动执行位置；`align` 会对校验过的 `x`/`y`/`z` 轴取整；`rotated` 和 `facing` 会更新命令旋转上下文，供 `tp` 的相对旋转参数和局部坐标使用；`anchored` 会更新局部坐标基准点；`store` 目标覆盖 score、storage、entity NBT、block NBT 和 bossbar value/max；条件覆盖 `entity`、`score`、`data`、`block`、`blocks`、`predicate`、`function`、`dimension`、`biome` 和 `loaded`。 |
 | `experience`、`xp` | 部分支持 | `add`、`set`、`query`；沙盒内 points/levels 共用玩家 XP 整数字段；`query` 会记录结构化 data 输出，供断言和 `execute store result` 使用。 |
 | `fill` | 部分支持 | `fill <from> <to> <block[state]{nbt}> [replace|keep|destroy|hollow|outline]`；记录结构化变化位置输出；位置参数支持局部坐标；不执行更新或掉落。 |
-| `fillbiome` | 部分支持 | 为显式方块范围记录 biome 覆盖；不模拟区块 biome 容器或生成效果。 |
+| `fillbiome` | 部分支持 | 为显式方块范围记录 biome 覆盖，并记录结构化变化位置输出；不模拟区块 biome 容器或生成效果。 |
 | `forceload` | 部分支持 | `add`、`remove`、`remove all`、`query`、`query <pos>`；记录强加载 chunk 坐标，并为修改和 query 记录结构化输出。 |
 | `function` | 支持 | `function <id>`。 |
 | `gamemode` | 支持 | `gamemode <mode> [targets]`；更新沙盒玩家游戏模式，并记录结构化前后输出。 |
