@@ -88,6 +88,44 @@ class DatapackResourceIndexTest {
     }
 
     @Test
+    fun `datapack load cache invalidates when directory content changes`() {
+        DatapackLoader.clearCache()
+        try {
+            val pack = writeFunctionTagPack("cache-invalidate", replace = false, functionName = "cached", message = "cached one")
+            val profile = VersionProfiles.get("26.2")
+            val functionId = ResourceLocation.parse("demo:cached")
+
+            val first = DatapackLoader.load(listOf(pack), profile)
+            assertEquals("say cached one", first.function(functionId).lines.single().command)
+
+            Files.writeString(pack.resolve("data").resolve("demo").resolve("function").resolve("cached.mcfunction"), "say cached two")
+
+            val second = DatapackLoader.load(listOf(pack), profile)
+            assertEquals("say cached two", second.function(functionId).lines.single().command)
+        } finally {
+            DatapackLoader.clearCache()
+        }
+    }
+
+    @Test
+    fun `datapack load cache returns isolated json resources`() {
+        DatapackLoader.clearCache()
+        try {
+            val pack = writePack("cache-copy", "107.1", "recipe", "item_modifier", "item", "original")
+            val profile = VersionProfiles.get("26.2")
+            val recipeId = ResourceLocation.parse("demo:marker")
+
+            val first = DatapackLoader.load(listOf(pack), profile)
+            first.recipe(recipeId).root.asJsonObject.addProperty("marker", "mutated")
+
+            val second = DatapackLoader.load(listOf(pack), profile)
+            assertEquals("original", second.recipe(recipeId).root.asJsonObject.get("marker").asString)
+        } finally {
+            DatapackLoader.clearCache()
+        }
+    }
+
+    @Test
     fun `resource index records overridden resources`() {
         val first = writePack("overlay-first", "107.1", "recipe", "item_modifier", "item", "first")
         val second = writePack("overlay-second", "107.1", "recipe", "item_modifier", "item", "second")

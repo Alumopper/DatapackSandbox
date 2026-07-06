@@ -284,6 +284,7 @@
   - 大型 pack 加载、深函数调用、大量 scoreboard、巨大 storage、批量 manifest、loot 大量抽样。
 - 缓存：
   - 资源解析缓存、schema 缓存、版本 profile 缓存；保证不破坏 watch/reload。
+  - `DatapackLoader` 已提供目录/zip 数据包解析缓存，缓存键使用版本 profile 与内容指纹；命中时返回深拷贝，并提供 `clearCache()` 供 REPL/watch 强制 reload 丢弃缓存。
 - 错误边界：
   - 函数递归深度、最大命令数、最大 tick 数、最大输出事件数、最大 snapshot 大小。
   - `SandboxLimits` 已提供可配置的函数递归深度、sandbox 实例累计命令数、单次 `runTicks` 最大 tick 数、保留输出事件数和渲染后 snapshot 大小边界，用于阻止 runaway 单元测试和 CI 任务。

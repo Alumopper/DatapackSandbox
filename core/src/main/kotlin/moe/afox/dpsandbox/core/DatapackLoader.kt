@@ -10,6 +10,8 @@ import java.nio.file.FileSystem
 import java.nio.file.FileSystems
 import java.nio.file.Files
 import java.nio.file.Path
+import java.security.MessageDigest
+import java.util.LinkedHashMap
 import kotlin.io.path.exists
 import kotlin.io.path.extension
 import kotlin.io.path.isDirectory
@@ -78,6 +80,42 @@ object DatapackLoader {
         RawJsonResourceSpec("worldgen/world_preset"),
     )
 
+    private data class LoadCacheKey(
+        val profile: String,
+        val packs: List<PackFingerprint>,
+    )
+
+    private data class PackFingerprint(
+        val path: String,
+        val type: String,
+        val hash: String,
+        val files: List<FileFingerprint> = emptyList(),
+    )
+
+    private data class FileFingerprint(
+        val relativePath: String,
+        val hash: String,
+    )
+
+    private const val MAX_LOAD_CACHE_ENTRIES = 16
+
+    private val loadCache = object : LinkedHashMap<LoadCacheKey, Datapack>(MAX_LOAD_CACHE_ENTRIES, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<LoadCacheKey, Datapack>?): Boolean =
+            size > MAX_LOAD_CACHE_ENTRIES
+    }
+
+    /**
+     * Clears cached parsed datapacks. Content fingerprints normally invalidate
+     * entries automatically, but REPL/watch integrations can call this before a
+     * forced reload when they want to discard all retained pack objects.
+     */
+    @JvmStatic
+    fun clearCache() {
+        synchronized(loadCache) {
+            loadCache.clear()
+        }
+    }
+
     /**
      * Loads and validates one or more datapacks for [profile].
      *
@@ -94,7 +132,18 @@ object DatapackLoader {
         if (paths.isEmpty()) {
             throw SandboxException(DiagnosticCode.INPUT_FORMAT, "At least one datapack path is required", version = profile.id)
         }
+        val key = loadCacheKey(paths, profile)
+        synchronized(loadCache) {
+            loadCache[key]?.let { return it.cacheCopy() }
+        }
+        val datapack = loadUncached(paths, profile)
+        synchronized(loadCache) {
+            loadCache[key] = datapack.cacheCopy()
+        }
+        return datapack
+    }
 
+    private fun loadUncached(paths: List<Path>, profile: VersionProfile): Datapack {
         val functions = linkedMapOf<ResourceLocation, DatapackFunction>()
         val loadFunctionEntries = mutableListOf<FunctionTagEntry>()
         val tickFunctionEntries = mutableListOf<FunctionTagEntry>()
@@ -297,6 +346,95 @@ object DatapackLoader {
         sourceName: String = "<string:${functionId}>",
     ): Datapack =
         loadFunctionSources(listOf(FunctionSource.text(functionId.toString(), content, sourceName)), profile)
+
+    private fun loadCacheKey(paths: List<Path>, profile: VersionProfile): LoadCacheKey =
+        LoadCacheKey(profile.id, paths.map(::fingerprintPack))
+
+    private fun fingerprintPack(input: Path): PackFingerprint {
+        val normalized = input.toAbsolutePath().normalize()
+        if (!normalized.exists()) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Datapack path does not exist: $normalized")
+        }
+        if (normalized.isDirectory()) {
+            val files = mutableListOf<FileFingerprint>()
+            Files.walk(normalized).use { walk ->
+                walk.filter { it.isRegularFile() }.forEach { file ->
+                    files += FileFingerprint(
+                        relativePath = file.relativeTo(normalized).toString().replace('\\', '/'),
+                        hash = sha256(file),
+                    )
+                }
+            }
+            return PackFingerprint(
+                path = normalized.toString(),
+                type = "directory",
+                hash = "",
+                files = files.sortedBy { it.relativePath },
+            )
+        }
+        if (normalized.isRegularFile() && normalized.extension.lowercase() == "zip") {
+            return PackFingerprint(
+                path = normalized.toString(),
+                type = "zip",
+                hash = sha256(normalized),
+            )
+        }
+        throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Datapack path must be a directory or .zip file: $normalized")
+    }
+
+    private fun sha256(file: Path): String {
+        val digest = MessageDigest.getInstance("SHA-256")
+        Files.newInputStream(file).use { input ->
+            val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+            while (true) {
+                val read = input.read(buffer)
+                if (read < 0) break
+                digest.update(buffer, 0, read)
+            }
+        }
+        return digest.digest().toHex()
+    }
+
+    private fun ByteArray.toHex(): String {
+        val digits = "0123456789abcdef".toCharArray()
+        val chars = CharArray(size * 2)
+        forEachIndexed { index, byte ->
+            val value = byte.toInt() and 0xff
+            chars[index * 2] = digits[value ushr 4]
+            chars[index * 2 + 1] = digits[value and 0x0f]
+        }
+        return String(chars)
+    }
+
+    private fun Datapack.cacheCopy(): Datapack =
+        copy(
+            functions = functions.mapValues { (_, function) -> function.copy(lines = function.lines.toList()) }.toSortedMap(),
+            loadFunctions = loadFunctions.toList(),
+            tickFunctions = tickFunctions.toList(),
+            lootTables = lootTables.mapValues { (_, table) -> table.copy(root = table.root.deepCopy().asJsonObject) }.toSortedMap(),
+            predicates = predicates.mapValues { (_, predicate) -> predicate.copy(root = predicate.root.deepCopy()) }.toSortedMap(),
+            advancements = advancements.mapValues { (_, advancement) -> advancement.cacheCopy() }.toSortedMap(),
+            recipes = recipes.mapValues { (_, resource) -> resource.cacheCopy() }.toSortedMap(),
+            itemModifiers = itemModifiers.mapValues { (_, resource) -> resource.cacheCopy() }.toSortedMap(),
+            rawResources = rawResources
+                .mapValues { (_, resources) -> resources.mapValues { (_, resource) -> resource.cacheCopy() }.toSortedMap() }
+                .toSortedMap(),
+            tags = tags.mapValues { (_, tag) -> tag.copy(values = tag.values.toList()) }.toSortedMap(),
+            resourceIndex = resourceIndex.toList(),
+        )
+
+    private fun RawJsonResource.cacheCopy(): RawJsonResource =
+        copy(root = root.deepCopy())
+
+    private fun AdvancementDefinition.cacheCopy(): AdvancementDefinition =
+        copy(
+            root = root.deepCopy().asJsonObject,
+            criteria = criteria.mapValues { (_, criterion) ->
+                criterion.copy(conditions = criterion.conditions?.deepCopy()?.asJsonObject)
+            }.toSortedMap(),
+            requirements = requirements.map { it.toList() },
+            rewards = rewards.copy(loot = rewards.loot.toList(), recipes = rewards.recipes.toList()),
+        )
 
     private fun withPackRoot(input: Path, block: (Path) -> Unit) {
         val normalized = input.toAbsolutePath().normalize()
