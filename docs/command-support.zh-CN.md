@@ -87,7 +87,7 @@
 | `title` | 支持 | `clear`、`reset`、`title`、`subtitle`、`actionbar`、`times` 输出事件。 |
 | `transfer` | 未支持 | 不模拟网络/server transfer。 |
 | `trigger` | 部分支持 | `trigger <objective> [add|set] [value]`；使用当前/default 玩家。 |
-| `weather` | 部分支持 | `clear`、`rain`、`thunder`；只存储状态。 |
+| `weather` | 部分支持 | `clear`、`rain`、`thunder`；存储状态，并记录结构化天气输出。 |
 | `whitelist` | 未支持 | 服务器管理命令。 |
 | `worldborder` | 部分支持 | `get`、`set`、`add`、`center`、`damage`、`warning`；只存储状态。 |
 

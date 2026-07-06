@@ -1129,6 +1129,17 @@ class DatapackSandbox(
         }
         world.weather = weather
         world.weatherDuration = tokens.getOrNull(2)?.text?.let { parseInt(it, "weather duration", location) } ?: 0
+        world.recordOutput(
+            "weather",
+            "data",
+            text = weather,
+            payload = JsonObject().also { payload ->
+                payload.addProperty("weather", world.weather)
+                payload.addProperty("duration", world.weatherDuration)
+                payload.addProperty("raining", world.weather == "rain" || world.weather == "thunder")
+                payload.addProperty("thundering", world.weather == "thunder")
+            },
+        )
     }
 
     private fun executeRandom(tokens: List<CommandToken>, location: SourceLocation?) {

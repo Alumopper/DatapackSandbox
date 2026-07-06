@@ -159,6 +159,13 @@ class SandboxBehaviorTest {
         assertEquals(6000, sandbox.world.getScore("#daytime", "time_copy"))
         assertEquals("rain", sandbox.world.weather)
         assertEquals(200, sandbox.world.weatherDuration)
+        val weatherOutput = sandbox.world.outputs.single { it.command == "weather" }
+        val weatherPayload = weatherOutput.payload?.asJsonObject ?: error("missing weather payload")
+        assertEquals("rain", weatherOutput.text)
+        assertEquals("rain", weatherPayload.get("weather").asString)
+        assertEquals(200, weatherPayload.get("duration").asInt)
+        assertEquals(true, weatherPayload.get("raining").asBoolean)
+        assertEquals(false, weatherPayload.get("thundering").asBoolean)
         assertTrue("Steve" in sandbox.world.teams.getValue("red").members)
         assertEquals(ResourceLocation.parse("minecraft:apple"), player.inventory.single().id)
         assertEquals(3, player.inventory.single().count)

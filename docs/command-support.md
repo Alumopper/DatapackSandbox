@@ -94,7 +94,7 @@ run continues. Use `--unsupported error`, manifest `"unsupported": "error"`, or
 | `title` | Supported | `clear`, `reset`, `title`, `subtitle`, `actionbar`, `times` output events. |
 | `transfer` | Unsupported | Networking/server transfer is not simulated. |
 | `trigger` | Partial | `trigger <objective> [add|set] [value]`; uses current/default sandbox player. |
-| `weather` | Partial | `clear`, `rain`, `thunder`; stored state only. |
+| `weather` | Partial | `clear`, `rain`, `thunder`; stores state and records structured weather output. |
 | `whitelist` | Unsupported | Server administration command. |
 | `worldborder` | Partial | `get`, `set`, `add`, `center`, `damage`, `warning`; stored state only. |
 
