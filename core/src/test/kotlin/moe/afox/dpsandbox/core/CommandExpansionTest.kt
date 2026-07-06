@@ -392,7 +392,7 @@ class CommandExpansionTest {
         val pack = writeItemModifierPack(Files.createTempDirectory("dps-item-modifier-pack"))
         val sandbox = createSandbox("26.2", listOf(pack))
 
-        sandbox.executeCommand("item replace entity Steve hotbar.0 with minecraft:stick 1")
+        sandbox.executeCommand("item replace entity Steve hotbar.0 with minecraft:stick[demo:source=true,demo:skip=true] 1")
         sandbox.executeCommand("item modify entity Steve hotbar.0 demo:mark")
 
         val item = sandbox.world.requirePlayer("Steve").inventory[0]
@@ -406,6 +406,14 @@ class CommandExpansionTest {
         assertEquals("Marked Stick", item.components.getAsJsonObject("minecraft:custom_name").get("text").asString)
         assertEquals("debuggable", item.components.getAsJsonArray("minecraft:lore")[0].asJsonObject.get("text").asString)
         assertEquals(3.0, item.components.get("minecraft:damage").asDouble)
+
+        sandbox.executeCommand("item replace entity Steve hotbar.3 with minecraft:diamond 1")
+        sandbox.executeCommand("item modify entity Steve hotbar.3 demo:copy_selected")
+
+        val copiedComponents = sandbox.world.requirePlayer("Steve").inventory[3]
+        assertEquals(true, copiedComponents.components.get("demo:source").asBoolean)
+        assertEquals(3.0, copiedComponents.components.get("minecraft:damage").asDouble)
+        assertTrue(!copiedComponents.components.has("demo:skip"))
 
         sandbox.executeCommand("item replace entity Steve hotbar.1 with minecraft:diamond 1")
         sandbox.executeCommand("item modify entity Steve hotbar.1 demo:mark")
@@ -428,7 +436,7 @@ class CommandExpansionTest {
         assertEquals(0, discarded.count)
 
         val modifyOutputs = sandbox.world.outputs.filter { it.command == "item modify" }
-        assertEquals(4, modifyOutputs.size)
+        assertEquals(5, modifyOutputs.size)
         val firstModifyPayload = modifyOutputs.first().payload?.asJsonObject ?: error("missing item modify payload")
         assertEquals("entity", firstModifyPayload.get("targetKind").asString)
         assertEquals("hotbar.0", firstModifyPayload.get("slot").asString)
@@ -1498,6 +1506,23 @@ class CommandExpansionTest {
               "components": {
                 "demo:referenced": "shared"
               }
+            }
+            """.trimIndent(),
+        )
+        Files.writeString(
+            modifierRoot.resolve("copy_selected.json"),
+            """
+            {
+              "function": "minecraft:copy_components",
+              "source": "this",
+              "include": [
+                "demo:source",
+                "minecraft:damage",
+                "demo:skip"
+              ],
+              "exclude": [
+                "demo:skip"
+              ]
             }
             """.trimIndent(),
         )

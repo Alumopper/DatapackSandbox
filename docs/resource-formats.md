@@ -329,7 +329,8 @@ component forms, modern `enchanted_chance` level values, and legacy looting or
 bonus multipliers. `item modify entity`
 models common item modifier functions such as `set_components`,
 `set_custom_data`, `set_count`, `limit_count`, `set_item`, `discard`,
-`set_damage`, `set_name`, `set_lore`, `filtered`, `reference`, and `sequence`.
+`set_damage`, `set_name`, `set_lore`, `copy_components` with
+`include`/`exclude`, `filtered`, `reference`, and `sequence`.
 Entity item commands support player inventory, selected-mainhand, and
 `enderchest.*` slots, plus non-player equipment slots such as
 `weapon.mainhand`, `weapon.offhand`, and

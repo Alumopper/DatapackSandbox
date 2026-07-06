@@ -3501,6 +3501,7 @@ class DatapackSandbox(
                 "set_damage" -> stack.components.addProperty("minecraft:damage", itemModifierNumber(function.get("damage"), 0.0))
                 "set_name" -> stack.components.add("minecraft:custom_name", itemModifierText(function, "name", type, location))
                 "set_lore" -> stack.components.add("minecraft:lore", itemModifierLore(function, location))
+                "copy_components" -> copyItemModifierComponents(stack, function, predicateContext(stack), location)
                 "reference" -> {
                     val id = itemModifierResource(function, "name", type, location)
                     stack = applyReferencedItemModifier(stack, id, predicateContext, location, activeReferences)
@@ -3641,6 +3642,57 @@ class DatapackSandbox(
             throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Item modifier 'set_lore' lore must be an array", location)
         }
         return lore.deepCopy().asJsonArray
+    }
+
+    private fun copyItemModifierComponents(
+        stack: ItemStack,
+        function: JsonObject,
+        context: PredicateContext,
+        location: SourceLocation?,
+    ) {
+        val source = function.get("source")?.takeIf { it.isJsonPrimitive && it.asJsonPrimitive.isString }?.asString ?: "tool"
+        val sourceComponents = itemModifierComponentSource(source, stack, context, location)
+        val include = itemModifierComponentList(function.get("include"), "include", location)
+        val exclude = itemModifierComponentList(function.get("exclude"), "exclude", location).orEmpty().toSet()
+        val names = (include ?: sourceComponents.entrySet().map { it.key }.sorted())
+            .distinct()
+            .filterNot { it in exclude }
+        names.forEach { name ->
+            sourceComponents.get(name)?.let { stack.components.add(name, it.deepCopy()) }
+        }
+    }
+
+    private fun itemModifierComponentSource(
+        source: String,
+        stack: ItemStack,
+        context: PredicateContext,
+        location: SourceLocation?,
+    ): JsonObject {
+        val item = when (source) {
+            "tool" -> context.tool ?: stack
+            "this" -> (context.thisEntity as? SandboxPlayer)?.selectedItem ?: context.player?.selectedItem ?: stack
+            "attacker" -> (context.attacker as? SandboxPlayer)?.selectedItem
+            "direct_attacker" -> (context.directEntity as? SandboxPlayer)?.selectedItem
+            "killer" -> (context.killer as? SandboxPlayer)?.selectedItem
+            else -> null
+        }
+        return item?.components
+            ?: throw SandboxException(DiagnosticCode.MISSING_CONTEXT, "copy_components requires item component source '$source'", location)
+    }
+
+    private fun itemModifierComponentList(element: JsonElement?, key: String, location: SourceLocation?): List<String>? {
+        if (element == null || element.isJsonNull) return null
+        return when {
+            element.isJsonPrimitive && element.asJsonPrimitive.isString ->
+                listOf(ResourceLocation.parse(element.asString).toString())
+            element.isJsonArray -> element.asJsonArray.mapIndexed { index, value ->
+                if (!value.isJsonPrimitive || !value.asJsonPrimitive.isString) {
+                    throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Item modifier copy_components '$key' entries must be strings at index $index", location)
+                }
+                ResourceLocation.parse(value.asString).toString()
+            }
+            else -> throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Item modifier copy_components '$key' must be a string or array of strings", location)
+        }
     }
 
     private fun executeTag(tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext) {
