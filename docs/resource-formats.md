@@ -345,8 +345,9 @@ payloads is preserved during command tokenization. Equipment is also exposed thr
 predicates can match `equipment` fields for `mainhand`, `offhand`, `head`,
 `chest`, `legs`, and `feet`, active `effects` with amplifier/duration and
 particle visibility, plus `distance` ranges for `absolute`, `horizontal`, and
-axis-specific `x`/`y`/`z` distances; item predicates can match `enchantments` or
-`stored_enchantments` by id and level range. Entity `nbt` predicates are checked
+axis-specific `x`/`y`/`z` distances; item predicates can match explicit item ids
+or `#` item tags, plus `enchantments` or `stored_enchantments` by id and level
+range. Entity `nbt` predicates are checked
 against the full generated entity NBT view. Predicate `location_check` block
 conditions read explicit sparse blocks by id, block tag, state/property values,
 and block entity NBT at the tested location. Its biome conditions read the

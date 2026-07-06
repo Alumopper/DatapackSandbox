@@ -574,10 +574,42 @@ class PredicateEngine(
 
     private fun matchesIdList(id: ResourceLocation, element: JsonElement): Boolean =
         when {
-            element.isJsonPrimitive -> ResourceLocation.parse(element.asString) == id
+            element.isJsonPrimitive -> {
+                val raw = element.asString
+                if (raw.startsWith("#")) {
+                    itemMatchesTag(id, ResourceLocation.parse(raw.removePrefix("#")), mutableSetOf())
+                } else {
+                    ResourceLocation.parse(raw) == id
+                }
+            }
             element.isJsonArray -> element.asJsonArray.any { matchesIdList(id, it) }
             else -> false
         }
+
+    private fun itemMatchesTag(id: ResourceLocation, tagId: ResourceLocation, visited: MutableSet<ResourceLocation>): Boolean {
+        if (!visited.add(tagId)) {
+            throw SandboxException(DiagnosticCode.COMMAND_ERROR, "Recursive item tag reference: $tagId")
+        }
+        val tag = datapack.tags[TagKey("item", tagId)] ?: datapack.tags[TagKey("items", tagId)]
+        val result = tag?.values?.any { value ->
+            if (value.id.startsWith("#")) {
+                val nested = ResourceLocation.parse(value.id.removePrefix("#"))
+                val nestedTag = datapack.tags[TagKey("item", nested)] ?: datapack.tags[TagKey("items", nested)]
+                if (nestedTag == null) {
+                    if (value.required) {
+                        throw SandboxException(DiagnosticCode.RESOURCE_NOT_FOUND, "Item tag '$nested' referenced by '$tagId' was not found")
+                    }
+                    false
+                } else {
+                    itemMatchesTag(id, nestedTag.key.id, visited)
+                }
+            } else {
+                ResourceLocation.parse(value.id) == id
+            }
+        } == true
+        visited.remove(tagId)
+        return result
+    }
 
     private fun testRange(actual: Long, range: JsonElement?): Boolean = testRange(actual.toDouble(), range)
 

@@ -231,6 +231,52 @@ class PredicateEngineTest {
         assertFalse(engine.testElement(killedByPlayer, context.copy(attackingPlayer = null)))
     }
 
+    @Test
+    fun `item predicates match item tags and nested optional values`() {
+        val rootTag = ResourceLocation.parse("demo:tools")
+        val nestedTag = ResourceLocation.parse("demo:debug_tools")
+        val engine = PredicateEngine(
+            Datapack(
+                functions = emptyMap(),
+                loadFunctions = emptyList(),
+                tickFunctions = emptyList(),
+                tags = mapOf(
+                    TagKey("item", rootTag) to TagDefinition(
+                        key = TagKey("item", rootTag),
+                        file = "<test>",
+                        values = listOf(TagValue("#demo:debug_tools")),
+                    ),
+                    TagKey("item", nestedTag) to TagDefinition(
+                        key = TagKey("item", nestedTag),
+                        file = "<test>",
+                        values = listOf(
+                            TagValue("minecraft:stick"),
+                            TagValue("#demo:missing_optional", required = false),
+                        ),
+                    ),
+                ),
+            ),
+        )
+        val stick = ItemStack(ResourceLocation.parse("minecraft:stick"))
+        val apple = ItemStack(ResourceLocation.parse("minecraft:apple"))
+        val itemPredicate = JsonValues.parse("""{items:"#demo:tools"}""").asJsonObject
+        val matchTool = JsonValues.parse(
+            """
+            {
+              condition: "minecraft:match_tool",
+              predicate: {
+                items: "#demo:tools"
+              }
+            }
+            """.trimIndent(),
+        )
+
+        assertTrue(engine.testItemPredicate(stick, itemPredicate))
+        assertFalse(engine.testItemPredicate(apple, itemPredicate))
+        assertTrue(engine.testElement(matchTool, PredicateContext(world = SandboxWorld(), tool = stick)))
+        assertFalse(engine.testElement(matchTool, PredicateContext(world = SandboxWorld(), tool = apple)))
+    }
+
     private fun context(tool: ItemStack?): PredicateContext =
         PredicateContext(
             world = SandboxWorld(),
