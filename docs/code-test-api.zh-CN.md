@@ -402,7 +402,7 @@ class MyDatapackTest {
 | `assertOutput(...)` | 按 command/channel/target/text/正则/规范化文本/payload path/count/order 断言输出事件。 |
 | `assertTrace(...)` | 按 command/root/source/success/输出数量/输出文本/输出目标/diff path/diff kind/count 断言 trace 事件。 |
 | `assertPlayerEventTrace(...)` | 按 player/type/success/上下文/方块坐标/advancement/失败 advancement/count 断言玩家事件 trace。 |
-| `assertSnapshotDiff(...)` | 按 before/after snapshot 的 path/kind/渲染文本/count 断言状态变化。 |
+| `assertSnapshotDiff(...)` | 按 before/after snapshot 的 path/kind/渲染文本/count 断言状态变化；失败时列出实际 diff 候选。 |
 | `outputs()` | 返回记录的输出事件。 |
 | `traces()` | 返回记录的结构化命令 trace。 |
 | `playerEventTraces()` | 返回记录的玩家事件 trace。 |

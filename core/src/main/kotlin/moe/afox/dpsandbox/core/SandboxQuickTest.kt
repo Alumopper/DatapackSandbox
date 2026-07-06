@@ -2571,16 +2571,17 @@ class SandboxQuickTest private constructor(
      */
     @JvmOverloads
     fun assertSnapshotDiff(path: String? = null, kind: SnapshotDiffKind? = null, contains: String? = null, count: Int? = null): SandboxQuickTest = apply {
-        val matches = snapshotDiffs().filter { entry ->
+        val entries = snapshotDiffs()
+        val matches = entries.filter { entry ->
             (path == null || entry.path.ifBlank { "/" } == path) &&
                 (kind == null || entry.kind == kind) &&
                 (contains == null || contains in entry.render())
         }
         if (count != null && matches.size != count) {
-            failures += "snapshotDiff ${describeSnapshotDiffExpectation(path, kind, contains)} expected count $count but was ${matches.size}"
+            failures += "snapshotDiff ${describeSnapshotDiffExpectation(path, kind, contains)} expected count $count but was ${matches.size}; ${actualSnapshotDiffs(entries)}"
         }
         if (count == null && matches.isEmpty()) {
-            failures += "snapshotDiff ${describeSnapshotDiffExpectation(path, kind, contains)} did not match any snapshot change"
+            failures += "snapshotDiff ${describeSnapshotDiffExpectation(path, kind, contains)} did not match any snapshot change; ${actualSnapshotDiffs(entries)}"
         }
     }
 
@@ -2664,6 +2665,13 @@ class SandboxQuickTest private constructor(
             kind?.let { "kind=${it.name.lowercase()}" },
             contains?.let { "contains=$it" },
         ).ifEmpty { listOf("<any snapshot diff>") }.joinToString(", ")
+
+    private fun actualSnapshotDiffs(entries: List<SnapshotDiffEntry>): String {
+        if (entries.isEmpty()) return "actual snapshot diffs: <none>"
+        val rendered = entries.take(5).joinToString("; ") { it.render().take(240) }
+        val suffix = if (entries.size > 5) "; ... +${entries.size - 5} more" else ""
+        return "actual snapshot diffs: $rendered$suffix"
+    }
 
     /**
      * Builds an immutable report for the current scenario state.

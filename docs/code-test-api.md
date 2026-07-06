@@ -431,7 +431,7 @@ class MyDatapackTest {
 | `assertOutput(...)` | Assert command/channel/target/text/regex/normalized text/payload path/count/order for output events |
 | `assertTrace(...)` | Assert command/root/source/success/output count/output text/output target/diff path/diff kind/count for trace events |
 | `assertPlayerEventTrace(...)` | Assert player event trace player/type/success/context/block position/advancement/failed advancement/count |
-| `assertSnapshotDiff(...)` | Assert before/after snapshot path/kind/rendered text/count |
+| `assertSnapshotDiff(...)` | Assert before/after snapshot path/kind/rendered text/count; failures list actual diff candidates |
 | `outputs()` | Return recorded output events |
 | `traces()` | Return recorded structured command trace events |
 | `playerEventTraces()` | Return recorded player event trace records |

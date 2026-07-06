@@ -740,6 +740,27 @@ class SandboxQuickTestTest {
     }
 
     @Test
+    fun `snapshot diff assertion failures include actual diff candidates`() {
+        val error = assertFailsWith<SandboxQuickTestAssertionError> {
+            SandboxQuickTest.singleFunctionText(
+                """
+                scoreboard objectives add runs dummy
+                scoreboard players set #actual_diff runs 7
+                """.trimIndent(),
+                version = "26.2",
+            )
+                .function()
+                .assertSnapshotDiff(path = "/storage/demo:missing")
+                .requirePassed()
+        }
+        val message = error.message.orEmpty()
+
+        assertTrue("actual snapshot diffs:" in message, message)
+        assertTrue("/scores/runs" in message, message)
+        assertTrue("\"#actual_diff\": 7" in message, message)
+    }
+
+    @Test
     fun `quick test assertion errors include snapshot diff and trace summary`() {
         val error = assertFailsWith<SandboxQuickTestAssertionError> {
             SandboxQuickTest.singleFunctionText(
