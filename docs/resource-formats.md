@@ -60,6 +60,10 @@ range.
 
 ## Resource Behavior Levels
 
+The runtime exposes the same type list through `ResourceCatalog`; loader raw
+JSON coverage and docs tooling should use that catalog instead of maintaining
+separate resource-type lists.
+
 | Level | Meaning |
 |---|---|
 | `exact` | The documented surface is intended to match vanilla-observable behavior. |

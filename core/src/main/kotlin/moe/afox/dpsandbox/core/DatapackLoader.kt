@@ -40,45 +40,7 @@ object DatapackLoader {
         val errorLabel: String = kind.replace('/', ' ').replace('_', ' ')
     }
 
-    private val additionalRawJsonResourceSpecs = listOf(
-        RawJsonResourceSpec("banner_pattern"),
-        RawJsonResourceSpec("cat_variant"),
-        RawJsonResourceSpec("chat_type"),
-        RawJsonResourceSpec("chicken_variant"),
-        RawJsonResourceSpec("cow_variant"),
-        RawJsonResourceSpec("damage_type"),
-        RawJsonResourceSpec("dialog"),
-        RawJsonResourceSpec("dimension"),
-        RawJsonResourceSpec("dimension_type"),
-        RawJsonResourceSpec("enchantment"),
-        RawJsonResourceSpec("enchantment_provider"),
-        RawJsonResourceSpec("equipment_asset"),
-        RawJsonResourceSpec("frog_variant"),
-        RawJsonResourceSpec("instrument"),
-        RawJsonResourceSpec("jukebox_song"),
-        RawJsonResourceSpec("painting_variant"),
-        RawJsonResourceSpec("pig_variant"),
-        RawJsonResourceSpec("test_environment"),
-        RawJsonResourceSpec("test_instance"),
-        RawJsonResourceSpec("trim_material"),
-        RawJsonResourceSpec("trim_pattern"),
-        RawJsonResourceSpec("wolf_sound_variant"),
-        RawJsonResourceSpec("wolf_variant"),
-        RawJsonResourceSpec("worldgen/biome"),
-        RawJsonResourceSpec("worldgen/configured_carver"),
-        RawJsonResourceSpec("worldgen/configured_feature"),
-        RawJsonResourceSpec("worldgen/density_function"),
-        RawJsonResourceSpec("worldgen/flat_level_generator_preset"),
-        RawJsonResourceSpec("worldgen/multi_noise_biome_source_parameter_list"),
-        RawJsonResourceSpec("worldgen/noise"),
-        RawJsonResourceSpec("worldgen/noise_settings"),
-        RawJsonResourceSpec("worldgen/placed_feature"),
-        RawJsonResourceSpec("worldgen/processor_list"),
-        RawJsonResourceSpec("worldgen/structure"),
-        RawJsonResourceSpec("worldgen/structure_set"),
-        RawJsonResourceSpec("worldgen/template_pool"),
-        RawJsonResourceSpec("worldgen/world_preset"),
-    )
+    private val additionalRawJsonResourceSpecs = ResourceCatalog.additionalRawJsonTypes.map(::RawJsonResourceSpec)
 
     private data class LoadCacheKey(
         val profile: String,
