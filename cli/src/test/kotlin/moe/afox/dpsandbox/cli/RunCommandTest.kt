@@ -762,6 +762,59 @@ class RunCommandTest {
     }
 
     @Test
+    fun `run filters traces by output text and selector targets`() {
+        val outputTraceFile = Files.createTempFile("dps-cli-output-filtered-trace", ".jsonl")
+        val selectorTraceFile = Files.createTempFile("dps-cli-selector-filtered-trace", ".jsonl")
+
+        val outputFiltered = captureStdout {
+            main(
+                arrayOf(
+                    "run",
+                    "--version",
+                    "26.2",
+                    "--mcfunction-text",
+                    "say visible trace output\nscoreboard objectives add runs dummy",
+                    "--trace",
+                    "--trace-filter",
+                    "output=visible trace output",
+                    "--trace-file",
+                    outputTraceFile.toString(),
+                ),
+            )
+        }
+        val selectorFiltered = captureStdout {
+            main(
+                arrayOf(
+                    "run",
+                    "--version",
+                    "26.2",
+                    "--mcfunction-text",
+                    "say selector target output\nscoreboard objectives add runs dummy",
+                    "--trace",
+                    "--trace-filter",
+                    "selector=Steve",
+                    "--trace-file",
+                    selectorTraceFile.toString(),
+                ),
+            )
+        }
+
+        assertTrue("trace OK say visible trace output" in outputFiltered, outputFiltered)
+        assertFalse("trace OK scoreboard objectives add runs dummy" in outputFiltered, outputFiltered)
+        val outputTraceJson = Files.readString(outputTraceFile)
+        assertTrue("\"outputEvents\"" in outputTraceJson, outputTraceJson)
+        assertTrue("\"text\": \"<Server> visible trace output\"" in outputTraceJson, outputTraceJson)
+        assertFalse("\"root\": \"scoreboard\"" in outputTraceJson, outputTraceJson)
+
+        assertTrue("trace OK say selector target output" in selectorFiltered, selectorFiltered)
+        assertFalse("trace OK scoreboard objectives add runs dummy" in selectorFiltered, selectorFiltered)
+        val selectorTraceJson = Files.readString(selectorTraceFile)
+        assertTrue("\"targets\"" in selectorTraceJson, selectorTraceJson)
+        assertTrue("\"Steve\"" in selectorTraceJson, selectorTraceJson)
+        assertFalse("\"root\": \"scoreboard\"" in selectorTraceJson, selectorTraceJson)
+    }
+
+    @Test
     fun `run inline assertions can check snapshot diffs`() {
         val output = captureStdout {
             main(

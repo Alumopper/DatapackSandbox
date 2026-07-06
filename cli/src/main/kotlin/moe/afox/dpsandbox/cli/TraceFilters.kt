@@ -1,6 +1,8 @@
 package moe.afox.dpsandbox.cli
 
 import moe.afox.dpsandbox.core.CommandTraceEvent
+import moe.afox.dpsandbox.core.JsonValues
+import moe.afox.dpsandbox.core.OutputEvent
 
 object TraceFilters {
     fun apply(events: List<CommandTraceEvent>, filters: List<String>): List<CommandTraceEvent> =
@@ -21,10 +23,10 @@ object TraceFilters {
             "contains" -> value in event.command || value in (event.errorMessage ?: "")
             "function" -> event.source?.functionStack?.any { value in it.id.toString() } == true
             "file", "source" -> value in (event.source?.file ?: "")
+            "selector", "target" -> selectorMatches(event, value)
             "success" -> value.toBooleanStrictOrNull()?.let { event.success == it } ?: false
-            "output", "outputs" -> value.toIntOrNull()?.let { event.outputs == it }
-                ?: value.toBooleanStrictOrNull()?.let { if (it) event.outputs > 0 else event.outputs == 0 }
-                ?: false
+            "outputs" -> outputCountMatches(event, value)
+            "output" -> outputCountMatches(event, value) || event.outputEvents.any { outputMatches(it, value) }
             "diff", "path", "state" -> event.snapshotDiffs.any { value in it.path || value in it.render() }
             "score", "scores" -> event.snapshotDiffs.any { it.path.startsWith("/scores") && (value in it.path || value in it.render()) }
             "storage" -> event.snapshotDiffs.any { it.path.startsWith("/storage") && (value in it.path || value in it.render()) }
@@ -38,5 +40,25 @@ object TraceFilters {
             value in (event.source?.file ?: "") ||
             event.source?.functionStack?.any { value in it.id.toString() } == true ||
             value in (event.errorMessage ?: "") ||
+            event.outputEvents.any { outputMatches(it, value) } ||
             event.snapshotDiffs.any { value in it.path || value in it.render() }
+
+    private fun outputCountMatches(event: CommandTraceEvent, value: String): Boolean =
+        value.toIntOrNull()?.let { event.outputs == it }
+            ?: value.toBooleanStrictOrNull()?.let { if (it) event.outputs > 0 else event.outputs == 0 }
+            ?: false
+
+    private fun selectorMatches(event: CommandTraceEvent, value: String): Boolean =
+        value in event.command ||
+            value == event.executor ||
+            event.outputEvents.any { output ->
+                output.targets.any { value in it } ||
+                    output.payload?.let { value in JsonValues.render(it) } == true
+            }
+
+    private fun outputMatches(output: OutputEvent, value: String): Boolean =
+        value in output.text ||
+            value == output.channel ||
+            output.targets.any { value in it } ||
+            output.payload?.let { value in JsonValues.render(it) } == true
 }

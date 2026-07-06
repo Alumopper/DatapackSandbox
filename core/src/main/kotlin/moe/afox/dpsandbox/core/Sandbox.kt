@@ -218,6 +218,7 @@ class DatapackSandbox(
                 success = success,
                 commandsExecuted = commandsExecuted - before,
                 outputs = world.outputs.size - outputsBefore,
+                outputEvents = world.outputs.drop(outputsBefore),
                 snapshotDiffs = SnapshotDiff.stateDiff(beforeSnapshot, snapshotJson()),
                 errorCode = errorCode,
                 errorMessage = errorMessage,
