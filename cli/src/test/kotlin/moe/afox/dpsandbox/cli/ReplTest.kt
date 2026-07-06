@@ -46,6 +46,20 @@ class ReplTest {
     }
 
     @Test
+    fun `inspects player event traces`() {
+        val repl = Repl(createSandbox("26.1.2", listOf(Path.of("../core/src/test/resources/packs/counter"))))
+
+        val output = captureStdout {
+            repl.handle("event player Steve block_placed minecraft:stone pos=1,64,2")
+            repl.handle("inspect event-traces")
+        }
+
+        assertTrue(output.contains("\"type\": \"block_placed\""), output)
+        assertTrue(output.contains("\"block\": \"minecraft:stone\""), output)
+        assertTrue(output.contains("\"blockPos\""), output)
+    }
+
+    @Test
     fun `prints trace events when trace is enabled`() {
         val repl = Repl(createSandbox("26.1.2", listOf(Path.of("../core/src/test/resources/packs/counter"))))
 

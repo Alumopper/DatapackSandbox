@@ -232,7 +232,7 @@ class Repl(
         "Commands: load, load fixture <file>, reload, tick [n], function <id>, player <name>, event player <name> <type> [id] [detail/action|x y z|pos=x,y,z], trace <on|off|status>, diff last, rerun last, reset world, ${inspectUsage()}, snapshot [file], exit"
 
     private fun inspectUsage(): String =
-        "inspect <score|storage|random|entities|blocks|player|loot|predicate|advancement|recipe|item_modifier|raw|tags|resources|registry|outputs>"
+        "inspect <score|storage|random|entities|blocks|player|loot|predicate|advancement|recipe|item_modifier|raw|tags|resources|registry|outputs|event-traces>"
 
     private fun reload() {
         if (packs.isEmpty()) {
@@ -412,6 +412,9 @@ class Repl(
                 println("lootFunctions=${sandbox.profile.registryView.lootFunctions.joinToString()}")
             }
             "outputs" -> OutputRenderer.print(sandbox.world.outputs)
+            "event-traces", "event_traces", "player-event-traces", "player_event_traces" -> {
+                sandbox.world.playerEventTraces.forEach { println(JsonValues.render(it.toJson())) }
+            }
             else -> println("Usage: ${inspectUsage()}")
         }
     }

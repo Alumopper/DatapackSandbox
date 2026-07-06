@@ -203,7 +203,7 @@
   - 支持 `--stdin` 从标准输入读取函数或命令。
   - `--assert`/`--assert-file` 已支持 score、storage、advancement、player、random sequence、item、entity、diff、event-trace、trace、trace-output、warning、unsupported、output、output-normalized、output-segment 和 output-payload 简写；`event-trace:<player>:<type>@x,y,z[=N]` 可直接按 block event 坐标过滤，`output-segment` 支持按解析后的文本片段内容、目标和常用样式字段检查 tellraw/title 输出，`output-payload` 支持 path 存在性和等值检查，`examples/generator-output` 已覆盖结构化输出 payload 断言，适合命令生成器结果的快速回归。
 - 增强 REPL：
-  - `inspect` 输出结构更稳定。
+  - `inspect` 输出结构更稳定；`inspect event-traces` 已可直接打印玩家事件 trace JSON，便于 REPL 中调试事件输入、block 坐标和 advancement 匹配。
   - 支持 `trace on/off`、`diff last`、`rerun last`、`reset world`、`load fixture`。
 
 ### 命令生成器产物测试

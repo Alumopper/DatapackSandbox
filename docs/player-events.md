@@ -150,8 +150,8 @@ Keyboard/mouse manifest examples:
 Events update per-player advancement progress and may run advancement rewards
 such as function, loot, experience, and recipe rewards. After dispatching an
 event, inspect results with `inspect player <name>`, `inspect advancement`,
-`inspect outputs`, `snapshot` `playerEventTraces`, or manifest `eventTrace`
-assertions. `eventTrace` can filter by player/type/success, advancement
+`inspect outputs`, `inspect event-traces`, `snapshot` `playerEventTraces`, or
+manifest `eventTrace` assertions. `eventTrace` can filter by player/type/success, advancement
 criterion, item/entity/block/recipe ids, dimension changes, damage
 source/amount, keyboard/mouse input device/code/action, and failed advancement
 criteria with readable reasons.
