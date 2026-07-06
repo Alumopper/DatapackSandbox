@@ -249,6 +249,24 @@ class SandboxQuickTestTest {
     }
 
     @Test
+    fun `quick world fixture can predefine advancement progress`() {
+        val report = SandboxQuickTest.create(listOf(fullStackPack()), version = "26.2", defaultPlayerName = null)
+            .world {
+                player("Steve")
+                playerAdvancementCriterion("Steve", "demo:use_carrot", "use_carrot")
+            }
+            .assertAdvancementDone("Steve", "demo:use_carrot")
+            .requirePassed()
+
+        val progress = report.snapshot.asJsonObject
+            .getAsJsonObject("players")
+            .getAsJsonObject("Steve")
+            .getAsJsonObject("advancements")
+            .getAsJsonObject("demo:use_carrot")
+        assertEquals(true, progress.get("use_carrot").asBoolean)
+    }
+
+    @Test
     fun `quick predicate loot and advancement assertions explain failures`() {
         val report = SandboxQuickTest.create(listOf(fullStackPack()), version = "26.2", defaultPlayerName = null)
             .world {

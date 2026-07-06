@@ -158,6 +158,14 @@ object ManifestWorldSetup {
         )
         player.manifestStringArray("recipes", "world player recipes").forEach { setup.playerRecipe(player.requiredManifestString("name"), it) }
         player.getAsJsonObject("stats")?.entrySet()?.forEach { (id, value) -> setup.playerStat(player.requiredManifestString("name"), id, value.asInt) }
+        (player.getAsJsonObject("advancements") ?: player.getAsJsonObject("advancementProgress"))?.entrySet()?.forEach { (id, criteria) ->
+            if (!criteria.isJsonObject) {
+                throw SandboxException(DiagnosticCode.INPUT_FORMAT, "world player advancements '$id' must be an object of criterion booleans")
+            }
+            criteria.asJsonObject.entrySet().forEach { (criterion, done) ->
+                setup.playerAdvancementCriterion(player.requiredManifestString("name"), id, criterion, done.asBoolean)
+            }
+        }
         player.manifestArray("effects", "world player effects").forEach { setupPlayerEffect(setup, player.requiredManifestString("name"), it) }
         player.getAsJsonObject("spawn")?.let { setupPlayerSpawn(setup, player.requiredManifestString("name"), it) }
     }

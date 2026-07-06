@@ -387,6 +387,38 @@ class SandboxWorldSetup {
     }
 
     /**
+     * Sets one advancement criterion state on an existing or newly-created player fixture.
+     *
+     * @return this setup for fluent chaining.
+     */
+    @JvmOverloads
+    fun playerAdvancementCriterion(
+        name: String,
+        advancement: String,
+        criterion: String,
+        done: Boolean = true,
+    ): SandboxWorldSetup = apply {
+        operations += { world, _ ->
+            val id = ResourceLocation.parse(advancement)
+            val progress = world.createPlayer(name).advancementProgress.getOrPut(id) { AdvancementProgress() }
+            progress.criteria[criterion] = done
+        }
+    }
+
+    /**
+     * Sets multiple advancement criterion states on an existing or newly-created player fixture.
+     *
+     * @return this setup for fluent chaining.
+     */
+    fun playerAdvancement(name: String, advancement: String, criteria: Map<String, Boolean>): SandboxWorldSetup = apply {
+        operations += { world, _ ->
+            val id = ResourceLocation.parse(advancement)
+            val progress = world.createPlayer(name).advancementProgress.getOrPut(id) { AdvancementProgress() }
+            criteria.forEach { (criterion, done) -> progress.criteria[criterion] = done }
+        }
+    }
+
+    /**
      * Adds an active effect to an existing or newly-created player fixture.
      *
      * @return this setup for fluent chaining.

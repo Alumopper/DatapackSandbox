@@ -194,6 +194,7 @@ SandboxQuickTest.create(
         )
         playerEffect("Alex", "minecraft:speed", durationTicks = 40, amplifier = 1)
         playerRecipe("Alex", "minecraft:bread")
+        playerAdvancementCriterion("Alex", "demo:use_carrot", "use_carrot")
         playerSpawn("Alex", 2.0, 66.0, 3.0, angle = 90.0)
         team("red", members = listOf("Alex"), options = mapOf("color" to "red"))
         bossbar("demo:bar", "Demo", value = 3, max = 10, players = listOf("Alex"))
@@ -338,6 +339,8 @@ class MyDatapackTest {
 | `event(player, type, id, action)` | 注入玩家事件。 |
 | `keyInput(player, key, action)` | 注入键盘输入。 |
 | `mouseInput(player, button, action, x, y)` | 注入鼠标输入。 |
+| `playerAdvancementCriterion(player, advancement, criterion, done)` | 预置玩家单个 advancement criterion 状态。 |
+| `playerAdvancement(player, advancement, criteria)` | 预置玩家多个 advancement criterion 状态。 |
 | `assertScore(target, objective, expected)` | 断言 scoreboard。 |
 | `assertScoreAtLeast(target, objective, minimum)` | 断言 scoreboard 下界。 |
 | `assertScoreAtMost(target, objective, maximum)` | 断言 scoreboard 上界。 |

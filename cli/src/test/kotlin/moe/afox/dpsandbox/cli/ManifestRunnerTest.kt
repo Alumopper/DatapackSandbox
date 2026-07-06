@@ -594,6 +594,43 @@ class ManifestRunnerTest {
     }
 
     @Test
+    fun `runs manifests with predefined advancement progress`() {
+        val dir = Files.createTempDirectory("dps-advancement-progress-manifest")
+        val pack = Path.of("../examples/full-stack/pack").toAbsolutePath().normalize().toString().replace("\\", "\\\\")
+        val manifest = dir.resolve("advancement-progress.dps.json")
+        Files.writeString(
+            manifest,
+            """
+            {
+              "version": "26.2",
+              "packs": ["$pack"],
+              "world": {
+                "players": [
+                  {
+                    "name": "Steve",
+                    "advancements": {
+                      "demo:use_carrot": {
+                        "use_carrot": true
+                      }
+                    }
+                  }
+                ]
+              },
+              "assertions": [
+                { "advancement": { "player": "Steve", "id": "demo:use_carrot", "done": true, "criterion": "use_carrot", "criterionDone": true } }
+              ]
+            }
+            """.trimIndent(),
+        )
+
+        val schemaFailures = ManifestSchemaValidator.validate(JsonParser.parseString(Files.readString(manifest)))
+        val result = ManifestRunner.run(manifest)
+
+        assertTrue(schemaFailures.isEmpty(), schemaFailures.joinToString())
+        assertTrue(result.passed, result.messages.joinToString())
+    }
+
+    @Test
     fun `manifest top-level seed sets default world seed`() {
         val dir = Files.createTempDirectory("dps-manifest-seed")
         val pack = Path.of("../core/src/test/resources/packs/counter").toAbsolutePath().normalize().toString().replace("\\", "\\\\")
