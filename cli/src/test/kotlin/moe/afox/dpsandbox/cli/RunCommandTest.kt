@@ -354,6 +354,8 @@ class RunCommandTest {
                     "trace:scoreboard=2",
                     "--assert",
                     "trace:players set #trace",
+                    "--assert",
+                    "trace-output:trace shorthand@Steve",
                 ),
             )
         }

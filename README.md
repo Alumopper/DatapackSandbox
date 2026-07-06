@@ -213,7 +213,7 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar run --version 26.2 \
   --assert-file ./assertions.json
 ```
 
-For quick score, storage, player, item, entity-count, trace, warning, and output checks,
+For quick score, storage, player, item, entity-count, trace, trace-output, warning, and output checks,
 `--assert` also accepts compact shorthands. `--assert-file` can contain JSON
 assertions or one shorthand per non-empty, non-comment line:
 
@@ -231,6 +231,7 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar run --version 26.2 \
   --assert "item:Steve:minecraft:stick=3" \
   --assert "entity:minecraft:pig@fixture=1" \
   --assert "trace:scoreboard=2" \
+  --assert "trace-output:generated ok@Steve" \
   --assert "output:generated ok"
 ```
 

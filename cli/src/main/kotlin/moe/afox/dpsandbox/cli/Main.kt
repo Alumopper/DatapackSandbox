@@ -559,12 +559,13 @@ class RunCommand : CliktCommand(name = "run") {
             trimmed.startsWith("item:") -> parseItemAssertion(trimmed.removePrefix("item:"), label)
             trimmed.startsWith("player:") -> parsePlayerAssertion(trimmed.removePrefix("player:"), label)
             trimmed.startsWith("trace:") -> parseTraceAssertion(trimmed.removePrefix("trace:"), label)
+            trimmed.startsWith("trace-output:") -> parseTraceOutputAssertion(trimmed.removePrefix("trace-output:"), label)
             trimmed.startsWith("warning:") -> parseWarningContainsAssertion(trimmed.removePrefix("warning:"), label)
             trimmed.startsWith("warning=") -> parseWarningCountAssertion(trimmed.removePrefix("warning="), label)
             trimmed.startsWith("output:") -> parseOutputAssertion(trimmed.removePrefix("output:"), label)
             else -> throw SandboxException(
                 DiagnosticCode.INPUT_FORMAT,
-                "$label must be a JSON object or shorthand score:<target>:<objective>=N, storage:<id>[:<path>]=<json>, entity:<type|*>[@tag]=N, item:<player>:<id>[@slot]=N, player:<name>[:<field>=<value>], trace:<root>=N, trace:<text>, warning=N, warning:<text>, or output:<text>",
+                "$label must be a JSON object or shorthand score:<target>:<objective>=N, storage:<id>[:<path>]=<json>, entity:<type|*>[@tag]=N, item:<player>:<id>[@slot]=N, player:<name>[:<field>=<value>], trace:<root>=N, trace:<text>, trace-output:<text>[@target], warning=N, warning:<text>, or output:<text>",
             )
         }
     }
@@ -762,6 +763,24 @@ class RunCommand : CliktCommand(name = "run") {
             trace.addProperty("count", expected)
         } else {
             trace.addProperty("contains", trimmed)
+        }
+        return JsonObject().also { it.add("trace", trace) }
+    }
+
+    private fun parseTraceOutputAssertion(spec: String, label: String): JsonObject {
+        val trimmed = spec.trim()
+        if (trimmed.isEmpty()) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label trace output shorthand must be trace-output:<text>[@target]")
+        }
+        val splitAt = trimmed.lastIndexOf('@')
+        val outputContains = if (splitAt < 0) trimmed else trimmed.substring(0, splitAt).trim()
+        val outputTarget = splitAt.takeIf { it >= 0 }?.let { trimmed.substring(it + 1).trim() }
+        if (outputContains.isEmpty() || outputTarget?.isEmpty() == true) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label trace output shorthand must be trace-output:<text>[@target]")
+        }
+        val trace = JsonObject().also { json ->
+            json.addProperty("outputContains", outputContains)
+            outputTarget?.let { json.addProperty("outputTarget", it) }
         }
         return JsonObject().also { it.add("trace", trace) }
     }
