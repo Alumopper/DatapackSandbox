@@ -44,7 +44,17 @@ import java.nio.file.Path
 import kotlin.system.exitProcess
 
 fun main(args: Array<String>) = DatapackSandboxCli()
-    .subcommands(ReplCommand(), CheckCommand(), RunCommand(), LootCommand(), AdvancementCommand(), EventCommand(), ManifestSchemaCommand(), VersionCommand())
+    .subcommands(
+        ReplCommand(),
+        CheckCommand(),
+        RunCommand(),
+        LootCommand(),
+        AdvancementCommand(),
+        EventCommand(),
+        ManifestSchemaCommand(),
+        VersionCommand(),
+        CommandsCommand(),
+    )
     .main(args)
 
 class DatapackSandboxCli : CliktCommand(
@@ -1281,6 +1291,66 @@ class VersionCommand : CliktCommand(name = "version") {
 
     private fun normalizeNewlines(value: String): String =
         value.replace("\r\n", "\n").replace('\r', '\n')
+}
+
+class CommandsCommand : CliktCommand(name = "commands") {
+    private val version by option("--version", "-v").default(VersionProfiles.default.id)
+    private val docs by option("--docs").flag(default = false)
+    private val json by option("--json").flag(default = false)
+
+    override fun run() {
+        try {
+            if (docs && json) {
+                throw SandboxException(DiagnosticCode.INPUT_FORMAT, "commands accepts only one output mode: --docs or --json")
+            }
+            val profile = VersionProfiles.get(version)
+            val commands = DpsCommandCatalog.rootCommands(profile)
+            when {
+                docs -> println(renderMarkdown(commands))
+                json -> println(JsonValues.render(renderJson(profile.id, commands)))
+                else -> commands.forEach { command ->
+                    val behavior = command.behaviorLevel?.id ?: "unknown"
+                    println("${command.value} $behavior - ${command.description}")
+                }
+            }
+        } catch (error: SandboxException) {
+            println(ConsoleStyle.diagnostic(error.render()))
+            exitProcess(ExitCodes.forException(error))
+        }
+    }
+
+    private fun renderMarkdown(commands: List<CompletionSuggestion>): String =
+        buildString {
+            appendLine("| Command | Behavior | Description |")
+            appendLine("|---|---|---|")
+            commands.forEach { command ->
+                val behavior = command.behaviorLevel?.id ?: "unknown"
+                appendLine("| `${markdownCell(command.value)}` | `$behavior` | ${markdownCell(command.description)} |")
+            }
+        }.trimEnd()
+
+    private fun renderJson(version: String, commands: List<CompletionSuggestion>): JsonObject =
+        JsonObject().also { root ->
+            root.addProperty("version", version)
+            root.add(
+                "commands",
+                JsonArray().also { array ->
+                    commands.forEach { command ->
+                        array.add(
+                            JsonObject().also { json ->
+                                json.addProperty("command", command.value)
+                                json.addProperty("behavior", command.behaviorLevel?.id ?: "unknown")
+                                json.addProperty("description", command.description)
+                                json.addProperty("group", command.group)
+                            },
+                        )
+                    }
+                },
+            )
+        }
+
+    private fun markdownCell(value: String): String =
+        value.replace("|", "\\|").replace("\r", " ").replace("\n", " ")
 }
 
 fun unsupportedFeatureMode(value: String): UnsupportedFeatureMode =

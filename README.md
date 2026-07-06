@@ -62,6 +62,14 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar version --json 1.20.4 26.2
 java -jar cli/build/libs/datapack-sandbox-cli.jar version --json --output build/profile-diff.json 1.20.4 26.2
 ```
 
+List command support and behavior levels:
+
+```bash
+java -jar cli/build/libs/datapack-sandbox-cli.jar commands
+java -jar cli/build/libs/datapack-sandbox-cli.jar commands --docs
+java -jar cli/build/libs/datapack-sandbox-cli.jar commands --json --version 26.2
+```
+
 The REPL supports TAB completion, live multi-line suggestions while typing,
 history suggestions, colored output, Ctrl+C exit, runtime datapack reloads,
 trace/diff helpers, rerun-last, reset-world, and fixture loading:

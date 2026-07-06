@@ -24,6 +24,14 @@
 | `observed-noop` | 命令会被接受并产生输出或诊断，但真实副作用有意缺省。 |
 | `unsupported` | 命令交给当前 unsupported 策略处理。 |
 
+CLI 可以导出按版本裁剪后的命令目录，供脚本、文档和 CI 使用：
+
+```bash
+java -jar cli/build/libs/datapack-sandbox-cli.jar commands
+java -jar cli/build/libs/datapack-sandbox-cli.jar commands --docs
+java -jar cli/build/libs/datapack-sandbox-cli.jar commands --json --version 26.2
+```
+
 ## 原版命令矩阵
 
 | 命令 | 状态 | 行为等级 | 已实现形式 / 沙盒行为 |

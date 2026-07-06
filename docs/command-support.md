@@ -34,6 +34,14 @@ manifest schema before execution.
 | `observed-noop` | The command is accepted and produces output or diagnostics, but real side effects are intentionally absent. |
 | `unsupported` | The command is routed through the configured unsupported policy. |
 
+The CLI can export the version-scoped command catalog for scripts, docs, and CI:
+
+```bash
+java -jar cli/build/libs/datapack-sandbox-cli.jar commands
+java -jar cli/build/libs/datapack-sandbox-cli.jar commands --docs
+java -jar cli/build/libs/datapack-sandbox-cli.jar commands --json --version 26.2
+```
+
 ## Vanilla Command Matrix
 
 | Command | Status | Behavior | Supported forms / sandbox behavior |

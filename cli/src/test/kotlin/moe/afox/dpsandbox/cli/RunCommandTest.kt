@@ -1160,6 +1160,42 @@ class RunCommandTest {
         assertEquals("26.2:26.2", json.getAsJsonObject("nbtSchema").get("to").asString)
     }
 
+    @Test
+    fun `commands list reports behavior levels`() {
+        val output = captureStdout {
+            main(arrayOf("commands"))
+        }
+
+        assertTrue("advancement modeled - grant, revoke, or test advancement progress" in output, output)
+        assertTrue("place observed-noop - record a worldgen placement intent" in output, output)
+        assertTrue("ban unsupported - vanilla command: warning unless --unsupported error is set" in output, output)
+    }
+
+    @Test
+    fun `commands render markdown docs table`() {
+        val output = captureStdout {
+            main(arrayOf("commands", "--docs"))
+        }
+
+        assertTrue("| Command | Behavior | Description |" in output, output)
+        assertTrue("| `advancement` | `modeled` | grant, revoke, or test advancement progress |" in output, output)
+        assertTrue("| `place` | `observed-noop` | record a worldgen placement intent |" in output, output)
+    }
+
+    @Test
+    fun `commands render catalog json`() {
+        val output = captureStdout {
+            main(arrayOf("commands", "--json", "--version", "26.2"))
+        }
+        val json = JsonParser.parseString(output).asJsonObject
+        val commands = json.getAsJsonArray("commands").map { it.asJsonObject }.associateBy { it.get("command").asString }
+
+        assertEquals("26.2", json.get("version").asString)
+        assertEquals("modeled", commands.getValue("advancement").get("behavior").asString)
+        assertEquals("observed-noop", commands.getValue("place").get("behavior").asString)
+        assertEquals("unsupported", commands.getValue("ban").get("behavior").asString)
+    }
+
     private fun captureStdout(stdin: String? = null, block: () -> Unit): String {
         val original = System.out
         val originalIn = System.`in`
