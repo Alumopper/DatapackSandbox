@@ -1174,6 +1174,39 @@ class ManifestRunnerTest {
     }
 
     @Test
+    fun `diagnostic assertion failures include actual diagnostic candidates`() {
+        val dir = Files.createTempDirectory("dps-diagnostic-failure-manifest")
+        val pack = Path.of("../core/src/test/resources/packs/counter").toAbsolutePath().normalize().toString().replace("\\", "\\\\")
+        val manifest = dir.resolve("diagnostic-failure.dps.json")
+        Files.writeString(
+            manifest,
+            """
+            {
+              "version": "26.1.2",
+              "packs": ["$pack"],
+              "steps": [
+                { "command": "scoreboard players set #bad missing 1", "allowFailure": true }
+              ],
+              "assertions": [
+                { "diagnostic": { "code": "VERSION_MISMATCH", "count": 1 } }
+              ]
+            }
+            """.trimIndent(),
+        )
+
+        val result = ManifestRunner.run(manifest)
+        val messages = result.messages.joinToString("\n")
+
+        assertFalse(result.passed)
+        assertTrue("assertion 1 (/assertions/0/diagnostic):" in messages, messages)
+        assertTrue("actual diagnostics:" in messages, messages)
+        assertTrue("step=1" in messages, messages)
+        assertTrue("code=COMMAND_ERROR" in messages, messages)
+        assertTrue("command=scoreboard players set #bad missing 1" in messages, messages)
+        assertTrue("Unknown scoreboard objective 'missing'" in messages, messages)
+    }
+
+    @Test
     fun `asserts manifest snapshot diffs`() {
         val dir = Files.createTempDirectory("dps-snapshot-diff-manifest")
         val pack = Path.of("../core/src/test/resources/packs/counter").toAbsolutePath().normalize().toString().replace("\\", "\\\\")

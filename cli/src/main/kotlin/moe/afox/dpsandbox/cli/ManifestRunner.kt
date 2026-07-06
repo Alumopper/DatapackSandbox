@@ -1087,15 +1087,31 @@ object ManifestRunner {
         }
         diagnostic.get("count")?.let { expected ->
             if (matches.size != expected.asInt) {
-                return listOf("diagnostic ${describeDiagnosticExpectation(diagnostic)} expected count ${expected.asInt} but was ${matches.size}")
+                return listOf("diagnostic ${describeDiagnosticExpectation(diagnostic)} expected count ${expected.asInt} but was ${matches.size}; ${actualDiagnostics(records)}")
             }
             return emptyList()
         }
         return if (matches.isEmpty()) {
-            listOf("diagnostic ${describeDiagnosticExpectation(diagnostic)} did not match any recorded diagnostic")
+            listOf("diagnostic ${describeDiagnosticExpectation(diagnostic)} did not match any recorded diagnostic; ${actualDiagnostics(records)}")
         } else {
             emptyList()
         }
+    }
+
+    private fun actualDiagnostics(records: List<ManifestDiagnostic>): String {
+        if (records.isEmpty()) return "actual diagnostics: <none>"
+        val rendered = records.take(5).joinToString("; ") { record ->
+            listOfNotNull(
+                record.step?.let { "step=$it" },
+                "version=${record.version}",
+                "code=${record.code.name}",
+                record.root?.let { "root=$it" },
+                record.command?.let { "command=${it.truncateForManifestFailure()}" },
+                "message=${record.message.truncateForManifestFailure()}",
+            ).joinToString(" ")
+        }
+        val suffix = if (records.size > 5) "; ... +${records.size - 5} more" else ""
+        return "actual diagnostics: $rendered$suffix"
     }
 
     private fun describeDiagnosticExpectation(diagnostic: JsonObject): String =

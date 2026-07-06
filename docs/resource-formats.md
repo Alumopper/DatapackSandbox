@@ -243,10 +243,10 @@ context, dimension changes, damage source/amount, input device/code/action,
 advancement id, criterion, failed advancement id/criterion, failure reason
 substring, and count; misses include actual player event trace candidates. `diagnostic`
 assertions check expected step failures by step, version, code, command, root,
-message substring, and count. `snapshotDiff` assertions compare the manifest
-state before and after steps by JSON Pointer path, diff kind, before/after
-values, rendered text substring, and count; misses include actual snapshot diff
-candidates.
+message substring, and count; misses include actual diagnostic candidates.
+`snapshotDiff` assertions compare the manifest state before and after steps by
+JSON Pointer path, diff kind, before/after values, rendered text substring, and
+count; misses include actual snapshot diff candidates.
 
 ## Raw JSON Resources and Tags
 

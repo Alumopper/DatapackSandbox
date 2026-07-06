@@ -164,6 +164,7 @@
 - 增强断言失败解释：
   - 输出最近相关命令、相关 state path、实际值、候选输出事件和建议检查项。
   - 输出 payload 断言失败会在候选输出中显示对应 `payloadPath` 的实际值，便于直接定位结构化输出 mismatch。
+  - manifest `diagnostic` 断言失败会列出实际 diagnostic 候选，便于定位预期失败步骤、错误码、命令和消息。
   - manifest `snapshotDiff` 断言失败会列出实际 snapshot diff 候选，便于定位状态路径和 before/after 差异。
 
 验收标准：
