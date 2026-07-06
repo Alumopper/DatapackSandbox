@@ -621,6 +621,7 @@ class RunCommand : CliktCommand(name = "run") {
             trimmed.startsWith("bossbar:") -> parseBossbarAssertion(trimmed.removePrefix("bossbar:"), label)
             trimmed.startsWith("item:") -> parseItemAssertion(trimmed.removePrefix("item:"), label)
             trimmed.startsWith("player:") -> parsePlayerAssertion(trimmed.removePrefix("player:"), label)
+            trimmed.startsWith("world:") -> parseWorldAssertion(trimmed.removePrefix("world:"), label)
             trimmed.startsWith("random-sequence:") -> parseRandomSequenceAssertion(trimmed.removePrefix("random-sequence:"), label)
             trimmed.startsWith("snapshot:") -> parseSnapshotAssertion(trimmed.removePrefix("snapshot:"), label)
             trimmed.startsWith("diff:") -> parseSnapshotDiffAssertion(trimmed.removePrefix("diff:"), label)
@@ -637,7 +638,7 @@ class RunCommand : CliktCommand(name = "run") {
             trimmed.startsWith("output:") -> parseOutputAssertion(trimmed.removePrefix("output:"), label)
             else -> throw SandboxException(
                 DiagnosticCode.INPUT_FORMAT,
-                "$label must be a JSON object or shorthand score:<target>:<objective>=N, storage:<id>[:<path>]=<json>, advancement:<player>:<id>[=<true|false>], entity:<type|*>[@tag]=N, block:<x>,<y>,<z>=<id>, block:<x>,<y>,<z>?, block:<x>,<y>,<z>!, team:<name>[?|!|=N|@member], bossbar:<id>[?|!|:<field>=<value>], item:<player>:<id>[@slot]=N, player:<name>[:<field>=<value>], random-sequence:<name>=N, snapshot:<path>=<json>, snapshot:<path>?, snapshot:<path>!, diff:<json-pointer>[=<kind>], event-trace:<player>:<type>[=N], trace:<root>=N, trace:<text>, trace-output:<text>[@target], warning=N, warning:<text>, unsupported=N, unsupported:<text>, output:<text>, output-normalized:<text>, output-segment:<text>[|color=<color>|bold=<true|false>][@target], or output-payload:<command>:<path>[=<json>]",
+                "$label must be a JSON object or shorthand score:<target>:<objective>=N, storage:<id>[:<path>]=<json>, advancement:<player>:<id>[=<true|false>], entity:<type|*>[@tag]=N, block:<x>,<y>,<z>=<id>, block:<x>,<y>,<z>?, block:<x>,<y>,<z>!, team:<name>[?|!|=N|@member], bossbar:<id>[?|!|:<field>=<value>], item:<player>:<id>[@slot]=N, player:<name>[:<field>=<value>], world:<field>=<value>, random-sequence:<name>=N, snapshot:<path>=<json>, snapshot:<path>?, snapshot:<path>!, diff:<json-pointer>[=<kind>], event-trace:<player>:<type>[=N], trace:<root>=N, trace:<text>, trace-output:<text>[@target], warning=N, warning:<text>, unsupported=N, unsupported:<text>, output:<text>, output-normalized:<text>, output-segment:<text>[|color=<color>|bold=<true|false>][@target], or output-payload:<command>:<path>[=<json>]",
             )
         }
     }
@@ -971,6 +972,38 @@ class RunCommand : CliktCommand(name = "run") {
     private fun parsePlayerDouble(value: String, field: String, label: String): Double =
         value.toDoubleOrNull()
             ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label player field '$field' expected number but got '$value'")
+
+    private fun parseWorldAssertion(spec: String, label: String): JsonObject {
+        val splitAt = spec.indexOf('=')
+        if (splitAt <= 0 || splitAt == spec.lastIndex) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label world shorthand must be world:<field>=<value>")
+        }
+        val field = spec.substring(0, splitAt).trim()
+        val value = spec.substring(splitAt + 1).trim()
+        if (field.isEmpty() || value.isEmpty()) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label world shorthand must be world:<field>=<value>")
+        }
+        val world = JsonObject().also { json ->
+            when (field) {
+                "gameTime", "dayTime", "time", "seed" -> json.addProperty(field, parseWorldLong(value, field, label))
+                "weatherDuration" -> json.addProperty(field, parseWorldInt(value, field, label))
+                "weather", "difficulty", "defaultGameMode", "defaultGamemode" -> json.addProperty(field, value)
+                else -> throw SandboxException(
+                    DiagnosticCode.INPUT_FORMAT,
+                    "$label unsupported world shorthand field '$field'; use gameTime, dayTime, time, seed, weather, weatherDuration, difficulty, defaultGameMode, or defaultGamemode",
+                )
+            }
+        }
+        return JsonObject().also { it.add("world", world) }
+    }
+
+    private fun parseWorldLong(value: String, field: String, label: String): Long =
+        value.toLongOrNull()
+            ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label world field '$field' expected integer but got '$value'")
+
+    private fun parseWorldInt(value: String, field: String, label: String): Int =
+        value.toIntOrNull()
+            ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label world field '$field' expected integer but got '$value'")
 
     private fun parseRandomSequenceAssertion(spec: String, label: String): JsonObject {
         val splitAt = spec.indexOf('=')

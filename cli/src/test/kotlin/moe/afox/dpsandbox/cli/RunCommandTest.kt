@@ -531,6 +531,41 @@ class RunCommandTest {
     }
 
     @Test
+    fun `run accepts world shorthand inline assertions`() {
+        val output = captureStdout {
+            main(
+                arrayOf(
+                    "run",
+                    "--version",
+                    "26.2",
+                    "--command",
+                    "time set 6000",
+                    "--command",
+                    "weather rain 40",
+                    "--command",
+                    "difficulty hard",
+                    "--command",
+                    "defaultgamemode creative",
+                    "--assert",
+                    "world:dayTime=6000",
+                    "--assert",
+                    "world:time=6000",
+                    "--assert",
+                    "world:weather=rain",
+                    "--assert",
+                    "world:weatherDuration=40",
+                    "--assert",
+                    "world:difficulty=hard",
+                    "--assert",
+                    "world:defaultGameMode=creative",
+                ),
+            )
+        }
+
+        assertTrue("OK version=26.2" in output, output)
+    }
+
+    @Test
     fun `run injects player events for inline assertions`() {
         val output = captureStdout {
             main(
