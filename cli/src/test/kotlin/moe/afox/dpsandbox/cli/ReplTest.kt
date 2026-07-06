@@ -176,6 +176,67 @@ class ReplTest {
         assertTrue(output.contains("damage_type demo:debug_damage observed-noop active"), output)
     }
 
+    @Test
+    fun `inspect resources prints summary overlays and missing references`() {
+        val dir = Files.createTempDirectory("dps-repl-resources")
+        val first = writeResourceDebugPack(dir, "first", "one", includeMissingLoad = true)
+        val second = writeResourceDebugPack(dir, "second", "two", includeMissingLoad = false)
+        val repl = Repl(createSandbox("26.2", listOf(first, second)))
+
+        val output = captureStdout {
+            repl.handle("inspect resources")
+        }
+
+        assertTrue(output.contains("resources 26.2 functions=2"), output)
+        assertTrue(output.contains("overridden=1"), output)
+        assertTrue(output.contains("overlay recipe demo:marker modeled active"), output)
+        assertTrue(output.contains("overlay recipe demo:marker modeled overridden"), output)
+        assertTrue(output.contains("missing-reference #minecraft:load -> function demo:missing_load"), output)
+        assertTrue(output.contains("recipe demo:marker modeled active pack="), output)
+    }
+
+    private fun writeResourceDebugPack(root: Path, name: String, marker: String, includeMissingLoad: Boolean): Path {
+        val pack = root.resolve(name)
+        Files.createDirectories(pack)
+        Files.writeString(
+            pack.resolve("pack.mcmeta"),
+            """
+            {
+              "pack": {
+                "pack_format": 107.1,
+                "description": "$name"
+              }
+            }
+            """.trimIndent(),
+        )
+
+        val functionRoot = pack.resolve("data").resolve("demo").resolve("function")
+        Files.createDirectories(functionRoot)
+        Files.writeString(functionRoot.resolve("$marker.mcfunction"), "say $marker")
+
+        val recipeRoot = pack.resolve("data").resolve("demo").resolve("recipe")
+        Files.createDirectories(recipeRoot)
+        Files.writeString(
+            recipeRoot.resolve("marker.json"),
+            """
+            {
+              "type": "minecraft:crafting_shapeless",
+              "category": "misc",
+              "ingredients": ["minecraft:stone"],
+              "result": { "id": "minecraft:stone", "count": 1 },
+              "marker": "$marker"
+            }
+            """.trimIndent(),
+        )
+
+        if (includeMissingLoad) {
+            val tagRoot = pack.resolve("data").resolve("minecraft").resolve("tags").resolve("function")
+            Files.createDirectories(tagRoot)
+            Files.writeString(tagRoot.resolve("load.json"), """{"values":["demo:missing_load"]}""")
+        }
+        return pack
+    }
+
     private fun captureStdout(block: () -> Unit): String {
         val original = System.out
         val bytes = ByteArrayOutputStream()

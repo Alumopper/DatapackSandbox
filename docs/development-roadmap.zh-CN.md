@@ -41,7 +41,7 @@
 
 - 每种 P0 资源有 loader 测试、路径映射测试、zip/目录双形态测试和版本别名测试；`DatapackResourceIndexTest` 已用 P0 资源矩阵覆盖 current directory 与 legacy alias zip 布局。
 - 加载失败包含文件、resource id、版本、资源类型和具体原因；P0 JSON 资源解析失败矩阵已覆盖 loot table、predicate、advancement、recipe 和 item modifier，advancement 语义校验失败也会保留资源类型和 id。
-- `check --verbose` 或 REPL inspect 能展示资源数量、重复覆盖和缺失引用。
+- `check --verbose` 或 REPL `inspect resources` 能展示资源数量、重复覆盖和缺失引用；REPL 输出已复用 manifest/check 的同一套资源摘要和 missing-reference 分析。
 
 ## 阶段 2：命令执行语义扩展
 
@@ -212,6 +212,7 @@
   - `--assert`/`--assert-file` 已支持 score、storage、advancement、player、world、gamerule、random sequence、snapshot、block、biome、team、bossbar、item、entity、diff、event-trace、trace、trace-output、diagnostic、warning、unsupported、output、output-count、output-order、output-exact、output-matches、output-command、output-channel、output-target、output-normalized、output-normalized-exact、output-normalized-matches、output-segment、output-segment-exact、output-segment-matches 和 output-payload 简写；`world:<field>=<value>` 可直接检查时间、天气、难度、seed 和默认游戏模式，`gamerule:<rule>=<value>`、`gamerule:<rule>?`、`gamerule:<rule>!` 可直接检查 gamerule snapshot 状态，`snapshot:<path>=<json>`、`snapshot:<path>?`、`snapshot:<path>!` 可直接检查最终 snapshot 路径，`block:<x>,<y>,<z>=<id>`、`block:<x>,<y>,<z>?`、`block:<x>,<y>,<z>!` 可直接检查 sparse world 方块，`biome:<x>,<y>,<z>=<id>` 可直接检查显式 biome 覆盖，`team:<name>?`、`team:<name>@<member>`、`team:<name>=N` 和 `bossbar:<id>:<field>=<value>` 可直接检查队伍/UI 状态，`event-trace:<player>:<type>@x,y,z[=N]` 可直接按 block event 坐标过滤，`diagnostic:<code>:<text>[=N]` 可直接检查预期 diagnostic 编码和消息片段，`output-command:<command>=N`、`output-channel:<channel>=N`、`output-target:<target>?` 这类简写可直接按命令、channel 或目标检查输出数量、存在或缺失，`output-count` 和 `output-order` 可直接检查匹配输出数量与全局输出顺序，`output-exact`、`output-matches`、`output-normalized-*` 和 `output-segment-*` 可覆盖精确、contains、normalized 与正则文本匹配，`output-payload` 支持 path 存在性和等值检查，`examples/generator-output` 已覆盖结构化输出 payload 断言，适合命令生成器结果的快速回归。
 - 增强 REPL：
   - `inspect` 输出结构更稳定；`inspect event-traces` 已可直接打印玩家事件 trace JSON，并已接入 REPL/CLI 补全和命令目录，便于调试事件输入、block 坐标和 advancement 匹配。
+  - `inspect resources` 已输出资源摘要、overlay 和 missing-reference，并保留按类型列出 resource index 条目的能力，便于随手小测时解释数据包实际加载结果。
   - 支持 `trace on/off`、`diff last`、`rerun last`、`reset world`、`load fixture`。
 
 ### 命令生成器产物测试

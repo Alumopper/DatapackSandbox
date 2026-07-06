@@ -395,16 +395,8 @@ class Repl(
             }
             "resource", "resources" -> {
                 val typeFilter = args.getOrNull(1)
-                sandbox.datapack.resourceIndex
-                    .filter { typeFilter == null || it.type == typeFilter }
-                    .forEach { entry ->
-                        val active = if (entry.active) "active" else "overridden"
-                        val overlay = listOfNotNull(
-                            entry.overrides?.let { "overrides=$it" },
-                            entry.overriddenBy?.let { "overriddenBy=$it" },
-                        ).joinToString(prefix = " ", separator = " ").takeIf { it.isNotBlank() }.orEmpty()
-                        println("${entry.type} ${entry.id} ${entry.behaviorLevel.id} $active pack=${entry.pack} file=${entry.file}$overlay")
-                    }
+                ResourceSummaryRenderer.print(sandbox.profile.id, ManifestRunner.summarizeResources(sandbox))
+                inspectResourceIndex(typeFilter)
             }
             "registry" -> {
                 println("items=${sandbox.profile.registryView.items.size} blocks=${sandbox.profile.registryView.blocks.size} entities=${sandbox.profile.registryView.entityTypes.size}")
@@ -417,6 +409,19 @@ class Repl(
             }
             else -> println("Usage: ${inspectUsage()}")
         }
+    }
+
+    private fun inspectResourceIndex(typeFilter: String?) {
+        sandbox.datapack.resourceIndex
+            .filter { typeFilter == null || it.type == typeFilter }
+            .forEach { entry ->
+                val active = if (entry.active) "active" else "overridden"
+                val overlay = listOfNotNull(
+                    entry.overrides?.let { "overrides=$it" },
+                    entry.overriddenBy?.let { "overriddenBy=$it" },
+                ).joinToString(prefix = " ", separator = " ").takeIf { it.isNotBlank() }.orEmpty()
+                println("${entry.type} ${entry.id} ${entry.behaviorLevel.id} $active pack=${entry.pack} file=${entry.file}$overlay")
+            }
     }
 
     private fun inspectRawResource(args: List<String>) {
