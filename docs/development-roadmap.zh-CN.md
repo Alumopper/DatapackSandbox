@@ -29,6 +29,7 @@
 - 扩展 pack overlay 诊断：当后加载 pack 覆盖前一个资源时，可在 verbose/trace 中显示覆盖关系；`run --report-file` 和 `check --report-file` 已把资源覆盖条目与直接缺失引用写入结构化 artifact，便于 CI 和生成器测试读取。
 - 增加资源格式校验：JSON 解析、必填字段、resource location、版本目录布局、`pack.mcmeta` 格式范围、标签 `replace` 语义；function tag 和普通 tag 已对 `replace`、`required`、`values`、`id` 类型和 resource location 做带文件/版本的诊断，typed/raw JSON 资源 id 从目录和文件名推导失败时也会报告资源类型、id、文件和版本。
 - 扩展 `inspect registry/resource` 或新增等价 CLI/REPL 命令，列出资源和来源。
+  - P0 资源矩阵测试已覆盖 current directory 与 legacy alias zip 两种布局，并确认 function、function tag、普通 tag、loot table、predicate、advancement、recipe 和 item modifier 都进入资源索引；function tag 现在以 `tag/function` 记录到 `resources --pack`/report 使用的同一套 resource index。
 
 优先资源：
 
@@ -38,7 +39,7 @@
 
 验收标准：
 
-- 每种 P0 资源有 loader 测试、路径映射测试、zip/目录双形态测试和版本别名测试。
+- 每种 P0 资源有 loader 测试、路径映射测试、zip/目录双形态测试和版本别名测试；`DatapackResourceIndexTest` 已用 P0 资源矩阵覆盖 current directory 与 legacy alias zip 布局。
 - 加载失败包含文件、resource id、版本、资源类型和具体原因。
 - `check --verbose` 或 REPL inspect 能展示资源数量、重复覆盖和缺失引用。
 

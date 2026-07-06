@@ -24,6 +24,8 @@ import kotlin.io.path.relativeTo
  */
 object DatapackLoader {
     private data class FunctionTagDefinition(
+        val id: ResourceLocation,
+        val file: String,
         val replace: Boolean,
         val values: List<FunctionTagEntry>,
     )
@@ -130,8 +132,19 @@ object DatapackLoader {
                 val packFunctions = readFunctions(root, profile)
                 resourceIndex.recordAll("function", packFunctions, packLabel)
                 functions.putAll(packFunctions)
-                mergeFunctionTags(loadFunctionEntries, readFunctionTag(root, profile, "load"))
-                mergeFunctionTags(tickFunctionEntries, readFunctionTag(root, profile, "tick"))
+                val packLoadFunctionTags = readFunctionTag(root, profile, "load")
+                val packTickFunctionTags = readFunctionTag(root, profile, "tick")
+                (packLoadFunctionTags + packTickFunctionTags).forEach { tag ->
+                    resourceIndex.record(
+                        type = "tag/function",
+                        id = tag.id,
+                        file = tag.file,
+                        pack = packLabel,
+                        overridesPrevious = tag.replace,
+                    )
+                }
+                mergeFunctionTags(loadFunctionEntries, packLoadFunctionTags)
+                mergeFunctionTags(tickFunctionEntries, packTickFunctionTags)
 
                 val packLootTables = readLootTables(root, profile)
                 resourceIndex.recordAll("loot_table", packLootTables, packLabel)
@@ -608,6 +621,8 @@ object DatapackLoader {
                 )
             }
             FunctionTagDefinition(
+                id = ResourceLocation("minecraft", tagName),
+                file = tagPath.toString(),
                 replace = json.optionalBoolean("replace", "Function tag", tagPath.toString(), profile) ?: false,
                 values = readFunctionTagValues(json, tagPath, profile),
             )
@@ -723,6 +738,9 @@ object DatapackLoader {
                             val relative = file.relativeTo(tagsRoot).toString().replace('\\', '/')
                             val registry = relative.substringBefore('/', missingDelimiterValue = "")
                             val idPath = relative.substringAfter('/', missingDelimiterValue = "").removeSuffix(".json")
+                            if (registry in profile.resourceDirectories.functionTags) {
+                                return@forEach
+                            }
                             if (registry.isBlank() || idPath.isBlank()) {
                                 throw SandboxException(
                                     code = DiagnosticCode.INPUT_FORMAT,

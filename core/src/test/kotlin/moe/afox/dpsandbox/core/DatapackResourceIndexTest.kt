@@ -13,6 +13,26 @@ import kotlin.test.assertTrue
 
 class DatapackResourceIndexTest {
     @Test
+    fun `p0 resource matrix is indexed for directory and zip alias layouts`() {
+        val current = writeP0ResourceMatrixPack(
+            name = "p0-current",
+            packFormat = "107.1",
+            layout = ResourceLayout.current,
+            marker = "current",
+        )
+        val legacy = writeP0ResourceMatrixPack(
+            name = "p0-legacy",
+            packFormat = "26",
+            layout = ResourceLayout.legacy,
+            marker = "legacy",
+        )
+        val legacyZip = zipPack(legacy, Files.createTempFile("dps-p0-legacy-pack", ".zip"))
+
+        assertP0ResourceMatrix(createSandbox("26.2", listOf(current)).datapack, "item", "current")
+        assertP0ResourceMatrix(createSandbox("1.20.4", listOf(legacyZip)).datapack, "items", "legacy")
+    }
+
+    @Test
     fun `loads current recipe item modifier and tag resources`() {
         val pack = writePack(
             name = "current",
@@ -491,6 +511,123 @@ class DatapackResourceIndexTest {
         }
     }
 
+    private fun writeP0ResourceMatrixPack(
+        name: String,
+        packFormat: String,
+        layout: ResourceLayout,
+        marker: String,
+    ): Path {
+        val root = writePack(
+            name = name,
+            packFormat = packFormat,
+            recipeDir = layout.recipeDir,
+            itemModifierDir = layout.itemModifierDir,
+            itemTagDir = layout.itemTagRegistry,
+            recipeMarker = marker,
+        )
+        val functionRoot = root.resolve("data").resolve("demo").resolve(layout.functionDir)
+        Files.createDirectories(functionRoot)
+        Files.writeString(functionRoot.resolve("load_marker.mcfunction"), "say $marker load")
+
+        val functionTagRoot = root.resolve("data").resolve("minecraft").resolve("tags").resolve(layout.functionTagDir)
+        Files.createDirectories(functionTagRoot)
+        Files.writeString(
+            functionTagRoot.resolve("load.json"),
+            """
+            {
+              "values": ["demo:load_marker"]
+            }
+            """.trimIndent(),
+        )
+
+        val lootRoot = root.resolve("data").resolve("demo").resolve(layout.lootTableDir)
+        Files.createDirectories(lootRoot)
+        Files.writeString(
+            lootRoot.resolve("gift.json"),
+            """
+            {
+              "pools": [
+                {
+                  "rolls": 1,
+                  "entries": [
+                    { "type": "minecraft:item", "name": "minecraft:diamond" }
+                  ]
+                }
+              ]
+            }
+            """.trimIndent(),
+        )
+
+        val predicateRoot = root.resolve("data").resolve("demo").resolve(layout.predicateDir)
+        Files.createDirectories(predicateRoot)
+        Files.writeString(
+            predicateRoot.resolve("always.json"),
+            """
+            {
+              "condition": "minecraft:constant",
+              "value": true
+            }
+            """.trimIndent(),
+        )
+
+        val advancementRoot = root.resolve("data").resolve("demo").resolve(layout.advancementDir)
+        Files.createDirectories(advancementRoot)
+        Files.writeString(
+            advancementRoot.resolve("tick.json"),
+            """
+            {
+              "criteria": {
+                "tick": {
+                  "trigger": "minecraft:tick"
+                }
+              }
+            }
+            """.trimIndent(),
+        )
+        return root
+    }
+
+    private fun assertP0ResourceMatrix(datapack: Datapack, itemTagRegistry: String, marker: String) {
+        assertEquals("say $marker load", datapack.function(ResourceLocation.parse("demo:load_marker")).lines.single().command)
+        assertEquals(listOf(ResourceLocation.parse("demo:load_marker")), datapack.loadFunctions)
+        assertEquals(1, datapack.lootTable(ResourceLocation.parse("demo:gift")).root.asJsonObject.getAsJsonArray("pools").size())
+        assertEquals(true, datapack.predicate(ResourceLocation.parse("demo:always")).root.asJsonObject.get("value").asBoolean)
+        assertTrue(datapack.advancement(ResourceLocation.parse("demo:tick")).criteria.containsKey("tick"))
+        assertEquals(marker, datapack.recipe(ResourceLocation.parse("demo:marker")).root.asJsonObject.get("marker").asString)
+        assertEquals("item_modifier", datapack.itemModifier(ResourceLocation.parse("demo:mark_item")).kind)
+        assertEquals(listOf("minecraft:stick", "#demo:optional_items"), datapack.tag(itemTagRegistry, ResourceLocation.parse("demo:debug_items")).values.map { it.id })
+
+        val expectedActiveTypes = setOf(
+            "function",
+            "tag/function",
+            "tag/$itemTagRegistry",
+            "loot_table",
+            "predicate",
+            "advancement",
+            "recipe",
+            "item_modifier",
+        )
+        expectedActiveTypes.forEach { type ->
+            assertTrue(
+                datapack.resourceIndex.any { it.type == type && it.active },
+                "missing active P0 resource index type $type in ${datapack.resourceIndex}",
+            )
+        }
+        assertEquals(
+            ResourceBehaviorLevel.MODELED,
+            datapack.resourceIndex.single {
+                it.type == "tag/function" && it.id == ResourceLocation.parse("minecraft:load")
+            }.behaviorLevel,
+        )
+        assertTrue(
+            datapack.resourceIndex.any {
+                it.type == "tag/$itemTagRegistry" &&
+                    it.id == ResourceLocation.parse("demo:debug_items") &&
+                    it.behaviorLevel == ResourceBehaviorLevel.OBSERVED_NOOP
+            },
+        )
+    }
+
     private fun zipPack(root: Path, output: Path): Path {
         ZipOutputStream(Files.newOutputStream(output)).use { zip ->
             Files.walk(root).use { walk ->
@@ -541,5 +678,39 @@ class DatapackResourceIndexTest {
             "wolf_variant" to "debug_wolf",
             "painting_variant" to "debug_painting",
         )
+
+        data class ResourceLayout(
+            val functionDir: String,
+            val functionTagDir: String,
+            val lootTableDir: String,
+            val predicateDir: String,
+            val advancementDir: String,
+            val recipeDir: String,
+            val itemModifierDir: String,
+            val itemTagRegistry: String,
+        ) {
+            companion object {
+                val current = ResourceLayout(
+                    functionDir = "function",
+                    functionTagDir = "function",
+                    lootTableDir = "loot_table",
+                    predicateDir = "predicate",
+                    advancementDir = "advancement",
+                    recipeDir = "recipe",
+                    itemModifierDir = "item_modifier",
+                    itemTagRegistry = "item",
+                )
+                val legacy = ResourceLayout(
+                    functionDir = "functions",
+                    functionTagDir = "functions",
+                    lootTableDir = "loot_tables",
+                    predicateDir = "predicates",
+                    advancementDir = "advancements",
+                    recipeDir = "recipes",
+                    itemModifierDir = "item_modifiers",
+                    itemTagRegistry = "items",
+                )
+            }
+        }
     }
 }
