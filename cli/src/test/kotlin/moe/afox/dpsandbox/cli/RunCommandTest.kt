@@ -408,6 +408,8 @@ class RunCommandTest {
                     """{"player":{"name":"Steve","lastInput":{"device":"keyboard","code":"key.jump","action":"release"}}}""",
                     "--assert",
                     """{"eventTrace":{"player":"Steve","type":"key_input","success":true,"inputDevice":"keyboard","inputCode":"key.jump","inputAction":"release","count":1}}""",
+                    "--assert",
+                    "event-trace:Steve:key_input=1",
                 ),
             )
         }

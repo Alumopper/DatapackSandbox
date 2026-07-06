@@ -558,6 +558,7 @@ class RunCommand : CliktCommand(name = "run") {
             trimmed.startsWith("entity:") -> parseEntityCountAssertion(trimmed.removePrefix("entity:"), label)
             trimmed.startsWith("item:") -> parseItemAssertion(trimmed.removePrefix("item:"), label)
             trimmed.startsWith("player:") -> parsePlayerAssertion(trimmed.removePrefix("player:"), label)
+            trimmed.startsWith("event-trace:") -> parseEventTraceAssertion(trimmed.removePrefix("event-trace:"), label)
             trimmed.startsWith("trace:") -> parseTraceAssertion(trimmed.removePrefix("trace:"), label)
             trimmed.startsWith("trace-output:") -> parseTraceOutputAssertion(trimmed.removePrefix("trace-output:"), label)
             trimmed.startsWith("warning:") -> parseWarningContainsAssertion(trimmed.removePrefix("warning:"), label)
@@ -565,7 +566,7 @@ class RunCommand : CliktCommand(name = "run") {
             trimmed.startsWith("output:") -> parseOutputAssertion(trimmed.removePrefix("output:"), label)
             else -> throw SandboxException(
                 DiagnosticCode.INPUT_FORMAT,
-                "$label must be a JSON object or shorthand score:<target>:<objective>=N, storage:<id>[:<path>]=<json>, entity:<type|*>[@tag]=N, item:<player>:<id>[@slot]=N, player:<name>[:<field>=<value>], trace:<root>=N, trace:<text>, trace-output:<text>[@target], warning=N, warning:<text>, or output:<text>",
+                "$label must be a JSON object or shorthand score:<target>:<objective>=N, storage:<id>[:<path>]=<json>, entity:<type|*>[@tag]=N, item:<player>:<id>[@slot]=N, player:<name>[:<field>=<value>], event-trace:<player>:<type>[=N], trace:<root>=N, trace:<text>, trace-output:<text>[@target], warning=N, warning:<text>, or output:<text>",
             )
         }
     }
@@ -765,6 +766,37 @@ class RunCommand : CliktCommand(name = "run") {
             trace.addProperty("contains", trimmed)
         }
         return JsonObject().also { it.add("trace", trace) }
+    }
+
+    private fun parseEventTraceAssertion(spec: String, label: String): JsonObject {
+        val trimmed = spec.trim()
+        if (trimmed.isEmpty()) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label event trace shorthand must be event-trace:<player>:<type>[=N]")
+        }
+        val splitAt = trimmed.indexOf('=')
+        val left = if (splitAt < 0) trimmed else trimmed.substring(0, splitAt)
+        val countText = splitAt.takeIf { it >= 0 }?.let { trimmed.substring(it + 1).trim() }
+        val separator = left.indexOf(':')
+        if (separator <= 0 || separator == left.lastIndex) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label event trace shorthand must be event-trace:<player>:<type>[=N]")
+        }
+        val player = left.substring(0, separator).trim()
+        val type = left.substring(separator + 1).trim()
+        if (player.isEmpty() || type.isEmpty()) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label event trace shorthand must be event-trace:<player>:<type>[=N]")
+        }
+        val eventTrace = JsonObject().also { json ->
+            json.addProperty("player", player)
+            json.addProperty("type", type)
+            countText?.let {
+                json.addProperty(
+                    "count",
+                    it.toIntOrNull()
+                        ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label event trace shorthand expected integer but got '$it'"),
+                )
+            }
+        }
+        return JsonObject().also { it.add("eventTrace", eventTrace) }
     }
 
     private fun parseTraceOutputAssertion(spec: String, label: String): JsonObject {

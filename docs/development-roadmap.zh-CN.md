@@ -184,7 +184,7 @@
   - 支持 `--world` 传入小型 JSON fixture。
   - 支持 `--assert` 传入一两个简单断言。
   - 支持 `--stdin` 从标准输入读取函数或命令。
-  - `--assert`/`--assert-file` 已支持 score、storage、player、item、entity、trace、trace-output、warning 和 output 简写，适合命令生成器结果的快速回归。
+  - `--assert`/`--assert-file` 已支持 score、storage、player、item、entity、event-trace、trace、trace-output、warning 和 output 简写，适合命令生成器结果的快速回归。
 - 增强 REPL：
   - `inspect` 输出结构更稳定。
   - 支持 `trace on/off`、`diff last`、`rerun last`、`reset world`、`load fixture`。
