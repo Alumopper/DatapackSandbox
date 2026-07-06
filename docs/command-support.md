@@ -154,8 +154,9 @@ filters support integer ranges such as `scores={kills=1..,deaths=..0}` and
 `level=..5`; advancement filters match sandbox player progress by
 whole-advancement or criterion booleans; NBT filters use contains-style object
 matching with numeric equality; predicate filters evaluate loaded datapack
-predicates against the candidate entity context and support `!` negation; and
-rotation filters support signed numeric ranges. `sort=random` uses a
+predicates with the candidate entity as `this` and with the candidate
+position/dimension, and support `!` negation; and rotation filters support
+signed numeric ranges. `sort=random` uses a
 deterministic per-origin ordering for repeatable tests. Unsupported selector
 options produce an unsupported diagnostic under the active unsupported policy.
 

@@ -785,6 +785,7 @@ class CommandExpansionTest {
 
         sandbox.executeCommand("""summon minecraft:pig 1 64 1 {Tags:["near"],Health:7f}""")
         sandbox.executeCommand("""summon minecraft:pig 9 64 0 {Tags:["far"],Health:3f}""")
+        sandbox.executeCommand("""execute in minecraft:the_nether run summon minecraft:pig 4 64 4 {Tags:["nether_predicate"],Health:5f}""")
         sandbox.executeCommand("""summon minecraft:cow 2 64 0 {Tags:["near"]}""")
         sandbox.executeCommand("scoreboard objectives add selector dummy")
         sandbox.executeCommand("scoreboard objectives add selector_scores dummy")
@@ -820,6 +821,8 @@ class CommandExpansionTest {
         sandbox.executeCommand("""execute if entity @a[name=Alex,predicate=demo:is_player] run scoreboard players add #predicate selector 1""")
         sandbox.executeCommand("""execute if entity @e[type=minecraft:pig,predicate=!demo:is_player,limit=1] run scoreboard players add #predicate selector 1""")
         sandbox.executeCommand("""execute unless entity @a[name=Alex,predicate=demo:false] run scoreboard players add #predicate selector 1""")
+        sandbox.executeCommand("""execute if entity @e[type=minecraft:pig,tag=nether_predicate,predicate=demo:in_nether,limit=1] run scoreboard players add #predicate selector 1""")
+        sandbox.executeCommand("""execute if entity @e[type=minecraft:pig,tag=nether_predicate,predicate=demo:at_four,limit=1] run scoreboard players add #predicate selector 1""")
         sandbox.executeCommand("""execute if entity @a[name=Alex,advancements={demo:selector_complete=true}] run scoreboard players add #adv selector 1""")
         sandbox.executeCommand("""execute if entity @a[name=Alex,advancements={demo:selector_partial={visible=true,hidden=false}}] run scoreboard players add #adv selector 1""")
         sandbox.executeCommand("""execute if entity @a[name=Blair,advancements={demo:selector_complete=false}] run scoreboard players add #adv selector 1""")
@@ -841,7 +844,7 @@ class CommandExpansionTest {
         assertEquals(2, sandbox.world.getScore("#name", "selector"))
         assertEquals(4, sandbox.world.getScore("#score", "selector"))
         assertEquals(3, sandbox.world.getScore("#nbt", "selector"))
-        assertEquals(3, sandbox.world.getScore("#predicate", "selector"))
+        assertEquals(5, sandbox.world.getScore("#predicate", "selector"))
         assertEquals(4, sandbox.world.getScore("#adv", "selector"))
         assertEquals(4, sandbox.world.getScore("#teamlevel", "selector"))
         assertEquals(3, sandbox.world.getScore("#rotation", "selector"))
@@ -1918,6 +1921,21 @@ class CommandExpansionTest {
               "condition": "minecraft:location_check",
               "predicate": {
                 "dimension": "minecraft:the_nether"
+              }
+            }
+            """.trimIndent(),
+        )
+        Files.writeString(
+            predicateRoot.resolve("at_four.json"),
+            """
+            {
+              "condition": "minecraft:location_check",
+              "predicate": {
+                "position": {
+                  "x": 4,
+                  "y": 64,
+                  "z": 4
+                }
               }
             }
             """.trimIndent(),

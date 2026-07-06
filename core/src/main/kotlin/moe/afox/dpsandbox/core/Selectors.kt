@@ -94,9 +94,9 @@ object EntitySelectors {
                     DiagnosticCode.MISSING_CONTEXT,
                     "Selector predicate requires predicate runtime context",
                     location = location,
-                )
+            )
             result = result.filter { entity ->
-                engine.test(predicate, selectorPredicateContext(world, entity, origin, context)) == positive
+                engine.test(predicate, selectorPredicateContext(world, entity)) == positive
             }
         }
         options.tags.forEach { (tag, positive) ->
@@ -459,14 +459,12 @@ object EntitySelectors {
     private fun selectorPredicateContext(
         world: SandboxWorld,
         entity: SandboxEntity,
-        origin: Position,
-        context: ExecutionContext,
     ): PredicateContext {
         val player = entity as? SandboxPlayer
         return PredicateContext(
             world = world,
-            origin = origin,
-            dimension = context.dimension,
+            origin = entity.position,
+            dimension = entity.dimension,
             thisEntity = entity,
             player = player,
             tool = player?.selectedItem,
