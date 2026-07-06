@@ -524,10 +524,46 @@ object ManifestRunner {
                 included.firstOrNull { it.root.has(key) }?.let { root.add(key, it.root.get(key).deepCopy()) }
             }
         }
-        if (!root.has("packs")) {
-            included.firstOrNull { it.root.has("packs") }?.let { root.add("packs", rebasePacks(it.root.get("packs"), it.base)) }
+        val packSources = included
+            .mapNotNull { document -> document.root.get("packs")?.let { rebasePacks(it, document.base) } } +
+            listOfNotNull(json.get("packs")?.deepCopy())
+        if (packSources.isNotEmpty()) {
+            root.add("packs", mergeManifestPacks(packSources))
         }
         return root
+    }
+
+    private fun mergeManifestPacks(packs: List<JsonElement>): JsonElement {
+        if (packs.none { it.isJsonObject }) {
+            return JsonArray().also { array ->
+                packs.forEach { packElement ->
+                    if (!packElement.isJsonArray) {
+                        throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Manifest packs must be an array or object")
+                    }
+                    packElement.asJsonArray.forEach { array.add(it.deepCopy()) }
+                }
+            }
+        }
+
+        return JsonObject().also { merged ->
+            packs.forEach { packElement ->
+                when {
+                    packElement.isJsonArray -> appendPackEntries(merged, "default", packElement.asJsonArray)
+                    packElement.isJsonObject -> packElement.asJsonObject.entrySet().forEach { (version, value) ->
+                        if (!value.isJsonArray) {
+                            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Manifest packs for version '$version' must be an array")
+                        }
+                        appendPackEntries(merged, version, value.asJsonArray)
+                    }
+                    else -> throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Manifest packs must be an array or object")
+                }
+            }
+        }
+    }
+
+    private fun appendPackEntries(target: JsonObject, key: String, entries: JsonArray) {
+        val array = target.getAsJsonArray(key) ?: JsonArray().also { target.add(key, it) }
+        entries.forEach { array.add(it.deepCopy()) }
     }
 
     private fun rebasePacks(packs: JsonElement, base: Path): JsonElement =
@@ -583,12 +619,21 @@ object ManifestRunner {
             packsElement.isJsonArray -> packsElement.asJsonArray.toList()
             packsElement.isJsonObject -> {
                 val packsObject = packsElement.asJsonObject
-                val value = packsObject.get(version) ?: packsObject.get("default")
-                    ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Manifest packs object is missing entry for version '$version': $path")
-                if (!value.isJsonArray) {
-                    throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Manifest packs for version '$version' must be an array: $path")
+                val defaultEntries = packsObject.get("default")?.let { value ->
+                    if (!value.isJsonArray) {
+                        throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Manifest packs for version 'default' must be an array: $path")
+                    }
+                    value.asJsonArray.toList()
                 }
-                value.asJsonArray.toList()
+                val versionEntries = packsObject.get(version)?.let { value ->
+                    if (!value.isJsonArray) {
+                        throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Manifest packs for version '$version' must be an array: $path")
+                    }
+                    value.asJsonArray.toList()
+                }
+                (defaultEntries.orEmpty() + versionEntries.orEmpty()).ifEmpty {
+                    throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Manifest packs object is missing entry for version '$version': $path")
+                }
             }
             else -> throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Manifest packs must be an array or object: $path")
         }

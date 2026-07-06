@@ -1748,6 +1748,55 @@ class ManifestRunnerTest {
     }
 
     @Test
+    fun `included pack defaults merge before local version packs`() {
+        val dir = Files.createTempDirectory("dps-include-pack-merge")
+        val common = dir.resolve("common")
+        Files.createDirectories(common)
+        writeNamedFunctionPack(dir.resolve("common-pack"), "common", "#common", 4)
+        writeNamedFunctionPack(dir.resolve("case-pack"), "case", "#case", 7)
+        Files.writeString(
+            common.resolve("base.dps.json"),
+            """
+            {
+              "version": "26.2",
+              "packs": {
+                "default": ["../common-pack"]
+              }
+            }
+            """.trimIndent(),
+        )
+        val manifest = dir.resolve("case.dps.json")
+        Files.writeString(
+            manifest,
+            """
+            {
+              "include": "common/base.dps.json",
+              "packs": {
+                "26.2": ["case-pack"]
+              },
+              "steps": [
+                { "command": "scoreboard objectives add runs dummy" },
+                { "command": "function demo:common" },
+                { "command": "function demo:case" }
+              ],
+              "assertions": [
+                { "score": { "target": "#common", "objective": "runs", "equals": 4 } },
+                { "score": { "target": "#case", "objective": "runs", "equals": 7 } }
+              ]
+            }
+            """.trimIndent(),
+        )
+
+        val result = ManifestRunner.run(manifest)
+
+        assertTrue(result.passed, result.messages.joinToString())
+        assertEquals(
+            listOf(dir.resolve("common-pack").toAbsolutePath().normalize(), dir.resolve("case-pack").toAbsolutePath().normalize()),
+            result.attempts.single().packs,
+        )
+    }
+
+    @Test
     fun `manifests can fail on missing resource references`() {
         val dir = Files.createTempDirectory("dps-missing-resource-manifest")
         val pack = writeMissingReferencePack(dir.resolve("pack"))
@@ -1881,6 +1930,28 @@ class ManifestRunnerTest {
         val tagRoot = root.resolve("data").resolve("minecraft").resolve("tags").resolve(functionDir)
         Files.createDirectories(tagRoot)
         Files.writeString(tagRoot.resolve("load.json"), """{"values":["demo:load"]}""")
+        return root
+    }
+
+    private fun writeNamedFunctionPack(root: Path, functionName: String, scoreTarget: String, scoreValue: Int): Path {
+        Files.createDirectories(root)
+        Files.writeString(
+            root.resolve("pack.mcmeta"),
+            """
+            {
+              "pack": {
+                "pack_format": 107.1,
+                "description": "temporary named function pack"
+              }
+            }
+            """.trimIndent(),
+        )
+        val functionRoot = root.resolve("data").resolve("demo").resolve("function")
+        Files.createDirectories(functionRoot)
+        Files.writeString(
+            functionRoot.resolve("$functionName.mcfunction"),
+            "scoreboard players set $scoreTarget runs $scoreValue",
+        )
         return root
     }
 

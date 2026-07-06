@@ -233,7 +233,7 @@
   - score、storage、player、entity、block、item、loot、predicate、advancement、output、trace、diagnostic、snapshot diff。
   - 支持 equals、contains、exists、missing、count、min/max、matches、path。
 - 支持 manifest include：
-  - 公共世界 fixture、公共断言、公共 pack matrix，减少重复。
+  - 公共世界 fixture、公共断言、公共 pack matrix，减少重复；`include` 已按来源文件相对路径合并 world、steps、assertions，并会把公共/default packs 排在 case-local packs 之前，便于生成器批量用例复用依赖包和版本矩阵。
 
 验收标准：
 
