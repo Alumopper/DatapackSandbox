@@ -618,6 +618,7 @@ class RunCommand : CliktCommand(name = "run") {
             trimmed.startsWith("advancement:") -> parseAdvancementAssertion(trimmed.removePrefix("advancement:"), label)
             trimmed.startsWith("entity:") -> parseEntityCountAssertion(trimmed.removePrefix("entity:"), label)
             trimmed.startsWith("block:") -> parseBlockAssertion(trimmed.removePrefix("block:"), label)
+            trimmed.startsWith("biome:") -> parseBiomeAssertion(trimmed.removePrefix("biome:"), label)
             trimmed.startsWith("team:") -> parseTeamAssertion(trimmed.removePrefix("team:"), label)
             trimmed.startsWith("bossbar:") -> parseBossbarAssertion(trimmed.removePrefix("bossbar:"), label)
             trimmed.startsWith("item:") -> parseItemAssertion(trimmed.removePrefix("item:"), label)
@@ -640,7 +641,7 @@ class RunCommand : CliktCommand(name = "run") {
             trimmed.startsWith("output:") -> parseOutputAssertion(trimmed.removePrefix("output:"), label)
             else -> throw SandboxException(
                 DiagnosticCode.INPUT_FORMAT,
-                "$label must be a JSON object or shorthand score:<target>:<objective>=N, storage:<id>[:<path>]=<json>, advancement:<player>:<id>[=<true|false>], entity:<type|*>[@tag]=N, block:<x>,<y>,<z>=<id>, block:<x>,<y>,<z>?, block:<x>,<y>,<z>!, team:<name>[?|!|=N|@member], bossbar:<id>[?|!|:<field>=<value>], item:<player>:<id>[@slot]=N, player:<name>[:<field>=<value>], world:<field>=<value>, gamerule:<rule>=<value>, gamerule:<rule>?, gamerule:<rule>!, random-sequence:<name>=N, snapshot:<path>=<json>, snapshot:<path>?, snapshot:<path>!, diff:<json-pointer>[=<kind>], event-trace:<player>:<type>[=N], trace:<root>=N, trace:<text>, trace-output:<text>[@target], warning=N, warning:<text>, unsupported=N, unsupported:<text>, output:<text>, output-normalized:<text>, output-segment:<text>[|color=<color>|bold=<true|false>][@target], or output-payload:<command>:<path>[=<json>]",
+                "$label must be a JSON object or shorthand score:<target>:<objective>=N, storage:<id>[:<path>]=<json>, advancement:<player>:<id>[=<true|false>], entity:<type|*>[@tag]=N, block:<x>,<y>,<z>=<id>, block:<x>,<y>,<z>?, block:<x>,<y>,<z>!, biome:<x>,<y>,<z>=<id>, team:<name>[?|!|=N|@member], bossbar:<id>[?|!|:<field>=<value>], item:<player>:<id>[@slot]=N, player:<name>[:<field>=<value>], world:<field>=<value>, gamerule:<rule>=<value>, gamerule:<rule>?, gamerule:<rule>!, random-sequence:<name>=N, snapshot:<path>=<json>, snapshot:<path>?, snapshot:<path>!, diff:<json-pointer>[=<kind>], event-trace:<player>:<type>[=N], trace:<root>=N, trace:<text>, trace-output:<text>[@target], warning=N, warning:<text>, unsupported=N, unsupported:<text>, output:<text>, output-normalized:<text>, output-segment:<text>[|color=<color>|bold=<true|false>][@target], or output-payload:<command>:<path>[=<json>]",
             )
         }
     }
@@ -790,6 +791,21 @@ class RunCommand : CliktCommand(name = "run") {
         }
         val pos = JsonArray().also { array -> parts.map { it.trim().toInt() }.forEach { array.add(it) } }
         return JsonObject().also { it.add("pos", pos) }
+    }
+
+    private fun parseBiomeAssertion(spec: String, label: String): JsonObject {
+        val trimmed = spec.trim()
+        val splitAt = trimmed.indexOf('=')
+        if (splitAt <= 0 || splitAt == trimmed.lastIndex) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label biome shorthand must be biome:<x>,<y>,<z>=<id>")
+        }
+        val id = trimmed.substring(splitAt + 1).trim()
+        if (id.isEmpty()) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label biome shorthand id must not be empty")
+        }
+        val biome = blockAssertionObject(trimmed.substring(0, splitAt), label).also { it.addProperty("id", ResourceLocation.parse(id).toString()) }
+        val world = JsonObject().also { it.add("biome", biome) }
+        return JsonObject().also { it.add("world", world) }
     }
 
     private fun parseTeamAssertion(spec: String, label: String): JsonObject {

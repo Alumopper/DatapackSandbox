@@ -593,6 +593,25 @@ class RunCommandTest {
     }
 
     @Test
+    fun `run accepts biome shorthand inline assertions`() {
+        val output = captureStdout {
+            main(
+                arrayOf(
+                    "run",
+                    "--version",
+                    "26.2",
+                    "--command",
+                    "fillbiome 0 64 0 0 64 0 minecraft:forest",
+                    "--assert",
+                    "biome:0,64,0=minecraft:forest",
+                ),
+            )
+        }
+
+        assertTrue("OK version=26.2" in output, output)
+    }
+
+    @Test
     fun `run injects player events for inline assertions`() {
         val output = captureStdout {
             main(
