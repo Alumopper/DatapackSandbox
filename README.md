@@ -91,7 +91,7 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar run --pack ./my_pack --functio
 ```
 
 Write a combined JSON report with assertion failures, outputs, traces, event
-traces, the final snapshot, and snapshot diffs:
+traces, the final snapshot, snapshot diffs, and resource summary details:
 
 ```bash
 java -jar cli/build/libs/datapack-sandbox-cli.jar run --pack ./my_pack --function demo:main --report-file run-report.json

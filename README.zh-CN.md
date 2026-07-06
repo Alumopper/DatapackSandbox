@@ -76,6 +76,12 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar run --pack ./my_pack --functio
 java -jar cli/build/libs/datapack-sandbox-cli.jar run --pack ./my_pack --function demo:main --outputs-file outputs.jsonl
 ```
 
+写出综合 JSON 报告，包含断言失败、输出、trace、事件 trace、最终 snapshot、snapshot diff 和资源摘要：
+
+```bash
+java -jar cli/build/libs/datapack-sandbox-cli.jar run --pack ./my_pack --function demo:main --report-file run-report.json
+```
+
 需要查看运行前后状态变化时，输出 snapshot diff：
 
 ```bash

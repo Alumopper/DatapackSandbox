@@ -614,12 +614,16 @@ class RunCommandTest {
         assertTrue("\"#report\": 4" in reportJson, reportJson)
         assertTrue("\"snapshotDiffs\"" in reportJson, reportJson)
         assertTrue("\"path\": \"/scores/runs\"" in reportJson, reportJson)
+        assertTrue("\"resources\"" in reportJson, reportJson)
+        assertTrue("\"functions\": 1" in reportJson, reportJson)
+        assertTrue("\"missingReferences\": []" in reportJson, reportJson)
     }
 
     @Test
     fun `run can fail on missing resource references`() {
         val dir = Files.createTempDirectory("dps-cli-missing-resource")
         val pack = writeMissingReferencePack(dir.resolve("pack"))
+        val reportFile = Files.createTempFile("dps-cli-missing-resource-report", ".json")
 
         val result = runCliProcess(
             "run",
@@ -628,13 +632,21 @@ class RunCommandTest {
             "--pack",
             pack.toString(),
             "--fail-on-missing-resources",
+            "--report-file",
+            reportFile.toString(),
         )
 
         assertEquals(ExitCodes.ASSERTION_FAILED, result.exitCode, result.output)
+        assertTrue("report written: $reportFile" in result.output, result.output)
         assertTrue(
             "missing-reference #minecraft:load -> function demo:missing_load" in result.output,
             result.output,
         )
+        val reportJson = Files.readString(reportFile)
+        assertTrue("\"passed\": false" in reportJson, reportJson)
+        assertTrue("\"missingReferences\"" in reportJson, reportJson)
+        assertTrue("\"source\": \"#minecraft:load\"" in reportJson, reportJson)
+        assertTrue("\"id\": \"demo:missing_load\"" in reportJson, reportJson)
     }
 
     @Test
