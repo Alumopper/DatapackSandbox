@@ -314,6 +314,16 @@ class SandboxBehaviorTest {
         val cow = sandbox.world.entities.single { "vehicle" in it.tags }
         assertEquals(cow.uuid, pig.vehicle)
         assertTrue(pig.uuid in cow.passengers)
+        val rideOutput = sandbox.world.outputs.single { it.command == "ride mount" }
+        val ridePayload = rideOutput.payload?.asJsonObject ?: error("missing ride mount payload")
+        val riderPayload = ridePayload.getAsJsonArray("riders")[0].asJsonObject
+        assertEquals("1", rideOutput.text)
+        assertEquals(listOf(pig.uuid), rideOutput.targets)
+        assertEquals("mount", ridePayload.get("action").asString)
+        assertEquals(cow.uuid, ridePayload.get("vehicleUuid").asString)
+        assertEquals("minecraft:cow", ridePayload.get("vehicleType").asString)
+        assertEquals(pig.uuid, riderPayload.get("uuid").asString)
+        assertEquals(cow.uuid, riderPayload.get("vehicleUuid").asString)
         assertEquals(90.0, pig.yaw)
         assertEquals(15.0, pig.pitch)
         assertEquals(4.0, pig.fullNbt().get("Health").asDouble)

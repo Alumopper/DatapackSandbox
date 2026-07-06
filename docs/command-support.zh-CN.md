@@ -61,7 +61,7 @@
 | `recipe` | 部分支持 | `give`、`take`；支持对已加载数据包 recipe 使用 `*`，更新玩家 recipe 集合并记录 changed 数量。 |
 | `reload` | 空操作 | 原版命令作为 no-op 记录；REPL 工具命令 `reload` 会真正重载数据包并保留世界状态。 |
 | `return` | 支持 | 结束当前 function；支持 `return <value>`、`return fail` 和 `return run <command>`，用于 function 条件和 store result 测试。 |
-| `ride` | 部分支持 | 记录载具和乘客关系；不模拟控制或物理。 |
+| `ride` | 部分支持 | 记录载具和乘客关系，并记录结构化 mount/dismount 输出；不模拟控制或物理。 |
 | `rotate` | 部分支持 | 更新 yaw/pitch，并记录结构化前后旋转输出。 |
 | `save-all`、`save-off`、`save-on` | 未支持 | 沙盒没有真实存档生命周期。 |
 | `say` | 支持 | 记录为 chat 输出事件。 |

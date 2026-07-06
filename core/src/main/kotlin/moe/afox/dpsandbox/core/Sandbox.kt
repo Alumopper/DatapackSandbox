@@ -2275,13 +2275,71 @@ class DatapackSandbox(
                     rider.vehicle = vehicle.uuid
                     vehicle.passengers += rider.uuid
                 }
+                recordRideMountOutput(riders, vehicle)
             }
-            "dismount" -> riders.forEach { rider ->
-                world.entities.firstOrNull { it.uuid == rider.vehicle }?.passengers?.remove(rider.uuid)
-                rider.vehicle = null
+            "dismount" -> {
+                val previousVehicles = riders.map { rider -> rider to rider.vehicle }
+                riders.forEach { rider ->
+                    world.entities.firstOrNull { it.uuid == rider.vehicle }?.passengers?.remove(rider.uuid)
+                    rider.vehicle = null
+                }
+                recordRideDismountOutput(previousVehicles)
             }
             else -> unsupportedFeature("Unsupported ride action '${tokens[2].text}'", profile.id, location)
         }
+    }
+
+    private fun recordRideMountOutput(riders: List<SandboxEntity>, vehicle: SandboxEntity) {
+        world.recordOutput(
+            "ride mount",
+            "data",
+            targets = riders.map { it.scoreHolder },
+            text = riders.size.toString(),
+            payload = JsonObject().also { payload ->
+                payload.addProperty("action", "mount")
+                payload.addProperty("count", riders.size)
+                payload.addProperty("vehicle", vehicle.scoreHolder)
+                payload.addProperty("vehicleUuid", vehicle.uuid)
+                payload.addProperty("vehicleType", vehicle.type.toString())
+                payload.add("riders", JsonArray().also { array ->
+                    riders.forEach { rider ->
+                        array.add(
+                            JsonObject().also { entry ->
+                                entry.addProperty("target", rider.scoreHolder)
+                                entry.addProperty("uuid", rider.uuid)
+                                entry.addProperty("type", rider.type.toString())
+                                entry.addProperty("vehicleUuid", rider.vehicle)
+                            },
+                        )
+                    }
+                })
+            },
+        )
+    }
+
+    private fun recordRideDismountOutput(previousVehicles: List<Pair<SandboxEntity, String?>>) {
+        world.recordOutput(
+            "ride dismount",
+            "data",
+            targets = previousVehicles.map { it.first.scoreHolder },
+            text = previousVehicles.size.toString(),
+            payload = JsonObject().also { payload ->
+                payload.addProperty("action", "dismount")
+                payload.addProperty("count", previousVehicles.size)
+                payload.add("riders", JsonArray().also { array ->
+                    previousVehicles.forEach { (rider, previousVehicle) ->
+                        array.add(
+                            JsonObject().also { entry ->
+                                entry.addProperty("target", rider.scoreHolder)
+                                entry.addProperty("uuid", rider.uuid)
+                                entry.addProperty("type", rider.type.toString())
+                                previousVehicle?.let { entry.addProperty("previousVehicleUuid", it) }
+                            },
+                        )
+                    }
+                })
+            },
+        )
     }
 
     private fun executeRotate(tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext) {

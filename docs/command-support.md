@@ -68,7 +68,7 @@ run continues. Use `--unsupported error`, manifest `"unsupported": "error"`, or
 | `recipe` | Partial | `give`, `take`; supports `*` for loaded datapack recipes, updates per-player recipe sets, and records changed counts. |
 | `reload` | No-op | Accepted and recorded; REPL `reload` performs real datapack reload, vanilla command does not mutate this immutable sandbox instance. |
 | `return` | Supported | Stops the current function; supports `return <value>`, `return fail`, and `return run <command>` for function conditions and store result tests. |
-| `ride` | Partial | Tracks vehicle/passenger relationships; no physics/control. |
+| `ride` | Partial | Tracks vehicle/passenger relationships and records structured mount/dismount output; no physics/control. |
 | `rotate` | Partial | Updates yaw/pitch and records structured before/after rotation output. |
 | `save-all`, `save-off`, `save-on` | Unsupported | No real world save lifecycle exists. |
 | `say` | Supported | Recorded as chat output. |
