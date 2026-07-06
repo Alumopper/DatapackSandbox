@@ -339,6 +339,36 @@ class RunCommandTest {
     }
 
     @Test
+    fun `run accepts advancement shorthand inline assertions`() {
+        val dir = Files.createTempDirectory("dps-cli-advancement")
+        val pack = writeAdvancementPack(dir.resolve("pack"))
+        val worldFile = dir.resolve("world.json")
+        Files.writeString(worldFile, """{"players":[{"name":"Steve"}]}""")
+
+        val output = captureStdout {
+            main(
+                arrayOf(
+                    "run",
+                    "--version",
+                    "26.2",
+                    "--pack",
+                    pack.toString(),
+                    "--world",
+                    worldFile.toString(),
+                    "--command",
+                    "advancement grant Steve only demo:shorthand done",
+                    "--assert",
+                    "advancement:Steve:demo:shorthand",
+                    "--assert",
+                    "advancement:Steve:demo:shorthand=true",
+                ),
+            )
+        }
+
+        assertTrue("OK version=26.2" in output, output)
+    }
+
+    @Test
     fun `run accepts trace shorthand inline assertions`() {
         val output = captureStdout {
             main(
@@ -1033,6 +1063,36 @@ class RunCommandTest {
         val tagRoot = root.resolve("data").resolve("minecraft").resolve("tags").resolve("function")
         Files.createDirectories(tagRoot)
         Files.writeString(tagRoot.resolve("load.json"), """{"values":["demo:missing_load"]}""")
+        return root
+    }
+
+    private fun writeAdvancementPack(root: Path): Path {
+        Files.createDirectories(root)
+        Files.writeString(
+            root.resolve("pack.mcmeta"),
+            """
+            {
+              "pack": {
+                "pack_format": 107.1,
+                "description": "temporary advancement pack"
+              }
+            }
+            """.trimIndent(),
+        )
+        val advancementRoot = root.resolve("data").resolve("demo").resolve("advancement")
+        Files.createDirectories(advancementRoot)
+        Files.writeString(
+            advancementRoot.resolve("shorthand.json"),
+            """
+            {
+              "criteria": {
+                "done": {
+                  "trigger": "minecraft:tick"
+                }
+              }
+            }
+            """.trimIndent(),
+        )
         return root
     }
 

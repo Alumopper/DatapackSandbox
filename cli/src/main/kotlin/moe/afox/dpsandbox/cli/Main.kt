@@ -555,6 +555,7 @@ class RunCommand : CliktCommand(name = "run") {
         return when {
             trimmed.startsWith("score:") -> parseScoreAssertion(trimmed.removePrefix("score:"), label)
             trimmed.startsWith("storage:") -> parseStorageAssertion(trimmed.removePrefix("storage:"), label)
+            trimmed.startsWith("advancement:") -> parseAdvancementAssertion(trimmed.removePrefix("advancement:"), label)
             trimmed.startsWith("entity:") -> parseEntityCountAssertion(trimmed.removePrefix("entity:"), label)
             trimmed.startsWith("item:") -> parseItemAssertion(trimmed.removePrefix("item:"), label)
             trimmed.startsWith("player:") -> parsePlayerAssertion(trimmed.removePrefix("player:"), label)
@@ -567,7 +568,7 @@ class RunCommand : CliktCommand(name = "run") {
             trimmed.startsWith("output:") -> parseOutputAssertion(trimmed.removePrefix("output:"), label)
             else -> throw SandboxException(
                 DiagnosticCode.INPUT_FORMAT,
-                "$label must be a JSON object or shorthand score:<target>:<objective>=N, storage:<id>[:<path>]=<json>, entity:<type|*>[@tag]=N, item:<player>:<id>[@slot]=N, player:<name>[:<field>=<value>], diff:<json-pointer>[=<kind>], event-trace:<player>:<type>[=N], trace:<root>=N, trace:<text>, trace-output:<text>[@target], warning=N, warning:<text>, or output:<text>",
+                "$label must be a JSON object or shorthand score:<target>:<objective>=N, storage:<id>[:<path>]=<json>, advancement:<player>:<id>[=<true|false>], entity:<type|*>[@tag]=N, item:<player>:<id>[@slot]=N, player:<name>[:<field>=<value>], diff:<json-pointer>[=<kind>], event-trace:<player>:<type>[=N], trace:<root>=N, trace:<text>, trace-output:<text>[@target], warning=N, warning:<text>, or output:<text>",
             )
         }
     }
@@ -618,6 +619,38 @@ class RunCommand : CliktCommand(name = "run") {
             }
         }
         return JsonObject().also { it.add("storage", storage) }
+    }
+
+    private fun parseAdvancementAssertion(spec: String, label: String): JsonObject {
+        val trimmed = spec.trim()
+        if (trimmed.isEmpty()) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label advancement shorthand must be advancement:<player>:<id>[=<true|false>]")
+        }
+        val splitAt = trimmed.indexOf('=')
+        val left = if (splitAt < 0) trimmed else trimmed.substring(0, splitAt)
+        val doneText = splitAt.takeIf { it >= 0 }?.let { trimmed.substring(it + 1).trim() }
+        val separator = left.indexOf(':')
+        if (separator <= 0 || separator == left.lastIndex) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label advancement shorthand must be advancement:<player>:<id>[=<true|false>]")
+        }
+        val player = left.substring(0, separator).trim()
+        val id = left.substring(separator + 1).trim()
+        if (player.isEmpty() || id.isEmpty()) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label advancement shorthand must be advancement:<player>:<id>[=<true|false>]")
+        }
+        val done = doneText?.let {
+            when (it.lowercase()) {
+                "true" -> true
+                "false" -> false
+                else -> throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label advancement shorthand expected true or false but got '$it'")
+            }
+        } ?: true
+        val advancement = JsonObject().also { json ->
+            json.addProperty("player", player)
+            json.addProperty("id", id)
+            json.addProperty("done", done)
+        }
+        return JsonObject().also { it.add("advancement", advancement) }
     }
 
     private fun parseEntityCountAssertion(spec: String, label: String): JsonObject {
