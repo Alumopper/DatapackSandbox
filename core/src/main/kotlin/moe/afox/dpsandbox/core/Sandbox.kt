@@ -4302,25 +4302,106 @@ class DatapackSandbox(
             )
             return
         }
+        val ids = advancementTargets(mode, tokens.getOrNull(4)?.text, location)
+        val criterion = if (mode == "only") tokens.getOrNull(5)?.text else null
+        val updates = mutableListOf<Pair<String, AdvancementUpdate>>()
         targets.forEach { player ->
-            val ids = advancementTargets(mode, tokens.getOrNull(4)?.text, location)
-            val criterion = if (mode == "only") tokens.getOrNull(5)?.text else null
             ids.forEach { advancement ->
-                when (action) {
+                val changed = when (action) {
                     "grant" -> advancements.grant(player, advancement, criterion)
                     "revoke" -> advancements.revoke(player, advancement, criterion)
                     else -> unsupportedFeature("Unsupported advancement action '$action'", profile.id, location)
                 }
+                changed.forEach { updates += player.name to it }
             }
         }
+        world.recordOutput(
+            "advancement $action",
+            "data",
+            targets = targets.map { it.name },
+            text = updates.size.toString(),
+            payload = JsonObject().also { payload ->
+                payload.addProperty("action", action)
+                payload.addProperty("mode", mode)
+                criterion?.let { payload.addProperty("criterion", it) }
+                payload.add("targets", JsonArray().also { array -> targets.map { it.name }.sorted().forEach { array.add(it) } })
+                payload.add("advancements", JsonArray().also { array -> ids.forEach { array.add(it.toString()) } })
+                payload.addProperty("changed", updates.size)
+                payload.add(
+                    "updates",
+                    JsonArray().also { array ->
+                        updates.forEach { (player, update) ->
+                            array.add(
+                                JsonObject().also { item ->
+                                    item.addProperty("player", player)
+                                    item.addProperty("advancement", update.advancement.toString())
+                                    item.addProperty("criterion", update.criterion)
+                                    item.addProperty("done", update.completed)
+                                },
+                            )
+                        }
+                    },
+                )
+            },
+        )
     }
 
     private fun advancementTargets(mode: String, idText: String?, location: SourceLocation?): List<ResourceLocation> =
         when (mode) {
             "everything" -> datapack.advancements.keys.sorted()
-            "only", "from", "through", "until" -> listOf(ResourceLocation.parse(idText ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Advancement id is required", location)))
+            "only" -> listOf(advancementTargetId(idText, location))
+            "from" -> {
+                val id = advancementTargetId(idText, location)
+                listOf(id) + advancementDescendants(id)
+            }
+            "through" -> {
+                val id = advancementTargetId(idText, location)
+                advancementAncestors(id, location).asReversed() + id + advancementDescendants(id)
+            }
+            "until" -> {
+                val id = advancementTargetId(idText, location)
+                advancementAncestors(id, location).asReversed() + id
+            }
             else -> unsupportedFeature("Unsupported advancement mode '$mode'", profile.id, location)
+        }.distinct()
+
+    private fun advancementTargetId(idText: String?, location: SourceLocation?): ResourceLocation {
+        val id = ResourceLocation.parse(idText ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Advancement id is required", location))
+        datapack.advancement(id)
+        return id
+    }
+
+    private fun advancementAncestors(id: ResourceLocation, location: SourceLocation?): List<ResourceLocation> {
+        val ancestors = mutableListOf<ResourceLocation>()
+        val seen = mutableSetOf(id)
+        var parent = datapack.advancement(id).parent
+        while (parent != null) {
+            if (!seen.add(parent)) {
+                throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Advancement parent cycle detected at '$parent'", location)
+            }
+            val definition = datapack.advancements[parent]
+                ?: throw SandboxException(DiagnosticCode.RESOURCE_NOT_FOUND, "Advancement parent '$parent' was not found", location)
+            ancestors += parent
+            parent = definition.parent
         }
+        return ancestors
+    }
+
+    private fun advancementDescendants(id: ResourceLocation): List<ResourceLocation> {
+        val childrenByParent = datapack.advancements.values.groupBy { it.parent }
+        val descendants = mutableListOf<ResourceLocation>()
+        val seen = mutableSetOf(id)
+        fun visit(parent: ResourceLocation) {
+            childrenByParent[parent].orEmpty().sortedBy { it.id.toString() }.forEach { child ->
+                if (seen.add(child.id)) {
+                    descendants += child.id
+                    visit(child.id)
+                }
+            }
+        }
+        visit(id)
+        return descendants
+    }
 
     private fun executeTeam(command: String, tokens: List<CommandToken>, location: SourceLocation?) {
         requireSize(tokens, 2, "team <add|remove|list|join|leave|empty|modify> ...", location)

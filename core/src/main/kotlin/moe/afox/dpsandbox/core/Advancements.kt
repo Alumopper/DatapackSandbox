@@ -27,12 +27,14 @@ class AdvancementRuntime(private val sandbox: DatapackSandbox) {
     fun grant(player: SandboxPlayer, id: ResourceLocation, criterion: String? = null): List<AdvancementUpdate> {
         val advancement = sandbox.datapack.advancement(id)
         val progress = progressFor(player, advancement)
+        val wasDone = progress.isDone(advancement.requirements)
         val criteriaToGrant = criterion?.let { listOf(it) } ?: advancement.criteria.keys.toList()
-        val updates = criteriaToGrant.map {
+        val updates = criteriaToGrant.mapNotNull {
+            if (progress.criteria[it] == true) return@mapNotNull null
             progress.criteria[it] = true
             AdvancementUpdate(id, it, progress.isDone(advancement.requirements))
         }
-        if (progress.isDone(advancement.requirements)) applyRewards(player, advancement)
+        if (!wasDone && progress.isDone(advancement.requirements)) applyRewards(player, advancement)
         return updates
     }
 
@@ -40,7 +42,8 @@ class AdvancementRuntime(private val sandbox: DatapackSandbox) {
         val advancement = sandbox.datapack.advancement(id)
         val progress = progressFor(player, advancement)
         val criteriaToRevoke = criterion?.let { listOf(it) } ?: advancement.criteria.keys.toList()
-        return criteriaToRevoke.map {
+        return criteriaToRevoke.mapNotNull {
+            if (progress.criteria[it] != true) return@mapNotNull null
             progress.criteria[it] = false
             AdvancementUpdate(id, it, progress.isDone(advancement.requirements))
         }

@@ -53,7 +53,7 @@ runs this through the standalone jar smoke task.
 
 | Command | Status | Behavior | Supported forms / sandbox behavior |
 |---|---:|---:|---|
-| `advancement` | Partial | `modeled` | `grant`, `revoke`, `test`; `test` records passed counts and per-player result payloads; progress is per player; rewards support functions, loot, XP, and recipes. |
+| `advancement` | Partial | `modeled` | `grant`, `revoke`, `test`; `grant`/`revoke` support `only`, `from`, `through`, `until`, and `everything`, record structured changed-criterion output, and can feed `execute store result`; `test` records passed counts and per-player result payloads; progress is per player; rewards support functions, loot, XP, and recipes. |
 | `attribute` | Partial | `modeled` | `get`, `base get`, `base set`, `base reset`, `modifier add`, `modifier remove`, and `modifier value get`; get commands record structured data output for assertions and `execute store result`; modifier state is exposed in snapshots and entity NBT. |
 | `ban`, `ban-ip`, `banlist` | Unsupported | `unsupported` | Server administration and ban lists are not simulated. |
 | `bossbar` | Partial | `modeled` | `add`, `remove`, `list`, `get`, `set`; mutations and `get` record structured data output for assertions and `execute store result`; state is stored and appears in snapshots, no real client UI. |

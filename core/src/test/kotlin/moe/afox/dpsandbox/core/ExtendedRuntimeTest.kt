@@ -1,5 +1,6 @@
 ﻿package moe.afox.dpsandbox.core
 
+import com.google.gson.JsonObject
 import java.nio.file.Path
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -76,4 +77,97 @@ class ExtendedRuntimeTest {
 
         assertEquals(1, sandbox.world.getScore("Steve", "advancement"))
     }
+
+    @Test
+    fun `advancement grant and revoke expand tree modes and record outputs`() {
+        val rootId = ResourceLocation.parse("demo:root")
+        val childId = ResourceLocation.parse("demo:child")
+        val grandId = ResourceLocation.parse("demo:grand")
+        val sideId = ResourceLocation.parse("demo:side")
+        val sandbox = DatapackSandbox(
+            profile = VersionProfiles.default,
+            datapack = Datapack(
+                functions = emptyMap(),
+                loadFunctions = emptyList(),
+                tickFunctions = emptyList(),
+                advancements = listOf(
+                    testAdvancement(rootId),
+                    testAdvancement(childId, rootId),
+                    testAdvancement(grandId, childId),
+                    testAdvancement(sideId, rootId),
+                ).associateBy { it.id },
+            ),
+        )
+        val player = sandbox.createPlayer("Steve")
+
+        sandbox.executeCommand("advancement grant Steve from demo:child")
+
+        assertEquals(true, player.criterionDone(childId))
+        assertEquals(true, player.criterionDone(grandId))
+        assertEquals(false, player.criterionDone(rootId))
+        assertEquals(false, player.criterionDone(sideId))
+        var output = sandbox.world.outputs.last { it.command == "advancement grant" }
+        assertEquals("2", output.text)
+        assertEquals(listOf("demo:child", "demo:grand"), output.advancementIds())
+
+        sandbox.executeCommand("advancement revoke Steve through demo:child")
+
+        assertEquals(false, player.criterionDone(childId))
+        assertEquals(false, player.criterionDone(grandId))
+        output = sandbox.world.outputs.last { it.command == "advancement revoke" }
+        assertEquals("2", output.text)
+        assertEquals(listOf("demo:root", "demo:child", "demo:grand"), output.advancementIds())
+
+        sandbox.executeCommand("advancement grant Steve until demo:child")
+
+        assertEquals(true, player.criterionDone(rootId))
+        assertEquals(true, player.criterionDone(childId))
+        assertEquals(false, player.criterionDone(grandId))
+        assertEquals(false, player.criterionDone(sideId))
+        output = sandbox.world.outputs.last { it.command == "advancement grant" }
+        assertEquals("2", output.text)
+        assertEquals(listOf("demo:root", "demo:child"), output.advancementIds())
+
+        sandbox.executeCommand("advancement grant Steve through demo:child")
+
+        assertEquals(true, player.criterionDone(rootId))
+        assertEquals(true, player.criterionDone(childId))
+        assertEquals(true, player.criterionDone(grandId))
+        assertEquals(false, player.criterionDone(sideId))
+        output = sandbox.world.outputs.last { it.command == "advancement grant" }
+        assertEquals("1", output.text)
+        assertEquals(listOf("demo:root", "demo:child", "demo:grand"), output.advancementIds())
+        assertEquals(1, output.payload?.asJsonObject?.get("changed")?.asInt)
+
+        sandbox.executeCommand("scoreboard objectives add adv dummy")
+        sandbox.executeCommand("execute store result score Steve adv run advancement revoke Steve from demo:child")
+
+        assertEquals(2, sandbox.world.getScore("Steve", "adv"))
+    }
+
+    private fun testAdvancement(id: ResourceLocation, parent: ResourceLocation? = null): AdvancementDefinition =
+        AdvancementDefinition(
+            id = id,
+            file = "<test>",
+            root = JsonObject(),
+            parent = parent,
+            criteria = mapOf(
+                id.path to Criterion(
+                    name = id.path,
+                    trigger = ResourceLocation.parse("minecraft:tick"),
+                    conditions = null,
+                ),
+            ),
+            requirements = listOf(listOf(id.path)),
+            rewards = AdvancementReward(),
+        )
+
+    private fun SandboxPlayer.criterionDone(id: ResourceLocation): Boolean =
+        advancementProgress[id]?.criteria?.get(id.path) == true
+
+    private fun OutputEvent.advancementIds(): List<String> =
+        payload?.asJsonObject
+            ?.getAsJsonArray("advancements")
+            ?.map { it.asString }
+            ?: emptyList()
 }
