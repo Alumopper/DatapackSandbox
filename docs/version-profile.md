@@ -54,6 +54,14 @@ command-root, and registry differences:
 java -jar cli/build/libs/datapack-sandbox-cli.jar version 1.20.4 26.2
 ```
 
+Add `--json` to either command form for scriptable profile metadata or diff
+reports:
+
+```bash
+java -jar cli/build/libs/datapack-sandbox-cli.jar version --json
+java -jar cli/build/libs/datapack-sandbox-cli.jar version --json 1.20.4 26.2
+```
+
 Check manifests can run a version matrix:
 
 ```json

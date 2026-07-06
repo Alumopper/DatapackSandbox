@@ -32,6 +32,7 @@ import moe.afox.dpsandbox.core.SourceLocation
 import moe.afox.dpsandbox.core.UnsupportedFeatureMode
 import moe.afox.dpsandbox.core.VersionProfileDiffs
 import moe.afox.dpsandbox.core.VersionProfileDocs
+import moe.afox.dpsandbox.core.VersionProfileJson
 import moe.afox.dpsandbox.core.VersionProfiles
 import moe.afox.dpsandbox.core.createFunctionSandbox
 import moe.afox.dpsandbox.core.createSandbox
@@ -1156,14 +1157,30 @@ class ManifestSchemaCommand : CliktCommand(name = "schema") {
 class VersionCommand : CliktCommand(name = "version") {
     private val versions by argument("version").multiple(required = false)
     private val docs by option("--docs").flag(default = false)
+    private val json by option("--json").flag(default = false)
 
     override fun run() {
         try {
+            if (docs && json) {
+                throw SandboxException(DiagnosticCode.INPUT_FORMAT, "version accepts only one output mode: --docs or --json")
+            }
             if (docs) {
                 if (versions.isNotEmpty()) {
                     throw SandboxException(DiagnosticCode.INPUT_FORMAT, "version --docs does not accept profile arguments")
                 }
                 println(VersionProfileDocs.renderMarkdownTable())
+                return
+            }
+            if (json) {
+                when (versions.size) {
+                    0 -> println(VersionProfileJson.profiles())
+                    2 -> {
+                        val from = VersionProfiles.get(versions[0])
+                        val to = VersionProfiles.get(versions[1])
+                        println(VersionProfileJson.diff(VersionProfileDiffs.diff(from, to)))
+                    }
+                    else -> throw SandboxException(DiagnosticCode.INPUT_FORMAT, "version --json accepts either no arguments or two profile ids to diff")
+                }
                 return
             }
             when (versions.size) {

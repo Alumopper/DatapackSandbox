@@ -1,5 +1,6 @@
 package moe.afox.dpsandbox.cli
 
+import com.google.gson.JsonParser
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.PrintStream
@@ -1030,6 +1031,34 @@ class RunCommandTest {
         assertTrue("| Profile | Java | Data version | Data pack format | NBT schema | Resource directories |" in output, output)
         assertTrue("| `1.20.4` | 17 | 3700 | 26 | `1.20.4:1.20.4` | `functions`, `loot_tables`, `predicates`, `advancements` |" in output, output)
         assertTrue("| `26.2` | 25 | 4903 | 107.1 | `26.2:26.2` |" in output, output)
+    }
+
+    @Test
+    fun `version renders profile list json`() {
+        val output = captureStdout {
+            main(arrayOf("version", "--json"))
+        }
+        val json = JsonParser.parseString(output).asJsonObject
+        val latest = json.getAsJsonArray("profiles").last().asJsonObject
+
+        assertEquals("26.2", json.get("default").asString)
+        assertEquals("26.2", latest.get("id").asString)
+        assertEquals("26.2:26.2", latest.get("nbtSchema").asString)
+        assertTrue(latest.getAsJsonArray("commandRoots").map { it.asString }.contains("transfer"))
+    }
+
+    @Test
+    fun `version renders profile diff json`() {
+        val output = captureStdout {
+            main(arrayOf("version", "--json", "1.20.4", "26.2"))
+        }
+        val json = JsonParser.parseString(output).asJsonObject
+
+        assertEquals("1.20.4", json.get("from").asString)
+        assertEquals("26.2", json.get("to").asString)
+        assertEquals("1.20.4:1.20.4", json.getAsJsonObject("nbtSchema").get("from").asString)
+        assertEquals("26.2:26.2", json.getAsJsonObject("nbtSchema").get("to").asString)
+        assertTrue(json.getAsJsonObject("commandRoots").getAsJsonArray("added").map { it.asString }.contains("transfer"))
     }
 
     private fun captureStdout(stdin: String? = null, block: () -> Unit): String {
