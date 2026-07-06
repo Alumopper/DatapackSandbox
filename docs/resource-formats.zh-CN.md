@@ -116,7 +116,7 @@ data/<namespace>/advancements/**/*.json
 
 ## Raw JSON Resource 与 Tags
 
-Recipe、item modifier 以及更多注册表资源会作为 raw JSON resource 加载并进入资源索引。当前沙盒还不执行完整合成系统、全部 item modifier 函数或 worldgen 语义，但这些资源可以被版本 profile 校验目录布局、被 pack overlay 覆盖，并可通过 API 或 REPL inspect 调试。`item modify entity` 会建模 `set_components`、`set_custom_data`、`set_count`、`limit_count`、`set_item`、`discard`、`set_damage`、`set_name`、`set_lore`、`filtered`、`reference`、`sequence` 等常用 item modifier 函数。实体物品命令支持玩家背包/`enderchest.*` 槽和非玩家实体装备槽，例如 `weapon.mainhand`、`weapon.offhand` 与 `armor.*`；装备同时暴露在 snapshot 以及 `HandItems`/`ArmorItems` 实体 NBT 中，entity predicate 也可以匹配 `mainhand`、`offhand`、`head`、`chest`、`legs`、`feet` 等 `equipment` 字段、带 amplifier/duration/粒子可见性的 active `effects` 字段，item predicate 可直接按 id 和等级范围匹配 `enchantments` 或 `stored_enchantments`，且 `nbt` 条件会按完整生成后的实体 NBT 视图检查：
+Recipe、item modifier 以及更多注册表资源会作为 raw JSON resource 加载并进入资源索引。当前沙盒还不执行完整合成系统、全部 item modifier 函数或 worldgen 语义，但这些资源可以被版本 profile 校验目录布局、被 pack overlay 覆盖，并可通过 API 或 REPL inspect 调试。`item modify entity` 会建模 `set_components`、`set_custom_data`、`set_count`、`limit_count`、`set_item`、`discard`、`set_damage`、`set_name`、`set_lore`、`filtered`、`reference`、`sequence` 等常用 item modifier 函数。实体物品命令支持玩家背包、当前主手、`enderchest.*` 槽和非玩家实体装备槽，例如 `weapon.mainhand`、`weapon.offhand` 与 `armor.*`；装备同时暴露在 snapshot 以及 `HandItems`/`ArmorItems` 实体 NBT 中，entity predicate 也可以匹配 `mainhand`、`offhand`、`head`、`chest`、`legs`、`feet` 等 `equipment` 字段、带 amplifier/duration/粒子可见性的 active `effects` 字段，item predicate 可直接按 id 和等级范围匹配 `enchantments` 或 `stored_enchantments`，且 `nbt` 条件会按完整生成后的实体 NBT 视图检查：
 
 ```text
 data/<namespace>/recipe/**/*.json

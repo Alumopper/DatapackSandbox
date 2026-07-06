@@ -255,6 +255,27 @@ class CommandExpansionTest {
     }
 
     @Test
+    fun `player mainhand item slots follow selected slot`() {
+        val pack = writeLootSourcePack(Files.createTempDirectory("dps-selected-slot-loot-source-pack"))
+        val sandbox = createSandbox("26.2", listOf(pack))
+        val player = sandbox.world.requirePlayer("Steve")
+        player.selectedSlot = 4
+
+        sandbox.executeCommand("item replace entity Steve weapon.mainhand with minecraft:carrot 2")
+        sandbox.executeCommand("item replace entity Steve hotbar.0 from entity Steve weapon.mainhand")
+        sandbox.executeCommand("loot replace entity Steve hotbar.selected loot demo:fish")
+
+        assertEquals(ResourceLocation.parse("minecraft:carrot"), player.inventory[0].id)
+        assertEquals(2, player.inventory[0].count)
+        assertEquals(ResourceLocation.parse("minecraft:diamond"), player.inventory[4].id)
+
+        val inventoryNbt = player.fullNbt(sandbox.profile)
+            .getAsJsonArray("Inventory")
+        val selectedItemNbt = inventoryNbt.single { it.asJsonObject.get("Slot").asInt == 4 }.asJsonObject
+        assertEquals("minecraft:diamond", selectedItemNbt.get("id").asString)
+    }
+
+    @Test
     fun `item commands support non-player entity equipment slots`() {
         val pack = writeItemModifierPack(Files.createTempDirectory("dps-entity-equipment-pack"))
         writeEquipmentPredicateEntries(pack)

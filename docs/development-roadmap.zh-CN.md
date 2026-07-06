@@ -57,9 +57,9 @@
   - 所有写入都经过 NBT schema 或 sandbox state 规则校验。
 - 扩展 `loot`：
   - 补齐 source：`mine`、`kill`、`fish`、`entity`、`block`、`equipment` 等适合测试的确定性模型；命令 source 已覆盖 `fish`、`mine`、`kill`、`entity <table> <target>`、`block <table> <pos> [tool]`、`equipment <table> <target> <slot>`。
-  - 输出既能进入玩家/方块/实体，也能作为独立生成结果供 CLI 和 manifest 断言；`loot replace entity` 已可写入玩家背包/`enderchest.*` 槽和非玩家实体装备槽。
+  - 输出既能进入玩家/方块/实体，也能作为独立生成结果供 CLI 和 manifest 断言；`loot replace entity` 已可写入玩家背包、当前主手、`enderchest.*` 槽和非玩家实体装备槽。
 - 扩展 `item` 和 item modifier：
-  - 支持 entity/block slot 读写、modifier 应用、components/NBT 兼容差异；entity item 槽位已覆盖玩家背包/`enderchest.*` 和非玩家实体装备。
+  - 支持 entity/block slot 读写、modifier 应用、components/NBT 兼容差异；entity item 槽位已覆盖玩家背包、当前主手、`enderchest.*` 和非玩家实体装备。
 - 扩展 `recipe`、`advancement`、`attribute`、`damage`、`effect`、`enchant`、`random`、`team`、`bossbar`、`worldborder` 的子命令覆盖。
   - `enchant` 已覆盖玩家选中物品和非玩家实体主手装备的附魔组件写入。
 - 为不适合完整模拟的命令保留结构化 no-op 或 unsupported warning，例如 `debug`、`jfr`、`publish`、`stop`、网络和权限相关命令。
@@ -84,7 +84,7 @@
   - 不执行 AI tick，但保留数据包可读写字段和明确的 no-AI 语义说明。
 - 完善玩家模型：
   - inventory、selected slot、ender items、recipes、stats、xp、health、food、gamemode、spawn、advancement progress、last input。
-  - 玩家 NBT 默认只读；可通过命令、fixture 或事件改变玩家状态；新建玩家会使用当前 `defaultGameMode`；world fixture、manifest world 和 quick-test world builder 可声明玩家末影箱物品和 advancement progress，`item`/`loot replace entity` 可读写 `enderchest.*` 槽，并通过 snapshot、完整 NBT path、`assertPlayer`/manifest player assertion、`assertItem`/manifest item assertion 和 advancement assertion 检查。
+  - 玩家 NBT 默认只读；可通过命令、fixture 或事件改变玩家状态；新建玩家会使用当前 `defaultGameMode`；world fixture、manifest world 和 quick-test world builder 可声明玩家末影箱物品和 advancement progress，`item`/`loot replace entity` 可按 `selectedSlot` 读写当前主手并可读写 `enderchest.*` 槽，通过 snapshot、完整 NBT path、`assertPlayer`/manifest player assertion、`assertItem`/manifest item assertion 和 advancement assertion 检查。
 - 完善 item stack：
   - 兼容旧版 NBT 和新版 components。
   - 提供 matcher，支持 id、count、components path、NBT path、slot、enchantment、custom data；item predicate 已支持 `enchantments`/`stored_enchantments` 直接匹配。

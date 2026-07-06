@@ -2148,14 +2148,20 @@ class DatapackSandbox(
             PlayerItemContainer.ENDER_ITEMS -> player.enderItems
         }
 
-    private fun playerItemSlot(rawSlot: String): PlayerItemSlot =
+    private fun playerItemSlot(player: SandboxPlayer, rawSlot: String): PlayerItemSlot =
         if (isEnderItemSlot(rawSlot)) {
             PlayerItemSlot(
                 PlayerItemContainer.ENDER_ITEMS,
                 rawSlot.substringAfter('.').toIntOrNull()?.coerceAtLeast(0) ?: 0,
             )
         } else {
-            PlayerItemSlot(PlayerItemContainer.INVENTORY, inventorySlot(rawSlot))
+            PlayerItemSlot(PlayerItemContainer.INVENTORY, playerInventorySlot(player, rawSlot))
+        }
+
+    private fun playerInventorySlot(player: SandboxPlayer, rawSlot: String): Int =
+        when (rawSlot) {
+            "weapon.mainhand", "hotbar.selected" -> player.selectedSlot.coerceIn(0, 8)
+            else -> inventorySlot(rawSlot)
         }
 
     private fun isEnderItemSlot(rawSlot: String): Boolean =
@@ -2173,7 +2179,7 @@ class DatapackSandbox(
 
     private fun entityItemAccess(entity: SandboxEntity, rawSlot: String, location: SourceLocation?): EntityItemAccess {
         if (entity is SandboxPlayer) {
-            val slot = playerItemSlot(rawSlot)
+            val slot = playerItemSlot(entity, rawSlot)
             return EntityItemAccess(
                 get = { playerItem(entity, slot) },
                 set = { item -> replacePlayerItem(entity, slot, item) },
