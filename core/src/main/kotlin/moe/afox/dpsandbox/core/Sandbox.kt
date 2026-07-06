@@ -2090,13 +2090,15 @@ class DatapackSandbox(
         when {
             tokens.size >= 4 && isCoordinateTriple(tokens, 1) -> {
                 val entity = context.entity ?: throw SandboxException(DiagnosticCode.COMMAND_ERROR, "${tokens[0].text} <location> requires an execution entity", location)
-                val rotation = parseOptionalRotation(tokens, 4, context, location)
-                moveEntities(listOf(entity), parsePosition(tokens, 1, entity.position, location, context.yaw, context.pitch), rotation)
+                val position = parsePosition(tokens, 1, entity.position, location, context.yaw, context.pitch)
+                val rotation = parseOptionalTeleportRotation(tokens, 4, position, context, location)
+                moveEntities(listOf(entity), position, rotation)
             }
             tokens.size >= 5 && isCoordinateTriple(tokens, 2) -> {
                 val targets = EntitySelectors.select(world, tokens[1].text, context, location)
-                val rotation = parseOptionalRotation(tokens, 5, context, location)
-                moveEntities(targets, parsePosition(tokens, 2, context.position, location, context.yaw, context.pitch), rotation)
+                val position = parsePosition(tokens, 2, context.position, location, context.yaw, context.pitch)
+                val rotation = parseOptionalTeleportRotation(tokens, 5, position, context, location)
+                moveEntities(targets, position, rotation)
             }
             tokens.size >= 3 -> {
                 val targets = EntitySelectors.select(world, tokens[1].text, context, location)
@@ -2722,6 +2724,33 @@ class DatapackSandbox(
         )
     }
 
+    private fun parseOptionalTeleportRotation(
+        tokens: List<CommandToken>,
+        index: Int,
+        source: Position,
+        context: ExecutionContext,
+        location: SourceLocation?,
+    ): Rotation? {
+        if (tokens.size <= index) return null
+        if (tokens[index].text != "facing") {
+            return parseOptionalRotation(tokens, index, context, location)
+        }
+        val target = when (tokens.getOrNull(index + 1)?.text) {
+            "entity" -> {
+                requireIndex(tokens, index + 2, "${tokens[0].text} ... facing entity <target> [eyes|feet]", location)
+                val targetEntity = EntitySelectors.select(world, tokens[index + 2].text, context, location).firstOrNull()
+                    ?: throw SandboxException(DiagnosticCode.COMMAND_ERROR, "Teleport facing target '${tokens[index + 2].text}' did not match an entity", location)
+                facingPosition(targetEntity, tokens.getOrNull(index + 3)?.text ?: "feet", location)
+            }
+            null -> throw SandboxException(DiagnosticCode.INPUT_FORMAT, "${tokens[0].text} facing requires a position or entity", location)
+            else -> {
+                requireSizeFrom(tokens, index, 4, "${tokens[0].text} ... facing <x> <y> <z>", location)
+                parsePosition(tokens, index + 1, context.position, location, context.yaw, context.pitch)
+            }
+        }
+        return rotationFacing(source, target, Rotation(context.yaw, context.pitch))
+    }
+
     private fun parseRotation(raw: String, base: Double, label: String, location: SourceLocation?): Double =
         when {
             raw == "~" -> base
@@ -2732,12 +2761,17 @@ class DatapackSandbox(
         }
 
     private fun ExecutionContext.facing(target: Position): ExecutionContext {
-        val dx = target.x - position.x
-        val dy = target.y - position.y
-        val dz = target.z - position.z
+        val rotation = rotationFacing(position, target, Rotation(yaw, pitch))
+        return copy(yaw = rotation.yaw, pitch = rotation.pitch)
+    }
+
+    private fun rotationFacing(source: Position, target: Position, fallback: Rotation): Rotation {
+        val dx = target.x - source.x
+        val dy = target.y - source.y
+        val dz = target.z - source.z
         val horizontal = sqrt(dx * dx + dz * dz)
-        if (horizontal == 0.0 && dy == 0.0) return this
-        return copy(
+        if (horizontal == 0.0 && dy == 0.0) return fallback
+        return Rotation(
             yaw = Math.toDegrees(atan2(-dx, dz)),
             pitch = Math.toDegrees(atan2(-dy, horizontal)),
         )

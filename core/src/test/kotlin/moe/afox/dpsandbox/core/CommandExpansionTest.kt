@@ -273,6 +273,32 @@ class CommandExpansionTest {
     }
 
     @Test
+    fun `teleport facing rotates moved entities toward positions and anchors`() {
+        val sandbox = createFunctionSandboxFromString(
+            version = "26.2",
+            functionText = "",
+            functionId = "demo:empty",
+        )
+
+        sandbox.executeCommand("""summon minecraft:pig 3 0 0 {Tags:["traveler"]}""")
+        sandbox.executeCommand("""summon minecraft:marker 0 0 1 {Tags:["look_at"]}""")
+
+        val traveler = sandbox.world.entities.single { "traveler" in it.tags }
+        sandbox.executeCommand("""tp @e[tag=traveler,limit=1] 0 0 0 facing 1 0 0""")
+        assertEquals(Position(0.0, 0.0, 0.0), traveler.position)
+        assertEquals(-90.0, traveler.yaw, 0.0001)
+        assertEquals(0.0, traveler.pitch, 0.0001)
+
+        sandbox.executeCommand("""tp @e[tag=traveler,limit=1] 0 0 0 facing entity @e[tag=look_at,limit=1] eyes""")
+        assertEquals(0.0, traveler.yaw, 0.0001)
+        assertEquals(-45.0, traveler.pitch, 0.0001)
+
+        sandbox.executeCommand("""execute positioned 0 0 0 rotated -90 0 run tp @e[tag=traveler,limit=1] 0 0 0 facing ^ ^ ^1""")
+        assertEquals(-90.0, traveler.yaw, 0.0001)
+        assertEquals(0.0, traveler.pitch, 0.0001)
+    }
+
+    @Test
     fun `execute blocks condition compares sparse block regions`() {
         val sandbox = createSandbox("26.1.2", listOf(fixturePack()))
 
