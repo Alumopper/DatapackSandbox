@@ -1026,15 +1026,22 @@ object ManifestRunner {
         }
         snapshotDiff.get("count")?.let { expected ->
             if (matches.size != expected.asInt) {
-                return listOf("snapshotDiff ${describeSnapshotDiffExpectation(snapshotDiff)} expected count ${expected.asInt} but was ${matches.size}")
+                return listOf("snapshotDiff ${describeSnapshotDiffExpectation(snapshotDiff)} expected count ${expected.asInt} but was ${matches.size}; ${actualSnapshotDiffs(entries)}")
             }
             return emptyList()
         }
         return if (matches.isEmpty()) {
-            listOf("snapshotDiff ${describeSnapshotDiffExpectation(snapshotDiff)} did not match any snapshot change")
+            listOf("snapshotDiff ${describeSnapshotDiffExpectation(snapshotDiff)} did not match any snapshot change; ${actualSnapshotDiffs(entries)}")
         } else {
             emptyList()
         }
+    }
+
+    private fun actualSnapshotDiffs(entries: List<SnapshotDiffEntry>): String {
+        if (entries.isEmpty()) return "actual snapshot diffs: <none>"
+        val rendered = entries.take(5).joinToString("; ") { it.render().truncateForManifestFailure() }
+        val suffix = if (entries.size > 5) "; ... +${entries.size - 5} more" else ""
+        return "actual snapshot diffs: $rendered$suffix"
     }
 
     private fun describeSnapshotDiffExpectation(snapshotDiff: JsonObject): String =
@@ -1101,6 +1108,11 @@ object ManifestRunner {
             diagnostic.manifestString("message")?.let { "message=$it" },
             diagnostic.manifestString("contains")?.let { "contains=$it" },
         ).ifEmpty { listOf("<any diagnostic>") }.joinToString(", ")
+
+    private fun String.truncateForManifestFailure(): String =
+        replace("\r", "\\r")
+            .replace("\n", "\\n")
+            .let { if (it.length <= 160) it else it.take(157) + "..." }
 
     private fun evaluateWorldAssertion(world: JsonObject, sandbox: DatapackSandbox): List<String> {
         val failures = mutableListOf<String>()

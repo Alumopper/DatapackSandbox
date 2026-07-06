@@ -1202,6 +1202,38 @@ class ManifestRunnerTest {
     }
 
     @Test
+    fun `snapshot diff assertion failures include actual diff candidates`() {
+        val dir = Files.createTempDirectory("dps-snapshot-diff-failure-manifest")
+        val pack = Path.of("../core/src/test/resources/packs/counter").toAbsolutePath().normalize().toString().replace("\\", "\\\\")
+        val manifest = dir.resolve("snapshot-diff-failure.dps.json")
+        Files.writeString(
+            manifest,
+            """
+            {
+              "version": "26.1.2",
+              "packs": ["$pack"],
+              "steps": [
+                { "command": "scoreboard objectives add runs dummy" },
+                { "command": "scoreboard players set #diff runs 3" }
+              ],
+              "assertions": [
+                { "snapshotDiff": { "path": "/storage/demo:missing", "kind": "added" } }
+              ]
+            }
+            """.trimIndent(),
+        )
+
+        val result = ManifestRunner.run(manifest)
+        val messages = result.messages.joinToString("\n")
+
+        assertFalse(result.passed)
+        assertTrue("assertion 1 (/assertions/0/snapshotDiff):" in messages, messages)
+        assertTrue("actual snapshot diffs:" in messages, messages)
+        assertTrue("+ /scores/runs =" in messages, messages)
+        assertTrue("\"#diff\": 3" in messages, messages)
+    }
+
+    @Test
     fun `runs score min max assertions`() {
         val dir = Files.createTempDirectory("dps-score-range-manifest")
         val pack = Path.of("../core/src/test/resources/packs/counter").toAbsolutePath().normalize().toString().replace("\\", "\\\\")

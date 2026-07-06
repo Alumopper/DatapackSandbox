@@ -245,7 +245,8 @@ substring, and count; misses include actual player event trace candidates. `diag
 assertions check expected step failures by step, version, code, command, root,
 message substring, and count. `snapshotDiff` assertions compare the manifest
 state before and after steps by JSON Pointer path, diff kind, before/after
-values, rendered text substring, and count.
+values, rendered text substring, and count; misses include actual snapshot diff
+candidates.
 
 ## Raw JSON Resources and Tags
 
