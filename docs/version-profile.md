@@ -46,7 +46,11 @@ Generate the profile table used by this document:
 ```bash
 java -jar cli/build/libs/datapack-sandbox-cli.jar version --docs
 java -jar cli/build/libs/datapack-sandbox-cli.jar version --docs --output docs/version-profile-table.md
+java -jar cli/build/libs/datapack-sandbox-cli.jar version --docs --check docs/version-profile.md
 ```
+
+Use `--check` in CI to fail when the generated English Markdown table no
+longer appears in the checked-in document.
 
 Compare two profiles to inspect pack format, NBT schema, resource directory,
 command-root, and registry differences:

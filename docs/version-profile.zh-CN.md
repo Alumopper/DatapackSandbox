@@ -53,7 +53,10 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar version
 ```bash
 java -jar cli/build/libs/datapack-sandbox-cli.jar version --docs
 java -jar cli/build/libs/datapack-sandbox-cli.jar version --docs --output docs/version-profile-table.md
+java -jar cli/build/libs/datapack-sandbox-cli.jar version --docs --check docs/version-profile.md
 ```
+
+`--check` 可用于 CI：如果生成的英文 Markdown 表格不再出现在已提交文档中，命令会失败。
 
 比较两个 profile，查看 pack format、NBT schema、资源目录、命令根和 registry 差异：
 

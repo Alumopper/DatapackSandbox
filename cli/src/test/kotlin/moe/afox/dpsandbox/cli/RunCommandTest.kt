@@ -1,6 +1,7 @@
 package moe.afox.dpsandbox.cli
 
 import com.google.gson.JsonParser
+import moe.afox.dpsandbox.core.VersionProfileDocs
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.PrintStream
@@ -1085,6 +1086,36 @@ class RunCommandTest {
         assertTrue("version output written: $reportFile" in output, output)
         assertTrue("| Profile | Java | Data version | Data pack format | NBT schema | Resource directories |" in report, report)
         assertTrue("| `26.2` | 25 | 4903 | 107.1 | `26.2:26.2` |" in report, report)
+    }
+
+    @Test
+    fun `version checks markdown docs table in file`() {
+        val docsFile = Files.createTempFile("dps-version-docs-check", ".md")
+        Files.writeString(
+            docsFile,
+            """
+            # Generated docs
+
+            ${VersionProfileDocs.renderMarkdownTable()}
+            """.trimIndent(),
+        )
+
+        val output = captureStdout {
+            main(arrayOf("version", "--docs", "--check", docsFile.toString()))
+        }
+
+        assertTrue("version docs up to date: $docsFile" in output, output)
+    }
+
+    @Test
+    fun `version docs check fails when table is stale`() {
+        val docsFile = Files.createTempFile("dps-version-docs-stale", ".md")
+        Files.writeString(docsFile, "# stale docs${System.lineSeparator()}")
+
+        val result = runCliProcess("version", "--docs", "--check", docsFile.toString())
+
+        assertEquals(ExitCodes.INPUT_FORMAT, result.exitCode, result.output)
+        assertTrue("version docs are out of date: $docsFile" in result.output, result.output)
     }
 
     @Test

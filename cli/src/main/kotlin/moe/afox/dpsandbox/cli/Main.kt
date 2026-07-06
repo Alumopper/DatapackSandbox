@@ -1193,17 +1193,30 @@ class VersionCommand : CliktCommand(name = "version") {
     private val docs by option("--docs").flag(default = false)
     private val json by option("--json").flag(default = false)
     private val output by option("--output", "-o").path()
+    private val docsCheck by option("--check").path()
 
     override fun run() {
         try {
             if (docs && json) {
                 throw SandboxException(DiagnosticCode.INPUT_FORMAT, "version accepts only one output mode: --docs or --json")
             }
+            if (docsCheck != null && output != null) {
+                throw SandboxException(DiagnosticCode.INPUT_FORMAT, "version accepts only one file mode: --output or --check")
+            }
+            if (docsCheck != null && !docs) {
+                throw SandboxException(DiagnosticCode.INPUT_FORMAT, "version --check is only supported with --docs")
+            }
             if (docs) {
                 if (versions.isNotEmpty()) {
                     throw SandboxException(DiagnosticCode.INPUT_FORMAT, "version --docs does not accept profile arguments")
                 }
-                emit(VersionProfileDocs.renderMarkdownTable())
+                val table = VersionProfileDocs.renderMarkdownTable()
+                val checkPath = docsCheck
+                if (checkPath == null) {
+                    emit(table)
+                } else {
+                    checkDocsTable(checkPath, table)
+                }
                 return
             }
             if (json) {
@@ -1250,6 +1263,24 @@ class VersionCommand : CliktCommand(name = "version") {
             println(ConsoleStyle.green("version output written: $outputPath"))
         }
     }
+
+    private fun checkDocsTable(path: Path, table: String) {
+        if (!Files.exists(path)) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "version docs check file does not exist: $path")
+        }
+        val actual = normalizeNewlines(Files.readString(path, StandardCharsets.UTF_8))
+        val expected = normalizeNewlines(table)
+        if (!actual.contains(expected)) {
+            throw SandboxException(
+                DiagnosticCode.INPUT_FORMAT,
+                "version docs are out of date: $path; regenerate with version --docs --output <file>",
+            )
+        }
+        println(ConsoleStyle.green("version docs up to date: $path"))
+    }
+
+    private fun normalizeNewlines(value: String): String =
+        value.replace("\r\n", "\n").replace('\r', '\n')
 }
 
 fun unsupportedFeatureMode(value: String): UnsupportedFeatureMode =
