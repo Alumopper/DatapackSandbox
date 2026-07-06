@@ -68,7 +68,7 @@
 | `schedule` | 部分支持 | `schedule function <id> <time> [append|replace]`、`schedule clear <id>`；记录结构化调度和清除输出。 |
 | `scoreboard` | 部分支持 | objectives 支持 `add`、`remove`、`list`；players 支持 `set`、`add`、`remove`、`get`、`reset`、`list`、`enable`、`operation`；`players get` 会记录结构化 data 输出，供断言和 `execute store result` 使用。 |
 | `seed` | 支持 | 报告确定性的沙盒 seed。 |
-| `setblock` | 部分支持 | 修改稀疏世界方块状态和方块实体 NBT；位置参数支持局部坐标；不执行邻居更新。 |
+| `setblock` | 部分支持 | 修改稀疏世界方块状态和方块实体 NBT，并记录结构化前后方块输出；位置参数支持局部坐标；不执行邻居更新。 |
 | `setidletimeout` | 未支持 | 服务器管理命令。 |
 | `setworldspawn` | 部分支持 | 存储世界出生点和角度。 |
 | `spawnpoint` | 部分支持 | 存储玩家出生点和角度。 |

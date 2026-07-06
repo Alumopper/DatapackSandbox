@@ -531,6 +531,24 @@ class SandboxBehaviorTest {
         assertEquals(2, chest.nbt.getAsJsonArray("Items").size())
         assertEquals(3, JsonPaths.get(chest.fullNbt(BlockPos(0, 64, 0), sandbox.profile), """Items[{id:"minecraft:stone"}].count""")?.asInt)
         assertEquals(ResourceLocation.parse("minecraft:stone"), sandbox.world.requireBlock(BlockPos(1, 64, 0)).id)
+        val setblockOutputs = sandbox.world.outputs.filter { it.command == "setblock" }
+        assertEquals(2, setblockOutputs.size)
+        val chestPayload = setblockOutputs[0].payload?.asJsonObject ?: error("missing setblock payload")
+        val chestAfter = chestPayload.getAsJsonObject("after")
+        val chestPos = chestPayload.getAsJsonObject("pos")
+        assertEquals("1", setblockOutputs[0].text)
+        assertEquals(listOf("0 64 0"), setblockOutputs[0].targets)
+        assertEquals(true, chestPayload.get("changed").asBoolean)
+        assertEquals("replace", chestPayload.get("mode").asString)
+        assertEquals(0, chestPos.get("x").asInt)
+        assertEquals(64, chestPos.get("y").asInt)
+        assertEquals(0, chestPos.get("z").asInt)
+        assertEquals("minecraft:chest", chestAfter.get("id").asString)
+        assertEquals("north", chestAfter.getAsJsonObject("properties").get("facing").asString)
+        assertTrue(chestAfter.getAsJsonObject("nbt").has("Items"))
+        val stonePayload = setblockOutputs[1].payload?.asJsonObject ?: error("missing conditional setblock payload")
+        assertEquals(listOf("1 64 0"), setblockOutputs[1].targets)
+        assertEquals("minecraft:stone", stonePayload.getAsJsonObject("after").get("id").asString)
     }
 
     @Test

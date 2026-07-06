@@ -3023,12 +3023,39 @@ class DatapackSandbox(
         requireSize(tokens, 5, "setblock <pos> <block> [destroy|keep|replace]", location)
         val pos = parseBlockPos(tokens, 1, context, location)
         val block = parseBlockArgument(tokens[4].text, location)
+        val before = world.block(pos)?.copyForClone()
         when (val mode = tokens.getOrNull(5)?.text ?: "replace") {
             "replace", "destroy", "strict" -> world.setBlock(pos, block.toBlock(pos, profile, location))
             "keep" -> if (world.block(pos) == null) world.setBlock(pos, block.toBlock(pos, profile, location))
             else -> unsupportedFeature("Unsupported setblock mode '$mode'", profile.id, location)
         }
+        val after = world.block(pos)?.copyForClone()
+        recordSetBlockOutput(pos, tokens.getOrNull(5)?.text ?: "replace", before, after)
     }
+
+    private fun recordSetBlockOutput(pos: BlockPos, mode: String, before: SandboxBlock?, after: SandboxBlock?) {
+        val changed = !sameBlock(before, after)
+        world.recordOutput(
+            "setblock",
+            "data",
+            targets = if (changed) listOf(pos.toString()) else emptyList(),
+            text = if (changed) "1" else "0",
+            payload = JsonObject().also { payload ->
+                payload.addProperty("changed", changed)
+                payload.addProperty("mode", mode)
+                payload.add("pos", blockPosOutput(pos))
+                before?.let { payload.add("before", it.toJson(pos)) }
+                after?.let { payload.add("after", it.toJson(pos)) }
+            },
+        )
+    }
+
+    private fun blockPosOutput(pos: BlockPos): JsonObject =
+        JsonObject().also { json ->
+            json.addProperty("x", pos.x)
+            json.addProperty("y", pos.y)
+            json.addProperty("z", pos.z)
+        }
 
     private fun executeClone(tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext) {
         requireSize(tokens, 10, "clone <begin> <end> <destination> [replace|masked|filtered] [force|move|normal]", location)
