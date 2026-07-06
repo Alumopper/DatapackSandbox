@@ -23,7 +23,12 @@ import kotlin.io.path.relativeTo
 object DatapackLoader {
     private data class FunctionTagDefinition(
         val replace: Boolean,
-        val values: List<ResourceLocation>,
+        val values: List<FunctionTagEntry>,
+    )
+
+    private data class FunctionTagEntry(
+        val id: ResourceLocation,
+        val required: Boolean,
     )
 
     private data class RawJsonResourceSpec(
@@ -91,8 +96,8 @@ object DatapackLoader {
         }
 
         val functions = linkedMapOf<ResourceLocation, DatapackFunction>()
-        val loadFunctions = mutableListOf<ResourceLocation>()
-        val tickFunctions = mutableListOf<ResourceLocation>()
+        val loadFunctionEntries = mutableListOf<FunctionTagEntry>()
+        val tickFunctionEntries = mutableListOf<FunctionTagEntry>()
         val lootTables = linkedMapOf<ResourceLocation, LootTable>()
         val predicates = linkedMapOf<ResourceLocation, PredicateDefinition>()
         val advancements = linkedMapOf<ResourceLocation, AdvancementDefinition>()
@@ -114,8 +119,8 @@ object DatapackLoader {
                 val packFunctions = readFunctions(root, profile)
                 resourceIndex.recordAll("function", packFunctions, packLabel)
                 functions.putAll(packFunctions)
-                mergeFunctionTags(loadFunctions, readFunctionTag(root, profile, "load"))
-                mergeFunctionTags(tickFunctions, readFunctionTag(root, profile, "tick"))
+                mergeFunctionTags(loadFunctionEntries, readFunctionTag(root, profile, "load"))
+                mergeFunctionTags(tickFunctionEntries, readFunctionTag(root, profile, "tick"))
 
                 val packLootTables = readLootTables(root, profile)
                 resourceIndex.recordAll("loot_table", packLootTables, packLabel)
@@ -160,8 +165,8 @@ object DatapackLoader {
 
         return Datapack(
             functions = functions.toSortedMap(),
-            loadFunctions = loadFunctions,
-            tickFunctions = tickFunctions,
+            loadFunctions = effectiveFunctionTagFunctions(loadFunctionEntries, functions),
+            tickFunctions = effectiveFunctionTagFunctions(tickFunctionEntries, functions),
             lootTables = lootTables.toSortedMap(),
             predicates = predicates.toSortedMap(),
             advancements = advancements.toSortedMap(),
@@ -499,19 +504,25 @@ object DatapackLoader {
             }
             FunctionTagDefinition(
                 replace = json.get("replace")?.takeIf { it.isJsonPrimitive }?.asBoolean ?: false,
-                values = readTagValues(json, tagPath),
+                values = readFunctionTagValues(json, tagPath),
             )
         }
     }
 
-    private fun mergeFunctionTags(target: MutableList<ResourceLocation>, definitions: List<FunctionTagDefinition>) {
+    private fun mergeFunctionTags(target: MutableList<FunctionTagEntry>, definitions: List<FunctionTagDefinition>) {
         definitions.forEach { definition ->
             if (definition.replace) target.clear()
             target += definition.values
         }
     }
 
-    private fun readTagValues(json: JsonObject, tagPath: Path): List<ResourceLocation> {
+    private fun effectiveFunctionTagFunctions(
+        entries: List<FunctionTagEntry>,
+        functions: Map<ResourceLocation, DatapackFunction>,
+    ): List<ResourceLocation> =
+        entries.filter { it.required || it.id in functions }.map { it.id }
+
+    private fun readFunctionTagValues(json: JsonObject, tagPath: Path): List<FunctionTagEntry> {
         val values = json.get("values")
         if (values !is JsonArray) {
             throw SandboxException(
@@ -522,16 +533,25 @@ object DatapackLoader {
         }
 
         return values.map { entry ->
-            val id = when {
-                entry.isJsonPrimitive -> entry.asString
-                entry.isJsonObject && entry.asJsonObject.has("id") -> entry.asJsonObject.get("id").asString
+            val id: String
+            val required: Boolean
+            when {
+                entry.isJsonPrimitive -> {
+                    id = entry.asString
+                    required = true
+                }
+                entry.isJsonObject && entry.asJsonObject.has("id") -> {
+                    val obj = entry.asJsonObject
+                    id = obj.get("id").asString
+                    required = obj.get("required")?.takeIf { it.isJsonPrimitive }?.asBoolean ?: true
+                }
                 else -> throw SandboxException(
                     code = DiagnosticCode.INPUT_FORMAT,
                     message = "Function tag entries must be strings or objects with an 'id'",
                     location = SourceLocation(file = tagPath.toString()),
                 )
             }
-            ResourceLocation.parse(id)
+            FunctionTagEntry(ResourceLocation.parse(id), required)
         }
     }
 

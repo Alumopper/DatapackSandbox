@@ -254,7 +254,9 @@ keeps the registry directory, tag id, `replace`, and `values`; values may be
 strings or `{ "id": "...", "required": false }` objects, and tag references
 keep the leading `#`. When a later pack sets `"replace": true`, earlier values
 for the same tag are discarded; function `load`/`tick` tags use the same replace
-semantics when building runtime entrypoint lists.
+semantics when building runtime entrypoint lists. Missing function entries marked
+`"required": false` are skipped instead of becoming runtime entrypoints or
+missing-reference failures.
 
 REPL inspection:
 

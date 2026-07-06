@@ -128,6 +128,23 @@ class DatapackResourceIndexTest {
         assertEquals(listOf("<Server> second load"), sandbox.world.outputs.map { it.text })
     }
 
+    @Test
+    fun `optional missing function tag entries are skipped`() {
+        val pack = writeFunctionTagPack(
+            name = "load-optional",
+            replace = false,
+            functionName = "present_load",
+            message = "present load",
+            valuesJson = "{ \"id\": \"demo:missing_optional\", \"required\": false }, \"demo:present_load\"",
+        )
+
+        val sandbox = createSandbox("26.2", listOf(pack))
+
+        assertEquals(listOf(ResourceLocation.parse("demo:present_load")), sandbox.datapack.loadFunctions)
+        sandbox.runLoad()
+        assertEquals(listOf("<Server> present load"), sandbox.world.outputs.map { it.text })
+    }
+
     private fun writePack(
         name: String,
         packFormat: String,
@@ -197,7 +214,14 @@ class DatapackResourceIndexTest {
         return root
     }
 
-    private fun writeFunctionTagPack(name: String, replace: Boolean, functionName: String, message: String): Path {
+    private fun writeFunctionTagPack(
+        name: String,
+        replace: Boolean,
+        functionName: String,
+        message: String,
+        valuesJson: String? = null,
+    ): Path {
+        val tagValuesJson = valuesJson ?: "\"demo:$functionName\""
         val root = Files.createTempDirectory("dps-$name-pack")
         Files.writeString(
             root.resolve("pack.mcmeta"),
@@ -220,7 +244,7 @@ class DatapackResourceIndexTest {
             """
             {
               "replace": $replace,
-              "values": ["demo:$functionName"]
+              "values": [$tagValuesJson]
             }
             """.trimIndent(),
         )
