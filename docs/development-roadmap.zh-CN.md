@@ -53,7 +53,7 @@
   - 补齐 `store` 的 result/success 到 score、storage、entity、block、bossbar 的边界行为。
   - `execute store success/result` 已按嵌套命令真实 success/result 写入；NBT 目标会按 byte/short/int/long/float/double 类型和 scale 转换数值，整数类型使用窄化转换语义；嵌套 `execute if/unless` 条件失败会写入 0，`function` 中 `return fail` 会作为失败传递给 `store success`。
   - 提升 `as/at/positioned/rotated/facing/anchored/in/align` 的上下文准确性。
-  - 常用 selector 选项 `name`、`gamemode`、`team`、`nbt`、`scores`、`level`、`x_rotation/y_rotation`、`sort`、`distance`、`x/y/z`、`dx/dy/dz` 已接入确定性过滤和排序；`scores={...}` 支持花括号内多 objective 整数范围，`nbt={...}` 使用包含式对象匹配，等级和旋转范围可用于玩家/实体状态筛选，`sort=random` 使用稳定顺序，适合命令生成器回归和范围选择调试。
+  - 常用 selector 选项 `name`、`gamemode`、`team`、`nbt`、`scores`、`advancements`、`level`、`x_rotation/y_rotation`、`sort`、`distance`、`x/y/z`、`dx/dy/dz` 已接入确定性过滤和排序；`scores={...}` 支持花括号内多 objective 整数范围，`nbt={...}` 使用包含式对象匹配，`advancements={...}` 可按玩家进度匹配整体完成或 criterion 状态，等级和旋转范围可用于玩家/实体状态筛选，`sort=random` 使用稳定顺序，适合命令生成器回归和范围选择调试。
 - 扩展 `data`：
   - 支持更完整的 data path，包括 list/object 匹配、append/prepend/insert、set/from/string/value；list 操作会拒绝已存在的非列表目标，避免生成器输出调试时把错误 path 静默覆盖成新数组。
   - 所有写入都经过 NBT schema 或 sandbox state 规则校验。

@@ -772,8 +772,14 @@ class CommandExpansionTest {
             functionText = "",
             functionId = "demo:empty",
         )
-        sandbox.createPlayer("Alex").position = Position(0.0, 64.0, 0.0)
-        sandbox.createPlayer("Blair").position = Position(8.0, 64.0, 0.0)
+        val alex = sandbox.createPlayer("Alex")
+        val blair = sandbox.createPlayer("Blair")
+        alex.position = Position(0.0, 64.0, 0.0)
+        blair.position = Position(8.0, 64.0, 0.0)
+        alex.advancementProgress[ResourceLocation.parse("demo:selector_complete")] =
+            AdvancementProgress(mutableMapOf("done" to true))
+        alex.advancementProgress[ResourceLocation.parse("demo:selector_partial")] =
+            AdvancementProgress(mutableMapOf("visible" to true, "hidden" to false))
 
         sandbox.executeCommand("""summon minecraft:pig 1 64 1 {Tags:["near"],Health:7f}""")
         sandbox.executeCommand("""summon minecraft:pig 9 64 0 {Tags:["far"],Health:3f}""")
@@ -809,6 +815,10 @@ class CommandExpansionTest {
         sandbox.executeCommand("""execute if entity @e[type=minecraft:pig,nbt={Health:7f},limit=1] run scoreboard players add #nbt selector 1""")
         sandbox.executeCommand("""execute if entity @e[type=minecraft:pig,nbt=!{Health:7f},limit=1] run scoreboard players add #nbt selector 1""")
         sandbox.executeCommand("""execute unless entity @e[type=minecraft:pig,nbt={Health:9f}] run scoreboard players add #nbt selector 1""")
+        sandbox.executeCommand("""execute if entity @a[name=Alex,advancements={demo:selector_complete=true}] run scoreboard players add #adv selector 1""")
+        sandbox.executeCommand("""execute if entity @a[name=Alex,advancements={demo:selector_partial={visible=true,hidden=false}}] run scoreboard players add #adv selector 1""")
+        sandbox.executeCommand("""execute if entity @a[name=Blair,advancements={demo:selector_complete=false}] run scoreboard players add #adv selector 1""")
+        sandbox.executeCommand("""execute unless entity @a[name=Alex,advancements={demo:selector_complete=false}] run scoreboard players add #adv selector 1""")
         sandbox.executeCommand("""execute if entity @a[team=red,level=5] run scoreboard players add #teamlevel selector 1""")
         sandbox.executeCommand("""execute if entity @a[team=!red,level=..2] run scoreboard players add #teamlevel selector 1""")
         sandbox.executeCommand("""execute if entity @a[team=!,limit=2] run scoreboard players add #teamlevel selector 1""")
@@ -826,6 +836,7 @@ class CommandExpansionTest {
         assertEquals(2, sandbox.world.getScore("#name", "selector"))
         assertEquals(4, sandbox.world.getScore("#score", "selector"))
         assertEquals(3, sandbox.world.getScore("#nbt", "selector"))
+        assertEquals(4, sandbox.world.getScore("#adv", "selector"))
         assertEquals(4, sandbox.world.getScore("#teamlevel", "selector"))
         assertEquals(3, sandbox.world.getScore("#rotation", "selector"))
         assertEquals(2, sandbox.world.getScore("#sort", "selector"))
@@ -844,6 +855,11 @@ class CommandExpansionTest {
             sandbox.executeCommand("""execute if entity @e[nbt=1] run say invalid""")
         }
         assertEquals(DiagnosticCode.INPUT_FORMAT, invalidNbt.code)
+
+        val invalidAdvancement = assertFailsWith<SandboxException> {
+            sandbox.executeCommand("""execute if entity @a[advancements={demo:selector_complete=maybe}] run say invalid""")
+        }
+        assertEquals(DiagnosticCode.INPUT_FORMAT, invalidAdvancement.code)
 
         val invalidRotationRange = assertFailsWith<SandboxException> {
             sandbox.executeCommand("""execute if entity @e[x_rotation=10..-10] run say invalid""")

@@ -12,6 +12,7 @@ private data class SelectorOptions(
     val team: Pair<String, Boolean>? = null,
     val nbt: Pair<JsonObject, Boolean>? = null,
     val scores: Map<String, SelectorScoreRange> = emptyMap(),
+    val advancements: Map<ResourceLocation, SelectorAdvancementExpectation> = emptyMap(),
     val level: SelectorScoreRange? = null,
     val xRotation: ClosedFloatingPointRange<Double>? = null,
     val yRotation: ClosedFloatingPointRange<Double>? = null,
@@ -30,6 +31,11 @@ private data class SelectorScoreRange(val min: Int? = null, val max: Int? = null
     fun contains(value: Int): Boolean =
         (min == null || value >= min) && (max == null || value <= max)
 }
+
+private data class SelectorAdvancementExpectation(
+    val done: Boolean? = null,
+    val criteria: Map<String, Boolean> = emptyMap(),
+)
 
 object EntitySelectors {
     fun isSelector(value: String): Boolean = value.startsWith("@")
@@ -89,6 +95,13 @@ object EntitySelectors {
             result = result.filter { entity ->
                 options.scores.all { (objective, range) ->
                     range.contains(world.getScore(entity.scoreHolder, objective))
+                }
+            }
+        }
+        if (options.advancements.isNotEmpty()) {
+            result = result.filter { entity ->
+                entity is SandboxPlayer && options.advancements.all { (advancement, expectation) ->
+                    entity.matchesAdvancement(advancement, expectation)
                 }
             }
         }
@@ -159,6 +172,7 @@ object EntitySelectors {
         var team: Pair<String, Boolean>? = null
         var nbt: Pair<JsonObject, Boolean>? = null
         var scores: Map<String, SelectorScoreRange> = emptyMap()
+        var advancements: Map<ResourceLocation, SelectorAdvancementExpectation> = emptyMap()
         var level: SelectorScoreRange? = null
         var xRotation: ClosedFloatingPointRange<Double>? = null
         var yRotation: ClosedFloatingPointRange<Double>? = null
@@ -201,6 +215,7 @@ object EntitySelectors {
                     nbt = parseSelectorNbt(value.removePrefix("!"), location) to positive
                 }
                 "scores" -> scores = parseSelectorScores(value, location)
+                "advancements" -> advancements = parseSelectorAdvancements(value, location)
                 "level" -> level = parseSelectorIntRange(value, "level", location)
                 "x_rotation" -> xRotation = parseSignedSelectorRange(value, "x_rotation", location)
                 "y_rotation" -> yRotation = parseSignedSelectorRange(value, "y_rotation", location)
@@ -230,6 +245,7 @@ object EntitySelectors {
             team = team,
             nbt = nbt,
             scores = scores,
+            advancements = advancements,
             level = level,
             xRotation = xRotation,
             yRotation = yRotation,
@@ -319,6 +335,53 @@ object EntitySelectors {
         return parsed.asJsonObject
     }
 
+    private fun parseSelectorAdvancements(
+        value: String,
+        location: SourceLocation?,
+    ): Map<ResourceLocation, SelectorAdvancementExpectation> {
+        if (!value.startsWith("{") || !value.endsWith("}")) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Invalid selector advancements: $value", location = location)
+        }
+        val body = value.removePrefix("{").removeSuffix("}")
+        if (body.isBlank()) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Invalid selector advancements: $value", location = location)
+        }
+        return splitSelectorOptions(body, location).associate { rawPart ->
+            val part = rawPart.trim()
+            val id = part.substringBefore("=")
+            val rawExpectation = part.substringAfter("=", missingDelimiterValue = "")
+            if (id.isBlank() || rawExpectation.isBlank()) {
+                throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Invalid selector advancement entry: $part", location = location)
+            }
+            ResourceLocation.parse(id) to parseSelectorAdvancementExpectation(rawExpectation, location)
+        }
+    }
+
+    private fun parseSelectorAdvancementExpectation(
+        value: String,
+        location: SourceLocation?,
+    ): SelectorAdvancementExpectation =
+        when {
+            value == "true" || value == "false" -> SelectorAdvancementExpectation(done = value.toBooleanStrict())
+            value.startsWith("{") && value.endsWith("}") -> {
+                val body = value.removePrefix("{").removeSuffix("}")
+                if (body.isBlank()) {
+                    throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Invalid selector advancement criteria: $value", location = location)
+                }
+                val criteria = splitSelectorOptions(body, location).associate { rawPart ->
+                    val part = rawPart.trim()
+                    val criterion = part.substringBefore("=")
+                    val rawExpected = part.substringAfter("=", missingDelimiterValue = "")
+                    if (criterion.isBlank() || rawExpected !in setOf("true", "false")) {
+                        throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Invalid selector advancement criterion: $part", location = location)
+                    }
+                    criterion to rawExpected.toBooleanStrict()
+                }
+                SelectorAdvancementExpectation(criteria = criteria)
+            }
+            else -> throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Invalid selector advancement expectation: $value", location = location)
+        }
+
     private fun parseSelectorIntRange(value: String, label: String, location: SourceLocation?): SelectorScoreRange {
         if (!value.contains("..")) {
             val exact = value.toIntOrNull()
@@ -391,6 +454,20 @@ private fun SandboxEntity.selectorName(): String =
 
 private fun SandboxWorld.teamFor(entity: SandboxEntity): String? =
     teams.entries.firstOrNull { (_, team) -> entity.scoreHolder in team.members }?.key
+
+private fun SandboxPlayer.matchesAdvancement(
+    advancement: ResourceLocation,
+    expectation: SelectorAdvancementExpectation,
+): Boolean {
+    val progress = advancementProgress[advancement]
+    expectation.done?.let { expected ->
+        val actualDone = progress?.criteria?.isNotEmpty() == true && progress.criteria.values.all { it }
+        if (actualDone != expected) return false
+    }
+    return expectation.criteria.all { (criterion, expected) ->
+        (progress?.criteria?.get(criterion) == true) == expected
+    }
+}
 
 private fun nbtContains(actual: JsonObject, expected: JsonObject): Boolean =
     expected.entrySet().all { (key, expectedValue) ->
