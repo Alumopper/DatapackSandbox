@@ -807,6 +807,20 @@ class SandboxBehaviorTest {
     }
 
     @Test
+    fun `data modify list operations reject existing non-list targets`() {
+        val sandbox = createSandbox("26.1.2", listOf(fixturePack()))
+
+        sandbox.executeCommand("""data merge storage demo:dst {list:5}""")
+        val error = assertFailsWith<SandboxException> {
+            sandbox.executeCommand("data modify storage demo:dst list append value 1")
+        }
+
+        assertEquals(DiagnosticCode.COMMAND_ERROR, error.code)
+        assertTrue(error.message.contains("Data path 'list' is not a list"), error.render())
+        assertEquals(5, JsonPaths.get(sandbox.world.storage(ResourceLocation.parse("demo:dst")), "list")?.asInt)
+    }
+
+    @Test
     fun `data paths support negative list indexes`() {
         val sandbox = createSandbox("26.1.2", listOf(fixturePack()))
 

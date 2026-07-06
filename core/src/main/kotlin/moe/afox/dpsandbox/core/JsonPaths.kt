@@ -55,21 +55,21 @@ object JsonPaths {
         }
     }
 
-    fun append(root: JsonObject, path: String, value: JsonElement) {
-        val array = requireArray(root, path)
+    fun append(root: JsonObject, path: String, value: JsonElement, location: SourceLocation? = null) {
+        val array = requireArray(root, path, location)
         array.add(value)
     }
 
-    fun prepend(root: JsonObject, path: String, value: JsonElement) {
-        val array = requireArray(root, path)
+    fun prepend(root: JsonObject, path: String, value: JsonElement, location: SourceLocation? = null) {
+        val array = requireArray(root, path, location)
         val replacement = JsonArray()
         replacement.add(value.deepCopy())
         array.forEach { replacement.add(it.deepCopy()) }
         set(root, path, replacement)
     }
 
-    fun insert(root: JsonObject, path: String, index: Int, value: JsonElement) {
-        val array = requireArray(root, path)
+    fun insert(root: JsonObject, path: String, index: Int, value: JsonElement, location: SourceLocation? = null) {
+        val array = requireArray(root, path, location)
         val targetIndex = index.coerceIn(0, array.size())
         val replacement = JsonArray()
         array.forEachIndexed { currentIndex, element ->
@@ -87,13 +87,16 @@ object JsonPaths {
     fun exists(root: JsonObject, path: String): Boolean =
         get(root, path) != null && get(root, path) !is JsonNull
 
-    private fun requireArray(root: JsonObject, path: String): JsonArray {
+    private fun requireArray(root: JsonObject, path: String, location: SourceLocation?): JsonArray {
         val value = get(root, path)
         if (value != null && value.isJsonArray) return value.asJsonArray
+        if (value != null && value !is JsonNull) {
+            throw SandboxException(DiagnosticCode.COMMAND_ERROR, "Data path '$path' is not a list", location)
+        }
         val array = JsonArray()
         set(root, path, array)
         return get(root, path)?.asJsonArray
-            ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Failed to create array at path '$path'")
+            ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Failed to create array at path '$path'", location)
     }
 
     private fun mergeInto(target: JsonObject, value: JsonElement) {

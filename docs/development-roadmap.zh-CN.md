@@ -53,7 +53,7 @@
   - 补齐 `store` 的 result/success 到 score、storage、entity、block、bossbar 的边界行为。
   - 提升 `as/at/positioned/rotated/facing/anchored/in/align` 的上下文准确性。
 - 扩展 `data`：
-  - 支持更完整的 data path，包括 list/object 匹配、append/prepend/insert、set/from/string/value。
+  - 支持更完整的 data path，包括 list/object 匹配、append/prepend/insert、set/from/string/value；list 操作会拒绝已存在的非列表目标，避免生成器输出调试时把错误 path 静默覆盖成新数组。
   - 所有写入都经过 NBT schema 或 sandbox state 规则校验。
   - `data merge`、`data modify` 和 `data remove` 已记录结构化前后 NBT 输出，便于调试 storage/entity/block 写入、path 操作与 schema 校验后的结果。
 - 扩展 `loot`：

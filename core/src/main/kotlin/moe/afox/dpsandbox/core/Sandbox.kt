@@ -1855,9 +1855,9 @@ class DatapackSandbox(
             when (mutation) {
                 "set" -> JsonPaths.set(targetNbt, path, value)
                 "merge" -> JsonPaths.merge(targetNbt, path, value)
-                "append" -> JsonPaths.append(targetNbt, path, value)
-                "prepend" -> JsonPaths.prepend(targetNbt, path, value)
-                "insert" -> JsonPaths.insert(targetNbt, path, insertIndex ?: 0, value)
+                "append" -> JsonPaths.append(targetNbt, path, value, location)
+                "prepend" -> JsonPaths.prepend(targetNbt, path, value, location)
+                "insert" -> JsonPaths.insert(targetNbt, path, insertIndex ?: 0, value, location)
             }
         }
         val after = dataTargetNbtValues(target, location).map { it.deepCopy() }
