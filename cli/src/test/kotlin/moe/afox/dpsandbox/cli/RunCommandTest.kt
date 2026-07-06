@@ -554,6 +554,43 @@ class RunCommandTest {
     }
 
     @Test
+    fun `run report files include trace diagnostics`() {
+        val reportFile = Files.createTempFile("dps-cli-diagnostic-report", ".json")
+
+        val output = captureStdout {
+            main(
+                arrayOf(
+                    "run",
+                    "--version",
+                    "26.2",
+                    "--allow-command-failure",
+                    "--command",
+                    "scoreboard players set #bad missing 1",
+                    "--command",
+                    "say after diagnostic report",
+                    "--assert",
+                    "diagnostic:COMMAND_ERROR:Unknown scoreboard objective 'missing'=1",
+                    "--report-file",
+                    reportFile.toString(),
+                ),
+            )
+        }
+
+        assertTrue("report written: $reportFile" in output, output)
+        val report = JsonParser.parseString(Files.readString(reportFile)).asJsonObject
+        val diagnostics = report.getAsJsonArray("diagnostics")
+        assertEquals(1, report.get("diagnosticCount").asInt)
+        assertEquals(1, diagnostics.size())
+        val diagnostic = diagnostics.single().asJsonObject
+        assertEquals("26.2", diagnostic.get("version").asString)
+        assertEquals("COMMAND_ERROR", diagnostic.get("code").asString)
+        assertEquals("scoreboard players set #bad missing 1", diagnostic.get("command").asString)
+        assertTrue("Unknown scoreboard objective 'missing'" in diagnostic.get("message").asString)
+        assertEquals("<arg:--command>", diagnostic.get("file").asString)
+        assertEquals(1, diagnostic.get("line").asInt)
+    }
+
+    @Test
     fun `run accepts team and bossbar shorthand inline assertions`() {
         val output = captureStdout {
             main(

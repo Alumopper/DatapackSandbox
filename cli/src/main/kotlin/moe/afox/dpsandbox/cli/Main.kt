@@ -235,6 +235,9 @@ private fun writeRunReportFile(
         report.add("traces", JsonArray().also { array ->
             traces.forEach { array.add(it.toJson()) }
         })
+        val diagnostics = diagnosticsFromTraces(traces, sandbox.profile.id)
+        report.addProperty("diagnosticCount", diagnostics.size())
+        report.add("diagnostics", diagnostics)
         report.add("eventTraces", JsonArray().also { array ->
             sandbox.world.playerEventTraces.forEach { array.add(it.toJson()) }
         })
@@ -261,6 +264,8 @@ private fun ManifestResult.toReportJson(): JsonObject =
         json.add("messages", stringArray(messages))
         json.addProperty("outputCount", outputs.size)
         json.addProperty("traceCount", traces.size)
+        val diagnostics = diagnosticsFromTraces(traces, version = null)
+        json.addProperty("diagnosticCount", diagnostics.size())
         json.addProperty("eventTraceCount", eventTraces.size)
         json.add("outputs", JsonArray().also { outputsJson ->
             outputs.forEach { outputsJson.add(it.toJson()) }
@@ -268,6 +273,7 @@ private fun ManifestResult.toReportJson(): JsonObject =
         json.add("traces", JsonArray().also { tracesJson ->
             traces.forEach { tracesJson.add(it.toJson()) }
         })
+        json.add("diagnostics", diagnostics)
         json.add("eventTraces", JsonArray().also { eventTracesJson ->
             eventTraces.forEach { eventTracesJson.add(it.toJson()) }
         })
@@ -284,6 +290,8 @@ private fun ManifestAttemptResult.toReportJson(): JsonObject =
         json.add("messages", stringArray(messages))
         json.addProperty("outputCount", outputs.size)
         json.addProperty("traceCount", traces.size)
+        val diagnostics = diagnosticsFromTraces(traces, version)
+        json.addProperty("diagnosticCount", diagnostics.size())
         json.addProperty("eventTraceCount", eventTraces.size)
         json.add("outputs", JsonArray().also { outputsJson ->
             outputs.forEach { outputsJson.add(it.toJson()) }
@@ -291,12 +299,32 @@ private fun ManifestAttemptResult.toReportJson(): JsonObject =
         json.add("traces", JsonArray().also { tracesJson ->
             traces.forEach { tracesJson.add(it.toJson()) }
         })
+        json.add("diagnostics", diagnostics)
         json.add("eventTraces", JsonArray().also { eventTracesJson ->
             eventTraces.forEach { eventTracesJson.add(it.toJson()) }
         })
         snapshot?.let { json.add("snapshot", it.deepCopy()) }
         json.add("snapshotDiffs", SnapshotDiff.toJson(snapshotDiffs))
         resourceSummary?.let { json.add("resources", it.toReportJson()) }
+    }
+
+private fun diagnosticsFromTraces(traces: List<CommandTraceEvent>, version: String?): JsonArray =
+    JsonArray().also { diagnostics ->
+        traces.filter { it.errorCode != null }.forEach { trace ->
+            diagnostics.add(
+                JsonObject().also { diagnostic ->
+                    version?.let { diagnostic.addProperty("version", it) }
+                    diagnostic.addProperty("code", trace.errorCode?.name)
+                    diagnostic.addProperty("message", trace.errorMessage ?: trace.errorCode?.name.orEmpty())
+                    diagnostic.addProperty("command", trace.command)
+                    diagnostic.addProperty("root", trace.root)
+                    trace.source?.file?.let { diagnostic.addProperty("file", it) }
+                    trace.source?.line?.let { diagnostic.addProperty("line", it) }
+                    diagnostic.addProperty("success", trace.success)
+                    diagnostic.addProperty("commandsExecuted", trace.commandsExecuted)
+                },
+            )
+        }
     }
 
 private fun ManifestResourceSummary.toReportJson(): JsonObject =

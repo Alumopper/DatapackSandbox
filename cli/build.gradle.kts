@@ -289,6 +289,23 @@ val smokeCliJarReadmeRunAssert = registerCliJarSmokeTask(
     "output:generated ok",
 )
 
+val smokeCliJarRunDiagnostics = registerCliJarSmokeTask(
+    name = "smokeCliJarRunDiagnostics",
+    descriptionText = "Checks standalone CLI expected command failures can be asserted diagnostically.",
+    "run",
+    "--version",
+    "26.2",
+    "--allow-command-failure",
+    "--command",
+    "scoreboard players set #bad missing 1",
+    "--command",
+    "say diagnostic smoke",
+    "--assert",
+    "diagnostic:COMMAND_ERROR:Unknown scoreboard objective 'missing'=1",
+    "--assert",
+    "output:diagnostic smoke",
+)
+
 val smokeCliJarRunLimits = registerCliJarSmokeTask(
     name = "smokeCliJarRunLimits",
     descriptionText = "Checks standalone CLI run limit options are accepted.",
@@ -319,6 +336,7 @@ tasks.register("smokeCliJar") {
         smokeCliJarReadmeLoot,
         smokeCliJarReadmeEvent,
         smokeCliJarReadmeRunAssert,
+        smokeCliJarRunDiagnostics,
         smokeCliJarRunLimits,
     )
 }

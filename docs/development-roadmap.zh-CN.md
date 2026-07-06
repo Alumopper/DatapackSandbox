@@ -177,6 +177,7 @@
   - QuickTest `assertSnapshotDiff` 失败会列出实际 snapshot diff 候选，便于在单元调试中直接看到真实状态变化路径和渲染值。
   - manifest `diagnostic` 断言失败会列出实际 diagnostic 候选，便于定位预期失败步骤、错误码、命令和消息。
   - manifest `snapshotDiff` 断言失败会列出实际 snapshot diff 候选，便于定位状态路径和 before/after 差异。
+  - `run --report-file` 和 `check --report-file` 已把失败 trace 提取为 `diagnosticCount`/`diagnostics` artifact 字段，便于 CI 和命令生成器测试直接读取错误码、消息、命令、root、来源文件和行号。
 
 验收标准：
 
@@ -317,6 +318,7 @@
   - CLI `run` 和 `check` 已暴露 `--max-commands`、`--max-function-depth`、`--max-ticks-per-run`、`--max-output-events` 和 `--max-snapshot-bytes`，可在随手小测、命令生成器验证和批量 manifest CI 中直接收紧执行边界。
 - 发布质量：
   - fat jar smoke test、Windows/Linux/macOS 命令测试、README 示例测试。
+  - standalone jar smoke 已覆盖 schema 导出、示例 manifest、资源索引、diff、benchmark、README 示例、run 断言简写、执行边界和预期失败命令的 diagnostic 断言。
   - Maven 发布准备：坐标、版本号、源码包、文档包。
 
 验收标准：
