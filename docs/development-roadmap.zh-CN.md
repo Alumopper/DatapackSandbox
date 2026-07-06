@@ -70,6 +70,7 @@
   - `fill` 已记录结构化区域输出，便于调试填充体积、实际变化位置、目标方块和填充模式。
   - `clone` 已记录结构化复制输出，便于调试源区域、目标区域、复制数量、移动源清除和实际变化位置。
   - `weather` 已记录结构化天气输出，便于调试天气状态、持续时间和 rain/thunder 派生状态。
+  - `time set/add` 已记录结构化时间修改输出，便于调试 dayTime 前后变化和 `execute store` 相关查询链路。
   - `damage` 已记录结构化生命值变化输出，便于 report/assertion 调试。
   - `kill` 已记录结构化目标输出，便于确认选择器命中、实体移除和 advancement 触发结果。
   - `enchant` 已覆盖玩家选中物品和非玩家实体主手装备的附魔组件写入，并记录结构化输出；`effect give/clear` 已记录结构化输出，便于 report/assertion 调试。

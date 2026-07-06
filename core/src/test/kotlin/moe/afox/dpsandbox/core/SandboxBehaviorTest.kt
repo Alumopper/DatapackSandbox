@@ -151,6 +151,12 @@ class SandboxBehaviorTest {
         assertEquals("missingRule", missingGamerulePayload.get("rule").asString)
         assertEquals(false, missingGamerulePayload.get("exists").asBoolean)
         assertEquals(6000, sandbox.world.dayTime)
+        val timeSetOutput = sandbox.world.outputs.single { it.command == "time set" }
+        val timeSetPayload = timeSetOutput.payload?.asJsonObject ?: error("missing time set payload")
+        assertEquals("6000", timeSetOutput.text)
+        assertEquals("noon", timeSetPayload.get("argument").asString)
+        assertEquals(0, timeSetPayload.get("beforeDayTime").asLong)
+        assertEquals(6000, timeSetPayload.get("afterDayTime").asLong)
         val timeOutput = sandbox.world.outputs.first { it.command == "time query" }
         val timePayload = timeOutput.payload?.asJsonObject ?: error("missing time query payload")
         assertEquals("6000", timeOutput.text)

@@ -1092,11 +1092,16 @@ class DatapackSandbox(
         when (tokens[1].text) {
             "set" -> {
                 requireSize(tokens, 3, "time set <value|day|noon|night|midnight>", location)
-                world.setDayTime(parseTimeOfDay(tokens[2].text, location))
+                val before = world.dayTime
+                val value = parseTimeOfDay(tokens[2].text, location)
+                world.setDayTime(value)
+                recordTimeMutationOutput("time set", tokens[2].text, before)
             }
             "add" -> {
                 requireSize(tokens, 3, "time add <time>", location)
+                val before = world.dayTime
                 world.addDayTime(parseLong(tokens[2].text, "time delta", location))
+                recordTimeMutationOutput("time add", tokens[2].text, before)
             }
             "query" -> {
                 requireSize(tokens, 3, "time query <daytime|gametime|day>", location)
@@ -1119,6 +1124,20 @@ class DatapackSandbox(
             }
             else -> unsupportedFeature("Unsupported time action '${tokens[1].text}'", profile.id, location)
         }
+    }
+
+    private fun recordTimeMutationOutput(command: String, argument: String, beforeDayTime: Long) {
+        world.recordOutput(
+            command,
+            "data",
+            text = world.dayTime.toString(),
+            payload = JsonObject().also { payload ->
+                payload.addProperty("argument", argument)
+                payload.addProperty("beforeDayTime", beforeDayTime)
+                payload.addProperty("afterDayTime", world.dayTime)
+                payload.addProperty("gameTime", world.gameTime)
+            },
+        )
     }
 
     private fun executeWeather(tokens: List<CommandToken>, location: SourceLocation?) {
