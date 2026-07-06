@@ -23,6 +23,10 @@ data class ExecutionContext(
     val position: Position = entity?.position ?: Position.zero,
     /** Current execution dimension. Non-player entities default to the overworld in the sparse sandbox. */
     val dimension: ResourceLocation = (entity as? SandboxPlayer)?.dimension ?: ResourceLocation("minecraft", "overworld"),
+    /** Base yaw used by rotation-sensitive commands and relative rotation arguments. */
+    val yaw: Double = entity?.yaw ?: 0.0,
+    /** Base pitch used by rotation-sensitive commands and relative rotation arguments. */
+    val pitch: Double = entity?.pitch ?: 0.0,
 )
 
 /**
@@ -1056,7 +1060,7 @@ class DatapackSandbox(
                     requireIndex(tokens, index + 1, "execute at <selector>", location)
                     contexts = contexts.flatMap { ctx ->
                         EntitySelectors.select(world, tokens[index + 1].text, ctx, location).map {
-                            ctx.copy(position = it.position, dimension = entityDimension(it))
+                            ctx.copy(position = it.position, dimension = entityDimension(it), yaw = it.yaw, pitch = it.pitch)
                         }
                     }
                     index += 2
@@ -1105,7 +1109,23 @@ class DatapackSandbox(
                 }
                 "rotated" -> {
                     requireIndex(tokens, index + 1, "execute rotated <yaw pitch>|as <target>", location)
-                    index += if (tokens[index + 1].text == "as") 3 else 3
+                    if (tokens[index + 1].text == "as") {
+                        requireIndex(tokens, index + 2, "execute rotated as <target>", location)
+                        contexts = contexts.flatMap { ctx ->
+                            EntitySelectors.select(world, tokens[index + 2].text, ctx, location).map {
+                                ctx.copy(yaw = it.yaw, pitch = it.pitch)
+                            }
+                        }
+                    } else {
+                        requireSizeFrom(tokens, index, 3, "execute rotated <yaw> <pitch>", location)
+                        contexts = contexts.map { ctx ->
+                            ctx.copy(
+                                yaw = parseRotation(tokens[index + 1].text, ctx.yaw, "yaw", location),
+                                pitch = parseRotation(tokens[index + 2].text, ctx.pitch, "pitch", location),
+                            )
+                        }
+                    }
+                    index += 3
                 }
                 "store" -> {
                     val runIndex = tokens.indexOfFirst { it.text == "run" }
@@ -2052,11 +2072,13 @@ class DatapackSandbox(
         when {
             tokens.size >= 4 && isCoordinateTriple(tokens, 1) -> {
                 val entity = context.entity ?: throw SandboxException(DiagnosticCode.COMMAND_ERROR, "${tokens[0].text} <location> requires an execution entity", location)
-                moveEntities(listOf(entity), parsePosition(tokens, 1, entity.position, location))
+                val rotation = parseOptionalRotation(tokens, 4, context, location)
+                moveEntities(listOf(entity), parsePosition(tokens, 1, entity.position, location), rotation)
             }
             tokens.size >= 5 && isCoordinateTriple(tokens, 2) -> {
                 val targets = EntitySelectors.select(world, tokens[1].text, context, location)
-                moveEntities(targets, parsePosition(tokens, 2, context.position, location))
+                val rotation = parseOptionalRotation(tokens, 5, context, location)
+                moveEntities(targets, parsePosition(tokens, 2, context.position, location), rotation)
             }
             tokens.size >= 3 -> {
                 val targets = EntitySelectors.select(world, tokens[1].text, context, location)
@@ -2068,9 +2090,15 @@ class DatapackSandbox(
         }
     }
 
-    private fun moveEntities(entities: List<SandboxEntity>, position: Position) {
+    private data class Rotation(val yaw: Double, val pitch: Double)
+
+    private fun moveEntities(entities: List<SandboxEntity>, position: Position, rotation: Rotation? = null) {
         entities.forEach { entity ->
             entity.position = position
+            rotation?.let {
+                entity.yaw = it.yaw
+                entity.pitch = it.pitch
+            }
             if (entity is SandboxPlayer) {
                 advancements.handle(PlayerEvent(entity.name, "moved"))
             }
@@ -2613,6 +2641,29 @@ class DatapackSandbox(
             raw.startsWith("^") -> unsupportedFeature("Local coordinates '^' are not implemented", profile.id, location)
             else -> raw.toDoubleOrNull()
                 ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Invalid coordinate '$raw'", location)
+        }
+
+    private fun parseOptionalRotation(
+        tokens: List<CommandToken>,
+        index: Int,
+        context: ExecutionContext,
+        location: SourceLocation?,
+    ): Rotation? {
+        if (tokens.size <= index) return null
+        requireSizeFrom(tokens, index, 2, "rotation <yaw> <pitch>", location)
+        return Rotation(
+            yaw = parseRotation(tokens[index].text, context.yaw, "yaw", location),
+            pitch = parseRotation(tokens[index + 1].text, context.pitch, "pitch", location),
+        )
+    }
+
+    private fun parseRotation(raw: String, base: Double, label: String, location: SourceLocation?): Double =
+        when {
+            raw == "~" -> base
+            raw.startsWith("~") -> base + (raw.drop(1).takeIf { it.isNotBlank() }?.toDoubleOrNull()
+                ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Invalid relative $label '$raw'", location))
+            else -> raw.toDoubleOrNull()
+                ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Invalid $label '$raw'", location)
         }
 
 

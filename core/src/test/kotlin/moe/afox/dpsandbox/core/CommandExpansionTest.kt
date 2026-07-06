@@ -174,6 +174,28 @@ class CommandExpansionTest {
     }
 
     @Test
+    fun `execute rotated controls relative teleport rotation`() {
+        val sandbox = createFunctionSandboxFromString(
+            version = "26.2",
+            functionText = "",
+            functionId = "demo:empty",
+        )
+
+        sandbox.executeCommand("""summon minecraft:pig 0 0 0 {Tags:["anchor"]}""")
+        sandbox.executeCommand("""execute as @e[tag=anchor,limit=1] rotated 90 15 run tp @s ~ ~ ~ ~ ~""")
+
+        val anchor = sandbox.world.entities.single { "anchor" in it.tags }
+        assertEquals(90.0, anchor.yaw)
+        assertEquals(15.0, anchor.pitch)
+
+        sandbox.executeCommand("""rotate @e[tag=anchor,limit=1] 30 5""")
+        sandbox.executeCommand("""execute as @e[tag=anchor,limit=1] rotated as @e[tag=anchor,limit=1] run tp @s ~ ~ ~ ~10 ~-2""")
+
+        assertEquals(40.0, anchor.yaw)
+        assertEquals(3.0, anchor.pitch)
+    }
+
+    @Test
     fun `execute blocks condition compares sparse block regions`() {
         val sandbox = createSandbox("26.1.2", listOf(fixturePack()))
 
