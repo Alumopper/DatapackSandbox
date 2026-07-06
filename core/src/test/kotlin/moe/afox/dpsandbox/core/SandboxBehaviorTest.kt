@@ -298,6 +298,18 @@ class SandboxBehaviorTest {
 
         assertEquals(ResourceLocation.parse("minecraft:stone"), sandbox.world.requireBlock(BlockPos(0, 1, 0)).id)
         assertEquals(ResourceLocation.parse("minecraft:stone"), sandbox.world.requireBlock(BlockPos(1, 1, 0)).id)
+        val cloneOutput = sandbox.world.outputs.single { it.command == "clone" }
+        val clonePayload = cloneOutput.payload?.asJsonObject ?: error("missing clone payload")
+        assertEquals("2", cloneOutput.text)
+        assertEquals(listOf("0 1 0", "1 1 0"), cloneOutput.targets)
+        assertEquals("replace", clonePayload.get("maskMode").asString)
+        assertEquals("normal", clonePayload.get("cloneMode").asString)
+        assertEquals(2, clonePayload.get("copied").asInt)
+        assertEquals(2, clonePayload.get("changed").asInt)
+        assertEquals(0, clonePayload.getAsJsonObject("from").get("x").asInt)
+        assertEquals(1, clonePayload.getAsJsonObject("to").get("x").asInt)
+        assertEquals(0, clonePayload.getAsJsonObject("destination").get("x").asInt)
+        assertEquals("0 1 0", clonePayload.getAsJsonArray("copiedPositions")[0].asString)
         val pig = sandbox.world.entities.single { "rider" in it.tags }
         val cow = sandbox.world.entities.single { "vehicle" in it.tags }
         assertEquals(cow.uuid, pig.vehicle)

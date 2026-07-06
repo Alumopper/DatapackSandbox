@@ -31,7 +31,7 @@ run continues. Use `--unsupported error`, manifest `"unsupported": "error"`, or
 | `ban`, `ban-ip`, `banlist` | Unsupported | Server administration and ban lists are not simulated. |
 | `bossbar` | Partial | `add`, `remove`, `list`, `get`, `set`; `get` records structured data output for assertions and `execute store result`; state is stored and appears in snapshots, no real client UI. |
 | `clear` | Partial | Removes matching item stacks from sandbox player inventories, including JSON/SNBT-lite NBT and component payload filters; records the matched/removed count, and treats `maxCount=0` as a query-only check. |
-| `clone` | Partial | Copies sparse sandbox block state/NBT; no updates, drops, or overlap physics. |
+| `clone` | Partial | Copies sparse sandbox block state/NBT and records structured copied/changed-position output; no updates, drops, or overlap physics. |
 | `damage` | Partial | Reduces entity/player health, emits sandbox damage/death advancement events, and records structured health-change output; no armor, invulnerability, death loot, or combat rules. |
 | `data` | Partial | `get` with optional numeric scale, `merge`, `modify`, `remove` for `storage`, `entity`, and `block`; paths support fields, positive/negative numeric indexes, and simple object matchers; `modify` supports `value`, `from`, and `string` sources; top-level NBT is schema-checked. |
 | `datapack` | Partial | `list` reports loaded typed/raw/tag/resource-index counts plus resource overlay diagnostics; `enable`/`disable` are accepted as no-op because pack order is fixed at sandbox creation. |

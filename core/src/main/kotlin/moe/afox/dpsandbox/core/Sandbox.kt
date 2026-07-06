@@ -3057,6 +3057,9 @@ class DatapackSandbox(
             json.addProperty("z", pos.z)
         }
 
+    private fun blockPosArrayOutput(positions: List<BlockPos>): JsonArray =
+        JsonArray().also { array -> positions.forEach { array.add(it.toString()) } }
+
     private fun executeClone(tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext) {
         requireSize(tokens, 10, "clone <begin> <end> <destination> [replace|masked|filtered] [force|move|normal]", location)
         val from = parseBlockPos(tokens, 1, context, location)
@@ -3064,6 +3067,9 @@ class DatapackSandbox(
         val dest = parseBlockPos(tokens, 7, context, location)
         val maskMode = tokens.getOrNull(10)?.text ?: "replace"
         val cloneMode = tokens.getOrNull(11)?.text ?: "normal"
+        if (cloneMode !in setOf("normal", "force", "move")) {
+            unsupportedFeature("Unsupported clone mode '$cloneMode'", profile.id, location)
+        }
         val xs = minOf(from.x, to.x)..maxOf(from.x, to.x)
         val ys = minOf(from.y, to.y)..maxOf(from.y, to.y)
         val zs = minOf(from.z, to.z)..maxOf(from.z, to.z)
@@ -3074,12 +3080,58 @@ class DatapackSandbox(
             if (source == null && maskMode == "masked") continue
             source?.let { copied += BlockPos(dest.x + dx, dest.y + dy, dest.z + dz) to it.copyForClone() }
         }
-        copied.forEach { (pos, block) -> world.setBlock(pos, block) }
-        if (cloneMode == "move") {
-            for (x in xs) for (y in ys) for (z in zs) world.setBlock(BlockPos(x, y, z), null)
-        } else if (cloneMode !in setOf("normal", "force")) {
-            unsupportedFeature("Unsupported clone mode '$cloneMode'", profile.id, location)
+        val changed = mutableListOf<BlockPos>()
+        val removedSources = mutableListOf<BlockPos>()
+        copied.forEach { (pos, block) ->
+            val before = world.block(pos)?.copyForClone()
+            world.setBlock(pos, block)
+            val after = world.block(pos)?.copyForClone()
+            if (!sameBlock(before, after)) changed += pos
         }
+        if (cloneMode == "move") {
+            for (x in xs) for (y in ys) for (z in zs) {
+                val sourcePos = BlockPos(x, y, z)
+                val before = world.block(sourcePos)?.copyForClone()
+                world.setBlock(sourcePos, null)
+                val after = world.block(sourcePos)?.copyForClone()
+                if (!sameBlock(before, after)) {
+                    removedSources += sourcePos
+                    changed += sourcePos
+                }
+            }
+        }
+        recordCloneOutput(from, to, dest, maskMode, cloneMode, copied.map { it.first }, removedSources, changed)
+    }
+
+    private fun recordCloneOutput(
+        from: BlockPos,
+        to: BlockPos,
+        destination: BlockPos,
+        maskMode: String,
+        cloneMode: String,
+        copiedPositions: List<BlockPos>,
+        removedSourcePositions: List<BlockPos>,
+        changedPositions: List<BlockPos>,
+    ) {
+        world.recordOutput(
+            "clone",
+            "data",
+            targets = copiedPositions.map { it.toString() },
+            text = copiedPositions.size.toString(),
+            payload = JsonObject().also { payload ->
+                payload.addProperty("maskMode", maskMode)
+                payload.addProperty("cloneMode", cloneMode)
+                payload.addProperty("copied", copiedPositions.size)
+                payload.addProperty("removedSources", removedSourcePositions.size)
+                payload.addProperty("changed", changedPositions.size)
+                payload.add("from", blockPosOutput(from))
+                payload.add("to", blockPosOutput(to))
+                payload.add("destination", blockPosOutput(destination))
+                payload.add("copiedPositions", blockPosArrayOutput(copiedPositions))
+                payload.add("removedSourcePositions", blockPosArrayOutput(removedSourcePositions))
+                payload.add("changedPositions", blockPosArrayOutput(changedPositions))
+            },
+        )
     }
 
     private fun executeFill(tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext) {
