@@ -619,6 +619,7 @@ class RunCommand : CliktCommand(name = "run") {
             trimmed.startsWith("item:") -> parseItemAssertion(trimmed.removePrefix("item:"), label)
             trimmed.startsWith("player:") -> parsePlayerAssertion(trimmed.removePrefix("player:"), label)
             trimmed.startsWith("random-sequence:") -> parseRandomSequenceAssertion(trimmed.removePrefix("random-sequence:"), label)
+            trimmed.startsWith("snapshot:") -> parseSnapshotAssertion(trimmed.removePrefix("snapshot:"), label)
             trimmed.startsWith("diff:") -> parseSnapshotDiffAssertion(trimmed.removePrefix("diff:"), label)
             trimmed.startsWith("event-trace:") -> parseEventTraceAssertion(trimmed.removePrefix("event-trace:"), label)
             trimmed.startsWith("trace:") -> parseTraceAssertion(trimmed.removePrefix("trace:"), label)
@@ -633,7 +634,7 @@ class RunCommand : CliktCommand(name = "run") {
             trimmed.startsWith("output:") -> parseOutputAssertion(trimmed.removePrefix("output:"), label)
             else -> throw SandboxException(
                 DiagnosticCode.INPUT_FORMAT,
-                "$label must be a JSON object or shorthand score:<target>:<objective>=N, storage:<id>[:<path>]=<json>, advancement:<player>:<id>[=<true|false>], entity:<type|*>[@tag]=N, item:<player>:<id>[@slot]=N, player:<name>[:<field>=<value>], random-sequence:<name>=N, diff:<json-pointer>[=<kind>], event-trace:<player>:<type>[=N], trace:<root>=N, trace:<text>, trace-output:<text>[@target], warning=N, warning:<text>, unsupported=N, unsupported:<text>, output:<text>, output-normalized:<text>, output-segment:<text>[|color=<color>|bold=<true|false>][@target], or output-payload:<command>:<path>[=<json>]",
+                "$label must be a JSON object or shorthand score:<target>:<objective>=N, storage:<id>[:<path>]=<json>, advancement:<player>:<id>[=<true|false>], entity:<type|*>[@tag]=N, item:<player>:<id>[@slot]=N, player:<name>[:<field>=<value>], random-sequence:<name>=N, snapshot:<path>=<json>, snapshot:<path>?, snapshot:<path>!, diff:<json-pointer>[=<kind>], event-trace:<player>:<type>[=N], trace:<root>=N, trace:<text>, trace-output:<text>[@target], warning=N, warning:<text>, unsupported=N, unsupported:<text>, output:<text>, output-normalized:<text>, output-segment:<text>[|color=<color>|bold=<true|false>][@target], or output-payload:<command>:<path>[=<json>]",
             )
         }
     }
@@ -931,6 +932,45 @@ class RunCommand : CliktCommand(name = "run") {
             throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label event trace block coordinates must be x,y,z")
         }
         return parts.map { it.trim().toInt() }
+    }
+
+    private fun parseSnapshotAssertion(spec: String, label: String): JsonObject {
+        val trimmed = spec.trim()
+        if (trimmed.isEmpty()) {
+            throw SandboxException(
+                DiagnosticCode.INPUT_FORMAT,
+                "$label snapshot shorthand must be snapshot:<path>=<json>, snapshot:<path>?, or snapshot:<path>!",
+            )
+        }
+        val snapshot = when {
+            trimmed.endsWith("?") -> snapshotAssertionObject(trimmed.dropLast(1), label).also { it.addProperty("exists", true) }
+            trimmed.endsWith("!") -> snapshotAssertionObject(trimmed.dropLast(1), label).also { it.addProperty("missing", true) }
+            else -> {
+                val splitAt = trimmed.indexOf('=')
+                if (splitAt <= 0) {
+                    throw SandboxException(
+                        DiagnosticCode.INPUT_FORMAT,
+                        "$label snapshot shorthand must be snapshot:<path>=<json>, snapshot:<path>?, or snapshot:<path>!",
+                    )
+                }
+                val expectedText = trimmed.substring(splitAt + 1).trim()
+                val expected = try {
+                    JsonParser.parseString(expectedText)
+                } catch (error: Exception) {
+                    throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label snapshot shorthand expected JSON value but got '$expectedText'", cause = error)
+                }
+                snapshotAssertionObject(trimmed.substring(0, splitAt), label).also { it.add("equals", expected) }
+            }
+        }
+        return JsonObject().also { it.add("snapshot", snapshot) }
+    }
+
+    private fun snapshotAssertionObject(path: String, label: String): JsonObject {
+        val trimmed = path.trim()
+        if (trimmed.isEmpty()) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label snapshot shorthand path must not be empty")
+        }
+        return JsonObject().also { it.addProperty("path", trimmed) }
     }
 
     private fun parseSnapshotDiffAssertion(spec: String, label: String): JsonObject {

@@ -1022,6 +1022,29 @@ class RunCommandTest {
     }
 
     @Test
+    fun `run inline assertions can check snapshot shorthand`() {
+        val output = captureStdout {
+            main(
+                arrayOf(
+                    "run",
+                    "--version",
+                    "26.2",
+                    "--mcfunction-text",
+                    "scoreboard objectives add runs dummy\nscoreboard players set #snapshot runs 9",
+                    "--assert",
+                    "snapshot:scores.runs.#snapshot=9",
+                    "--assert",
+                    "snapshot:scores.runs?",
+                    "--assert",
+                    "snapshot:scores.runs.#missing!",
+                ),
+            )
+        }
+
+        assertTrue("OK version=26.2" in output, output)
+    }
+
+    @Test
     fun `run reads assertions from json files`() {
         val assertionsFile = Files.createTempFile("dps-cli-assertions", ".json")
         Files.writeString(
