@@ -24,6 +24,8 @@ data class SandboxQuickTestReport(
     val playerEventTraces: List<PlayerEventTraceEvent>,
     /** Stable JSON Pointer diffs from the scenario's initial state to the final snapshot. */
     val snapshotDiffs: List<SnapshotDiffEntry>,
+    /** Loaded resource counts, overlays, and direct missing references for debug reports. */
+    val resourceSummary: DatapackResourceSummary,
     /** Final deterministic world snapshot after all executed steps. */
     val snapshot: JsonElement,
 )
@@ -2684,6 +2686,7 @@ class SandboxQuickTest private constructor(
             traces = sandbox.world.traces.toList(),
             playerEventTraces = sandbox.world.playerEventTraces.toList(),
             snapshotDiffs = snapshotDiffs(),
+            resourceSummary = sandbox.datapack.resourceSummary(),
             snapshot = sandbox.snapshotJson(),
         )
 

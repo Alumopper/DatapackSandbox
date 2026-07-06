@@ -30,6 +30,30 @@ class SandboxQuickTestTest {
     }
 
     @Test
+    fun `quick reports expose resource diagnostics`() {
+        val dir = Files.createTempDirectory("dps-quick-resources")
+        val first = writeResourceDiagnosticPack(dir.resolve("first"), "one", includeMissingLoad = true)
+        val second = writeResourceDiagnosticPack(dir.resolve("second"), "two", includeMissingLoad = false)
+
+        val report = SandboxQuickTest.create(listOf(first, second), version = "26.2").report()
+
+        assertEquals(2, report.resourceSummary.functions)
+        assertEquals(1, report.resourceSummary.overriddenResources)
+        assertTrue(
+            report.resourceSummary.overlays.any {
+                it.type == "recipe" && it.id == ResourceLocation.parse("demo:marker") && it.active
+            },
+            report.resourceSummary.overlays.toString(),
+        )
+        assertTrue(
+            report.resourceSummary.missingReferences.any {
+                it.source == "#minecraft:load" && it.type == "function" && it.id == ResourceLocation.parse("demo:missing_load")
+            },
+            report.resourceSummary.missingReferences.toString(),
+        )
+    }
+
+    @Test
     fun `quick code tests collect assertion failures`() {
         val error = assertFailsWith<SandboxQuickTestAssertionError> {
             SandboxQuickTest.create(listOf(fixturePack()), version = "26.1.2")
@@ -1084,6 +1108,46 @@ class SandboxQuickTestTest {
         val functionRoot = root.resolve("data").resolve("demo").resolve("function")
         Files.createDirectories(functionRoot)
         Files.writeString(functionRoot.resolve("$functionName.mcfunction"), body)
+        return root
+    }
+
+    private fun writeResourceDiagnosticPack(root: Path, marker: String, includeMissingLoad: Boolean): Path {
+        Files.createDirectories(root)
+        Files.writeString(
+            root.resolve("pack.mcmeta"),
+            """
+            {
+              "pack": {
+                "pack_format": 107.1,
+                "description": "temporary resource diagnostic pack"
+              }
+            }
+            """.trimIndent(),
+        )
+        val functionRoot = root.resolve("data").resolve("demo").resolve("function")
+        Files.createDirectories(functionRoot)
+        Files.writeString(functionRoot.resolve("$marker.mcfunction"), "say $marker")
+
+        val recipeRoot = root.resolve("data").resolve("demo").resolve("recipe")
+        Files.createDirectories(recipeRoot)
+        Files.writeString(
+            recipeRoot.resolve("marker.json"),
+            """
+            {
+              "type": "minecraft:crafting_shapeless",
+              "category": "misc",
+              "ingredients": ["minecraft:stone"],
+              "result": { "id": "minecraft:stone", "count": 1 },
+              "marker": "$marker"
+            }
+            """.trimIndent(),
+        )
+
+        if (includeMissingLoad) {
+            val tagRoot = root.resolve("data").resolve("minecraft").resolve("tags").resolve("function")
+            Files.createDirectories(tagRoot)
+            Files.writeString(tagRoot.resolve("load.json"), """{"values":["demo:missing_load"]}""")
+        }
         return root
     }
 

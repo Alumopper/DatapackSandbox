@@ -6,6 +6,8 @@ import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import moe.afox.dpsandbox.core.BlockPos
 import moe.afox.dpsandbox.core.CommandTraceEvent
+import moe.afox.dpsandbox.core.DatapackMissingResourceReference
+import moe.afox.dpsandbox.core.DatapackResourceSummary
 import moe.afox.dpsandbox.core.DiagnosticCode
 import moe.afox.dpsandbox.core.DatapackSandbox
 import moe.afox.dpsandbox.core.ItemStack
@@ -19,7 +21,6 @@ import moe.afox.dpsandbox.core.PlayerEventTraceExpectation
 import moe.afox.dpsandbox.core.PlayerInput
 import moe.afox.dpsandbox.core.PredicateContext
 import moe.afox.dpsandbox.core.ResourceLocation
-import moe.afox.dpsandbox.core.ResourceIndexEntry
 import moe.afox.dpsandbox.core.SandboxException
 import moe.afox.dpsandbox.core.SandboxEntity
 import moe.afox.dpsandbox.core.SandboxBlock
@@ -44,6 +45,9 @@ import kotlin.io.path.isDirectory
 import kotlin.io.path.isRegularFile
 import kotlin.io.path.name
 
+typealias ManifestResourceSummary = DatapackResourceSummary
+typealias ManifestMissingResourceReference = DatapackMissingResourceReference
+
 data class ManifestResult(
     val path: Path,
     val passed: Boolean,
@@ -65,29 +69,6 @@ data class ManifestAttemptResult(
     val snapshot: JsonObject? = null,
     val snapshotDiffs: List<SnapshotDiffEntry> = emptyList(),
     val resourceSummary: ManifestResourceSummary? = null,
-)
-
-data class ManifestResourceSummary(
-    val functions: Int,
-    val lootTables: Int,
-    val predicates: Int,
-    val advancements: Int,
-    val recipes: Int,
-    val itemModifiers: Int,
-    val tags: Int,
-    val rawResourceKinds: Int,
-    val rawResources: Int,
-    val resourceIndex: Int,
-    val activeResources: Int,
-    val overriddenResources: Int,
-    val overlays: List<ResourceIndexEntry>,
-    val missingReferences: List<ManifestMissingResourceReference>,
-)
-
-data class ManifestMissingResourceReference(
-    val source: String,
-    val type: String,
-    val id: ResourceLocation,
 )
 
 data class ManifestOptions(
@@ -302,192 +283,8 @@ object ManifestRunner {
             "missing-reference ${reference.source} -> ${reference.type} ${reference.id}"
         }
 
-    internal fun summarizeResources(sandbox: DatapackSandbox): ManifestResourceSummary {
-        val datapack = sandbox.datapack
-        val overlays = datapack.resourceIndex.filter { !it.active || it.overrides != null || it.overriddenBy != null }
-        val missingReferences = buildList {
-            datapack.loadFunctions
-                .filterNot { it in datapack.functions }
-                .forEach { add(ManifestMissingResourceReference("#minecraft:load", "function", it)) }
-            datapack.tickFunctions
-                .filterNot { it in datapack.functions }
-                .forEach { add(ManifestMissingResourceReference("#minecraft:tick", "function", it)) }
-            datapack.predicates.toSortedMap().forEach { (predicateId, predicate) ->
-                addAll(missingPredicateReferences(predicateId, predicate.root, datapack.predicates.keys))
-            }
-            datapack.lootTables.toSortedMap().forEach { (lootTableId, lootTable) ->
-                addAll(missingLootTableReferences(lootTableId, lootTable.root, datapack.lootTables.keys, datapack.predicates.keys))
-            }
-            datapack.itemModifiers.toSortedMap().forEach { (itemModifierId, itemModifier) ->
-                addAll(missingItemModifierReferences(itemModifierId, itemModifier.root, datapack.predicates.keys))
-            }
-            datapack.advancements.toSortedMap().forEach { (advancementId, advancement) ->
-                advancement.parent
-                    ?.takeIf { it !in datapack.advancements }
-                    ?.let { add(ManifestMissingResourceReference("advancement $advancementId parent", "advancement", it)) }
-                advancement.rewards.function
-                    ?.takeIf { it !in datapack.functions }
-                    ?.let { add(ManifestMissingResourceReference("advancement $advancementId rewards.function", "function", it)) }
-                advancement.rewards.loot
-                    .filterNot { it in datapack.lootTables }
-                    .forEach { add(ManifestMissingResourceReference("advancement $advancementId rewards.loot", "loot_table", it)) }
-                advancement.rewards.recipes
-                    .filterNot { it in datapack.recipes }
-                    .forEach { add(ManifestMissingResourceReference("advancement $advancementId rewards.recipes", "recipe", it)) }
-            }
-        }
-        return ManifestResourceSummary(
-            functions = datapack.functions.size,
-            lootTables = datapack.lootTables.size,
-            predicates = datapack.predicates.size,
-            advancements = datapack.advancements.size,
-            recipes = datapack.recipes.size,
-            itemModifiers = datapack.itemModifiers.size,
-            tags = datapack.tags.size,
-            rawResourceKinds = datapack.rawResources.size,
-            rawResources = datapack.rawResources.values.sumOf { it.size },
-            resourceIndex = datapack.resourceIndex.size,
-            activeResources = datapack.resourceIndex.count { it.active },
-            overriddenResources = datapack.resourceIndex.count { !it.active },
-            overlays = overlays,
-            missingReferences = missingReferences,
-        )
-    }
-
-    private fun missingPredicateReferences(
-        predicateId: ResourceLocation,
-        root: JsonElement,
-        knownPredicates: Set<ResourceLocation>,
-    ): List<ManifestMissingResourceReference> {
-        val missing = mutableListOf<ManifestMissingResourceReference>()
-        collectPredicateReferences("predicate $predicateId reference", root, knownPredicates, missing)
-        return missing
-    }
-
-    private fun collectPredicateReferences(
-        source: String,
-        element: JsonElement?,
-        knownPredicates: Set<ResourceLocation>,
-        missing: MutableList<ManifestMissingResourceReference>,
-    ) {
-        if (element == null || element.isJsonNull) return
-        when {
-            element.isJsonArray -> element.asJsonArray.forEach {
-                collectPredicateReferences(source, it, knownPredicates, missing)
-            }
-            element.isJsonObject -> {
-                val obj = element.asJsonObject
-                when (canonicalResourceKind(jsonString(obj.get("condition")) ?: jsonString(obj.get("predicate")))) {
-                    "reference" -> jsonString(obj.get("name"))
-                        ?.let(ResourceLocation::parse)
-                        ?.takeIf { it !in knownPredicates }
-                        ?.let { missing += ManifestMissingResourceReference(source, "predicate", it) }
-                    "all_of", "any_of", "alternative" -> collectPredicateReferences(source, obj.get("terms"), knownPredicates, missing)
-                    "inverted" -> collectPredicateReferences(source, obj.get("term") ?: obj.get("predicate"), knownPredicates, missing)
-                }
-            }
-        }
-    }
-
-    private fun missingLootTableReferences(
-        lootTableId: ResourceLocation,
-        root: JsonObject,
-        knownLootTables: Set<ResourceLocation>,
-        knownPredicates: Set<ResourceLocation>,
-    ): List<ManifestMissingResourceReference> {
-        val missing = mutableListOf<ManifestMissingResourceReference>()
-        collectPredicateReferences("loot_table $lootTableId conditions", root.get("conditions"), knownPredicates, missing)
-        collectLootFunctionReferences(lootTableId, root.get("functions"), knownPredicates, missing)
-        root.arrayOrNull("pools")?.forEach { pool ->
-            val poolObject = pool.takeIf { it.isJsonObject }?.asJsonObject ?: return@forEach
-            collectPredicateReferences("loot_table $lootTableId conditions", poolObject.get("conditions"), knownPredicates, missing)
-            collectLootEntryReferences(lootTableId, poolObject.get("entries"), knownLootTables, knownPredicates, missing)
-            collectLootFunctionReferences(lootTableId, poolObject.get("functions"), knownPredicates, missing)
-        }
-        return missing
-    }
-
-    private fun collectLootEntryReferences(
-        lootTableId: ResourceLocation,
-        element: JsonElement?,
-        knownLootTables: Set<ResourceLocation>,
-        knownPredicates: Set<ResourceLocation>,
-        missing: MutableList<ManifestMissingResourceReference>,
-    ) {
-        if (element == null || element.isJsonNull) return
-        when {
-            element.isJsonArray -> element.asJsonArray.forEach {
-                collectLootEntryReferences(lootTableId, it, knownLootTables, knownPredicates, missing)
-            }
-            element.isJsonObject -> {
-                val obj = element.asJsonObject
-                collectPredicateReferences("loot_table $lootTableId conditions", obj.get("conditions"), knownPredicates, missing)
-                if (canonicalResourceKind(jsonString(obj.get("type"))) == "loot_table") {
-                    jsonString(obj.get("value"))
-                        ?.let(ResourceLocation::parse)
-                        ?.takeIf { it !in knownLootTables }
-                        ?.let { missing += ManifestMissingResourceReference("loot_table $lootTableId entry", "loot_table", it) }
-                }
-                collectLootFunctionReferences(lootTableId, obj.get("functions"), knownPredicates, missing)
-                collectLootEntryReferences(lootTableId, obj.get("children"), knownLootTables, knownPredicates, missing)
-            }
-        }
-    }
-
-    private fun collectLootFunctionReferences(
-        lootTableId: ResourceLocation,
-        element: JsonElement?,
-        knownPredicates: Set<ResourceLocation>,
-        missing: MutableList<ManifestMissingResourceReference>,
-    ) {
-        if (element == null || element.isJsonNull) return
-        when {
-            element.isJsonArray -> element.asJsonArray.forEach {
-                collectLootFunctionReferences(lootTableId, it, knownPredicates, missing)
-            }
-            element.isJsonObject -> {
-                val obj = element.asJsonObject
-                collectPredicateReferences("loot_table $lootTableId conditions", obj.get("conditions"), knownPredicates, missing)
-                collectLootFunctionReferences(lootTableId, obj.get("functions"), knownPredicates, missing)
-                collectLootFunctionReferences(lootTableId, obj.get("function"), knownPredicates, missing)
-            }
-        }
-    }
-
-    private fun missingItemModifierReferences(
-        itemModifierId: ResourceLocation,
-        root: JsonElement,
-        knownPredicates: Set<ResourceLocation>,
-    ): List<ManifestMissingResourceReference> {
-        val missing = mutableListOf<ManifestMissingResourceReference>()
-        collectItemModifierFunctionReferences(itemModifierId, root, knownPredicates, missing)
-        return missing
-    }
-
-    private fun collectItemModifierFunctionReferences(
-        itemModifierId: ResourceLocation,
-        element: JsonElement?,
-        knownPredicates: Set<ResourceLocation>,
-        missing: MutableList<ManifestMissingResourceReference>,
-    ) {
-        if (element == null || element.isJsonNull) return
-        when {
-            element.isJsonArray -> element.asJsonArray.forEach {
-                collectItemModifierFunctionReferences(itemModifierId, it, knownPredicates, missing)
-            }
-            element.isJsonObject ->
-                collectPredicateReferences("item_modifier $itemModifierId conditions", element.asJsonObject.get("conditions"), knownPredicates, missing)
-        }
-    }
-
-    private fun canonicalResourceKind(value: String?): String? =
-        value?.substringAfter(':')
-
-    private fun JsonObject.arrayOrNull(name: String): JsonArray? =
-        get(name)?.takeIf { it.isJsonArray }?.asJsonArray
-
-    private fun jsonString(element: JsonElement?): String? =
-        element?.takeIf { it.isJsonPrimitive && it.asJsonPrimitive.isString }?.asString
+    internal fun summarizeResources(sandbox: DatapackSandbox): ManifestResourceSummary =
+        sandbox.datapack.resourceSummary()
 
     private fun manifestDiagnostic(step: Int, version: String, error: SandboxException, sandbox: DatapackSandbox): ManifestDiagnostic {
         val trace = sandbox.world.traces.lastOrNull { it.errorCode == error.code && it.errorMessage == error.message }

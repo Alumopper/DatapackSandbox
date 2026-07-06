@@ -157,6 +157,35 @@ data class ResourceIndexEntry(
 )
 
 /**
+ * Direct resource reference that points to a resource absent from the loaded datapack.
+ */
+data class DatapackMissingResourceReference(
+    val source: String,
+    val type: String,
+    val id: ResourceLocation,
+)
+
+/**
+ * Stable resource diagnostics shared by CLI reports, REPL inspect, and quick-test reports.
+ */
+data class DatapackResourceSummary(
+    val functions: Int,
+    val lootTables: Int,
+    val predicates: Int,
+    val advancements: Int,
+    val recipes: Int,
+    val itemModifiers: Int,
+    val tags: Int,
+    val rawResourceKinds: Int,
+    val rawResources: Int,
+    val resourceIndex: Int,
+    val activeResources: Int,
+    val overriddenResources: Int,
+    val overlays: List<ResourceIndexEntry>,
+    val missingReferences: List<DatapackMissingResourceReference>,
+)
+
+/**
  * Loaded loot table resource.
  */
 data class LootTable(
@@ -240,6 +269,60 @@ data class Datapack(
     val tags: Map<TagKey, TagDefinition> = emptyMap(),
     val resourceIndex: List<ResourceIndexEntry> = emptyList(),
 ) {
+    /**
+     * Builds a deterministic summary of loaded resources, overlays, and direct missing references.
+     */
+    fun resourceSummary(): DatapackResourceSummary {
+        val overlays = resourceIndex.filter { !it.active || it.overrides != null || it.overriddenBy != null }
+        val missingReferences = buildList {
+            loadFunctions
+                .filterNot { it in functions }
+                .forEach { add(DatapackMissingResourceReference("#minecraft:load", "function", it)) }
+            tickFunctions
+                .filterNot { it in functions }
+                .forEach { add(DatapackMissingResourceReference("#minecraft:tick", "function", it)) }
+            predicates.toSortedMap().forEach { (predicateId, predicate) ->
+                addAll(missingPredicateReferences(predicateId, predicate.root, predicates.keys))
+            }
+            lootTables.toSortedMap().forEach { (lootTableId, lootTable) ->
+                addAll(missingLootTableReferences(lootTableId, lootTable.root, lootTables.keys, predicates.keys))
+            }
+            itemModifiers.toSortedMap().forEach { (itemModifierId, itemModifier) ->
+                addAll(missingItemModifierReferences(itemModifierId, itemModifier.root, predicates.keys))
+            }
+            advancements.toSortedMap().forEach { (advancementId, advancement) ->
+                advancement.parent
+                    ?.takeIf { it !in advancements }
+                    ?.let { add(DatapackMissingResourceReference("advancement $advancementId parent", "advancement", it)) }
+                advancement.rewards.function
+                    ?.takeIf { it !in functions }
+                    ?.let { add(DatapackMissingResourceReference("advancement $advancementId rewards.function", "function", it)) }
+                advancement.rewards.loot
+                    .filterNot { it in lootTables }
+                    .forEach { add(DatapackMissingResourceReference("advancement $advancementId rewards.loot", "loot_table", it)) }
+                advancement.rewards.recipes
+                    .filterNot { it in recipes }
+                    .forEach { add(DatapackMissingResourceReference("advancement $advancementId rewards.recipes", "recipe", it)) }
+            }
+        }
+        return DatapackResourceSummary(
+            functions = functions.size,
+            lootTables = lootTables.size,
+            predicates = predicates.size,
+            advancements = advancements.size,
+            recipes = recipes.size,
+            itemModifiers = itemModifiers.size,
+            tags = tags.size,
+            rawResourceKinds = rawResources.size,
+            rawResources = rawResources.values.sumOf { it.size },
+            resourceIndex = resourceIndex.size,
+            activeResources = resourceIndex.count { it.active },
+            overriddenResources = resourceIndex.count { !it.active },
+            overlays = overlays,
+            missingReferences = missingReferences,
+        )
+    }
+
     /**
      * Returns a function by id.
      *
@@ -338,3 +421,138 @@ data class Datapack(
                 message = "Tag '$registry/$id' was not found",
             )
 }
+
+private fun missingPredicateReferences(
+    predicateId: ResourceLocation,
+    root: JsonElement,
+    knownPredicates: Set<ResourceLocation>,
+): List<DatapackMissingResourceReference> {
+    val missing = mutableListOf<DatapackMissingResourceReference>()
+    collectPredicateReferences("predicate $predicateId reference", root, knownPredicates, missing)
+    return missing
+}
+
+private fun collectPredicateReferences(
+    source: String,
+    element: JsonElement?,
+    knownPredicates: Set<ResourceLocation>,
+    missing: MutableList<DatapackMissingResourceReference>,
+) {
+    if (element == null || element.isJsonNull) return
+    when {
+        element.isJsonArray -> element.asJsonArray.forEach {
+            collectPredicateReferences(source, it, knownPredicates, missing)
+        }
+        element.isJsonObject -> {
+            val obj = element.asJsonObject
+            when (canonicalResourceKind(resourceJsonString(obj.get("condition")) ?: resourceJsonString(obj.get("predicate")))) {
+                "reference" -> resourceJsonString(obj.get("name"))
+                    ?.let(ResourceLocation::parse)
+                    ?.takeIf { it !in knownPredicates }
+                    ?.let { missing += DatapackMissingResourceReference(source, "predicate", it) }
+                "all_of", "any_of", "alternative" -> collectPredicateReferences(source, obj.get("terms"), knownPredicates, missing)
+                "inverted" -> collectPredicateReferences(source, obj.get("term") ?: obj.get("predicate"), knownPredicates, missing)
+            }
+        }
+    }
+}
+
+private fun missingLootTableReferences(
+    lootTableId: ResourceLocation,
+    root: JsonObject,
+    knownLootTables: Set<ResourceLocation>,
+    knownPredicates: Set<ResourceLocation>,
+): List<DatapackMissingResourceReference> {
+    val missing = mutableListOf<DatapackMissingResourceReference>()
+    collectPredicateReferences("loot_table $lootTableId conditions", root.get("conditions"), knownPredicates, missing)
+    collectLootFunctionReferences(lootTableId, root.get("functions"), knownPredicates, missing)
+    root.resourceArrayOrNull("pools")?.forEach { pool ->
+        val poolObject = pool.takeIf { it.isJsonObject }?.asJsonObject ?: return@forEach
+        collectPredicateReferences("loot_table $lootTableId conditions", poolObject.get("conditions"), knownPredicates, missing)
+        collectLootEntryReferences(lootTableId, poolObject.get("entries"), knownLootTables, knownPredicates, missing)
+        collectLootFunctionReferences(lootTableId, poolObject.get("functions"), knownPredicates, missing)
+    }
+    return missing
+}
+
+private fun collectLootEntryReferences(
+    lootTableId: ResourceLocation,
+    element: JsonElement?,
+    knownLootTables: Set<ResourceLocation>,
+    knownPredicates: Set<ResourceLocation>,
+    missing: MutableList<DatapackMissingResourceReference>,
+) {
+    if (element == null || element.isJsonNull) return
+    when {
+        element.isJsonArray -> element.asJsonArray.forEach {
+            collectLootEntryReferences(lootTableId, it, knownLootTables, knownPredicates, missing)
+        }
+        element.isJsonObject -> {
+            val obj = element.asJsonObject
+            collectPredicateReferences("loot_table $lootTableId conditions", obj.get("conditions"), knownPredicates, missing)
+            if (canonicalResourceKind(resourceJsonString(obj.get("type"))) == "loot_table") {
+                resourceJsonString(obj.get("value"))
+                    ?.let(ResourceLocation::parse)
+                    ?.takeIf { it !in knownLootTables }
+                    ?.let { missing += DatapackMissingResourceReference("loot_table $lootTableId entry", "loot_table", it) }
+            }
+            collectLootFunctionReferences(lootTableId, obj.get("functions"), knownPredicates, missing)
+            collectLootEntryReferences(lootTableId, obj.get("children"), knownLootTables, knownPredicates, missing)
+        }
+    }
+}
+
+private fun collectLootFunctionReferences(
+    lootTableId: ResourceLocation,
+    element: JsonElement?,
+    knownPredicates: Set<ResourceLocation>,
+    missing: MutableList<DatapackMissingResourceReference>,
+) {
+    if (element == null || element.isJsonNull) return
+    when {
+        element.isJsonArray -> element.asJsonArray.forEach {
+            collectLootFunctionReferences(lootTableId, it, knownPredicates, missing)
+        }
+        element.isJsonObject -> {
+            val obj = element.asJsonObject
+            collectPredicateReferences("loot_table $lootTableId conditions", obj.get("conditions"), knownPredicates, missing)
+            collectLootFunctionReferences(lootTableId, obj.get("functions"), knownPredicates, missing)
+            collectLootFunctionReferences(lootTableId, obj.get("function"), knownPredicates, missing)
+        }
+    }
+}
+
+private fun missingItemModifierReferences(
+    itemModifierId: ResourceLocation,
+    root: JsonElement,
+    knownPredicates: Set<ResourceLocation>,
+): List<DatapackMissingResourceReference> {
+    val missing = mutableListOf<DatapackMissingResourceReference>()
+    collectItemModifierFunctionReferences(itemModifierId, root, knownPredicates, missing)
+    return missing
+}
+
+private fun collectItemModifierFunctionReferences(
+    itemModifierId: ResourceLocation,
+    element: JsonElement?,
+    knownPredicates: Set<ResourceLocation>,
+    missing: MutableList<DatapackMissingResourceReference>,
+) {
+    if (element == null || element.isJsonNull) return
+    when {
+        element.isJsonArray -> element.asJsonArray.forEach {
+            collectItemModifierFunctionReferences(itemModifierId, it, knownPredicates, missing)
+        }
+        element.isJsonObject ->
+            collectPredicateReferences("item_modifier $itemModifierId conditions", element.asJsonObject.get("conditions"), knownPredicates, missing)
+    }
+}
+
+private fun canonicalResourceKind(value: String?): String? =
+    value?.substringAfter(':')
+
+private fun JsonObject.resourceArrayOrNull(name: String) =
+    get(name)?.takeIf { it.isJsonArray }?.asJsonArray
+
+private fun resourceJsonString(element: JsonElement?): String? =
+    element?.takeIf { it.isJsonPrimitive && it.asJsonPrimitive.isString }?.asString

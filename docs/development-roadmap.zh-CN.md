@@ -200,6 +200,7 @@
 - 强化 `SandboxQuickTest` fluent API：
   - `assertScore`、`assertStoragePath`、`assertPlayer`、`assertEntity`、`assertBlock`、`assertItem`、`assertOutput`、`assertTrace`。
   - 支持可复用 fixture：world setup、players、entities、blocks、storage、scoreboard、packs。
+- quick-test report 已暴露 `resourceSummary`，与 `run`/`check` report 和 REPL `inspect resources` 共用 core 的资源数量、overlay、missing-reference 诊断模型。
 - 增加 JUnit 辅助错误格式，失败时输出最小 snapshot diff 和 trace 摘要。
 
 ### 随手小测试
@@ -230,7 +231,7 @@
 
 - README/README.zh-CN 中已为 JVM 单元调试、随手小测试、命令生成器输出、full-stack、player-events、single-function、generator-output 和 multi-version 示例提供最短入口。
 - `examples/` 至少包含 full-stack、player-events、single-function、generator-output、generator-template、multi-version 六类示例。
-- CLI 和 quick-test 对同一清单行为输出一致结果。
+- CLI 和 quick-test 对同一清单行为输出一致结果；quick-test report 已可读取同一套 core 资源摘要，便于代码级小测复用 CLI/report 的资源诊断。
 
 ## 阶段 7：Manifest 格式演进
 
