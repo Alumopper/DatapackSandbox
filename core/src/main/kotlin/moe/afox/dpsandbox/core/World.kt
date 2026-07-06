@@ -1023,7 +1023,9 @@ fun SandboxEntity.toJson(profile: VersionProfile = VersionProfiles.default): Jso
     val tagsJson = JsonArray()
     tags.sorted().forEach { tagsJson.add(it) }
     json.add("tags", tagsJson)
-    json.add("nbt", fullNbt(profile))
+    val nbtJson = fullNbt(profile)
+    nbtJson.get("Health")?.takeIf { it.isJsonPrimitive }?.asDouble?.let { json.addProperty("health", it) }
+    json.add("nbt", nbtJson)
     val equipmentJson = JsonObject()
     equipment.toSortedMap().forEach { (slot, item) -> equipmentJson.add(slot, item.toJson()) }
     json.add("equipment", equipmentJson)

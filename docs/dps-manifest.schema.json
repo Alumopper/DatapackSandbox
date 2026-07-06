@@ -251,6 +251,7 @@
         "nbt": true,
         "yaw": { "type": "number" },
         "pitch": { "type": "number" },
+        "health": { "type": "number" },
         "equipment": {
           "type": "object",
           "additionalProperties": { "$ref": "#/$defs/itemFixture" }
@@ -612,6 +613,7 @@
         "pos": { "$ref": "#/$defs/position" },
         "position": { "$ref": "#/$defs/position" },
         "dimension": { "type": "string" },
+        "health": { "type": "number" },
         "exists": { "type": "boolean" },
         "count": { "type": "integer", "minimum": 0 },
         "equipment": { "$ref": "#/$defs/entityEquipmentAssertion" },

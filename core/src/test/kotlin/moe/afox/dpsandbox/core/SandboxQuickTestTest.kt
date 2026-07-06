@@ -590,6 +590,7 @@ class SandboxQuickTestTest {
                     effects = listOf(effect("minecraft:strength", durationTicks = 80, amplifier = 2, hideParticles = true)),
                     attributes = mapOf("minecraft:max_health" to 12.0),
                     dimension = "minecraft:the_nether",
+                    health = 8.0,
                 )
                 player(
                     "Alex",
@@ -646,6 +647,7 @@ class SandboxQuickTestTest {
                 tag = "fixture",
                 position = Position(1.0, 64.0, 0.0),
                 dimension = "minecraft:the_nether",
+                health = 8.0,
             )
             .assertEntityEquipment(
                 "weapon.mainhand",
@@ -723,6 +725,7 @@ class SandboxQuickTestTest {
         assertEquals("false", snapshot.get("gamerules").asJsonObject.get("doDaylightCycle").asString)
         val pig = snapshot.get("entities").asJsonArray.single { it.asJsonObject.get("type").asString == "minecraft:pig" }.asJsonObject
         assertEquals("minecraft:the_nether", pig.get("dimension").asString)
+        assertEquals(8.0, pig.get("health").asDouble)
         assertEquals("minecraft:iron_sword", pig.getAsJsonObject("equipment").getAsJsonObject("weapon.mainhand").get("id").asString)
         assertEquals("minecraft:strength", pig.getAsJsonArray("effects")[0].asJsonObject.get("id").asString)
         assertEquals(12.0, pig.getAsJsonObject("attributes").get("minecraft:max_health").asDouble)

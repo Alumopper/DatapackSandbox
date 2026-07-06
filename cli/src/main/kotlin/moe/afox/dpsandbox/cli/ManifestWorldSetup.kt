@@ -123,6 +123,7 @@ object ManifestWorldSetup {
             effects = entity.manifestArray("effects", "world entity effects").map { parseManifestEffect(it, "world entity effects") },
             attributes = parseEntityAttributes(entity),
             dimension = ResourceLocation.parse(entity.manifestString("dimension") ?: "minecraft:overworld"),
+            health = entity.get("health")?.asDouble,
         )
     }
 

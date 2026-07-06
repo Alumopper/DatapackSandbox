@@ -1193,6 +1193,7 @@ object ManifestRunner {
         val expectedPosition = entity.getAsJsonArray("pos")?.let { parseManifestPosition(it) }
             ?: entity.getAsJsonArray("position")?.let { parseManifestPosition(it) }
         val expectedDimension = entity.manifestString("dimension")?.let(ResourceLocation::parse)
+        val expectedHealth = entity.get("health")?.asDouble
         val expectedUuid = entity.manifestString("uuid")
         val expectedTag = entity.manifestString("tag")
         return sandbox.world.entities.filter { sandboxEntity ->
@@ -1200,9 +1201,13 @@ object ManifestRunner {
                 (expectedTag == null || expectedTag in sandboxEntity.tags) &&
                 (expectedUuid == null || sandboxEntity.uuid == expectedUuid) &&
                 (expectedPosition == null || sandboxEntity.position == expectedPosition) &&
-                (expectedDimension == null || sandboxEntity.dimension == expectedDimension)
+                (expectedDimension == null || sandboxEntity.dimension == expectedDimension) &&
+                (expectedHealth == null || manifestEntityHealth(sandboxEntity, sandbox) == expectedHealth)
         }
     }
+
+    private fun manifestEntityHealth(entity: SandboxEntity, sandbox: DatapackSandbox): Double? =
+        entity.fullNbt(sandbox.profile).get("Health")?.takeIf { it.isJsonPrimitive }?.asDouble
 
     private fun evaluateEntityEquipmentAssertion(equipment: JsonObject, entities: List<SandboxEntity>, entity: JsonObject): List<String> {
         val slot = equipment.requiredManifestString("slot")
@@ -1338,6 +1343,7 @@ object ManifestRunner {
             entity.manifestString("uuid")?.let { "uuid=$it" },
             (entity.getAsJsonArray("pos") ?: entity.getAsJsonArray("position"))?.let { "position=${parseManifestPosition(it)}" },
             entity.manifestString("dimension")?.let { "dimension=$it" },
+            entity.get("health")?.let { "health=${it.asDouble}" },
         ).ifEmpty { listOf("<any entity>") }.joinToString(", ")
 
     private fun describeEntityCountExpectation(entity: JsonObject): String =

@@ -238,6 +238,7 @@ class SandboxWorldSetup {
         effects: Iterable<PlayerEffect> = emptyList(),
         attributes: Map<String, Double> = emptyMap(),
         dimension: String = "minecraft:overworld",
+        health: Double? = null,
     ): SandboxWorldSetup =
         entity(
             type = ResourceLocation.parse(type),
@@ -250,6 +251,7 @@ class SandboxWorldSetup {
             effects = effects,
             attributes = attributes,
             dimension = ResourceLocation.parse(dimension),
+            health = health,
         )
 
     /**
@@ -269,6 +271,7 @@ class SandboxWorldSetup {
         effects: Iterable<PlayerEffect> = emptyList(),
         attributes: Map<String, Double> = emptyMap(),
         dimension: ResourceLocation = ResourceLocation("minecraft", "overworld"),
+        health: Double? = null,
     ): SandboxWorldSetup = apply {
         val equipmentCopies = equipment.map { (slot, item) -> slot to item.copyForSetup() }
         val effectCopies = effects.map { it.copy() }
@@ -282,9 +285,11 @@ class SandboxWorldSetup {
                 pitch = pitch,
                 dimension = dimension,
             )
-            if (nbt != null && nbt.entrySet().isNotEmpty()) {
+            val hasNbt = nbt != null && nbt.entrySet().isNotEmpty()
+            if (hasNbt || health != null) {
                 val full = entity.fullNbt(profile)
-                JsonPaths.merge(full, null, nbt)
+                if (nbt != null) JsonPaths.merge(full, null, nbt)
+                health?.let { full.addProperty("Health", it) }
                 entity.writeFullNbt(profile, full)
             } else {
                 entity.fullNbt(profile)

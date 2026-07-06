@@ -27,8 +27,8 @@ Both `.dps.json` manifests and the quick-test API can define initial world
 state before any `steps` or commands run. Supported fixture inputs include:
 
 - `blocks` with block id, state properties, and validated block entity NBT.
-- `entities` with type, position, dimension, tags, rotation, equipment, active
-  effects, attributes, and validated entity NBT.
+- `entities` with type, position, dimension, health, tags, rotation, equipment,
+  active effects, attributes, and validated entity NBT.
 - `players` with position, dimension, game mode, inventory, XP, health, and
   food.
 - `scores`, `storage`, `gamerules`, `gameTime`, `dayTime`, and `weather`.
@@ -48,6 +48,7 @@ Example manifest:
         "type": "minecraft:pig",
         "pos": [1, 64, 0],
         "dimension": "minecraft:the_nether",
+        "health": 8.0,
         "tags": ["fixture"],
         "equipment": {
           "weapon.mainhand": { "id": "minecraft:iron_sword" }
@@ -74,6 +75,7 @@ Example manifest:
         "type": "minecraft:pig",
         "tag": "fixture",
         "dimension": "minecraft:the_nether",
+        "health": 8.0,
         "equipment": { "slot": "weapon.mainhand", "id": "minecraft:iron_sword" },
         "effect": { "id": "minecraft:strength", "duration": 80, "amplifier": 2 },
         "attribute": { "id": "minecraft:max_health", "equals": 12.0 }

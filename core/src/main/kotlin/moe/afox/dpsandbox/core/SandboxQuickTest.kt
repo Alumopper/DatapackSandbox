@@ -452,6 +452,7 @@ class SandboxQuickTestMatrix private constructor(
         exists: Boolean = true,
         count: Int? = null,
         dimension: String? = null,
+        health: Double? = null,
     ): SandboxQuickTestMatrix = apply {
         scenarios.values.forEach {
             it.assertEntity(
@@ -462,6 +463,7 @@ class SandboxQuickTestMatrix private constructor(
                 exists = exists,
                 count = count,
                 dimension = dimension,
+                health = health,
             )
         }
     }
@@ -1545,6 +1547,7 @@ class SandboxQuickTest private constructor(
         exists: Boolean = true,
         count: Int? = null,
         dimension: String? = null,
+        health: Double? = null,
     ): SandboxQuickTest = apply {
         val expectedType = type?.let(ResourceLocation::parse)
         val expectedDimension = dimension?.let(ResourceLocation::parse)
@@ -1553,9 +1556,10 @@ class SandboxQuickTest private constructor(
                 (tag == null || tag in entity.tags) &&
                 (uuid == null || entity.uuid == uuid) &&
                 (position == null || entity.position == position) &&
-                (expectedDimension == null || entity.dimension == expectedDimension)
+                (expectedDimension == null || entity.dimension == expectedDimension) &&
+                (health == null || entityHealth(entity) == health)
         }
-        val description = describeEntityExpectation(type, tag, uuid, position, dimension)
+        val description = describeEntityExpectation(type, tag, uuid, position, dimension, health)
         if (count != null) {
             if (matches.size != count) failures += "entity expected $count match(es) but found ${matches.size}: $description"
             return@apply
@@ -2262,13 +2266,24 @@ class SandboxQuickTest private constructor(
             ),
         )
 
-    private fun describeEntityExpectation(type: String?, tag: String?, uuid: String?, position: Position?, dimension: String?): String =
+    private fun entityHealth(entity: SandboxEntity): Double? =
+        entity.fullNbt(sandbox.profile).get("Health")?.takeIf { it.isJsonPrimitive }?.asDouble
+
+    private fun describeEntityExpectation(
+        type: String?,
+        tag: String?,
+        uuid: String?,
+        position: Position?,
+        dimension: String?,
+        health: Double? = null,
+    ): String =
         listOfNotNull(
             type?.let { "type=$it" },
             tag?.let { "tag=$it" },
             uuid?.let { "uuid=$it" },
             position?.let { "position=$it" },
             dimension?.let { "dimension=$it" },
+            health?.let { "health=$it" },
         ).ifEmpty { listOf("<any entity>") }.joinToString(", ")
 
     private fun describeSnapshotDiffExpectation(path: String?, kind: SnapshotDiffKind?, contains: String?): String =

@@ -170,6 +170,7 @@ SandboxQuickTest.create(
             effects = listOf(effect("minecraft:strength", durationTicks = 80, amplifier = 2)),
             attributes = mapOf("minecraft:max_health" to 12.0),
             dimension = "minecraft:the_nether",
+            health = 8.0,
         )
         player("Alex", x = 2.0, y = 65.0, z = 3.0, xp = 5, inventory = listOf(item("minecraft:stick", 2)))
         playerEffect("Alex", "minecraft:speed", durationTicks = 40, amplifier = 1)
@@ -201,7 +202,7 @@ SandboxQuickTest.create(
         worldBorderWarningDistance = 8,
     )
     .assertBlock(0, 64, 0, "minecraft:chest", nbtPath = "Items", nbtEquals = "[]")
-    .assertEntity(type = "minecraft:pig", tag = "fixture", dimension = "minecraft:the_nether")
+    .assertEntity(type = "minecraft:pig", tag = "fixture", dimension = "minecraft:the_nether", health = 8.0)
     .assertEntityEquipment("weapon.mainhand", type = "minecraft:pig", tag = "fixture", id = "minecraft:iron_sword", dimension = "minecraft:the_nether")
     .assertEntityEffect("minecraft:strength", type = "minecraft:pig", tag = "fixture", durationTicks = 80, amplifier = 2, dimension = "minecraft:the_nether")
     .assertEntityAttribute("minecraft:max_health", type = "minecraft:pig", tag = "fixture", value = 12.0, dimension = "minecraft:the_nether")
@@ -316,7 +317,7 @@ class MyDatapackTest {
 | `assertPredicate(id, expected, playerName)` | 断言已加载 predicate 的执行结果。 |
 | `assertLoot(table, context, playerName, seed, count, item)` | 断言确定性的 loot 生成结果。 |
 | `assertBlock(x, y, z, id, exists, nbtPath, nbtEquals, nbtExists)` | 断言 sparse world 中的方块。 |
-| `assertEntity(type, tag, uuid, position, exists, count, dimension)` | 断言匹配实体存在性或数量。 |
+| `assertEntity(type, tag, uuid, position, exists, count, dimension, health)` | 断言匹配实体存在性或数量。 |
 | `assertEntityEquipment(slot, type, tag, uuid, position, id, count, exists, minCount, maxCount, componentsPath, componentsEquals, componentsExists, nbtPath, nbtEquals, nbtExists, dimension)` | 断言非玩家实体装备。 |
 | `assertEntityEffect(effect, type, tag, uuid, position, exists, durationTicks, amplifier, hideParticles, dimension)` | 断言非玩家实体 active effect。 |
 | `assertEntityAttribute(attribute, type, tag, uuid, position, exists, value, min, max, dimension)` | 断言非玩家实体 attribute。 |

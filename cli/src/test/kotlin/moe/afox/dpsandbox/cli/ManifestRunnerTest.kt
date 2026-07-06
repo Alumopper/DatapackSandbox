@@ -416,6 +416,7 @@ class ManifestRunnerTest {
                     "type": "minecraft:pig",
                     "pos": [1, 64, 0],
                     "dimension": "minecraft:the_nether",
+                    "health": 8.0,
                     "tags": ["fixture"],
                     "equipment": {
                       "weapon.mainhand": {
@@ -498,6 +499,7 @@ class ManifestRunnerTest {
                     "tag": "fixture",
                     "position": [1, 64, 0],
                     "dimension": "minecraft:the_nether",
+                    "health": 8.0,
                     "count": 1,
                     "equipment": {
                       "slot": "weapon.mainhand",
