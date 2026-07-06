@@ -5203,12 +5203,12 @@ class DatapackSandbox(
             "storage" -> {
                 requireSizeFrom(tokens, index, 6, "execute store ${tokens[index].text} storage <id> <path> <type> <scale>", location)
                 val storage = world.storage(ResourceLocation.parse(tokens[index + 2].text))
-                val scaled = scaledStoreValue(valueToStore, tokens[index + 5].text, location)
+                val scaled = scaledStoreValue(valueToStore, tokens[index + 4].text, tokens[index + 5].text, location)
                 JsonPaths.set(storage, tokens[index + 3].text, scaled)
             }
             "entity" -> {
                 requireSizeFrom(tokens, index, 6, "execute store ${tokens[index].text} entity <target> <path> <type> <scale>", location)
-                val scaled = scaledStoreValue(valueToStore, tokens[index + 5].text, location)
+                val scaled = scaledStoreValue(valueToStore, tokens[index + 4].text, tokens[index + 5].text, location)
                 val target = EntitySelectors.select(world, tokens[index + 2].text, context, location).singleOrNull()
                     ?: throw SandboxException(DiagnosticCode.COMMAND_ERROR, "execute store entity requires exactly one target", location)
                 if (target is SandboxPlayer) {
@@ -5222,7 +5222,7 @@ class DatapackSandbox(
                 requireSizeFrom(tokens, index, 8, "execute store ${tokens[index].text} block <pos> <path> <type> <scale>", location)
                 val pos = parseBlockPos(tokens, index + 2, context, location)
                 val block = world.requireBlock(pos)
-                val scaled = scaledStoreValue(valueToStore, tokens[index + 7].text, location)
+                val scaled = scaledStoreValue(valueToStore, tokens[index + 6].text, tokens[index + 7].text, location)
                 val updated = block.fullNbt(pos, profile, location)
                 JsonPaths.set(updated, tokens[index + 5].text, scaled)
                 block.writeFullNbt(pos, profile, updated, location)
@@ -5241,12 +5241,31 @@ class DatapackSandbox(
         }
     }
 
-    private fun scaledStoreValue(value: Int, scaleText: String, location: SourceLocation?): JsonPrimitive {
+    private fun scaledStoreValue(value: Int, typeText: String, scaleText: String, location: SourceLocation?): JsonPrimitive {
         val scale = scaleText.toDoubleOrNull()
             ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Invalid execute store scale '$scaleText'", location)
+        if (!scale.isFinite()) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Invalid execute store scale '$scaleText'", location)
+        }
         val scaled = value * scale
-        return if (scaled % 1.0 == 0.0) JsonPrimitive(scaled.toLong()) else JsonPrimitive(scaled)
+        return when (typeText) {
+            "byte" -> JsonPrimitive(coerceStoreInteger(scaled, Byte.MIN_VALUE.toLong(), Byte.MAX_VALUE.toLong()).toInt())
+            "short" -> JsonPrimitive(coerceStoreInteger(scaled, Short.MIN_VALUE.toLong(), Short.MAX_VALUE.toLong()).toInt())
+            "int" -> JsonPrimitive(coerceStoreInteger(scaled, Int.MIN_VALUE.toLong(), Int.MAX_VALUE.toLong()).toInt())
+            "long" -> JsonPrimitive(coerceStoreInteger(scaled, Long.MIN_VALUE, Long.MAX_VALUE))
+            "float" -> JsonPrimitive(scaled.toFloat())
+            "double" -> JsonPrimitive(scaled)
+            else -> unsupportedFeature("Unsupported execute store numeric type '$typeText'", profile.id, location)
+        }
     }
+
+    private fun coerceStoreInteger(value: Double, min: Long, max: Long): Long =
+        when {
+            value.isNaN() -> 0
+            value <= min.toDouble() -> min
+            value >= max.toDouble() -> max
+            else -> value.toLong()
+        }
 
     private fun executeStoreValue(
         storeType: String,

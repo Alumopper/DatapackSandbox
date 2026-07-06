@@ -51,7 +51,7 @@
 - 扩展 `execute`：
   - 补齐 `if/unless` 的 `blocks`、`biome`、`loaded`、`dimension`、`predicate`、`function` 等路径。
   - 补齐 `store` 的 result/success 到 score、storage、entity、block、bossbar 的边界行为。
-  - `execute store success/result` 已按嵌套命令真实 success/result 写入；嵌套 `execute if/unless` 条件失败会写入 0，`function` 中 `return fail` 会作为失败传递给 `store success`。
+  - `execute store success/result` 已按嵌套命令真实 success/result 写入；NBT 目标会按 byte/short/int/long/float/double 类型和 scale 转换数值；嵌套 `execute if/unless` 条件失败会写入 0，`function` 中 `return fail` 会作为失败传递给 `store success`。
   - 提升 `as/at/positioned/rotated/facing/anchored/in/align` 的上下文准确性。
 - 扩展 `data`：
   - 支持更完整的 data path，包括 list/object 匹配、append/prepend/insert、set/from/string/value；list 操作会拒绝已存在的非列表目标，避免生成器输出调试时把错误 path 静默覆盖成新数组。
