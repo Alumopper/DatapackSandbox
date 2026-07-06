@@ -1167,7 +1167,12 @@ object ManifestRunner {
             if (matches.isNotEmpty()) failures += "entity ${describeEntityExpectation(entity)} expected missing but found ${matches.size} match(es)"
             return failures
         }
-        val needsEntity = exists == true || entity.get("count") == null || entity.has("equipment") || entity.has("effect") || entity.has("effects")
+        val needsEntity = exists == true ||
+            entity.get("count") == null ||
+            entity.has("equipment") ||
+            entity.has("effect") ||
+            entity.has("effects") ||
+            entity.has("attribute")
         if (matches.isEmpty() && needsEntity) {
             failures += "entity ${describeEntityExpectation(entity)} expected to exist"
             return failures
@@ -1178,6 +1183,7 @@ object ManifestRunner {
         entity.manifestArray("effects", "entity assertion effects").forEach {
             failures += evaluateEntityEffectAssertion(it, matches, entity)
         }
+        entity.getAsJsonObject("attribute")?.let { failures += evaluateEntityAttributeAssertion(it, matches, entity) }
         return failures
     }
 
@@ -1251,6 +1257,27 @@ object ManifestRunner {
         val exists: Boolean = true,
     )
 
+    private fun evaluateEntityAttributeAssertion(attribute: JsonObject, entities: List<SandboxEntity>, entity: JsonObject): List<String> {
+        val id = ResourceLocation.parse(attribute.requiredManifestString("id"))
+        val expected = attribute.get("equals")?.asDouble ?: attribute.get("value")?.asDouble
+        val min = attribute.get("min")?.asDouble
+        val max = attribute.get("max")?.asDouble
+        val exists = attribute.get("exists")?.asBoolean ?: true
+        val candidates = entities.mapNotNull { it.attributes[id] }
+        val matches = candidates.filter { actual ->
+            (expected == null || actual == expected) &&
+                (min == null || actual >= min) &&
+                (max == null || actual <= max)
+        }
+        if (exists && matches.isEmpty()) {
+            return listOf("entity ${describeEntityExpectation(entity)} expected attribute ${describeAttributeExpectation(id, expected, min, max)} but found $candidates")
+        }
+        if (!exists && matches.isNotEmpty()) {
+            return listOf("entity ${describeEntityExpectation(entity)} expected missing attribute ${describeAttributeExpectation(id, expected, min, max)} but found $matches")
+        }
+        return emptyList()
+    }
+
     private fun evaluateItemAssertion(item: JsonObject, sandbox: DatapackSandbox): List<String> {
         val player = sandbox.world.requirePlayer(item.requiredManifestString("player"))
         val slot = item.get("slot")?.asInt
@@ -1321,6 +1348,14 @@ object ManifestRunner {
             effect.durationTicks?.let { "durationTicks=$it" },
             effect.amplifier?.let { "amplifier=$it" },
             effect.hideParticles?.let { "hideParticles=$it" },
+        ).joinToString(", ")
+
+    private fun describeAttributeExpectation(attribute: ResourceLocation, value: Double?, min: Double?, max: Double?): String =
+        listOfNotNull(
+            "id=$attribute",
+            value?.let { "value=$it" },
+            min?.let { "min=$it" },
+            max?.let { "max=$it" },
         ).joinToString(", ")
 
     private fun evaluateStorageAssertion(storage: JsonObject, sandbox: DatapackSandbox): List<String> {

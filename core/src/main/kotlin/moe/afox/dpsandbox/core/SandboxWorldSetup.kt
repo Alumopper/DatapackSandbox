@@ -236,6 +236,7 @@ class SandboxWorldSetup {
         pitch: Double = 0.0,
         equipment: Map<String, ItemStack> = emptyMap(),
         effects: Iterable<PlayerEffect> = emptyList(),
+        attributes: Map<String, Double> = emptyMap(),
     ): SandboxWorldSetup =
         entity(
             type = ResourceLocation.parse(type),
@@ -246,6 +247,7 @@ class SandboxWorldSetup {
             pitch = pitch,
             equipment = equipment,
             effects = effects,
+            attributes = attributes,
         )
 
     /**
@@ -263,9 +265,11 @@ class SandboxWorldSetup {
         pitch: Double = 0.0,
         equipment: Map<String, ItemStack> = emptyMap(),
         effects: Iterable<PlayerEffect> = emptyList(),
+        attributes: Map<String, Double> = emptyMap(),
     ): SandboxWorldSetup = apply {
         val equipmentCopies = equipment.map { (slot, item) -> slot to item.copyForSetup() }
         val effectCopies = effects.map { it.copy() }
+        val attributeCopies = attributes.map { (id, value) -> ResourceLocation.parse(id) to value }
         operations += { world, profile ->
             val entity = SandboxEntity(type = type, position = position, tags = tags.toMutableSet(), yaw = yaw, pitch = pitch)
             if (nbt != null && nbt.entrySet().isNotEmpty()) {
@@ -281,6 +285,7 @@ class SandboxWorldSetup {
                 entity.equipment[slot] = item.copyForSetup()
             }
             effectCopies.forEach { effect -> entity.activeEffects[effect.id] = effect.copy() }
+            attributeCopies.forEach { (id, value) -> entity.attributes[id] = value }
             world.entities += entity
         }
     }

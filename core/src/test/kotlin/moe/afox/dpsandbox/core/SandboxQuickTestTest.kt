@@ -588,6 +588,7 @@ class SandboxQuickTestTest {
                         ),
                     ),
                     effects = listOf(effect("minecraft:strength", durationTicks = 80, amplifier = 2, hideParticles = true)),
+                    attributes = mapOf("minecraft:max_health" to 12.0),
                 )
                 player(
                     "Alex",
@@ -658,6 +659,7 @@ class SandboxQuickTestTest {
                 amplifier = 2,
                 hideParticles = true,
             )
+            .assertEntityAttribute("minecraft:max_health", type = "minecraft:pig", tag = "fixture", value = 12.0)
             .assertEntityCount(expected = 1, type = "minecraft:pig", tag = "fixture")
             .assertEntityCountAtLeast(1, type = "minecraft:pig", tag = "fixture")
             .assertEntityCountAtMost(1, type = "minecraft:pig", tag = "fixture")
@@ -708,6 +710,7 @@ class SandboxQuickTestTest {
         val pig = snapshot.get("entities").asJsonArray.single { it.asJsonObject.get("type").asString == "minecraft:pig" }.asJsonObject
         assertEquals("minecraft:iron_sword", pig.getAsJsonObject("equipment").getAsJsonObject("weapon.mainhand").get("id").asString)
         assertEquals("minecraft:strength", pig.getAsJsonArray("effects")[0].asJsonObject.get("id").asString)
+        assertEquals(12.0, pig.getAsJsonObject("attributes").get("minecraft:max_health").asDouble)
         assertEquals(1, snapshot.get("entities").asJsonArray.count { it.asJsonObject.get("type").asString == "minecraft:pig" })
         assertEquals("hard", snapshot.get("difficulty").asString)
         assertEquals(1, snapshot.get("forcedChunks").asJsonArray.size())

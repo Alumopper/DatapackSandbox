@@ -121,6 +121,7 @@ object ManifestWorldSetup {
             pitch = entity.get("pitch")?.asDouble ?: 0.0,
             equipment = parseEntityEquipment(entity),
             effects = entity.manifestArray("effects", "world entity effects").map { parseManifestEffect(it, "world entity effects") },
+            attributes = parseEntityAttributes(entity),
         )
     }
 
@@ -250,6 +251,11 @@ object ManifestWorldSetup {
             }
             slot to parseManifestItem(value.asJsonObject)
         }
+    }
+
+    private fun parseEntityAttributes(entity: JsonObject): Map<String, Double> {
+        val attributes = entity.getAsJsonObject("attributes") ?: return emptyMap()
+        return attributes.entrySet().associate { (id, value) -> id to value.asDouble }
     }
 
     private fun setupPlayerSpawn(setup: SandboxWorldSetup, name: String, spawn: JsonObject) {

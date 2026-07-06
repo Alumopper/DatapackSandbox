@@ -426,7 +426,10 @@ class ManifestRunnerTest {
                     },
                     "effects": [
                       { "id": "minecraft:strength", "duration": 80, "amplifier": 2, "hideParticles": true }
-                    ]
+                    ],
+                    "attributes": {
+                      "minecraft:max_health": 12.0
+                    }
                   }
                 ],
                 "players": [
@@ -507,6 +510,13 @@ class ManifestRunnerTest {
                     "type": "minecraft:pig",
                     "tag": "fixture",
                     "effect": { "id": "minecraft:strength", "duration": 80, "amplifier": 2, "hideParticles": true }
+                  }
+                },
+                {
+                  "entity": {
+                    "type": "minecraft:pig",
+                    "tag": "fixture",
+                    "attribute": { "id": "minecraft:max_health", "equals": 12.0 }
                   }
                 },
                 {

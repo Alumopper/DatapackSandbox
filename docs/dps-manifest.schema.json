@@ -257,6 +257,10 @@
         "effects": {
           "type": "array",
           "items": { "$ref": "#/$defs/effectFixture" }
+        },
+        "attributes": {
+          "type": "object",
+          "additionalProperties": { "type": "number" }
         }
       },
       "additionalProperties": false
@@ -612,7 +616,8 @@
         "effects": {
           "type": "array",
           "items": { "$ref": "#/$defs/entityEffectAssertion" }
-        }
+        },
+        "attribute": { "$ref": "#/$defs/entityAttributeAssertion" }
       },
       "additionalProperties": false
     },
@@ -648,6 +653,19 @@
           "additionalProperties": false
         }
       ]
+    },
+    "entityAttributeAssertion": {
+      "type": "object",
+      "required": ["id"],
+      "properties": {
+        "id": { "type": "string" },
+        "value": { "type": "number" },
+        "equals": { "type": "number" },
+        "min": { "type": "number" },
+        "max": { "type": "number" },
+        "exists": { "type": "boolean" }
+      },
+      "additionalProperties": false
     },
     "playerAssertion": {
       "type": "object",

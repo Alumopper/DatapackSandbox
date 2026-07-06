@@ -168,6 +168,7 @@ SandboxQuickTest.create(
             tags = listOf("fixture"),
             equipment = mapOf("weapon.mainhand" to item("minecraft:iron_sword")),
             effects = listOf(effect("minecraft:strength", durationTicks = 80, amplifier = 2)),
+            attributes = mapOf("minecraft:max_health" to 12.0),
         )
         player("Alex", x = 2.0, y = 65.0, z = 3.0, xp = 5, inventory = listOf(item("minecraft:stick", 2)))
         playerEffect("Alex", "minecraft:speed", durationTicks = 40, amplifier = 1)
@@ -202,6 +203,7 @@ SandboxQuickTest.create(
     .assertEntity(type = "minecraft:pig", tag = "fixture")
     .assertEntityEquipment("weapon.mainhand", type = "minecraft:pig", tag = "fixture", id = "minecraft:iron_sword")
     .assertEntityEffect("minecraft:strength", type = "minecraft:pig", tag = "fixture", durationTicks = 80, amplifier = 2)
+    .assertEntityAttribute("minecraft:max_health", type = "minecraft:pig", tag = "fixture", value = 12.0)
     .assertEntityCount(expected = 1, type = "minecraft:pig", tag = "fixture")
     .assertEntityCountRange(min = 1, max = 3, type = "minecraft:pig", tag = "fixture")
     .assertPlayer(

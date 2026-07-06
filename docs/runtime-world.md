@@ -28,7 +28,7 @@ state before any `steps` or commands run. Supported fixture inputs include:
 
 - `blocks` with block id, state properties, and validated block entity NBT.
 - `entities` with type, position, tags, rotation, equipment, active effects,
-  and validated entity NBT.
+  attributes, and validated entity NBT.
 - `players` with position, dimension, game mode, inventory, XP, health, and
   food.
 - `scores`, `storage`, `gamerules`, `gameTime`, `dayTime`, and `weather`.
@@ -53,7 +53,10 @@ Example manifest:
         },
         "effects": [
           { "id": "minecraft:strength", "duration": 80, "amplifier": 2 }
-        ]
+        ],
+        "attributes": {
+          "minecraft:max_health": 12.0
+        }
       }
     ],
     "players": [
@@ -70,7 +73,8 @@ Example manifest:
         "type": "minecraft:pig",
         "tag": "fixture",
         "equipment": { "slot": "weapon.mainhand", "id": "minecraft:iron_sword" },
-        "effect": { "id": "minecraft:strength", "duration": 80, "amplifier": 2 }
+        "effect": { "id": "minecraft:strength", "duration": 80, "amplifier": 2 },
+        "attribute": { "id": "minecraft:max_health", "equals": 12.0 }
       }
     }
   ]

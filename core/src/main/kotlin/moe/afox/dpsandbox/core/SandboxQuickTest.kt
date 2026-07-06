@@ -530,6 +530,36 @@ class SandboxQuickTestMatrix private constructor(
     }
 
     /**
+     * Applies an entity attribute assertion to every scenario.
+     */
+    @JvmOverloads
+    fun assertEntityAttribute(
+        attribute: String,
+        type: String? = null,
+        tag: String? = null,
+        uuid: String? = null,
+        position: Position? = null,
+        exists: Boolean = true,
+        value: Double? = null,
+        min: Double? = null,
+        max: Double? = null,
+    ): SandboxQuickTestMatrix = apply {
+        scenarios.values.forEach {
+            it.assertEntityAttribute(
+                attribute = attribute,
+                type = type,
+                tag = tag,
+                uuid = uuid,
+                position = position,
+                exists = exists,
+                value = value,
+                min = min,
+                max = max,
+            )
+        }
+    }
+
+    /**
      * Applies an entity count assertion to every scenario.
      */
     @JvmOverloads
@@ -1600,6 +1630,45 @@ class SandboxQuickTest private constructor(
     }
 
     /**
+     * Asserts that a matching entity has, or does not have, an explicit attribute value.
+     */
+    @JvmOverloads
+    fun assertEntityAttribute(
+        attribute: String,
+        type: String? = null,
+        tag: String? = null,
+        uuid: String? = null,
+        position: Position? = null,
+        exists: Boolean = true,
+        value: Double? = null,
+        min: Double? = null,
+        max: Double? = null,
+    ): SandboxQuickTest = apply {
+        val expectedType = type?.let(ResourceLocation::parse)
+        val id = ResourceLocation.parse(attribute)
+        val entities = sandbox.world.entities.filter { entity ->
+            (expectedType == null || entity.type == expectedType) &&
+                (tag == null || tag in entity.tags) &&
+                (uuid == null || entity.uuid == uuid) &&
+                (position == null || entity.position == position)
+        }
+        val attributes = entities.mapNotNull { entity -> entity.attributes[id]?.let { actual -> entity to actual } }
+        val matches = attributes.filter { (_, actual) ->
+            (value == null || actual == value) &&
+                (min == null || actual >= min) &&
+                (max == null || actual <= max)
+        }
+        val entityDescription = describeEntityExpectation(type, tag, uuid, position)
+        val attributeDescription = describeAttributeExpectation(attribute, value, min, max)
+        if (exists && matches.isEmpty()) {
+            failures += "entity attribute $entityDescription expected $attributeDescription but found ${attributes.map { it.second }}"
+        }
+        if (!exists && matches.isNotEmpty()) {
+            failures += "entity attribute $entityDescription expected missing $attributeDescription but found ${matches.map { it.second }}"
+        }
+    }
+
+    /**
      * Asserts the number of entities matching optional type and tag filters.
      */
     @JvmOverloads
@@ -1791,6 +1860,14 @@ class SandboxQuickTest private constructor(
             durationTicks?.let { "durationTicks=$it" },
             amplifier?.let { "amplifier=$it" },
             hideParticles?.let { "hideParticles=$it" },
+        ).joinToString(", ")
+
+    private fun describeAttributeExpectation(attribute: String, value: Double?, min: Double?, max: Double?): String =
+        listOfNotNull(
+            "id=$attribute",
+            value?.let { "value=$it" },
+            min?.let { "min=$it" },
+            max?.let { "max=$it" },
         ).joinToString(", ")
 
     /**
