@@ -44,7 +44,7 @@
 | `gamerule` | 部分支持 | 存储任意 gamerule 字符串值；不执行具体游戏规则副作用。 |
 | `give` | 部分支持 | 向玩家背包添加物品并触发 inventory advancement 事件。 |
 | `help` | 部分支持 | 输出命令根节点和基础沙盒帮助。 |
-| `item` | 部分支持 | `replace entity|block ... with <item> [count]` 和 `from entity|block ...`；`modify entity|block ... <modifier>` 会应用常用 item modifier 函数（`set_components`、`set_custom_data`、`set_count`、`limit_count`、`set_damage`、`set_name`、`set_lore`）。 |
+| `item` | 部分支持 | `replace entity|block ... with <item> [count]` 和 `from entity|block ...`；`modify entity|block ... <modifier>` 会应用常用 item modifier 函数（`set_components`、`set_custom_data`、`set_count`、`limit_count`、`set_damage`、`set_name`、`set_lore`、`sequence`）。 |
 | `kick` | 未支持 | 不模拟网络会话。 |
 | `kill` | 支持 | 移除选中的沙盒实体；玩家执行上下文会为非玩家目标触发 `killed_entity` advancement 事件。 |
 | `list` | 支持 | 报告沙盒玩家及 UUID。 |

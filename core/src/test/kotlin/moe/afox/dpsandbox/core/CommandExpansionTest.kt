@@ -110,6 +110,7 @@ class CommandExpansionTest {
         assertEquals(4, item.count)
         assertEquals(true, item.nbt.get("marked").asBoolean)
         assertEquals("tagged", item.components.get("demo:tag").asString)
+        assertEquals("applied", item.components.get("demo:sequence").asString)
         assertEquals("Marked Stick", item.components.getAsJsonObject("minecraft:custom_name").get("text").asString)
         assertEquals("debuggable", item.components.getAsJsonArray("minecraft:lore")[0].asJsonObject.get("text").asString)
         assertEquals(3.0, item.components.get("minecraft:damage").asDouble)
@@ -646,6 +647,17 @@ class CommandExpansionTest {
                 "function": "minecraft:set_lore",
                 "lore": [
                   { "text": "debuggable" }
+                ]
+              },
+              {
+                "function": "minecraft:sequence",
+                "functions": [
+                  {
+                    "function": "minecraft:set_components",
+                    "components": {
+                      "demo:sequence": "applied"
+                    }
+                  }
                 ]
               }
             ]

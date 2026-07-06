@@ -2056,6 +2056,11 @@ class DatapackSandbox(
                 "set_damage" -> stack.components.addProperty("minecraft:damage", itemModifierNumber(function.get("damage"), 0.0))
                 "set_name" -> stack.components.add("minecraft:custom_name", itemModifierText(function, "name", type, location))
                 "set_lore" -> stack.components.add("minecraft:lore", itemModifierLore(function, location))
+                "sequence" -> {
+                    val nested = function.get("functions")
+                        ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Item modifier 'sequence' requires 'functions'", location)
+                    stack = applyItemModifier(stack, nested, predicateContext, location)
+                }
                 else -> unsupportedFeature("Item modifier function '$type' is not implemented", profile.id, location)
             }
         }
