@@ -294,6 +294,17 @@ class SandboxQuickTestTest {
             .requirePassed()
 
         assertTrue(report.passed)
+        val rewardOutput = report.outputs.single { it.command == "advancement reward" }
+        val rewardPayload = rewardOutput.payload?.asJsonObject ?: error("missing advancement reward payload")
+        assertEquals(listOf("Steve"), rewardOutput.targets)
+        assertEquals("demo:use_carrot", rewardOutput.text)
+        assertEquals("Steve", rewardPayload.get("player").asString)
+        assertEquals("demo:use_carrot", rewardPayload.get("advancement").asString)
+        assertEquals(5, rewardPayload.get("experience").asInt)
+        assertEquals("demo:reward", rewardPayload.get("function").asString)
+        assertEquals("demo:gift", rewardPayload.getAsJsonArray("lootTables")[0].asString)
+        assertEquals(2, rewardPayload.get("itemCount").asInt)
+        assertEquals("minecraft:diamond", rewardPayload.getAsJsonArray("items")[0].asJsonObject.get("id").asString)
     }
 
     @Test

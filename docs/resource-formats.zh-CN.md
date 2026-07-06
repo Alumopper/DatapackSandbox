@@ -185,7 +185,7 @@ data/<namespace>/advancement/**/*.json
 data/<namespace>/advancements/**/*.json
 ```
 
-加载器会解析 parent、display、criteria、requirements、rewards 和 telemetry flags。运行时按玩家独立记录 progress，支持 grant/revoke/test、事件触发和 reward 执行。
+加载器会解析 parent、display、criteria、requirements、rewards 和 telemetry flags。运行时按玩家独立记录 progress，支持 grant/revoke/test、事件触发和 reward 执行，并为 XP、recipe、function 与 loot 奖励记录结构化 `advancement reward` 输出。
 
 ## Raw JSON Resource 与 Tags
 

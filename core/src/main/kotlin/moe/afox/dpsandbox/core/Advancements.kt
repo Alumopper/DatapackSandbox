@@ -1,5 +1,6 @@
 ﻿package moe.afox.dpsandbox.core
 
+import com.google.gson.JsonArray
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 
@@ -232,14 +233,49 @@ class AdvancementRuntime(private val sandbox: DatapackSandbox) {
         player.xp += rewards.experience
         rewards.recipes.forEach { player.recipes += it }
         rewards.function?.let { sandbox.runFunction(it, ExecutionContext(entity = player, position = player.position)) }
+        val lootItems = mutableListOf<ItemStack>()
         rewards.loot.forEach { table ->
             val context = LootContext(
                 type = ResourceLocation("minecraft", "advancement_reward"),
                 predicateContext = PredicateContext(world = sandbox.world, player = player, thisEntity = player, origin = player.position),
                 seed = sandbox.world.gameTime,
             )
-            player.inventory += loot.generate(table, context).items
+            val generated = loot.generate(table, context).items
+            player.inventory += generated
+            lootItems += generated
         }
+        recordRewardOutput(player, advancement, rewards, lootItems)
+    }
+
+    private fun recordRewardOutput(
+        player: SandboxPlayer,
+        advancement: AdvancementDefinition,
+        rewards: AdvancementReward,
+        lootItems: List<ItemStack>,
+    ) {
+        if (rewards.experience == 0 && rewards.recipes.isEmpty() && rewards.function == null && rewards.loot.isEmpty()) return
+        sandbox.world.recordOutput(
+            "advancement reward",
+            "data",
+            targets = listOf(player.name),
+            text = advancement.id.toString(),
+            payload = JsonObject().also { payload ->
+                payload.addProperty("player", player.name)
+                payload.addProperty("advancement", advancement.id.toString())
+                payload.addProperty("experience", rewards.experience)
+                rewards.function?.let { payload.addProperty("function", it.toString()) }
+                payload.add("recipes", JsonArray().also { array ->
+                    rewards.recipes.sorted().forEach { array.add(it.toString()) }
+                })
+                payload.add("lootTables", JsonArray().also { array ->
+                    rewards.loot.sorted().forEach { array.add(it.toString()) }
+                })
+                payload.addProperty("itemCount", lootItems.sumOf { it.count })
+                payload.add("items", JsonArray().also { array ->
+                    lootItems.forEach { array.add(it.toJson()) }
+                })
+            },
+        )
     }
 
     private fun progressFor(player: SandboxPlayer, advancement: AdvancementDefinition): AdvancementProgress =

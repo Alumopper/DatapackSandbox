@@ -139,6 +139,7 @@
 - 为事件建立 manifest step、CLI command、REPL command 和 quick-test API。
 - 事件可以触发 advancement、predicate、loot、scoreboard、storage 和输出命令，也可以在不需要客户端物理的范围内更新玩家状态。
 - 增加事件 trace：事件输入、匹配到的 advancement criteria、执行的 reward、失败原因。
+  - advancement reward 已记录结构化输出，包含触发玩家、advancement、XP、recipe、function、loot table 和实际生成物品，便于把事件输入、criteria 命中和奖励副作用串起来调试。
 
 验收标准：
 

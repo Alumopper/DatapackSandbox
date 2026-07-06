@@ -91,7 +91,7 @@ this through the standalone jar smoke task.
 | `tag/function` | `modeled` | load/tick/function tag execution and replace semantics |
 | `loot_table` | `modeled` | deterministic loot generation for supported contexts and commands |
 | `predicate` | `modeled` | predicate command/API checks, advancement conditions, loot conditions, item modifiers, and enchantment-aware random chance |
-| `advancement` | `modeled` | player progress, criteria matching, rewards, output, and event trace |
+| `advancement` | `modeled` | player progress, criteria matching, rewards, structured reward output, and event trace |
 | `recipe` | `modeled` | resource index entries plus player recipe state for commands and rewards |
 | `item_modifier` | `modeled` | common item modifier functions applied by item modify |
 | `tag/<registry>` | `observed-noop` | general tags with replace semantics and resource-index visibility |
