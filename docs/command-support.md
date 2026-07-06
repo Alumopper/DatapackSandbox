@@ -73,7 +73,7 @@ manifest schema before execution.
 | `msg`, `tell`, `w` | Supported | `modeled` | Recorded as private chat output. |
 | `pardon`, `pardon-ip` | Unsupported | `unsupported` | Server administration is not simulated. |
 | `particle` | Partial | `observed-noop` | Recorded as visual output event; no client particles. |
-| `place` | Unsupported | `unsupported` | Structure/feature placement and worldgen are not simulated. |
+| `place` | Partial | `observed-noop` | Accepts `feature`, `jigsaw`, `structure`, and `template`; records kind, resource id, position, and extra placement arguments as structured worldgen output, but does not mutate the world. |
 | `playsound` | Partial | `observed-noop` | Recorded as sound output event. |
 | `publish` | Unsupported | `unsupported` | LAN/networking is not simulated. |
 | `random` | Partial | `modeled` | `value`, `roll`, `reset`; deterministic sandbox sequence state seeded from the world seed unless explicitly reset. |

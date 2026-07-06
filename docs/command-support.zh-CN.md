@@ -63,7 +63,7 @@
 | `msg`、`tell`、`w` | 支持 | `modeled` | 记录为私聊输出事件。 |
 | `pardon`、`pardon-ip` | 未支持 | `unsupported` | 不模拟服务器封禁管理。 |
 | `particle` | 部分支持 | `observed-noop` | 记录为 visual 输出事件；不模拟客户端粒子。 |
-| `place` | 未支持 | `unsupported` | 不模拟结构、地物或世界生成放置。 |
+| `place` | 部分支持 | `observed-noop` | 接受 `feature`、`jigsaw`、`structure` 和 `template`；把类型、资源 id、位置和额外放置参数记录为结构化 worldgen 输出，但不修改世界。 |
 | `playsound` | 部分支持 | `observed-noop` | 记录为 sound 输出事件。 |
 | `publish` | 未支持 | `unsupported` | 不模拟 LAN/网络发布。 |
 | `random` | 部分支持 | `modeled` | `value`、`roll`、`reset`；使用确定性的沙盒随机序列状态，默认混入 world seed，显式 reset seed 时优先使用 reset 值。 |

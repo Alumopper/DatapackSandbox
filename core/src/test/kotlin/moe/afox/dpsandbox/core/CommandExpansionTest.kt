@@ -194,6 +194,8 @@ class CommandExpansionTest {
         sandbox.executeCommand("list uuids")
         sandbox.executeCommand("seed")
         sandbox.executeCommand("locate biome minecraft:plains")
+        sandbox.executeCommand("place structure demo:ruin 1 64 2")
+        sandbox.executeCommand("place template demo:room ~ ~1 ~ clockwise_90 front_back 0.5 123")
         sandbox.executeCommand("datapack list")
         sandbox.executeCommand("reload")
         sandbox.executeCommand("scoreboard objectives add trig trigger")
@@ -203,6 +205,19 @@ class CommandExpansionTest {
         assertTrue(sandbox.world.outputs.any { it.command == "help" && it.text.contains("gamemode") })
         assertTrue(sandbox.world.outputs.any { it.command == "list" && it.text.contains("Steve") })
         assertTrue(sandbox.world.outputs.any { it.command == "locate" && it.payload?.asJsonObject?.get("found")?.asBoolean == false })
+        val placeStructure = sandbox.world.outputs.single { it.command == "place structure" }
+        val placeStructurePayload = placeStructure.payload?.asJsonObject ?: error("missing place structure payload")
+        assertEquals("worldgen", placeStructure.channel)
+        assertEquals("structure:demo:ruin", placeStructure.text)
+        assertEquals(false, placeStructurePayload.get("placed").asBoolean)
+        assertEquals(1.0, placeStructurePayload.getAsJsonObject("position").get("x").asDouble)
+        assertEquals(64.0, placeStructurePayload.getAsJsonObject("position").get("y").asDouble)
+        assertEquals(2.0, placeStructurePayload.getAsJsonObject("position").get("z").asDouble)
+        val placeTemplatePayload = sandbox.world.outputs.single { it.command == "place template" }.payload?.asJsonObject
+            ?: error("missing place template payload")
+        assertEquals("demo:room", placeTemplatePayload.get("id").asString)
+        assertEquals(1.0, placeTemplatePayload.getAsJsonObject("position").get("y").asDouble)
+        assertEquals(listOf("clockwise_90", "front_back", "0.5", "123"), placeTemplatePayload.getAsJsonArray("extra").map { it.asString })
         assertTrue(sandbox.world.outputs.any { it.command == "datapack list" })
         assertTrue(sandbox.world.outputs.any { it.command == "reload" })
     }

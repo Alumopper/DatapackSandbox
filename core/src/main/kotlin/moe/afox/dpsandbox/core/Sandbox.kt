@@ -403,6 +403,7 @@ class DatapackSandbox(
                 "kill" -> executeKill(tokens, location, context)
                 "list" -> executeList(tokens, location)
                 "locate" -> executeLocate(tokens, location)
+                "place" -> executePlace(tokens, location, context)
                 "loot" -> executeLoot(tokens, location, context)
                 "tp", "teleport" -> executeTeleport(tokens, location, context)
                 "reload" -> executeReload(tokens, location)
@@ -661,6 +662,50 @@ class DatapackSandbox(
         payload.addProperty("id", ResourceLocation.parse(tokens[2].text).toString())
         payload.addProperty("found", false)
         world.recordOutput("locate", "data", text = "No ${tokens[1].text} result in sandbox void world", payload = payload)
+    }
+
+    private fun executePlace(tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext) {
+        requireSize(tokens, 3, "place <feature|jigsaw|structure|template> ...", location)
+        val kind = tokens[1].text
+        val payload = JsonObject()
+        payload.addProperty("kind", kind)
+        payload.addProperty("placed", false)
+        payload.addProperty("reason", "Sandbox records place commands but does not simulate world generation")
+
+        val positionIndex = when (kind) {
+            "feature", "structure", "template" -> {
+                payload.addProperty("id", ResourceLocation.parse(tokens[2].text).toString())
+                3
+            }
+            "jigsaw" -> {
+                requireSize(tokens, 5, "place jigsaw <pool> <target> <maxDepth> [pos]", location)
+                payload.addProperty("pool", ResourceLocation.parse(tokens[2].text).toString())
+                payload.addProperty("target", ResourceLocation.parse(tokens[3].text).toString())
+                payload.addProperty("maxDepth", parseInt(tokens[4].text, "jigsaw max depth", location))
+                5
+            }
+            else -> unsupportedFeature("Unsupported place kind '$kind'", profile.id, location)
+        }
+
+        val extraStart = if (isCoordinateTriple(tokens, positionIndex)) {
+            val position = parsePosition(tokens, positionIndex, context, location)
+            payload.add("position", positionOutput(position))
+            positionIndex + 3
+        } else {
+            payload.add("position", positionOutput(context.position))
+            positionIndex
+        }
+        if (tokens.size > extraStart) {
+            payload.add(
+                "extra",
+                JsonArray().also { extra ->
+                    tokens.drop(extraStart).forEach { extra.add(it.text) }
+                },
+            )
+        }
+
+        val idText = payload.get("id")?.asString ?: payload.get("pool")?.asString.orEmpty()
+        world.recordOutput("place $kind", "worldgen", text = "$kind:$idText", payload = payload)
     }
 
     private fun executeSpectate(tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext) {

@@ -81,6 +81,7 @@
   - `bossbar add/remove/set` 已记录结构化前后状态输出，便于调试 UI 状态、玩家目标、字段输入和生成器输出。
   - `gamerule <rule> <value>` 已记录结构化修改输出，便于调试规则值输入、前值和 query 链路。
   - `team add/remove/list/join/leave/empty/modify` 已记录结构化队伍状态输出，便于调试成员变化、显示名和选项输入。
+  - `place feature|jigsaw|structure|template` 已作为 observed-noop 接受并记录结构化 worldgen 输出，便于命令生成器验证放置目标、位置和额外参数。
   - `damage` 已记录结构化生命值变化输出，便于 report/assertion 调试。
   - `kill` 已记录结构化目标输出，便于确认选择器命中、实体移除和 advancement 触发结果。
   - `enchant` 已覆盖玩家选中物品和非玩家实体主手装备的附魔组件写入，并记录结构化输出；`effect give/clear` 已记录结构化输出，便于 report/assertion 调试。
