@@ -312,6 +312,7 @@ class CommandExpansionTest {
         sandbox.executeCommand("loot give Steve loot demo:enchanted")
         sandbox.executeCommand("loot give Steve loot demo:tag_items")
         sandbox.executeCommand("loot give Steve loot demo:tag_pick")
+        sandbox.executeCommand("loot give Steve loot demo:reference_function")
         sandbox.executeCommand("loot replace entity @e[type=minecraft:zombie,limit=1] weapon.offhand loot demo:fish")
 
         val zombie = sandbox.world.entities.first { it.type == ResourceLocation.parse("minecraft:zombie") }
@@ -339,6 +340,9 @@ class CommandExpansionTest {
         val enchantments = enchanted.components.getAsJsonObject("minecraft:enchantments")
         assertEquals(1, enchantments.get("minecraft:sharpness").asInt)
         assertEquals(3, enchantments.get("minecraft:unbreaking").asInt)
+        val referencedLoot = sandbox.world.requirePlayer("Steve").inventory.first { it.id == ResourceLocation.parse("minecraft:lapis_lazuli") }
+        assertEquals(3, referencedLoot.count)
+        assertEquals("applied", referencedLoot.components.get("demo:referenced_loot").asString)
         assertEquals(ResourceLocation.parse("minecraft:diamond"), zombie.equipment[EquipmentSlots.OFFHAND]?.id)
         val spawnedItem = sandbox.world.entities.first {
             it.type == ResourceLocation.parse("minecraft:item") &&
@@ -347,7 +351,7 @@ class CommandExpansionTest {
         assertEquals(ResourceLocation.parse("minecraft:the_nether"), spawnedItem.dimension)
 
         val lootGiveOutputs = sandbox.world.outputs.filter { it.command == "loot give" }
-        assertEquals(12, lootGiveOutputs.size)
+        assertEquals(13, lootGiveOutputs.size)
         assertEquals("players", lootGiveOutputs.first().payload?.asJsonObject?.get("targetKind")?.asString)
         assertEquals("minecraft:diamond", lootGiveOutputs.first().payload?.asJsonObject?.getAsJsonArray("items")?.get(0)?.asJsonObject?.get("id")?.asString)
         val copiedOutputItem = lootGiveOutputs.first {
@@ -382,7 +386,12 @@ class CommandExpansionTest {
         }.payload?.asJsonObject ?: error("missing tag loot output")
         assertEquals(2, tagOutput.getAsJsonArray("items").size())
         assertEquals(4, tagOutput.get("totalCount").asInt)
-        val tagPickOutput = lootGiveOutputs.last().payload?.asJsonObject ?: error("missing expanded tag loot output")
+        val tagPickOutput = lootGiveOutputs.first {
+            val items = it.payload?.asJsonObject?.getAsJsonArray("items")
+            items?.size() == 1 &&
+                items[0].asJsonObject.get("id").asString in setOf("minecraft:raw_gold", "minecraft:emerald") &&
+                items[0].asJsonObject.get("count")?.asInt == 2
+        }.payload?.asJsonObject ?: error("missing expanded tag loot output")
         assertEquals(1, tagPickOutput.getAsJsonArray("items").size())
         val tagPickItem = tagPickOutput.getAsJsonArray("items")[0].asJsonObject
         assertTrue(
@@ -390,6 +399,13 @@ class CommandExpansionTest {
             tagPickItem.toString(),
         )
         assertEquals(2, tagPickOutput.get("totalCount").asInt)
+        val referencedOutputItem = lootGiveOutputs.first {
+            it.payload?.asJsonObject?.getAsJsonArray("items")?.any { item ->
+                item.asJsonObject.get("id").asString == "minecraft:lapis_lazuli"
+            } == true
+        }.payload?.asJsonObject?.getAsJsonArray("items")?.get(0)?.asJsonObject ?: error("missing referenced loot output")
+        assertEquals(3, referencedOutputItem.get("count").asInt)
+        assertEquals("applied", referencedOutputItem.getAsJsonObject("components").get("demo:referenced_loot").asString)
         val lootSpawnOutput = sandbox.world.outputs.single { it.command == "loot spawn" }
         assertEquals("minecraft:the_nether", lootSpawnOutput.payload?.asJsonObject?.get("dimension")?.asString)
         val lootReplaceOutput = sandbox.world.outputs.single { it.command == "loot replace" }
@@ -1530,6 +1546,31 @@ class CommandExpansionTest {
             }
             """.trimIndent(),
         )
+        Files.writeString(
+            lootRoot.resolve("reference_function.json"),
+            """
+            {
+              "type": "minecraft:command",
+              "pools": [
+                {
+                  "rolls": 1,
+                  "entries": [
+                    {
+                      "type": "minecraft:item",
+                      "name": "minecraft:lapis_lazuli",
+                      "functions": [
+                        {
+                          "function": "minecraft:reference",
+                          "name": "demo:referenced_loot"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+            """.trimIndent(),
+        )
         val itemTagRoot = root.resolve("data").resolve("demo").resolve("tags").resolve("item")
         Files.createDirectories(itemTagRoot)
         Files.writeString(
@@ -1552,6 +1593,25 @@ class CommandExpansionTest {
                 "minecraft:emerald"
               ]
             }
+            """.trimIndent(),
+        )
+        val modifierRoot = root.resolve("data").resolve("demo").resolve("item_modifier")
+        Files.createDirectories(modifierRoot)
+        Files.writeString(
+            modifierRoot.resolve("referenced_loot.json"),
+            """
+            [
+              {
+                "function": "minecraft:set_components",
+                "components": {
+                  "demo:referenced_loot": "applied"
+                }
+              },
+              {
+                "function": "minecraft:set_count",
+                "count": 3
+              }
+            ]
             """.trimIndent(),
         )
         return root

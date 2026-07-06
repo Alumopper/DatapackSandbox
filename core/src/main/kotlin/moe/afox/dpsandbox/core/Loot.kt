@@ -193,10 +193,22 @@ class LootEngine(
     private fun testConditions(conditions: JsonElement?, context: LootContext): Boolean =
         predicates.testConditions(conditions, context.predicateContext)
 
-    private fun applyFunctions(items: List<ItemStack>, functions: List<LootFunction>, context: LootContext, random: Random): List<ItemStack> =
-        items.flatMap { item -> applyFunctions(item, functions, context, random) }
+    private fun applyFunctions(
+        items: List<ItemStack>,
+        functions: List<LootFunction>,
+        context: LootContext,
+        random: Random,
+        activeReferences: MutableSet<ResourceLocation> = mutableSetOf(),
+    ): List<ItemStack> =
+        items.flatMap { item -> applyFunctions(item, functions, context, random, activeReferences) }
 
-    private fun applyFunctions(item: ItemStack, functions: List<LootFunction>, context: LootContext, random: Random): List<ItemStack> {
+    private fun applyFunctions(
+        item: ItemStack,
+        functions: List<LootFunction>,
+        context: LootContext,
+        random: Random,
+        activeReferences: MutableSet<ResourceLocation> = mutableSetOf(),
+    ): List<ItemStack> {
         var stack = item.copy(components = item.components.deepCopy(), nbt = item.nbt.deepCopy())
         functions.forEach { function ->
             if (!testConditions(function.root.get("conditions"), context)) return@forEach
@@ -230,18 +242,56 @@ class LootEngine(
                     if (itemFilter != null && !predicates.testItemPredicate(stack, itemFilter)) return emptyList()
                     val inner = function.root.getAsJsonObject("function")
                         ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "filtered loot function requires nested function")
-                    stack = applyFunctions(stack, listOf(LootFunction(canonical(inner.requiredString("function")), inner)), context, random).firstOrNull()
+                    stack = applyFunctions(stack, listOf(LootFunction(canonical(inner.requiredString("function")), inner)), context, random, activeReferences).firstOrNull()
                         ?: return emptyList()
                 }
                 "sequence" -> {
                     val nested = function.root.arrayObjects("functions").map { LootFunction(canonical(it.requiredString("function")), it) }
-                    stack = applyFunctions(stack, nested, context, random).firstOrNull() ?: return emptyList()
+                    stack = applyFunctions(stack, nested, context, random, activeReferences).firstOrNull() ?: return emptyList()
+                }
+                "reference" -> {
+                    val id = ResourceLocation.parse(function.root.requiredString("name"))
+                    stack = applyReferencedFunctions(stack, id, context, random, activeReferences).firstOrNull()
+                        ?: return emptyList()
                 }
                 else -> throw SandboxException(DiagnosticCode.UNSUPPORTED_FEATURE, "Loot function '${function.type}' is not implemented")
             }
         }
         return if (stack.count <= 0) emptyList() else listOf(stack)
     }
+
+    private fun applyReferencedFunctions(
+        item: ItemStack,
+        id: ResourceLocation,
+        context: LootContext,
+        random: Random,
+        activeReferences: MutableSet<ResourceLocation>,
+    ): List<ItemStack> {
+        if (!activeReferences.add(id)) {
+            throw SandboxException(DiagnosticCode.COMMAND_ERROR, "Recursive loot function reference: $id")
+        }
+        try {
+            return applyFunctions(item, lootFunctions(datapack.itemModifier(id).root), context, random, activeReferences)
+        } finally {
+            activeReferences.remove(id)
+        }
+    }
+
+    private fun lootFunctions(element: JsonElement): List<LootFunction> =
+        when {
+            element.isJsonObject -> {
+                val root = element.asJsonObject
+                listOf(LootFunction(canonical(root.requiredString("function")), root))
+            }
+            element.isJsonArray -> element.asJsonArray.mapIndexed { index, item ->
+                if (!item.isJsonObject) {
+                    throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Referenced loot function entry at index $index must be an object")
+                }
+                val root = item.asJsonObject
+                LootFunction(canonical(root.requiredString("function")), root)
+            }
+            else -> throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Referenced loot function must be an object or array")
+        }
 
     private fun applyBonus(count: Int, root: JsonObject, context: LootContext, random: Random): Int {
         val enchantment = ResourceLocation.parse(root.requiredString("enchantment"))

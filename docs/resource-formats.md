@@ -323,7 +323,8 @@ item tag entries, including nested tags and optional values; `expand=false`
 emits the full tag and `expand=true` makes tag items selectable entries. Loot functions include
 common count/item/component/enchantment mutations, tool-driven `apply_bonus`,
 `copy_name` from entity context, and `copy_components` from the active tool with
-`include`/`exclude` filters. Loot
+`include`/`exclude` filters, plus `reference` to reuse item modifier resources.
+Loot
 conditions and predicates can read the active tool's `minecraft:enchantments`
 component for `random_chance_with_enchanted_bonus`, including flat and `levels`
 component forms, modern `enchanted_chance` level values, and legacy looting or
