@@ -1175,7 +1175,21 @@ class DatapackSandbox(
         requireSize(tokens, 2, "gamerule <rule> [value]", location)
         val rule = tokens[1].text
         if (tokens.size >= 3) {
-            world.gamerules[rule] = tokens[2].text
+            val before = world.gamerules[rule]
+            val value = tokens[2].text
+            world.gamerules[rule] = value
+            world.recordOutput(
+                "gamerule set",
+                "data",
+                text = value,
+                payload = JsonObject().also { payload ->
+                    payload.addProperty("action", "set")
+                    payload.addProperty("rule", rule)
+                    payload.addProperty("value", value)
+                    payload.addProperty("beforeExists", before != null)
+                    before?.let { payload.addProperty("beforeValue", it) }
+                },
+            )
         } else {
             val value = world.gamerules[rule]
             world.recordOutput(

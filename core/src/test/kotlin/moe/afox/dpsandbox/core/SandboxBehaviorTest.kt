@@ -140,6 +140,13 @@ class SandboxBehaviorTest {
         assertEquals(5, bossbarPayload.get("value").asInt)
         assertEquals(5, sandbox.world.getScore("#boss", "boss_copy"))
         assertEquals("false", sandbox.world.gamerules["doDaylightCycle"])
+        val gameruleSetOutput = sandbox.world.outputs.single { it.command == "gamerule set" }
+        val gameruleSetPayload = gameruleSetOutput.payload?.asJsonObject ?: error("missing gamerule set payload")
+        assertEquals("false", gameruleSetOutput.text)
+        assertEquals("set", gameruleSetPayload.get("action").asString)
+        assertEquals("doDaylightCycle", gameruleSetPayload.get("rule").asString)
+        assertEquals(false, gameruleSetPayload.get("beforeExists").asBoolean)
+        assertEquals("false", gameruleSetPayload.get("value").asString)
         val gameruleOutputs = sandbox.world.outputs.filter { it.command == "gamerule" }
         val gamerulePayload = gameruleOutputs[0].payload?.asJsonObject ?: error("missing gamerule payload")
         val missingGamerulePayload = gameruleOutputs[1].payload?.asJsonObject ?: error("missing missing gamerule payload")
