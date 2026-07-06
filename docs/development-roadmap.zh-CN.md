@@ -86,7 +86,7 @@
   - `gamerule <rule> <value>` 已记录结构化修改输出，便于调试规则值输入、前值和 query 链路。
   - `team add/remove/list/join/leave/empty/modify` 已记录结构化队伍状态输出，便于调试成员变化、显示名和选项输入。
   - `place feature|jigsaw|structure|template` 已作为 observed-noop 接受并记录结构化 worldgen 输出，便于命令生成器验证放置目标、位置和额外参数。
-  - `damage` 已记录结构化生命值变化输出，便于 report/assertion 调试。
+  - `damage` 已记录结构化生命值变化输出，并保留 `at` 位置、直接 `by` 实体和最终 `from` 实体上下文，便于 report/assertion 调试生成出来的战斗命令。
   - `kill` 已记录结构化目标输出，便于确认选择器命中、实体移除和 advancement 触发结果。
   - `enchant` 已覆盖玩家选中物品和非玩家实体主手装备的附魔组件写入，并记录结构化输出；`effect give/clear` 已记录结构化输出，便于 report/assertion 调试。
 - 为不适合完整模拟的命令保留结构化 no-op 或 unsupported warning，例如 `debug`、`jfr`、`publish`、`stop`、网络和权限相关命令。

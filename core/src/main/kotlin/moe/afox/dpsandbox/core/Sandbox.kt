@@ -2801,12 +2801,8 @@ class DatapackSandbox(
     private fun executeDamage(tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext) {
         requireSize(tokens, 3, "damage <target> <amount> [damageType] ...", location)
         val amount = tokens[2].text.toDoubleOrNull() ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Invalid damage amount '${tokens[2].text}'", location)
-        val damageSource = tokens.getOrNull(3)
-            ?.text
-            ?.takeUnless { it in setOf("at", "by", "from") }
-            ?.let(ResourceLocation::parse)
-            ?: ResourceLocation("minecraft", "generic")
-        val sourceEntity = damageCommandSourceEntity(tokens, context, location)
+        val damageContext = damageCommandContext(tokens, context, location)
+        val sourceEntity = damageContext.directEntity ?: damageContext.causingEntity
         val targets = EntitySelectors.select(world, tokens[1].text, context, location)
         val damaged = JsonArray()
         targets.forEach { entity ->
@@ -2830,7 +2826,7 @@ class DatapackSandbox(
                         "damage",
                         entity = sourceEntity,
                         damageAmount = amount,
-                        damageSource = damageSource,
+                        damageSource = damageContext.damageSource,
                     ),
                 )
                 if (beforeHealth > 0.0 && afterHealth <= 0.0) {
@@ -2840,7 +2836,7 @@ class DatapackSandbox(
                             "death",
                             entity = sourceEntity,
                             damageAmount = amount,
-                            damageSource = damageSource,
+                            damageSource = damageContext.damageSource,
                         ),
                     )
                     if (sourceEntity != null) {
@@ -2850,7 +2846,7 @@ class DatapackSandbox(
                                 "entity_killed_player",
                                 entity = sourceEntity,
                                 damageAmount = amount,
-                                damageSource = damageSource,
+                                damageSource = damageContext.damageSource,
                             ),
                         )
                     }
@@ -2866,7 +2862,7 @@ class DatapackSandbox(
                             "player_hurt_entity",
                             entity = entity,
                             damageAmount = amount,
-                            damageSource = damageSource,
+                            damageSource = damageContext.damageSource,
                         ),
                     )
                     if (beforeHealth > 0.0 && afterHealth <= 0.0) {
@@ -2876,7 +2872,7 @@ class DatapackSandbox(
                                 "killed_entity",
                                 entity = entity,
                                 damageAmount = amount,
-                                damageSource = damageSource,
+                                damageSource = damageContext.damageSource,
                             ),
                         )
                     }
@@ -2890,11 +2886,22 @@ class DatapackSandbox(
             text = targets.size.toString(),
             payload = JsonObject().also { payload ->
                 payload.addProperty("amount", amount)
-                payload.addProperty("damageSource", damageSource.toString())
+                payload.addProperty("damageSource", damageContext.damageSource.toString())
+                damageContext.position?.let { payload.add("position", positionOutput(it)) }
                 sourceEntity?.let { source ->
                     payload.addProperty("source", source.scoreHolder)
                     payload.addProperty("sourceUuid", source.uuid)
                     payload.addProperty("sourceType", source.type.toString())
+                }
+                damageContext.directEntity?.let { source ->
+                    payload.addProperty("directSource", source.scoreHolder)
+                    payload.addProperty("directSourceUuid", source.uuid)
+                    payload.addProperty("directSourceType", source.type.toString())
+                }
+                damageContext.causingEntity?.let { source ->
+                    payload.addProperty("causingSource", source.scoreHolder)
+                    payload.addProperty("causingSourceUuid", source.uuid)
+                    payload.addProperty("causingSourceType", source.type.toString())
                 }
                 payload.addProperty("count", targets.size)
                 payload.add("targets", damaged)
@@ -2908,14 +2915,60 @@ class DatapackSandbox(
         }
     }
 
-    private fun damageCommandSourceEntity(tokens: List<CommandToken>, context: ExecutionContext, location: SourceLocation?): SandboxEntity? {
-        val markerIndex = tokens.indexOfFirst { it.text == "by" || it.text == "from" }
-        if (markerIndex < 0) return null
+    private data class DamageCommandContext(
+        val damageSource: ResourceLocation,
+        val position: Position?,
+        val directEntity: SandboxEntity?,
+        val causingEntity: SandboxEntity?,
+    )
+
+    private fun damageCommandContext(tokens: List<CommandToken>, context: ExecutionContext, location: SourceLocation?): DamageCommandContext {
+        var index = 3
+        val damageSource = tokens.getOrNull(index)
+            ?.text
+            ?.takeUnless { it in damageCommandMarkers }
+            ?.let {
+                index += 1
+                ResourceLocation.parse(it)
+            }
+            ?: ResourceLocation("minecraft", "generic")
+        var position: Position? = null
+        var directEntity: SandboxEntity? = null
+        var causingEntity: SandboxEntity? = null
+
+        while (index < tokens.size) {
+            when (tokens[index].text) {
+                "at" -> {
+                    position = parsePosition(tokens, index + 1, context, location)
+                    index += 4
+                }
+                "by" -> {
+                    directEntity = damageSourceEntity(tokens, index, context, location)
+                    index += 2
+                }
+                "from" -> {
+                    causingEntity = damageSourceEntity(tokens, index, context, location)
+                    index += 2
+                }
+                else -> throw SandboxException(
+                    DiagnosticCode.INPUT_FORMAT,
+                    "Unsupported damage context '${tokens[index].text}'; expected at, by, or from",
+                    location,
+                )
+            }
+        }
+
+        return DamageCommandContext(damageSource, position, directEntity, causingEntity)
+    }
+
+    private fun damageSourceEntity(tokens: List<CommandToken>, markerIndex: Int, context: ExecutionContext, location: SourceLocation?): SandboxEntity {
         val selector = tokens.getOrNull(markerIndex + 1)
             ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "damage ${tokens[markerIndex].text} requires an entity selector", location)
         return EntitySelectors.select(world, selector.text, context, location).firstOrNull()
             ?: throw SandboxException(DiagnosticCode.COMMAND_ERROR, "Damage source '${selector.text}' did not match an entity", location)
     }
+
+    private val damageCommandMarkers = setOf("at", "by", "from")
 
     private fun executeRide(tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext) {
         requireSize(tokens, 3, "ride <target> <mount|dismount> ...", location)

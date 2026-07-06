@@ -390,15 +390,46 @@ class PlayerEventsTest {
         val player = sandbox.createPlayer("Steve")
         sandbox.executeCommand("""summon minecraft:cow 0 64 0 {Health:8f}""")
 
-        sandbox.executeCommand("damage @e[type=minecraft:cow,limit=1] 4 minecraft:player_attack by Steve")
+        sandbox.executeCommand("damage @e[type=minecraft:cow,limit=1] 4 minecraft:player_attack at 1 65 -2 by Steve")
 
         assertTrue(player.advancementProgress.getValue(advancementId).criteria.getValue("hit_cow"))
         val output = sandbox.world.outputs.single { it.command == "damage" }
         val payload = output.payload?.asJsonObject ?: error("missing damage payload")
         assertEquals("Steve", payload.get("source").asString)
+        assertEquals("Steve", payload.get("directSource").asString)
+        assertEquals(1.0, payload.getAsJsonObject("position").get("x").asDouble)
+        assertEquals(65.0, payload.getAsJsonObject("position").get("y").asDouble)
+        assertEquals(-2.0, payload.getAsJsonObject("position").get("z").asDouble)
         assertEquals("minecraft:cow", payload.getAsJsonArray("targets")[0].asJsonObject.get("type").asString)
         assertEquals(8.0, payload.getAsJsonArray("targets")[0].asJsonObject.get("beforeHealth").asDouble)
         assertEquals(4.0, payload.getAsJsonArray("targets")[0].asJsonObject.get("afterHealth").asDouble)
+    }
+
+    @Test
+    fun `damage command records direct and causing source entities`() {
+        val sandbox = DatapackSandbox(
+            profile = VersionProfiles.default,
+            datapack = Datapack(
+                functions = emptyMap(),
+                loadFunctions = emptyList(),
+                tickFunctions = emptyList(),
+            ),
+        )
+        val player = sandbox.createPlayer("Steve")
+        sandbox.executeCommand("""summon minecraft:arrow 0 64 0 {Tags:["projectile"]}""")
+        sandbox.executeCommand("""summon minecraft:skeleton 0 64 0 {Tags:["shooter"]}""")
+
+        sandbox.executeCommand("damage Steve 3 minecraft:arrow at ~1 ~2 ~3 by @e[tag=projectile,limit=1] from @e[tag=shooter,limit=1]")
+
+        assertEquals(17.0, player.health)
+        val payload = sandbox.world.outputs.single { it.command == "damage" }.payload?.asJsonObject ?: error("missing damage payload")
+        assertEquals("minecraft:arrow", payload.get("damageSource").asString)
+        assertEquals("minecraft:arrow", payload.get("sourceType").asString)
+        assertEquals("minecraft:arrow", payload.get("directSourceType").asString)
+        assertEquals("minecraft:skeleton", payload.get("causingSourceType").asString)
+        assertEquals(1.0, payload.getAsJsonObject("position").get("x").asDouble)
+        assertEquals(2.0, payload.getAsJsonObject("position").get("y").asDouble)
+        assertEquals(3.0, payload.getAsJsonObject("position").get("z").asDouble)
     }
 
     private fun assertEventTraceCount(

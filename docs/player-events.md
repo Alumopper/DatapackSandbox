@@ -124,7 +124,9 @@ emits `damage`; reducing a player's health to zero emits `death`; and if the
 command uses `by <entity>` or `from <entity>`, the death also emits
 `entity_killed_player`. When a player is the source entity for damage to a
 non-player entity, the sandbox emits `player_hurt_entity` and, on lethal
-damage, `killed_entity`.
+damage, `killed_entity`. The damage command payload records the parsed `at`
+position plus direct `by` and causing `from` entities so reports and assertions
+can debug generated combat commands without simulating full combat physics.
 
 High-level events also update observable player state when the state can be
 modeled without client physics: consume events can reduce inventory and food,
