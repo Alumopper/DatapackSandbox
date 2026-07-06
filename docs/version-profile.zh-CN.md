@@ -48,6 +48,12 @@
 java -jar cli/build/libs/datapack-sandbox-cli.jar version
 ```
 
+生成本文档使用的 profile 表格：
+
+```bash
+java -jar cli/build/libs/datapack-sandbox-cli.jar version --docs
+```
+
 比较两个 profile，查看 pack format、NBT schema、资源目录、命令根和 registry 差异：
 
 ```bash

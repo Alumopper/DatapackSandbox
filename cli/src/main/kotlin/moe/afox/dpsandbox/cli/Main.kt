@@ -31,6 +31,7 @@ import moe.afox.dpsandbox.core.SnapshotDiff
 import moe.afox.dpsandbox.core.SourceLocation
 import moe.afox.dpsandbox.core.UnsupportedFeatureMode
 import moe.afox.dpsandbox.core.VersionProfileDiffs
+import moe.afox.dpsandbox.core.VersionProfileDocs
 import moe.afox.dpsandbox.core.VersionProfiles
 import moe.afox.dpsandbox.core.createFunctionSandbox
 import moe.afox.dpsandbox.core.createSandbox
@@ -1154,9 +1155,17 @@ class ManifestSchemaCommand : CliktCommand(name = "schema") {
 
 class VersionCommand : CliktCommand(name = "version") {
     private val versions by argument("version").multiple(required = false)
+    private val docs by option("--docs").flag(default = false)
 
     override fun run() {
         try {
+            if (docs) {
+                if (versions.isNotEmpty()) {
+                    throw SandboxException(DiagnosticCode.INPUT_FORMAT, "version --docs does not accept profile arguments")
+                }
+                println(VersionProfileDocs.renderMarkdownTable())
+                return
+            }
             when (versions.size) {
                 0 -> VersionProfiles.all.forEach { profile ->
                     val marker = if (profile == VersionProfiles.default) " default" else ""

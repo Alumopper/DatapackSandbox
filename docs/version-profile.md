@@ -41,6 +41,12 @@ Use the CLI to list the active built-in profiles:
 java -jar cli/build/libs/datapack-sandbox-cli.jar version
 ```
 
+Generate the profile table used by this document:
+
+```bash
+java -jar cli/build/libs/datapack-sandbox-cli.jar version --docs
+```
+
 Compare two profiles to inspect pack format, NBT schema, resource directory,
 command-root, and registry differences:
 

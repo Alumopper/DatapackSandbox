@@ -1021,6 +1021,17 @@ class RunCommandTest {
         assertTrue("command_roots: added=transfer" in output, output)
     }
 
+    @Test
+    fun `version renders markdown docs table`() {
+        val output = captureStdout {
+            main(arrayOf("version", "--docs"))
+        }
+
+        assertTrue("| Profile | Java | Data version | Data pack format | NBT schema | Resource directories |" in output, output)
+        assertTrue("| `1.20.4` | 17 | 3700 | 26 | `1.20.4:1.20.4` | `functions`, `loot_tables`, `predicates`, `advancements` |" in output, output)
+        assertTrue("| `26.2` | 25 | 4903 | 107.1 | `26.2:26.2` |" in output, output)
+    }
+
     private fun captureStdout(stdin: String? = null, block: () -> Unit): String {
         val original = System.out
         val originalIn = System.`in`
