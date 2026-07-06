@@ -616,6 +616,7 @@ class RunCommand : CliktCommand(name = "run") {
             trimmed.startsWith("storage:") -> parseStorageAssertion(trimmed.removePrefix("storage:"), label)
             trimmed.startsWith("advancement:") -> parseAdvancementAssertion(trimmed.removePrefix("advancement:"), label)
             trimmed.startsWith("entity:") -> parseEntityCountAssertion(trimmed.removePrefix("entity:"), label)
+            trimmed.startsWith("block:") -> parseBlockAssertion(trimmed.removePrefix("block:"), label)
             trimmed.startsWith("item:") -> parseItemAssertion(trimmed.removePrefix("item:"), label)
             trimmed.startsWith("player:") -> parsePlayerAssertion(trimmed.removePrefix("player:"), label)
             trimmed.startsWith("random-sequence:") -> parseRandomSequenceAssertion(trimmed.removePrefix("random-sequence:"), label)
@@ -634,7 +635,7 @@ class RunCommand : CliktCommand(name = "run") {
             trimmed.startsWith("output:") -> parseOutputAssertion(trimmed.removePrefix("output:"), label)
             else -> throw SandboxException(
                 DiagnosticCode.INPUT_FORMAT,
-                "$label must be a JSON object or shorthand score:<target>:<objective>=N, storage:<id>[:<path>]=<json>, advancement:<player>:<id>[=<true|false>], entity:<type|*>[@tag]=N, item:<player>:<id>[@slot]=N, player:<name>[:<field>=<value>], random-sequence:<name>=N, snapshot:<path>=<json>, snapshot:<path>?, snapshot:<path>!, diff:<json-pointer>[=<kind>], event-trace:<player>:<type>[=N], trace:<root>=N, trace:<text>, trace-output:<text>[@target], warning=N, warning:<text>, unsupported=N, unsupported:<text>, output:<text>, output-normalized:<text>, output-segment:<text>[|color=<color>|bold=<true|false>][@target], or output-payload:<command>:<path>[=<json>]",
+                "$label must be a JSON object or shorthand score:<target>:<objective>=N, storage:<id>[:<path>]=<json>, advancement:<player>:<id>[=<true|false>], entity:<type|*>[@tag]=N, block:<x>,<y>,<z>=<id>, block:<x>,<y>,<z>?, block:<x>,<y>,<z>!, item:<player>:<id>[@slot]=N, player:<name>[:<field>=<value>], random-sequence:<name>=N, snapshot:<path>=<json>, snapshot:<path>?, snapshot:<path>!, diff:<json-pointer>[=<kind>], event-trace:<player>:<type>[=N], trace:<root>=N, trace:<text>, trace-output:<text>[@target], warning=N, warning:<text>, unsupported=N, unsupported:<text>, output:<text>, output-normalized:<text>, output-segment:<text>[|color=<color>|bold=<true|false>][@target], or output-payload:<command>:<path>[=<json>]",
             )
         }
     }
@@ -746,6 +747,44 @@ class RunCommand : CliktCommand(name = "run") {
             }
         }
         return JsonObject().also { it.add("entityCount", entity) }
+    }
+
+    private fun parseBlockAssertion(spec: String, label: String): JsonObject {
+        val trimmed = spec.trim()
+        if (trimmed.isEmpty()) {
+            throw SandboxException(
+                DiagnosticCode.INPUT_FORMAT,
+                "$label block shorthand must be block:<x>,<y>,<z>=<id>, block:<x>,<y>,<z>?, or block:<x>,<y>,<z>!",
+            )
+        }
+        val block = when {
+            trimmed.endsWith("?") -> blockAssertionObject(trimmed.dropLast(1), label).also { it.addProperty("exists", true) }
+            trimmed.endsWith("!") -> blockAssertionObject(trimmed.dropLast(1), label).also { it.addProperty("exists", false) }
+            else -> {
+                val splitAt = trimmed.indexOf('=')
+                if (splitAt <= 0) {
+                    throw SandboxException(
+                        DiagnosticCode.INPUT_FORMAT,
+                        "$label block shorthand must be block:<x>,<y>,<z>=<id>, block:<x>,<y>,<z>?, or block:<x>,<y>,<z>!",
+                    )
+                }
+                val id = trimmed.substring(splitAt + 1).trim()
+                if (id.isEmpty()) {
+                    throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label block shorthand id must not be empty")
+                }
+                blockAssertionObject(trimmed.substring(0, splitAt), label).also { it.addProperty("id", id) }
+            }
+        }
+        return JsonObject().also { it.add("block", block) }
+    }
+
+    private fun blockAssertionObject(rawPos: String, label: String): JsonObject {
+        val parts = rawPos.split(",")
+        if (parts.size != 3 || parts.any { it.trim().toIntOrNull() == null }) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label block coordinates must be x,y,z")
+        }
+        val pos = JsonArray().also { array -> parts.map { it.trim().toInt() }.forEach { array.add(it) } }
+        return JsonObject().also { it.add("pos", pos) }
     }
 
     private fun parseItemAssertion(spec: String, label: String): JsonObject {
