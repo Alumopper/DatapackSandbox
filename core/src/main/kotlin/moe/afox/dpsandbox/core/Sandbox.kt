@@ -2151,15 +2151,25 @@ class DatapackSandbox(
         when (tokens[1].text) {
             "add", "remove" -> {
                 if (tokens[1].text == "remove" && tokens.getOrNull(2)?.text == "all") {
+                    val removed = world.forcedChunks.sorted()
                     world.forcedChunks.clear()
+                    recordForceloadMutationOutput("remove all", removed, removed.size)
                     return
                 }
                 requireSize(tokens, 4, "forceload ${tokens[1].text} <from> [to]", location)
                 val from = parseColumnPos(tokens, 2, context.position, location)
                 val to = if (tokens.size >= 6) parseColumnPos(tokens, 4, context.position, location) else from
-                chunksInBlockRange(from, to).forEach { chunk ->
-                    if (tokens[1].text == "add") world.forcedChunks += chunk else world.forcedChunks -= chunk
+                val chunks = chunksInBlockRange(from, to).toList()
+                var changed = 0
+                chunks.forEach { chunk ->
+                    val didChange = if (tokens[1].text == "add") {
+                        world.forcedChunks.add(chunk)
+                    } else {
+                        world.forcedChunks.remove(chunk)
+                    }
+                    if (didChange) changed += 1
                 }
+                recordForceloadMutationOutput(tokens[1].text, chunks, changed)
             }
             "query" -> {
                 if (tokens.size > 2) {
@@ -2196,6 +2206,33 @@ class DatapackSandbox(
             }
             else -> unsupportedFeature("Unsupported forceload action '${tokens[1].text}'", profile.id, location)
         }
+    }
+
+    private fun recordForceloadMutationOutput(action: String, chunks: List<ChunkPos>, changed: Int) {
+        world.recordOutput(
+            "forceload $action",
+            "data",
+            targets = chunks.map { "${it.x},${it.z}" },
+            text = changed.toString(),
+            payload = JsonObject().also { payload ->
+                payload.addProperty("action", action)
+                payload.addProperty("changed", changed)
+                payload.addProperty("forcedCount", world.forcedChunks.size)
+                payload.add(
+                    "chunks",
+                    JsonArray().also { array ->
+                        chunks.forEach { chunk ->
+                            array.add(
+                                JsonObject().also { entry ->
+                                    entry.addProperty("x", chunk.x)
+                                    entry.addProperty("z", chunk.z)
+                                },
+                            )
+                        }
+                    },
+                )
+            },
+        )
     }
 
     private fun executeFillBiome(tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext) {

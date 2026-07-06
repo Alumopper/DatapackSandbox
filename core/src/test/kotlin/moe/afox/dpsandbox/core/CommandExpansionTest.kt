@@ -58,6 +58,13 @@ class CommandExpansionTest {
         assertEquals(2, snapshot.get("gameTime").asLong)
         assertEquals(4, snapshot.getAsJsonArray("biomes").size())
         assertTrue(snapshot.getAsJsonArray("forcedChunks").size() >= 1)
+        val forceAddOutput = sandbox.world.outputs.single { it.command == "forceload add" }
+        val forceAddPayload = forceAddOutput.payload?.asJsonObject ?: error("missing forceload add payload")
+        assertEquals("4", forceAddOutput.text)
+        assertEquals("add", forceAddPayload.get("action").asString)
+        assertEquals(4, forceAddPayload.get("changed").asInt)
+        assertEquals(4, forceAddPayload.get("forcedCount").asInt)
+        assertEquals("0,0", forceAddOutput.targets[0])
         val forceQueries = sandbox.world.outputs.filter { it.command == "forceload query" }
         val loadedPayload = forceQueries[0].payload?.asJsonObject ?: error("missing loaded forceload payload")
         val unloadedPayload = forceQueries[1].payload?.asJsonObject ?: error("missing unloaded forceload payload")

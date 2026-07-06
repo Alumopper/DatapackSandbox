@@ -45,7 +45,7 @@ run continues. Use `--unsupported error`, manifest `"unsupported": "error"`, or
 | `experience`, `xp` | Partial | `add`, `set`, `query`; points and levels share the sandbox XP integer; `query` records structured data output for assertions and `execute store result`. |
 | `fill` | Partial | `fill <from> <to> <block[state]{nbt}> [replace|keep|destroy|hollow|outline]`; records structured changed-position output; position arguments accept local coordinates; no updates/drops. |
 | `fillbiome` | Partial | Stores biome overrides for explicit block ranges; no chunk biome container or generation effects. |
-| `forceload` | Partial | `add`, `remove`, `remove all`, `query`, `query <pos>`; stores forced chunk coordinates and records structured query output. |
+| `forceload` | Partial | `add`, `remove`, `remove all`, `query`, `query <pos>`; stores forced chunk coordinates and records structured mutation/query output. |
 | `function` | Supported | `function <id>`. |
 | `gamemode` | Supported | `gamemode <mode> [targets]`; updates sandbox player game mode and records structured before/after output. |
 | `gamerule` | Partial | Stores arbitrary gamerule string values and records structured query output; no gameplay side effects. |
