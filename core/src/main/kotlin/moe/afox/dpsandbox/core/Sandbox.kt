@@ -2115,9 +2115,11 @@ class DatapackSandbox(
                     "from" -> readItemSource(tokens, 6, context, location)
                     else -> unsupportedFeature("Expected 'with' or 'from' in item replace entity", profile.id, location)
                 }
-                EntitySelectors.select(world, tokens[3].text, context, location).forEach { entity ->
+                val entities = EntitySelectors.select(world, tokens[3].text, context, location)
+                entities.forEach { entity ->
                     entityItemAccess(entity, tokens[4].text, location).set(item)
                 }
+                recordItemReplaceOutput("entity", entities.map { it.scoreHolder }, tokens[4].text, item)
             }
             "block" -> {
                 requireSize(tokens, 8, "item replace block <pos> <slot> <with|from> ...", location)
@@ -2133,9 +2135,25 @@ class DatapackSandbox(
                     else -> unsupportedFeature("Expected 'with' or 'from' in item replace block", profile.id, location)
                 }
                 replaceBlockItem(pos, slot, item, location)
+                recordItemReplaceOutput("block", listOf(pos.toString()), tokens[6].text, item)
             }
             else -> unsupportedFeature("Unsupported item replace target '${tokens[2].text}'", profile.id, location)
         }
+    }
+
+    private fun recordItemReplaceOutput(targetKind: String, targets: List<String>, slot: String, item: ItemStack?) {
+        world.recordOutput(
+            "item replace",
+            "data",
+            targets = targets,
+            text = targets.size.toString(),
+            payload = JsonObject().also { payload ->
+                payload.addProperty("targetKind", targetKind)
+                payload.add("targets", JsonArray().also { array -> targets.forEach { array.add(it) } })
+                payload.addProperty("slot", slot)
+                item?.let { payload.add("item", it.toJson()) }
+            },
+        )
     }
 
     private enum class PlayerItemContainer {

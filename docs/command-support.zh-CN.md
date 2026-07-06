@@ -44,7 +44,7 @@
 | `gamerule` | 部分支持 | 存储任意 gamerule 字符串值，并为查询记录结构化输出；不执行具体游戏规则副作用。 |
 | `give` | 部分支持 | 向玩家背包添加物品，记录可用于 report/assertion 的结构化输出，并触发 inventory advancement 事件；item argument 支持沙盒 JSON/SNBT-lite NBT 和 components payload。 |
 | `help` | 部分支持 | 输出命令根节点和基础沙盒帮助。 |
-| `item` | 部分支持 | `replace entity|block ... with <item> [count]` 和 `from entity|block ...`；item argument 支持沙盒 JSON/SNBT-lite NBT 和 components payload；entity 槽位覆盖玩家背包、当前主手、`enderchest.*` 槽和非玩家实体装备槽；`modify entity|block ... <modifier>` 会应用常用 item modifier 函数（`set_components`、`set_custom_data`、`set_count`、`limit_count`、`set_item`、`discard`、`set_damage`、`set_name`、`set_lore`、`filtered`、`reference`、`sequence`）。 |
+| `item` | 部分支持 | `replace entity|block ... with <item> [count]` 和 `from entity|block ...`，replace 会记录可用于 report/assertion 的结构化输出；item argument 支持沙盒 JSON/SNBT-lite NBT 和 components payload；entity 槽位覆盖玩家背包、当前主手、`enderchest.*` 槽和非玩家实体装备槽；`modify entity|block ... <modifier>` 会应用常用 item modifier 函数（`set_components`、`set_custom_data`、`set_count`、`limit_count`、`set_item`、`discard`、`set_damage`、`set_name`、`set_lore`、`filtered`、`reference`、`sequence`）。 |
 | `kick` | 未支持 | 不模拟网络会话。 |
 | `kill` | 支持 | 移除选中的沙盒实体；玩家执行上下文会为非玩家目标触发 `killed_entity` advancement 事件。 |
 | `list` | 支持 | 报告沙盒玩家及 UUID。 |

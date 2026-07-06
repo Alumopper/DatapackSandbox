@@ -247,6 +247,14 @@ class CommandExpansionTest {
         assertEquals("minecraft:stick", giveOutput.payload?.asJsonObject?.getAsJsonObject("item")?.get("id")?.asString)
         assertEquals("old value", giveOutput.payload?.asJsonObject?.getAsJsonObject("item")?.getAsJsonObject("nbt")?.get("label")?.asString)
 
+        val replaceOutputs = sandbox.world.outputs.filter { it.command == "item replace" }
+        assertEquals(3, replaceOutputs.size)
+        assertEquals("entity", replaceOutputs[0].payload?.asJsonObject?.get("targetKind")?.asString)
+        assertEquals("hotbar.1", replaceOutputs[0].payload?.asJsonObject?.get("slot")?.asString)
+        assertEquals("minecraft:diamond", replaceOutputs[0].payload?.asJsonObject?.getAsJsonObject("item")?.get("id")?.asString)
+        assertEquals("block", replaceOutputs[1].payload?.asJsonObject?.get("targetKind")?.asString)
+        assertEquals("container.0", replaceOutputs[1].payload?.asJsonObject?.get("slot")?.asString)
+
         val componentItem = player.inventory[1]
         assertEquals(ResourceLocation.parse("minecraft:diamond"), componentItem.id)
         assertEquals(4, componentItem.count)
