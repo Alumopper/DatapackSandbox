@@ -441,6 +441,25 @@ class SandboxBehaviorTest {
     }
 
     @Test
+    fun `data get scales numeric path output`() {
+        val sandbox = createSandbox("26.1.2", listOf(fixturePack()))
+
+        sandbox.executeCommand("""data merge storage demo:src {value:2.5,name:"Alpha"}""")
+        sandbox.executeCommand("scoreboard objectives add data dummy")
+        sandbox.executeCommand("data get storage demo:src value 4")
+        sandbox.executeCommand("execute store result score #scaled data run data get storage demo:src value 3")
+
+        val output = sandbox.world.outputs.first { it.command == "get" }
+        assertEquals(10.0, output.payload?.asDouble)
+        assertEquals(7, sandbox.world.getScore("#scaled", "data"))
+
+        val error = assertFailsWith<SandboxException> {
+            sandbox.executeCommand("data get storage demo:src name 2")
+        }
+        assertEquals(DiagnosticCode.COMMAND_ERROR, error.code)
+    }
+
+    @Test
     fun `data modify copies string slices from source paths`() {
         val sandbox = createSandbox("26.1.2", listOf(fixturePack()))
 

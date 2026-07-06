@@ -1493,10 +1493,19 @@ class DatapackSandbox(
     }
 
     private fun executeDataGet(tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext): JsonElement? {
-        requireSize(tokens, 3, "data get <storage|entity|block> <target> [path]", location)
+        requireSize(tokens, 3, "data get <storage|entity|block> <target> [path] [scale]", location)
         val (target, pathIndex) = parseDataTarget(tokens, 2, context, location)
         val path = tokens.getOrNull(pathIndex)?.text
-        return dataTargetNbtValues(target, location).firstOrNull()?.let { JsonPaths.get(it, path) }
+        val value = dataTargetNbtValues(target, location).firstOrNull()?.let { JsonPaths.get(it, path) }
+        val scale = if (path != null) tokens.getOrNull(pathIndex + 1)?.text?.let { parseDouble(it, "data get scale", location) } else null
+        return if (scale == null) value else value?.let { scaleDataGetResult(it, scale, location) }
+    }
+
+    private fun scaleDataGetResult(value: JsonElement, scale: Double, location: SourceLocation?): JsonPrimitive {
+        if (!value.isJsonPrimitive || !value.asJsonPrimitive.isNumber) {
+            throw SandboxException(DiagnosticCode.COMMAND_ERROR, "data get scale requires a numeric value", location)
+        }
+        return JsonPrimitive(value.asDouble * scale)
     }
 
     private fun executeDataRemove(tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext) {
