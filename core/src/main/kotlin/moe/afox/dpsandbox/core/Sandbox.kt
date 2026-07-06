@@ -314,6 +314,7 @@ class DatapackSandbox(
         val normalized = event.normalized()
         val player = world.requirePlayer(normalized.playerName)
         normalized.input?.let(player::recordInput)
+        applyPlayerEventState(normalized, player)
         var updates: List<AdvancementUpdate> = emptyList()
         var advancementFailures: List<AdvancementCriterionFailure> = emptyList()
         var success = false
@@ -344,6 +345,99 @@ class DatapackSandbox(
             )
         }
     }
+
+    private fun applyPlayerEventState(event: PlayerEvent, player: SandboxPlayer) {
+        when (event.type) {
+            "item_consumed", "consume_item" -> applyConsumedItemEvent(player, event.item)
+            "item_picked_up", "item_added" -> event.item?.let { player.inventory += it.copyForInventory() }
+            "changed_dimension" -> event.toDimension?.let { player.dimension = it }
+            "damage" -> event.damageAmount?.takeIf { it > 0.0 }?.let { amount ->
+                player.health = (player.health - amount).coerceAtLeast(0.0)
+            }
+            "death" -> player.health = 0.0
+            "recipe_unlocked" -> event.recipe?.let { player.recipes += it }
+        }
+    }
+
+    private fun applyConsumedItemEvent(player: SandboxPlayer, requested: ItemStack?) {
+        val consumed = consumeInventoryItem(player, requested) ?: requested ?: return
+        foodRestoredBy(consumed.id)?.let { player.food = (player.food + it).coerceAtMost(20) }
+    }
+
+    private fun consumeInventoryItem(player: SandboxPlayer, requested: ItemStack?): ItemStack? {
+        val index = if (requested == null) {
+            player.selectedSlot.takeIf { it in player.inventory.indices }
+        } else {
+            player.inventory.indexOfFirst { it.matchesEventItem(requested) }.takeIf { it >= 0 }
+        } ?: return null
+        val stack = player.inventory[index]
+        val consumed = stack.copyForInventory().also { it.count = 1 }
+        stack.count -= 1
+        if (stack.count <= 0) {
+            player.inventory.removeAt(index)
+            if (player.selectedSlot >= player.inventory.size) {
+                player.selectedSlot = player.inventory.lastIndex.coerceAtLeast(0)
+            }
+        }
+        return consumed
+    }
+
+    private fun ItemStack.matchesEventItem(expected: ItemStack): Boolean =
+        id == expected.id &&
+            (expected.components.entrySet().isEmpty() || components == expected.components) &&
+            (expected.nbt.entrySet().isEmpty() || nbt == expected.nbt)
+
+    private fun ItemStack.copyForInventory(): ItemStack =
+        copy(components = components.deepCopy(), nbt = nbt.deepCopy())
+
+    private fun foodRestoredBy(id: ResourceLocation): Int? =
+        when (id.toString()) {
+            "minecraft:apple",
+            "minecraft:golden_apple",
+            "minecraft:enchanted_golden_apple",
+            -> 4
+            "minecraft:bread",
+            "minecraft:baked_potato",
+            "minecraft:cooked_cod",
+            -> 5
+            "minecraft:carrot",
+            "minecraft:porkchop",
+            "minecraft:beef",
+            "minecraft:rabbit",
+            -> 3
+            "minecraft:cooked_beef",
+            "minecraft:cooked_porkchop",
+            "minecraft:pumpkin_pie",
+            -> 8
+            "minecraft:cooked_chicken",
+            "minecraft:cooked_mutton",
+            "minecraft:cooked_salmon",
+            "minecraft:golden_carrot",
+            "minecraft:mushroom_stew",
+            "minecraft:rabbit_stew",
+            "minecraft:beetroot_soup",
+            -> 6
+            "minecraft:cooked_rabbit" -> 5
+            "minecraft:potato",
+            "minecraft:beetroot",
+            "minecraft:dried_kelp",
+            "minecraft:tropical_fish",
+            -> 1
+            "minecraft:melon_slice",
+            "minecraft:sweet_berries",
+            "minecraft:glow_berries",
+            "minecraft:cookie",
+            "minecraft:cod",
+            "minecraft:salmon",
+            "minecraft:chicken",
+            "minecraft:mutton",
+            -> 2
+            "minecraft:rotten_flesh",
+            "minecraft:spider_eye",
+            "minecraft:poisonous_potato",
+            -> 2
+            else -> null
+        }
 
     /**
      * Generates loot from a loaded loot table using an explicit context type.

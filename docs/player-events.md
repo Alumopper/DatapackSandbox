@@ -99,20 +99,20 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar run --version 26.2 \
 | `tick` | none | `minecraft:tick` advancement trigger |
 | `inventory_changed` | `item` | Inventory-change advancement conditions |
 | `item_used` | `item` | Item-use advancement conditions |
-| `item_consumed` | `item` | Consume-item advancement conditions |
-| `item_picked_up` | `item` | Alias path for inventory changes |
+| `item_consumed` | `item` | Consume-item advancement conditions; decrements one matching inventory/selected item when present and applies a deterministic food increase for known foods |
+| `item_picked_up` / `item_added` | `item` | Adds the item stack to player inventory and follows the inventory-change alias path |
 | `key_input` / `key_pressed` / `key_released` | `key`, `action` | Records player keyboard input; sandbox custom `key_input` advancement triggers can match it |
 | `mouse_input` / `mouse_clicked` / `mouse_released` / `mouse_moved` | `button`, `action`, `x`, `y` | Records player mouse input; sandbox custom `mouse_input` advancement triggers can match it |
 | `entity_interacted` | `entity` | `minecraft:player_interacted_with_entity` |
-| `damage` | `damageSource`, `amount`, `entity` | `minecraft:entity_hurt_player`; `entity` is the source entity when provided |
-| `death` | `damageSource`, `amount`, `entity` | Sandbox `death` trigger; command damage with a source entity also emits `entity_killed_player` |
+| `damage` | `damageSource`, `amount`, `entity` | Reduces player health, triggers `minecraft:entity_hurt_player`; `entity` is the source entity when provided |
+| `death` | `damageSource`, `amount`, `entity` | Sets player health to zero and triggers sandbox `death`; command damage with a source entity also emits `entity_killed_player` |
 | `killed_entity` / `entity_killed` / `player_killed_entity` | `entity` | `minecraft:player_killed_entity` |
 | `entity_killed_player` | `entity` | `minecraft:entity_killed_player` |
 | `location` | none | Location advancement conditions |
-| `changed_dimension` | `from`, `to` | Dimension-change advancement conditions |
+| `changed_dimension` | `from`, `to` | Updates player dimension when `to` is present and checks dimension-change advancement conditions |
 | `placed_block` / `block_placed` | `block` | Placed-block advancement conditions |
 | `broke_block` / `block_broken` / `broken_block` | `block` | Mapped to the implemented block-break trigger subset |
-| `recipe_unlocked` | `recipe` | Recipe-unlocked advancement conditions |
+| `recipe_unlocked` | `recipe` | Adds the recipe to the player recipe set and checks recipe-unlocked advancement conditions |
 | `effects_changed` | none | Effects-changed advancement conditions |
 
 The REPL shorthand exposes one optional `[resource-id]` and optional detail or
@@ -125,6 +125,13 @@ command uses `by <entity>` or `from <entity>`, the death also emits
 `entity_killed_player`. When a player is the source entity for damage to a
 non-player entity, the sandbox emits `player_hurt_entity` and, on lethal
 damage, `killed_entity`.
+
+High-level events also update observable player state when the state can be
+modeled without client physics: consume events can reduce inventory and food,
+pickup/add events add inventory items, dimension changes update the player's
+dimension, damage/death events update health, and recipe unlock events update
+the player's recipe set. These changes are visible through snapshots,
+`inspect player`, manifest assertions, and QuickTest assertions.
 
 Keyboard/mouse manifest examples:
 

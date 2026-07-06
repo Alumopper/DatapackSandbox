@@ -169,7 +169,7 @@ These are tooling commands, not vanilla commands:
 
 | Command | Behavior | Purpose |
 |---|---:|---|
-| `event player <name> <type> ...` | `modeled` | Inject player events for advancements/predicates. |
+| `event player <name> <type> ...` | `modeled` | Inject player events for advancements/predicates and observable player state such as consumed/picked-up items, dimension, health, recipes, and input metadata. |
 | `player <name>` | `modeled` | Create or reuse a sandbox player. |
 | `inspect <...>` | `modeled` | Inspect score, storage, random sequences, entities, blocks, player, loot, predicate, advancement, recipe, item_modifier, raw JSON resources, tags, resource index, registry, outputs. |
 | `snapshot [file]` | `modeled` | Print or write deterministic world JSON. |
