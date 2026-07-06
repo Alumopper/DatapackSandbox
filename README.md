@@ -30,10 +30,10 @@ Run release smoke checks for the standalone jar:
 ```
 
 The smoke checks build the jar, export the bundled manifest schema, run all
-example manifests, and execute the concrete README `loot` and player `event`
-examples. The standard `check` lifecycle also runs unit tests, manifest
-examples, and the standalone jar smoke checks; CI runs `check` on Linux,
-Windows, and macOS.
+example manifests, exercise the built-in benchmark and diff commands, and
+execute the concrete README `loot` and player `event` examples. The standard
+`check` lifecycle also runs unit tests, manifest examples, and the standalone
+jar smoke checks; CI runs `check` on Linux, Windows, and macOS.
 
 The standalone jar is written to:
 
@@ -144,6 +144,14 @@ when building an external differential workflow:
 java -jar cli/build/libs/datapack-sandbox-cli.jar diff expected-snapshot.json actual-snapshot.json
 java -jar cli/build/libs/datapack-sandbox-cli.jar diff --snapshot --check vanilla-report.json sandbox-report.json
 java -jar cli/build/libs/datapack-sandbox-cli.jar diff --json --output build/snapshot-diff.json expected-snapshot.json actual-snapshot.json
+```
+
+Run the built-in benchmark smoke profile, or scale it up and write JSON for CI
+artifacts:
+
+```bash
+java -jar cli/build/libs/datapack-sandbox-cli.jar benchmark --version 26.2 --scale 100
+java -jar cli/build/libs/datapack-sandbox-cli.jar benchmark --pack ./my_pack --loot-table demo:gift --scale 1000 --json --output build/benchmark.json
 ```
 
 Run a single `.mcfunction` file without creating a full datapack:

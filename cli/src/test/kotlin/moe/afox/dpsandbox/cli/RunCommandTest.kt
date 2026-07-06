@@ -1322,6 +1322,37 @@ class RunCommandTest {
     }
 
     @Test
+    fun `benchmark reports built in scenarios`() {
+        val output = captureStdout {
+            main(arrayOf("benchmark", "--version", "26.2", "--scale", "4"))
+        }
+
+        assertTrue("benchmark version=26.2 scale=4" in output, output)
+        assertTrue("scoreboard elapsedMs=" in output, output)
+        assertTrue("storage elapsedMs=" in output, output)
+        assertTrue("function-chain elapsedMs=" in output, output)
+        assertTrue("manifest-batch elapsedMs=" in output, output)
+    }
+
+    @Test
+    fun `benchmark writes json report to file`() {
+        val reportFile = Files.createTempFile("dps-benchmark", ".json")
+        val output = captureStdout {
+            main(arrayOf("benchmark", "--version", "26.2", "--scale", "3", "--json", "--output", reportFile.toString()))
+        }
+        val json = JsonParser.parseString(Files.readString(reportFile)).asJsonObject
+        val scenarios = json.getAsJsonArray("scenarios").map { it.asJsonObject }.associateBy { it.get("name").asString }
+
+        assertTrue("benchmark output written: $reportFile" in output, output)
+        assertEquals("26.2", json.get("version").asString)
+        assertEquals(3, json.get("scale").asInt)
+        assertEquals(3, scenarios.getValue("scoreboard").get("scores").asInt)
+        assertEquals(3, scenarios.getValue("storage").get("entries").asInt)
+        assertEquals(3, scenarios.getValue("function-chain").get("depth").asInt)
+        assertEquals(1, scenarios.getValue("manifest-batch").get("assertions").asInt)
+    }
+
+    @Test
     fun `resources list reports behavior levels`() {
         val output = captureStdout {
             main(arrayOf("resources"))

@@ -158,6 +158,26 @@ smokeCliJarDiff.configure {
     }
 }
 
+val smokeBenchmarkOutput = layout.buildDirectory.file("smoke/benchmark.json")
+val smokeCliJarBenchmark = registerCliJarSmokeTask(
+    name = "smokeCliJarBenchmark",
+    descriptionText = "Runs the standalone CLI jar built-in benchmark smoke profile.",
+    "benchmark",
+    "--version",
+    "26.2",
+    "--scale",
+    "3",
+    "--json",
+    "--output",
+    smokeBenchmarkOutput.get().asFile.absolutePath,
+)
+smokeCliJarBenchmark.configure {
+    outputs.file(smokeBenchmarkOutput)
+    doFirst {
+        smokeBenchmarkOutput.get().asFile.parentFile.mkdirs()
+    }
+}
+
 val smokeCliJarExamples = registerCliJarSmokeTask(
     name = "smokeCliJarExamples",
     descriptionText = "Runs all example manifests through the standalone CLI jar.",
@@ -249,6 +269,7 @@ tasks.register("smokeCliJar") {
         smokeCliJarResourceDocs,
         smokeCliJarSchema,
         smokeCliJarDiff,
+        smokeCliJarBenchmark,
         smokeCliJarExamples,
         smokeCliJarReadmeLoot,
         smokeCliJarReadmeEvent,

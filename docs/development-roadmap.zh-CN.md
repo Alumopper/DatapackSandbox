@@ -295,6 +295,7 @@
 
 - 性能基准：
   - 大型 pack 加载、深函数调用、大量 scoreboard、巨大 storage、批量 manifest、loot 大量抽样。
+  - `benchmark` CLI 已提供内置 smoke/CI 性能基准，覆盖 scoreboard 批量写入、大 storage merge、函数调用链、批量 manifest 执行、可选 pack 加载和可选 loot sampling，并可写 JSON artifact。
 - 缓存：
   - 资源解析缓存、schema 缓存、版本 profile 缓存；保证不破坏 watch/reload。
   - `DatapackLoader` 已提供目录/zip 数据包解析缓存，缓存键使用版本 profile 与内容指纹；命中时返回深拷贝，并提供 `clearCache()` 供 REPL/watch 强制 reload 丢弃缓存。

@@ -97,6 +97,13 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar diff --snapshot --check vanill
 java -jar cli/build/libs/datapack-sandbox-cli.jar diff --json --output build/snapshot-diff.json expected-snapshot.json actual-snapshot.json
 ```
 
+可以运行内置 benchmark smoke profile，也可以提高 scale 并写出 JSON CI artifact：
+
+```bash
+java -jar cli/build/libs/datapack-sandbox-cli.jar benchmark --version 26.2 --scale 100
+java -jar cli/build/libs/datapack-sandbox-cli.jar benchmark --pack ./my_pack --loot-table demo:gift --scale 1000 --json --output build/benchmark.json
+```
+
 不创建完整数据包，直接运行单个 `.mcfunction` 文件：
 
 ```bash
