@@ -228,6 +228,7 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar run --version 26.2 \
   --command "data merge storage demo:env {ready:true}" \
   --command "give Steve minecraft:stick 3" \
   --command "summon minecraft:pig 0 0 0 {Tags:[\"fixture\"]}" \
+  --command "place structure demo:ruin 1 64 2" \
   --command "say generated ok" \
   --assert "score:#fixture:runs=1" \
   --assert "storage:demo:env:ready=true" \
@@ -238,7 +239,8 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar run --version 26.2 \
   --assert "trace:scoreboard=2" \
   --assert "trace-output:generated ok@Steve" \
   --assert "output:generated ok" \
-  --assert "output-normalized:generated ok"
+  --assert "output-normalized:generated ok" \
+  --assert "output-payload:place structure:id=demo:ruin"
 ```
 
 Player events can be injected in the same quick `run` flow and checked with

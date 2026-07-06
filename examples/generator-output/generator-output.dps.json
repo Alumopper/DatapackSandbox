@@ -24,6 +24,23 @@
         },
         "count": 1
       }
+    },
+    {
+      "output": {
+        "command": "place structure",
+        "channel": "worldgen",
+        "payloadPath": "id",
+        "payloadEquals": "demo:ruin",
+        "count": 1
+      }
+    },
+    {
+      "output": {
+        "command": "place structure",
+        "payloadPath": "placed",
+        "payloadEquals": false,
+        "count": 1
+      }
     }
   ]
 }
