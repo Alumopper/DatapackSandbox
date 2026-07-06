@@ -10,8 +10,8 @@ data class AdvancementUpdate(
 )
 
 class AdvancementRuntime(private val sandbox: DatapackSandbox) {
-    private val predicates = PredicateEngine(sandbox.datapack)
-    private val loot = LootEngine(sandbox.datapack, sandbox.profile.registryView)
+    private val predicates = PredicateEngine(sandbox.datapack, sandbox.profile)
+    private val loot = LootEngine(sandbox.datapack, sandbox.profile.registryView, sandbox.profile)
 
     fun grant(player: SandboxPlayer, id: ResourceLocation, criterion: String? = null): List<AdvancementUpdate> {
         val advancement = sandbox.datapack.advancement(id)

@@ -37,8 +37,9 @@ data class LootResult(val items: List<ItemStack>)
 class LootEngine(
     private val datapack: Datapack,
     private val registry: RegistryView = RegistryView.vanilla262,
+    private val profile: VersionProfile = VersionProfiles.default,
 ) {
-    private val predicates = PredicateEngine(datapack)
+    private val predicates = PredicateEngine(datapack, profile)
 
     /**
      * Generates items from loot table [id] using [context].

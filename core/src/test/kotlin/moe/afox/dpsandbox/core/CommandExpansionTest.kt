@@ -218,10 +218,12 @@ class CommandExpansionTest {
         sandbox.executeCommand("summon minecraft:zombie 0 64 0")
         sandbox.executeCommand("item replace entity @e[type=minecraft:zombie,limit=1] weapon.mainhand with minecraft:stick 1")
         sandbox.executeCommand("item modify entity @e[type=minecraft:zombie,limit=1] weapon.mainhand demo:mark")
+        sandbox.executeCommand("item replace entity @e[type=minecraft:zombie,limit=1] armor.head with minecraft:iron_helmet 1")
         sandbox.executeCommand("item replace entity Steve hotbar.3 from entity @e[type=minecraft:zombie,limit=1] weapon.mainhand")
         sandbox.executeCommand("scoreboard objectives add equipment dummy")
         sandbox.executeCommand("execute as @e[type=minecraft:zombie,limit=1] if predicate demo:zombie_mainhand_stick run scoreboard players add #predicate equipment 1")
         sandbox.executeCommand("execute as @e[type=minecraft:zombie,limit=1] unless predicate demo:zombie_offhand_stick run scoreboard players add #predicate equipment 1")
+        sandbox.executeCommand("execute as @e[type=minecraft:zombie,limit=1] if predicate demo:zombie_helmet_nbt run scoreboard players add #predicate equipment 1")
 
         val zombie = sandbox.world.entities.first { it.type == ResourceLocation.parse("minecraft:zombie") }
         val equipped = zombie.equipment[EquipmentSlots.MAINHAND] ?: error("missing zombie mainhand equipment")
@@ -245,7 +247,8 @@ class CommandExpansionTest {
             .asJsonObject
             .getAsJsonObject("equipment")
         assertEquals("minecraft:stick", snapshotEquipment.getAsJsonObject("weapon.mainhand").get("id").asString)
-        assertEquals(2, sandbox.world.getScore("#predicate", "equipment"))
+        assertEquals("minecraft:iron_helmet", snapshotEquipment.getAsJsonObject("armor.head").get("id").asString)
+        assertEquals(3, sandbox.world.getScore("#predicate", "equipment"))
     }
 
     @Test
@@ -846,6 +849,27 @@ class CommandExpansionTest {
                   "offhand": {
                     "items": "minecraft:stick"
                   }
+                }
+              }
+            }
+            """.trimIndent(),
+        )
+        Files.writeString(
+            predicateRoot.resolve("zombie_helmet_nbt.json"),
+            """
+            {
+              "condition": "minecraft:entity_properties",
+              "entity": "this",
+              "predicate": {
+                "type": "minecraft:zombie",
+                "nbt": {
+                  "ArmorItems": [
+                    {
+                      "id": "minecraft:iron_helmet",
+                      "count": 1,
+                      "components": {}
+                    }
+                  ]
                 }
               }
             }

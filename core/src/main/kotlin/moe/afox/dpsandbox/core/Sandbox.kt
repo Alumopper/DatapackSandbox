@@ -77,9 +77,9 @@ class DatapackSandbox(
     val unsupportedFeatureMode: UnsupportedFeatureMode = UnsupportedFeatureMode.WARN,
 ) {
     /** Predicate evaluator bound to the loaded datapack. */
-    val predicates = PredicateEngine(datapack)
+    val predicates = PredicateEngine(datapack, profile)
     /** Loot table evaluator bound to the loaded datapack and version registry view. */
-    val loot = LootEngine(datapack, profile.registryView)
+    val loot = LootEngine(datapack, profile.registryView, profile)
     /** Advancement runtime bound to this sandbox world. */
     val advancements = AdvancementRuntime(this)
 

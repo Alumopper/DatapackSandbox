@@ -64,7 +64,10 @@ class MissingPredicateContext(message: String) : SandboxException(DiagnosticCode
 /**
  * Predicate evaluator for loaded datapack predicate resources and inline loot conditions.
  */
-class PredicateEngine(private val datapack: Datapack) {
+class PredicateEngine(
+    private val datapack: Datapack,
+    private val profile: VersionProfile = VersionProfiles.default,
+) {
     /**
      * Evaluates a loaded predicate resource by id.
      *
@@ -148,7 +151,7 @@ class PredicateEngine(private val datapack: Datapack) {
         }
         predicate.get("nbt")?.let {
             val expected = if (it.isJsonPrimitive) JsonValues.parse(it.asString) else it
-            if (expected.isJsonObject && !containsAll(actual.nbt, expected.asJsonObject)) return false
+            if (expected.isJsonObject && !containsAll(actual.fullNbt(profile), expected.asJsonObject)) return false
         }
         predicate.getAsJsonObject("location")?.let {
             if (!testLocation(it, null, context.copy(origin = actual.position))) return false
