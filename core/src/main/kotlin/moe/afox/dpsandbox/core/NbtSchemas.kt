@@ -492,7 +492,7 @@ object NbtSchemas {
     }
 
     private fun validateItemStack(profile: VersionProfile, item: JsonObject, label: String, location: SourceLocation?) {
-        val itemStackKeys = schemaFor(profile)?.itemStackFields?.let { it + setOf("slot") } ?: fallbackItemStackKeys
+        val itemStackKeys = allowedItemStackKeys(profile)
         val unknown = item.entrySet().map { it.key }.filterNot { it in itemStackKeys }.sorted()
         if (unknown.isNotEmpty()) {
             throw SandboxException(
@@ -507,6 +507,16 @@ object NbtSchemas {
                 throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Item stack $label components must be an object", location)
             }
         }
+    }
+
+    private fun allowedItemStackKeys(profile: VersionProfile): Set<String> {
+        val fields = schemaFor(profile)?.itemStackFields ?: return fallbackItemStackKeys
+        return fields + setOfNotNull(
+            "slot",
+            "Slot",
+            "count".takeIf { "Count" in fields },
+            "Count".takeIf { "count" in fields },
+        )
     }
 
     private data class BlockEntitySchema(
