@@ -82,7 +82,7 @@
 | `teammsg`、`tm` | 支持 | 记录为 team chat 输出事件。 |
 | `teleport`、`tp` | 部分支持 | 坐标传送支持局部坐标、可选旋转、`facing` 和当前执行维度；目标实体传送会复制目标位置、维度和旋转；记录可用于 report/assertion 的结构化移动输出。 |
 | `tellraw` | 支持 | 解析 JSON text component 并记录输出事件。 |
-| `tick` | 部分支持 | `query`、`rate`、`freeze`、`unfreeze`、`step`、`sprint`、`stop`；更新沙盒 tick 状态，可推进 tick。 |
+| `tick` | 部分支持 | `query`、`rate`、`freeze`、`unfreeze`、`step`、`sprint`、`stop`；更新沙盒 tick 状态，可推进 tick，并记录结构化状态/推进输出用于调试。 |
 | `time` | 部分支持 | `set`、`add`、`query daytime|gametime|day`；修改和 query 都会记录结构化 data 输出，供断言和 `execute store result` 使用。 |
 | `title` | 支持 | `clear`、`reset`、`title`、`subtitle`、`actionbar`、`times` 输出事件。 |
 | `transfer` | 未支持 | 不模拟网络/server transfer。 |

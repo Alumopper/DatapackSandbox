@@ -25,6 +25,7 @@ class CommandExpansionTest {
         sandbox.executeCommand("forceload query 0 0")
         sandbox.executeCommand("forceload query 48 0")
         sandbox.executeCommand("fillbiome 0 0 0 1 0 1 minecraft:plains")
+        sandbox.executeCommand("tick rate 40")
         sandbox.executeCommand("tick freeze")
         sandbox.executeCommand("tick step 2")
 
@@ -54,8 +55,30 @@ class CommandExpansionTest {
         assertEquals("survival", defaultModePayload.get("before").asString)
         assertEquals("creative", defaultModePayload.get("after").asString)
         assertEquals(true, defaultModePayload.get("changed").asBoolean)
+        assertEquals(40.0, snapshot.get("tickRate").asDouble)
         assertEquals(true, snapshot.get("tickFrozen").asBoolean)
         assertEquals(2, snapshot.get("gameTime").asLong)
+        val tickRateOutput = sandbox.world.outputs.single { it.command == "tick rate" }
+        val tickRatePayload = tickRateOutput.payload?.asJsonObject ?: error("missing tick rate payload")
+        assertEquals("40.0", tickRateOutput.text)
+        assertEquals("rate", tickRatePayload.get("action").asString)
+        assertEquals(20.0, tickRatePayload.get("beforeRate").asDouble)
+        assertEquals(40.0, tickRatePayload.get("requestedRate").asDouble)
+        assertEquals(40.0, tickRatePayload.get("rate").asDouble)
+        val tickFreezeOutput = sandbox.world.outputs.single { it.command == "tick freeze" }
+        val tickFreezePayload = tickFreezeOutput.payload?.asJsonObject ?: error("missing tick freeze payload")
+        assertEquals("true", tickFreezeOutput.text)
+        assertEquals("freeze", tickFreezePayload.get("action").asString)
+        assertEquals(false, tickFreezePayload.get("beforeFrozen").asBoolean)
+        assertEquals(true, tickFreezePayload.get("frozen").asBoolean)
+        val tickStepOutput = sandbox.world.outputs.single { it.command == "tick step" }
+        val tickStepPayload = tickStepOutput.payload?.asJsonObject ?: error("missing tick step payload")
+        assertEquals("2", tickStepOutput.text)
+        assertEquals("step", tickStepPayload.get("action").asString)
+        assertEquals(2, tickStepPayload.get("ticks").asInt)
+        assertEquals(0, tickStepPayload.get("beforeGameTime").asLong)
+        assertEquals(2, tickStepPayload.get("gameTime").asLong)
+        assertEquals(2, tickStepPayload.get("advancedTicks").asLong)
         assertEquals(4, snapshot.getAsJsonArray("biomes").size())
         val fillBiomeOutput = sandbox.world.outputs.single { it.command == "fillbiome" }
         val fillBiomePayload = fillBiomeOutput.payload?.asJsonObject ?: error("missing fillbiome payload")

@@ -3736,6 +3736,36 @@ class DatapackSandbox(
 
     private fun executeTick(tokens: List<CommandToken>, location: SourceLocation?) {
         requireSize(tokens, 2, "tick <query|rate|freeze|unfreeze|step|sprint|stop>", location)
+        fun recordTickOutput(
+            command: String,
+            action: String,
+            text: String,
+            beforeRate: Double? = null,
+            requestedRate: Double? = null,
+            beforeFrozen: Boolean? = null,
+            beforeGameTime: Long? = null,
+            ticks: Int? = null,
+        ) {
+            world.recordOutput(
+                command,
+                "data",
+                text = text,
+                payload = JsonObject().also { payload ->
+                    payload.addProperty("action", action)
+                    payload.addProperty("rate", world.tickRate)
+                    payload.addProperty("frozen", world.tickFrozen)
+                    payload.addProperty("gameTime", world.gameTime)
+                    beforeRate?.let { payload.addProperty("beforeRate", it) }
+                    requestedRate?.let { payload.addProperty("requestedRate", it) }
+                    beforeFrozen?.let { payload.addProperty("beforeFrozen", it) }
+                    beforeGameTime?.let { before ->
+                        payload.addProperty("beforeGameTime", before)
+                        payload.addProperty("advancedTicks", world.gameTime - before)
+                    }
+                    ticks?.let { payload.addProperty("ticks", it) }
+                },
+            )
+        }
         when (tokens[1].text) {
             "query" -> {
                 val payload = JsonObject()
@@ -3746,13 +3776,49 @@ class DatapackSandbox(
             }
             "rate" -> {
                 requireSize(tokens, 3, "tick rate <rate>", location)
-                world.tickRate = parseDouble(tokens[2].text, "tick rate", location).coerceAtLeast(1.0)
+                val beforeRate = world.tickRate
+                val requestedRate = parseDouble(tokens[2].text, "tick rate", location)
+                world.tickRate = requestedRate.coerceAtLeast(1.0)
+                recordTickOutput(
+                    command = "tick rate",
+                    action = "rate",
+                    text = world.tickRate.toString(),
+                    beforeRate = beforeRate,
+                    requestedRate = requestedRate,
+                )
             }
-            "freeze" -> world.tickFrozen = true
-            "unfreeze" -> world.tickFrozen = false
+            "freeze" -> {
+                val beforeFrozen = world.tickFrozen
+                world.tickFrozen = true
+                recordTickOutput(
+                    command = "tick freeze",
+                    action = "freeze",
+                    text = world.tickFrozen.toString(),
+                    beforeFrozen = beforeFrozen,
+                )
+            }
+            "unfreeze" -> {
+                val beforeFrozen = world.tickFrozen
+                world.tickFrozen = false
+                recordTickOutput(
+                    command = "tick unfreeze",
+                    action = "unfreeze",
+                    text = world.tickFrozen.toString(),
+                    beforeFrozen = beforeFrozen,
+                )
+            }
             "step", "sprint" -> {
+                val action = tokens[1].text
                 val ticks = tokens.getOrNull(2)?.text?.let { parseTime(it, location).toInt() } ?: 1
+                val beforeGameTime = world.gameTime
                 runTicks(ticks)
+                recordTickOutput(
+                    command = "tick $action",
+                    action = action,
+                    text = (world.gameTime - beforeGameTime).toString(),
+                    beforeGameTime = beforeGameTime,
+                    ticks = ticks,
+                )
             }
             "stop" -> world.recordOutput("tick stop", "data", text = "No active tick sprint")
             else -> unsupportedFeature("Unsupported tick action '${tokens[1].text}'", profile.id, location)

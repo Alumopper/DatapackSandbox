@@ -89,7 +89,7 @@ run continues. Use `--unsupported error`, manifest `"unsupported": "error"`, or
 | `teammsg`, `tm` | Supported | Recorded as team chat output. |
 | `teleport`, `tp` | Partial | Coordinate teleport supports local coordinates, optional rotation, `facing`, and the current execution dimension; destination-entity teleport copies destination position, dimension, and rotation; records structured movement output for reports/assertions. |
 | `tellraw` | Supported | Resolves JSON text components into output events. |
-| `tick` | Partial | `query`, `rate`, `freeze`, `unfreeze`, `step`, `sprint`, `stop`; updates sandbox tick state and can advance ticks. |
+| `tick` | Partial | `query`, `rate`, `freeze`, `unfreeze`, `step`, `sprint`, `stop`; updates sandbox tick state, can advance ticks, and records structured state/advance output for debugging. |
 | `time` | Partial | `set`, `add`, `query daytime|gametime|day`; mutations and queries record structured data output for assertions and `execute store result`. |
 | `title` | Supported | `clear`, `reset`, `title`, `subtitle`, `actionbar`, `times` output events. |
 | `transfer` | Unsupported | Networking/server transfer is not simulated. |
