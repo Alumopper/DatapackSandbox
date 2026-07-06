@@ -628,6 +628,7 @@ data class PlayerEventTraceEvent(
     val item: ResourceLocation? = null,
     val entity: ResourceLocation? = null,
     val block: ResourceLocation? = null,
+    val blockPos: BlockPos? = null,
     val recipe: ResourceLocation? = null,
     val fromDimension: ResourceLocation? = null,
     val toDimension: ResourceLocation? = null,
@@ -652,6 +653,13 @@ data class PlayerEventTraceEvent(
             item?.let { json.addProperty("item", it.toString()) }
             entity?.let { json.addProperty("entity", it.toString()) }
             block?.let { json.addProperty("block", it.toString()) }
+            blockPos?.let { pos ->
+                json.add("blockPos", JsonObject().also { blockPosJson ->
+                    blockPosJson.addProperty("x", pos.x)
+                    blockPosJson.addProperty("y", pos.y)
+                    blockPosJson.addProperty("z", pos.z)
+                })
+            }
             recipe?.let { json.addProperty("recipe", it.toString()) }
             fromDimension?.let { json.addProperty("from", it.toString()) }
             toDimension?.let { json.addProperty("to", it.toString()) }
@@ -715,6 +723,7 @@ data class PlayerEventTraceEvent(
                 item = event.item?.id,
                 entity = event.entity?.type,
                 block = event.block,
+                blockPos = event.blockPos,
                 recipe = event.recipe,
                 fromDimension = event.fromDimension,
                 toDimension = event.toDimension,

@@ -300,7 +300,7 @@ output text/target, whether a command produced snapshot diffs, diff
 path/kind/rendered text, count, source file, and function stack. When a trace assertion misses, the failure
 message includes a bounded list of actual command trace candidates. `eventTrace`
 assertions check player event dispatch by player, type, success, item/entity/block/recipe
-context, dimension changes, damage source/amount, input device/code/action,
+context, block position, dimension changes, damage source/amount, input device/code/action,
 advancement id, criterion, failed advancement id/criterion, failure reason
 substring, and count; misses include actual player event trace candidates. `diagnostic`
 assertions check expected step failures by step, version, code, command, root,

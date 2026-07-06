@@ -31,6 +31,12 @@ data class PlayerEventTraceExpectation(
     val entity: ResourceLocation? = null,
     /** Block id recorded on the event trace. */
     val block: ResourceLocation? = null,
+    /** Exact block x coordinate recorded on a block event trace. */
+    val blockX: Int? = null,
+    /** Exact block y coordinate recorded on a block event trace. */
+    val blockY: Int? = null,
+    /** Exact block z coordinate recorded on a block event trace. */
+    val blockZ: Int? = null,
     /** Recipe id recorded on the event trace. */
     val recipe: ResourceLocation? = null,
     /** Source dimension recorded on a dimension-change event trace. */
@@ -63,6 +69,9 @@ data class PlayerEventTraceExpectation(
             (item == null || event.item == item) &&
             (entity == null || event.entity == entity) &&
             (block == null || event.block == block) &&
+            (blockX == null || event.blockPos?.x == blockX) &&
+            (blockY == null || event.blockPos?.y == blockY) &&
+            (blockZ == null || event.blockPos?.z == blockZ) &&
             (recipe == null || event.recipe == recipe) &&
             (fromDimension == null || event.fromDimension == fromDimension) &&
             (toDimension == null || event.toDimension == toDimension) &&
@@ -119,6 +128,9 @@ data class PlayerEventTraceExpectation(
             item?.let { "item=$it" },
             entity?.let { "entity=$it" },
             block?.let { "block=$it" },
+            blockX?.let { "blockX=$it" },
+            blockY?.let { "blockY=$it" },
+            blockZ?.let { "blockZ=$it" },
             recipe?.let { "recipe=$it" },
             fromDimension?.let { "from=$it" },
             toDimension?.let { "to=$it" },

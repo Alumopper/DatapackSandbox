@@ -106,6 +106,9 @@ private fun playerEventTraceExpectation(
     item: String?,
     entity: String?,
     block: String?,
+    blockX: Int?,
+    blockY: Int?,
+    blockZ: Int?,
     recipe: String?,
     fromDimension: String?,
     toDimension: String?,
@@ -127,6 +130,9 @@ private fun playerEventTraceExpectation(
         item = item?.let(ResourceLocation::parse),
         entity = entity?.let(ResourceLocation::parse),
         block = block?.let(ResourceLocation::parse),
+        blockX = blockX,
+        blockY = blockY,
+        blockZ = blockZ,
         recipe = recipe?.let(ResourceLocation::parse),
         fromDimension = fromDimension?.let(ResourceLocation::parse),
         toDimension = toDimension?.let(ResourceLocation::parse),
@@ -964,6 +970,9 @@ class SandboxQuickTestMatrix private constructor(
         item: String? = null,
         entity: String? = null,
         block: String? = null,
+        blockX: Int? = null,
+        blockY: Int? = null,
+        blockZ: Int? = null,
         recipe: String? = null,
         fromDimension: String? = null,
         toDimension: String? = null,
@@ -987,6 +996,9 @@ class SandboxQuickTestMatrix private constructor(
                 item = item,
                 entity = entity,
                 block = block,
+                blockX = blockX,
+                blockY = blockY,
+                blockZ = blockZ,
                 recipe = recipe,
                 fromDimension = fromDimension,
                 toDimension = toDimension,
@@ -1242,6 +1254,21 @@ class SandboxQuickTest private constructor(
     fun event(playerName: String, type: String, id: String? = null, action: String? = null): SandboxQuickTest = apply {
         sandbox.createPlayer(playerName)
         sandbox.handlePlayerEvent(PlayerEvents.shorthand(playerName, type, id, action))
+    }
+
+    /**
+     * Creates and dispatches a block place/break style player event with a concrete sparse-world position.
+     *
+     * Placed block events write the block id into the sparse world, and break
+     * events remove the target position. The same event still feeds advancement
+     * criteria and event trace assertions.
+     *
+     * @return this scenario for fluent chaining.
+     */
+    fun blockEvent(playerName: String, type: String, id: String, x: Int, y: Int, z: Int): SandboxQuickTest = apply {
+        sandbox.createPlayer(playerName)
+        val event = PlayerEvents.shorthand(playerName, type, id).copy(blockPos = BlockPos(x, y, z))
+        sandbox.handlePlayerEvent(event)
     }
 
     /**
@@ -2365,6 +2392,9 @@ class SandboxQuickTest private constructor(
         item: String? = null,
         entity: String? = null,
         block: String? = null,
+        blockX: Int? = null,
+        blockY: Int? = null,
+        blockZ: Int? = null,
         recipe: String? = null,
         fromDimension: String? = null,
         toDimension: String? = null,
@@ -2388,6 +2418,9 @@ class SandboxQuickTest private constructor(
                 item = item,
                 entity = entity,
                 block = block,
+                blockX = blockX,
+                blockY = blockY,
+                blockZ = blockZ,
                 recipe = recipe,
                 fromDimension = fromDimension,
                 toDimension = toDimension,
@@ -2440,6 +2473,9 @@ class SandboxQuickTest private constructor(
         item: String? = null,
         entity: String? = null,
         block: String? = null,
+        blockX: Int? = null,
+        blockY: Int? = null,
+        blockZ: Int? = null,
         recipe: String? = null,
         fromDimension: String? = null,
         toDimension: String? = null,
@@ -2463,6 +2499,9 @@ class SandboxQuickTest private constructor(
                 item = item,
                 entity = entity,
                 block = block,
+                blockX = blockX,
+                blockY = blockY,
+                blockZ = blockZ,
                 recipe = recipe,
                 fromDimension = fromDimension,
                 toDimension = toDimension,

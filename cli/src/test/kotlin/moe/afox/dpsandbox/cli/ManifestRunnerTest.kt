@@ -1,6 +1,7 @@
 ﻿package moe.afox.dpsandbox.cli
 
 import com.google.gson.JsonParser
+import moe.afox.dpsandbox.core.BlockPos
 import moe.afox.dpsandbox.core.ResourceLocation
 import moe.afox.dpsandbox.core.createSandbox
 import java.nio.file.Path
@@ -1075,7 +1076,7 @@ class ManifestRunnerTest {
               "version": "26.2",
               "packs": ["$packPath"],
               "steps": [
-                { "event": { "player": "Steve", "type": "block_placed", "block": "minecraft:stone" } }
+                { "event": { "player": "Steve", "type": "block_placed", "block": "minecraft:stone", "blockPos": [2, 64, 3] } }
               ],
               "assertions": [
                 { "advancement": { "player": "Steve", "id": "demo:place_diamond", "criterion": "place_diamond", "criterionDone": false } },
@@ -1084,6 +1085,9 @@ class ManifestRunnerTest {
                     "player": "Steve",
                     "type": "block_placed",
                     "success": true,
+                    "blockX": 2,
+                    "blockY": 64,
+                    "blockZ": 3,
                     "failedAdvancement": "demo:place_diamond",
                     "failedCriterion": "place_diamond",
                     "failureContains": "block expected minecraft:diamond_block",
@@ -1100,6 +1104,7 @@ class ManifestRunnerTest {
 
         assertTrue(schemaFailures.isEmpty(), schemaFailures.joinToString())
         assertTrue(result.passed, result.messages.joinToString())
+        assertEquals(BlockPos(2, 64, 3), result.eventTraces.single().blockPos)
         assertTrue("minecraft:stone" in result.eventTraces.single().advancementFailures.single().reason)
     }
 

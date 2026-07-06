@@ -359,6 +359,10 @@ class DatapackSandbox(
             }
             "death" -> player.health = 0.0
             "recipe_unlocked" -> event.recipe?.let { player.recipes += it }
+            "placed_block", "block_placed" -> if (event.block != null && event.blockPos != null) {
+                world.setBlock(event.blockPos, SandboxBlock(event.block))
+            }
+            "block_broken", "broken_block", "broke_block" -> event.blockPos?.let { world.setBlock(it, null) }
         }
     }
 

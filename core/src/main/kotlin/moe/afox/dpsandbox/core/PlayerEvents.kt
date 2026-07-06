@@ -63,6 +63,8 @@ data class PlayerEvent(
     val recipe: ResourceLocation? = null,
     /** Optional keyboard or mouse input metadata. */
     val input: PlayerInput? = null,
+    /** Optional target block position for place/break block events. */
+    val blockPos: BlockPos? = null,
 ) {
     /**
      * Returns a copy with [type] normalized from hyphen naming to underscore naming.

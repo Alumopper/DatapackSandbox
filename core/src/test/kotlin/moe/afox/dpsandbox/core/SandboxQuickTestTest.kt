@@ -408,6 +408,24 @@ class SandboxQuickTestTest {
     }
 
     @Test
+    fun `block player events update sparse world and trace positions`() {
+        val report = SandboxQuickTest.create(listOf(fixturePack()), version = "26.1.2")
+            .blockEvent("Steve", "block_placed", "minecraft:stone", 0, 64, 0)
+            .assertBlock(0, 64, 0, "minecraft:stone")
+            .blockEvent("Steve", "block_broken", "minecraft:stone", 0, 64, 0)
+            .assertBlock(0, 64, 0, exists = false)
+            .assertPlayerEventTrace(player = "Steve", type = "block_placed", block = "minecraft:stone", blockX = 0, blockY = 64, blockZ = 0, count = 1)
+            .assertPlayerEventTrace(player = "Steve", type = "block_broken", block = "minecraft:stone", blockX = 0, blockY = 64, blockZ = 0, count = 1)
+            .requirePassed()
+
+        val traces = report.snapshot.asJsonObject.getAsJsonArray("playerEventTraces")
+        val placedPos = traces[0].asJsonObject.getAsJsonObject("blockPos")
+        assertEquals(0, placedPos.get("x").asInt)
+        assertEquals(64, placedPos.get("y").asInt)
+        assertEquals(0, placedPos.get("z").asInt)
+    }
+
+    @Test
     fun `runs single mcfunction files from api with explicit version`() {
         val functionFile = Files.createTempFile("dps-single-function", ".mcfunction")
         Files.writeString(

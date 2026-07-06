@@ -4,6 +4,7 @@ import com.google.gson.JsonArray
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
+import moe.afox.dpsandbox.core.BlockPos
 import moe.afox.dpsandbox.core.CommandTraceEvent
 import moe.afox.dpsandbox.core.DiagnosticCode
 import moe.afox.dpsandbox.core.DatapackSandbox
@@ -1687,6 +1688,9 @@ object ManifestRunner {
                 item = trace.manifestString("item")?.let(ResourceLocation::parse),
                 entity = trace.manifestString("entity")?.let(ResourceLocation::parse),
                 block = trace.manifestString("block")?.let(ResourceLocation::parse),
+                blockX = trace.get("blockX")?.asInt,
+                blockY = trace.get("blockY")?.asInt,
+                blockZ = trace.get("blockZ")?.asInt,
                 recipe = trace.manifestString("recipe")?.let(ResourceLocation::parse),
                 fromDimension = trace.manifestString("from")?.let(ResourceLocation::parse),
                 toDimension = trace.manifestString("to")?.let(ResourceLocation::parse),
@@ -1725,11 +1729,33 @@ object ManifestRunner {
             damageAmount = damageAmount,
             damageSource = damageSource?.let { ResourceLocation.parse(it) },
             block = event.manifestString("block")?.let { ResourceLocation.parse(it) },
+            blockPos = parseEventBlockPos(event),
             fromDimension = event.manifestString("from")?.let { ResourceLocation.parse(it) },
             toDimension = event.manifestString("to")?.let { ResourceLocation.parse(it) },
             recipe = event.manifestString("recipe")?.let { ResourceLocation.parse(it) },
             input = parseInput(event),
         )
+    }
+
+    private fun parseEventBlockPos(event: JsonObject): BlockPos? {
+        val pos = event.getAsJsonArray("blockPos") ?: event.getAsJsonArray("pos")
+        if (pos != null) {
+            if (pos.size() != 3) {
+                throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Event blockPos must contain exactly three coordinates")
+            }
+            return BlockPos(pos[0].asInt, pos[1].asInt, pos[2].asInt)
+        }
+        val x = event.get("blockX")?.asInt
+        val y = event.get("blockY")?.asInt
+        val z = event.get("blockZ")?.asInt
+        return if (x != null || y != null || z != null) {
+            if (x == null || y == null || z == null) {
+                throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Event blockX, blockY, and blockZ must be provided together")
+            }
+            BlockPos(x, y, z)
+        } else {
+            null
+        }
     }
 
     private fun parseInput(event: JsonObject): PlayerInput? {
