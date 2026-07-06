@@ -30,6 +30,7 @@ snapshot 会包含用于测试的确定性状态，包括：
 `.dps.json` 清单和 quick-test API 都可以在执行步骤前定义初始世界。支持的 fixture 包括：
 
 - `blocks`：方块 id、state properties 和校验后的方块实体 NBT。
+- `regions`：用闭区间 `from`/`to`、方块 id、可选 state properties 和可选 NBT 批量铺设稀疏世界区域。
 - `entities`：实体类型、UUID、位置、维度、health、tag、旋转、vehicle/passengers、装备、active effects、attributes 和校验后的实体 NBT。
 - `players`：位置、维度、游戏模式、背包、末影箱物品、advancement progress、XP、生命值、饥饿值；新建玩家会使用当前 `defaultGameMode`。
 - `scores`、`storage`、`gamerules`、`gameTime`、`dayTime`、`weather`。
@@ -41,6 +42,9 @@ snapshot 会包含用于测试的确定性状态，包括：
   "version": "26.2",
   "packs": ["./pack"],
   "world": {
+    "regions": [
+      { "from": [0, 63, 0], "to": [3, 63, 3], "id": "minecraft:stone" }
+    ],
     "blocks": [
       { "pos": [0, 64, 0], "id": "minecraft:chest", "nbt": { "Items": [] } }
     ],

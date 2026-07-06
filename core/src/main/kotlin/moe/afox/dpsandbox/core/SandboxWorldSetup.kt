@@ -237,6 +237,69 @@ class SandboxWorldSetup {
     }
 
     /**
+     * Fills an inclusive cuboid region with one block fixture.
+     *
+     * This is intended for deterministic sparse-world fixtures. The volume is
+     * capped at 32768 blocks to match command-side region safety limits.
+     *
+     * @return this setup for fluent chaining.
+     */
+    @JvmOverloads
+    fun region(
+        from: BlockPos,
+        to: BlockPos,
+        id: ResourceLocation,
+        properties: Map<String, String> = emptyMap(),
+        nbt: JsonObject? = null,
+    ): SandboxWorldSetup = apply {
+        val xs = minOf(from.x, to.x)..maxOf(from.x, to.x)
+        val ys = minOf(from.y, to.y)..maxOf(from.y, to.y)
+        val zs = minOf(from.z, to.z)..maxOf(from.z, to.z)
+        val volume = xs.count() * ys.count() * zs.count()
+        if (volume > 32768) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "World region fixture volume $volume exceeds sandbox limit 32768")
+        }
+        val nbtCopy = nbt?.deepCopy()
+        operations += { world, profile ->
+            for (x in xs) for (y in ys) for (z in zs) {
+                val pos = BlockPos(x, y, z)
+                val sandboxBlock = SandboxBlock(id, properties.toMutableMap())
+                if (nbtCopy != null && nbtCopy.entrySet().isNotEmpty()) {
+                    val full = sandboxBlock.fullNbt(pos, profile)
+                    JsonPaths.merge(full, null, nbtCopy.deepCopy())
+                    sandboxBlock.writeFullNbt(pos, profile, full)
+                }
+                world.setBlock(pos, sandboxBlock)
+            }
+        }
+    }
+
+    /**
+     * Fills an inclusive cuboid region with one block fixture.
+     *
+     * @return this setup for fluent chaining.
+     */
+    @JvmOverloads
+    fun region(
+        fromX: Int,
+        fromY: Int,
+        fromZ: Int,
+        toX: Int,
+        toY: Int,
+        toZ: Int,
+        id: String,
+        properties: Map<String, String> = emptyMap(),
+        nbt: String? = null,
+    ): SandboxWorldSetup =
+        region(
+            from = BlockPos(fromX, fromY, fromZ),
+            to = BlockPos(toX, toY, toZ),
+            id = ResourceLocation.parse(id),
+            properties = properties,
+            nbt = nbt?.let { JsonValues.parse(it).asJsonObject },
+        )
+
+    /**
      * Adds a non-player entity fixture using primitive coordinates and optional SNBT/JSON NBT text.
      *
      * Entity NBT is validated against the active version profile when applied.

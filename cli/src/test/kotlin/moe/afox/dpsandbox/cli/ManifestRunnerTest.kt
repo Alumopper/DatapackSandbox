@@ -842,6 +842,42 @@ class ManifestRunnerTest {
     }
 
     @Test
+    fun `runs manifests with world region fixtures`() {
+        val dir = Files.createTempDirectory("dps-world-region-manifest")
+        val pack = Path.of("../core/src/test/resources/packs/counter").toAbsolutePath().normalize().toString().replace("\\", "\\\\")
+        val manifest = dir.resolve("world-region.dps.json")
+        Files.writeString(
+            manifest,
+            """
+            {
+              "version": "26.1.2",
+              "packs": ["$pack"],
+              "world": {
+                "regions": [
+                  { "from": [0, 64, 0], "to": [1, 64, 1], "id": "minecraft:stone" }
+                ],
+                "blocks": [
+                  { "pos": [1, 64, 1], "id": "minecraft:diamond_ore" }
+                ]
+              },
+              "assertions": [
+                { "block": { "pos": [0, 64, 0], "id": "minecraft:stone" } },
+                { "block": { "pos": [1, 64, 0], "id": "minecraft:stone" } },
+                { "block": { "pos": [0, 64, 1], "id": "minecraft:stone" } },
+                { "block": { "pos": [1, 64, 1], "id": "minecraft:diamond_ore" } }
+              ]
+            }
+            """.trimIndent(),
+        )
+
+        val schemaFailures = ManifestSchemaValidator.validate(JsonParser.parseString(Files.readString(manifest)))
+        val result = ManifestRunner.run(manifest)
+
+        assertTrue(schemaFailures.isEmpty(), schemaFailures.joinToString())
+        assertTrue(result.passed, result.messages.joinToString())
+    }
+
+    @Test
     fun `runs keyboard input events from manifests`() {
         val dir = Files.createTempDirectory("dps-input-manifest")
         val pack = Path.of("../core/src/test/resources/packs/counter").toAbsolutePath().normalize().toString().replace("\\", "\\\\")

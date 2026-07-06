@@ -1684,13 +1684,15 @@ class SandboxQuickTest private constructor(
             val expected = ResourceLocation.parse(it)
             if (actual?.id != expected) failures += "block $pos id expected $expected but was ${actual?.id ?: "void"}"
         }
-        pathExpectationFailure(
-            label = "block $pos nbt",
-            root = actual?.fullNbt(pos, sandbox.profile),
-            path = nbtPath,
-            equalsJson = nbtEquals,
-            exists = nbtExists,
-        )?.let { failures += it }
+        if (nbtPath != null || nbtEquals != null || nbtExists != null) {
+            pathExpectationFailure(
+                label = "block $pos nbt",
+                root = actual?.fullNbt(pos, sandbox.profile),
+                path = nbtPath,
+                equalsJson = nbtEquals,
+                exists = nbtExists,
+            )?.let { failures += it }
+        }
     }
 
     /**

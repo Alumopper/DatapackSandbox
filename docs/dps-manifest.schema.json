@@ -168,6 +168,10 @@
           "type": "array",
           "items": { "$ref": "#/$defs/blockFixture" }
         },
+        "regions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/regionFixture" }
+        },
         "entities": {
           "type": "array",
           "items": { "$ref": "#/$defs/entityFixture" }
@@ -235,6 +239,21 @@
       "required": ["pos", "id"],
       "properties": {
         "pos": { "$ref": "#/$defs/blockPos" },
+        "id": { "type": "string" },
+        "properties": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "nbt": true
+      },
+      "additionalProperties": false
+    },
+    "regionFixture": {
+      "type": "object",
+      "required": ["from", "to", "id"],
+      "properties": {
+        "from": { "$ref": "#/$defs/blockPos" },
+        "to": { "$ref": "#/$defs/blockPos" },
         "id": { "type": "string" },
         "properties": {
           "type": "object",

@@ -55,6 +55,7 @@ object ManifestWorldSetup {
         parseSaves(world, base).forEach { save -> setup.importSave(save.path, save.chunks, save.dimension, save.includeBlocks, save.includeBlockEntities, save.includeEntities) }
         parseScores(world).forEach { score -> setup.score(score.target, score.objective, score.value, score.criteria) }
         parseStorages(world).forEach { storage -> setup.storage(storage.id, storage.value) }
+        world.manifestArray("regions", "world.regions").forEach { setupRegion(setup, it) }
         world.manifestArray("blocks", "world.blocks").forEach { setupBlock(setup, it) }
         world.manifestArray("entities", "world.entities").forEach { setupEntity(setup, it) }
         world.manifestArray("players", "world.players").forEach { setupPlayer(setup, it) }
@@ -110,6 +111,22 @@ object ManifestWorldSetup {
         val properties = linkedMapOf<String, String>()
         block.getAsJsonObject("properties")?.entrySet()?.forEach { (key, value) -> properties[key] = manifestPrimitiveString(value) }
         setup.block(pos, ResourceLocation.parse(block.requiredManifestString("id")), properties, parseManifestNbtObject(block.get("nbt"), "world block nbt"))
+    }
+
+    private fun setupRegion(setup: SandboxWorldSetup, element: JsonElement) {
+        if (!element.isJsonObject) throw SandboxException(DiagnosticCode.INPUT_FORMAT, "world.regions entries must be objects")
+        val region = element.asJsonObject
+        val from = parseManifestBlockPos(region.getAsJsonArray("from") ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "world region requires from"))
+        val to = parseManifestBlockPos(region.getAsJsonArray("to") ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "world region requires to"))
+        val properties = linkedMapOf<String, String>()
+        region.getAsJsonObject("properties")?.entrySet()?.forEach { (key, value) -> properties[key] = manifestPrimitiveString(value) }
+        setup.region(
+            from = from,
+            to = to,
+            id = ResourceLocation.parse(region.requiredManifestString("id")),
+            properties = properties,
+            nbt = parseManifestNbtObject(region.get("nbt"), "world region nbt"),
+        )
     }
 
     private fun setupEntity(setup: SandboxWorldSetup, element: JsonElement) {

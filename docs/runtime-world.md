@@ -27,6 +27,8 @@ Both `.dps.json` manifests and the quick-test API can define initial world
 state before any `steps` or commands run. Supported fixture inputs include:
 
 - `blocks` with block id, state properties, and validated block entity NBT.
+- `regions` with inclusive `from`/`to` block positions, block id, optional
+  state properties, and optional NBT for compact sparse-world area fixtures.
 - `entities` with type, UUID, position, dimension, health, tags, rotation,
   vehicle/passengers, equipment, active effects, attributes, and validated entity NBT.
 - `players` with position, dimension, game mode, inventory, ender items,
@@ -42,6 +44,9 @@ Example manifest:
   "version": "26.2",
   "packs": ["./pack"],
   "world": {
+    "regions": [
+      { "from": [0, 63, 0], "to": [3, 63, 3], "id": "minecraft:stone" }
+    ],
     "blocks": [
       { "pos": [0, 64, 0], "id": "minecraft:chest", "nbt": { "Items": [] } }
     ],

@@ -142,6 +142,22 @@ class SandboxQuickTestTest {
     }
 
     @Test
+    fun `quick world fixture can fill block regions`() {
+        val report = SandboxQuickTest.create(listOf(fixturePack()), version = "26.1.2")
+            .world {
+                region(0, 64, 0, 1, 64, 1, "minecraft:stone")
+                block(1, 64, 1, "minecraft:diamond_ore")
+            }
+            .assertBlock(0, 64, 0, "minecraft:stone")
+            .assertBlock(1, 64, 0, "minecraft:stone")
+            .assertBlock(0, 64, 1, "minecraft:stone")
+            .assertBlock(1, 64, 1, "minecraft:diamond_ore")
+            .requirePassed()
+
+        assertEquals(4, report.snapshot.asJsonObject.getAsJsonArray("blocks").size())
+    }
+
+    @Test
     fun `quick world fixture assertions explain failures`() {
         val report = SandboxQuickTest.create(listOf(fixturePack()), version = "26.1.2")
             .world {
