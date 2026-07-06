@@ -5,8 +5,10 @@ import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 import com.google.gson.JsonPrimitive
 import java.nio.file.Path
+import kotlin.math.atan2
 import kotlin.math.floor
 import kotlin.math.max
+import kotlin.math.sqrt
 import kotlin.random.Random
 
 /**
@@ -1100,7 +1102,21 @@ class DatapackSandbox(
                 }
                 "facing" -> {
                     requireIndex(tokens, index + 1, "execute facing <pos|entity>", location)
-                    index += if (tokens[index + 1].text == "entity") 4 else 4
+                    if (tokens[index + 1].text == "entity") {
+                        requireSizeFrom(tokens, index, 4, "execute facing entity <target> <eyes|feet>", location)
+                        val anchor = tokens[index + 3].text
+                        contexts = contexts.flatMap { ctx ->
+                            EntitySelectors.select(world, tokens[index + 2].text, ctx, location).map { target ->
+                                ctx.facing(facingPosition(target, anchor, location))
+                            }
+                        }
+                    } else {
+                        requireSizeFrom(tokens, index, 4, "execute facing <x> <y> <z>", location)
+                        contexts = contexts.map { ctx ->
+                            ctx.facing(parsePosition(tokens, index + 1, ctx.position, location))
+                        }
+                    }
+                    index += 4
                 }
                 "in" -> {
                     requireIndex(tokens, index + 1, "execute in <dimension>", location)
@@ -2664,6 +2680,25 @@ class DatapackSandbox(
                 ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Invalid relative $label '$raw'", location))
             else -> raw.toDoubleOrNull()
                 ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Invalid $label '$raw'", location)
+        }
+
+    private fun ExecutionContext.facing(target: Position): ExecutionContext {
+        val dx = target.x - position.x
+        val dy = target.y - position.y
+        val dz = target.z - position.z
+        val horizontal = sqrt(dx * dx + dz * dz)
+        if (horizontal == 0.0 && dy == 0.0) return this
+        return copy(
+            yaw = Math.toDegrees(atan2(-dx, dz)),
+            pitch = Math.toDegrees(atan2(-dy, horizontal)),
+        )
+    }
+
+    private fun facingPosition(entity: SandboxEntity, anchor: String, location: SourceLocation?): Position =
+        when (anchor) {
+            "feet" -> entity.position
+            "eyes" -> entity.position.copy(y = entity.position.y + if (entity is SandboxPlayer) 1.62 else 1.0)
+            else -> throw SandboxException(DiagnosticCode.INPUT_FORMAT, "execute facing entity anchor must be eyes or feet", location)
         }
 
 
