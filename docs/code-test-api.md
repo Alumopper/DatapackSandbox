@@ -90,14 +90,19 @@ paths or `SnapshotDiff.render(...)` for readable failure logs.
 
 Low-level sandbox factories also accept `SandboxLimits` to stop runaway tests
 deterministically. The limits currently cover total command lines executed by a
-sandbox instance, nested function call depth, and the maximum tick count allowed
-in one `runTicks` call:
+sandbox instance, nested function call depth, the maximum tick count allowed in
+one `runTicks` call, and retained output events:
 
 ```kotlin
 val sandbox = createFunctionSandbox(
     version = "26.2",
     functionFile = Path.of("scratch/generated.mcfunction"),
-    limits = SandboxLimits(maxCommands = 10_000, maxFunctionDepth = 32, maxTicksPerRun = 5_000),
+    limits = SandboxLimits(
+        maxCommands = 10_000,
+        maxFunctionDepth = 32,
+        maxTicksPerRun = 5_000,
+        maxOutputEvents = 2_000,
+    ),
 )
 ```
 

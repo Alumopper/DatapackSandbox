@@ -141,6 +141,26 @@ class SandboxBehaviorTest {
     }
 
     @Test
+    fun `execution limits stop excessive output events`() {
+        val sandbox = createFunctionSandboxFromString(
+            version = "26.2",
+            functionText = """
+            say one
+            say two
+            """.trimIndent(),
+            limits = SandboxLimits(maxOutputEvents = 1),
+        )
+
+        val error = assertFailsWith<SandboxException> {
+            sandbox.runFunction(SingleFunctionDatapack.DEFAULT_ID)
+        }
+
+        assertEquals(DiagnosticCode.COMMAND_ERROR, error.code)
+        assertTrue(error.message.contains("Output event count 2 exceeds sandbox limit 1"))
+        assertEquals(listOf("<Server> one", "<Server> two"), sandbox.world.outputs.map { it.text })
+    }
+
+    @Test
     fun `execution limits make function depth configurable`() {
         val sandbox = createFunctionSandbox(
             version = "26.2",

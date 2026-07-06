@@ -55,11 +55,14 @@ data class SandboxLimits(
     val maxFunctionDepth: Int = 64,
     /** Maximum tick count accepted by one [DatapackSandbox.runTicks] call. */
     val maxTicksPerRun: Int = 100_000,
+    /** Maximum output events retained by one sandbox world. */
+    val maxOutputEvents: Int = 100_000,
 ) {
     init {
         require(maxCommands > 0) { "maxCommands must be positive" }
         require(maxFunctionDepth > 0) { "maxFunctionDepth must be positive" }
         require(maxTicksPerRun > 0) { "maxTicksPerRun must be positive" }
+        require(maxOutputEvents > 0) { "maxOutputEvents must be positive" }
     }
 }
 
@@ -226,6 +229,7 @@ class DatapackSandbox(
         var errorMessage: String? = null
         try {
             executeOne(normalized, location, context)
+            checkOutputLimit(location)
             success = true
             return ExecutionResult(commandsExecuted - before)
         } catch (signal: ReturnSignal) {
@@ -442,6 +446,17 @@ class DatapackSandbox(
             )
         }
         commandsExecuted += 1
+    }
+
+    private fun checkOutputLimit(location: SourceLocation?) {
+        if (world.outputs.size > limits.maxOutputEvents) {
+            throw SandboxException(
+                DiagnosticCode.COMMAND_ERROR,
+                "Output event count ${world.outputs.size} exceeds sandbox limit ${limits.maxOutputEvents}",
+                location = location,
+                version = profile.id,
+            )
+        }
     }
 
     private fun handleUnknownCommand(root: String, command: String, location: SourceLocation?) {
