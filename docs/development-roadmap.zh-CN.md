@@ -55,7 +55,7 @@
 - 扩展 `data`：
   - 支持更完整的 data path，包括 list/object 匹配、append/prepend/insert、set/from/string/value。
   - 所有写入都经过 NBT schema 或 sandbox state 规则校验。
-  - `data merge` 和 `data modify` 已记录结构化前后 NBT 输出，便于调试 storage/entity/block 写入、path 操作与 schema 校验后的结果。
+  - `data merge`、`data modify` 和 `data remove` 已记录结构化前后 NBT 输出，便于调试 storage/entity/block 写入、path 操作与 schema 校验后的结果。
 - 扩展 `loot`：
   - 补齐 source：`mine`、`kill`、`fish`、`entity`、`block`、`equipment` 等适合测试的确定性模型；命令 source 已覆盖 `fish`、`mine`、`kill`、`entity <table> <target>`、`block <table> <pos> [tool]`、`equipment <table> <target> <slot>`。
   - 输出既能进入玩家/方块/实体，也能作为独立生成结果供 CLI 和 manifest 断言；`loot` 命令会记录结构化输出事件，`loot replace entity` 已可写入玩家背包、当前主手、`enderchest.*` 槽和非玩家实体装备槽。

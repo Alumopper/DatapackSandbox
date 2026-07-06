@@ -1671,7 +1671,21 @@ class DatapackSandbox(
         requireSize(tokens, 4, "data remove <storage|entity|block> <target> <path>", location)
         val (target, pathIndex) = parseDataTarget(tokens, 2, context, location)
         requireIndex(tokens, pathIndex, "data remove <target> <path>", location)
-        mutateDataTarget(target, location) { JsonPaths.remove(it, tokens[pathIndex].text) }
+        val path = tokens[pathIndex].text
+        val before = dataTargetNbtValues(target, location).map { it.deepCopy() }
+        mutateDataTarget(target, location) { JsonPaths.remove(it, path) }
+        val after = dataTargetNbtValues(target, location).map { it.deepCopy() }
+        recordDataMutationOutput(
+            "data remove",
+            target,
+            null,
+            before,
+            after,
+            JsonObject().also { details ->
+                details.addProperty("operation", "remove")
+                details.addProperty("path", path)
+            },
+        )
     }
 
     private fun parseDataTarget(tokens: List<CommandToken>, index: Int, context: ExecutionContext, location: SourceLocation?): Pair<DataTargetSpec, Int> {
@@ -1704,7 +1718,7 @@ class DatapackSandbox(
     private fun recordDataMutationOutput(
         command: String,
         target: DataTargetSpec,
-        value: JsonElement,
+        value: JsonElement?,
         before: List<JsonObject>,
         after: List<JsonObject>,
         details: JsonObject? = null,
@@ -1721,7 +1735,7 @@ class DatapackSandbox(
                 payload.addProperty("count", after.size)
                 payload.addProperty("changed", changed)
                 payload.add("targets", JsonArray().also { array -> targetNames.forEach { array.add(it) } })
-                payload.add("value", value.deepCopy())
+                value?.let { payload.add("value", it.deepCopy()) }
                 details?.let { payload.add("details", it) }
                 payload.add(
                     "results",

@@ -630,6 +630,17 @@ class SandboxBehaviorTest {
         assertEquals(1, list.size())
         assertEquals("last", list[0].asJsonObject.get("id").asString)
         assertEquals(5, list[0].asJsonObject.get("count").asInt)
+        val removeOutput = sandbox.world.outputs.single { it.command == "data remove" }
+        val removePayload = removeOutput.payload?.asJsonObject ?: error("missing data remove payload")
+        val removeDetails = removePayload.getAsJsonObject("details")
+        val removeResult = removePayload.getAsJsonArray("results")[0].asJsonObject
+        assertEquals("1", removeOutput.text)
+        assertEquals(listOf("demo:path"), removeOutput.targets)
+        assertEquals("storage", removePayload.get("targetKind").asString)
+        assertEquals("remove", removeDetails.get("operation").asString)
+        assertEquals("list[-2]", removeDetails.get("path").asString)
+        assertEquals(true, removeResult.get("changed").asBoolean)
+        assertEquals(1, removeResult.getAsJsonObject("after").getAsJsonArray("list").size())
 
         val error = assertFailsWith<SandboxException> {
             sandbox.executeCommand("data modify storage demo:path list[-2].count set value 9")
