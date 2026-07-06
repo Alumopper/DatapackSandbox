@@ -36,6 +36,51 @@ class RunCommandTest {
     }
 
     @Test
+    fun `run enforces command execution limit`() {
+        val result = runCliProcess(
+            "run",
+            "--version",
+            "26.2",
+            "--max-commands",
+            "1",
+            "--command",
+            "scoreboard objectives add runs dummy",
+            "--command",
+            "scoreboard players set #limit runs 1",
+        )
+
+        assertEquals(ExitCodes.UNSUPPORTED_OR_VERSION, result.exitCode, result.output)
+        assertTrue("Command execution count exceeded sandbox limit 1" in result.output, result.output)
+    }
+
+    @Test
+    fun `check enforces tick execution limit`() {
+        val root = Files.createTempDirectory("dps-check-limits")
+        val pack = root.resolve("pack")
+        Files.createDirectories(pack)
+        Files.writeString(pack.resolve("pack.mcmeta"), """{"pack":{"pack_format":107.1,"description":"limit test"}}""")
+        val packPath = pack.toString().replace("\\", "\\\\")
+        val manifest = root.resolve("limit.dps.json")
+        Files.writeString(
+            manifest,
+            """
+            {
+              "version": "26.2",
+              "packs": ["$packPath"],
+              "steps": [
+                { "ticks": 2 }
+              ]
+            }
+            """.trimIndent(),
+        )
+
+        val result = runCliProcess("check", manifest.toString(), "--max-ticks-per-run", "1")
+
+        assertEquals(ExitCodes.UNSUPPORTED_OR_VERSION, result.exitCode, result.output)
+        assertTrue("Tick count 2 exceeds sandbox limit 1" in result.output, result.output)
+    }
+
+    @Test
     fun `run executes inline mcfunction text`() {
         val output = captureStdout {
             main(

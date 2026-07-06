@@ -149,6 +149,10 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar run --version 26.2 ^
 java -jar cli/build/libs/datapack-sandbox-cli.jar run --pack ./my_pack --resources --fail-on-missing-resources
 ```
 
+为了保证 CI 安全，`run` 和 `check` 都可以用 `--max-commands`、
+`--max-function-depth`、`--max-ticks-per-run`、`--max-output-events` 和
+`--max-snapshot-bytes` 限制执行边界。
+
 运行 JSON 检查清单：
 
 ```bash

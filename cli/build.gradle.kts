@@ -259,6 +259,20 @@ val smokeCliJarReadmeRunAssert = registerCliJarSmokeTask(
     "output:generated ok",
 )
 
+val smokeCliJarRunLimits = registerCliJarSmokeTask(
+    name = "smokeCliJarRunLimits",
+    descriptionText = "Checks standalone CLI run limit options are accepted.",
+    "run",
+    "--version",
+    "26.2",
+    "--max-commands",
+    "10",
+    "--max-snapshot-bytes",
+    "1000000",
+    "--command",
+    "say limit smoke",
+)
+
 tasks.register("smokeCliJar") {
     group = "verification"
     description = "Builds the standalone CLI jar and runs release smoke checks."
@@ -274,6 +288,7 @@ tasks.register("smokeCliJar") {
         smokeCliJarReadmeLoot,
         smokeCliJarReadmeEvent,
         smokeCliJarReadmeRunAssert,
+        smokeCliJarRunLimits,
     )
 }
 

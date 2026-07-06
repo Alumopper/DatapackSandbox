@@ -211,6 +211,10 @@ summary without requiring a full manifest:
 java -jar cli/build/libs/datapack-sandbox-cli.jar run --pack ./my_pack --resources --fail-on-missing-resources
 ```
 
+For CI safety, both `run` and `check` can cap execution with
+`--max-commands`, `--max-function-depth`, `--max-ticks-per-run`,
+`--max-output-events`, and `--max-snapshot-bytes`.
+
 Run JSON check manifests:
 
 ```bash

@@ -29,6 +29,7 @@ import moe.afox.dpsandbox.core.ResourceCatalog
 import moe.afox.dpsandbox.core.ResourceCatalogEntry
 import moe.afox.dpsandbox.core.ResourceLocation
 import moe.afox.dpsandbox.core.SandboxException
+import moe.afox.dpsandbox.core.SandboxLimits
 import moe.afox.dpsandbox.core.SingleFunctionDatapack
 import moe.afox.dpsandbox.core.SnapshotDiff
 import moe.afox.dpsandbox.core.SourceLocation
@@ -102,9 +103,15 @@ class CheckCommand : CliktCommand(name = "check") {
     private val reportFile by option("--report-file").path()
     private val seed by option("--seed").long().default(0)
     private val unsupported by option("--unsupported").default("warn")
+    private val maxCommands by option("--max-commands").int()
+    private val maxFunctionDepth by option("--max-function-depth").int()
+    private val maxTicksPerRun by option("--max-ticks-per-run").int()
+    private val maxOutputEvents by option("--max-output-events").int()
+    private val maxSnapshotBytes by option("--max-snapshot-bytes").int()
 
     override fun run() {
         try {
+            val limits = sandboxLimits(maxCommands, maxFunctionDepth, maxTicksPerRun, maxOutputEvents, maxSnapshotBytes)
             val manifests = ManifestRunner.discover(inputs)
             if (validateSchema || strict) {
                 val schemaFailures = manifests.flatMap(ManifestSchemaValidator::validateFileTree)
@@ -130,6 +137,7 @@ class CheckCommand : CliktCommand(name = "check") {
                         snapshotDiffOnFail = snapshotDiffOnFail,
                         failOnMissingResources = failOnMissingResources || strict,
                         unsupportedFeatureMode = if (strict) UnsupportedFeatureMode.ERROR else unsupportedFeatureMode(unsupported),
+                        limits = limits,
                     ),
                 )
                 val resultTraces = TraceFilters.apply(result.traces, traceFilters)
@@ -337,6 +345,27 @@ private fun ManifestResourceSummary.toReportJson(): JsonObject =
 private fun stringArray(values: List<String>): JsonArray =
     JsonArray().also { array -> values.forEach(array::add) }
 
+private fun sandboxLimits(
+    maxCommands: Int?,
+    maxFunctionDepth: Int?,
+    maxTicksPerRun: Int?,
+    maxOutputEvents: Int?,
+    maxSnapshotBytes: Int?,
+): SandboxLimits {
+    val defaults = SandboxLimits()
+    return try {
+        SandboxLimits(
+            maxCommands = maxCommands ?: defaults.maxCommands,
+            maxFunctionDepth = maxFunctionDepth ?: defaults.maxFunctionDepth,
+            maxTicksPerRun = maxTicksPerRun ?: defaults.maxTicksPerRun,
+            maxOutputEvents = maxOutputEvents ?: defaults.maxOutputEvents,
+            maxSnapshotBytes = maxSnapshotBytes ?: defaults.maxSnapshotBytes,
+        )
+    } catch (error: IllegalArgumentException) {
+        throw SandboxException(DiagnosticCode.INPUT_FORMAT, error.message ?: "Invalid sandbox limits", cause = error)
+    }
+}
+
 class RunCommand : CliktCommand(name = "run") {
     private val version by option("--version", "-v").default(VersionProfiles.default.id)
     private val packs by option("--pack", "-p").path(mustExist = true).multiple()
@@ -370,9 +399,15 @@ class RunCommand : CliktCommand(name = "run") {
     private val resources by option("--resources").flag(default = false)
     private val strict by option("--strict").flag(default = false)
     private val unsupported by option("--unsupported").default("warn")
+    private val maxCommands by option("--max-commands").int()
+    private val maxFunctionDepth by option("--max-function-depth").int()
+    private val maxTicksPerRun by option("--max-ticks-per-run").int()
+    private val maxOutputEvents by option("--max-output-events").int()
+    private val maxSnapshotBytes by option("--max-snapshot-bytes").int()
 
     override fun run() {
         try {
+            val limits = sandboxLimits(maxCommands, maxFunctionDepth, maxTicksPerRun, maxOutputEvents, maxSnapshotBytes)
             val effectiveUnsupportedMode = if (strict) UnsupportedFeatureMode.ERROR else unsupportedFeatureMode(unsupported)
             val stdinText = if (stdin) String(System.`in`.readAllBytes(), StandardCharsets.UTF_8) else null
             val stdinAsFunction = stdinText?.takeIf { stdinMode == "function" }
@@ -406,13 +441,15 @@ class RunCommand : CliktCommand(name = "run") {
                         packs = packs,
                         functionSources = functionSources,
                         unsupportedFeatureMode = effectiveUnsupportedMode,
+                        limits = limits,
                     )
                 }
-                packs.isNotEmpty() -> createSandbox(version, packs, unsupportedFeatureMode = effectiveUnsupportedMode)
+                packs.isNotEmpty() -> createSandbox(version, packs, unsupportedFeatureMode = effectiveUnsupportedMode, limits = limits)
                 canUseEmptySandbox -> createFunctionSandbox(
                     version = version,
                     functionSources = listOf(FunctionSource.text(mcfunctionId, "", "<empty:$mcfunctionId>")),
                     unsupportedFeatureMode = effectiveUnsupportedMode,
+                    limits = limits,
                 )
                 else -> throw SandboxException(
                     DiagnosticCode.INPUT_FORMAT,

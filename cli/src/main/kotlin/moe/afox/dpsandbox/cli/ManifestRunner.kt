@@ -23,6 +23,7 @@ import moe.afox.dpsandbox.core.SandboxException
 import moe.afox.dpsandbox.core.SandboxEntity
 import moe.afox.dpsandbox.core.SandboxBlock
 import moe.afox.dpsandbox.core.SandboxPlayer
+import moe.afox.dpsandbox.core.SandboxLimits
 import moe.afox.dpsandbox.core.SandboxWorld
 import moe.afox.dpsandbox.core.SandboxWorldBorder
 import moe.afox.dpsandbox.core.SnapshotDiff
@@ -95,6 +96,7 @@ data class ManifestOptions(
     val snapshotDiffOnFail: Boolean = false,
     val failOnMissingResources: Boolean = false,
     val unsupportedFeatureMode: UnsupportedFeatureMode = UnsupportedFeatureMode.WARN,
+    val limits: SandboxLimits = SandboxLimits(),
 )
 
 object ManifestRunner {
@@ -205,7 +207,7 @@ object ManifestRunner {
         unsupportedMode: UnsupportedFeatureMode,
         options: ManifestOptions,
     ): ManifestAttemptResult {
-        var sandbox = createSandbox(config.version, config.packs, unsupportedFeatureMode = unsupportedMode)
+        var sandbox = createSandbox(config.version, config.packs, unsupportedFeatureMode = unsupportedMode, limits = options.limits)
         sandbox.world.seed = options.seed
         document.worlds.forEach { world ->
             if (!world.element.isJsonObject) {
