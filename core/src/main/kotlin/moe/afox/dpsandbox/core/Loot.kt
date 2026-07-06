@@ -202,6 +202,45 @@ class LootEngine(
                 JsonPaths.set(stack.nbt, objectOp.requiredString("target"), value)
             }
         }
+        if (function.type == "copy_components") {
+            val sourceComponents = componentSource(source, context)
+            val include = componentIdList(function.root.get("include"), "include")
+            val exclude = componentIdList(function.root.get("exclude"), "exclude").orEmpty().toSet()
+            val names = (include ?: sourceComponents.entrySet().map { it.key }.sorted())
+                .distinct()
+                .filterNot { it in exclude }
+            names.forEach { name ->
+                sourceComponents.get(name)?.let { stack.components.add(name, it.deepCopy()) }
+            }
+        }
+    }
+
+    private fun componentSource(source: String, context: LootContext): JsonObject {
+        val playerItem = when (source) {
+            "this" -> (context.predicateContext.thisEntity as? SandboxPlayer)?.selectedItem ?: context.predicateContext.player?.selectedItem
+            "attacker" -> (context.predicateContext.attacker as? SandboxPlayer)?.selectedItem
+            "direct_attacker" -> (context.predicateContext.directEntity as? SandboxPlayer)?.selectedItem
+            "killer" -> (context.predicateContext.killer as? SandboxPlayer)?.selectedItem
+            "tool" -> context.tool
+            else -> null
+        }
+        return playerItem?.components
+            ?: throw SandboxException(DiagnosticCode.MISSING_CONTEXT, "copy_components requires item component source '$source'")
+    }
+
+    private fun componentIdList(element: JsonElement?, key: String): List<String>? {
+        if (element == null || element.isJsonNull) return null
+        return when {
+            element.isJsonPrimitive && element.asJsonPrimitive.isString ->
+                listOf(ResourceLocation.parse(element.asString).toString())
+            element.isJsonArray -> element.asJsonArray.mapIndexed { index, value ->
+                if (!value.isJsonPrimitive || !value.asJsonPrimitive.isString) {
+                    throw SandboxException(DiagnosticCode.INPUT_FORMAT, "copy_components '$key' entries must be strings at index $index")
+                }
+                ResourceLocation.parse(value.asString).toString()
+            }
+            else -> throw SandboxException(DiagnosticCode.INPUT_FORMAT, "copy_components '$key' must be a string or array of strings")
+        }
     }
 
     private fun lootFunctionText(root: JsonObject, key: String, type: String): JsonElement =

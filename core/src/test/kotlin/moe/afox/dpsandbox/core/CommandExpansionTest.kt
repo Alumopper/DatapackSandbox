@@ -304,6 +304,7 @@ class CommandExpansionTest {
         sandbox.executeCommand("execute in minecraft:the_nether run loot spawn 1 64 1 mine 0 64 0")
         sandbox.executeCommand("loot give Steve entity demo:entity_context @e[type=minecraft:zombie,limit=1]")
         sandbox.executeCommand("loot give Steve block demo:block_context 0 64 0 minecraft:diamond_pickaxe")
+        sandbox.executeCommand("loot give Steve block demo:copy_components 0 64 0 minecraft:diamond_pickaxe[minecraft:damage=7,demo:copied=true,demo:skip=true]")
         sandbox.executeCommand("loot give Steve equipment demo:equipment_context @e[type=minecraft:zombie,limit=1] weapon.mainhand")
         sandbox.executeCommand("loot replace entity @e[type=minecraft:zombie,limit=1] weapon.offhand loot demo:fish")
 
@@ -314,6 +315,10 @@ class CommandExpansionTest {
         assertTrue(ResourceLocation.parse("minecraft:gold_ingot") in inventoryIds)
         assertTrue(ResourceLocation.parse("minecraft:cobblestone") in inventoryIds)
         assertTrue(ResourceLocation.parse("minecraft:apple") in inventoryIds)
+        val copied = sandbox.world.requirePlayer("Steve").inventory.first { it.id == ResourceLocation.parse("minecraft:iron_nugget") }
+        assertEquals(7, copied.components.get("minecraft:damage").asInt)
+        assertEquals(true, copied.components.get("demo:copied").asBoolean)
+        assertTrue(!copied.components.has("demo:skip"))
         assertEquals(ResourceLocation.parse("minecraft:diamond"), zombie.equipment[EquipmentSlots.OFFHAND]?.id)
         val spawnedItem = sandbox.world.entities.first {
             it.type == ResourceLocation.parse("minecraft:item") &&
@@ -322,9 +327,15 @@ class CommandExpansionTest {
         assertEquals(ResourceLocation.parse("minecraft:the_nether"), spawnedItem.dimension)
 
         val lootGiveOutputs = sandbox.world.outputs.filter { it.command == "loot give" }
-        assertEquals(6, lootGiveOutputs.size)
+        assertEquals(7, lootGiveOutputs.size)
         assertEquals("players", lootGiveOutputs.first().payload?.asJsonObject?.get("targetKind")?.asString)
         assertEquals("minecraft:diamond", lootGiveOutputs.first().payload?.asJsonObject?.getAsJsonArray("items")?.get(0)?.asJsonObject?.get("id")?.asString)
+        val copiedOutputItem = lootGiveOutputs.first {
+            it.payload?.asJsonObject?.getAsJsonArray("items")?.any { item ->
+                item.asJsonObject.get("id").asString == "minecraft:iron_nugget"
+            } == true
+        }.payload?.asJsonObject?.getAsJsonArray("items")?.get(0)?.asJsonObject ?: error("missing copied loot output")
+        assertEquals(7, copiedOutputItem.getAsJsonObject("components").get("minecraft:damage").asInt)
         val lootSpawnOutput = sandbox.world.outputs.single { it.command == "loot spawn" }
         assertEquals("minecraft:the_nether", lootSpawnOutput.payload?.asJsonObject?.get("dimension")?.asString)
         val lootReplaceOutput = sandbox.world.outputs.single { it.command == "loot replace" }
@@ -1107,6 +1118,45 @@ class CommandExpansionTest {
                     {
                       "type": "minecraft:item",
                       "name": "minecraft:cobblestone"
+                    }
+                  ]
+                }
+              ]
+            }
+            """.trimIndent(),
+        )
+        Files.writeString(
+            lootRoot.resolve("copy_components.json"),
+            """
+            {
+              "type": "minecraft:block",
+              "pools": [
+                {
+                  "rolls": 1,
+                  "conditions": [
+                    {
+                      "condition": "minecraft:block_state_property",
+                      "block": "minecraft:stone"
+                    }
+                  ],
+                  "entries": [
+                    {
+                      "type": "minecraft:item",
+                      "name": "minecraft:iron_nugget",
+                      "functions": [
+                        {
+                          "function": "minecraft:copy_components",
+                          "source": "tool",
+                          "include": [
+                            "minecraft:damage",
+                            "demo:copied",
+                            "demo:skip"
+                          ],
+                          "exclude": [
+                            "demo:skip"
+                          ]
+                        }
+                      ]
                     }
                   ]
                 }
