@@ -252,6 +252,49 @@ class CommandExpansionTest {
     }
 
     @Test
+    fun `effect commands support non-player entity active effects`() {
+        val sandbox = createFunctionSandboxFromString(
+            version = "26.2",
+            functionText = "",
+            functionId = "demo:empty",
+        )
+
+        sandbox.executeCommand("summon minecraft:zombie 0 64 0")
+        sandbox.executeCommand("scoreboard objectives add effects dummy")
+        sandbox.executeCommand("effect give @e[type=minecraft:zombie,limit=1] minecraft:speed 7 2 true")
+        sandbox.executeCommand("execute if data entity @e[type=minecraft:zombie,limit=1] ActiveEffects[{id:\"minecraft:speed\"}] run scoreboard players add #nbt effects 1")
+
+        val zombie = sandbox.world.entities.first { it.type == ResourceLocation.parse("minecraft:zombie") }
+        val speed = zombie.activeEffects[ResourceLocation.parse("minecraft:speed")] ?: error("missing zombie speed effect")
+        assertEquals(140, speed.durationTicks)
+        assertEquals(2, speed.amplifier)
+        assertEquals(true, speed.hideParticles)
+
+        val effectNbt = zombie.fullNbt(sandbox.profile)
+            .getAsJsonArray("ActiveEffects")
+            .single { it.asJsonObject.get("id").asString == "minecraft:speed" }
+            .asJsonObject
+        assertEquals(140, effectNbt.get("duration").asInt)
+        assertEquals(2, effectNbt.get("amplifier").asInt)
+        assertEquals(false, effectNbt.get("show_particles").asBoolean)
+
+        val snapshotEffects = sandbox.snapshotJson()
+            .getAsJsonArray("entities")
+            .single { it.asJsonObject.get("uuid").asString == zombie.uuid }
+            .asJsonObject
+            .getAsJsonArray("effects")
+        assertEquals("minecraft:speed", snapshotEffects.single().asJsonObject.get("id").asString)
+        assertEquals(1, sandbox.world.getScore("#nbt", "effects"))
+
+        sandbox.executeCommand("effect clear @e[type=minecraft:zombie,limit=1] minecraft:speed")
+        assertTrue(ResourceLocation.parse("minecraft:speed") !in zombie.activeEffects)
+
+        sandbox.executeCommand("effect give @e[type=minecraft:zombie,limit=1] minecraft:strength 5 1 false")
+        sandbox.executeCommand("effect clear @e[type=minecraft:zombie,limit=1]")
+        assertTrue(zombie.activeEffects.isEmpty())
+    }
+
+    @Test
     fun `execute conditions cover predicate dimension biome and loaded state`() {
         val pack = writePredicatePack(Files.createTempDirectory("dps-execute-conditions-pack"))
         val sandbox = createSandbox("26.2", listOf(pack))

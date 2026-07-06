@@ -167,6 +167,30 @@ data class PlayerEffect(
             it.addProperty("amplifier", amplifier)
             it.addProperty("hideParticles", hideParticles)
         }
+
+    fun toNbtJson(): JsonObject =
+        JsonObject().also {
+            it.addProperty("id", id.toString())
+            it.addProperty("amplifier", amplifier)
+            it.addProperty("duration", durationTicks)
+            it.addProperty("show_particles", !hideParticles)
+        }
+}
+
+internal fun effectFromNbtJson(json: JsonObject): PlayerEffect? {
+    val id = json.get("id")?.takeIf { it.isJsonPrimitive }?.asString
+        ?: json.get("Id")?.takeIf { it.isJsonPrimitive }?.asString
+        ?: return null
+    val amplifier = json.get("amplifier")?.takeIf { it.isJsonPrimitive }?.asInt
+        ?: json.get("Amplifier")?.takeIf { it.isJsonPrimitive }?.asInt
+        ?: 0
+    val duration = json.get("duration")?.takeIf { it.isJsonPrimitive }?.asInt
+        ?: json.get("Duration")?.takeIf { it.isJsonPrimitive }?.asInt
+        ?: -1
+    val showParticles = json.get("show_particles")?.takeIf { it.isJsonPrimitive }?.asBoolean
+        ?: json.get("ShowParticles")?.takeIf { it.isJsonPrimitive }?.asBoolean
+        ?: true
+    return PlayerEffect(ResourceLocation.parse(id), duration, amplifier, hideParticles = !showParticles)
 }
 
 /**
@@ -199,6 +223,7 @@ open class SandboxEntity(
     open val scoreHolder: String get() = uuid
     val attributes: MutableMap<ResourceLocation, Double> = linkedMapOf()
     val equipment: MutableMap<String, ItemStack> = linkedMapOf()
+    val activeEffects: MutableMap<ResourceLocation, PlayerEffect> = linkedMapOf()
 
     /**
      * Returns the entity NBT view using the default version profile.
@@ -1000,6 +1025,9 @@ fun SandboxEntity.toJson(profile: VersionProfile = VersionProfiles.default): Jso
     val equipmentJson = JsonObject()
     equipment.toSortedMap().forEach { (slot, item) -> equipmentJson.add(slot, item.toJson()) }
     json.add("equipment", equipmentJson)
+    val effectsJson = JsonArray()
+    activeEffects.toSortedMap().forEach { (_, effect) -> effectsJson.add(effect.toJson()) }
+    json.add("effects", effectsJson)
     val attributesJson = JsonObject()
     attributes.toSortedMap().forEach { (id, value) -> attributesJson.addProperty(id.toString(), value) }
     json.add("attributes", attributesJson)

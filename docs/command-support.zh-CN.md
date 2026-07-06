@@ -32,7 +32,7 @@
 | `defaultgamemode` | 支持 | 存储世界默认游戏模式。 |
 | `difficulty` | 支持 | 存储并报告世界难度。 |
 | `deop`、`op` | 未支持 | 不模拟权限系统。 |
-| `effect` | 部分支持 | `give`、`clear`；更新玩家效果状态并触发相关 advancement 事件。 |
+| `effect` | 部分支持 | `give`、`clear`；更新玩家效果状态并触发相关 advancement 事件，也会更新非玩家实体 active effects，并通过 snapshot 和 `ActiveEffects` NBT 暴露。 |
 | `enchant` | 部分支持 | 向选中物品写入附魔组件；不检查可附魔性。 |
 | `execute` | 部分支持 | 支持 `as`、`at`、`positioned <pos>`、`positioned as <selector>`、`align`、`anchored`、`facing`、`in`、`rotated`、`store`、`if`、`unless`、`run` 的核心路径；`as` 只切换执行者，`at` 和 `positioned as` 会移动执行位置；`align` 会对校验过的 `x`/`y`/`z` 轴取整；`rotated` 和 `facing` 会更新命令旋转上下文，供 `tp` 的相对旋转参数和局部坐标使用；`anchored` 会更新局部坐标基准点；`store` 目标覆盖 score、storage、entity NBT、block NBT 和 bossbar value/max；条件覆盖 `entity`、`score`、`data`、`block`、`blocks`、`predicate`、`function`、`dimension`、`biome` 和 `loaded`。 |
 | `experience`、`xp` | 部分支持 | `add`、`set`、`query`；沙盒内 points/levels 共用玩家 XP 整数字段；`query` 会记录结构化 data 输出，供断言和 `execute store result` 使用。 |

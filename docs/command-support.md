@@ -39,7 +39,7 @@ run continues. Use `--unsupported error`, manifest `"unsupported": "error"`, or
 | `defaultgamemode` | Supported | Stores world default game mode. |
 | `difficulty` | Supported | Stores and reports world difficulty. |
 | `deop`, `op` | Unsupported | Permission system is not simulated. |
-| `effect` | Partial | `give`, `clear`; updates player effect state and advancement events. |
+| `effect` | Partial | `give`, `clear`; updates player effect state with advancement events and non-player entity active effects visible through snapshot and `ActiveEffects` NBT. |
 | `enchant` | Partial | Writes enchantment components to selected item; no enchantability checks. |
 | `execute` | Partial | `as`, `at`, `positioned <pos>`, `positioned as <selector>`, `align`, `anchored`, `facing`, `in`, `rotated`, `store`, `if`, `unless`, `run`; `as` changes only the executor while `at` and `positioned as` move the execution position; `align` floors validated `x`/`y`/`z` axes; `rotated` and `facing` update the command rotation context used by relative `tp` rotations and local coordinates; `anchored` updates the local-coordinate base; `store` targets score, storage, entity NBT, block NBT, and bossbar value/max; conditions support `entity`, `score`, `data`, `block`, `blocks`, `predicate`, `function`, `dimension`, `biome`, and `loaded`. |
 | `experience`, `xp` | Partial | `add`, `set`, `query`; points and levels share the sandbox XP integer; `query` records structured data output for assertions and `execute store result`. |

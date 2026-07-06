@@ -189,6 +189,7 @@ object NbtSchemas {
         addEntityDefaults(entity, profile, json)
         entity.nbt.entrySet().forEach { (key, value) -> json.add(key, value.deepCopy()) }
         addEquipmentNbt(entity, profile, json)
+        addActiveEffectsNbt(entity, profile, json)
         if (entity.attributes.isNotEmpty()) {
             json.add("Attributes", JsonArray().also { array ->
                 entity.attributes.toSortedMap().forEach { (id, base) ->
@@ -221,6 +222,7 @@ object NbtSchemas {
             entity.tags.replaceWith(tags.mapNotNull { tag -> tag.takeIf { it.isJsonPrimitive }?.asString })
         }
         syncEquipmentFromNbt(entity, profile, updated)
+        syncActiveEffectsFromNbt(entity, profile, updated)
 
         entity.nbt.clearObject()
         updated.entrySet()
@@ -399,6 +401,25 @@ object NbtSchemas {
         val item = itemStackFromNbtJson(element.asJsonObject) ?: return
         if (item.count > 0 && item.id != ResourceLocation("minecraft", "air")) {
             entity.equipment[slot] = item
+        }
+    }
+
+    private fun addActiveEffectsNbt(entity: SandboxEntity, profile: VersionProfile, json: JsonObject) {
+        if (entity.activeEffects.isEmpty()) return
+        if ("ActiveEffects" !in allowedEntityKeys(entity, profile)) return
+        json.add("ActiveEffects", JsonArray().also { effects ->
+            entity.activeEffects.toSortedMap().forEach { (_, effect) ->
+                effects.add(effect.toNbtJson())
+            }
+        })
+    }
+
+    private fun syncActiveEffectsFromNbt(entity: SandboxEntity, profile: VersionProfile, nbt: JsonObject) {
+        if ("ActiveEffects" !in allowedEntityKeys(entity, profile)) return
+        entity.activeEffects.clear()
+        nbt.getAsJsonArray("ActiveEffects")?.forEach { element ->
+            if (!element.isJsonObject) return@forEach
+            effectFromNbtJson(element.asJsonObject)?.let { entity.activeEffects[it.id] = it }
         }
     }
 

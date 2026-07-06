@@ -1686,27 +1686,45 @@ class DatapackSandbox(
                 val duration = tokens.getOrNull(4)?.text?.let { parseInt(it, "effect seconds", location) * 20 } ?: 600
                 val amplifier = tokens.getOrNull(5)?.text?.let { parseInt(it, "effect amplifier", location) } ?: 0
                 val hide = tokens.getOrNull(6)?.text?.let { parseBoolean(it, "hide particles", location) } ?: false
-                resolvePlayers(tokens[2].text, location, context).forEach { player ->
-                    player.effects += effect
-                    player.effectDetails[effect] = PlayerEffect(effect, duration, amplifier, hide)
-                    advancements.handle(PlayerEvent(player.name, "effects_changed"))
+                EntitySelectors.select(world, tokens[2].text, context, location).forEach { entity ->
+                    applyEffect(entity, PlayerEffect(effect, duration, amplifier, hide))
                 }
             }
             "clear" -> {
                 requireSize(tokens, 3, "effect clear <targets> [effect]", location)
                 val effect = tokens.getOrNull(3)?.text?.let(ResourceLocation::parse)
-                resolvePlayers(tokens[2].text, location, context).forEach { player ->
-                    if (effect == null) {
-                        player.effects.clear()
-                        player.effectDetails.clear()
-                    } else {
-                        player.effects -= effect
-                        player.effectDetails.remove(effect)
-                    }
-                    advancements.handle(PlayerEvent(player.name, "effects_changed"))
+                EntitySelectors.select(world, tokens[2].text, context, location).forEach { entity ->
+                    clearEffect(entity, effect)
                 }
             }
             else -> unsupportedFeature("Unsupported effect action '${tokens[1].text}'", profile.id, location)
+        }
+    }
+
+    private fun applyEffect(entity: SandboxEntity, effect: PlayerEffect) {
+        if (entity is SandboxPlayer) {
+            entity.effects += effect.id
+            entity.effectDetails[effect.id] = effect
+            advancements.handle(PlayerEvent(entity.name, "effects_changed"))
+        } else {
+            entity.activeEffects[effect.id] = effect
+        }
+    }
+
+    private fun clearEffect(entity: SandboxEntity, effect: ResourceLocation?) {
+        if (entity is SandboxPlayer) {
+            if (effect == null) {
+                entity.effects.clear()
+                entity.effectDetails.clear()
+            } else {
+                entity.effects -= effect
+                entity.effectDetails.remove(effect)
+            }
+            advancements.handle(PlayerEvent(entity.name, "effects_changed"))
+        } else if (effect == null) {
+            entity.activeEffects.clear()
+        } else {
+            entity.activeEffects.remove(effect)
         }
     }
 
