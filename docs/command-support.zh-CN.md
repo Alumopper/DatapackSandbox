@@ -46,7 +46,7 @@
 | `help` | 部分支持 | 输出命令根节点和基础沙盒帮助。 |
 | `item` | 部分支持 | `replace entity|block ... with <item> [count]` 和 `from entity|block ...`；`replace` 与 `modify` 会记录可用于 report/assertion 的结构化输出；item argument 支持沙盒 JSON/SNBT-lite NBT 和 components payload；entity 槽位覆盖玩家背包、当前主手、`enderchest.*` 槽和非玩家实体装备槽；`modify entity|block ... <modifier>` 会应用常用 item modifier 函数（`set_components`、`set_custom_data`、`set_count`、`limit_count`、`set_item`、`discard`、`set_damage`、`set_name`、`set_lore`、`filtered`、`reference`、`sequence`）。 |
 | `kick` | 未支持 | 不模拟网络会话。 |
-| `kill` | 支持 | 移除选中的沙盒实体；玩家执行上下文会为非玩家目标触发 `killed_entity` advancement 事件。 |
+| `kill` | 支持 | 移除选中的沙盒实体，并记录可用于 report/assertion 的结构化目标输出；玩家执行上下文会为非玩家目标触发 `killed_entity` advancement 事件。 |
 | `list` | 支持 | 报告沙盒玩家及 UUID。 |
 | `locate` | 部分支持 | 接受 `biome`、`structure`、`poi`；虚空世界中报告没有结果。 |
 | `loot` | 部分支持 | 支持 `give`、`insert`、`spawn`、`replace entity`、`replace block`，并记录可用于 report/assertion 的结构化 loot 输出；`spawn` 会在当前执行维度创建 item 实体；`replace entity` 可写入玩家背包、当前主手、`enderchest.*` 槽和非玩家实体装备槽；source 支持 `loot <table>`、`fish <table> <pos> [tool]`、`mine <pos> [tool]`，以及实体声明 `DeathLootTable` 时的 `kill <target>`；还支持沙盒上下文 source：`entity <table> <target>`、`block <table> <pos> [tool]`、`equipment <table> <target> <slot>`；常用函数覆盖 count、item id、discard、components/custom data、damage、name 和 lore。 |

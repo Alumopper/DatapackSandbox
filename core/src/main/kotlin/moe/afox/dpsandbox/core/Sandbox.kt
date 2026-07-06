@@ -2850,13 +2850,39 @@ class DatapackSandbox(
 
     private fun executeKill(tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext) {
         val targetToken = tokens.getOrNull(1)?.text ?: "@s"
-        val selected = EntitySelectors.select(world, targetToken, context, location).toSet()
+        val selected = EntitySelectors.select(world, targetToken, context, location).distinctBy { it.uuid }
         (context.entity as? SandboxPlayer)?.let { player ->
             selected.filterNot { it is SandboxPlayer }.forEach { target ->
                 advancements.handle(PlayerEvent(player.name, "killed_entity", entity = target))
             }
         }
-        world.entities.removeIf { it in selected }
+        world.recordOutput(
+            "kill",
+            "data",
+            targets = selected.map { it.scoreHolder },
+            text = selected.size.toString(),
+            payload = JsonObject().also { payload ->
+                payload.addProperty("count", selected.size)
+                payload.add(
+                    "targets",
+                    JsonArray().also { targets ->
+                        selected.forEach { entity ->
+                            targets.add(
+                                JsonObject().also { entry ->
+                                    entry.addProperty("target", entity.scoreHolder)
+                                    entry.addProperty("uuid", entity.uuid)
+                                    entry.addProperty("type", entity.type.toString())
+                                    entry.addProperty("dimension", entity.dimension.toString())
+                                    entry.addProperty("player", entity is SandboxPlayer)
+                                },
+                            )
+                        }
+                    },
+                )
+            },
+        )
+        val selectedUuids = selected.map { it.uuid }.toSet()
+        world.entities.removeIf { it.uuid in selectedUuids }
     }
 
     private fun executeTeleport(tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext) {

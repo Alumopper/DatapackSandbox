@@ -60,6 +60,14 @@ class PlayerEventsTest {
 
         assertTrue(sandbox.world.entities.none { it.type == ResourceLocation.parse("minecraft:zombie") })
         assertTrue(player.advancementProgress.getValue(advancementId).criteria.getValue("kill_zombie"))
+        val output = sandbox.world.outputs.single { it.command == "kill" }
+        val payload = output.payload?.asJsonObject ?: error("missing kill payload")
+        val killed = payload.getAsJsonArray("targets")[0].asJsonObject
+        assertEquals("1", output.text)
+        assertEquals(1, payload.get("count").asInt)
+        assertEquals("minecraft:zombie", killed.get("type").asString)
+        assertEquals("minecraft:overworld", killed.get("dimension").asString)
+        assertEquals(false, killed.get("player").asBoolean)
     }
 
     @Test
