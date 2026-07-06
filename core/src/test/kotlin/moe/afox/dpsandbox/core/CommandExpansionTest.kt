@@ -766,6 +766,41 @@ class CommandExpansionTest {
     }
 
     @Test
+    fun `selector options filter by name distance volume and sort`() {
+        val sandbox = createFunctionSandboxFromString(
+            version = "26.2",
+            functionText = "",
+            functionId = "demo:empty",
+        )
+        sandbox.createPlayer("Alex").position = Position(0.0, 64.0, 0.0)
+        sandbox.createPlayer("Blair").position = Position(8.0, 64.0, 0.0)
+
+        sandbox.executeCommand("""summon minecraft:pig 1 64 1 {Tags:["near"]}""")
+        sandbox.executeCommand("""summon minecraft:pig 9 64 0 {Tags:["far"]}""")
+        sandbox.executeCommand("""summon minecraft:cow 2 64 0 {Tags:["near"]}""")
+        sandbox.executeCommand("scoreboard objectives add selector dummy")
+        sandbox.executeCommand("""tag @e[type=minecraft:pig,x=0,y=64,z=0,dx=2,dy=0,dz=2] add boxed""")
+        sandbox.executeCommand("""execute if entity @e[tag=boxed,limit=1] run scoreboard players add #boxed selector 1""")
+        sandbox.executeCommand("""execute if entity @e[type=minecraft:pig,x=0,y=64,z=0,distance=..2,limit=1] run scoreboard players add #near selector 1""")
+        sandbox.executeCommand("""execute if entity @a[name=Alex,x=0,y=64,z=0,distance=..1,limit=1] run scoreboard players add #name selector 1""")
+        sandbox.executeCommand("""execute unless entity @a[name=!Alex,x=0,y=64,z=0,distance=..1] run scoreboard players add #name selector 1""")
+        sandbox.executeCommand("""tag @e[type=minecraft:pig,x=0,y=64,z=0,sort=furthest,limit=1] add furthest""")
+        sandbox.executeCommand("""tag @e[type=minecraft:pig,x=0,y=64,z=0,sort=nearest,limit=1] add nearest""")
+        sandbox.executeCommand("""execute if entity @e[tag=furthest,tag=far] run scoreboard players add #sort selector 1""")
+        sandbox.executeCommand("""execute if entity @e[tag=nearest,tag=near] run scoreboard players add #sort selector 1""")
+
+        assertEquals(1, sandbox.world.getScore("#boxed", "selector"))
+        assertEquals(1, sandbox.world.getScore("#near", "selector"))
+        assertEquals(2, sandbox.world.getScore("#name", "selector"))
+        assertEquals(2, sandbox.world.getScore("#sort", "selector"))
+
+        val invalidDistance = assertFailsWith<SandboxException> {
+            sandbox.executeCommand("""execute if entity @e[distance=-1] run say invalid""")
+        }
+        assertEquals(DiagnosticCode.INPUT_FORMAT, invalidDistance.code)
+    }
+
+    @Test
     fun `execute as preserves position while at and positioned as move context`() {
         val sandbox = createFunctionSandboxFromString(
             version = "26.2",

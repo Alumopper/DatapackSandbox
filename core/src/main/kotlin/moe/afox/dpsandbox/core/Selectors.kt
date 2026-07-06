@@ -3,7 +3,16 @@
 private data class SelectorOptions(
     val tags: List<Pair<String, Boolean>> = emptyList(),
     val type: Pair<ResourceLocation, Boolean>? = null,
+    val name: Pair<String, Boolean>? = null,
     val limit: Int? = null,
+    val sort: String? = null,
+    val distance: ClosedFloatingPointRange<Double>? = null,
+    val x: Double? = null,
+    val y: Double? = null,
+    val z: Double? = null,
+    val dx: Double? = null,
+    val dy: Double? = null,
+    val dz: Double? = null,
 )
 
 object EntitySelectors {
@@ -27,14 +36,52 @@ object EntitySelectors {
         }
 
         var result = initial.asSequence()
+        val origin = Position(
+            x = options.x ?: context.position.x,
+            y = options.y ?: context.position.y,
+            z = options.z ?: context.position.z,
+        )
         options.type?.let { (type, positive) ->
             result = result.filter { (it.type == type) == positive }
+        }
+        options.name?.let { (name, positive) ->
+            result = result.filter { (it.selectorName() == name) == positive }
         }
         options.tags.forEach { (tag, positive) ->
             result = result.filter { (tag in it.tags) == positive }
         }
-        val sorted = when (selector) {
-            "@p", "@n" -> result.sortedWith(compareBy<SandboxEntity> { it.position.distanceSquaredTo(context.position) }.thenBy { it.uuid })
+        options.distance?.let { distance ->
+            val minSquared = distance.start * distance.start
+            val maxSquared = distance.endInclusive * distance.endInclusive
+            result = result.filter { it.position.distanceSquaredTo(origin) in minSquared..maxSquared }
+        }
+        if (options.dx != null || options.dy != null || options.dz != null) {
+            val max = Position(
+                x = origin.x + (options.dx ?: 0.0),
+                y = origin.y + (options.dy ?: 0.0),
+                z = origin.z + (options.dz ?: 0.0),
+            )
+            val minX = minOf(origin.x, max.x)
+            val maxX = maxOf(origin.x, max.x)
+            val minY = minOf(origin.y, max.y)
+            val maxY = maxOf(origin.y, max.y)
+            val minZ = minOf(origin.z, max.z)
+            val maxZ = maxOf(origin.z, max.z)
+            result = result.filter { entity ->
+                entity.position.x in minX..maxX &&
+                    entity.position.y in minY..maxY &&
+                    entity.position.z in minZ..maxZ
+            }
+        }
+        val sort = options.sort ?: when (selector) {
+            "@p", "@n" -> "nearest"
+            else -> "arbitrary"
+        }
+        val sorted = when (sort) {
+            "nearest" -> result.sortedWith(compareBy<SandboxEntity> { it.position.distanceSquaredTo(origin) }.thenBy { it.uuid })
+            "furthest" -> result.sortedWith(compareByDescending<SandboxEntity> { it.position.distanceSquaredTo(origin) }.thenBy { it.uuid })
+            "random" -> result.sortedWith(compareBy<SandboxEntity> { deterministicSelectorHash(it.uuid, origin) }.thenBy { it.uuid })
+            "arbitrary" -> result
             else -> result
         }.toList()
         val defaultLimit = when (selector) {
@@ -54,7 +101,16 @@ object EntitySelectors {
 
         val tags = mutableListOf<Pair<String, Boolean>>()
         var type: Pair<ResourceLocation, Boolean>? = null
+        var name: Pair<String, Boolean>? = null
         var limit: Int? = null
+        var sort: String? = null
+        var distance: ClosedFloatingPointRange<Double>? = null
+        var x: Double? = null
+        var y: Double? = null
+        var z: Double? = null
+        var dx: Double? = null
+        var dy: Double? = null
+        var dz: Double? = null
         optionsText.split(',').filter { it.isNotBlank() }.forEach { rawPart ->
             val part = rawPart.trim()
             val key = part.substringBefore("=")
@@ -68,13 +124,68 @@ object EntitySelectors {
                     val positive = !value.startsWith("!")
                     type = ResourceLocation.parse(value.removePrefix("!")) to positive
                 }
+                "name" -> {
+                    val positive = !value.startsWith("!")
+                    name = value.removePrefix("!") to positive
+                }
                 "limit" -> limit = value.toIntOrNull()
                     ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Invalid selector limit: $value", location = location)
+                "sort" -> {
+                    if (value !in setOf("nearest", "furthest", "random", "arbitrary")) {
+                        throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Invalid selector sort: $value", location = location)
+                    }
+                    sort = value
+                }
+                "distance" -> distance = parseSelectorRange(value, "distance", location)
+                "x" -> x = parseSelectorDouble(value, "x", location)
+                "y" -> y = parseSelectorDouble(value, "y", location)
+                "z" -> z = parseSelectorDouble(value, "z", location)
+                "dx" -> dx = parseSelectorDouble(value, "dx", location)
+                "dy" -> dy = parseSelectorDouble(value, "dy", location)
+                "dz" -> dz = parseSelectorDouble(value, "dz", location)
                 else -> unsupportedFeature("Unsupported selector option '$key'", location = location, command = token)
             }
         }
-        return SelectorOptions(tags = tags, type = type, limit = limit)
+        return SelectorOptions(
+            tags = tags,
+            type = type,
+            name = name,
+            limit = limit,
+            sort = sort,
+            distance = distance,
+            x = x,
+            y = y,
+            z = z,
+            dx = dx,
+            dy = dy,
+            dz = dz,
+        )
     }
+
+    private fun parseSelectorDouble(value: String, label: String, location: SourceLocation?): Double =
+        value.toDoubleOrNull()
+            ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Invalid selector $label: $value", location = location)
+
+    private fun parseSelectorRange(value: String, label: String, location: SourceLocation?): ClosedFloatingPointRange<Double> {
+        if (!value.contains("..")) {
+            val exact = parseSelectorDouble(value, label, location)
+            if (exact < 0.0) {
+                throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Invalid selector $label range: $value", location = location)
+            }
+            return exact..exact
+        }
+        val startText = value.substringBefore("..")
+        val endText = value.substringAfter("..")
+        val start = if (startText.isBlank()) 0.0 else parseSelectorDouble(startText, "$label start", location)
+        val end = if (endText.isBlank()) Double.POSITIVE_INFINITY else parseSelectorDouble(endText, "$label end", location)
+        if (start < 0.0 || end < 0.0 || start > end) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Invalid selector $label range: $value", location = location)
+        }
+        return start..end
+    }
+
+    private fun deterministicSelectorHash(uuid: String, origin: Position): Int =
+        "$uuid@${origin.x},${origin.y},${origin.z}".hashCode()
 }
 
 private fun Position.distanceSquaredTo(other: Position): Double {
@@ -83,3 +194,9 @@ private fun Position.distanceSquaredTo(other: Position): Double {
     val dz = z - other.z
     return dx * dx + dy * dy + dz * dz
 }
+
+private fun SandboxEntity.selectorName(): String =
+    when (this) {
+        is SandboxPlayer -> name
+        else -> nbt.get("CustomName")?.takeIf { it.isJsonPrimitive }?.asString ?: scoreHolder
+    }

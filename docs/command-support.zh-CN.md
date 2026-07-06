@@ -132,7 +132,7 @@ JSON text component 支持 `text`、`score`、`selector`、`translate`、`keybin
 
 已实现 selector：`@s`、`@a`、`@p`、`@e`、`@n`。
 
-常用选项：`type`、`tag`、`name`、`limit`、`sort`、`distance`、`x`、`y`、`z`、`dx`、`dy`、`dz`。未支持的 selector 选项会按当前 unsupported 策略产生诊断或 warning。
+已实现选项：`type`、`tag`、`name`、`limit`、`sort`、`distance`、`x`、`y`、`z`、`dx`、`dy`、`dz`；`sort=random` 使用基于原点的确定性顺序，便于重复测试。未支持的 selector 选项会按当前 unsupported 策略产生诊断或 warning。
 
 ## 世界与 NBT 说明
 
