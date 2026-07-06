@@ -107,7 +107,7 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar commands --json --output build
 | `tick` | 部分支持 | `modeled` | `query`、`rate`、`freeze`、`unfreeze`、`step`、`sprint`、`stop`；更新沙盒 tick 状态，可推进 tick，并记录结构化状态/推进输出用于调试。 |
 | `time` | 部分支持 | `modeled` | `set`、`add`、`query daytime|gametime|day`；修改和 query 都会记录结构化 data 输出，供断言和 `execute store result` 使用。 |
 | `title` | 支持 | `modeled` | `clear`、`reset`、`title`、`subtitle`、`actionbar`、`times` 输出事件。 |
-| `transfer` | 未支持 | `unsupported` | 不模拟网络/server transfer。 |
+| `transfer` | 部分支持 | `observed-noop` | 记录请求的 host、port、目标玩家和接受的语法为结构化 debug 输出；不执行真实网络/server transfer。 |
 | `trigger` | 部分支持 | `modeled` | `trigger <objective> [add|set] [value]`；使用当前/default 玩家。 |
 | `weather` | 部分支持 | `modeled` | `clear`、`rain`、`thunder`；存储状态，并记录结构化天气输出。 |
 | `whitelist` | 未支持 | `unsupported` | 服务器管理命令。 |
@@ -122,7 +122,7 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar commands --json --output build
 - sound：`playsound`、`stopsound`
 - visual：`particle`
 - data：modeled 命令的结构化状态和 query 输出
-- debug：manifest 和工具辅助输出
+- debug：manifest/工具辅助输出，以及 `transfer` 等网络类 observed-noop 请求
 - worldgen：`place`
 - warning：未支持或 no-op 命令提示
 

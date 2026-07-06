@@ -540,6 +540,7 @@ class DatapackSandbox(
                 "playsound" -> executePlaySound(tokens, location, context)
                 "stopsound" -> executeStopSound(tokens, location, context)
                 "particle" -> executeParticle(command, tokens, location)
+                "transfer" -> executeTransfer(command, tokens, location, context)
                 else -> handleUnknownCommand(tokens[0].text, command, location)
             }
             return true
@@ -4313,6 +4314,54 @@ class DatapackSandbox(
         payload.addProperty("particle", ResourceLocation.parse(tokens[1].text).toString())
         payload.addProperty("arguments", CommandTokenizer.tailAfter(command, tokens[1]))
         world.recordOutput("particle", "visual", emptyList(), tokens[1].text, payload)
+    }
+
+    private fun executeTransfer(command: String, tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext) {
+        if (!profile.commands.hasRoot("transfer")) {
+            handleUnknownCommand("transfer", command, location)
+        }
+        requireSize(tokens, 2, "transfer <host> [port] [players]", location)
+        val targetFirst = tokens.size >= 3 && isTransferTargetFirst(tokens[1].text, tokens[2].text)
+        val host = if (targetFirst) tokens[2].text else tokens[1].text
+        val portIndex = if (targetFirst) 3 else 2
+        val targetTokenIndex = if (!targetFirst && tokens.getOrNull(2)?.text?.toIntOrNull() != null) 3 else 2
+        val port = tokens.getOrNull(portIndex)
+            ?.takeIf { it.text.toIntOrNull() != null }
+            ?.let { parseTransferPort(it.text, location) }
+            ?: 25565
+        val targetToken = if (targetFirst) tokens.getOrNull(1)?.text else tokens.getOrNull(targetTokenIndex)?.text
+        val targets = targetToken
+            ?.let { resolvePlayers(it, location, context) }
+            ?: listOfNotNull(context.entity as? SandboxPlayer).ifEmpty { world.players.values.toList() }
+        val targetNames = targets.map { it.name }
+
+        val payload = JsonObject()
+        payload.addProperty("host", host)
+        payload.addProperty("port", port)
+        payload.addProperty("syntax", if (targetFirst) "target-first" else "host-first")
+        payload.addProperty("noOp", true)
+        payload.addProperty("reason", "Networking/server transfer is not simulated by the sandbox")
+        payload.add(
+            "targets",
+            JsonArray().also { array ->
+                targetNames.forEach { array.add(it) }
+            },
+        )
+        world.recordOutput("transfer", "debug", targetNames, "$host:$port", payload)
+    }
+
+    private fun isTransferTargetFirst(firstArgument: String, secondArgument: String): Boolean {
+        if (secondArgument.toIntOrNull() != null) return false
+        if (firstArgument.contains(".") || firstArgument.contains(":")) return false
+        return firstArgument == "@a" || EntitySelectors.isSelector(firstArgument) || firstArgument in world.players
+    }
+
+    private fun parseTransferPort(raw: String, location: SourceLocation?): Int {
+        val port = parseInt(raw, "transfer port", location)
+        if (port !in 1..65535) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Invalid transfer port: '$raw' (expected 1..65535)", location)
+        }
+        return port
     }
 
     private fun executeSchedule(tokens: List<CommandToken>, location: SourceLocation?) {

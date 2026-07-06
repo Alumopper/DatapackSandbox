@@ -119,7 +119,7 @@ runs this through the standalone jar smoke task.
 | `tick` | Partial | `modeled` | `query`, `rate`, `freeze`, `unfreeze`, `step`, `sprint`, `stop`; updates sandbox tick state, can advance ticks, and records structured state/advance output for debugging. |
 | `time` | Partial | `modeled` | `set`, `add`, `query daytime|gametime|day`; mutations and queries record structured data output for assertions and `execute store result`. |
 | `title` | Supported | `modeled` | `clear`, `reset`, `title`, `subtitle`, `actionbar`, `times` output events. |
-| `transfer` | Unsupported | `unsupported` | Networking/server transfer is not simulated. |
+| `transfer` | Partial | `observed-noop` | Records requested host, port, target players, and accepted syntax as structured debug output; no network/server transfer is performed. |
 | `trigger` | Partial | `modeled` | `trigger <objective> [add|set] [value]`; uses current/default sandbox player. |
 | `weather` | Partial | `modeled` | `clear`, `rain`, `thunder`; stores state and records structured weather output. |
 | `whitelist` | Unsupported | `unsupported` | Server administration command. |
@@ -135,7 +135,7 @@ REPL output, `run`, `check --verbose`, and the code test API:
 - sound: `playsound`, `stopsound`
 - visual: `particle`
 - data: structured state and query outputs from modeled commands
-- debug: manifest and tooling helper outputs
+- debug: manifest/tooling helper outputs and observed-noop network requests such as `transfer`
 - worldgen: `place`
 - warning: unsupported or no-op command notices
 

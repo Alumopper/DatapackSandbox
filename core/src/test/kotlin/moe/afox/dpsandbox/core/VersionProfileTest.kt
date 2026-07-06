@@ -123,8 +123,22 @@ class VersionProfileTest {
         val latest = createSandbox("26.2", listOf(writePack("26.2-commands", "107.1", ResourceDirectoryProfile.currentWithLegacyAliases)))
         latest.executeCommand("transfer Steve example.org")
 
-        assertEquals("warning", latest.world.outputs.single().channel)
-        assertTrue(latest.world.outputs.single().text.contains("transfer"))
+        val output = latest.world.outputs.single()
+        val payload = output.payload?.asJsonObject ?: error("missing transfer payload")
+        assertEquals("transfer", output.command)
+        assertEquals("debug", output.channel)
+        assertEquals(listOf("Steve"), output.targets)
+        assertEquals("example.org:25565", output.text)
+        assertEquals("example.org", payload.get("host").asString)
+        assertEquals(25565, payload.get("port").asInt)
+        assertEquals("target-first", payload.get("syntax").asString)
+        assertEquals(true, payload.get("noOp").asBoolean)
+
+        val portError = assertFailsWith<SandboxException> {
+            latest.executeCommand("transfer example.org 70000 Steve")
+        }
+        assertEquals(DiagnosticCode.INPUT_FORMAT, portError.code)
+        assertTrue(portError.message.contains("transfer port"), portError.message)
     }
 
     @Test
