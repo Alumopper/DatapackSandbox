@@ -1927,30 +1927,62 @@ class DatapackSandbox(
         requireSize(tokens, 3, "item replace <entity|block> ...", location)
         when (tokens[2].text) {
             "entity" -> {
-                requireSize(tokens, 7, "item replace entity <targets> <slot> with <item> [count]", location)
-                if (tokens[5].text != "with") {
-                    unsupportedFeature("Expected 'with' in item replace entity", profile.id, location)
-                }
+                requireSize(tokens, 6, "item replace entity <targets> <slot> <with|from> ...", location)
                 val slot = inventorySlot(tokens[4].text)
-                val item = ItemStack(ResourceLocation.parse(tokens[6].text), tokens.getOrNull(7)?.text?.let { parseInt(it, "item count", location) } ?: 1)
+                val item = when (tokens[5].text) {
+                    "with" -> {
+                        requireSize(tokens, 7, "item replace entity <targets> <slot> with <item> [count]", location)
+                        ItemStack(ResourceLocation.parse(tokens[6].text), tokens.getOrNull(7)?.text?.let { parseInt(it, "item count", location) } ?: 1)
+                    }
+                    "from" -> readItemSource(tokens, 6, context, location)
+                    else -> unsupportedFeature("Expected 'with' or 'from' in item replace entity", profile.id, location)
+                }
                 resolvePlayers(tokens[3].text, location, context).forEach { player ->
-                    while (player.inventory.size <= slot) player.inventory += ItemStack(ResourceLocation("minecraft", "air"), 0)
-                    player.inventory[slot] = item.copy(components = item.components.deepCopy(), nbt = item.nbt.deepCopy())
+                    replacePlayerItem(player, slot, item)
                 }
             }
             "block" -> {
-                requireSize(tokens, 9, "item replace block <pos> <slot> with <item> [count]", location)
-                if (tokens[7].text != "with") {
-                    unsupportedFeature("Expected 'with' in item replace block", profile.id, location)
-                }
+                requireSize(tokens, 8, "item replace block <pos> <slot> <with|from> ...", location)
                 val pos = parseBlockPos(tokens, 3, context, location)
                 val slot = inventorySlot(tokens[6].text)
-                val item = ItemStack(ResourceLocation.parse(tokens[8].text), tokens.getOrNull(9)?.text?.let { parseInt(it, "item count", location) } ?: 1)
+                val item = when (tokens[7].text) {
+                    "with" -> {
+                        requireSize(tokens, 9, "item replace block <pos> <slot> with <item> [count]", location)
+                        ItemStack(ResourceLocation.parse(tokens[8].text), tokens.getOrNull(9)?.text?.let { parseInt(it, "item count", location) } ?: 1)
+                    }
+                    "from" -> readItemSource(tokens, 8, context, location)
+                    else -> unsupportedFeature("Expected 'with' or 'from' in item replace block", profile.id, location)
+                }
                 replaceBlockItem(pos, slot, item, location)
             }
             else -> unsupportedFeature("Unsupported item replace target '${tokens[2].text}'", profile.id, location)
         }
     }
+
+    private fun replacePlayerItem(player: SandboxPlayer, slot: Int, item: ItemStack?) {
+        while (player.inventory.size <= slot) player.inventory += ItemStack(ResourceLocation("minecraft", "air"), 0)
+        player.inventory[slot] = item?.copyStack() ?: ItemStack(ResourceLocation("minecraft", "air"), 0)
+    }
+
+    private fun readItemSource(tokens: List<CommandToken>, index: Int, context: ExecutionContext, location: SourceLocation?): ItemStack? {
+        requireIndex(tokens, index, "item source <entity|block>", location)
+        return when (tokens[index].text) {
+            "entity" -> {
+                requireSizeFrom(tokens, index, 3, "item source entity <source> <slot>", location)
+                val source = resolvePlayers(tokens[index + 1].text, location, context).firstOrNull()
+                    ?: throw SandboxException(DiagnosticCode.COMMAND_ERROR, "Item source entity '${tokens[index + 1].text}' did not match a player", location)
+                source.inventory.getOrNull(inventorySlot(tokens[index + 2].text))?.copyStack()
+            }
+            "block" -> {
+                requireSizeFrom(tokens, index, 5, "item source block <pos> <slot>", location)
+                blockItem(parseBlockPos(tokens, index + 1, context, location), inventorySlot(tokens[index + 4].text), location)?.copyStack()
+            }
+            else -> unsupportedFeature("Unsupported item source '${tokens[index].text}'", profile.id, location)
+        }
+    }
+
+    private fun ItemStack.copyStack(): ItemStack =
+        copy(components = components.deepCopy(), nbt = nbt.deepCopy())
 
     private fun blockItem(pos: BlockPos, slot: Int, location: SourceLocation?): ItemStack? {
         val block = world.requireBlock(pos)

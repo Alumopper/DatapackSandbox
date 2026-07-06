@@ -134,6 +134,36 @@ class CommandExpansionTest {
     }
 
     @Test
+    fun `item replace copies from entity and block slots`() {
+        val sandbox = createFunctionSandboxFromString(
+            version = "26.2",
+            functionText = "",
+            functionId = "demo:empty",
+        )
+
+        sandbox.executeCommand("setblock 0 64 0 minecraft:chest")
+        sandbox.executeCommand("item replace entity Steve hotbar.0 with minecraft:diamond 3")
+        sandbox.executeCommand("item replace block 0 64 0 container.0 from entity Steve hotbar.0")
+        sandbox.executeCommand("item replace entity Steve hotbar.1 from block 0 64 0 container.0")
+
+        val copiedToBlock = sandbox.world.requireBlock(BlockPos(0, 64, 0)).fullNbt(BlockPos(0, 64, 0), sandbox.profile)
+            .getAsJsonArray("Items")
+            .single { it.asJsonObject.get("Slot").asInt == 0 }
+            .asJsonObject
+        assertEquals("minecraft:diamond", copiedToBlock.get("id").asString)
+        assertEquals(3, copiedToBlock.get("count").asInt)
+
+        val copiedToPlayer = sandbox.world.requirePlayer("Steve").inventory[1]
+        assertEquals(ResourceLocation.parse("minecraft:diamond"), copiedToPlayer.id)
+        assertEquals(3, copiedToPlayer.count)
+
+        sandbox.executeCommand("item replace block 0 64 0 container.0 from entity Steve hotbar.8")
+        val afterClear = sandbox.world.requireBlock(BlockPos(0, 64, 0)).fullNbt(BlockPos(0, 64, 0), sandbox.profile)
+            .getAsJsonArray("Items")
+        assertTrue(afterClear.none { it.asJsonObject.get("Slot").asInt == 0 })
+    }
+
+    @Test
     fun `execute conditions cover predicate dimension biome and loaded state`() {
         val pack = writePredicatePack(Files.createTempDirectory("dps-execute-conditions-pack"))
         val sandbox = createSandbox("26.2", listOf(pack))
