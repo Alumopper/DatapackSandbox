@@ -2017,6 +2017,15 @@ class DatapackSandbox(
         root: JsonElement,
         predicateContext: (ItemStack) -> PredicateContext,
         location: SourceLocation?,
+    ): ItemStack =
+        applyItemModifier(item, root, predicateContext, location, mutableSetOf())
+
+    private fun applyItemModifier(
+        item: ItemStack,
+        root: JsonElement,
+        predicateContext: (ItemStack) -> PredicateContext,
+        location: SourceLocation?,
+        activeReferences: MutableSet<ResourceLocation>,
     ): ItemStack {
         var stack = item.copy(components = item.components.deepCopy(), nbt = item.nbt.deepCopy())
         val functions = when {
@@ -2056,15 +2065,59 @@ class DatapackSandbox(
                 "set_damage" -> stack.components.addProperty("minecraft:damage", itemModifierNumber(function.get("damage"), 0.0))
                 "set_name" -> stack.components.add("minecraft:custom_name", itemModifierText(function, "name", type, location))
                 "set_lore" -> stack.components.add("minecraft:lore", itemModifierLore(function, location))
+                "reference" -> {
+                    val id = itemModifierReference(function, type, location)
+                    stack = applyReferencedItemModifier(stack, id, predicateContext, location, activeReferences)
+                }
+                "filtered" -> {
+                    val itemFilter = itemModifierObject(function, "item_filter", type, location)
+                    val branchName = if (predicates.testItemPredicate(stack, itemFilter)) "on_pass" else "on_fail"
+                    function.get(branchName)?.takeUnless { it.isJsonNull }?.let { branch ->
+                        stack = applyItemModifierBranch(stack, branch, predicateContext, location, activeReferences, branchName)
+                    }
+                }
                 "sequence" -> {
                     val nested = function.get("functions")
                         ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Item modifier 'sequence' requires 'functions'", location)
-                    stack = applyItemModifier(stack, nested, predicateContext, location)
+                    stack = applyItemModifier(stack, nested, predicateContext, location, activeReferences)
                 }
                 else -> unsupportedFeature("Item modifier function '$type' is not implemented", profile.id, location)
             }
         }
         return stack
+    }
+
+    private fun applyItemModifierBranch(
+        item: ItemStack,
+        branch: JsonElement,
+        predicateContext: (ItemStack) -> PredicateContext,
+        location: SourceLocation?,
+        activeReferences: MutableSet<ResourceLocation>,
+        branchName: String,
+    ): ItemStack =
+        when {
+            branch.isJsonPrimitive && branch.asJsonPrimitive.isString ->
+                applyReferencedItemModifier(item, ResourceLocation.parse(branch.asString), predicateContext, location, activeReferences)
+            branch.isJsonObject || branch.isJsonArray ->
+                applyItemModifier(item, branch, predicateContext, location, activeReferences)
+            else -> throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Item modifier branch '$branchName' must be an id, object, or array", location)
+        }
+
+    private fun applyReferencedItemModifier(
+        item: ItemStack,
+        id: ResourceLocation,
+        predicateContext: (ItemStack) -> PredicateContext,
+        location: SourceLocation?,
+        activeReferences: MutableSet<ResourceLocation>,
+    ): ItemStack {
+        if (!activeReferences.add(id)) {
+            throw SandboxException(DiagnosticCode.COMMAND_ERROR, "Recursive item modifier reference: $id", location)
+        }
+        try {
+            return applyItemModifier(item, datapack.itemModifier(id).root, predicateContext, location, activeReferences)
+        } finally {
+            activeReferences.remove(id)
+        }
     }
 
     private fun itemModifierPredicateContext(pos: BlockPos, stack: ItemStack): PredicateContext =
@@ -2093,6 +2146,16 @@ class DatapackSandbox(
             ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Item modifier function is missing", location)
         return ResourceLocation.parse(raw).path
     }
+
+    private fun itemModifierReference(function: JsonObject, type: String, location: SourceLocation?): ResourceLocation {
+        val raw = function.get("name")?.takeIf { it.isJsonPrimitive && it.asJsonPrimitive.isString }?.asString
+            ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Item modifier '$type' requires string 'name'", location)
+        return ResourceLocation.parse(raw)
+    }
+
+    private fun itemModifierObject(function: JsonObject, key: String, type: String, location: SourceLocation?): JsonObject =
+        function.get(key)?.takeIf { it.isJsonObject }?.asJsonObject
+            ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Item modifier '$type' requires object '$key'", location)
 
     private fun itemModifierCount(element: JsonElement?, fallback: Int): Int =
         when {

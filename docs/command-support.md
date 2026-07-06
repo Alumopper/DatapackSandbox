@@ -51,7 +51,7 @@ run continues. Use `--unsupported error`, manifest `"unsupported": "error"`, or
 | `gamerule` | Partial | Stores arbitrary gamerule string values; no gameplay side effects. |
 | `give` | Partial | Adds item stacks to player inventories and fires inventory advancement events. |
 | `help` | Partial | Reports command roots and basic sandbox help text. |
-| `item` | Partial | `replace entity|block ... with <item> [count]` and `from entity|block ...`; `modify entity|block ... <modifier>` applies common item modifier functions (`set_components`, `set_custom_data`, `set_count`, `limit_count`, `set_damage`, `set_name`, `set_lore`, `sequence`). |
+| `item` | Partial | `replace entity|block ... with <item> [count]` and `from entity|block ...`; `modify entity|block ... <modifier>` applies common item modifier functions (`set_components`, `set_custom_data`, `set_count`, `limit_count`, `set_damage`, `set_name`, `set_lore`, `filtered`, `reference`, `sequence`). |
 | `kick` | Unsupported | Network sessions are not simulated. |
 | `kill` | Supported | Removes selected sandbox entities; player execution contexts fire `killed_entity` advancement events for non-player targets. |
 | `list` | Supported | Reports sandbox players and UUIDs. |

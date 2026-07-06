@@ -83,6 +83,7 @@ data class RegistryView(
                 "explosion_decay",
                 "limit_count",
                 "filtered",
+                "reference",
                 "sequence",
             ),
         )

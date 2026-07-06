@@ -111,9 +111,18 @@ class CommandExpansionTest {
         assertEquals(true, item.nbt.get("marked").asBoolean)
         assertEquals("tagged", item.components.get("demo:tag").asString)
         assertEquals("applied", item.components.get("demo:sequence").asString)
+        assertEquals("pass", item.components.get("demo:filtered").asString)
+        assertEquals("shared", item.components.get("demo:referenced").asString)
         assertEquals("Marked Stick", item.components.getAsJsonObject("minecraft:custom_name").get("text").asString)
         assertEquals("debuggable", item.components.getAsJsonArray("minecraft:lore")[0].asJsonObject.get("text").asString)
         assertEquals(3.0, item.components.get("minecraft:damage").asDouble)
+
+        sandbox.executeCommand("item replace entity Steve hotbar.1 with minecraft:diamond 1")
+        sandbox.executeCommand("item modify entity Steve hotbar.1 demo:mark")
+
+        val unmatched = sandbox.world.requirePlayer("Steve").inventory[1]
+        assertTrue(!unmatched.components.has("demo:filtered"))
+        assertEquals("fail", unmatched.components.get("demo:filtered_fail").asString)
     }
 
     @Test
@@ -610,6 +619,28 @@ class CommandExpansionTest {
         val modifierRoot = root.resolve("data").resolve("demo").resolve("item_modifier")
         Files.createDirectories(modifierRoot)
         Files.writeString(
+            modifierRoot.resolve("filtered_pass.json"),
+            """
+            {
+              "function": "minecraft:set_components",
+              "components": {
+                "demo:filtered": "pass"
+              }
+            }
+            """.trimIndent(),
+        )
+        Files.writeString(
+            modifierRoot.resolve("shared.json"),
+            """
+            {
+              "function": "minecraft:set_components",
+              "components": {
+                "demo:referenced": "shared"
+              }
+            }
+            """.trimIndent(),
+        )
+        Files.writeString(
             modifierRoot.resolve("mark.json"),
             """
             [
@@ -659,6 +690,25 @@ class CommandExpansionTest {
                     }
                   }
                 ]
+              },
+              {
+                "function": "minecraft:filtered",
+                "item_filter": {
+                  "items": "minecraft:stick"
+                },
+                "on_pass": "demo:filtered_pass",
+                "on_fail": [
+                  {
+                    "function": "minecraft:set_components",
+                    "components": {
+                      "demo:filtered_fail": "fail"
+                    }
+                  }
+                ]
+              },
+              {
+                "function": "minecraft:reference",
+                "name": "demo:shared"
               }
             ]
             """.trimIndent(),
