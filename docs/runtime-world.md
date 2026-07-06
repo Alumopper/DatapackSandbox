@@ -30,7 +30,7 @@ state before any `steps` or commands run. Supported fixture inputs include:
 - `entities` with type, UUID, position, dimension, health, tags, rotation,
   vehicle/passengers, equipment, active effects, attributes, and validated entity NBT.
 - `players` with position, dimension, game mode, inventory, ender items, XP, health, and
-  food.
+  food; newly created players start with the current `defaultGameMode`.
 - `scores`, `storage`, `gamerules`, `gameTime`, `dayTime`, and `weather`.
 
 Example manifest:

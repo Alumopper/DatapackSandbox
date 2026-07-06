@@ -480,7 +480,9 @@ class ManifestRunnerTest {
                   "demo:env": { "ready": true }
                 }
               },
-              "steps": [],
+              "steps": [
+                { "player": { "name": "Builder" } }
+              ],
               "assertions": [
                 {
                   "world": {
@@ -578,6 +580,7 @@ class ManifestRunnerTest {
                   }
                 },
                 { "bossbar": { "id": "demo:bar", "name": "Demo", "value": 3, "max": 10, "player": "Alex" } },
+                { "player": { "name": "Builder", "gameMode": "creative" } },
                 { "score": { "target": "#fixture", "objective": "ready", "equals": 1 } },
                 { "storage": { "id": "demo:env", "path": "ready", "equals": true } }
               ]

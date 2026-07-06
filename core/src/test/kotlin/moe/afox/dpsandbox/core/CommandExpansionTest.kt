@@ -15,6 +15,7 @@ class CommandExpansionTest {
 
         sandbox.executeCommand("difficulty hard")
         sandbox.executeCommand("defaultgamemode creative")
+        sandbox.createPlayer("Builder")
         sandbox.executeCommand("gamemode adventure Steve")
         sandbox.executeCommand("setworldspawn 10 70 10 45")
         sandbox.executeCommand("spawnpoint Steve 1 65 2 90")
@@ -31,6 +32,7 @@ class CommandExpansionTest {
         assertEquals("hard", snapshot.get("difficulty").asString)
         assertEquals("creative", snapshot.get("defaultGameMode").asString)
         assertEquals("adventure", snapshot.getAsJsonObject("players").getAsJsonObject("Steve").get("gameMode").asString)
+        assertEquals("creative", snapshot.getAsJsonObject("players").getAsJsonObject("Builder").get("gameMode").asString)
         assertEquals(true, snapshot.get("tickFrozen").asBoolean)
         assertEquals(2, snapshot.get("gameTime").asLong)
         assertEquals(4, snapshot.getAsJsonArray("biomes").size())

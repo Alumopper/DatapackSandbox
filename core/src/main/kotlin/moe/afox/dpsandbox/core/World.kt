@@ -841,7 +841,7 @@ class SandboxWorld {
      */
     fun createPlayer(name: String): SandboxPlayer =
         players.getOrPut(name) {
-            SandboxPlayer(name).also { entities += it }
+            SandboxPlayer(name, gameMode = defaultGameMode).also { entities += it }
         }
 
     /**
