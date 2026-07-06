@@ -170,7 +170,7 @@ entity, entityCount, advancement, predicate, loot, output, item, trace, event tr
 diagnostic, and snapshot diff checks:
 
 Assertion failures are prefixed with the merged assertion index and JSON Pointer
-path, for example `assertion 1 (/assertions/0): ...`.
+path, for example `assertion 1 (/assertions/0/output): ...`.
 
 ```json
 { "score": { "target": "#clock", "objective": "ticks", "min": 20, "max": 40 } }

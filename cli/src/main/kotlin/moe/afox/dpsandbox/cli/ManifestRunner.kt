@@ -195,7 +195,7 @@ object ManifestRunner {
         defaultLootSeed: Long,
     ): List<String> =
         assertions.flatMapIndexed { index, assertion ->
-            evaluateAssertion(assertion, sandbox, diagnostics, beforeSnapshot, defaultLootSeed).map { "${assertionLabel(index)}: $it" }
+            evaluateAssertion(assertion, sandbox, diagnostics, beforeSnapshot, defaultLootSeed).map { "${assertionLabel(index, assertion)}: $it" }
         }
 
     private fun runOne(
@@ -239,7 +239,8 @@ object ManifestRunner {
             if (!assertion.element.isJsonObject) {
                 failures += "${assertionLabel(index)}: Assertion must be an object"
             } else {
-                failures += evaluateAssertion(assertion.element.asJsonObject, sandbox, diagnostics, beforeSnapshot, options.seed).map { "${assertionLabel(index)}: $it" }
+                val assertionObject = assertion.element.asJsonObject
+                failures += evaluateAssertion(assertionObject, sandbox, diagnostics, beforeSnapshot, options.seed).map { "${assertionLabel(index, assertionObject)}: $it" }
             }
         }
         if (failures.isNotEmpty() && options.snapshotOnFail) {
@@ -603,6 +604,36 @@ object ManifestRunner {
 
     private fun assertionLabel(index: Int): String =
         "assertion ${index + 1} (/assertions/$index)"
+
+    private fun assertionLabel(index: Int, assertion: JsonObject): String {
+        val kind = assertionKinds.firstOrNull { assertion.has(it) }
+        return if (kind == null) {
+            assertionLabel(index)
+        } else {
+            "assertion ${index + 1} (/assertions/$index/$kind)"
+        }
+    }
+
+    private val assertionKinds = listOf(
+        "score",
+        "storage",
+        "entityCount",
+        "entity",
+        "world",
+        "player",
+        "team",
+        "bossbar",
+        "block",
+        "advancement",
+        "predicate",
+        "loot",
+        "item",
+        "trace",
+        "eventTrace",
+        "diagnostic",
+        "snapshotDiff",
+        "output",
+    )
 
     private fun runStep(step: JsonObject, sandbox: DatapackSandbox, options: ManifestOptions, base: Path): DatapackSandbox {
         when {

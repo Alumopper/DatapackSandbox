@@ -1022,7 +1022,7 @@ class ManifestRunnerTest {
 
         assertFalse(result.passed)
         val messages = result.messages.joinToString("\n")
-        assertTrue("assertion 1 (/assertions/0):" in messages, messages)
+        assertTrue("assertion 1 (/assertions/0/score):" in messages, messages)
         assertTrue("score #manifest_diff runs expected 3 but was 2" in messages, messages)
         assertTrue("snapshot diff:" in messages, messages)
         assertTrue("+ /scores/runs =" in messages, messages)
