@@ -22,6 +22,7 @@ import moe.afox.dpsandbox.core.ResourceIndexEntry
 import moe.afox.dpsandbox.core.SandboxException
 import moe.afox.dpsandbox.core.SandboxEntity
 import moe.afox.dpsandbox.core.SandboxBlock
+import moe.afox.dpsandbox.core.SandboxPlayer
 import moe.afox.dpsandbox.core.SandboxWorld
 import moe.afox.dpsandbox.core.SandboxWorldBorder
 import moe.afox.dpsandbox.core.SnapshotDiff
@@ -1305,18 +1306,42 @@ object ManifestRunner {
 
     private fun evaluateItemAssertion(item: JsonObject, sandbox: DatapackSandbox): List<String> {
         val player = sandbox.world.requirePlayer(item.requiredManifestString("player"))
+        val container = normalizeItemContainer(item.manifestString("container") ?: "inventory")
+            ?: return listOf("item for player ${player.name} container ${item.manifestString("container")} is unsupported; use inventory or enderItems")
+        val items = playerItems(player, container)
         val slot = item.get("slot")?.asInt
-        val candidates = slot?.let { player.inventory.getOrNull(it)?.let(::listOf) ?: emptyList() } ?: player.inventory
+        val candidates = slot?.let { items.getOrNull(it)?.let(::listOf) ?: emptyList() } ?: items
         val exists = item.get("exists")?.asBoolean ?: true
         val matches = candidates.filter { stack -> itemMatches(stack, item) }
+        val prefix = itemAssertionPrefix(player.name, container)
         if (exists && matches.isEmpty()) {
-            return listOf("item for player ${player.name} expected ${describeItemExpectation(item)} but inventory was ${player.inventory.map { "${it.id}x${it.count}" }}")
+            return listOf("$prefix expected ${describeItemExpectation(item)} but ${itemContainerLabel(container)} was ${items.map { "${it.id}x${it.count}" }}")
         }
         if (!exists && matches.isNotEmpty()) {
-            return listOf("item for player ${player.name} expected missing ${describeItemExpectation(item)} but found ${matches.map { "${it.id}x${it.count}" }}")
+            return listOf("$prefix expected missing ${describeItemExpectation(item)} but found ${matches.map { "${it.id}x${it.count}" }}")
         }
         return emptyList()
     }
+
+    private fun normalizeItemContainer(raw: String): String? =
+        when (raw) {
+            "inventory" -> "inventory"
+            "enderItems", "ender", "ender_items", "enderChest", "ender_chest" -> "enderItems"
+            else -> null
+        }
+
+    private fun playerItems(player: SandboxPlayer, container: String): List<ItemStack> =
+        when (container) {
+            "inventory" -> player.inventory
+            "enderItems" -> player.enderItems
+            else -> emptyList()
+        }
+
+    private fun itemAssertionPrefix(playerName: String, container: String): String =
+        if (container == "inventory") "item for player $playerName" else "item for player $playerName in $container"
+
+    private fun itemContainerLabel(container: String): String =
+        if (container == "inventory") "inventory" else container
 
     private fun itemMatches(stack: ItemStack, item: JsonObject): Boolean {
         val expectedId = item.manifestString("id")?.let(ResourceLocation::parse)
@@ -1351,6 +1376,7 @@ object ManifestRunner {
             item.get("minCount")?.let { "minCount=${it.asInt}" },
             item.get("maxCount")?.let { "maxCount=${it.asInt}" },
             item.get("slot")?.let { "slot=${manifestPrimitiveString(it)}" },
+            item.manifestString("container")?.takeIf { normalizeItemContainer(it) != "inventory" }?.let { "container=$it" },
         ).ifEmpty { listOf("<any item>") }.joinToString(", ")
 
     private fun describeEntityExpectation(entity: JsonObject): String =

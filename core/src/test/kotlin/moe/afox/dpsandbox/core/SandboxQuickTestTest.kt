@@ -730,6 +730,12 @@ class SandboxQuickTestTest {
                 nbtPath = "tag.level",
                 nbtEquals = "2",
             )
+            .assertItem(
+                "Alex",
+                "minecraft:ender_pearl",
+                4,
+                container = "enderItems",
+            )
             .assertScore("#fixture", "ready", 1)
             .assertScoreAtLeast("#fixture", "ready", 1)
             .assertScoreAtMost("#fixture", "ready", 1)

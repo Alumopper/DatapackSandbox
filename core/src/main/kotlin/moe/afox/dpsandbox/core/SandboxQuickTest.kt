@@ -725,6 +725,7 @@ class SandboxQuickTestMatrix private constructor(
         nbtPath: String? = null,
         nbtEquals: String? = null,
         nbtExists: Boolean? = null,
+        container: String = "inventory",
     ): SandboxQuickTestMatrix = apply {
         scenarios.values.forEach {
             it.assertItem(
@@ -741,6 +742,7 @@ class SandboxQuickTestMatrix private constructor(
                 nbtPath = nbtPath,
                 nbtEquals = nbtEquals,
                 nbtExists = nbtExists,
+                container = container,
             )
         }
     }
@@ -1883,10 +1885,17 @@ class SandboxQuickTest private constructor(
         nbtPath: String? = null,
         nbtEquals: String? = null,
         nbtExists: Boolean? = null,
+        container: String = "inventory",
     ): SandboxQuickTest = apply {
         val player = sandbox.world.requirePlayer(playerName)
+        val normalizedContainer = normalizeItemContainer(container)
+        if (normalizedContainer == null) {
+            failures += "item for player $playerName container $container is unsupported; use inventory or enderItems"
+            return@apply
+        }
+        val items = playerItems(player, normalizedContainer)
         val expectedId = id?.let(ResourceLocation::parse)
-        val candidates = slot?.let { player.inventory.getOrNull(it)?.let(::listOf) ?: emptyList() } ?: player.inventory
+        val candidates = slot?.let { items.getOrNull(it)?.let(::listOf) ?: emptyList() } ?: items
         val matches = candidates.filter { item ->
             (expectedId == null || item.id == expectedId) &&
                 (count == null || item.count == count) &&
@@ -1908,13 +1917,35 @@ class SandboxQuickTest private constructor(
             nbtEquals = nbtEquals,
             nbtExists = nbtExists,
         )
+        val prefix = itemAssertionPrefix(playerName, normalizedContainer)
+        val itemSummary = items.map { "${it.id}x${it.count}" }
         if (exists && matches.isEmpty()) {
-            failures += "item for player $playerName expected $expectation but inventory was ${player.inventory.map { "${it.id}x${it.count}" }}"
+            failures += "$prefix expected $expectation but ${itemContainerLabel(normalizedContainer)} was $itemSummary"
         }
         if (!exists && matches.isNotEmpty()) {
-            failures += "item for player $playerName expected missing $expectation but found ${matches.map { "${it.id}x${it.count}" }}"
+            failures += "$prefix expected missing $expectation but found ${matches.map { "${it.id}x${it.count}" }}"
         }
     }
+
+    private fun normalizeItemContainer(raw: String): String? =
+        when (raw) {
+            "inventory" -> "inventory"
+            "enderItems", "ender", "ender_items", "enderChest", "ender_chest" -> "enderItems"
+            else -> null
+        }
+
+    private fun playerItems(player: SandboxPlayer, container: String): List<ItemStack> =
+        when (container) {
+            "inventory" -> player.inventory
+            "enderItems" -> player.enderItems
+            else -> emptyList()
+        }
+
+    private fun itemAssertionPrefix(playerName: String, container: String): String =
+        if (container == "inventory") "item for player $playerName" else "item for player $playerName in $container"
+
+    private fun itemContainerLabel(container: String): String =
+        if (container == "inventory") "inventory" else container
 
     private fun jsonPathMatches(root: JsonObject, path: String?, equalsJson: String?, exists: Boolean?): Boolean {
         if (path == null && equalsJson == null && exists == null) return true

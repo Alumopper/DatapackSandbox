@@ -172,7 +172,7 @@ path, for example `assertion 1 (/assertions/0): ...`.
 ```
 
 ```json
-{ "item": { "player": "Steve", "id": "minecraft:apple", "count": 3 } }
+{ "item": { "player": "Steve", "container": "enderItems", "id": "minecraft:apple", "count": 3 } }
 ```
 
 ```json
@@ -200,8 +200,8 @@ filtering, plus full entity NBT path checks, equipment item id/count/components/
 duration/amplifier/particle state, and explicit attribute values. `player` assertions can also check existence, dimension, game mode, health,
 food, selected slot, ender item count, recipe, effect, stat, full NBT path, position, last input, and spawn point. `team` and
 `bossbar` assertions inspect their stored runtime state. `item` assertions can
-check player inventory by slot, id, exact/min/max count, components path, and
-NBT path. `block` assertions can check sparse-world existence, id, and block
+check player inventory or `enderItems` by slot, id, exact/min/max count,
+components path, and NBT path. `block` assertions can check sparse-world existence, id, and block
 entity NBT path equality or existence.
 `storage` assertions can compare a path with `equals` or check `exists` and
 `missing` for storage roots or nested paths.

@@ -386,7 +386,7 @@ class MyDatapackTest {
 | `assertEntityCountAtLeast(minimum, type, tag, dimension)` | Assert a matching entity count lower bound |
 | `assertEntityCountAtMost(maximum, type, tag, dimension)` | Assert a matching entity count upper bound |
 | `assertEntityCountRange(min, max, type, tag, dimension)` | Assert optional matching entity count bounds |
-| `assertItem(player, id, count, slot, exists, minCount, maxCount, componentsPath, componentsEquals, componentsExists, nbtPath, nbtEquals, nbtExists)` | Assert a matching player inventory item |
+| `assertItem(player, id, count, slot, exists, minCount, maxCount, componentsPath, componentsEquals, componentsExists, nbtPath, nbtEquals, nbtExists, container)` | Assert a matching player inventory or enderItems item |
 | `assertPlayerXp(player, expected)` | Assert player XP |
 | `assertPlayerLastInput(player, device, code, action)` | Assert the latest player input |
 | `assertAdvancementDone(player, id, expected)` | Assert advancement completion |

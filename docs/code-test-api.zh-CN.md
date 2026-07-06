@@ -360,7 +360,7 @@ class MyDatapackTest {
 | `assertEntityCountAtLeast(minimum, type, tag, dimension)` | 断言匹配实体数量下界。 |
 | `assertEntityCountAtMost(maximum, type, tag, dimension)` | 断言匹配实体数量上界。 |
 | `assertEntityCountRange(min, max, type, tag, dimension)` | 断言匹配实体数量的可选上下界。 |
-| `assertItem(player, id, count, slot, exists, minCount, maxCount, componentsPath, componentsEquals, componentsExists, nbtPath, nbtEquals, nbtExists)` | 断言玩家背包中的匹配物品。 |
+| `assertItem(player, id, count, slot, exists, minCount, maxCount, componentsPath, componentsEquals, componentsExists, nbtPath, nbtEquals, nbtExists, container)` | 断言玩家背包或末影箱中的匹配物品。 |
 | `assertPlayerXp(player, expected)` | 断言玩家 XP。 |
 | `assertPlayerLastInput(player, device, code, action)` | 断言玩家最后一次输入。 |
 | `assertAdvancementDone(player, id, expected)` | 断言 advancement 是否完成。 |

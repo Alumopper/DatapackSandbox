@@ -568,6 +568,7 @@ class ManifestRunnerTest {
                   }
                 },
                 { "item": { "player": "Alex", "id": "minecraft:stick", "count": 2, "minCount": 1, "maxCount": 3 } },
+                { "item": { "player": "Alex", "container": "enderItems", "id": "minecraft:ender_pearl", "count": 4 } },
                 {
                   "team": {
                     "name": "red",

@@ -791,6 +791,10 @@
         "minCount": { "type": "integer", "minimum": 0 },
         "maxCount": { "type": "integer", "minimum": 0 },
         "slot": { "type": "integer", "minimum": 0 },
+        "container": {
+          "type": "string",
+          "enum": ["inventory", "enderItems", "ender", "ender_items", "enderChest", "ender_chest"]
+        },
         "exists": { "type": "boolean" },
         "components": { "$ref": "#/$defs/pathExpectation" },
         "nbt": { "$ref": "#/$defs/pathExpectation" }
