@@ -1753,13 +1753,28 @@ class DatapackSandbox(
         requireSize(tokens, 3, "enchant <targets> <enchantment> [level]", location)
         val enchantment = ResourceLocation.parse(tokens[2].text)
         val level = tokens.getOrNull(3)?.text?.let { parseInt(it, "enchantment level", location) } ?: 1
-        resolvePlayers(tokens[1].text, location, context).forEach { player ->
-            val item = player.selectedItem ?: ItemStack(ResourceLocation("minecraft", "air")).also { player.inventory += it }
-            val enchantments = item.components.getAsJsonObject("minecraft:enchantments") ?: JsonObject().also {
-                item.components.add("minecraft:enchantments", it)
+        EntitySelectors.select(world, tokens[1].text, context, location).forEach { entity ->
+            val item = if (entity is SandboxPlayer) {
+                playerSelectedItemForEnchant(entity)
+            } else {
+                entity.equipment[EquipmentSlots.MAINHAND] ?: return@forEach
             }
-            enchantments.addProperty(enchantment.toString(), level)
+            enchantItem(item, enchantment, level)
         }
+    }
+
+    private fun playerSelectedItemForEnchant(player: SandboxPlayer): ItemStack {
+        while (player.inventory.size <= player.selectedSlot) {
+            player.inventory += ItemStack(ResourceLocation("minecraft", "air"))
+        }
+        return player.inventory[player.selectedSlot]
+    }
+
+    private fun enchantItem(item: ItemStack, enchantment: ResourceLocation, level: Int) {
+        val enchantments = item.components.getAsJsonObject("minecraft:enchantments") ?: JsonObject().also {
+            item.components.add("minecraft:enchantments", it)
+        }
+        enchantments.addProperty(enchantment.toString(), level)
     }
 
     private fun executeExperience(tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext) {

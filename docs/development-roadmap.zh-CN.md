@@ -61,6 +61,7 @@
 - 扩展 `item` 和 item modifier：
   - 支持 entity/block slot 读写、modifier 应用、components/NBT 兼容差异。
 - 扩展 `recipe`、`advancement`、`attribute`、`damage`、`effect`、`enchant`、`random`、`team`、`bossbar`、`worldborder` 的子命令覆盖。
+  - `enchant` 已覆盖玩家选中物品和非玩家实体主手装备的附魔组件写入。
 - 为不适合完整模拟的命令保留结构化 no-op 或 unsupported warning，例如 `debug`、`jfr`、`publish`、`stop`、网络和权限相关命令。
 
 验收标准：

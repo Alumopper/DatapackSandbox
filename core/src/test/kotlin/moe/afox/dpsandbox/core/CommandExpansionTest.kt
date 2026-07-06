@@ -228,6 +228,7 @@ class CommandExpansionTest {
         sandbox.executeCommand("summon minecraft:zombie 0 64 0")
         sandbox.executeCommand("item replace entity @e[type=minecraft:zombie,limit=1] weapon.mainhand with minecraft:stick 1")
         sandbox.executeCommand("item modify entity @e[type=minecraft:zombie,limit=1] weapon.mainhand demo:mark")
+        sandbox.executeCommand("enchant @e[type=minecraft:zombie,limit=1] minecraft:sharpness 3")
         sandbox.executeCommand("item replace entity @e[type=minecraft:zombie,limit=1] armor.head with minecraft:iron_helmet 1")
         sandbox.executeCommand("item replace entity Steve hotbar.3 from entity @e[type=minecraft:zombie,limit=1] weapon.mainhand")
         sandbox.executeCommand("scoreboard objectives add equipment dummy")
@@ -240,16 +241,19 @@ class CommandExpansionTest {
         assertEquals(ResourceLocation.parse("minecraft:stick"), equipped.id)
         assertEquals(4, equipped.count)
         assertEquals(true, equipped.nbt.get("marked").asBoolean)
+        assertEquals(3, equipped.components.getAsJsonObject("minecraft:enchantments").get("minecraft:sharpness").asInt)
 
         val handItem = zombie.fullNbt(sandbox.profile).getAsJsonArray("HandItems")[0].asJsonObject
         assertEquals("minecraft:stick", handItem.get("id").asString)
         assertEquals(4, handItem.get("count").asInt)
         assertEquals(true, handItem.getAsJsonObject("components").getAsJsonObject("minecraft:custom_data").get("marked").asBoolean)
+        assertEquals(3, handItem.getAsJsonObject("components").getAsJsonObject("minecraft:enchantments").get("minecraft:sharpness").asInt)
 
         val copiedToPlayer = sandbox.world.requirePlayer("Steve").inventory[3]
         assertEquals(ResourceLocation.parse("minecraft:stick"), copiedToPlayer.id)
         assertEquals(4, copiedToPlayer.count)
         assertEquals(true, copiedToPlayer.nbt.get("marked").asBoolean)
+        assertEquals(3, copiedToPlayer.components.getAsJsonObject("minecraft:enchantments").get("minecraft:sharpness").asInt)
 
         val snapshotEquipment = sandbox.snapshotJson()
             .getAsJsonArray("entities")
