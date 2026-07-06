@@ -5,7 +5,11 @@ private data class SelectorOptions(
     val type: Pair<ResourceLocation, Boolean>? = null,
     val name: Pair<String, Boolean>? = null,
     val gamemode: Pair<String, Boolean>? = null,
+    val team: Pair<String, Boolean>? = null,
     val scores: Map<String, SelectorScoreRange> = emptyMap(),
+    val level: SelectorScoreRange? = null,
+    val xRotation: ClosedFloatingPointRange<Double>? = null,
+    val yRotation: ClosedFloatingPointRange<Double>? = null,
     val limit: Int? = null,
     val sort: String? = null,
     val distance: ClosedFloatingPointRange<Double>? = null,
@@ -59,6 +63,14 @@ object EntitySelectors {
                 entity is SandboxPlayer && ((entity.gameMode == mode) == positive)
             }
         }
+        options.team?.let { (team, positive) ->
+            result = result.filter { entity ->
+                val actual = world.teamFor(entity)
+                val expected = team.takeIf { it.isNotBlank() }
+                val matched = actual == expected
+                matched == positive
+            }
+        }
         options.tags.forEach { (tag, positive) ->
             result = result.filter { (tag in it.tags) == positive }
         }
@@ -69,6 +81,17 @@ object EntitySelectors {
                     range.contains(world.getScore(entity.scoreHolder, objective))
                 }
             }
+        }
+        options.level?.let { level ->
+            result = result.filter { entity ->
+                entity is SandboxPlayer && level.contains(entity.xpLevels)
+            }
+        }
+        options.xRotation?.let { range ->
+            result = result.filter { it.pitch in range }
+        }
+        options.yRotation?.let { range ->
+            result = result.filter { it.yaw in range }
         }
         options.distance?.let { distance ->
             val minSquared = distance.start * distance.start
@@ -123,7 +146,11 @@ object EntitySelectors {
         var type: Pair<ResourceLocation, Boolean>? = null
         var name: Pair<String, Boolean>? = null
         var gamemode: Pair<String, Boolean>? = null
+        var team: Pair<String, Boolean>? = null
         var scores: Map<String, SelectorScoreRange> = emptyMap()
+        var level: SelectorScoreRange? = null
+        var xRotation: ClosedFloatingPointRange<Double>? = null
+        var yRotation: ClosedFloatingPointRange<Double>? = null
         var limit: Int? = null
         var sort: String? = null
         var distance: ClosedFloatingPointRange<Double>? = null
@@ -154,7 +181,14 @@ object EntitySelectors {
                     val positive = !value.startsWith("!")
                     gamemode = normalizeSelectorGameMode(value.removePrefix("!"), location) to positive
                 }
+                "team" -> {
+                    val positive = !value.startsWith("!")
+                    team = value.removePrefix("!") to positive
+                }
                 "scores" -> scores = parseSelectorScores(value, location)
+                "level" -> level = parseSelectorIntRange(value, "level", location)
+                "x_rotation" -> xRotation = parseSignedSelectorRange(value, "x_rotation", location)
+                "y_rotation" -> yRotation = parseSignedSelectorRange(value, "y_rotation", location)
                 "limit" -> limit = value.toIntOrNull()
                     ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Invalid selector limit: $value", location = location)
                 "sort" -> {
@@ -178,7 +212,11 @@ object EntitySelectors {
             type = type,
             name = name,
             gamemode = gamemode,
+            team = team,
             scores = scores,
+            level = level,
+            xRotation = xRotation,
+            yRotation = yRotation,
             limit = limit,
             sort = sort,
             distance = distance,
@@ -277,6 +315,21 @@ object EntitySelectors {
         value.toDoubleOrNull()
             ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Invalid selector $label: $value", location = location)
 
+    private fun parseSignedSelectorRange(value: String, label: String, location: SourceLocation?): ClosedFloatingPointRange<Double> {
+        if (!value.contains("..")) {
+            val exact = parseSelectorDouble(value, label, location)
+            return exact..exact
+        }
+        val startText = value.substringBefore("..")
+        val endText = value.substringAfter("..")
+        val start = if (startText.isBlank()) Double.NEGATIVE_INFINITY else parseSelectorDouble(startText, "$label start", location)
+        val end = if (endText.isBlank()) Double.POSITIVE_INFINITY else parseSelectorDouble(endText, "$label end", location)
+        if (start > end) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Invalid selector $label range: $value", location = location)
+        }
+        return start..end
+    }
+
     private fun parseSelectorRange(value: String, label: String, location: SourceLocation?): ClosedFloatingPointRange<Double> {
         if (!value.contains("..")) {
             val exact = parseSelectorDouble(value, label, location)
@@ -311,3 +364,6 @@ private fun SandboxEntity.selectorName(): String =
         is SandboxPlayer -> name
         else -> nbt.get("CustomName")?.takeIf { it.isJsonPrimitive }?.asString ?: scoreHolder
     }
+
+private fun SandboxWorld.teamFor(entity: SandboxEntity): String? =
+    teams.entries.firstOrNull { (_, team) -> entity.scoreHolder in team.members }?.key

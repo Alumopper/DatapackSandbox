@@ -132,7 +132,7 @@ JSON text component 支持 `text`、`score`、`selector`、`translate`、`keybin
 
 已实现 selector：`@s`、`@a`、`@p`、`@e`、`@n`。
 
-已实现选项：`type`、`tag`、`name`、`gamemode`、`scores`、`limit`、`sort`、`distance`、`x`、`y`、`z`、`dx`、`dy`、`dz`；score 过滤支持 `scores={kills=1..,deaths=..0}` 这类整数范围；`sort=random` 使用基于原点的确定性顺序，便于重复测试。未支持的 selector 选项会按当前 unsupported 策略产生诊断或 warning。
+已实现选项：`type`、`tag`、`name`、`gamemode`、`team`、`scores`、`level`、`x_rotation`、`y_rotation`、`limit`、`sort`、`distance`、`x`、`y`、`z`、`dx`、`dy`、`dz`；score 和等级过滤支持 `scores={kills=1..,deaths=..0}`、`level=..5` 这类整数范围，旋转过滤支持带符号数值范围；`sort=random` 使用基于原点的确定性顺序，便于重复测试。未支持的 selector 选项会按当前 unsupported 策略产生诊断或 warning。
 
 ## 世界与 NBT 说明
 
