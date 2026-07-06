@@ -93,7 +93,7 @@ object MinecraftSaveImporter {
                 val entityChunkNbt = entityRegion?.readChunk(chunk)
                 if (entityChunkNbt != null) {
                     loadedChunk = true
-                    entities += importEntities(entityChunkNbt, world, profile)
+                    entities += importEntities(entityChunkNbt, world, profile, options.dimension)
                 }
             }
             if (loadedChunk) chunksRead += 1
@@ -162,7 +162,7 @@ object MinecraftSaveImporter {
         return imported
     }
 
-    private fun importEntities(chunkNbt: JsonObject, world: SandboxWorld, profile: VersionProfile): Int {
+    private fun importEntities(chunkNbt: JsonObject, world: SandboxWorld, profile: VersionProfile, dimension: ResourceLocation): Int {
         val entities = chunkNbt.array("Entities")
             ?: chunkNbt.array("entities")
             ?: chunkNbt.obj("Level")?.array("Entities")
@@ -183,6 +183,7 @@ object MinecraftSaveImporter {
                 tags = tags,
                 yaw = rotation?.getOrNull(0)?.asDouble ?: 0.0,
                 pitch = rotation?.getOrNull(1)?.asDouble ?: 0.0,
+                dimension = dimension,
             )
             entity.writeFullNbt(profile, nbt)
             world.entities += entity

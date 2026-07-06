@@ -589,6 +589,7 @@ class SandboxQuickTestTest {
                     ),
                     effects = listOf(effect("minecraft:strength", durationTicks = 80, amplifier = 2, hideParticles = true)),
                     attributes = mapOf("minecraft:max_health" to 12.0),
+                    dimension = "minecraft:the_nether",
                 )
                 player(
                     "Alex",
@@ -640,7 +641,12 @@ class SandboxQuickTestTest {
                 worldBorderWarningTime = 20,
             )
             .assertBlock(0, 64, 0, "minecraft:chest", nbtPath = "Items", nbtEquals = "[]")
-            .assertEntity(type = "minecraft:pig", tag = "fixture", position = Position(1.0, 64.0, 0.0))
+            .assertEntity(
+                type = "minecraft:pig",
+                tag = "fixture",
+                position = Position(1.0, 64.0, 0.0),
+                dimension = "minecraft:the_nether",
+            )
             .assertEntityEquipment(
                 "weapon.mainhand",
                 type = "minecraft:pig",
@@ -650,6 +656,7 @@ class SandboxQuickTestTest {
                 componentsEquals = "true",
                 nbtPath = "tag.level",
                 nbtEquals = "4",
+                dimension = "minecraft:the_nether",
             )
             .assertEntityEffect(
                 "minecraft:strength",
@@ -658,12 +665,19 @@ class SandboxQuickTestTest {
                 durationTicks = 80,
                 amplifier = 2,
                 hideParticles = true,
+                dimension = "minecraft:the_nether",
             )
-            .assertEntityAttribute("minecraft:max_health", type = "minecraft:pig", tag = "fixture", value = 12.0)
-            .assertEntityCount(expected = 1, type = "minecraft:pig", tag = "fixture")
-            .assertEntityCountAtLeast(1, type = "minecraft:pig", tag = "fixture")
-            .assertEntityCountAtMost(1, type = "minecraft:pig", tag = "fixture")
-            .assertEntityCountRange(min = 1, max = 1, type = "minecraft:pig", tag = "fixture")
+            .assertEntityAttribute(
+                "minecraft:max_health",
+                type = "minecraft:pig",
+                tag = "fixture",
+                value = 12.0,
+                dimension = "minecraft:the_nether",
+            )
+            .assertEntityCount(expected = 1, type = "minecraft:pig", tag = "fixture", dimension = "minecraft:the_nether")
+            .assertEntityCountAtLeast(1, type = "minecraft:pig", tag = "fixture", dimension = "minecraft:the_nether")
+            .assertEntityCountAtMost(1, type = "minecraft:pig", tag = "fixture", dimension = "minecraft:the_nether")
+            .assertEntityCountRange(min = 1, max = 1, type = "minecraft:pig", tag = "fixture", dimension = "minecraft:the_nether")
             .assertPlayer(
                 name = "Alex",
                 position = Position(2.0, 65.0, 3.0),
@@ -708,6 +722,7 @@ class SandboxQuickTestTest {
         assertEquals("minecraft:chest", snapshot.get("blocks").asJsonArray[0].asJsonObject.get("id").asString)
         assertEquals("false", snapshot.get("gamerules").asJsonObject.get("doDaylightCycle").asString)
         val pig = snapshot.get("entities").asJsonArray.single { it.asJsonObject.get("type").asString == "minecraft:pig" }.asJsonObject
+        assertEquals("minecraft:the_nether", pig.get("dimension").asString)
         assertEquals("minecraft:iron_sword", pig.getAsJsonObject("equipment").getAsJsonObject("weapon.mainhand").get("id").asString)
         assertEquals("minecraft:strength", pig.getAsJsonArray("effects")[0].asJsonObject.get("id").asString)
         assertEquals(12.0, pig.getAsJsonObject("attributes").get("minecraft:max_health").asDouble)

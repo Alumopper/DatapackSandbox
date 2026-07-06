@@ -108,7 +108,7 @@ class CommandExpansionTest {
         sandbox.executeCommand("summon minecraft:zombie 2 64 0")
         sandbox.executeCommand("item replace entity @e[type=minecraft:zombie,limit=1] weapon.mainhand with minecraft:stick")
         sandbox.executeCommand("loot give Steve kill @e[type=minecraft:zombie,limit=1]")
-        sandbox.executeCommand("loot spawn 1 64 1 mine 0 64 0")
+        sandbox.executeCommand("execute in minecraft:the_nether run loot spawn 1 64 1 mine 0 64 0")
         sandbox.executeCommand("loot give Steve entity demo:entity_context @e[type=minecraft:zombie,limit=1]")
         sandbox.executeCommand("loot give Steve block demo:block_context 0 64 0 minecraft:diamond_pickaxe")
         sandbox.executeCommand("loot give Steve equipment demo:equipment_context @e[type=minecraft:zombie,limit=1] weapon.mainhand")
@@ -122,12 +122,11 @@ class CommandExpansionTest {
         assertTrue(ResourceLocation.parse("minecraft:cobblestone") in inventoryIds)
         assertTrue(ResourceLocation.parse("minecraft:apple") in inventoryIds)
         assertEquals(ResourceLocation.parse("minecraft:diamond"), zombie.equipment[EquipmentSlots.OFFHAND]?.id)
-        assertTrue(
-            sandbox.world.entities.any {
-                it.type == ResourceLocation.parse("minecraft:item") &&
-                    it.nbt.getAsJsonObject("Item")?.get("id")?.asString == "minecraft:stone"
-            },
-        )
+        val spawnedItem = sandbox.world.entities.first {
+            it.type == ResourceLocation.parse("minecraft:item") &&
+                it.nbt.getAsJsonObject("Item")?.get("id")?.asString == "minecraft:stone"
+        }
+        assertEquals(ResourceLocation.parse("minecraft:the_nether"), spawnedItem.dimension)
     }
 
     @Test
@@ -344,14 +343,20 @@ class CommandExpansionTest {
             functionId = "demo:empty",
         )
 
-        sandbox.executeCommand("""summon minecraft:pig 5 0 0 {Tags:["anchor"]}""")
+        sandbox.executeCommand("""execute in minecraft:the_nether run summon minecraft:pig 5 0 0 {Tags:["anchor"]}""")
         sandbox.executeCommand("""execute as @e[tag=anchor,limit=1] run summon minecraft:marker ~1 ~0 ~0 {Tags:["from_as"]}""")
         sandbox.executeCommand("""execute at @e[tag=anchor,limit=1] run summon minecraft:marker ~1 ~0 ~0 {Tags:["from_at"]}""")
         sandbox.executeCommand("""execute positioned as @e[tag=anchor,limit=1] run summon minecraft:marker ~2 ~0 ~0 {Tags:["from_positioned_as"]}""")
 
-        assertEquals(Position(1.0, 0.0, 0.0), sandbox.world.entities.single { "from_as" in it.tags }.position)
-        assertEquals(Position(6.0, 0.0, 0.0), sandbox.world.entities.single { "from_at" in it.tags }.position)
-        assertEquals(Position(7.0, 0.0, 0.0), sandbox.world.entities.single { "from_positioned_as" in it.tags }.position)
+        val fromAs = sandbox.world.entities.single { "from_as" in it.tags }
+        val fromAt = sandbox.world.entities.single { "from_at" in it.tags }
+        val fromPositionedAs = sandbox.world.entities.single { "from_positioned_as" in it.tags }
+        assertEquals(Position(1.0, 0.0, 0.0), fromAs.position)
+        assertEquals(ResourceLocation.parse("minecraft:overworld"), fromAs.dimension)
+        assertEquals(Position(6.0, 0.0, 0.0), fromAt.position)
+        assertEquals(ResourceLocation.parse("minecraft:the_nether"), fromAt.dimension)
+        assertEquals(Position(7.0, 0.0, 0.0), fromPositionedAs.position)
+        assertEquals(ResourceLocation.parse("minecraft:overworld"), fromPositionedAs.dimension)
     }
 
     @Test
@@ -434,12 +439,13 @@ class CommandExpansionTest {
         )
 
         sandbox.executeCommand("""summon minecraft:pig 0 0 0 {Tags:["traveler"]}""")
-        sandbox.executeCommand("""summon minecraft:marker 4 2 1 {Tags:["destination"]}""")
+        sandbox.executeCommand("""execute in minecraft:the_nether run summon minecraft:marker 4 2 1 {Tags:["destination"]}""")
         sandbox.executeCommand("""rotate @e[tag=destination,limit=1] -45 12""")
         sandbox.executeCommand("""tp @e[tag=traveler,limit=1] @e[tag=destination,limit=1]""")
 
         val traveler = sandbox.world.entities.single { "traveler" in it.tags }
         assertEquals(Position(4.0, 2.0, 1.0), traveler.position)
+        assertEquals(ResourceLocation.parse("minecraft:the_nether"), traveler.dimension)
         assertEquals(-45.0, traveler.yaw)
         assertEquals(12.0, traveler.pitch)
     }

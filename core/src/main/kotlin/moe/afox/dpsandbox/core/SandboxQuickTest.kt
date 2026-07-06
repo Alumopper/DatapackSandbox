@@ -451,8 +451,19 @@ class SandboxQuickTestMatrix private constructor(
         position: Position? = null,
         exists: Boolean = true,
         count: Int? = null,
+        dimension: String? = null,
     ): SandboxQuickTestMatrix = apply {
-        scenarios.values.forEach { it.assertEntity(type, tag, uuid, position, exists, count) }
+        scenarios.values.forEach {
+            it.assertEntity(
+                type = type,
+                tag = tag,
+                uuid = uuid,
+                position = position,
+                exists = exists,
+                count = count,
+                dimension = dimension,
+            )
+        }
     }
 
     /**
@@ -476,6 +487,7 @@ class SandboxQuickTestMatrix private constructor(
         nbtPath: String? = null,
         nbtEquals: String? = null,
         nbtExists: Boolean? = null,
+        dimension: String? = null,
     ): SandboxQuickTestMatrix = apply {
         scenarios.values.forEach {
             it.assertEntityEquipment(
@@ -484,6 +496,7 @@ class SandboxQuickTestMatrix private constructor(
                 tag = tag,
                 uuid = uuid,
                 position = position,
+                dimension = dimension,
                 id = id,
                 count = count,
                 exists = exists,
@@ -513,6 +526,7 @@ class SandboxQuickTestMatrix private constructor(
         durationTicks: Int? = null,
         amplifier: Int? = null,
         hideParticles: Boolean? = null,
+        dimension: String? = null,
     ): SandboxQuickTestMatrix = apply {
         scenarios.values.forEach {
             it.assertEntityEffect(
@@ -521,6 +535,7 @@ class SandboxQuickTestMatrix private constructor(
                 tag = tag,
                 uuid = uuid,
                 position = position,
+                dimension = dimension,
                 exists = exists,
                 durationTicks = durationTicks,
                 amplifier = amplifier,
@@ -543,6 +558,7 @@ class SandboxQuickTestMatrix private constructor(
         value: Double? = null,
         min: Double? = null,
         max: Double? = null,
+        dimension: String? = null,
     ): SandboxQuickTestMatrix = apply {
         scenarios.values.forEach {
             it.assertEntityAttribute(
@@ -551,6 +567,7 @@ class SandboxQuickTestMatrix private constructor(
                 tag = tag,
                 uuid = uuid,
                 position = position,
+                dimension = dimension,
                 exists = exists,
                 value = value,
                 min = min,
@@ -563,32 +580,53 @@ class SandboxQuickTestMatrix private constructor(
      * Applies an entity count assertion to every scenario.
      */
     @JvmOverloads
-    fun assertEntityCount(expected: Int, type: String? = null, tag: String? = null): SandboxQuickTestMatrix = apply {
-        scenarios.values.forEach { it.assertEntityCount(expected, type, tag) }
+    fun assertEntityCount(
+        expected: Int,
+        type: String? = null,
+        tag: String? = null,
+        dimension: String? = null,
+    ): SandboxQuickTestMatrix = apply {
+        scenarios.values.forEach { it.assertEntityCount(expected, type, tag, dimension) }
     }
 
     /**
      * Applies a lower-bound entity count assertion to every scenario.
      */
     @JvmOverloads
-    fun assertEntityCountAtLeast(minimum: Int, type: String? = null, tag: String? = null): SandboxQuickTestMatrix = apply {
-        scenarios.values.forEach { it.assertEntityCountAtLeast(minimum, type, tag) }
+    fun assertEntityCountAtLeast(
+        minimum: Int,
+        type: String? = null,
+        tag: String? = null,
+        dimension: String? = null,
+    ): SandboxQuickTestMatrix = apply {
+        scenarios.values.forEach { it.assertEntityCountAtLeast(minimum, type, tag, dimension) }
     }
 
     /**
      * Applies an upper-bound entity count assertion to every scenario.
      */
     @JvmOverloads
-    fun assertEntityCountAtMost(maximum: Int, type: String? = null, tag: String? = null): SandboxQuickTestMatrix = apply {
-        scenarios.values.forEach { it.assertEntityCountAtMost(maximum, type, tag) }
+    fun assertEntityCountAtMost(
+        maximum: Int,
+        type: String? = null,
+        tag: String? = null,
+        dimension: String? = null,
+    ): SandboxQuickTestMatrix = apply {
+        scenarios.values.forEach { it.assertEntityCountAtMost(maximum, type, tag, dimension) }
     }
 
     /**
      * Applies optional lower and upper entity count bounds to every scenario.
      */
     @JvmOverloads
-    fun assertEntityCountRange(min: Int? = null, max: Int? = null, type: String? = null, tag: String? = null): SandboxQuickTestMatrix = apply {
-        scenarios.values.forEach { it.assertEntityCountRange(min, max, type, tag) }
+    fun assertEntityCountRange(
+        min: Int? = null,
+        max: Int? = null,
+        type: String? = null,
+        tag: String? = null,
+        dimension: String? = null,
+    ): SandboxQuickTestMatrix = apply {
+        scenarios.values.forEach { it.assertEntityCountRange(min, max, type, tag, dimension) }
     }
 
     /**
@@ -1506,15 +1544,18 @@ class SandboxQuickTest private constructor(
         position: Position? = null,
         exists: Boolean = true,
         count: Int? = null,
+        dimension: String? = null,
     ): SandboxQuickTest = apply {
         val expectedType = type?.let(ResourceLocation::parse)
+        val expectedDimension = dimension?.let(ResourceLocation::parse)
         val matches = sandbox.world.entities.filter { entity ->
             (expectedType == null || entity.type == expectedType) &&
                 (tag == null || tag in entity.tags) &&
                 (uuid == null || entity.uuid == uuid) &&
-                (position == null || entity.position == position)
+                (position == null || entity.position == position) &&
+                (expectedDimension == null || entity.dimension == expectedDimension)
         }
-        val description = describeEntityExpectation(type, tag, uuid, position)
+        val description = describeEntityExpectation(type, tag, uuid, position, dimension)
         if (count != null) {
             if (matches.size != count) failures += "entity expected $count match(es) but found ${matches.size}: $description"
             return@apply
@@ -1548,16 +1589,19 @@ class SandboxQuickTest private constructor(
         nbtPath: String? = null,
         nbtEquals: String? = null,
         nbtExists: Boolean? = null,
+        dimension: String? = null,
     ): SandboxQuickTest = apply {
         val canonicalSlot = EquipmentSlots.canonical(slot)
             ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Entity equipment slot '$slot' is not supported")
         val expectedType = type?.let(ResourceLocation::parse)
+        val expectedDimension = dimension?.let(ResourceLocation::parse)
         val expectedId = id?.let(ResourceLocation::parse)
         val entities = sandbox.world.entities.filter { entity ->
             (expectedType == null || entity.type == expectedType) &&
                 (tag == null || tag in entity.tags) &&
                 (uuid == null || entity.uuid == uuid) &&
-                (position == null || entity.position == position)
+                (position == null || entity.position == position) &&
+                (expectedDimension == null || entity.dimension == expectedDimension)
         }
         val equipped = entities.mapNotNull { entity -> entity.equipment[canonicalSlot]?.let { item -> entity to item } }
         val matches = equipped.filter { (_, item) ->
@@ -1568,7 +1612,7 @@ class SandboxQuickTest private constructor(
                 jsonPathMatches(item.components, componentsPath, componentsEquals, componentsExists) &&
                 jsonPathMatches(item.nbt, nbtPath, nbtEquals, nbtExists)
         }
-        val entityDescription = describeEntityExpectation(type, tag, uuid, position)
+        val entityDescription = describeEntityExpectation(type, tag, uuid, position, dimension)
         val itemDescription = describeItemExpectation(
             id = id,
             count = count,
@@ -1604,14 +1648,17 @@ class SandboxQuickTest private constructor(
         durationTicks: Int? = null,
         amplifier: Int? = null,
         hideParticles: Boolean? = null,
+        dimension: String? = null,
     ): SandboxQuickTest = apply {
         val expectedType = type?.let(ResourceLocation::parse)
+        val expectedDimension = dimension?.let(ResourceLocation::parse)
         val id = ResourceLocation.parse(effect)
         val entities = sandbox.world.entities.filter { entity ->
             (expectedType == null || entity.type == expectedType) &&
                 (tag == null || tag in entity.tags) &&
                 (uuid == null || entity.uuid == uuid) &&
-                (position == null || entity.position == position)
+                (position == null || entity.position == position) &&
+                (expectedDimension == null || entity.dimension == expectedDimension)
         }
         val effects = entities.mapNotNull { entity -> entity.activeEffects[id]?.let { active -> entity to active } }
         val matches = effects.filter { (_, active) ->
@@ -1619,7 +1666,7 @@ class SandboxQuickTest private constructor(
                 (amplifier == null || active.amplifier == amplifier) &&
                 (hideParticles == null || active.hideParticles == hideParticles)
         }
-        val entityDescription = describeEntityExpectation(type, tag, uuid, position)
+        val entityDescription = describeEntityExpectation(type, tag, uuid, position, dimension)
         val effectDescription = describeEffectExpectation(effect, durationTicks, amplifier, hideParticles)
         if (exists && matches.isEmpty()) {
             failures += "entity effect $entityDescription expected $effectDescription but found ${effects.map { it.second.toJson() }}"
@@ -1643,14 +1690,17 @@ class SandboxQuickTest private constructor(
         value: Double? = null,
         min: Double? = null,
         max: Double? = null,
+        dimension: String? = null,
     ): SandboxQuickTest = apply {
         val expectedType = type?.let(ResourceLocation::parse)
+        val expectedDimension = dimension?.let(ResourceLocation::parse)
         val id = ResourceLocation.parse(attribute)
         val entities = sandbox.world.entities.filter { entity ->
             (expectedType == null || entity.type == expectedType) &&
                 (tag == null || tag in entity.tags) &&
                 (uuid == null || entity.uuid == uuid) &&
-                (position == null || entity.position == position)
+                (position == null || entity.position == position) &&
+                (expectedDimension == null || entity.dimension == expectedDimension)
         }
         val attributes = entities.mapNotNull { entity -> entity.attributes[id]?.let { actual -> entity to actual } }
         val matches = attributes.filter { (_, actual) ->
@@ -1658,7 +1708,7 @@ class SandboxQuickTest private constructor(
                 (min == null || actual >= min) &&
                 (max == null || actual <= max)
         }
-        val entityDescription = describeEntityExpectation(type, tag, uuid, position)
+        val entityDescription = describeEntityExpectation(type, tag, uuid, position, dimension)
         val attributeDescription = describeAttributeExpectation(attribute, value, min, max)
         if (exists && matches.isEmpty()) {
             failures += "entity attribute $entityDescription expected $attributeDescription but found ${attributes.map { it.second }}"
@@ -1672,10 +1722,15 @@ class SandboxQuickTest private constructor(
      * Asserts the number of entities matching optional type and tag filters.
      */
     @JvmOverloads
-    fun assertEntityCount(expected: Int, type: String? = null, tag: String? = null): SandboxQuickTest = apply {
-        val actual = entityCount(type, tag)
+    fun assertEntityCount(
+        expected: Int,
+        type: String? = null,
+        tag: String? = null,
+        dimension: String? = null,
+    ): SandboxQuickTest = apply {
+        val actual = entityCount(type, tag, dimension)
         if (actual != expected) {
-            failures += "entityCount ${describeEntityCount(type, tag)} expected $expected but was $actual"
+            failures += "entityCount ${describeEntityCount(type, tag, dimension)} expected $expected but was $actual"
         }
     }
 
@@ -1683,29 +1738,45 @@ class SandboxQuickTest private constructor(
      * Asserts that the number of matching entities is at least [minimum].
      */
     @JvmOverloads
-    fun assertEntityCountAtLeast(minimum: Int, type: String? = null, tag: String? = null): SandboxQuickTest = apply {
-        assertEntityCountBounds(min = minimum, max = null, type = type, tag = tag)
+    fun assertEntityCountAtLeast(
+        minimum: Int,
+        type: String? = null,
+        tag: String? = null,
+        dimension: String? = null,
+    ): SandboxQuickTest = apply {
+        assertEntityCountBounds(min = minimum, max = null, type = type, tag = tag, dimension = dimension)
     }
 
     /**
      * Asserts that the number of matching entities is at most [maximum].
      */
     @JvmOverloads
-    fun assertEntityCountAtMost(maximum: Int, type: String? = null, tag: String? = null): SandboxQuickTest = apply {
-        assertEntityCountBounds(min = null, max = maximum, type = type, tag = tag)
+    fun assertEntityCountAtMost(
+        maximum: Int,
+        type: String? = null,
+        tag: String? = null,
+        dimension: String? = null,
+    ): SandboxQuickTest = apply {
+        assertEntityCountBounds(min = null, max = maximum, type = type, tag = tag, dimension = dimension)
     }
 
     /**
      * Asserts optional lower and upper bounds for the number of matching entities.
      */
     @JvmOverloads
-    fun assertEntityCountRange(min: Int? = null, max: Int? = null, type: String? = null, tag: String? = null): SandboxQuickTest = apply {
-        assertEntityCountBounds(min, max, type, tag)
+    fun assertEntityCountRange(
+        min: Int? = null,
+        max: Int? = null,
+        type: String? = null,
+        tag: String? = null,
+        dimension: String? = null,
+    ): SandboxQuickTest = apply {
+        assertEntityCountBounds(min, max, type, tag, dimension)
     }
 
-    private fun assertEntityCountBounds(min: Int?, max: Int?, type: String?, tag: String?) {
-        val actual = entityCount(type, tag)
-        val label = describeEntityCount(type, tag)
+    private fun assertEntityCountBounds(min: Int?, max: Int?, type: String?, tag: String?, dimension: String?) {
+        val actual = entityCount(type, tag, dimension)
+        val label = describeEntityCount(type, tag, dimension)
         var checked = false
         min?.let {
             checked = true
@@ -1724,18 +1795,21 @@ class SandboxQuickTest private constructor(
         }
     }
 
-    private fun entityCount(type: String?, tag: String?): Int {
+    private fun entityCount(type: String?, tag: String?, dimension: String?): Int {
         val expectedType = type?.let(ResourceLocation::parse)
+        val expectedDimension = dimension?.let(ResourceLocation::parse)
         return sandbox.world.entities.count { entity ->
             (expectedType == null || entity.type == expectedType) &&
-                (tag == null || tag in entity.tags)
+                (tag == null || tag in entity.tags) &&
+                (expectedDimension == null || entity.dimension == expectedDimension)
         }
     }
 
-    private fun describeEntityCount(type: String?, tag: String?): String =
+    private fun describeEntityCount(type: String?, tag: String?, dimension: String?): String =
         listOfNotNull(
             type?.let { "type=$it" },
             tag?.let { "tag=$it" },
+            dimension?.let { "dimension=$it" },
         ).ifEmpty { listOf("<any entity>") }.joinToString(", ")
 
     /**
@@ -2188,12 +2262,13 @@ class SandboxQuickTest private constructor(
             ),
         )
 
-    private fun describeEntityExpectation(type: String?, tag: String?, uuid: String?, position: Position?): String =
+    private fun describeEntityExpectation(type: String?, tag: String?, uuid: String?, position: Position?, dimension: String?): String =
         listOfNotNull(
             type?.let { "type=$it" },
             tag?.let { "tag=$it" },
             uuid?.let { "uuid=$it" },
             position?.let { "position=$it" },
+            dimension?.let { "dimension=$it" },
         ).ifEmpty { listOf("<any entity>") }.joinToString(", ")
 
     private fun describeSnapshotDiffExpectation(path: String?, kind: SnapshotDiffKind?, contains: String?): String =

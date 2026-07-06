@@ -780,7 +780,8 @@ object ManifestRunner {
                 val actual = sandbox.world.entities.count { sandboxEntity ->
                     val typeOk = entity.manifestString("type")?.let { sandboxEntity.type == ResourceLocation.parse(it) } ?: true
                     val tagOk = entity.manifestString("tag")?.let { it in sandboxEntity.tags } ?: true
-                    typeOk && tagOk
+                    val dimensionOk = entity.manifestString("dimension")?.let { sandboxEntity.dimension == ResourceLocation.parse(it) } ?: true
+                    typeOk && tagOk && dimensionOk
                 }
                 var checked = false
                 entity.get("equals")?.let { expected ->
@@ -1191,13 +1192,15 @@ object ManifestRunner {
         val expectedType = entity.manifestString("type")?.let(ResourceLocation::parse)
         val expectedPosition = entity.getAsJsonArray("pos")?.let { parseManifestPosition(it) }
             ?: entity.getAsJsonArray("position")?.let { parseManifestPosition(it) }
+        val expectedDimension = entity.manifestString("dimension")?.let(ResourceLocation::parse)
         val expectedUuid = entity.manifestString("uuid")
         val expectedTag = entity.manifestString("tag")
         return sandbox.world.entities.filter { sandboxEntity ->
             (expectedType == null || sandboxEntity.type == expectedType) &&
                 (expectedTag == null || expectedTag in sandboxEntity.tags) &&
                 (expectedUuid == null || sandboxEntity.uuid == expectedUuid) &&
-                (expectedPosition == null || sandboxEntity.position == expectedPosition)
+                (expectedPosition == null || sandboxEntity.position == expectedPosition) &&
+                (expectedDimension == null || sandboxEntity.dimension == expectedDimension)
         }
     }
 
@@ -1334,12 +1337,14 @@ object ManifestRunner {
             entity.manifestString("tag")?.let { "tag=$it" },
             entity.manifestString("uuid")?.let { "uuid=$it" },
             (entity.getAsJsonArray("pos") ?: entity.getAsJsonArray("position"))?.let { "position=${parseManifestPosition(it)}" },
+            entity.manifestString("dimension")?.let { "dimension=$it" },
         ).ifEmpty { listOf("<any entity>") }.joinToString(", ")
 
     private fun describeEntityCountExpectation(entity: JsonObject): String =
         listOfNotNull(
             entity.manifestString("type")?.let { "type=$it" },
             entity.manifestString("tag")?.let { "tag=$it" },
+            entity.manifestString("dimension")?.let { "dimension=$it" },
         ).ifEmpty { listOf("<any entity>") }.joinToString(", ")
 
     private fun describeEffectExpectation(effect: ManifestEffectExpectation): String =

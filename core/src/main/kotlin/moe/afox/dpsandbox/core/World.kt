@@ -219,6 +219,7 @@ open class SandboxEntity(
     var pitch: Double = 0.0,
     var vehicle: String? = null,
     val passengers: MutableSet<String> = sortedSetOf(),
+    var dimension: ResourceLocation = ResourceLocation("minecraft", "overworld"),
 ) {
     open val scoreHolder: String get() = uuid
     val attributes: MutableMap<ResourceLocation, Double> = linkedMapOf()
@@ -257,12 +258,12 @@ class SandboxPlayer(
     val name: String,
     uuid: String = UUID.randomUUID().toString(),
     position: Position = Position.zero,
-    var dimension: ResourceLocation = ResourceLocation("minecraft", "overworld"),
+    dimension: ResourceLocation = ResourceLocation("minecraft", "overworld"),
     var gameMode: String = "survival",
     var xp: Int = 0,
     var health: Double = 20.0,
     var food: Int = 20,
-) : SandboxEntity(uuid, ResourceLocation("minecraft", "player"), position) {
+) : SandboxEntity(uuid = uuid, type = ResourceLocation("minecraft", "player"), position = position, dimension = dimension) {
     override val scoreHolder: String get() = name
 
     val inventory: MutableList<ItemStack> = mutableListOf()
@@ -1013,6 +1014,7 @@ fun SandboxEntity.toJson(profile: VersionProfile = VersionProfiles.default): Jso
     json.addProperty("x", position.x)
     json.addProperty("y", position.y)
     json.addProperty("z", position.z)
+    json.addProperty("dimension", dimension.toString())
     json.addProperty("yaw", yaw)
     json.addProperty("pitch", pitch)
     vehicle?.let { json.addProperty("vehicle", it) }
@@ -1040,7 +1042,6 @@ fun SandboxEntity.toJson(profile: VersionProfile = VersionProfiles.default): Jso
 fun SandboxPlayer.toPlayerJson(profile: VersionProfile = VersionProfiles.default): JsonElement {
     val json = toJson(profile).asJsonObject
     json.addProperty("name", name)
-    json.addProperty("dimension", dimension.toString())
     json.addProperty("gameMode", gameMode)
     json.addProperty("xp", xp)
     json.addProperty("health", health)

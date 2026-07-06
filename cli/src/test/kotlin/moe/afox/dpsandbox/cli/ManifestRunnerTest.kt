@@ -415,6 +415,7 @@ class ManifestRunnerTest {
                   {
                     "type": "minecraft:pig",
                     "pos": [1, 64, 0],
+                    "dimension": "minecraft:the_nether",
                     "tags": ["fixture"],
                     "equipment": {
                       "weapon.mainhand": {
@@ -490,12 +491,13 @@ class ManifestRunnerTest {
                   }
                 },
                 { "block": { "pos": [0, 64, 0], "id": "minecraft:chest", "nbt": { "path": "Items", "exists": true, "equals": [] } } },
-                { "entityCount": { "type": "minecraft:pig", "tag": "fixture", "equals": 1 } },
+                { "entityCount": { "type": "minecraft:pig", "tag": "fixture", "dimension": "minecraft:the_nether", "equals": 1 } },
                 {
                   "entity": {
                     "type": "minecraft:pig",
                     "tag": "fixture",
                     "position": [1, 64, 0],
+                    "dimension": "minecraft:the_nether",
                     "count": 1,
                     "equipment": {
                       "slot": "weapon.mainhand",
@@ -509,6 +511,7 @@ class ManifestRunnerTest {
                   "entity": {
                     "type": "minecraft:pig",
                     "tag": "fixture",
+                    "dimension": "minecraft:the_nether",
                     "effect": { "id": "minecraft:strength", "duration": 80, "amplifier": 2, "hideParticles": true }
                   }
                 },
@@ -516,6 +519,7 @@ class ManifestRunnerTest {
                   "entity": {
                     "type": "minecraft:pig",
                     "tag": "fixture",
+                    "dimension": "minecraft:the_nether",
                     "attribute": { "id": "minecraft:max_health", "equals": 12.0 }
                   }
                 },

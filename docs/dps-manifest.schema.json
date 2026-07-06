@@ -246,6 +246,7 @@
       "properties": {
         "type": { "type": "string" },
         "pos": { "$ref": "#/$defs/position" },
+        "dimension": { "type": "string" },
         "tags": { "$ref": "#/$defs/stringArray" },
         "nbt": true,
         "yaw": { "type": "number" },
@@ -595,6 +596,7 @@
       "properties": {
         "type": { "type": "string" },
         "tag": { "type": "string" },
+        "dimension": { "type": "string" },
         "equals": { "type": "integer", "minimum": 0 },
         "min": { "type": "integer", "minimum": 0 },
         "max": { "type": "integer", "minimum": 0 }
@@ -609,6 +611,7 @@
         "uuid": { "type": "string" },
         "pos": { "$ref": "#/$defs/position" },
         "position": { "$ref": "#/$defs/position" },
+        "dimension": { "type": "string" },
         "exists": { "type": "boolean" },
         "count": { "type": "integer", "minimum": 0 },
         "equipment": { "$ref": "#/$defs/entityEquipmentAssertion" },

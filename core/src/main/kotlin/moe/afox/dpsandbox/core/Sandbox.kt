@@ -25,8 +25,8 @@ data class ExecutionContext(
     val entity: SandboxEntity? = null,
     /** Base position for relative coordinates. Defaults to [entity]'s position or the origin. */
     val position: Position = entity?.position ?: Position.zero,
-    /** Current execution dimension. Non-player entities default to the overworld in the sparse sandbox. */
-    val dimension: ResourceLocation = (entity as? SandboxPlayer)?.dimension ?: ResourceLocation("minecraft", "overworld"),
+    /** Current execution dimension. Defaults to [entity]'s dimension or the overworld. */
+    val dimension: ResourceLocation = entity?.dimension ?: ResourceLocation("minecraft", "overworld"),
     /** Base yaw used by rotation-sensitive commands and relative rotation arguments. */
     val yaw: Double = entity?.yaw ?: 0.0,
     /** Base pitch used by rotation-sensitive commands and relative rotation arguments. */
@@ -512,7 +512,7 @@ class DatapackSandbox(
             "spawn" -> {
                 requireSize(tokens, 7, "loot spawn <pos> loot <table>", location)
                 val pos = parsePosition(tokens, 2, context, location)
-                spawnLootItems(pos, parseLootSource(tokens, 5, context, location))
+                spawnLootItems(pos, parseLootSource(tokens, 5, context, location), context.dimension)
             }
             "replace" -> executeLootReplace(tokens, location, context)
             else -> unsupportedFeature("Unsupported loot target '${tokens[1].text}'", profile.id, location)
@@ -717,11 +717,12 @@ class DatapackSandbox(
         return item.toNbtJson()
     }
 
-    private fun spawnLootItems(position: Position, items: List<ItemStack>) {
+    private fun spawnLootItems(position: Position, items: List<ItemStack>, dimension: ResourceLocation) {
         items.forEach { item ->
             world.entities += SandboxEntity(
                 type = ResourceLocation("minecraft", "item"),
                 position = position,
+                dimension = dimension,
                 nbt = JsonObject().also { it.add("Item", blockItemJson(item)) },
             )
         }
@@ -1403,7 +1404,7 @@ class DatapackSandbox(
         WeatherState(raining = world.weather == "rain" || world.weather == "thunder", thundering = world.weather == "thunder")
 
     private fun entityDimension(entity: SandboxEntity): ResourceLocation =
-        (entity as? SandboxPlayer)?.dimension ?: ResourceLocation("minecraft", "overworld")
+        entity.dimension
 
     private fun evaluateBlocksCondition(tokens: List<CommandToken>, index: Int, location: SourceLocation?, context: ExecutionContext): Pair<Boolean, Int> {
         requireSizeFrom(tokens, index, 11, "execute if|unless blocks <begin> <end> <destination> <all|masked>", location)
@@ -2329,7 +2330,7 @@ class DatapackSandbox(
                 world = world,
                 thisEntity = entity,
                 origin = entity.position,
-                dimension = ResourceLocation("minecraft", "overworld"),
+                dimension = entity.dimension,
                 tool = stack,
                 weather = currentWeatherState(),
             )
@@ -2415,7 +2416,7 @@ class DatapackSandbox(
         }
         val nbt = if (tokens.size > nbtStartIndex) parseSummonNbt(CommandTokenizer.tailFrom(command, tokens[nbtStartIndex]), location) else JsonObject()
         val tags = extractTags(nbt).toMutableSet()
-        val entity = SandboxEntity(type = type, position = position, tags = tags)
+        val entity = SandboxEntity(type = type, position = position, tags = tags, dimension = context.dimension)
         val fullNbt = entity.fullNbt(profile, location)
         nbt.entrySet().forEach { (key, value) -> fullNbt.add(key, value.deepCopy()) }
         entity.writeFullNbt(profile, fullNbt, location)
@@ -2448,19 +2449,19 @@ class DatapackSandbox(
                     anchoredPosition(entity.position, entity, context.anchor),
                 )
                 val rotation = parseOptionalTeleportRotation(tokens, 4, position, context, location)
-                moveEntities(listOf(entity), position, rotation)
+                moveEntities(listOf(entity), position, rotation, context.dimension)
             }
             tokens.size >= 5 && isCoordinateTriple(tokens, 2) -> {
                 val targets = EntitySelectors.select(world, tokens[1].text, context, location)
                 val position = parsePosition(tokens, 2, context, location)
                 val rotation = parseOptionalTeleportRotation(tokens, 5, position, context, location)
-                moveEntities(targets, position, rotation)
+                moveEntities(targets, position, rotation, context.dimension)
             }
             tokens.size >= 3 -> {
                 val targets = EntitySelectors.select(world, tokens[1].text, context, location)
                 val destination = EntitySelectors.select(world, tokens[2].text, context, location).firstOrNull()
                     ?: throw SandboxException(DiagnosticCode.COMMAND_ERROR, "Teleport destination '${tokens[2].text}' did not match an entity", location)
-                moveEntities(targets, destination.position, Rotation(destination.yaw, destination.pitch))
+                moveEntities(targets, destination.position, Rotation(destination.yaw, destination.pitch), destination.dimension)
             }
             else -> unsupportedFeature("Unsupported ${tokens[0].text} form", profile.id, location)
         }
@@ -2468,9 +2469,10 @@ class DatapackSandbox(
 
     private data class Rotation(val yaw: Double, val pitch: Double)
 
-    private fun moveEntities(entities: List<SandboxEntity>, position: Position, rotation: Rotation? = null) {
+    private fun moveEntities(entities: List<SandboxEntity>, position: Position, rotation: Rotation? = null, dimension: ResourceLocation? = null) {
         entities.forEach { entity ->
             entity.position = position
+            dimension?.let { entity.dimension = it }
             rotation?.let {
                 entity.yaw = it.yaw
                 entity.pitch = it.pitch

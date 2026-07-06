@@ -139,7 +139,7 @@ Add `"allowFailure": true` to a step when the failure itself is expected and
 should be asserted later with a `diagnostic` assertion.
 
 `world` can predefine sparse blocks/entities/players, including non-player
-entity equipment, active effects, and attributes, plus scoreboards, storage,
+entity dimensions, equipment, active effects, and attributes, plus scoreboards, storage,
 gamerules, time/weather, seed/difficulty/default game mode, world/player spawn
 points, world border, forced chunks, biome overrides, teams, bossbars, and scoped Java save
 imports.
@@ -160,11 +160,11 @@ path, for example `assertion 1 (/assertions/0): ...`.
 ```
 
 ```json
-{ "entityCount": { "type": "minecraft:pig", "tag": "fixture", "min": 1, "max": 3 } }
+{ "entityCount": { "type": "minecraft:pig", "tag": "fixture", "dimension": "minecraft:the_nether", "min": 1, "max": 3 } }
 ```
 
 ```json
-{ "entity": { "type": "minecraft:pig", "tag": "fixture", "equipment": { "slot": "weapon.mainhand", "id": "minecraft:iron_sword" }, "effect": { "id": "minecraft:strength", "duration": 80 }, "attribute": { "id": "minecraft:max_health", "equals": 12.0 } } }
+{ "entity": { "type": "minecraft:pig", "tag": "fixture", "dimension": "minecraft:the_nether", "equipment": { "slot": "weapon.mainhand", "id": "minecraft:iron_sword" }, "effect": { "id": "minecraft:strength", "duration": 80 }, "attribute": { "id": "minecraft:max_health", "equals": 12.0 } } }
 ```
 
 ```json
@@ -195,7 +195,7 @@ path, for example `assertion 1 (/assertions/0): ...`.
 { "snapshotDiff": { "path": "/scores/runs/#clock", "kind": "changed", "after": 20, "count": 1 } }
 ```
 
-`entity` assertions can check existence/count after type/tag/uuid/position
+`entity` assertions can check existence/count after type/tag/uuid/position/dimension
 filtering, plus equipment item id/count/components/NBT, active effect
 duration/amplifier/particle state, and explicit attribute values. `player` assertions can also check existence, dimension, game mode, health,
 food, selected slot, recipe, effect, stat, position, last input, and spawn point. `team` and

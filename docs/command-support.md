@@ -41,7 +41,7 @@ run continues. Use `--unsupported error`, manifest `"unsupported": "error"`, or
 | `deop`, `op` | Unsupported | Permission system is not simulated. |
 | `effect` | Partial | `give`, `clear`; updates player effect state with advancement events and non-player entity active effects visible through snapshot and `ActiveEffects` NBT. |
 | `enchant` | Partial | Writes enchantment components to player selected items and non-player mainhand equipment; no enchantability checks. |
-| `execute` | Partial | `as`, `at`, `positioned <pos>`, `positioned as <selector>`, `align`, `anchored`, `facing`, `in`, `rotated`, `store`, `if`, `unless`, `run`; `as` changes only the executor while `at` and `positioned as` move the execution position; `align` floors validated `x`/`y`/`z` axes; `rotated` and `facing` update the command rotation context used by relative `tp` rotations and local coordinates; `anchored` updates the local-coordinate base; `store` targets score, storage, entity NBT, block NBT, and bossbar value/max; conditions support `entity`, `score`, `data`, `block`, `blocks`, `predicate`, `function`, `dimension`, `biome`, and `loaded`. |
+| `execute` | Partial | `as`, `at`, `positioned <pos>`, `positioned as <selector>`, `align`, `anchored`, `facing`, `in`, `rotated`, `store`, `if`, `unless`, `run`; `as` changes only the executor, `at` moves execution position/dimension/rotation to the target, and `positioned as` moves only the execution position; `align` floors validated `x`/`y`/`z` axes; `rotated` and `facing` update the command rotation context used by relative `tp` rotations and local coordinates; `anchored` updates the local-coordinate base; `store` targets score, storage, entity NBT, block NBT, and bossbar value/max; conditions support `entity`, `score`, `data`, `block`, `blocks`, `predicate`, `function`, `dimension`, `biome`, and `loaded`. |
 | `experience`, `xp` | Partial | `add`, `set`, `query`; points and levels share the sandbox XP integer; `query` records structured data output for assertions and `execute store result`. |
 | `fill` | Partial | `fill <from> <to> <block[state]{nbt}> [replace|keep|destroy|hollow|outline]`; position arguments accept local coordinates; no updates/drops. |
 | `fillbiome` | Partial | Stores biome overrides for explicit block ranges; no chunk biome container or generation effects. |
@@ -56,7 +56,7 @@ run continues. Use `--unsupported error`, manifest `"unsupported": "error"`, or
 | `kill` | Supported | Removes selected sandbox entities; player execution contexts fire `killed_entity` advancement events for non-player targets. |
 | `list` | Supported | Reports sandbox players and UUIDs. |
 | `locate` | Partial | Accepts `biome`, `structure`, `poi`; reports no result in the void world instead of querying worldgen. |
-| `loot` | Partial | Supports `give`, `insert`, `spawn`, `replace entity`, `replace block`; `replace entity` writes player inventory slots and non-player equipment slots; sources include `loot <table>`, `fish <table> <pos> [tool]`, `mine <pos> [tool]`, `kill <target>` when entities declare `DeathLootTable`, plus sandbox context sources `entity <table> <target>`, `block <table> <pos> [tool]`, and `equipment <table> <target> <slot>`; common functions include count, item id, discard, components/custom data, damage, name, and lore. |
+| `loot` | Partial | Supports `give`, `insert`, `spawn`, `replace entity`, `replace block`; `spawn` creates item entities in the current execution dimension; `replace entity` writes player inventory slots and non-player equipment slots; sources include `loot <table>`, `fish <table> <pos> [tool]`, `mine <pos> [tool]`, `kill <target>` when entities declare `DeathLootTable`, plus sandbox context sources `entity <table> <target>`, `block <table> <pos> [tool]`, and `equipment <table> <target> <slot>`; common functions include count, item id, discard, components/custom data, damage, name, and lore. |
 | `me` | Supported | Recorded as chat output. |
 | `msg`, `tell`, `w` | Supported | Recorded as private chat output. |
 | `pardon`, `pardon-ip` | Unsupported | Server administration is not simulated. |
@@ -83,11 +83,11 @@ run continues. Use `--unsupported error`, manifest `"unsupported": "error"`, or
 | `spreadplayers` | Partial | Deterministically distributes selected entities around a center; no collision/team algorithm. |
 | `stop` | Unsupported | Runtime lifecycle is controlled by the host process, not commands. |
 | `stopsound` | Partial | Recorded as sound output event. |
-| `summon` | Partial | Creates entities with position, tags, and schema-checked NBT; AI does not tick. |
+| `summon` | Partial | Creates entities in the current execution dimension with position, tags, and schema-checked NBT; AI does not tick. |
 | `tag` | Supported | `add`, `remove`, `list`. |
 | `team` | Partial | `add`, `remove`, `list`, `join`, `leave`, `empty`, `modify`; no gameplay effects. |
 | `teammsg`, `tm` | Supported | Recorded as team chat output. |
-| `teleport`, `tp` | Partial | Coordinate teleport supports local coordinates, optional rotation, and `facing`; destination-entity teleport copies rotation. |
+| `teleport`, `tp` | Partial | Coordinate teleport supports local coordinates, optional rotation, `facing`, and the current execution dimension; destination-entity teleport copies destination position, dimension, and rotation. |
 | `tellraw` | Supported | Resolves JSON text components into output events. |
 | `tick` | Partial | `query`, `rate`, `freeze`, `unfreeze`, `step`, `sprint`, `stop`; updates sandbox tick state and can advance ticks. |
 | `time` | Partial | `set`, `add`, `query daytime|gametime|day`; query records structured data output for assertions and `execute store result`. |

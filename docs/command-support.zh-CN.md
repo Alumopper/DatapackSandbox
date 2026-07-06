@@ -34,7 +34,7 @@
 | `deop`、`op` | 未支持 | 不模拟权限系统。 |
 | `effect` | 部分支持 | `give`、`clear`；更新玩家效果状态并触发相关 advancement 事件，也会更新非玩家实体 active effects，并通过 snapshot 和 `ActiveEffects` NBT 暴露。 |
 | `enchant` | 部分支持 | 向玩家选中物品和非玩家实体主手装备写入附魔组件；不检查可附魔性。 |
-| `execute` | 部分支持 | 支持 `as`、`at`、`positioned <pos>`、`positioned as <selector>`、`align`、`anchored`、`facing`、`in`、`rotated`、`store`、`if`、`unless`、`run` 的核心路径；`as` 只切换执行者，`at` 和 `positioned as` 会移动执行位置；`align` 会对校验过的 `x`/`y`/`z` 轴取整；`rotated` 和 `facing` 会更新命令旋转上下文，供 `tp` 的相对旋转参数和局部坐标使用；`anchored` 会更新局部坐标基准点；`store` 目标覆盖 score、storage、entity NBT、block NBT 和 bossbar value/max；条件覆盖 `entity`、`score`、`data`、`block`、`blocks`、`predicate`、`function`、`dimension`、`biome` 和 `loaded`。 |
+| `execute` | 部分支持 | 支持 `as`、`at`、`positioned <pos>`、`positioned as <selector>`、`align`、`anchored`、`facing`、`in`、`rotated`、`store`、`if`、`unless`、`run` 的核心路径；`as` 只切换执行者，`at` 会把执行位置、维度和旋转移动到目标实体，`positioned as` 只移动执行位置；`align` 会对校验过的 `x`/`y`/`z` 轴取整；`rotated` 和 `facing` 会更新命令旋转上下文，供 `tp` 的相对旋转参数和局部坐标使用；`anchored` 会更新局部坐标基准点；`store` 目标覆盖 score、storage、entity NBT、block NBT 和 bossbar value/max；条件覆盖 `entity`、`score`、`data`、`block`、`blocks`、`predicate`、`function`、`dimension`、`biome` 和 `loaded`。 |
 | `experience`、`xp` | 部分支持 | `add`、`set`、`query`；沙盒内 points/levels 共用玩家 XP 整数字段；`query` 会记录结构化 data 输出，供断言和 `execute store result` 使用。 |
 | `fill` | 部分支持 | `fill <from> <to> <block[state]{nbt}> [replace|keep|destroy|hollow|outline]`；位置参数支持局部坐标；不执行更新或掉落。 |
 | `fillbiome` | 部分支持 | 为显式方块范围记录 biome 覆盖；不模拟区块 biome 容器或生成效果。 |
@@ -49,7 +49,7 @@
 | `kill` | 支持 | 移除选中的沙盒实体；玩家执行上下文会为非玩家目标触发 `killed_entity` advancement 事件。 |
 | `list` | 支持 | 报告沙盒玩家及 UUID。 |
 | `locate` | 部分支持 | 接受 `biome`、`structure`、`poi`；虚空世界中报告没有结果。 |
-| `loot` | 部分支持 | 支持 `give`、`insert`、`spawn`、`replace entity`、`replace block`；`replace entity` 可写入玩家背包槽和非玩家实体装备槽；source 支持 `loot <table>`、`fish <table> <pos> [tool]`、`mine <pos> [tool]`，以及实体声明 `DeathLootTable` 时的 `kill <target>`；还支持沙盒上下文 source：`entity <table> <target>`、`block <table> <pos> [tool]`、`equipment <table> <target> <slot>`；常用函数覆盖 count、item id、discard、components/custom data、damage、name 和 lore。 |
+| `loot` | 部分支持 | 支持 `give`、`insert`、`spawn`、`replace entity`、`replace block`；`spawn` 会在当前执行维度创建 item 实体；`replace entity` 可写入玩家背包槽和非玩家实体装备槽；source 支持 `loot <table>`、`fish <table> <pos> [tool]`、`mine <pos> [tool]`，以及实体声明 `DeathLootTable` 时的 `kill <target>`；还支持沙盒上下文 source：`entity <table> <target>`、`block <table> <pos> [tool]`、`equipment <table> <target> <slot>`；常用函数覆盖 count、item id、discard、components/custom data、damage、name 和 lore。 |
 | `me` | 支持 | 记录为 chat 输出事件。 |
 | `msg`、`tell`、`w` | 支持 | 记录为私聊输出事件。 |
 | `pardon`、`pardon-ip` | 未支持 | 不模拟服务器封禁管理。 |
@@ -76,11 +76,11 @@
 | `spreadplayers` | 部分支持 | 确定性地把选中实体分布到中心附近；不实现原版碰撞/队伍算法。 |
 | `stop` | 未支持 | 运行时生命周期由宿主进程控制。 |
 | `stopsound` | 部分支持 | 记录为 sound 输出事件。 |
-| `summon` | 部分支持 | 创建带位置、tag 和 schema 校验 NBT 的实体；实体 AI 不 tick。 |
+| `summon` | 部分支持 | 在当前执行维度创建带位置、tag 和 schema 校验 NBT 的实体；实体 AI 不 tick。 |
 | `tag` | 支持 | `add`、`remove`、`list`。 |
 | `team` | 部分支持 | `add`、`remove`、`list`、`join`、`leave`、`empty`、`modify`；不执行 gameplay 副作用。 |
 | `teammsg`、`tm` | 支持 | 记录为 team chat 输出事件。 |
-| `teleport`、`tp` | 部分支持 | 坐标传送支持局部坐标、可选旋转和 `facing`；目标实体传送会复制目标旋转。 |
+| `teleport`、`tp` | 部分支持 | 坐标传送支持局部坐标、可选旋转、`facing` 和当前执行维度；目标实体传送会复制目标位置、维度和旋转。 |
 | `tellraw` | 支持 | 解析 JSON text component 并记录输出事件。 |
 | `tick` | 部分支持 | `query`、`rate`、`freeze`、`unfreeze`、`step`、`sprint`、`stop`；更新沙盒 tick 状态，可推进 tick。 |
 | `time` | 部分支持 | `set`、`add`、`query daytime|gametime|day`；query 会记录结构化 data 输出，供断言和 `execute store result` 使用。 |
