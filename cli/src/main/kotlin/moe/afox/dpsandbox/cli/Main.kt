@@ -297,6 +297,7 @@ private fun ManifestResourceSummary.toReportJson(): JsonObject =
                         overlay.addProperty("file", entry.file)
                         overlay.addProperty("pack", entry.pack)
                         overlay.addProperty("order", entry.order)
+                        overlay.addProperty("behavior", entry.behaviorLevel.id)
                         overlay.addProperty("active", entry.active)
                         entry.overrides?.let { overlay.addProperty("overrides", it) }
                         entry.overriddenBy?.let { overlay.addProperty("overriddenBy", it) }

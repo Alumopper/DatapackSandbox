@@ -38,6 +38,18 @@ class DatapackResourceIndexTest {
         assertTrue(datapack.resourceIndex.any { it.type == "recipe" && it.id == ResourceLocation.parse("demo:marker") && it.active })
         assertTrue(datapack.resourceIndex.any { it.type == "item_modifier" && it.id == ResourceLocation.parse("demo:mark_item") && it.active })
         assertTrue(datapack.resourceIndex.any { it.type == "tag/item" && it.id == ResourceLocation.parse("demo:debug_items") && it.active })
+        assertEquals(
+            ResourceBehaviorLevel.MODELED,
+            datapack.resourceIndex.single { it.type == "recipe" && it.id == ResourceLocation.parse("demo:marker") }.behaviorLevel,
+        )
+        assertEquals(
+            ResourceBehaviorLevel.OBSERVED_NOOP,
+            datapack.resourceIndex.single { it.type == "damage_type" && it.id == ResourceLocation.parse("demo:debug_damage") }.behaviorLevel,
+        )
+        assertEquals(
+            ResourceBehaviorLevel.OBSERVED_NOOP,
+            datapack.resourceIndex.single { it.type == "tag/item" && it.id == ResourceLocation.parse("demo:debug_items") }.behaviorLevel,
+        )
         expectedRawKinds.forEach { kind ->
             assertTrue(kind in datapack.rawResources.keys, "missing raw resource kind $kind")
             assertTrue(datapack.resourceIndex.any { it.type == kind && it.active }, "missing resource index for $kind")
@@ -109,6 +121,7 @@ class DatapackResourceIndexTest {
             .map { it.asJsonObject }
             .single { it.get("type").asString == "recipe" && it.get("id").asString == "demo:marker" && it.get("active").asBoolean }
         assertTrue(recipeOverride.get("overrides").asString.contains("overlay-first"), recipeOverride.toString())
+        assertEquals("modeled", recipeOverride.get("behavior").asString)
 
         val overriddenRecipe = payload.getAsJsonArray("resourceOverrides")
             .map { it.asJsonObject }

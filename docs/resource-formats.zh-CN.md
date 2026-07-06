@@ -50,6 +50,27 @@ Minecraft Java `26.2` 使用 data pack format `107.1`，当前资源目录是单
 
 新版 pack 如果不用单个 `pack_format`，也可以声明范围。加载器支持 `min_format`/`max_format` 和 `supported_formats`，只要当前 profile 的 data pack format 落在范围内即可。
 
+## 资源行为等级
+
+| 等级 | 含义 |
+|---|---|
+| `exact` | 文档覆盖的行为目标是与原版可观察结果一致。 |
+| `modeled` | 资源会进入确定性的沙盒运行时语义。 |
+| `observed-noop` | 资源会被版本校验、索引、记录覆盖关系并可 inspect，但完整运行时语义有意缺省。 |
+| `unsupported` | 资源不会加载，或会被当前沙盒拒绝。 |
+
+| 资源 | 行为等级 | 运行时 / debug 表面 |
+|---|---:|---|
+| `function`、`tag/function` | `modeled` | load/tick/function 执行、调度、trace source location 和缺失引用检查。 |
+| `loot_table` | `modeled` | 支持上下文内的确定性 loot 生成、loot 命令输出、advancement reward 和嵌套 loot 引用检查。 |
+| `predicate` | `modeled` | predicate 命令/API、advancement 条件、loot 条件、item modifier 和缺失 predicate 引用检查。 |
+| `advancement` | `modeled` | 玩家 progress、模拟事件触发 criteria、rewards、output/event trace，以及 parent/reward 缺失引用检查。 |
+| `recipe` | `modeled` | 进入资源索引和玩家 recipe 状态，供 `recipe` 命令与 advancement reward 使用；不模拟合成网格。 |
+| `item_modifier` | `modeled` | `item modify` 会应用常用 modifier 函数；未覆盖函数仍可 inspect，并在使用时给出诊断。 |
+| 普通 tag | `observed-noop` | 按 registry 加载并保留 `replace` 语义，可 inspect/debug；目前只有 function tag 参与执行入口。 |
+| 额外注册表 JSON（`damage_type`、`dimension`、`chat_type`、trim、variant 等） | `observed-noop` | 进行版本 profile 校验、索引和覆盖关系记录，可 inspect；不模拟完整原版注册表行为。 |
+| worldgen 与 structure JSON | `observed-noop` | 进行版本 profile 校验、索引和覆盖关系记录，可 inspect；不模拟地形生成或结构放置。 |
+
 ## 函数
 
 函数文件是 `.mcfunction`，路径会映射为 resource location：

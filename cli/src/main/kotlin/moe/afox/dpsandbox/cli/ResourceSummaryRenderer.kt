@@ -24,7 +24,7 @@ object ResourceSummaryRenderer {
                     entry.overrides?.let { "overrides=$it" },
                     entry.overriddenBy?.let { "overriddenBy=$it" },
                 ).joinToString(separator = " ").takeIf { it.isNotBlank() }?.let { " $it" }.orEmpty()
-                add("overlay ${entry.type} ${entry.id} $state pack=${entry.pack} file=${entry.file}$overlay")
+                add("overlay ${entry.type} ${entry.id} ${entry.behaviorLevel.id} $state pack=${entry.pack} file=${entry.file}$overlay")
             }
             summary.missingReferences.forEach { reference ->
                 add("missing-reference ${reference.source} -> ${reference.type} ${reference.id}")

@@ -58,6 +58,27 @@ For newer packs that declare a supported range instead of a single
 `supported_formats` when the active profile's data pack format is inside the
 range.
 
+## Resource Behavior Levels
+
+| Level | Meaning |
+|---|---|
+| `exact` | The documented surface is intended to match vanilla-observable behavior. |
+| `modeled` | The resource is loaded into deterministic sandbox runtime behavior. |
+| `observed-noop` | The resource is version-checked, indexed, overlay-aware, and inspectable, but full runtime semantics are intentionally absent. |
+| `unsupported` | The resource is not loaded or is rejected by the current sandbox. |
+
+| Resource | Behavior | Runtime/debug surface |
+|---|---:|---|
+| `function`, `tag/function` | `modeled` | Load/tick/function execution, scheduling, trace source locations, and missing-reference checks. |
+| `loot_table` | `modeled` | Deterministic loot generation for supported contexts, loot command output, advancement rewards, and nested loot reference checks. |
+| `predicate` | `modeled` | Predicate command/API checks, advancement conditions, loot conditions, item modifiers, and missing predicate reference checks. |
+| `advancement` | `modeled` | Player progress, criteria matching from simulated events, rewards, output/event trace, and parent/reward missing-reference checks. |
+| `recipe` | `modeled` | Loaded into the resource index and player recipe state for `recipe` commands and advancement rewards; crafting grids are not simulated. |
+| `item_modifier` | `modeled` | Common modifier functions are applied by `item modify`; unsupported functions remain inspectable and produce diagnostics when used. |
+| General tags | `observed-noop` | Loaded with `replace` semantics, indexed by registry, and available to inspect/debug; only function tags currently drive execution. |
+| Additional registry JSON (`damage_type`, `dimension`, `chat_type`, trim, variants, etc.) | `observed-noop` | Version-profile checked, indexed, overlay-aware, and inspectable; no full vanilla registry behavior is simulated. |
+| Worldgen and structure JSON | `observed-noop` | Version-profile checked, indexed, overlay-aware, and inspectable; no terrain generation or structure placement is simulated. |
+
 ## `.dps.json` Manifests
 
 Manifests may contain `version` or `versions`, `unsupported`, `seed`,

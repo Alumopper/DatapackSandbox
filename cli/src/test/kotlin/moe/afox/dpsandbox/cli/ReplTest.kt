@@ -130,7 +130,7 @@ class ReplTest {
         assertTrue(output.contains("damage_type 1"), output)
         assertTrue(output.contains("demo:debug_damage file="), output)
         assertTrue(output.contains("\"marker\": \"raw\""), output)
-        assertTrue(output.contains("damage_type demo:debug_damage active"), output)
+        assertTrue(output.contains("damage_type demo:debug_damage observed-noop active"), output)
     }
 
     private fun captureStdout(block: () -> Unit): String {

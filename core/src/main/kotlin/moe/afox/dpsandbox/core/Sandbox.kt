@@ -832,6 +832,7 @@ class DatapackSandbox(
             payload.addProperty("id", id.toString())
             payload.addProperty("pack", pack)
             payload.addProperty("file", file)
+            payload.addProperty("behavior", behaviorLevel.id)
             payload.addProperty("active", active)
             overrides?.let { payload.addProperty("overrides", it) }
             overriddenBy?.let { payload.addProperty("overriddenBy", it) }

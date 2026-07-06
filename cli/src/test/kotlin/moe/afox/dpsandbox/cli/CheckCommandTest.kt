@@ -373,8 +373,8 @@ class CheckCommandTest {
         assertTrue("resources 26.2 functions=1" in output, output)
         assertTrue("recipes=1" in output, output)
         assertTrue("overridden=" in output, output)
-        assertTrue("overlay recipe demo:marker active" in output, output)
-        assertTrue("overlay recipe demo:marker overridden" in output, output)
+        assertTrue("overlay recipe demo:marker modeled active" in output, output)
+        assertTrue("overlay recipe demo:marker modeled overridden" in output, output)
         assertTrue("missing-reference #minecraft:load -> function demo:missing_load" in output, output)
     }
 

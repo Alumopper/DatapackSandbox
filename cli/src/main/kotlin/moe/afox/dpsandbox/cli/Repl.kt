@@ -393,7 +393,7 @@ class Repl(
                             entry.overrides?.let { "overrides=$it" },
                             entry.overriddenBy?.let { "overriddenBy=$it" },
                         ).joinToString(prefix = " ", separator = " ").takeIf { it.isNotBlank() }.orEmpty()
-                        println("${entry.type} ${entry.id} $active pack=${entry.pack} file=${entry.file}$overlay")
+                        println("${entry.type} ${entry.id} ${entry.behaviorLevel.id} $active pack=${entry.pack} file=${entry.file}$overlay")
                     }
             }
             "registry" -> {

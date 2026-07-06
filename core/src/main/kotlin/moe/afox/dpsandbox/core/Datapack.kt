@@ -152,6 +152,7 @@ data class ResourceIndexEntry(
     val active: Boolean = true,
     val overrides: String? = null,
     val overriddenBy: String? = null,
+    val behaviorLevel: ResourceBehaviorLevel = ResourceBehaviorLevels.forType(type),
 )
 
 /**
