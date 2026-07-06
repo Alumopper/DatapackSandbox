@@ -226,8 +226,9 @@ Entity item commands support player inventory slots and non-player equipment
 slots such as `weapon.mainhand`, `weapon.offhand`, and `armor.*`; equipment is
 also exposed through snapshots and `HandItems`/`ArmorItems` entity NBT. Entity
 predicates can match `equipment` fields for `mainhand`, `offhand`, `head`,
-`chest`, `legs`, and `feet`, and entity `nbt` predicates are checked against
-the full generated entity NBT view.
+`chest`, `legs`, and `feet`, active `effects` with amplifier/duration and
+particle visibility, and entity `nbt` predicates are checked against the full
+generated entity NBT view.
 
 Current directories:
 

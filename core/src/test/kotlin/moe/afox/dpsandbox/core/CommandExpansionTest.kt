@@ -253,16 +253,15 @@ class CommandExpansionTest {
 
     @Test
     fun `effect commands support non-player entity active effects`() {
-        val sandbox = createFunctionSandboxFromString(
-            version = "26.2",
-            functionText = "",
-            functionId = "demo:empty",
-        )
+        val pack = writeEffectPredicatePack(Files.createTempDirectory("dps-effect-predicate-pack"))
+        val sandbox = createSandbox("26.2", listOf(pack))
 
         sandbox.executeCommand("summon minecraft:zombie 0 64 0")
         sandbox.executeCommand("scoreboard objectives add effects dummy")
         sandbox.executeCommand("effect give @e[type=minecraft:zombie,limit=1] minecraft:speed 7 2 true")
         sandbox.executeCommand("execute if data entity @e[type=minecraft:zombie,limit=1] ActiveEffects[{id:\"minecraft:speed\"}] run scoreboard players add #nbt effects 1")
+        sandbox.executeCommand("execute as @e[type=minecraft:zombie,limit=1] if predicate demo:zombie_speed_effect run scoreboard players add #predicate effects 1")
+        sandbox.executeCommand("execute as @e[type=minecraft:zombie,limit=1] if predicate demo:zombie_no_strength run scoreboard players add #predicate effects 1")
 
         val zombie = sandbox.world.entities.first { it.type == ResourceLocation.parse("minecraft:zombie") }
         val speed = zombie.activeEffects[ResourceLocation.parse("minecraft:speed")] ?: error("missing zombie speed effect")
@@ -285,6 +284,7 @@ class CommandExpansionTest {
             .getAsJsonArray("effects")
         assertEquals("minecraft:speed", snapshotEffects.single().asJsonObject.get("id").asString)
         assertEquals(1, sandbox.world.getScore("#nbt", "effects"))
+        assertEquals(2, sandbox.world.getScore("#predicate", "effects"))
 
         sandbox.executeCommand("effect clear @e[type=minecraft:zombie,limit=1] minecraft:speed")
         assertTrue(ResourceLocation.parse("minecraft:speed") !in zombie.activeEffects)
@@ -853,6 +853,60 @@ class CommandExpansionTest {
                 "name": "demo:shared"
               }
             ]
+            """.trimIndent(),
+        )
+        return root
+    }
+
+    private fun writeEffectPredicatePack(root: Path): Path {
+        Files.writeString(
+            root.resolve("pack.mcmeta").also { Files.createDirectories(it.parent) },
+            """
+            {
+              "pack": {
+                "pack_format": 107.1,
+                "description": "effect predicate test"
+              }
+            }
+            """.trimIndent(),
+        )
+        val predicateRoot = root.resolve("data").resolve("demo").resolve("predicate")
+        Files.createDirectories(predicateRoot)
+        Files.writeString(
+            predicateRoot.resolve("zombie_speed_effect.json"),
+            """
+            {
+              "condition": "minecraft:entity_properties",
+              "entity": "this",
+              "predicate": {
+                "type": "minecraft:zombie",
+                "effects": {
+                  "minecraft:speed": {
+                    "amplifier": 2,
+                    "duration": {
+                      "min": 140,
+                      "max": 140
+                    },
+                    "hide_particles": true
+                  }
+                }
+              }
+            }
+            """.trimIndent(),
+        )
+        Files.writeString(
+            predicateRoot.resolve("zombie_no_strength.json"),
+            """
+            {
+              "condition": "minecraft:entity_properties",
+              "entity": "this",
+              "predicate": {
+                "type": "minecraft:zombie",
+                "effects": {
+                  "minecraft:strength": false
+                }
+              }
+            }
             """.trimIndent(),
         )
         return root

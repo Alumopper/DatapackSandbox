@@ -172,8 +172,42 @@ class PredicateEngine(
         predicate.getAsJsonObject("equipment")?.let {
             if (!testEquipmentPredicate(actual, it)) return false
         }
+        predicate.getAsJsonObject("effects")?.let {
+            if (!testEffectsPredicate(actual, it)) return false
+        }
         return true
     }
+
+    private fun testEffectsPredicate(entity: SandboxEntity, predicate: JsonObject): Boolean {
+        predicate.entrySet().forEach { (id, value) ->
+            val effect = entityEffect(entity, ResourceLocation.parse(id))
+            if (value.isJsonPrimitive && value.asJsonPrimitive.isBoolean) {
+                if ((effect != null) != value.asBoolean) return false
+                return@forEach
+            }
+            if (effect == null || !value.isJsonObject) return false
+            val effectPredicate = value.asJsonObject
+            effectPredicate.get("amplifier")?.let { if (!testRange(effect.amplifier.toLong(), it)) return false }
+            effectPredicate.get("duration")?.let { if (!testRange(effect.durationTicks.toLong(), it)) return false }
+            effectPredicate.get("visible")?.takeIf { it.isJsonPrimitive }?.let {
+                if (it.asBoolean == effect.hideParticles) return false
+            }
+            effectPredicate.get("show_particles")?.takeIf { it.isJsonPrimitive }?.let {
+                if (it.asBoolean == effect.hideParticles) return false
+            }
+            effectPredicate.get("hide_particles")?.takeIf { it.isJsonPrimitive }?.let {
+                if (it.asBoolean != effect.hideParticles) return false
+            }
+        }
+        return true
+    }
+
+    private fun entityEffect(entity: SandboxEntity, id: ResourceLocation): PlayerEffect? =
+        if (entity is SandboxPlayer) {
+            entity.effectDetails[id] ?: id.takeIf { it in entity.effects }?.let { PlayerEffect(it) }
+        } else {
+            entity.activeEffects[id]
+        }
 
     private fun testEquipmentPredicate(entity: SandboxEntity, predicate: JsonObject): Boolean {
         predicate.entrySet().forEach { (key, value) ->
