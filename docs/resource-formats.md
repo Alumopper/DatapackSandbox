@@ -180,7 +180,7 @@ path, for example `assertion 1 (/assertions/0): ...`.
 ```
 
 ```json
-{ "trace": { "root": "scoreboard", "success": true, "outputs": 0, "hasDiff": true, "diffPath": "/scores/runs", "diffKind": "added", "diffContains": "#clock", "count": 1 } }
+{ "trace": { "root": "scoreboard", "success": true, "outputs": 0, "outputContains": "done", "outputTarget": "Steve", "hasDiff": true, "diffPath": "/scores/runs", "diffKind": "added", "diffContains": "#clock", "count": 1 } }
 ```
 
 ```json
@@ -214,8 +214,8 @@ whitespace-normalized text/contains, payload path/value, segment style, count,
 and one-based `order`. When an output assertion misses, the failure message
 includes a bounded list of actual output candidates.
 `trace` assertions can check command/root/contains, success, output count,
-whether a command produced snapshot diffs, diff path/kind/rendered text, count,
-source file, and function stack. When a trace assertion misses, the failure
+output text/target, whether a command produced snapshot diffs, diff
+path/kind/rendered text, count, source file, and function stack. When a trace assertion misses, the failure
 message includes a bounded list of actual command trace candidates. `eventTrace`
 assertions check player event dispatch by player, type, success, item/entity/block/recipe
 context, dimension changes, damage source/amount, input device/code/action,

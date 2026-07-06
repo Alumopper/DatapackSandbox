@@ -531,6 +531,8 @@ class SandboxQuickTestTest {
                 contains = "quick test",
                 success = true,
                 outputs = 1,
+                outputContains = "traced from quick test",
+                outputTarget = "Steve",
                 hasDiff = true,
                 diffPath = "/outputs/0",
                 diffKind = SnapshotDiffKind.ADDED,
@@ -549,10 +551,12 @@ class SandboxQuickTestTest {
         val traces = scenario.traces()
         val scoreboardTraces = scenario.matchingTraces(root = "scoreboard")
         val scoreWriteTraces = scenario.matchingTraces(diffPath = "/scores/traced", hasDiff = true)
+        val outputTraces = scenario.matchingTraces(outputContains = "quick test", outputTarget = "Steve")
 
         assertEquals(3, traces.size)
         assertEquals(2, scoreboardTraces.size)
         assertEquals(1, scoreWriteTraces.size)
+        assertEquals(1, outputTraces.size)
         scenario.requirePassed()
     }
 

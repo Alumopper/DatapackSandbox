@@ -23,6 +23,10 @@ data class TraceExpectation(
     val count: Int? = null,
     /** Exact number of output events produced by the traced command. */
     val outputs: Int? = null,
+    /** Output event text substring produced by the traced command. */
+    val outputContains: String? = null,
+    /** Output event target that must be produced by the traced command. */
+    val outputTarget: String? = null,
     /** Whether the traced command produced at least one snapshot diff entry. */
     val hasDiff: Boolean? = null,
     /** Snapshot diff JSON Pointer path to match. */
@@ -43,6 +47,7 @@ data class TraceExpectation(
             (fileContains == null || event.source?.file?.contains(fileContains) == true) &&
             (function == null || event.source?.functionStack?.any { it.id.toString() == function } == true) &&
             (outputs == null || event.outputs == outputs) &&
+            outputMatches(event) &&
             (hasDiff == null || event.snapshotDiffs.isNotEmpty() == hasDiff) &&
             diffMatches(event)
 
@@ -80,6 +85,8 @@ data class TraceExpectation(
             fileContains?.let { "fileContains=$it" },
             function?.let { "function=$it" },
             outputs?.let { "outputs=$it" },
+            outputContains?.let { "outputContains=$it" },
+            outputTarget?.let { "outputTarget=$it" },
             hasDiff?.let { "hasDiff=$it" },
             diffPath?.let { "diffPath=$it" },
             diffKind?.let { "diffKind=$it" },
@@ -95,6 +102,14 @@ data class TraceExpectation(
         }
     }
 
+    private fun outputMatches(event: CommandTraceEvent): Boolean {
+        if (outputContains == null && outputTarget == null) return true
+        return event.outputEvents.any { output ->
+            (outputContains == null || outputContains in output.text) &&
+                (outputTarget == null || output.targets.any { it == outputTarget })
+        }
+    }
+
     private fun actualTraces(traces: List<CommandTraceEvent>): String {
         if (traces.isEmpty()) return "actual traces: <none>"
         val rendered = traces.take(5).mapIndexed { index, trace ->
@@ -102,8 +117,14 @@ data class TraceExpectation(
             val source = trace.source?.file?.let { " file=$it" }.orEmpty()
             val line = trace.source?.line?.let { ":$it" }.orEmpty()
             val stats = " commands=${trace.commandsExecuted} outputs=${trace.outputs} diffs=${trace.snapshotDiffs.size}"
+            val outputText = trace.outputEvents
+                .firstOrNull()
+                ?.text
+                ?.truncateForAssertion()
+                ?.let { " output=${quote(it)}" }
+                .orEmpty()
             val error = trace.errorCode?.let { " error=$it" }.orEmpty()
-            "#${index + 1} [$status] root=${trace.root} command=${quote(trace.command.truncateForAssertion())}$stats$source$line$error"
+            "#${index + 1} [$status] root=${trace.root} command=${quote(trace.command.truncateForAssertion())}$stats$outputText$source$line$error"
         }
         val suffix = if (traces.size > rendered.size) "; ... +${traces.size - rendered.size} more" else ""
         return "actual traces: ${rendered.joinToString("; ")}$suffix"

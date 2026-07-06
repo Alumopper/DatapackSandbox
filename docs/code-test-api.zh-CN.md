@@ -369,7 +369,7 @@ class MyDatapackTest {
 | `assertAdvancementDone(player, id, expected)` | 断言 advancement 是否完成。 |
 | `assertOutputContains(text)` | 断言输出事件包含文本。 |
 | `assertOutput(...)` | 按 command/channel/target/text/规范化文本/count/order 断言输出事件。 |
-| `assertTrace(...)` | 按 command/root/source/success/输出数量/diff path/diff kind/count 断言 trace 事件。 |
+| `assertTrace(...)` | 按 command/root/source/success/输出数量/输出文本/输出目标/diff path/diff kind/count 断言 trace 事件。 |
 | `assertPlayerEventTrace(...)` | 按 player/type/success/上下文/advancement/失败 advancement/count 断言玩家事件 trace。 |
 | `assertSnapshotDiff(...)` | 按 before/after snapshot 的 path/kind/渲染文本/count 断言状态变化。 |
 | `outputs()` | 返回记录的输出事件。 |

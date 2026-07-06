@@ -144,6 +144,9 @@ class ManifestRunnerTest {
         assertEquals("string", stepOutputVariants[1].asJsonObject.get("type").asString)
         assertEquals("string", outputObjectProperties.getAsJsonObject("file").get("type").asString)
         assertEquals("boolean", outputObjectProperties.getAsJsonObject("output").get("type").asString)
+        val traceProperties = defs.getAsJsonObject("traceAssertion").getAsJsonObject("properties")
+        assertEquals("string", traceProperties.getAsJsonObject("outputContains").get("type").asString)
+        assertEquals("string", traceProperties.getAsJsonObject("outputTarget").get("type").asString)
     }
 
     @Test
@@ -1051,7 +1054,16 @@ class ManifestRunnerTest {
                 { "score": { "target": "#generated", "objective": "runs", "equals": 4 } },
                 { "item": { "player": "Steve", "id": "minecraft:apple", "minCount": 2, "maxCount": 4 } },
                 { "trace": { "root": "scoreboard", "count": 4 } },
-                { "trace": { "contains": "give Steve", "fileContains": "generated.mcfunction", "success": true, "count": 1 } }
+                {
+                  "trace": {
+                    "contains": "give Steve",
+                    "fileContains": "generated.mcfunction",
+                    "success": true,
+                    "outputContains": "3",
+                    "outputTarget": "Steve",
+                    "count": 1
+                  }
+                }
               ]
             }
             """.trimIndent(),

@@ -1471,6 +1471,10 @@ object ManifestRunner {
                 function = trace.manifestString("function"),
                 count = trace.get("count")?.asInt,
                 outputs = trace.get("outputs")?.asInt,
+                outputContains = trace.manifestString("outputContains")
+                    ?: trace.manifestString("output"),
+                outputTarget = trace.manifestString("outputTarget")
+                    ?: trace.manifestString("target"),
                 hasDiff = trace.get("hasDiff")?.asBoolean,
                 diffPath = trace.manifestString("diffPath"),
                 diffKind = trace.manifestString("diffKind")?.let(::parseTraceDiffKind),
