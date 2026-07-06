@@ -419,6 +419,10 @@ class RunCommandTest {
                     "warning=1",
                     "--assert",
                     "warning:Command 'ban'",
+                    "--assert",
+                    "unsupported=1",
+                    "--assert",
+                    "unsupported:Command 'ban'",
                 ),
             )
         }

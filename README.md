@@ -213,7 +213,7 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar run --version 26.2 \
   --assert-file ./assertions.json
 ```
 
-For quick score, storage, advancement, player, item, entity-count, diff, trace, trace-output, warning, output, and normalized output checks,
+For quick score, storage, advancement, player, item, entity-count, diff, trace, trace-output, warning, unsupported warning, output, and normalized output checks,
 `--assert` also accepts compact shorthands. `--assert-file` can contain JSON
 assertions or one shorthand per non-empty, non-comment line:
 

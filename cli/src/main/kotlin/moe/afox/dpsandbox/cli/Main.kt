@@ -565,11 +565,13 @@ class RunCommand : CliktCommand(name = "run") {
             trimmed.startsWith("trace-output:") -> parseTraceOutputAssertion(trimmed.removePrefix("trace-output:"), label)
             trimmed.startsWith("warning:") -> parseWarningContainsAssertion(trimmed.removePrefix("warning:"), label)
             trimmed.startsWith("warning=") -> parseWarningCountAssertion(trimmed.removePrefix("warning="), label)
+            trimmed.startsWith("unsupported:") -> parseUnsupportedContainsAssertion(trimmed.removePrefix("unsupported:"), label)
+            trimmed.startsWith("unsupported=") -> parseUnsupportedCountAssertion(trimmed.removePrefix("unsupported="), label)
             trimmed.startsWith("output-normalized:") -> parseNormalizedOutputAssertion(trimmed.removePrefix("output-normalized:"), label)
             trimmed.startsWith("output:") -> parseOutputAssertion(trimmed.removePrefix("output:"), label)
             else -> throw SandboxException(
                 DiagnosticCode.INPUT_FORMAT,
-                "$label must be a JSON object or shorthand score:<target>:<objective>=N, storage:<id>[:<path>]=<json>, advancement:<player>:<id>[=<true|false>], entity:<type|*>[@tag]=N, item:<player>:<id>[@slot]=N, player:<name>[:<field>=<value>], diff:<json-pointer>[=<kind>], event-trace:<player>:<type>[=N], trace:<root>=N, trace:<text>, trace-output:<text>[@target], warning=N, warning:<text>, output:<text>, or output-normalized:<text>",
+                "$label must be a JSON object or shorthand score:<target>:<objective>=N, storage:<id>[:<path>]=<json>, advancement:<player>:<id>[=<true|false>], entity:<type|*>[@tag]=N, item:<player>:<id>[@slot]=N, player:<name>[:<field>=<value>], diff:<json-pointer>[=<kind>], event-trace:<player>:<type>[=N], trace:<root>=N, trace:<text>, trace-output:<text>[@target], warning=N, warning:<text>, unsupported=N, unsupported:<text>, output:<text>, or output-normalized:<text>",
             )
         }
     }
@@ -925,6 +927,30 @@ class RunCommand : CliktCommand(name = "run") {
         val expected = count.trim().toIntOrNull()
             ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label warning shorthand expected integer but got '${count.trim()}'")
         val output = JsonObject().also { json ->
+            json.addProperty("channel", "warning")
+            json.addProperty("count", expected)
+        }
+        return JsonObject().also { it.add("output", output) }
+    }
+
+    private fun parseUnsupportedContainsAssertion(text: String, label: String): JsonObject {
+        val contains = text.trim()
+        if (contains.isEmpty()) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label unsupported shorthand must be unsupported:<text>")
+        }
+        val output = JsonObject().also { json ->
+            json.addProperty("command", "unsupported")
+            json.addProperty("channel", "warning")
+            json.addProperty("contains", contains)
+        }
+        return JsonObject().also { it.add("output", output) }
+    }
+
+    private fun parseUnsupportedCountAssertion(count: String, label: String): JsonObject {
+        val expected = count.trim().toIntOrNull()
+            ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label unsupported shorthand expected integer but got '${count.trim()}'")
+        val output = JsonObject().also { json ->
+            json.addProperty("command", "unsupported")
             json.addProperty("channel", "warning")
             json.addProperty("count", expected)
         }
