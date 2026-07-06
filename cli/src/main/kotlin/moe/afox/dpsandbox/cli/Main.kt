@@ -887,23 +887,33 @@ class RunCommand : CliktCommand(name = "run") {
     private fun parseEventTraceAssertion(spec: String, label: String): JsonObject {
         val trimmed = spec.trim()
         if (trimmed.isEmpty()) {
-            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label event trace shorthand must be event-trace:<player>:<type>[=N]")
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label event trace shorthand must be event-trace:<player>:<type>[@x,y,z][=N]")
         }
         val splitAt = trimmed.indexOf('=')
         val left = if (splitAt < 0) trimmed else trimmed.substring(0, splitAt)
         val countText = splitAt.takeIf { it >= 0 }?.let { trimmed.substring(it + 1).trim() }
         val separator = left.indexOf(':')
         if (separator <= 0 || separator == left.lastIndex) {
-            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label event trace shorthand must be event-trace:<player>:<type>[=N]")
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label event trace shorthand must be event-trace:<player>:<type>[@x,y,z][=N]")
         }
         val player = left.substring(0, separator).trim()
-        val type = left.substring(separator + 1).trim()
+        val rawType = left.substring(separator + 1).trim()
+        val coordSeparator = rawType.lastIndexOf('@')
+        val type = if (coordSeparator >= 0) rawType.substring(0, coordSeparator).trim() else rawType
+        val blockPos = coordSeparator.takeIf { it >= 0 }?.let {
+            parseEventTraceBlockCoordinates(rawType.substring(it + 1), label)
+        }
         if (player.isEmpty() || type.isEmpty()) {
-            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label event trace shorthand must be event-trace:<player>:<type>[=N]")
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label event trace shorthand must be event-trace:<player>:<type>[@x,y,z][=N]")
         }
         val eventTrace = JsonObject().also { json ->
             json.addProperty("player", player)
             json.addProperty("type", type)
+            blockPos?.let { (x, y, z) ->
+                json.addProperty("blockX", x)
+                json.addProperty("blockY", y)
+                json.addProperty("blockZ", z)
+            }
             countText?.let {
                 json.addProperty(
                     "count",
@@ -913,6 +923,14 @@ class RunCommand : CliktCommand(name = "run") {
             }
         }
         return JsonObject().also { it.add("eventTrace", eventTrace) }
+    }
+
+    private fun parseEventTraceBlockCoordinates(raw: String, label: String): List<Int> {
+        val parts = raw.split(",")
+        if (parts.size != 3 || parts.any { it.trim().toIntOrNull() == null }) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label event trace block coordinates must be x,y,z")
+        }
+        return parts.map { it.trim().toInt() }
     }
 
     private fun parseSnapshotDiffAssertion(spec: String, label: String): JsonObject {

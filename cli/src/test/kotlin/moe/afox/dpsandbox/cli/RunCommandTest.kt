@@ -526,6 +526,8 @@ class RunCommandTest {
                     """{"block":{"pos":[1,64,2],"id":"minecraft:stone"}}""",
                     "--assert",
                     """{"eventTrace":{"player":"Steve","type":"block_placed","block":"minecraft:stone","blockX":1,"blockY":64,"blockZ":2,"count":1}}""",
+                    "--assert",
+                    "event-trace:Steve:block_placed@1,64,2=1",
                 ),
             )
         }
