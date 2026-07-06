@@ -169,7 +169,7 @@ data/<namespace>/predicates/**/*.json
 
 predicate 根可以是 object 或 array。array 语义是所有 predicate 都必须为 true。predicate 运行需要上下文；缺少必需上下文时默认严格失败，而不是静默返回 false。
 
-`random_chance_with_enchanted_bonus` 会从 predicate/loot 上下文读取当前工具，并检查 flat 形态或 `levels` 形态的 `minecraft:enchantments` 组件。它支持 `unenchanted_chance`、现代 `enchanted_chance` 等级值（如 `constant`、`linear`、`clamped`、`fraction`、`levels_squared`、`lookup`），也兼容旧式 `chance` + looting/bonus multiplier 字段。
+`random_chance_with_enchanted_bonus` 会从 predicate/loot 上下文读取当前工具，并检查 flat 形态或 `levels` 形态的 `minecraft:enchantments` 组件。它支持 `unenchanted_chance`、现代 `enchanted_chance` 等级值（如 `constant`、`linear`、`clamped`、`fraction`、`levels_squared`、`lookup`），也兼容旧式 `chance` + looting/bonus multiplier 字段。常用 loot condition 还覆盖 `table_bonus`、`killed_by_player` 和 `value_check`，其中 `value_check` 可使用 constant、uniform、binomial 和 scoreboard score 数值 provider。
 
 ## Advancement
 

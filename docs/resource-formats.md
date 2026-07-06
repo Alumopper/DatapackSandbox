@@ -327,7 +327,9 @@ common count/item/component/enchantment mutations, tool-driven `apply_bonus`,
 conditions and predicates can read the active tool's `minecraft:enchantments`
 component for `random_chance_with_enchanted_bonus`, including flat and `levels`
 component forms, modern `enchanted_chance` level values, and legacy looting or
-bonus multipliers. `item modify entity`
+bonus multipliers. Common loot conditions also cover `table_bonus`,
+`killed_by_player`, and `value_check` with constant, uniform, binomial, and
+score-based number providers. `item modify entity`
 models common item modifier functions such as `set_components`,
 `set_custom_data`, `set_count`, `limit_count`, `set_item`, `discard`,
 `set_damage`, `set_name`, `set_lore`, `copy_nbt`, `copy_components` with

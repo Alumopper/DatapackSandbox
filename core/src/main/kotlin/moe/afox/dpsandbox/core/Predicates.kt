@@ -116,6 +116,9 @@ class PredicateEngine(
             "reference" -> test(ResourceLocation.parse(root.requiredString("name")), context)
             "random_chance" -> context.random.nextDouble() < root.number("chance", 0.0)
             "random_chance_with_enchanted_bonus", "random_chance_with_looting" -> testRandomChanceWithEnchantedBonus(root, context)
+            "table_bonus" -> testTableBonus(root, context)
+            "value_check" -> testRange(numberProviderValue(root.get("value"), context), root.get("range"))
+            "killed_by_player" -> context.attackingPlayer != null
             "survives_explosion" -> true
             "time_check" -> testRange(context.world.gameTime, root.get("value") ?: root.get("period"))
             "weather_check" -> {
@@ -144,6 +147,66 @@ class PredicateEngine(
                 root.string("block")?.let { ResourceLocation.parse(it) == block } ?: true
             }
             else -> throw SandboxException(DiagnosticCode.UNSUPPORTED_FEATURE, "Predicate condition '$type' is not implemented")
+        }
+    }
+
+    private fun testTableBonus(root: JsonObject, context: PredicateContext): Boolean {
+        val enchantment = ResourceLocation.parse(root.requiredString("enchantment"))
+        val level = toolEnchantmentLevel(context.tool, enchantment).coerceAtLeast(0)
+        val chances = root.getAsJsonArray("chances") ?: JsonArray()
+        if (chances.size() == 0) return false
+        val chance = chances[minOf(level, chances.size() - 1)].asDouble
+        return context.random.nextDouble() < chance.coerceIn(0.0, 1.0)
+    }
+
+    private fun numberProviderValue(element: JsonElement?, context: PredicateContext): Double {
+        if (element == null || element.isJsonNull) return 0.0
+        if (element.isJsonPrimitive) return element.asDouble
+        if (!element.isJsonObject) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Number provider must be a number or object")
+        }
+        val root = element.asJsonObject
+        return when (root.string("type")?.let(::canonical)) {
+            null -> root.get("value")?.let { numberProviderValue(it, context) }
+                ?: root.numberOrNull("min")
+                ?: 0.0
+            "constant" -> numberProviderValue(root.get("value"), context)
+            "uniform" -> {
+                val min = numberProviderValue(root.get("min"), context)
+                val max = numberProviderValue(root.get("max"), context)
+                if (max <= min) min else min + context.random.nextDouble() * (max - min)
+            }
+            "binomial" -> {
+                val n = numberProviderValue(root.get("n"), context).toInt().coerceAtLeast(0)
+                val p = numberProviderValue(root.get("p"), context).coerceIn(0.0, 1.0)
+                var successes = 0
+                repeat(n) {
+                    if (context.random.nextDouble() < p) successes++
+                }
+                successes.toDouble()
+            }
+            "score" -> {
+                val objective = root.string("score") ?: root.string("objective")
+                    ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Score number provider requires 'score' or 'objective'")
+                context.world.getScore(scoreProviderTarget(root.get("target"), context), objective).toDouble()
+            }
+            else -> throw SandboxException(DiagnosticCode.UNSUPPORTED_FEATURE, "Number provider type '${root.string("type")}' is not implemented")
+        }
+    }
+
+    private fun scoreProviderTarget(element: JsonElement?, context: PredicateContext): String {
+        if (element == null || element.isJsonNull) return context.player?.scoreHolder
+            ?: context.thisEntity?.scoreHolder
+            ?: throw MissingPredicateContext("Score number provider requires target context")
+        if (element.isJsonPrimitive) return element.asString
+        if (!element.isJsonObject) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Score number provider target must be a string or object")
+        }
+        val root = element.asJsonObject
+        return when (root.string("type")?.let(::canonical)) {
+            null, "fixed" -> root.requiredString("name")
+            "context" -> resolveEntity(root.string("target") ?: "this", context).scoreHolder
+            else -> throw SandboxException(DiagnosticCode.UNSUPPORTED_FEATURE, "Score target type '${root.string("type")}' is not implemented")
         }
     }
 

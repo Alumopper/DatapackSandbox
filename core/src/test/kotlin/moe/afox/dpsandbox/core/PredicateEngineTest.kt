@@ -160,6 +160,77 @@ class PredicateEngineTest {
         assertFalse(engine.testElement(tooClose, context))
     }
 
+    @Test
+    fun `common loot predicate conditions evaluate value table bonus and killer context`() {
+        val engine = PredicateEngine(Datapack(emptyMap(), emptyList(), emptyList()))
+        val world = SandboxWorld()
+        world.addObjective("points", "dummy")
+        world.setScore("#clock", "points", 4)
+        val tool = ItemStack(
+            id = ResourceLocation.parse("minecraft:diamond_pickaxe"),
+            components = JsonValues.parse("{\"minecraft:enchantments\":{\"minecraft:fortune\":2}}").asJsonObject,
+        )
+        val player = SandboxPlayer("Steve")
+        val context = PredicateContext(
+            world = world,
+            tool = tool,
+            attackingPlayer = player,
+            random = Random(0),
+        )
+        val scoreValue = JsonValues.parse(
+            """
+            {
+              condition: "minecraft:value_check",
+              value: {
+                type: "minecraft:score",
+                target: {type: "minecraft:fixed", name: "#clock"},
+                score: "points"
+              },
+              range: 4
+            }
+            """.trimIndent(),
+        )
+        val binomialValue = JsonValues.parse(
+            """
+            {
+              condition: "minecraft:value_check",
+              value: {
+                type: "minecraft:binomial",
+                n: 3,
+                p: 1.0
+              },
+              range: {min: 3, max: 3}
+            }
+            """.trimIndent(),
+        )
+        val tableBonusPass = JsonValues.parse(
+            """
+            {
+              condition: "minecraft:table_bonus",
+              enchantment: "minecraft:fortune",
+              chances: [0.0, 0.0, 1.0]
+            }
+            """.trimIndent(),
+        )
+        val tableBonusFail = JsonValues.parse(
+            """
+            {
+              condition: "minecraft:table_bonus",
+              enchantment: "minecraft:fortune",
+              chances: [0.0, 0.0, 0.0]
+            }
+            """.trimIndent(),
+        )
+        val killedByPlayer = JsonValues.parse("""{condition: "minecraft:killed_by_player"}""")
+
+        assertTrue(engine.testElement(scoreValue, context))
+        assertTrue(engine.testElement(binomialValue, context))
+        assertTrue(engine.testElement(tableBonusPass, context))
+        assertFalse(engine.testElement(tableBonusFail, context))
+        assertTrue(engine.testElement(killedByPlayer, context))
+        assertFalse(engine.testElement(killedByPlayer, context.copy(attackingPlayer = null)))
+    }
+
     private fun context(tool: ItemStack?): PredicateContext =
         PredicateContext(
             world = SandboxWorld(),
