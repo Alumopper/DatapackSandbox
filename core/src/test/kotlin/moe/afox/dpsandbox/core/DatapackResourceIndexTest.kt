@@ -145,6 +145,26 @@ class DatapackResourceIndexTest {
         assertEquals(listOf("<Server> present load"), sandbox.world.outputs.map { it.text })
     }
 
+    @Test
+    fun `regular tag replace resets earlier values and records overlay`() {
+        val first = writeTagPack("tag-first", replace = false, value = "minecraft:stick")
+        val second = writeTagPack("tag-second", replace = true, value = "minecraft:diamond")
+
+        val sandbox = createSandbox("26.2", listOf(first, second))
+        val tag = sandbox.datapack.tag("item", ResourceLocation.parse("demo:replace_items"))
+
+        assertTrue(tag.replace)
+        assertEquals(listOf("minecraft:diamond"), tag.values.map { it.id })
+
+        val entries = sandbox.datapack.resourceIndex
+            .filter { it.type == "tag/item" && it.id == ResourceLocation.parse("demo:replace_items") }
+        assertEquals(2, entries.size)
+        assertFalse(entries[0].active)
+        assertTrue(entries[0].overriddenBy?.contains("tag-second") == true, entries[0].toString())
+        assertTrue(entries[1].active)
+        assertTrue(entries[1].overrides?.contains("tag-first") == true, entries[1].toString())
+    }
+
     private fun writePack(
         name: String,
         packFormat: String,
@@ -245,6 +265,33 @@ class DatapackResourceIndexTest {
             {
               "replace": $replace,
               "values": [$tagValuesJson]
+            }
+            """.trimIndent(),
+        )
+        return root
+    }
+
+    private fun writeTagPack(name: String, replace: Boolean, value: String): Path {
+        val root = Files.createTempDirectory("dps-$name-pack")
+        Files.writeString(
+            root.resolve("pack.mcmeta"),
+            """
+            {
+              "pack": {
+                "pack_format": 107.1,
+                "description": "temporary $name pack"
+              }
+            }
+            """.trimIndent(),
+        )
+        val tagRoot = root.resolve("data").resolve("demo").resolve("tags").resolve("item")
+        Files.createDirectories(tagRoot)
+        Files.writeString(
+            tagRoot.resolve("replace_items.json"),
+            """
+            {
+              "replace": $replace,
+              "values": ["$value"]
             }
             """.trimIndent(),
         )
