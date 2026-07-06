@@ -365,6 +365,7 @@ class MyDatapackTest {
 | `importSave(path, chunks, dimension)` | 导入指定 Java Anvil 存档 chunk。 |
 | `player(name)` | 创建或复用玩家。 |
 | `event(player, type, id, action)` | 注入玩家事件。 |
+| `blockEvent(player, type, id, x, y, z)` | 注入带坐标的方块玩家事件，并更新 sparse world 目标位置。 |
 | `keyInput(player, key, action)` | 注入键盘输入。 |
 | `mouseInput(player, button, action, x, y)` | 注入鼠标输入。 |
 | `playerAdvancementCriterion(player, advancement, criterion, done)` | 预置玩家单个 advancement criterion 状态。 |
@@ -400,7 +401,7 @@ class MyDatapackTest {
 | `assertOutputContains(text)` | 断言输出事件包含文本。 |
 | `assertOutput(...)` | 按 command/channel/target/text/正则/规范化文本/payload path/count/order 断言输出事件。 |
 | `assertTrace(...)` | 按 command/root/source/success/输出数量/输出文本/输出目标/diff path/diff kind/count 断言 trace 事件。 |
-| `assertPlayerEventTrace(...)` | 按 player/type/success/上下文/advancement/失败 advancement/count 断言玩家事件 trace。 |
+| `assertPlayerEventTrace(...)` | 按 player/type/success/上下文/方块坐标/advancement/失败 advancement/count 断言玩家事件 trace。 |
 | `assertSnapshotDiff(...)` | 按 before/after snapshot 的 path/kind/渲染文本/count 断言状态变化。 |
 | `outputs()` | 返回记录的输出事件。 |
 | `traces()` | 返回记录的结构化命令 trace。 |

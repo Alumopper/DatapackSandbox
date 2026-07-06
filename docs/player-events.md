@@ -12,7 +12,7 @@ dps> event player Steve item_used minecraft:carrot_on_a_stick
 dps> event player Steve entity_interacted minecraft:villager
 dps> event player Steve damage minecraft:fall 4.5
 dps> event player Steve entity_killed minecraft:zombie
-dps> event player Steve block_placed minecraft:oak_log
+dps> event player Steve block_placed minecraft:oak_log 0 64 0
 dps> event player Steve changed_dimension minecraft:overworld minecraft:the_nether
 dps> event player Steve key_input key.jump
 dps> event player Steve mouse_input left
@@ -23,7 +23,7 @@ dps> inspect advancement
 Command shape:
 
 ```text
-event player <name> <event-type> [resource-id] [detail]
+event player <name> <event-type> [resource-id] [detail/action|x y z|pos=x,y,z]
 ```
 
 The optional resource id is interpreted by event type: `item_used` treats it as
@@ -34,6 +34,11 @@ an item, `entity_interacted`/`killed_entity`/`entity_killed` as an entity type,
 dimension. For `damage`/`death`, optional `[detail]` is the damage amount. For
 `changed_dimension`, the optional `[detail]` argument is the destination
 dimension.
+
+For block place/break events, the optional tail can be a target sparse-world
+block position. Accepted forms are `0 64 0`, `pos=0,64,0`,
+`blockPos=0,64,0`, or `@0,64,0`. When present, the event updates the sparse
+world and the event trace records `blockPos`.
 
 For keyboard/mouse events, put the input code in the `[resource-id]` slot:
 `key_input key.jump`, `key_pressed space`, or `mouse_input left`. A fifth

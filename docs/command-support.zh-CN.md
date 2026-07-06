@@ -171,7 +171,7 @@ JSON text component 支持 `text`、`score`、`selector`、`translate`、`keybin
 | CLI `run --snapshot-diff` | | 输出执行前后的状态差异，可配合 `--snapshot-diff-file` 写出 JSON。 |
 | CLI `run --stdin` | | 从标准输入读取 `.mcfunction` 文本；`--stdin-mode commands` 会按原始命令行执行 stdin。 |
 | CLI `run --command-file <file>` | | 按参数顺序执行一个或多个原始命令文件，适合命令生成器输出。 |
-| CLI `run --event "<event>"` | | 在轻量 run 流程中注入玩家事件，格式为 `player <name> <type> [id] [detail/action]`，之后可断言玩家状态或 `eventTrace`。 |
+| CLI `run --event "<event>"` | | 在轻量 run 流程中注入玩家事件，格式为 `player <name> <type> [id] [detail/action\|x y z\|pos=x,y,z]`，之后可断言玩家状态、sparse-world 方块变化或 `eventTrace`。 |
 | CLI `run --event-file <file>` | | 按文件中的非空、非注释行逐条注入玩家事件，格式与 `--event` 相同。 |
 | CLI `run --event-trace-file <file>` | | 写出玩家事件 trace JSONL，适合作为事件驱动数据包调试和 CI artifact。 |
 | CLI `run --seed <long>` | | 在 world fixture 应用后覆盖轻量运行的世界 seed。 |

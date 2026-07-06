@@ -201,7 +201,7 @@ These are tooling commands, not vanilla commands:
 | CLI `run --snapshot-diff` | | Print before/after state changes; use `--snapshot-diff-file` to write JSON. |
 | CLI `run --stdin` | | Read `.mcfunction` text from standard input; `--stdin-mode commands` executes stdin as raw command lines. |
 | CLI `run --command-file <file>` | | Execute one or more raw command files in argument order, useful for command-generator output. |
-| CLI `run --event "<event>"` | | Inject player events in quick runs using `player <name> <type> [id] [detail/action]`, then assert player state or `eventTrace`. |
+| CLI `run --event "<event>"` | | Inject player events in quick runs using `player <name> <type> [id] [detail/action\|x y z\|pos=x,y,z]`, then assert player state, sparse-world block changes, or `eventTrace`. |
 | CLI `run --event-file <file>` | | Inject one player event per non-empty, non-comment line, using the same `--event` shorthand. |
 | CLI `run --event-trace-file <file>` | | Write player event trace JSONL for event-driven datapack debugging and CI artifacts. |
 | CLI `run --seed <long>` | | Override the quick-run world seed after world fixtures are applied. |

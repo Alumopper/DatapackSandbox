@@ -6,7 +6,6 @@ import moe.afox.dpsandbox.core.DatapackSandbox
 import moe.afox.dpsandbox.core.ExecutionResult
 import moe.afox.dpsandbox.core.JsonPaths
 import moe.afox.dpsandbox.core.JsonValues
-import moe.afox.dpsandbox.core.PlayerEvents
 import moe.afox.dpsandbox.core.ResourceLocation
 import moe.afox.dpsandbox.core.SandboxException
 import moe.afox.dpsandbox.core.SandboxWorld
@@ -216,12 +215,13 @@ class Repl(
 
     private fun eventHelp(): String =
         """
-        event player <name> <type> [id] [detail/action]
+        event player <name> <type> [id] [detail/action|x y z|pos=x,y,z]
         Injects a sandbox player behavior event. It is not a vanilla command; it drives advancement triggers, predicate context, and rewards.
         Examples:
           event player Steve item_used minecraft:carrot_on_a_stick
           event player Steve killed_entity minecraft:zombie
-          event player Steve placed_block minecraft:oak_log
+          event player Steve placed_block minecraft:oak_log 0 64 0
+          event player Steve block_broken minecraft:oak_log pos=0,64,0
           event player Steve changed_dimension minecraft:overworld minecraft:the_nether
           event player Steve key_input key.jump
           event player Steve mouse_input left
@@ -229,7 +229,7 @@ class Repl(
         """.trimIndent()
 
     private fun helpText(): String =
-        "Commands: load, load fixture <file>, reload, tick [n], function <id>, player <name>, event player <name> <type> [id] [detail/action], trace <on|off|status>, diff last, rerun last, reset world, ${inspectUsage()}, snapshot [file], exit"
+        "Commands: load, load fixture <file>, reload, tick [n], function <id>, player <name>, event player <name> <type> [id] [detail/action|x y z|pos=x,y,z], trace <on|off|status>, diff last, rerun last, reset world, ${inspectUsage()}, snapshot [file], exit"
 
     private fun inspectUsage(): String =
         "inspect <score|storage|random|entities|blocks|player|loot|predicate|advancement|recipe|item_modifier|raw|tags|resources|registry|outputs>"
@@ -444,16 +444,21 @@ class Repl(
 
     private fun runEvent(parts: List<String>, outputBefore: Int) {
         if (parts.getOrNull(1) != "player") {
-            println("Usage: event player <name> <type> [id] [action]")
+            println("Usage: event player <name> <type> [id] [detail/action|x y z|pos=x,y,z]")
             return
         }
-        val player = sandbox.createPlayer(parts.getOrNull(2) ?: "Steve")
-        val type = parts.getOrNull(3)?.replace('-', '_') ?: "tick"
-        val event = PlayerEvents.shorthand(player.name, type, parts.getOrNull(4), parts.getOrNull(5))
+        val event = try {
+            parsePlayerEventArgs(parts.drop(1), "event")
+        } catch (error: SandboxException) {
+            println(ConsoleStyle.diagnostic(error.render()))
+            return
+        }
+        val player = sandbox.createPlayer(event.playerName)
         val updates = sandbox.handlePlayerEvent(event)
         val outputText = (sandbox.world.outputs.size - outputBefore).takeIf { it > 0 }?.let { ", outputs=+$it" }.orEmpty()
         val inputText = event.input?.let { ", input=${it.device}:${it.code}/${it.action}" }.orEmpty()
-        printManualResult("event player ${player.name} $type", "updates=${updates.size}, gameTime=${sandbox.world.gameTime}$inputText$outputText")
+        val blockPosText = event.blockPos?.let { ", blockPos=${it.x},${it.y},${it.z}" }.orEmpty()
+        printManualResult("event player ${player.name} ${event.type}", "updates=${updates.size}, gameTime=${sandbox.world.gameTime}$inputText$blockPosText$outputText")
         updates.forEach { println(it) }
     }
 

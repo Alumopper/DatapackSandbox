@@ -379,6 +379,7 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar loot --pack examples/full-stac
 
 ```powershell
 java -jar cli/build/libs/datapack-sandbox-cli.jar event --pack examples/full-stack/pack player Steve item-used minecraft:carrot_on_a_stick
+java -jar cli/build/libs/datapack-sandbox-cli.jar event --pack examples/full-stack/pack player Steve block-placed minecraft:stone 1 64 2
 ```
 
 ## 文档

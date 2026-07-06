@@ -394,6 +394,7 @@ class MyDatapackTest {
 | `importSave(path, chunks, dimension)` | Import selected Java Anvil save chunks |
 | `player(name)` | Create or reuse a player |
 | `event(player, type, id, action)` | Inject a player event |
+| `blockEvent(player, type, id, x, y, z)` | Inject a block player event and update the sparse-world position |
 | `keyInput(player, key, action)` | Inject keyboard input |
 | `mouseInput(player, button, action, x, y)` | Inject mouse input |
 | `playerAdvancementCriterion(player, advancement, criterion, done)` | Predefine one player advancement criterion state |
@@ -429,7 +430,7 @@ class MyDatapackTest {
 | `assertOutputContains(text)` | Assert output event text |
 | `assertOutput(...)` | Assert command/channel/target/text/regex/normalized text/payload path/count/order for output events |
 | `assertTrace(...)` | Assert command/root/source/success/output count/output text/output target/diff path/diff kind/count for trace events |
-| `assertPlayerEventTrace(...)` | Assert player event trace player/type/success/context/advancement/failed advancement/count |
+| `assertPlayerEventTrace(...)` | Assert player event trace player/type/success/context/block position/advancement/failed advancement/count |
 | `assertSnapshotDiff(...)` | Assert before/after snapshot path/kind/rendered text/count |
 | `outputs()` | Return recorded output events |
 | `traces()` | Return recorded structured command trace events |

@@ -9,7 +9,7 @@ dps> event player Steve item_used minecraft:carrot_on_a_stick
 dps> event player Steve entity_interacted minecraft:villager
 dps> event player Steve damage minecraft:fall 4.5
 dps> event player Steve entity_killed minecraft:zombie
-dps> event player Steve block_placed minecraft:oak_log
+dps> event player Steve block_placed minecraft:oak_log 0 64 0
 dps> event player Steve changed_dimension minecraft:overworld minecraft:the_nether
 dps> event player Steve key_input key.jump
 dps> event player Steve mouse_input left
@@ -20,7 +20,7 @@ dps> inspect advancement
 命令形状：
 
 ```text
-event player <name> <event-type> [resource-id] [detail]
+event player <name> <event-type> [resource-id] [detail/action|x y z|pos=x,y,z]
 ```
 
 可选 `resource-id` 会按事件类型解释：
@@ -31,6 +31,10 @@ event player <name> <event-type> [resource-id] [detail]
 - `placed_block`、`block_placed`、`broke_block`、`block_broken`、`broken_block`：方块 id。
 - `changed_dimension`：`resource-id` 是来源维度，`detail` 是目标维度。
 - `recipe_unlocked`：recipe id。
+
+方块放置/破坏事件的尾部参数也可以声明目标 sparse-world 坐标，支持
+`0 64 0`、`pos=0,64,0`、`blockPos=0,64,0` 或 `@0,64,0`。传入坐标后，
+事件会同步更新 sparse world，并在 event trace 里记录 `blockPos`。
 
 键盘/鼠标事件把输入代码放在 `[resource-id]` 位置：
 

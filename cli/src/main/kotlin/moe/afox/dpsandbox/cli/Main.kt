@@ -24,7 +24,6 @@ import moe.afox.dpsandbox.core.JsonValues
 import moe.afox.dpsandbox.core.OutputEvent
 import moe.afox.dpsandbox.core.PlayerEvent
 import moe.afox.dpsandbox.core.PlayerEventTraceEvent
-import moe.afox.dpsandbox.core.PlayerEvents
 import moe.afox.dpsandbox.core.ResourceCatalog
 import moe.afox.dpsandbox.core.ResourceCatalogEntry
 import moe.afox.dpsandbox.core.ResourceIndexEntry
@@ -1246,27 +1245,6 @@ class AdvancementCommand : CliktCommand(name = "advancement") {
     }
 }
 
-private fun parsePlayerEventText(raw: String, label: String): PlayerEvent {
-    val args = raw.trim().split(Regex("\\s+")).filter { it.isNotEmpty() }
-    return parsePlayerEventArgs(args, label)
-}
-
-private fun parsePlayerEventArgs(args: List<String>, label: String): PlayerEvent {
-    if (args.getOrNull(0) != "player" || args.size < 3) {
-        throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Usage: $label player <name> <type> [id] [detail/action]")
-    }
-    val playerName = args[1].trim()
-    val eventType = args[2].trim()
-    if (playerName.isEmpty() || eventType.isEmpty()) {
-        throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Usage: $label player <name> <type> [id] [detail/action]")
-    }
-    return try {
-        PlayerEvents.shorthand(playerName, eventType, args.getOrNull(3), args.getOrNull(4))
-    } catch (error: IllegalArgumentException) {
-        throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label invalid player event: ${error.message}", cause = error)
-    }
-}
-
 class EventCommand : CliktCommand(name = "event") {
     private val version by option("--version", "-v").default(VersionProfiles.default.id)
     private val packs by option("--pack", "-p").path(mustExist = true).multiple(required = true)
@@ -1280,7 +1258,8 @@ class EventCommand : CliktCommand(name = "event") {
             val player = sandbox.createPlayer(event.playerName)
             val updates = sandbox.handlePlayerEvent(event)
             val inputText = event.input?.let { ", input=${it.device}:${it.code}/${it.action}" }.orEmpty()
-            println(ConsoleStyle.green("OK event player ${player.name} ${event.type}") + ConsoleStyle.dim(" (updates=${updates.size}$inputText)"))
+            val blockPosText = event.blockPos?.let { ", blockPos=${it.x},${it.y},${it.z}" }.orEmpty()
+            println(ConsoleStyle.green("OK event player ${player.name} ${event.type}") + ConsoleStyle.dim(" (updates=${updates.size}$inputText$blockPosText)"))
             if (updates.isEmpty()) {
                 println(ConsoleStyle.yellow("No advancement criteria changed. Check the event type/id against the advancement trigger conditions."))
             } else {

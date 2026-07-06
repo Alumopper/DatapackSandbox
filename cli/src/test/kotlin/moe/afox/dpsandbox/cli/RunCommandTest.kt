@@ -513,6 +513,27 @@ class RunCommandTest {
     }
 
     @Test
+    fun `run injects block event positions from shorthand`() {
+        val output = captureStdout {
+            main(
+                arrayOf(
+                    "run",
+                    "--version",
+                    "26.2",
+                    "--event",
+                    "player Steve block_placed minecraft:stone 1 64 2",
+                    "--assert",
+                    """{"block":{"pos":[1,64,2],"id":"minecraft:stone"}}""",
+                    "--assert",
+                    """{"eventTrace":{"player":"Steve","type":"block_placed","block":"minecraft:stone","blockX":1,"blockY":64,"blockZ":2,"count":1}}""",
+                ),
+            )
+        }
+
+        assertTrue("OK version=26.2" in output, output)
+    }
+
+    @Test
     fun `run injects player events from files`() {
         val eventFile = Files.createTempFile("dps-cli-events", ".txt")
         Files.writeString(

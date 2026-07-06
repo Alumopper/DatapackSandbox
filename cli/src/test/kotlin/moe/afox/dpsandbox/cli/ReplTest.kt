@@ -34,6 +34,18 @@ class ReplTest {
     }
 
     @Test
+    fun `prints block event position feedback`() {
+        val repl = Repl(createSandbox("26.1.2", listOf(Path.of("../core/src/test/resources/packs/counter"))))
+
+        val output = captureStdout {
+            repl.handle("event player Steve block_placed minecraft:stone pos=1,64,2")
+        }
+
+        assertTrue(output.contains("OK event player Steve block_placed"), output)
+        assertTrue(output.contains("blockPos=1,64,2"), output)
+    }
+
+    @Test
     fun `prints trace events when trace is enabled`() {
         val repl = Repl(createSandbox("26.1.2", listOf(Path.of("../core/src/test/resources/packs/counter"))))
 

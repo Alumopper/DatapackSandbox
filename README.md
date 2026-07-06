@@ -316,10 +316,12 @@ output:
 ```bash
 java -jar cli/build/libs/datapack-sandbox-cli.jar run --version 26.2 \
   --event "player Steve key_input key.jump release" \
+  --event "player Steve block_placed minecraft:stone 1 64 2" \
   --event-trace-file ./event-trace.jsonl \
   --assert '{"player":{"name":"Steve","lastInput":{"device":"keyboard","code":"key.jump","action":"release"}}}' \
+  --assert '{"block":{"pos":[1,64,2],"id":"minecraft:stone"}}' \
   --assert "event-trace:Steve:key_input=1" \
-  --assert '{"eventTrace":{"player":"Steve","type":"key_input","success":true,"count":1}}'
+  --assert '{"eventTrace":{"player":"Steve","type":"block_placed","block":"minecraft:stone","blockX":1,"blockY":64,"blockZ":2,"count":1}}'
 ```
 
 World fixtures can reference reusable fixture files with `fixture`, `fixtures`,
@@ -480,6 +482,7 @@ Trigger a player event:
 
 ```powershell
 java -jar cli/build/libs/datapack-sandbox-cli.jar event --pack examples/full-stack/pack player Steve item-used minecraft:carrot_on_a_stick
+java -jar cli/build/libs/datapack-sandbox-cli.jar event --pack examples/full-stack/pack player Steve block-placed minecraft:stone 1 64 2
 ```
 
 Inspect support boundaries in:

@@ -137,6 +137,7 @@
   - player event trace 已记录未匹配 advancement criterion 的可读失败原因，并可用 `failedAdvancement`、`failedCriterion`、`failureContains` 断言定位缺失上下文或失败字段。
   - `item_consumed`、`inventory_changed`、`item_picked_up`/`item_added`、`changed_dimension`、`damage`/`death` 和 `recipe_unlocked` 已同步更新玩家可观察状态，包括背包数量、food、维度、health 和 recipe 集合，可通过 snapshot、inspect、manifest assertion 与 QuickTest assertion 检查。
   - 带 `blockPos` 的 `block_placed`/`block_broken` 玩家事件已可更新 sparse world 方块状态，并在 event trace 中暴露目标 block 坐标，便于事件驱动数据包测试直接断言方块变化。
+  - CLI/REPL 玩家事件简写已支持 `x y z`、`pos=x,y,z`、`blockPos=x,y,z` 和 `@x,y,z` 四种 block 坐标输入，可用于随手小测、`--event-file` 和独立 `event` 命令。
 - 为事件建立 manifest step、CLI command、REPL command 和 quick-test API。
 - 事件可以触发 advancement、predicate、loot、scoreboard、storage 和输出命令，也可以在不需要客户端物理的范围内更新玩家状态。
 - 增加事件 trace：事件输入、匹配到的 advancement criteria、执行的 reward、失败原因。
