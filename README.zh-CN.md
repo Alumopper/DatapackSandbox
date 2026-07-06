@@ -54,6 +54,7 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar repl --version 26.2 --pack ./m
 
 ```bash
 java -jar cli/build/libs/datapack-sandbox-cli.jar version
+java -jar cli/build/libs/datapack-sandbox-cli.jar version --docs --locale zh-CN --check docs/version-profile.zh-CN.md
 java -jar cli/build/libs/datapack-sandbox-cli.jar version 1.20.4 26.2
 ```
 

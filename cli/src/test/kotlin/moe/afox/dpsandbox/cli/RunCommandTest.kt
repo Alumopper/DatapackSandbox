@@ -1501,6 +1501,16 @@ class RunCommandTest {
     }
 
     @Test
+    fun `version renders localized markdown docs table`() {
+        val output = captureStdout {
+            main(arrayOf("version", "--docs", "--locale", "zh-CN"))
+        }
+
+        assertTrue("| Profile | Java | Data version | Data pack format | NBT schema | 资源目录 |" in output, output)
+        assertTrue("`function`、`loot_table`、`predicate`、`advancement`，允许旧别名" in output, output)
+    }
+
+    @Test
     fun `version checks markdown docs table in file`() {
         val docsFile = Files.createTempFile("dps-version-docs-check", ".md")
         Files.writeString(
@@ -1514,6 +1524,25 @@ class RunCommandTest {
 
         val output = captureStdout {
             main(arrayOf("version", "--docs", "--check", docsFile.toString()))
+        }
+
+        assertTrue("version docs up to date: $docsFile" in output, output)
+    }
+
+    @Test
+    fun `version checks localized markdown docs table in file`() {
+        val docsFile = Files.createTempFile("dps-version-docs-zh-check", ".md")
+        Files.writeString(
+            docsFile,
+            """
+            # 中文文档
+
+            ${VersionProfileDocs.renderMarkdownTable(locale = "zh-CN")}
+            """.trimIndent(),
+        )
+
+        val output = captureStdout {
+            main(arrayOf("version", "--docs", "--locale", "zh-CN", "--check", docsFile.toString()))
         }
 
         assertTrue("version docs up to date: $docsFile" in output, output)

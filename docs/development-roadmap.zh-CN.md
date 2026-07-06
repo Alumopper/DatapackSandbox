@@ -269,7 +269,7 @@
 - 增加版本 profile 差异报告：
   - 哪些资源目录变化、命令根变化、NBT 字段变化、注册表项变化。
   - `version --docs/--json --output <file>` 已可把 Markdown 表格、profile 元数据和差异报告写入 UTF-8 文件，便于文档更新、CI artifact 和本地脚本复核。
-  - `version --docs --check <file>` 已可在 CI 中校验英文文档是否包含当前生成表格，且 standalone jar smoke task 已接入 Gradle `check`，防止 profile 文档过期。
+  - `version --docs --check <file>` 和 `version --docs --locale zh-CN --check <file>` 已可在 CI 中校验英文/中文文档是否包含当前生成表格，且 standalone jar smoke task 已接入 Gradle `check`，防止 profile 文档过期。
 - 增加多版本测试矩阵：
   - 同一行为在 `1.20.4`、中间版本和默认最新版本运行。
   - 对 pack format 不同的示例使用 per-version pack。
@@ -277,7 +277,7 @@
 验收标准：
 
 - 新增版本只需改 profile 数据和生成资源，核心逻辑尽量无需修改。
-- `docs/version-profile.zh-CN.md` 可通过 `version --docs --output` 半自动更新，英文 profile 表可通过 `version --docs --check` 防漂移，表格包含 NBT schema 选择摘要。
+- `docs/version-profile.zh-CN.md` 可通过 `version --docs --locale zh-CN --output` 半自动更新，英文和中文 profile 表可通过 `version --docs --check` / `version --docs --locale zh-CN --check` 防漂移，表格包含 NBT schema 选择摘要。
 - 版本不兼容错误清晰说明当前 pack format 和期望 format。
 
 ## 阶段 9：差分验证与可信度提升

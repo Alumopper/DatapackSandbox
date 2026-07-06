@@ -2109,6 +2109,7 @@ class VersionCommand : CliktCommand(name = "version") {
     private val json by option("--json").flag(default = false)
     private val output by option("--output", "-o").path()
     private val docsCheck by option("--check").path()
+    private val docsLocale by option("--locale").default("en")
 
     override fun run() {
         try {
@@ -2121,16 +2122,20 @@ class VersionCommand : CliktCommand(name = "version") {
             if (docsCheck != null && !docs) {
                 throw SandboxException(DiagnosticCode.INPUT_FORMAT, "version --check is only supported with --docs")
             }
+            if (!docs && docsLocale != "en") {
+                throw SandboxException(DiagnosticCode.INPUT_FORMAT, "version --locale is only supported with --docs")
+            }
             if (docs) {
                 if (versions.isNotEmpty()) {
                     throw SandboxException(DiagnosticCode.INPUT_FORMAT, "version --docs does not accept profile arguments")
                 }
-                val table = VersionProfileDocs.renderMarkdownTable()
+                val locale = normalizedDocsLocale(docsLocale)
+                val table = VersionProfileDocs.renderMarkdownTable(locale = locale)
                 val checkPath = docsCheck
                 if (checkPath == null) {
                     emit(table)
                 } else {
-                    checkDocsTable(checkPath, table)
+                    checkDocsTable(checkPath, table, locale)
                 }
                 return
             }
@@ -2179,7 +2184,7 @@ class VersionCommand : CliktCommand(name = "version") {
         }
     }
 
-    private fun checkDocsTable(path: Path, table: String) {
+    private fun checkDocsTable(path: Path, table: String, locale: String) {
         if (!Files.exists(path)) {
             throw SandboxException(DiagnosticCode.INPUT_FORMAT, "version docs check file does not exist: $path")
         }
@@ -2188,11 +2193,21 @@ class VersionCommand : CliktCommand(name = "version") {
         if (!actual.contains(expected)) {
             throw SandboxException(
                 DiagnosticCode.INPUT_FORMAT,
-                "version docs are out of date: $path; regenerate with version --docs --output <file>",
+                "version docs are out of date: $path; regenerate with version --docs ${localeOption(locale)}--output <file>",
             )
         }
         println(ConsoleStyle.green("version docs up to date: $path"))
     }
+
+    private fun normalizedDocsLocale(value: String): String =
+        when (value.lowercase().replace('_', '-')) {
+            "en", "en-us" -> "en"
+            "zh", "zh-cn", "zh-hans", "zh-hans-cn" -> "zh-CN"
+            else -> throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Unsupported version docs locale '$value'; expected en or zh-CN")
+        }
+
+    private fun localeOption(locale: String): String =
+        if (locale == "en") "" else "--locale $locale "
 
     private fun normalizeNewlines(value: String): String =
         value.replace("\r\n", "\n").replace('\r', '\n')

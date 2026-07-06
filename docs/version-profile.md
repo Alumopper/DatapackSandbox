@@ -47,11 +47,13 @@ Generate the profile table used by this document:
 java -jar cli/build/libs/datapack-sandbox-cli.jar version --docs
 java -jar cli/build/libs/datapack-sandbox-cli.jar version --docs --output docs/version-profile-table.md
 java -jar cli/build/libs/datapack-sandbox-cli.jar version --docs --check docs/version-profile.md
+java -jar cli/build/libs/datapack-sandbox-cli.jar version --docs --locale zh-CN --check docs/version-profile.zh-CN.md
 ```
 
 Use `--check` in CI to fail when the generated English Markdown table no
-longer appears in the checked-in document. The Gradle `check` lifecycle runs
-this through the standalone jar smoke task.
+longer appears in the checked-in document. Use `--locale zh-CN` to generate or
+check the localized profile table in the Chinese document. The Gradle `check`
+lifecycle runs this through the standalone jar smoke task.
 
 Compare two profiles to inspect pack format, NBT schema, resource directory,
 command-root, and registry differences:
