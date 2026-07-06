@@ -344,10 +344,11 @@ predicates can match `equipment` fields for `mainhand`, `offhand`, `head`,
 `chest`, `legs`, and `feet`, active `effects` with amplifier/duration and
 particle visibility, and item predicates can match `enchantments` or
 `stored_enchantments` by id and level range. Entity `nbt` predicates are checked
-against the full generated entity NBT view. Predicate `location_check` biome
-conditions read the sparse biome overrides declared by `fillbiome`, world
-fixtures, manifests, or quick-test setup; unassigned positions do not imply a
-generated biome.
+against the full generated entity NBT view. Predicate `location_check` block
+conditions read explicit sparse blocks by id, block tag, state/property values,
+and block entity NBT at the tested location. Its biome conditions read the
+sparse biome overrides declared by `fillbiome`, world fixtures, manifests, or
+quick-test setup; unassigned positions do not imply a generated biome.
 
 Current directories:
 

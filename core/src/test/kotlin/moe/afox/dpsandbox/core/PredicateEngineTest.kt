@@ -53,6 +53,65 @@ class PredicateEngineTest {
         assertTrue(engine.testElement(predicate, context(tool = sword)))
     }
 
+    @Test
+    fun `location check matches sparse block state tag and nbt`() {
+        val tagId = ResourceLocation.parse("demo:containers")
+        val datapack = Datapack(
+            functions = emptyMap(),
+            loadFunctions = emptyList(),
+            tickFunctions = emptyList(),
+            tags = mapOf(
+                TagKey("block", tagId) to TagDefinition(
+                    key = TagKey("block", tagId),
+                    file = "<test>",
+                    values = listOf(TagValue("minecraft:chest")),
+                ),
+            ),
+        )
+        val engine = PredicateEngine(datapack)
+        val pos = BlockPos(1, 64, 2)
+        val world = SandboxWorld()
+        world.blocks[pos] = SandboxBlock(
+            id = ResourceLocation.parse("minecraft:chest"),
+            properties = mutableMapOf("facing" to "north", "slots" to "27"),
+            nbt = JsonValues.parse("""{CustomName:{text:"Cache"}}""").asJsonObject,
+        )
+        val predicate = JsonValues.parse(
+            """
+            {
+              condition: "minecraft:location_check",
+              predicate: {
+                block: {
+                  blocks: "#demo:containers",
+                  state: {
+                    facing: "north",
+                    slots: {min: 20, max: 30}
+                  },
+                  nbt: {CustomName:{text:"Cache"}}
+                }
+              }
+            }
+            """.trimIndent(),
+        )
+        val wrongState = JsonValues.parse(
+            """
+            {
+              condition: "minecraft:location_check",
+              predicate: {
+                block: {
+                  blocks: "#demo:containers",
+                  state: {facing: "south"}
+                }
+              }
+            }
+            """.trimIndent(),
+        )
+
+        val context = PredicateContext(world = world, origin = Position(pos.x.toDouble(), pos.y.toDouble(), pos.z.toDouble()))
+        assertTrue(engine.testElement(predicate, context))
+        assertFalse(engine.testElement(wrongState, context))
+    }
+
     private fun context(tool: ItemStack?): PredicateContext =
         PredicateContext(
             world = SandboxWorld(),

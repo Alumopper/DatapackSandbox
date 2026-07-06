@@ -395,7 +395,80 @@ class PredicateEngine(
             val pos = BlockPos(floor(x).toInt(), floor(y).toInt(), floor(z).toInt())
             if (context.world.biomes[pos] != expected) return false
         }
+        predicate.get("block")?.let {
+            if (!it.isJsonObject) {
+                throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Location block predicate must be an object")
+            }
+            val pos = BlockPos(floor(x).toInt(), floor(y).toInt(), floor(z).toInt())
+            if (!testBlockPredicate(context.world.block(pos), pos, it.asJsonObject)) return false
+        }
         return true
+    }
+
+    private fun testBlockPredicate(block: SandboxBlock?, pos: BlockPos, predicate: JsonObject): Boolean {
+        val blockId = block?.id ?: ResourceLocation.parse("minecraft:air")
+        predicate.get("blocks")?.let { if (!matchesBlockId(blockId, it)) return false }
+        predicate.get("block")?.let { if (!matchesBlockId(blockId, it)) return false }
+        predicate.string("tag")?.let {
+            val tagId = ResourceLocation.parse(it.removePrefix("#"))
+            if (!blockMatchesTag(blockId, tagId, mutableSetOf())) return false
+        }
+        (predicate.getAsJsonObject("state") ?: predicate.getAsJsonObject("properties"))?.let {
+            if (block == null || !testBlockProperties(block, it)) return false
+        }
+        predicate.get("nbt")?.let {
+            val actual = block ?: return false
+            val expected = if (it.isJsonPrimitive) JsonValues.parse(it.asString) else it
+            if (expected.isJsonObject && !containsAll(actual.fullNbt(pos, profile), expected.asJsonObject)) return false
+        }
+        return true
+    }
+
+    private fun testBlockProperties(block: SandboxBlock, predicate: JsonObject): Boolean {
+        predicate.entrySet().forEach { (key, expected) ->
+            val actual = block.properties[key] ?: return false
+            when {
+                expected.isJsonPrimitive -> if (actual != expected.asString) return false
+                expected.isJsonArray -> if (expected.asJsonArray.none { it.isJsonPrimitive && it.asString == actual }) return false
+                expected.isJsonObject -> {
+                    val numeric = actual.toDoubleOrNull() ?: return false
+                    if (!testRange(numeric, expected)) return false
+                }
+                else -> return false
+            }
+        }
+        return true
+    }
+
+    private fun matchesBlockId(id: ResourceLocation, element: JsonElement): Boolean =
+        when {
+            element.isJsonPrimitive -> {
+                val raw = element.asString
+                if (raw.startsWith("#")) {
+                    blockMatchesTag(id, ResourceLocation.parse(raw.removePrefix("#")), mutableSetOf())
+                } else {
+                    ResourceLocation.parse(raw) == id
+                }
+            }
+            element.isJsonArray -> element.asJsonArray.any { matchesBlockId(id, it) }
+            else -> false
+        }
+
+    private fun blockMatchesTag(id: ResourceLocation, tagId: ResourceLocation, visited: MutableSet<ResourceLocation>): Boolean {
+        if (!visited.add(tagId)) {
+            throw SandboxException(DiagnosticCode.COMMAND_ERROR, "Recursive block tag reference: $tagId")
+        }
+        val tag = datapack.tags[TagKey("block", tagId)] ?: datapack.tags[TagKey("blocks", tagId)]
+        val result = tag?.values?.any { value ->
+            if (value.id.startsWith("#")) {
+                val nested = ResourceLocation.parse(value.id.removePrefix("#"))
+                blockMatchesTag(id, nested, visited)
+            } else {
+                ResourceLocation.parse(value.id) == id
+            }
+        } == true
+        visited.remove(tagId)
+        return result
     }
 
     private fun resolveEntity(name: String, context: PredicateContext): SandboxEntity =

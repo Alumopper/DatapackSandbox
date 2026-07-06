@@ -750,20 +750,24 @@ class CommandExpansionTest {
         sandbox.executeCommand("execute if loaded 1 64 1 run scoreboard players add #pass checks 1")
         sandbox.executeCommand("execute unless loaded 32 64 32 run scoreboard players add #pass checks 1")
         sandbox.executeCommand("fillbiome 0 64 0 0 64 0 minecraft:forest")
+        sandbox.executeCommand("setblock 1 64 0 minecraft:stone[mode=debug]")
         sandbox.executeCommand("execute if biome 0 64 0 minecraft:forest run scoreboard players add #pass checks 1")
         sandbox.executeCommand("execute unless biome 0 64 0 minecraft:desert run scoreboard players add #pass checks 1")
         sandbox.executeCommand("execute as Steve if predicate demo:is_player run scoreboard players add #pass checks 1")
         sandbox.executeCommand("execute in minecraft:the_nether if predicate demo:in_nether run scoreboard players add #pass checks 1")
         sandbox.executeCommand("execute positioned 0 64 0 if predicate demo:in_forest run scoreboard players add #pass checks 1")
+        sandbox.executeCommand("execute positioned 1 64 0 if predicate demo:debug_stone run scoreboard players add #pass checks 1")
+        sandbox.executeCommand("execute positioned 8 64 8 if predicate demo:void_air run scoreboard players add #pass checks 1")
         sandbox.executeCommand("execute unless predicate demo:false run scoreboard players add #pass checks 1")
         sandbox.executeCommand("execute if dimension minecraft:the_nether run scoreboard players add #fail checks 1")
         sandbox.executeCommand("execute if loaded 32 64 32 run scoreboard players add #fail checks 1")
         sandbox.executeCommand("execute if biome 0 64 0 minecraft:desert run scoreboard players add #fail checks 1")
         sandbox.executeCommand("execute if predicate demo:in_nether run scoreboard players add #fail checks 1")
         sandbox.executeCommand("execute positioned 0 64 0 if predicate demo:in_desert run scoreboard players add #fail checks 1")
+        sandbox.executeCommand("execute positioned 1 64 0 if predicate demo:debug_dirt run scoreboard players add #fail checks 1")
         sandbox.executeCommand("execute if predicate demo:false run scoreboard players add #fail checks 1")
 
-        assertEquals(11, sandbox.world.getScore("#pass", "checks"))
+        assertEquals(13, sandbox.world.getScore("#pass", "checks"))
         assertEquals(0, sandbox.world.getScore("#fail", "checks"))
     }
 
@@ -1961,6 +1965,63 @@ class CommandExpansionTest {
                   "z": 4
                 }
               }
+            }
+            """.trimIndent(),
+        )
+        Files.writeString(
+            predicateRoot.resolve("debug_stone.json"),
+            """
+            {
+              "condition": "minecraft:location_check",
+              "predicate": {
+                "block": {
+                  "blocks": "#demo:debug_blocks",
+                  "state": {
+                    "mode": "debug"
+                  }
+                }
+              }
+            }
+            """.trimIndent(),
+        )
+        Files.writeString(
+            predicateRoot.resolve("debug_dirt.json"),
+            """
+            {
+              "condition": "minecraft:location_check",
+              "predicate": {
+                "block": {
+                  "blocks": "minecraft:dirt",
+                  "state": {
+                    "mode": "debug"
+                  }
+                }
+              }
+            }
+            """.trimIndent(),
+        )
+        Files.writeString(
+            predicateRoot.resolve("void_air.json"),
+            """
+            {
+              "condition": "minecraft:location_check",
+              "predicate": {
+                "block": {
+                  "blocks": "minecraft:air"
+                }
+              }
+            }
+            """.trimIndent(),
+        )
+        val blockTagRoot = root.resolve("data").resolve("demo").resolve("tags").resolve("block")
+        Files.createDirectories(blockTagRoot)
+        Files.writeString(
+            blockTagRoot.resolve("debug_blocks.json"),
+            """
+            {
+              "values": [
+                "minecraft:stone"
+              ]
             }
             """.trimIndent(),
         )
