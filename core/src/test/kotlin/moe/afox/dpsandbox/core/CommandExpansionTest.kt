@@ -309,6 +309,7 @@ class CommandExpansionTest {
         sandbox.executeCommand("loot give Steve equipment demo:equipment_context @e[type=minecraft:zombie,limit=1] weapon.mainhand")
         sandbox.executeCommand("loot give Steve loot demo:enchanted")
         sandbox.executeCommand("loot give Steve loot demo:tag_items")
+        sandbox.executeCommand("loot give Steve loot demo:tag_pick")
         sandbox.executeCommand("loot replace entity @e[type=minecraft:zombie,limit=1] weapon.offhand loot demo:fish")
 
         val zombie = sandbox.world.entities.first { it.type == ResourceLocation.parse("minecraft:zombie") }
@@ -342,7 +343,7 @@ class CommandExpansionTest {
         assertEquals(ResourceLocation.parse("minecraft:the_nether"), spawnedItem.dimension)
 
         val lootGiveOutputs = sandbox.world.outputs.filter { it.command == "loot give" }
-        assertEquals(10, lootGiveOutputs.size)
+        assertEquals(11, lootGiveOutputs.size)
         assertEquals("players", lootGiveOutputs.first().payload?.asJsonObject?.get("targetKind")?.asString)
         assertEquals("minecraft:diamond", lootGiveOutputs.first().payload?.asJsonObject?.getAsJsonArray("items")?.get(0)?.asJsonObject?.get("id")?.asString)
         val copiedOutputItem = lootGiveOutputs.first {
@@ -364,12 +365,21 @@ class CommandExpansionTest {
         }.payload?.asJsonObject?.getAsJsonArray("items")?.get(0)?.asJsonObject ?: error("missing enchanted loot output")
         assertEquals(3, enchantedOutputItem.getAsJsonObject("components").getAsJsonObject("minecraft:enchantments").get("minecraft:unbreaking").asInt)
         val tagOutput = lootGiveOutputs.first {
-            it.payload?.asJsonObject?.getAsJsonArray("items")?.any { item ->
+            val items = it.payload?.asJsonObject?.getAsJsonArray("items")
+            items?.size() == 2 && items.any { item ->
                 item.asJsonObject.get("id").asString == "minecraft:emerald"
-            } == true
+            }
         }.payload?.asJsonObject ?: error("missing tag loot output")
         assertEquals(2, tagOutput.getAsJsonArray("items").size())
         assertEquals(4, tagOutput.get("totalCount").asInt)
+        val tagPickOutput = lootGiveOutputs.last().payload?.asJsonObject ?: error("missing expanded tag loot output")
+        assertEquals(1, tagPickOutput.getAsJsonArray("items").size())
+        val tagPickItem = tagPickOutput.getAsJsonArray("items")[0].asJsonObject
+        assertTrue(
+            tagPickItem.get("id").asString in setOf("minecraft:raw_gold", "minecraft:emerald"),
+            tagPickItem.toString(),
+        )
+        assertEquals(2, tagPickOutput.get("totalCount").asInt)
         val lootSpawnOutput = sandbox.world.outputs.single { it.command == "loot spawn" }
         assertEquals("minecraft:the_nether", lootSpawnOutput.payload?.asJsonObject?.get("dimension")?.asString)
         val lootReplaceOutput = sandbox.world.outputs.single { it.command == "loot replace" }
@@ -1301,6 +1311,32 @@ class CommandExpansionTest {
         )
         Files.writeString(
             lootRoot.resolve("tag_items.json"),
+            """
+            {
+              "type": "minecraft:command",
+              "pools": [
+                {
+                  "rolls": 1,
+                  "entries": [
+                    {
+                      "type": "minecraft:tag",
+                      "name": "demo:ore_drops",
+                      "expand": false,
+                      "functions": [
+                        {
+                          "function": "minecraft:set_count",
+                          "count": 2
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+            """.trimIndent(),
+        )
+        Files.writeString(
+            lootRoot.resolve("tag_pick.json"),
             """
             {
               "type": "minecraft:command",

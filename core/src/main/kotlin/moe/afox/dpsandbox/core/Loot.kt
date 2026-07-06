@@ -93,7 +93,9 @@ class LootEngine(
     }
 
     private fun chooseEntry(entries: List<JsonObject>, context: LootContext, random: Random, stack: MutableSet<ResourceLocation>): List<ItemStack>? {
-        val candidates = entries.filter { testConditions(it.get("conditions"), context) }
+        val candidates = entries
+            .filter { testConditions(it.get("conditions"), context) }
+            .flatMap { expandSelectableEntry(it) }
         if (candidates.isEmpty()) return null
         val weighted = candidates.map { it to (it.get("weight")?.asInt ?: 1).coerceAtLeast(0) }
         val total = weighted.sumOf { it.second }
@@ -105,6 +107,19 @@ class LootEngine(
             }.first
         }
         return expandEntry(chosen, context, random, stack)
+    }
+
+    private fun expandSelectableEntry(entry: JsonObject): List<JsonObject> {
+        val type = canonical(entry.requiredString("type"))
+        if (type != "tag" || entry.boolean("expand") != true) return listOf(entry)
+        val items = expandItemTag(ResourceLocation.parse(entry.requiredString("name")), mutableSetOf())
+        return items.map { item ->
+            entry.deepCopy().asJsonObject.also { expanded ->
+                expanded.addProperty("type", "minecraft:item")
+                expanded.addProperty("name", item.toString())
+                expanded.remove("expand")
+            }
+        }
     }
 
     private fun expandEntry(entry: JsonObject, context: LootContext, random: Random, stack: MutableSet<ResourceLocation>): List<ItemStack> {
@@ -128,7 +143,14 @@ class LootEngine(
                 output
             }
             "dynamic" -> emptyList()
-            "tag" -> expandItemTag(ResourceLocation.parse(entry.requiredString("name")), mutableSetOf()).map { ItemStack(it) }
+            "tag" -> {
+                val items = expandItemTag(ResourceLocation.parse(entry.requiredString("name")), mutableSetOf())
+                if (entry.boolean("expand") == true) {
+                    if (items.isEmpty()) emptyList() else listOf(ItemStack(items[random.nextInt(items.size)]))
+                } else {
+                    items.map { ItemStack(it) }
+                }
+            }
             else -> throw SandboxException(DiagnosticCode.UNSUPPORTED_FEATURE, "Loot entry type '${entry.requiredString("type")}' is not implemented")
         }
         return applyFunctions(base, functions, context, random)
@@ -395,6 +417,9 @@ class LootEngine(
 
     private fun JsonObject.string(name: String): String? =
         get(name)?.takeIf { it.isJsonPrimitive }?.asString
+
+    private fun JsonObject.boolean(name: String): Boolean? =
+        get(name)?.takeIf { it.isJsonPrimitive }?.asBoolean
 
     private fun JsonObject.requiredString(name: String): String =
         string(name) ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Missing required string '$name'")
