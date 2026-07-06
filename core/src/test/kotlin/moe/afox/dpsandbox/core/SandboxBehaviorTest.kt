@@ -189,6 +189,50 @@ class SandboxBehaviorTest {
     }
 
     @Test
+    fun `bossbar mutations record structured outputs`() {
+        val sandbox = createSandbox("26.1.2", listOf(fixturePack()))
+
+        sandbox.executeCommand("""bossbar add demo:bar {"text":"Demo"}""")
+        sandbox.executeCommand("bossbar set demo:bar value 8")
+        sandbox.executeCommand("bossbar set demo:bar players Steve")
+        sandbox.executeCommand("bossbar remove demo:bar")
+
+        assertEquals(null, sandbox.world.bossbars[ResourceLocation.parse("demo:bar")])
+        val addOutput = sandbox.world.outputs.single { it.command == "bossbar add" }
+        val addPayload = addOutput.payload?.asJsonObject ?: error("missing bossbar add payload")
+        assertEquals("demo:bar", addOutput.text)
+        assertEquals("add", addPayload.get("action").asString)
+        assertEquals("demo:bar", addPayload.get("id").asString)
+        assertEquals("""{"text":"Demo"}""", addPayload.get("name").asString)
+        assertEquals(false, addPayload.get("replaced").asBoolean)
+
+        val setOutputs = sandbox.world.outputs.filter { it.command == "bossbar set" }
+        val valuePayload = setOutputs[0].payload?.asJsonObject ?: error("missing bossbar value payload")
+        assertEquals("8", setOutputs[0].text)
+        assertEquals("set", valuePayload.get("action").asString)
+        assertEquals("value", valuePayload.get("field").asString)
+        assertEquals(0, valuePayload.getAsJsonObject("before").get("value").asInt)
+        assertEquals(8, valuePayload.get("value").asInt)
+        assertEquals(8, valuePayload.get("fieldValue").asInt)
+
+        val playersPayload = setOutputs[1].payload?.asJsonObject ?: error("missing bossbar players payload")
+        assertTrue(setOutputs[1].text.contains("Steve"))
+        assertEquals("players", playersPayload.get("field").asString)
+        assertEquals(0, playersPayload.getAsJsonObject("before").getAsJsonArray("players").size())
+        assertEquals(8, playersPayload.get("value").asInt)
+        assertEquals("Steve", playersPayload.getAsJsonArray("fieldValue")[0].asString)
+        assertEquals("Steve", playersPayload.getAsJsonArray("players")[0].asString)
+
+        val removeOutput = sandbox.world.outputs.single { it.command == "bossbar remove" }
+        val removePayload = removeOutput.payload?.asJsonObject ?: error("missing bossbar remove payload")
+        assertEquals("true", removeOutput.text)
+        assertEquals("remove", removePayload.get("action").asString)
+        assertEquals(true, removePayload.get("removed").asBoolean)
+        assertEquals(8, removePayload.getAsJsonObject("before").get("value").asInt)
+        assertEquals("Steve", removePayload.getAsJsonObject("before").getAsJsonArray("players")[0].asString)
+    }
+
+    @Test
     fun `clear can query and remove bounded inventory stacks`() {
         val sandbox = createSandbox("26.1.2", listOf(fixturePack()))
         val apple = ResourceLocation.parse("minecraft:apple")

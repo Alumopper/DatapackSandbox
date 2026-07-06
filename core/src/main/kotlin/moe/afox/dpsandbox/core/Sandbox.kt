@@ -1060,15 +1060,44 @@ class DatapackSandbox(
 
     private fun executeBossbar(command: String, tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext) {
         requireSize(tokens, 2, "bossbar <add|remove|list|get|set> ...", location)
+        fun recordBossbarMutation(
+            command: String,
+            action: String,
+            id: ResourceLocation,
+            text: String,
+            bar: SandboxBossbar? = null,
+            before: JsonObject? = null,
+            extra: JsonObject.() -> Unit = {},
+        ) {
+            world.recordOutput(
+                command,
+                "data",
+                text = text,
+                payload = (bar?.toJson() ?: JsonObject().also { it.addProperty("id", id.toString()) }).also { payload ->
+                    payload.addProperty("action", action)
+                    before?.let { payload.add("before", it) }
+                    payload.extra()
+                },
+            )
+        }
         when (tokens[1].text) {
             "add" -> {
                 requireSize(tokens, 4, "bossbar add <id> <name>", location)
                 val id = ResourceLocation.parse(tokens[2].text)
-                world.bossbars[id] = SandboxBossbar(id, CommandTokenizer.tailFrom(command, tokens[3]))
+                val before = world.bossbars[id]?.toJson()
+                val bar = SandboxBossbar(id, CommandTokenizer.tailFrom(command, tokens[3]))
+                world.bossbars[id] = bar
+                recordBossbarMutation("bossbar add", "add", id, id.toString(), bar, before) {
+                    addProperty("replaced", before != null)
+                }
             }
             "remove" -> {
                 requireSize(tokens, 3, "bossbar remove <id>", location)
-                world.bossbars.remove(ResourceLocation.parse(tokens[2].text))
+                val id = ResourceLocation.parse(tokens[2].text)
+                val removed = world.bossbars.remove(id)
+                recordBossbarMutation("bossbar remove", "remove", id, (removed != null).toString(), before = removed?.toJson()) {
+                    addProperty("removed", removed != null)
+                }
             }
             "list" -> world.recordOutput("bossbar list", "data", text = world.bossbars.keys.sorted().joinToString())
             "get" -> {
@@ -1096,19 +1125,46 @@ class DatapackSandbox(
             }
             "set" -> {
                 requireSize(tokens, 5, "bossbar set <id> <field> <value>", location)
-                val bar = world.bossbars[ResourceLocation.parse(tokens[2].text)] ?: throw SandboxException(DiagnosticCode.COMMAND_ERROR, "Bossbar '${tokens[2].text}' does not exist", location)
-                when (tokens[3].text) {
-                    "name" -> bar.name = CommandTokenizer.tailFrom(command, tokens[4])
-                    "value" -> bar.value = parseInt(tokens[4].text, "bossbar value", location)
-                    "max" -> bar.max = parseInt(tokens[4].text, "bossbar max", location).coerceAtLeast(1)
-                    "color" -> bar.color = tokens[4].text
-                    "style" -> bar.style = tokens[4].text
-                    "visible" -> bar.visible = parseBoolean(tokens[4].text, "bossbar visible", location)
+                val id = ResourceLocation.parse(tokens[2].text)
+                val bar = world.bossbars[id] ?: throw SandboxException(DiagnosticCode.COMMAND_ERROR, "Bossbar '${tokens[2].text}' does not exist", location)
+                val before = bar.toJson()
+                val field = tokens[3].text
+                val value = when (field) {
+                    "name" -> JsonPrimitive(CommandTokenizer.tailFrom(command, tokens[4]))
+                    "value" -> JsonPrimitive(parseInt(tokens[4].text, "bossbar value", location))
+                    "max" -> JsonPrimitive(parseInt(tokens[4].text, "bossbar max", location).coerceAtLeast(1))
+                    "color" -> JsonPrimitive(tokens[4].text)
+                    "style" -> JsonPrimitive(tokens[4].text)
+                    "visible" -> JsonPrimitive(parseBoolean(tokens[4].text, "bossbar visible", location))
                     "players" -> {
-                        bar.players.clear()
-                        if (tokens.size > 4) bar.players += resolvePlayers(tokens[4].text, location, context).map { it.name }
+                        JsonArray().also { array ->
+                            if (tokens.size > 4) resolvePlayers(tokens[4].text, location, context).map { it.name }.forEach { array.add(it) }
+                        }
                     }
                     else -> unsupportedFeature("Unsupported bossbar field '${tokens[3].text}'", profile.id, location)
+                }
+                when (field) {
+                    "name" -> bar.name = value.asString
+                    "value" -> bar.value = value.asInt
+                    "max" -> bar.max = value.asInt
+                    "color" -> bar.color = value.asString
+                    "style" -> bar.style = value.asString
+                    "visible" -> bar.visible = value.asBoolean
+                    "players" -> {
+                        bar.players.clear()
+                        value.asJsonArray.forEach { bar.players.add(it.asString) }
+                    }
+                }
+                recordBossbarMutation(
+                    "bossbar set",
+                    "set",
+                    id,
+                    if (value.isJsonPrimitive) value.asJsonPrimitive.asString else JsonValues.render(value),
+                    bar,
+                    before,
+                ) {
+                    addProperty("field", field)
+                    add("fieldValue", value)
                 }
             }
             else -> unsupportedFeature("Unsupported bossbar action '${tokens[1].text}'", profile.id, location)
