@@ -31,6 +31,8 @@ data class ExecutionContext(
     val yaw: Double = entity?.yaw ?: 0.0,
     /** Base pitch used by rotation-sensitive commands and relative rotation arguments. */
     val pitch: Double = entity?.pitch ?: 0.0,
+    /** Current execution anchor used as the base for local coordinates. */
+    val anchor: String = "feet",
 )
 
 /**
@@ -509,7 +511,7 @@ class DatapackSandbox(
             }
             "spawn" -> {
                 requireSize(tokens, 7, "loot spawn <pos> loot <table>", location)
-                val pos = parsePosition(tokens, 2, context.position, location, context.yaw, context.pitch)
+                val pos = parsePosition(tokens, 2, context, location)
                 spawnLootItems(pos, parseLootSource(tokens, 5, context, location))
             }
             "replace" -> executeLootReplace(tokens, location, context)
@@ -596,7 +598,7 @@ class DatapackSandbox(
             }
             "fish" -> {
                 requireSizeFrom(tokens, index, 5, "loot source fish <table> <pos> [tool]", location)
-                val origin = parsePosition(tokens, index + 2, context.position, location, context.yaw, context.pitch)
+                val origin = parsePosition(tokens, index + 2, context, location)
                 val tool = tokens.getOrNull(index + 5)?.text?.let(::lootTool)
                 generateLootItems(ResourceLocation.parse(tokens[index + 1].text), ResourceLocation("minecraft", "fishing"), context, origin = origin, tool = tool)
             }
@@ -1082,7 +1084,7 @@ class DatapackSandbox(
                     } else {
                         requireSizeFrom(tokens, index, 4, "execute positioned <x> <y> <z>", location)
                         contexts = contexts.map { ctx ->
-                            ctx.copy(position = parsePosition(tokens, index + 1, ctx.position, location, ctx.yaw, ctx.pitch))
+                            ctx.copy(position = parsePosition(tokens, index + 1, ctx, location))
                         }
                         index += 4
                     }
@@ -1100,6 +1102,11 @@ class DatapackSandbox(
                 }
                 "anchored" -> {
                     requireIndex(tokens, index + 1, "execute anchored <eyes|feet>", location)
+                    val anchor = tokens[index + 1].text
+                    if (anchor !in setOf("eyes", "feet")) {
+                        throw SandboxException(DiagnosticCode.INPUT_FORMAT, "execute anchored must be eyes or feet", location)
+                    }
+                    contexts = contexts.map { it.copy(anchor = anchor) }
                     index += 2
                 }
                 "facing" -> {
@@ -1115,7 +1122,7 @@ class DatapackSandbox(
                     } else {
                         requireSizeFrom(tokens, index, 4, "execute facing <x> <y> <z>", location)
                         contexts = contexts.map { ctx ->
-                            ctx.facing(parsePosition(tokens, index + 1, ctx.position, location, ctx.yaw, ctx.pitch))
+                            ctx.facing(parsePosition(tokens, index + 1, ctx, location))
                         }
                     }
                     index += 4
@@ -2064,7 +2071,7 @@ class DatapackSandbox(
         var position = context.position
         var nbtStartIndex = 2
         if (isCoordinateTriple(tokens, 2)) {
-            position = parsePosition(tokens, 2, context.position, location, context.yaw, context.pitch)
+            position = parsePosition(tokens, 2, context, location)
             nbtStartIndex = 5
         }
         val nbt = if (tokens.size > nbtStartIndex) parseSummonNbt(CommandTokenizer.tailFrom(command, tokens[nbtStartIndex]), location) else JsonObject()
@@ -2090,13 +2097,21 @@ class DatapackSandbox(
         when {
             tokens.size >= 4 && isCoordinateTriple(tokens, 1) -> {
                 val entity = context.entity ?: throw SandboxException(DiagnosticCode.COMMAND_ERROR, "${tokens[0].text} <location> requires an execution entity", location)
-                val position = parsePosition(tokens, 1, entity.position, location, context.yaw, context.pitch)
+                val position = parsePosition(
+                    tokens,
+                    1,
+                    entity.position,
+                    location,
+                    context.yaw,
+                    context.pitch,
+                    anchoredPosition(entity.position, entity, context.anchor),
+                )
                 val rotation = parseOptionalTeleportRotation(tokens, 4, position, context, location)
                 moveEntities(listOf(entity), position, rotation)
             }
             tokens.size >= 5 && isCoordinateTriple(tokens, 2) -> {
                 val targets = EntitySelectors.select(world, tokens[1].text, context, location)
-                val position = parsePosition(tokens, 2, context.position, location, context.yaw, context.pitch)
+                val position = parsePosition(tokens, 2, context, location)
                 val rotation = parseOptionalTeleportRotation(tokens, 5, position, context, location)
                 moveEntities(targets, position, rotation)
             }
@@ -2328,7 +2343,7 @@ class DatapackSandbox(
     }
 
     private fun executeSetWorldSpawn(tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext) {
-        val position = if (tokens.size >= 4) parsePosition(tokens, 1, context.position, location, context.yaw, context.pitch) else context.position
+        val position = if (tokens.size >= 4) parsePosition(tokens, 1, context, location) else context.position
         val angle = tokens.getOrNull(if (tokens.size >= 4) 4 else 1)?.text?.let { parseDouble(it, "spawn angle", location) }
         world.worldSpawn = SpawnPoint(position = position, dimension = ResourceLocation("minecraft", "overworld"), angle = angle)
     }
@@ -2342,7 +2357,7 @@ class DatapackSandbox(
                 ?: throw SandboxException(DiagnosticCode.COMMAND_ERROR, "spawnpoint requires a target player", location))
         }
         val posIndex = if (targetToken != null && !isCoordinateToken(targetToken)) 2 else 1
-        val position = if (tokens.size >= posIndex + 3) parsePosition(tokens, posIndex, context.position, location, context.yaw, context.pitch) else context.position
+        val position = if (tokens.size >= posIndex + 3) parsePosition(tokens, posIndex, context, location) else context.position
         val angle = tokens.getOrNull(posIndex + 3)?.text?.let { parseDouble(it, "spawn angle", location) }
         targets.forEach {
             it.spawnPoint = SpawnPoint(position = position, dimension = it.dimension, angle = angle)
@@ -2573,6 +2588,9 @@ class DatapackSandbox(
         return tags.asJsonArray.mapNotNull { if (it.isJsonPrimitive) it.asString else null }.toSet()
     }
 
+    private fun parsePosition(tokens: List<CommandToken>, index: Int, context: ExecutionContext, location: SourceLocation?): Position =
+        parsePosition(tokens, index, context.position, location, context.yaw, context.pitch, context.anchoredPosition())
+
     private fun parsePosition(
         tokens: List<CommandToken>,
         index: Int,
@@ -2580,6 +2598,7 @@ class DatapackSandbox(
         location: SourceLocation?,
         yaw: Double = 0.0,
         pitch: Double = 0.0,
+        localBase: Position = base,
     ): Position {
         requireSizeFrom(tokens, index, 3, "<x> <y> <z>", location)
         val coordinates = listOf(tokens[index].text, tokens[index + 1].text, tokens[index + 2].text)
@@ -2588,7 +2607,7 @@ class DatapackSandbox(
                 throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Cannot mix local coordinates '^' with world coordinates", location)
             }
             return localPosition(
-                base,
+                localBase,
                 left = parseLocalCoordinate(coordinates[0], "left", location),
                 up = parseLocalCoordinate(coordinates[1], "up", location),
                 forward = parseLocalCoordinate(coordinates[2], "forward", location),
@@ -2630,7 +2649,7 @@ class DatapackSandbox(
         }
 
     private fun parseBlockPos(tokens: List<CommandToken>, index: Int, context: ExecutionContext, location: SourceLocation?): BlockPos =
-        parseBlockPos(tokens, index, context.position, location, context.yaw, context.pitch)
+        parseBlockPos(tokens, index, context.position, location, context.yaw, context.pitch, context.anchoredPosition())
 
     private fun parseBlockPos(
         tokens: List<CommandToken>,
@@ -2639,8 +2658,9 @@ class DatapackSandbox(
         location: SourceLocation?,
         yaw: Double = 0.0,
         pitch: Double = 0.0,
+        localBase: Position = base,
     ): BlockPos {
-        val pos = parsePosition(tokens, index, base, location, yaw, pitch)
+        val pos = parsePosition(tokens, index, base, location, yaw, pitch, localBase)
         return BlockPos(floor(pos.x).toInt(), floor(pos.y).toInt(), floor(pos.z).toInt())
     }
 
@@ -2755,7 +2775,7 @@ class DatapackSandbox(
             null -> throw SandboxException(DiagnosticCode.INPUT_FORMAT, "${tokens[0].text} facing requires a position or entity", location)
             else -> {
                 requireSizeFrom(tokens, index, 4, "${tokens[0].text} ... facing <x> <y> <z>", location)
-                parsePosition(tokens, index + 1, context.position, location, context.yaw, context.pitch)
+                parsePosition(tokens, index + 1, context, location)
             }
         }
         return rotationFacing(source, target, Rotation(context.yaw, context.pitch))
@@ -2787,13 +2807,28 @@ class DatapackSandbox(
         )
     }
 
+    private fun ExecutionContext.anchoredPosition(): Position =
+        anchoredPosition(position, entity, anchor)
+
+    private fun anchoredPosition(position: Position, entity: SandboxEntity?, anchor: String): Position =
+        when (anchor) {
+            "eyes" -> position.copy(y = position.y + eyeHeight(entity))
+            else -> position
+        }
+
     private fun facingPosition(entity: SandboxEntity, anchor: String, location: SourceLocation?): Position =
         when (anchor) {
             "feet" -> entity.position
-            "eyes" -> entity.position.copy(y = entity.position.y + if (entity is SandboxPlayer) 1.62 else 1.0)
+            "eyes" -> anchoredPosition(entity.position, entity, "eyes")
             else -> throw SandboxException(DiagnosticCode.INPUT_FORMAT, "execute facing entity anchor must be eyes or feet", location)
         }
 
+    private fun eyeHeight(entity: SandboxEntity?): Double =
+        when (entity) {
+            is SandboxPlayer -> 1.62
+            null -> 0.0
+            else -> 1.0
+        }
 
     private fun parseTime(raw: String, location: SourceLocation?): Long {
         val suffix = raw.last()

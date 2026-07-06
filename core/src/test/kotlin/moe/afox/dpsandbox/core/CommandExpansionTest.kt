@@ -273,6 +273,36 @@ class CommandExpansionTest {
     }
 
     @Test
+    fun `execute anchored changes local coordinate base`() {
+        val sandbox = createFunctionSandboxFromString(
+            version = "26.2",
+            functionText = "",
+            functionId = "demo:empty",
+        )
+
+        sandbox.executeCommand("""summon minecraft:pig 0 64 0 {Tags:["anchor"]}""")
+        val anchor = sandbox.world.entities.single { "anchor" in it.tags }
+
+        sandbox.executeCommand("""execute as @e[tag=anchor,limit=1] anchored eyes run tp ^ ^ ^1""")
+        assertEquals(Position(0.0, 65.0, 1.0), anchor.position)
+
+        sandbox.executeCommand("""tp @e[tag=anchor,limit=1] 0 64 0""")
+        sandbox.executeCommand("""execute as @e[tag=anchor,limit=1] anchored feet run tp ^ ^ ^1""")
+        assertEquals(Position(0.0, 64.0, 1.0), anchor.position)
+
+        sandbox.executeCommand("""tp @e[tag=anchor,limit=1] 0 64 0""")
+        sandbox.executeCommand("""execute as @e[tag=anchor,limit=1] at @s anchored eyes run setblock ^ ^ ^ minecraft:stone""")
+        sandbox.executeCommand("""execute as @e[tag=anchor,limit=1] at @s anchored feet run setblock ^ ^ ^ minecraft:dirt""")
+        assertEquals(ResourceLocation.parse("minecraft:stone"), sandbox.world.requireBlock(BlockPos(0, 65, 0)).id)
+        assertEquals(ResourceLocation.parse("minecraft:dirt"), sandbox.world.requireBlock(BlockPos(0, 64, 0)).id)
+
+        val error = assertFailsWith<SandboxException> {
+            sandbox.executeCommand("""execute anchored head run say invalid""")
+        }
+        assertEquals(DiagnosticCode.INPUT_FORMAT, error.code)
+    }
+
+    @Test
     fun `teleport facing rotates moved entities toward positions and anchors`() {
         val sandbox = createFunctionSandboxFromString(
             version = "26.2",
