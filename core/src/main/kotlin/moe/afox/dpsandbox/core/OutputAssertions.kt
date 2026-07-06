@@ -57,7 +57,7 @@ data class OutputSegmentExpectation(
 data class OutputExpectation(
     /** Command name that produced the event, for example `tellraw`. */
     val command: String? = null,
-    /** Logical output channel such as `chat`, `title`, `sound`, `visual`, or `warning`. */
+    /** Logical output channel such as `chat`, `title`, `sound`, `visual`, `data`, `debug`, `worldgen`, or `warning`. */
     val channel: String? = null,
     /** Single target that must be present in the event target set. */
     val target: String? = null,

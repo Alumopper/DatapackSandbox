@@ -855,6 +855,8 @@ class SandboxQuickTestMatrix private constructor(
         order: Int? = null,
         normalizedText: String? = null,
         normalizedContains: String? = null,
+        payloadPath: String? = null,
+        payloadEquals: JsonElement? = null,
     ): SandboxQuickTestMatrix =
         assertOutput(
             OutputExpectation(
@@ -867,6 +869,8 @@ class SandboxQuickTestMatrix private constructor(
                 order = order,
                 normalizedText = normalizedText,
                 normalizedContains = normalizedContains,
+                payloadPath = payloadPath,
+                payloadEquals = payloadEquals,
             ),
         )
 
@@ -2218,6 +2222,8 @@ class SandboxQuickTest private constructor(
         order: Int? = null,
         normalizedText: String? = null,
         normalizedContains: String? = null,
+        payloadPath: String? = null,
+        payloadEquals: JsonElement? = null,
     ): SandboxQuickTest =
         assertOutput(
             OutputExpectation(
@@ -2230,6 +2236,8 @@ class SandboxQuickTest private constructor(
                 order = order,
                 normalizedText = normalizedText,
                 normalizedContains = normalizedContains,
+                payloadPath = payloadPath,
+                payloadEquals = payloadEquals,
             ),
         )
 
@@ -2507,6 +2515,8 @@ class SandboxQuickTest private constructor(
         contains: String? = null,
         normalizedText: String? = null,
         normalizedContains: String? = null,
+        payloadPath: String? = null,
+        payloadEquals: JsonElement? = null,
     ): List<OutputEvent> =
         matchingOutputs(
             OutputExpectation(
@@ -2517,6 +2527,8 @@ class SandboxQuickTest private constructor(
                 contains = contains,
                 normalizedText = normalizedText,
                 normalizedContains = normalizedContains,
+                payloadPath = payloadPath,
+                payloadEquals = payloadEquals,
             ),
         )
 

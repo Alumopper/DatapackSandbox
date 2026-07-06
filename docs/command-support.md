@@ -119,6 +119,9 @@ REPL output, `run`, `check --verbose`, and the code test API:
 - title: `title`
 - sound: `playsound`, `stopsound`
 - visual: `particle`
+- data: structured state and query outputs from modeled commands
+- debug: manifest and tooling helper outputs
+- worldgen: `place`
 - warning: unsupported or no-op command notices
 
 JSON text components support `text`, `score`, `selector`, `translate`,

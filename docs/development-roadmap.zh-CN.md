@@ -148,7 +148,7 @@
 
 - 扩展 `OutputEvent`：
   - 保留 tick、command、channel、targets、plain text、segments、payload、source location、function stack。
-  - 输出 channel 覆盖 chat、title、sound、visual、warning、data、debug。
+  - 输出 channel 覆盖 chat、title、sound、visual、warning、data、debug、worldgen。
 - 增加命令 trace：
   - `--trace`：记录每条命令、上下文、结果、错误、输出事件。
   - `--trace-file`：写出 JSONL，适合 CI artifact。
@@ -157,6 +157,7 @@
   - quick-test `TraceExpectation` 已支持按输出数量、输出文本/目标、是否产生 snapshot diff、diff path、diff kind 和 diff 渲染文本匹配，便于定位命令副作用。
   - manifest `trace` 断言已支持同样的输出数量、输出文本/目标和 snapshot diff 匹配字段，并已写入 JSON Schema，便于 `.dps.json` 回归测试直接定位命令副作用。
   - REPL/CLI 命令目录会把 `place` 标记为 `observed-noop` 并提供基础子命令补全，避免工具提示和核心执行语义不一致。
+  - quick-test 与 manifest 输出断言已覆盖 `place` 的 `worldgen` channel 和 `payloadPath` 匹配，便于命令生成器回归测试验证放置目标、位置和 no-op 原因。
 - 增加 snapshot diff：
   - 对比执行前后 world、score、storage、player、entity、block、outputs。
   - manifest 失败时可显示最小差异，而不是只输出最终 snapshot。

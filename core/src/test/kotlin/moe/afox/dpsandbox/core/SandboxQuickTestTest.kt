@@ -1,5 +1,6 @@
 ﻿package moe.afox.dpsandbox.core
 
+import com.google.gson.JsonPrimitive
 import java.nio.file.Path
 import java.nio.file.Files
 import java.util.zip.ZipEntry
@@ -510,6 +511,35 @@ class SandboxQuickTestTest {
             .assertOutput(command = "tellraw", normalizedText = "generated output", normalizedContains = "generated output", count = 1)
 
         val matches = scenario.matchingOutputs(command = "tellraw", normalizedText = "generated output")
+
+        assertEquals(1, matches.size)
+        scenario.requirePassed()
+    }
+
+    @Test
+    fun `quick output helpers match structured place worldgen payloads`() {
+        val scenario = SandboxQuickTest.singleFunctionText("place structure demo:ruin 1 64 2", version = "26.2")
+            .function()
+            .assertOutput(
+                command = "place structure",
+                channel = "worldgen",
+                payloadPath = "placed",
+                payloadEquals = JsonPrimitive(false),
+                count = 1,
+            )
+            .assertOutput(
+                command = "place structure",
+                payloadPath = "id",
+                payloadEquals = JsonPrimitive("demo:ruin"),
+                count = 1,
+            )
+
+        val matches = scenario.matchingOutputs(
+            command = "place structure",
+            channel = "worldgen",
+            payloadPath = "position.y",
+            payloadEquals = JsonPrimitive(64.0),
+        )
 
         assertEquals(1, matches.size)
         scenario.requirePassed()

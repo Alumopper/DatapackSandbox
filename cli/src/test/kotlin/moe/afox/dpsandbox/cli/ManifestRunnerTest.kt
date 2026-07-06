@@ -224,6 +224,9 @@ class ManifestRunnerTest {
         assertEquals(1, outputProperties.getAsJsonObject("order").get("minimum").asInt)
         assertEquals("string", outputProperties.getAsJsonObject("normalizedText").get("type").asString)
         assertEquals("string", outputProperties.getAsJsonObject("normalizedContains").get("type").asString)
+        assertEquals("string", outputProperties.getAsJsonObject("payloadPath").get("type").asString)
+        val payloadProperties = outputProperties.getAsJsonObject("payload").getAsJsonObject("properties")
+        assertEquals("string", payloadProperties.getAsJsonObject("path").get("type").asString)
         val segmentProperties = outputProperties.getAsJsonObject("segment").getAsJsonObject("properties")
         assertEquals("string", segmentProperties.getAsJsonObject("normalizedText").get("type").asString)
     }
@@ -366,7 +369,8 @@ class ManifestRunnerTest {
               "steps": [
                 { "command": "say hello from manifest" },
                 { "command": "tellraw Steve {\"text\":\"gold\",\"color\":\"yellow\"}" },
-                { "command": "tellraw Steve {\"text\":\"hello     generated     output\"}" }
+                { "command": "tellraw Steve {\"text\":\"hello     generated     output\"}" },
+                { "command": "place structure demo:ruin 1 64 2" }
               ],
               "assertions": [
                 {
@@ -399,6 +403,16 @@ class ManifestRunnerTest {
                     "segment": {
                       "normalizedText": "hello generated output"
                     },
+                    "count": 1
+                  }
+                },
+                {
+                  "output": {
+                    "command": "place structure",
+                    "channel": "worldgen",
+                    "payloadPath": "placed",
+                    "payloadEquals": false,
+                    "order": 4,
                     "count": 1
                   }
                 }

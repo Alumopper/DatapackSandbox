@@ -108,6 +108,9 @@
 - title：`title`
 - sound：`playsound`、`stopsound`
 - visual：`particle`
+- data：modeled 命令的结构化状态和 query 输出
+- debug：manifest 和工具辅助输出
+- worldgen：`place`
 - warning：未支持或 no-op 命令提示
 
 JSON text component 支持 `text`、`score`、`selector`、`translate`、`keybind`、基础 `nbt`、`extra` 和常见格式字段。沙盒会同时保存纯文本和分段 metadata，例如颜色、粗体、斜体等。
