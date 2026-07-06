@@ -229,9 +229,10 @@ overlay behavior, and can be inspected from API or REPL. `item modify entity`
 models common item modifier functions such as `set_components`,
 `set_custom_data`, `set_count`, `limit_count`, `set_item`, `discard`,
 `set_damage`, `set_name`, `set_lore`, `filtered`, `reference`, and `sequence`.
-Entity item commands support player inventory slots and non-player equipment
-slots such as `weapon.mainhand`, `weapon.offhand`, and `armor.*`; equipment is
-also exposed through snapshots and `HandItems`/`ArmorItems` entity NBT. Entity
+Entity item commands support player inventory/`enderchest.*` slots and
+non-player equipment slots such as `weapon.mainhand`, `weapon.offhand`, and
+`armor.*`; equipment is also exposed through snapshots and
+`HandItems`/`ArmorItems` entity NBT. Entity
 predicates can match `equipment` fields for `mainhand`, `offhand`, `head`,
 `chest`, `legs`, and `feet`, active `effects` with amplifier/duration and
 particle visibility, and item predicates can match `enchantments` or

@@ -2123,10 +2123,48 @@ class DatapackSandbox(
         }
     }
 
-    private fun replacePlayerItem(player: SandboxPlayer, slot: Int, item: ItemStack?) {
-        while (player.inventory.size <= slot) player.inventory += ItemStack(ResourceLocation("minecraft", "air"), 0)
-        player.inventory[slot] = item?.copyStack() ?: ItemStack(ResourceLocation("minecraft", "air"), 0)
+    private enum class PlayerItemContainer {
+        INVENTORY,
+        ENDER_ITEMS,
     }
+
+    private data class PlayerItemSlot(
+        val container: PlayerItemContainer,
+        val index: Int,
+    )
+
+    private fun replacePlayerItem(player: SandboxPlayer, slot: PlayerItemSlot, item: ItemStack?) {
+        val items = playerItems(player, slot.container)
+        while (items.size <= slot.index) items += ItemStack(ResourceLocation("minecraft", "air"), 0)
+        items[slot.index] = item?.copyStack() ?: ItemStack(ResourceLocation("minecraft", "air"), 0)
+    }
+
+    private fun playerItem(player: SandboxPlayer, slot: PlayerItemSlot): ItemStack? =
+        playerItems(player, slot.container).getOrNull(slot.index)?.copyStack()
+
+    private fun playerItems(player: SandboxPlayer, container: PlayerItemContainer): MutableList<ItemStack> =
+        when (container) {
+            PlayerItemContainer.INVENTORY -> player.inventory
+            PlayerItemContainer.ENDER_ITEMS -> player.enderItems
+        }
+
+    private fun playerItemSlot(rawSlot: String): PlayerItemSlot =
+        if (isEnderItemSlot(rawSlot)) {
+            PlayerItemSlot(
+                PlayerItemContainer.ENDER_ITEMS,
+                rawSlot.substringAfter('.').toIntOrNull()?.coerceAtLeast(0) ?: 0,
+            )
+        } else {
+            PlayerItemSlot(PlayerItemContainer.INVENTORY, inventorySlot(rawSlot))
+        }
+
+    private fun isEnderItemSlot(rawSlot: String): Boolean =
+        rawSlot.startsWith("enderchest.") ||
+            rawSlot.startsWith("ender_chest.") ||
+            rawSlot.startsWith("enderChest.") ||
+            rawSlot.startsWith("enderItems.") ||
+            rawSlot.startsWith("ender_items.") ||
+            rawSlot.startsWith("ender.")
 
     private data class EntityItemAccess(
         val get: () -> ItemStack?,
@@ -2135,9 +2173,9 @@ class DatapackSandbox(
 
     private fun entityItemAccess(entity: SandboxEntity, rawSlot: String, location: SourceLocation?): EntityItemAccess {
         if (entity is SandboxPlayer) {
-            val slot = inventorySlot(rawSlot)
+            val slot = playerItemSlot(rawSlot)
             return EntityItemAccess(
-                get = { entity.inventory.getOrNull(slot)?.copyStack() },
+                get = { playerItem(entity, slot) },
                 set = { item -> replacePlayerItem(entity, slot, item) },
             )
         }

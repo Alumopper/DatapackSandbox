@@ -221,6 +221,40 @@ class CommandExpansionTest {
     }
 
     @Test
+    fun `item and loot commands support player ender chest slots`() {
+        val modifierPack = writeItemModifierPack(Files.createTempDirectory("dps-ender-item-modifier-pack"))
+        val lootPack = writeLootSourcePack(Files.createTempDirectory("dps-ender-loot-source-pack"))
+        val sandbox = createSandbox("26.2", listOf(modifierPack, lootPack))
+
+        sandbox.executeCommand("item replace entity Steve enderchest.0 with minecraft:stick 1")
+        sandbox.executeCommand("item modify entity Steve enderchest.0 demo:mark")
+        sandbox.executeCommand("item replace entity Steve hotbar.0 from entity Steve enderchest.0")
+        sandbox.executeCommand("loot replace entity Steve enderchest.1 loot demo:fish")
+
+        val player = sandbox.world.requirePlayer("Steve")
+        val modifiedEnderItem = player.enderItems[0]
+        assertEquals(ResourceLocation.parse("minecraft:stick"), modifiedEnderItem.id)
+        assertEquals(4, modifiedEnderItem.count)
+        assertEquals(true, modifiedEnderItem.nbt.get("marked").asBoolean)
+        assertEquals("tagged", modifiedEnderItem.components.get("demo:tag").asString)
+
+        val copiedToInventory = player.inventory[0]
+        assertEquals(ResourceLocation.parse("minecraft:stick"), copiedToInventory.id)
+        assertEquals(4, copiedToInventory.count)
+        assertEquals(true, copiedToInventory.nbt.get("marked").asBoolean)
+
+        val lootEnderItem = player.enderItems[1]
+        assertEquals(ResourceLocation.parse("minecraft:diamond"), lootEnderItem.id)
+
+        val snapshotEnderItems = sandbox.snapshotJson()
+            .getAsJsonObject("players")
+            .getAsJsonObject("Steve")
+            .getAsJsonArray("enderItems")
+        assertEquals("minecraft:stick", snapshotEnderItems[0].asJsonObject.get("id").asString)
+        assertEquals("minecraft:diamond", snapshotEnderItems[1].asJsonObject.get("id").asString)
+    }
+
+    @Test
     fun `item commands support non-player entity equipment slots`() {
         val pack = writeItemModifierPack(Files.createTempDirectory("dps-entity-equipment-pack"))
         writeEquipmentPredicateEntries(pack)

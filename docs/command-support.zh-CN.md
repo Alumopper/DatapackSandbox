@@ -44,12 +44,12 @@
 | `gamerule` | 部分支持 | 存储任意 gamerule 字符串值，并为查询记录结构化输出；不执行具体游戏规则副作用。 |
 | `give` | 部分支持 | 向玩家背包添加物品并触发 inventory advancement 事件。 |
 | `help` | 部分支持 | 输出命令根节点和基础沙盒帮助。 |
-| `item` | 部分支持 | `replace entity|block ... with <item> [count]` 和 `from entity|block ...`；`modify entity|block ... <modifier>` 会应用常用 item modifier 函数（`set_components`、`set_custom_data`、`set_count`、`limit_count`、`set_item`、`discard`、`set_damage`、`set_name`、`set_lore`、`filtered`、`reference`、`sequence`）。 |
+| `item` | 部分支持 | `replace entity|block ... with <item> [count]` 和 `from entity|block ...`；entity 槽位覆盖玩家背包/`enderchest.*` 槽和非玩家实体装备槽；`modify entity|block ... <modifier>` 会应用常用 item modifier 函数（`set_components`、`set_custom_data`、`set_count`、`limit_count`、`set_item`、`discard`、`set_damage`、`set_name`、`set_lore`、`filtered`、`reference`、`sequence`）。 |
 | `kick` | 未支持 | 不模拟网络会话。 |
 | `kill` | 支持 | 移除选中的沙盒实体；玩家执行上下文会为非玩家目标触发 `killed_entity` advancement 事件。 |
 | `list` | 支持 | 报告沙盒玩家及 UUID。 |
 | `locate` | 部分支持 | 接受 `biome`、`structure`、`poi`；虚空世界中报告没有结果。 |
-| `loot` | 部分支持 | 支持 `give`、`insert`、`spawn`、`replace entity`、`replace block`；`spawn` 会在当前执行维度创建 item 实体；`replace entity` 可写入玩家背包槽和非玩家实体装备槽；source 支持 `loot <table>`、`fish <table> <pos> [tool]`、`mine <pos> [tool]`，以及实体声明 `DeathLootTable` 时的 `kill <target>`；还支持沙盒上下文 source：`entity <table> <target>`、`block <table> <pos> [tool]`、`equipment <table> <target> <slot>`；常用函数覆盖 count、item id、discard、components/custom data、damage、name 和 lore。 |
+| `loot` | 部分支持 | 支持 `give`、`insert`、`spawn`、`replace entity`、`replace block`；`spawn` 会在当前执行维度创建 item 实体；`replace entity` 可写入玩家背包/`enderchest.*` 槽和非玩家实体装备槽；source 支持 `loot <table>`、`fish <table> <pos> [tool]`、`mine <pos> [tool]`，以及实体声明 `DeathLootTable` 时的 `kill <target>`；还支持沙盒上下文 source：`entity <table> <target>`、`block <table> <pos> [tool]`、`equipment <table> <target> <slot>`；常用函数覆盖 count、item id、discard、components/custom data、damage、name 和 lore。 |
 | `me` | 支持 | 记录为 chat 输出事件。 |
 | `msg`、`tell`、`w` | 支持 | 记录为私聊输出事件。 |
 | `pardon`、`pardon-ip` | 未支持 | 不模拟服务器封禁管理。 |
