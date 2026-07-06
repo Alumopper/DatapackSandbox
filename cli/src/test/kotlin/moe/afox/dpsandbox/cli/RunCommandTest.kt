@@ -650,6 +650,29 @@ class RunCommandTest {
     }
 
     @Test
+    fun `run can print resource summaries`() {
+        val dir = Files.createTempDirectory("dps-cli-resource-summary")
+        val pack = writeMissingReferencePack(dir.resolve("pack"))
+
+        val output = captureStdout {
+            main(
+                arrayOf(
+                    "run",
+                    "--version",
+                    "26.2",
+                    "--pack",
+                    pack.toString(),
+                    "--resources",
+                ),
+            )
+        }
+
+        assertTrue("resources 26.2 functions=0" in output, output)
+        assertTrue("missing-reference #minecraft:load -> function demo:missing_load" in output, output)
+        assertTrue("OK version=26.2" in output, output)
+    }
+
+    @Test
     fun `run filters printed and written command traces`() {
         val traceFile = Files.createTempFile("dps-cli-filtered-trace", ".jsonl")
 

@@ -346,6 +346,7 @@ class RunCommand : CliktCommand(name = "run") {
     private val traceFilters by option("--trace-filter").multiple()
     private val outputsFile by option("--outputs-file").path()
     private val reportFile by option("--report-file").path()
+    private val resources by option("--resources").flag(default = false)
     private val unsupported by option("--unsupported").default("warn")
 
     override fun run() {
@@ -373,7 +374,8 @@ class RunCommand : CliktCommand(name = "run") {
                 traceFile != null ||
                 eventTraceFile != null ||
                 outputsFile != null ||
-                reportFile != null
+                reportFile != null ||
+                resources
             val sandbox = when {
                 functionSources.isNotEmpty() -> {
                     createFunctionSandbox(
@@ -446,6 +448,9 @@ class RunCommand : CliktCommand(name = "run") {
             }
             outputsFile?.let { writeOutputsFile(it, sandbox.world.outputs) }
             val resourceSummary = ManifestRunner.summarizeResources(sandbox)
+            if (resources) {
+                ResourceSummaryRenderer.print(sandbox.profile.id, resourceSummary)
+            }
             val assertionFailures = ManifestRunner.evaluateAssertions(parseAssertions(), sandbox, beforeSnapshot) +
                 if (failOnMissingResources) {
                     ManifestRunner.missingResourceFailures(resourceSummary)

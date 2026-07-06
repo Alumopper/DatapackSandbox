@@ -158,10 +158,11 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar run --version 26.2 \
 ```
 
 For quick pack-level sanity checks, `run` can use the same direct missing
-resource validation as manifest checks:
+resource validation as manifest checks, and `--resources` prints the resource
+summary without requiring a full manifest:
 
 ```bash
-java -jar cli/build/libs/datapack-sandbox-cli.jar run --pack ./my_pack --fail-on-missing-resources
+java -jar cli/build/libs/datapack-sandbox-cli.jar run --pack ./my_pack --resources --fail-on-missing-resources
 ```
 
 Run JSON check manifests:
