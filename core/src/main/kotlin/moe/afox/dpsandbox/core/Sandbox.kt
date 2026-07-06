@@ -2067,9 +2067,20 @@ class DatapackSandbox(
             ?: ResourceLocation("minecraft", "generic")
         val sourceEntity = damageCommandSourceEntity(tokens, context, location)
         val targets = EntitySelectors.select(world, tokens[1].text, context, location)
+        val damaged = JsonArray()
         targets.forEach { entity ->
             val beforeHealth = if (entity is SandboxPlayer) entity.health else entity.fullNbt(profile, location).get("Health")?.asDouble ?: 20.0
             val afterHealth = (beforeHealth - amount).coerceAtLeast(0.0)
+            damaged.add(
+                JsonObject().also { entry ->
+                    entry.addProperty("target", entity.scoreHolder)
+                    entry.addProperty("uuid", entity.uuid)
+                    entry.addProperty("type", entity.type.toString())
+                    entry.addProperty("beforeHealth", beforeHealth)
+                    entry.addProperty("afterHealth", afterHealth)
+                    entry.addProperty("dead", beforeHealth > 0.0 && afterHealth <= 0.0)
+                },
+            )
             if (entity is SandboxPlayer) {
                 entity.health = afterHealth
                 advancements.handle(
@@ -2131,6 +2142,23 @@ class DatapackSandbox(
                 }
             }
         }
+        world.recordOutput(
+            "damage",
+            "data",
+            targets = targets.map { it.scoreHolder },
+            text = targets.size.toString(),
+            payload = JsonObject().also { payload ->
+                payload.addProperty("amount", amount)
+                payload.addProperty("damageSource", damageSource.toString())
+                sourceEntity?.let { source ->
+                    payload.addProperty("source", source.scoreHolder)
+                    payload.addProperty("sourceUuid", source.uuid)
+                    payload.addProperty("sourceType", source.type.toString())
+                }
+                payload.addProperty("count", targets.size)
+                payload.add("targets", damaged)
+            },
+        )
         world.entities.removeIf { entity ->
             when (entity) {
                 is SandboxPlayer -> entity.health <= 0.0

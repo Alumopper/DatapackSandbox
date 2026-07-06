@@ -155,6 +155,12 @@ class PlayerEventsTest {
 
         assertEquals(0.0, player.health)
         assertTrue(player.advancementProgress.getValue(advancementId).criteria.getValue("killed_by_zombie"))
+        val output = sandbox.world.outputs.single { it.command == "damage" }
+        val payload = output.payload?.asJsonObject ?: error("missing damage payload")
+        assertEquals("minecraft:mob_attack", payload.get("damageSource").asString)
+        assertEquals("minecraft:zombie", payload.get("sourceType").asString)
+        assertEquals("Steve", payload.getAsJsonArray("targets")[0].asJsonObject.get("target").asString)
+        assertEquals(true, payload.getAsJsonArray("targets")[0].asJsonObject.get("dead").asBoolean)
     }
 
     @Test
@@ -188,6 +194,12 @@ class PlayerEventsTest {
         sandbox.executeCommand("damage @e[type=minecraft:cow,limit=1] 4 minecraft:player_attack by Steve")
 
         assertTrue(player.advancementProgress.getValue(advancementId).criteria.getValue("hit_cow"))
+        val output = sandbox.world.outputs.single { it.command == "damage" }
+        val payload = output.payload?.asJsonObject ?: error("missing damage payload")
+        assertEquals("Steve", payload.get("source").asString)
+        assertEquals("minecraft:cow", payload.getAsJsonArray("targets")[0].asJsonObject.get("type").asString)
+        assertEquals(8.0, payload.getAsJsonArray("targets")[0].asJsonObject.get("beforeHealth").asDouble)
+        assertEquals(4.0, payload.getAsJsonArray("targets")[0].asJsonObject.get("afterHealth").asDouble)
     }
 
     private fun sandboxWithAdvancement(id: ResourceLocation, criterion: Criterion): DatapackSandbox =

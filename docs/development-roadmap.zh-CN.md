@@ -61,6 +61,7 @@
 - 扩展 `item` 和 item modifier：
   - 支持 entity/block slot 读写、modifier 应用、components/NBT 兼容差异；entity item 槽位已覆盖玩家背包、当前主手、`enderchest.*` 和非玩家实体装备；`give`、`clear` 与 `item replace ... with` 已支持 JSON/SNBT-lite NBT 和 components payload，`give`、`item replace` 与 `item modify` 会记录结构化输出便于 report/assertion 调试。
 - 扩展 `recipe`、`advancement`、`attribute`、`damage`、`effect`、`enchant`、`random`、`team`、`bossbar`、`worldborder` 的子命令覆盖。
+  - `damage` 已记录结构化生命值变化输出，便于 report/assertion 调试。
   - `enchant` 已覆盖玩家选中物品和非玩家实体主手装备的附魔组件写入，并记录结构化输出；`effect give/clear` 已记录结构化输出，便于 report/assertion 调试。
 - 为不适合完整模拟的命令保留结构化 no-op 或 unsupported warning，例如 `debug`、`jfr`、`publish`、`stop`、网络和权限相关命令。
 
