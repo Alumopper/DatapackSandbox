@@ -234,7 +234,8 @@ Entity item commands support player inventory, selected-mainhand, and
 `weapon.mainhand`, `weapon.offhand`, and
 `armor.*`. `give` and `item replace ... with` accept item arguments with
 JSON/SNBT-lite NBT (`minecraft:stick{marked:true}`) and component payloads
-(`minecraft:stick[custom_data={marked:true}]`). Equipment is also exposed through snapshots and
+(`minecraft:stick[custom_data={marked:true}]`); whitespace inside bracketed
+payloads is preserved during command tokenization. Equipment is also exposed through snapshots and
 `HandItems`/`ArmorItems` entity NBT. Entity
 predicates can match `equipment` fields for `mainhand`, `offhand`, `head`,
 `chest`, `legs`, and `feet`, active `effects` with amplifier/duration and

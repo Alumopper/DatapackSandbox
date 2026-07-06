@@ -228,23 +228,26 @@ class CommandExpansionTest {
             functionId = "demo:empty",
         )
 
-        sandbox.executeCommand("give Steve minecraft:stick{marked:true,label:old} 2")
-        sandbox.executeCommand("item replace entity Steve hotbar.1 with minecraft:diamond[custom_data={source:component},damage=3] 4")
+        sandbox.executeCommand("give Steve minecraft:stick{marked: true, label: 'old value'} 2")
+        sandbox.executeCommand("item replace entity Steve hotbar.1 with minecraft:diamond[custom_data={source: component, nested: {ready: true}}, damage=3] 4")
         sandbox.executeCommand("setblock 0 64 0 minecraft:chest")
         sandbox.executeCommand("item replace block 0 64 0 container.0 with minecraft:apple[minecraft:custom_data={boxed:true}] 5")
+        sandbox.executeCommand("summon minecraft:zombie 1 64 0")
+        sandbox.executeCommand("item replace entity @e[type=minecraft:zombie, limit=1] weapon.mainhand with minecraft:stick{marked: true}")
 
         val player = sandbox.world.requirePlayer("Steve")
         val nbtItem = player.inventory[0]
         assertEquals(ResourceLocation.parse("minecraft:stick"), nbtItem.id)
         assertEquals(2, nbtItem.count)
         assertEquals(true, nbtItem.nbt.get("marked").asBoolean)
-        assertEquals("old", nbtItem.nbt.get("label").asString)
+        assertEquals("old value", nbtItem.nbt.get("label").asString)
 
         val componentItem = player.inventory[1]
         assertEquals(ResourceLocation.parse("minecraft:diamond"), componentItem.id)
         assertEquals(4, componentItem.count)
         assertEquals(3, componentItem.components.get("minecraft:damage").asInt)
         assertEquals("component", componentItem.nbt.get("source").asString)
+        assertEquals(true, componentItem.nbt.getAsJsonObject("nested").get("ready").asBoolean)
 
         val blockItem = sandbox.world.requireBlock(BlockPos(0, 64, 0))
             .fullNbt(BlockPos(0, 64, 0), sandbox.profile)
@@ -254,6 +257,9 @@ class CommandExpansionTest {
         assertEquals("minecraft:apple", blockItem.get("id").asString)
         assertEquals(5, blockItem.get("count").asInt)
         assertEquals(true, blockItem.getAsJsonObject("components").getAsJsonObject("minecraft:custom_data").get("boxed").asBoolean)
+
+        val zombie = sandbox.world.entities.single { it.type == ResourceLocation.parse("minecraft:zombie") }
+        assertEquals(true, zombie.equipment[EquipmentSlots.MAINHAND]?.nbt?.get("marked")?.asBoolean)
     }
 
     @Test

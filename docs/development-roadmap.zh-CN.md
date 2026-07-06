@@ -86,7 +86,7 @@
   - inventory、selected slot、ender items、recipes、stats、xp、health、food、gamemode、spawn、advancement progress、last input。
   - 玩家 NBT 默认只读；可通过命令、fixture 或事件改变玩家状态；新建玩家会使用当前 `defaultGameMode`；world fixture、manifest world 和 quick-test world builder 可声明玩家末影箱物品和 advancement progress，`item`/`loot replace entity` 可按 `selectedSlot` 读写当前主手并可读写 `enderchest.*` 槽，通过 snapshot、完整 NBT path、`assertPlayer`/manifest player assertion、`assertItem`/manifest item assertion 和 advancement assertion 检查。
 - 完善 item stack：
-  - 兼容旧版 NBT 和新版 components；命令 item argument 可直接输入 JSON/SNBT-lite NBT 与 components payload。
+  - 兼容旧版 NBT 和新版 components；命令 item argument 可直接输入 JSON/SNBT-lite NBT 与 components payload，并在括号 payload 内保留空格用于解析。
   - 提供 matcher，支持 id、count、components path、NBT path、slot、enchantment、custom data；item predicate 已支持 `enchantments`/`stored_enchantments` 直接匹配。
 
 验收标准：

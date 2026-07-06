@@ -16,8 +16,55 @@ object CommandTokenizer {
             var escaped = false
 
             if (quote == null) {
-                while (index < command.length && !command[index].isWhitespace()) {
-                    builder.append(command[index++])
+                var nestedQuote: Char? = null
+                var objectDepth = 0
+                var arrayDepth = 0
+                while (index < command.length) {
+                    val char = command[index]
+                    if (nestedQuote != null) {
+                        builder.append(char)
+                        index++
+                        when {
+                            escaped -> escaped = false
+                            char == '\\' -> escaped = true
+                            char == nestedQuote -> nestedQuote = null
+                        }
+                        continue
+                    }
+                    if (char.isWhitespace() && objectDepth == 0 && arrayDepth == 0) break
+                    when (char) {
+                        '"', '\'' -> nestedQuote = char
+                        '{' -> objectDepth++
+                        '}' -> objectDepth--
+                        '[' -> arrayDepth++
+                        ']' -> arrayDepth--
+                    }
+                    if (objectDepth < 0 || arrayDepth < 0) {
+                        throw SandboxException(
+                            code = DiagnosticCode.INPUT_FORMAT,
+                            message = "Malformed bracketed command token",
+                            location = location,
+                            command = command,
+                        )
+                    }
+                    builder.append(char)
+                    index++
+                }
+                if (nestedQuote != null) {
+                    throw SandboxException(
+                        code = DiagnosticCode.INPUT_FORMAT,
+                        message = "Unterminated quoted string",
+                        location = location,
+                        command = command,
+                    )
+                }
+                if (objectDepth != 0 || arrayDepth != 0) {
+                    throw SandboxException(
+                        code = DiagnosticCode.INPUT_FORMAT,
+                        message = "Unterminated bracketed command token",
+                        location = location,
+                        command = command,
+                    )
                 }
             } else {
                 while (index < command.length) {
