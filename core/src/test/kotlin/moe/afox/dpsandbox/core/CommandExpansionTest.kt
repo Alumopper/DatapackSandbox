@@ -107,7 +107,7 @@ class CommandExpansionTest {
 
         val item = sandbox.world.requirePlayer("Steve").inventory[0]
         assertEquals(ResourceLocation.parse("minecraft:stick"), item.id)
-        assertEquals(2, item.count)
+        assertEquals(4, item.count)
         assertEquals(true, item.nbt.get("marked").asBoolean)
         assertEquals("tagged", item.components.get("demo:tag").asString)
         assertEquals("Marked Stick", item.components.getAsJsonObject("minecraft:custom_name").get("text").asString)
@@ -128,7 +128,7 @@ class CommandExpansionTest {
             .getAsJsonArray("Items")
         val item = items.single { it.asJsonObject.get("Slot").asInt == 0 }.asJsonObject
         assertEquals("minecraft:stick", item.get("id").asString)
-        assertEquals(2, item.get("count").asInt)
+        assertEquals(4, item.get("count").asInt)
         assertEquals("tagged", item.getAsJsonObject("components").get("demo:tag").asString)
         assertEquals(true, item.getAsJsonObject("components").getAsJsonObject("minecraft:custom_data").get("marked").asBoolean)
     }
@@ -626,7 +626,13 @@ class CommandExpansionTest {
               },
               {
                 "function": "minecraft:set_count",
-                "count": 2
+                "count": 8
+              },
+              {
+                "function": "minecraft:limit_count",
+                "limit": {
+                  "max": 4
+                }
               },
               {
                 "function": "minecraft:set_damage",

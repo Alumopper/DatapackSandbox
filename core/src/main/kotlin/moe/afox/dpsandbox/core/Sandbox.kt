@@ -2052,6 +2052,7 @@ class DatapackSandbox(
                     JsonPaths.merge(stack.nbt, null, parsed)
                 }
                 "set_count" -> stack = stack.copy(count = itemModifierCount(function.get("count"), stack.count).coerceAtLeast(0))
+                "limit_count" -> stack = stack.copy(count = itemModifierLimit(stack.count, function.get("limit")).coerceAtLeast(0))
                 "set_damage" -> stack.components.addProperty("minecraft:damage", itemModifierNumber(function.get("damage"), 0.0))
                 "set_name" -> stack.components.add("minecraft:custom_name", itemModifierText(function, "name", type, location))
                 "set_lore" -> stack.components.add("minecraft:lore", itemModifierLore(function, location))
@@ -2103,6 +2104,14 @@ class DatapackSandbox(
             element.isJsonObject -> element.asJsonObject.get("min")?.asDouble ?: element.asJsonObject.get("base")?.asDouble ?: fallback
             else -> fallback
         }
+
+    private fun itemModifierLimit(value: Int, element: JsonElement?): Int {
+        if (element == null || !element.isJsonObject) return value
+        val root = element.asJsonObject
+        val min = root.get("min")?.asInt ?: Int.MIN_VALUE
+        val max = root.get("max")?.asInt ?: Int.MAX_VALUE
+        return value.coerceIn(min, max)
+    }
 
     private fun itemModifierText(function: JsonObject, key: String, type: String, location: SourceLocation?): JsonElement =
         function.get(key)?.deepCopy()
