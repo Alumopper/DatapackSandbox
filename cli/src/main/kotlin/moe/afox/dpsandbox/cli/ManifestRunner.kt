@@ -988,17 +988,8 @@ object ManifestRunner {
                     }
                     block.getAsJsonObject("nbt")?.let { expected ->
                         val path = expected.manifestString("path")
-                        val expectedValue = expected.get("equals")
                         val actualValue = actual?.fullNbt(pos, sandbox.profile)?.let { JsonPaths.get(it, path) }
-                        expected.get("exists")?.let { expectedExists ->
-                            val actualExists = actualValue != null
-                            if (actualExists != expectedExists.asBoolean) {
-                                failures += "block $pos nbt ${path ?: "<root>"} exists expected ${expectedExists.asBoolean} but was $actualExists"
-                            }
-                        }
-                        if (expectedValue != null && actualValue != expectedValue) {
-                            failures += "block $pos nbt ${path ?: "<root>"} expected ${JsonValues.render(expectedValue)} but was ${actualValue?.let(JsonValues::render) ?: "<missing>"}"
-                        }
+                        pathExpectationFailure("block $pos nbt ${path ?: "<root>"}", actualValue, expected)?.let { failures += it }
                     }
                 }
             }
@@ -1535,13 +1526,7 @@ object ManifestRunner {
         if (expectation == null) return true
         val path = expectation.manifestString("path")
         val actual = JsonPaths.get(root, path)
-        val expected = expectation.get("equals")
-        return when {
-            expectation.get("exists")?.asBoolean == true -> actual != null
-            expectation.get("exists")?.asBoolean == false -> actual == null
-            expected != null -> actual == expected
-            else -> actual != null
-        }
+        return pathExpectationFailure("path ${path ?: "<root>"}", actual, expectation) == null
     }
 
     private fun describeItemExpectation(item: JsonObject): String =
@@ -1573,6 +1558,9 @@ object ManifestRunner {
             expectation.manifestString("path")?.let { "$label.path=$it" },
             expectation.get("equals")?.let { "$label.equals=${JsonValues.render(it)}" },
             expectation.get("exists")?.let { "$label.exists=${it.asBoolean}" },
+            expectation.get("missing")?.let { "$label.missing=${it.asBoolean}" },
+            expectation.manifestString("contains")?.let { "$label.contains=$it" },
+            expectation.manifestString("matches")?.let { "$label.matches=$it" },
         ).joinToString(", ")
 
     private fun describeEntityCountExpectation(entity: JsonObject): String =
@@ -1603,35 +1591,56 @@ object ManifestRunner {
         val path = storage.manifestString("path")
         val actual = sandbox.world.storages[id]?.let { root -> JsonPaths.get(root, path) }
         val label = "storage $id ${path ?: "<root>"}"
-        val failures = mutableListOf<String>()
-        var checked = false
+        return pathExpectationFailure(label, actual, storage)?.let(::listOf).orEmpty()
+    }
 
-        storage.get("equals")?.let { expected ->
+    private fun pathExpectationFailure(label: String, actual: JsonElement?, expectation: JsonObject): String? {
+        var checked = false
+        expectation.get("equals")?.let { expected ->
             checked = true
             if (actual != expected) {
-                failures += "$label expected ${JsonValues.render(expected)} but was ${actual?.let(JsonValues::render) ?: "<missing>"}"
+                return "$label expected ${JsonValues.render(expected)} but was ${actual?.let(JsonValues::render) ?: "<missing>"}"
             }
         }
-        storage.get("exists")?.let { expected ->
+        expectation.get("exists")?.let { expected ->
             checked = true
             val exists = actual != null
             if (exists != expected.asBoolean) {
-                failures += "$label exists expected ${expected.asBoolean} but was $exists"
+                return "$label exists expected ${expected.asBoolean} but was $exists"
             }
         }
-        storage.get("missing")?.let { expected ->
+        expectation.get("missing")?.let { expected ->
             checked = true
             val shouldBeMissing = expected.asBoolean
             when {
-                shouldBeMissing && actual != null -> failures += "$label expected missing but was ${JsonValues.render(actual)}"
-                !shouldBeMissing && actual == null -> failures += "$label expected present but was <missing>"
+                shouldBeMissing && actual != null -> return "$label expected missing but was ${JsonValues.render(actual)}"
+                !shouldBeMissing && actual == null -> return "$label expected present but was <missing>"
             }
         }
-        if (!checked) {
-            failures += "$label assertion requires equals, exists, or missing"
+        expectation.manifestString("contains")?.let { expected ->
+            checked = true
+            val actualText = actual?.pathExpectationText()
+            if (actualText == null || expected !in actualText) {
+                return "$label expected text containing '$expected' but was ${actual?.let(JsonValues::render) ?: "<missing>"}"
+            }
         }
-        return failures
+        expectation.manifestString("matches")?.let { expected ->
+            checked = true
+            val actualText = actual?.pathExpectationText()
+            val regex = try {
+                Regex(expected)
+            } catch (error: IllegalArgumentException) {
+                throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Path expectation 'matches' must be a valid regex", cause = error)
+            }
+            if (actualText == null || !regex.containsMatchIn(actualText)) {
+                return "$label expected text matching '$expected' but was ${actual?.let(JsonValues::render) ?: "<missing>"}"
+            }
+        }
+        return if (checked) null else "$label assertion requires equals, exists, missing, contains, or matches"
     }
+
+    private fun JsonElement.pathExpectationText(): String =
+        if (isJsonPrimitive && asJsonPrimitive.isString) asString else JsonValues.render(this)
 
     private fun evaluateTraceAssertion(trace: JsonObject, sandbox: DatapackSandbox): List<String> {
         return TraceAssertions.failures(

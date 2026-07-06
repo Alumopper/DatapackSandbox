@@ -631,14 +631,18 @@
       "anyOf": [
         { "required": ["equals"] },
         { "required": ["exists"] },
-        { "required": ["missing"] }
+        { "required": ["missing"] },
+        { "required": ["contains"] },
+        { "required": ["matches"] }
       ],
       "properties": {
         "id": { "type": "string" },
         "path": { "type": "string" },
         "equals": true,
         "exists": { "type": "boolean" },
-        "missing": { "type": "boolean" }
+        "missing": { "type": "boolean" },
+        "contains": { "type": "string" },
+        "matches": { "type": "string" }
       },
       "additionalProperties": false
     },
@@ -882,7 +886,10 @@
       "properties": {
         "path": { "type": "string" },
         "equals": {},
-        "exists": { "type": "boolean" }
+        "exists": { "type": "boolean" },
+        "missing": { "type": "boolean" },
+        "contains": { "type": "string" },
+        "matches": { "type": "string" }
       },
       "additionalProperties": false
     },

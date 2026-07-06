@@ -290,11 +290,13 @@ class ManifestRunnerTest {
         }
 
         assertEquals("#/\$defs/storageAssertion", assertionRef.get("\$ref").asString)
-        assertTrue(requiredAlternatives.containsAll(listOf("equals", "exists", "missing")))
+        assertTrue(requiredAlternatives.containsAll(listOf("equals", "exists", "missing", "contains", "matches")))
         assertEquals("string", properties.getAsJsonObject("id").get("type").asString)
         assertEquals("string", properties.getAsJsonObject("path").get("type").asString)
         assertEquals("boolean", properties.getAsJsonObject("exists").get("type").asString)
         assertEquals("boolean", properties.getAsJsonObject("missing").get("type").asString)
+        assertEquals("string", properties.getAsJsonObject("contains").get("type").asString)
+        assertEquals("string", properties.getAsJsonObject("matches").get("type").asString)
     }
 
     @Test
@@ -334,6 +336,10 @@ class ManifestRunnerTest {
         assertEquals("string", properties.getAsJsonObject("id").get("type").asString)
         assertEquals("boolean", properties.getAsJsonObject("exists").get("type").asString)
         assertEquals("#/\$defs/pathExpectation", properties.getAsJsonObject("nbt").get("\$ref").asString)
+        val pathProperties = defs.getAsJsonObject("pathExpectation").getAsJsonObject("properties")
+        assertEquals("boolean", pathProperties.getAsJsonObject("missing").get("type").asString)
+        assertEquals("string", pathProperties.getAsJsonObject("contains").get("type").asString)
+        assertEquals("string", pathProperties.getAsJsonObject("matches").get("type").asString)
     }
 
     @Test
@@ -1491,6 +1497,55 @@ class ManifestRunnerTest {
 
         assertFalse(result.passed)
         assertTrue(result.messages.any { "storage demo:env ready expected missing but was true" in it }, result.messages.joinToString())
+    }
+
+    @Test
+    fun `runs path contains and regex assertions`() {
+        val dir = Files.createTempDirectory("dps-path-matches-manifest")
+        val pack = Path.of("../core/src/test/resources/packs/counter").toAbsolutePath().normalize().toString().replace("\\", "\\\\")
+        val manifest = dir.resolve("path-matches.dps.json")
+        Files.writeString(
+            manifest,
+            """
+            {
+              "version": "26.1.2",
+              "packs": ["$pack"],
+              "world": {
+                "storage": {
+                  "demo:env": { "label": "generated-case-42" }
+                },
+                "blocks": [
+                  { "pos": [0, 64, 0], "id": "minecraft:chest", "nbt": { "Items": [], "CustomName": "{\"text\":\"Regex Chest\"}" } }
+                ],
+                "players": [
+                  {
+                    "name": "Alex",
+                    "inventory": [
+                      {
+                        "id": "minecraft:stick",
+                        "components": { "demo": { "name": "Generated Stick" } },
+                        "nbt": { "tag": { "name": "NBT Stick 42" } }
+                      }
+                    ]
+                  }
+                ]
+              },
+              "steps": [],
+              "assertions": [
+                { "storage": { "id": "demo:env", "path": "label", "contains": "case", "matches": "case-\\d+" } },
+                { "player": { "name": "Alex", "nbt": { "path": "Name", "matches": "^Alex$" } } },
+                { "block": { "pos": [0, 64, 0], "nbt": { "path": "CustomName", "contains": "Regex Chest", "matches": "Regex\\s+Chest" } } },
+                { "item": { "player": "Alex", "id": "minecraft:stick", "components": { "path": "demo.name", "contains": "Generated", "matches": "Stick$" } } },
+                { "item": { "player": "Alex", "id": "minecraft:stick", "nbt": { "path": "tag.name", "contains": "NBT", "matches": "Stick\\s+42" } } },
+                { "item": { "player": "Alex", "id": "minecraft:stick", "nbt": { "path": "tag.missing", "missing": true } } }
+              ]
+            }
+            """.trimIndent(),
+        )
+
+        val result = ManifestRunner.run(manifest)
+
+        assertTrue(result.passed, result.messages.joinToString())
     }
 
     @Test
