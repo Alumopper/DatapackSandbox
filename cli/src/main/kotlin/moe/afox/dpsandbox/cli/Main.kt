@@ -635,6 +635,8 @@ class RunCommand : CliktCommand(name = "run") {
             trimmed.startsWith("warning=") -> parseWarningCountAssertion(trimmed.removePrefix("warning="), label)
             trimmed.startsWith("unsupported:") -> parseUnsupportedContainsAssertion(trimmed.removePrefix("unsupported:"), label)
             trimmed.startsWith("unsupported=") -> parseUnsupportedCountAssertion(trimmed.removePrefix("unsupported="), label)
+            trimmed.startsWith("output-count:") -> parseOutputCountAssertion(trimmed.removePrefix("output-count:"), label)
+            trimmed.startsWith("output-order:") -> parseOutputOrderAssertion(trimmed.removePrefix("output-order:"), label)
             trimmed.startsWith("output-command:") -> parseOutputFieldAssertion(trimmed.removePrefix("output-command:"), "command", "output-command", label)
             trimmed.startsWith("output-channel:") -> parseOutputChannelAssertion(trimmed.removePrefix("output-channel:"), label)
             trimmed.startsWith("output-target:") -> parseOutputFieldAssertion(trimmed.removePrefix("output-target:"), "target", "output-target", label)
@@ -650,7 +652,7 @@ class RunCommand : CliktCommand(name = "run") {
             trimmed.startsWith("output:") -> parseOutputAssertion(trimmed.removePrefix("output:"), label)
             else -> throw SandboxException(
                 DiagnosticCode.INPUT_FORMAT,
-                "$label must be a JSON object or shorthand score:<target>:<objective>=N, storage:<id>[:<path>]=<json>, advancement:<player>:<id>[=<true|false>], entity:<type|*>[@tag]=N, block:<x>,<y>,<z>=<id>, block:<x>,<y>,<z>?, block:<x>,<y>,<z>!, biome:<x>,<y>,<z>=<id>, team:<name>[?|!|=N|@member], bossbar:<id>[?|!|:<field>=<value>], item:<player>:<id>[@slot]=N, player:<name>[:<field>=<value>], world:<field>=<value>, gamerule:<rule>=<value>, gamerule:<rule>?, gamerule:<rule>!, random-sequence:<name>=N, snapshot:<path>=<json>, snapshot:<path>?, snapshot:<path>!, diff:<json-pointer>[=<kind>], event-trace:<player>:<type>[=N], trace:<root>=N, trace:<text>, trace-output:<text>[@target], warning=N, warning:<text>, unsupported=N, unsupported:<text>, output:<text>, output-exact:<text>, output-matches:<regex>, output-command:<command>[=N|?|!], output-channel:<channel>[=N|?|!], output-target:<target>[=N|?|!], output-normalized:<text>, output-normalized-exact:<text>, output-normalized-matches:<regex>, output-segment:<text>[|color=<color>|bold=<true|false>][@target], output-segment-exact:<text>[...], output-segment-matches:<regex>[...], or output-payload:<command>:<path>[=<json>]",
+                "$label must be a JSON object or shorthand score:<target>:<objective>=N, storage:<id>[:<path>]=<json>, advancement:<player>:<id>[=<true|false>], entity:<type|*>[@tag]=N, block:<x>,<y>,<z>=<id>, block:<x>,<y>,<z>?, block:<x>,<y>,<z>!, biome:<x>,<y>,<z>=<id>, team:<name>[?|!|=N|@member], bossbar:<id>[?|!|:<field>=<value>], item:<player>:<id>[@slot]=N, player:<name>[:<field>=<value>], world:<field>=<value>, gamerule:<rule>=<value>, gamerule:<rule>?, gamerule:<rule>!, random-sequence:<name>=N, snapshot:<path>=<json>, snapshot:<path>?, snapshot:<path>!, diff:<json-pointer>[=<kind>], event-trace:<player>:<type>[=N], trace:<root>=N, trace:<text>, trace-output:<text>[@target], warning=N, warning:<text>, unsupported=N, unsupported:<text>, output:<text>, output-count:<text>=N, output-order:<N>:<text>, output-exact:<text>, output-matches:<regex>, output-command:<command>[=N|?|!], output-channel:<channel>[=N|?|!], output-target:<target>[=N|?|!], output-normalized:<text>, output-normalized-exact:<text>, output-normalized-matches:<regex>, output-segment:<text>[|color=<color>|bold=<true|false>][@target], output-segment-exact:<text>[...], output-segment-matches:<regex>[...], or output-payload:<command>:<path>[=<json>]",
             )
         }
     }
@@ -1255,6 +1257,47 @@ class RunCommand : CliktCommand(name = "run") {
 
     private fun parseOutputMatchesAssertion(text: String, label: String): JsonObject {
         return parseOutputTextAssertion(text, "matches", "output-matches", label)
+    }
+
+    private fun parseOutputCountAssertion(spec: String, label: String): JsonObject {
+        val splitAt = spec.lastIndexOf('=')
+        if (splitAt <= 0 || splitAt == spec.lastIndex) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label output count shorthand must be output-count:<text>=N")
+        }
+        val contains = spec.substring(0, splitAt).trim()
+        val countText = spec.substring(splitAt + 1).trim()
+        val count = countText.toIntOrNull()
+            ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label output count must be an integer")
+        if (contains.isEmpty()) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label output count text must not be empty")
+        }
+        val output = JsonObject().also { json ->
+            json.addProperty("contains", contains)
+            json.addProperty("count", count)
+        }
+        return JsonObject().also { it.add("output", output) }
+    }
+
+    private fun parseOutputOrderAssertion(spec: String, label: String): JsonObject {
+        val separator = spec.indexOf(':')
+        if (separator <= 0 || separator == spec.lastIndex) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label output order shorthand must be output-order:<N>:<text>")
+        }
+        val orderText = spec.substring(0, separator).trim()
+        val order = orderText.toIntOrNull()
+            ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label output order must be an integer")
+        if (order <= 0) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label output order must be one or greater")
+        }
+        val contains = spec.substring(separator + 1).trim()
+        if (contains.isEmpty()) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label output order text must not be empty")
+        }
+        val output = JsonObject().also { json ->
+            json.addProperty("contains", contains)
+            json.addProperty("order", order)
+        }
+        return JsonObject().also { it.add("output", output) }
     }
 
     private fun parseNormalizedOutputAssertion(text: String, label: String): JsonObject {
