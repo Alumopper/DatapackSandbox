@@ -1404,14 +1404,20 @@ class ResourcesCommand : CliktCommand(name = "resources") {
     private val docs by option("--docs").flag(default = false)
     private val json by option("--json").flag(default = false)
     private val output by option("--output", "-o").path()
+    private val check by option("--check").path()
 
     override fun run() {
         try {
             if (docs && json) {
                 throw SandboxException(DiagnosticCode.INPUT_FORMAT, "resources accepts only one output mode: --docs or --json")
             }
+            if (check != null && output != null) {
+                throw SandboxException(DiagnosticCode.INPUT_FORMAT, "resources accepts only one file mode: --output or --check")
+            }
             val entries = ResourceCatalog.all
+            val checkPath = check
             when {
+                checkPath != null -> checkResourceDocs(checkPath, entries)
                 docs -> emit(renderMarkdown(entries))
                 json -> emit(JsonValues.render(renderJson(entries)))
                 else -> emit(renderPlain(entries))
@@ -1467,6 +1473,28 @@ class ResourcesCommand : CliktCommand(name = "resources") {
             println(ConsoleStyle.green("resources output written: $outputPath"))
         }
     }
+
+    private fun checkResourceDocs(path: Path, entries: List<ResourceCatalogEntry>) {
+        if (!Files.exists(path)) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "resources check file does not exist: $path")
+        }
+        val docLines = normalizeDoc(Files.readString(path, StandardCharsets.UTF_8)).lineSequence().toList()
+        val missing = entries.mapNotNull { entry ->
+            val resourcePattern = Regex("""`[^`]*${Regex.escape(entry.type)}[^`]*`""")
+            val covered = docLines.any { line -> resourcePattern.containsMatchIn(line) && "`${entry.behaviorLevel.id}`" in line }
+            if (covered) null else "${entry.type} (${entry.behaviorLevel.id})"
+        }
+        if (missing.isNotEmpty()) {
+            throw SandboxException(
+                DiagnosticCode.INPUT_FORMAT,
+                "resources docs are out of date: $path; missing ${missing.joinToString()}",
+            )
+        }
+        println(ConsoleStyle.green("resources docs cover catalog: $path"))
+    }
+
+    private fun normalizeDoc(value: String): String =
+        value.replace("\r\n", "\n").replace('\r', '\n')
 }
 
 fun unsupportedFeatureMode(value: String): UnsupportedFeatureMode =

@@ -70,8 +70,13 @@ The standalone CLI can export the resource catalog for scripts and docs:
 java -jar cli/build/libs/datapack-sandbox-cli.jar resources
 java -jar cli/build/libs/datapack-sandbox-cli.jar resources --docs
 java -jar cli/build/libs/datapack-sandbox-cli.jar resources --docs --output docs/resource-catalog.md
+java -jar cli/build/libs/datapack-sandbox-cli.jar resources --check docs/resource-formats.md
 java -jar cli/build/libs/datapack-sandbox-cli.jar resources --json --output build/resource-catalog.json
 ```
+
+`resources --check` verifies that each cataloged resource type appears in the
+document with the matching behavior level. The Gradle `check` lifecycle runs
+this through the standalone jar smoke task.
 
 | Level | Meaning |
 |---|---|
@@ -81,16 +86,52 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar resources --json --output buil
 | `unsupported` | The resource is not loaded or is rejected by the current sandbox. |
 
 | Resource | Behavior | Runtime/debug surface |
-|---|---:|---|
-| `function`, `tag/function` | `modeled` | Load/tick/function execution, scheduling, trace source locations, and missing-reference checks. |
-| `loot_table` | `modeled` | Deterministic loot generation for supported contexts, loot command output, advancement rewards, and nested loot reference checks. |
-| `predicate` | `modeled` | Predicate command/API checks, advancement conditions, loot conditions, item modifiers, and missing predicate reference checks. |
-| `advancement` | `modeled` | Player progress, criteria matching from simulated events, rewards, output/event trace, and parent/reward missing-reference checks. |
-| `recipe` | `modeled` | Loaded into the resource index and player recipe state for `recipe` commands and advancement rewards; crafting grids are not simulated. |
-| `item_modifier` | `modeled` | Common modifier functions are applied by `item modify`; unsupported functions remain inspectable and produce diagnostics when used. |
-| General tags | `observed-noop` | Loaded with `replace` semantics, indexed by registry, and available to inspect/debug; only function tags currently drive execution. |
-| Additional registry JSON (`damage_type`, `dimension`, `chat_type`, trim, variants, etc.) | `observed-noop` | Version-profile checked, indexed, overlay-aware, and inspectable; no full vanilla registry behavior is simulated. |
-| Worldgen and structure JSON | `observed-noop` | Version-profile checked, indexed, overlay-aware, and inspectable; no terrain generation or structure placement is simulated. |
+|---|---|---|
+| `function` | `modeled` | mcfunction execution, trace source locations, and missing-reference checks |
+| `tag/function` | `modeled` | load/tick/function tag execution and replace semantics |
+| `loot_table` | `modeled` | deterministic loot generation for supported contexts and commands |
+| `predicate` | `modeled` | predicate command/API checks, advancement conditions, loot conditions, and item modifiers |
+| `advancement` | `modeled` | player progress, criteria matching, rewards, output, and event trace |
+| `recipe` | `modeled` | resource index entries plus player recipe state for commands and rewards |
+| `item_modifier` | `modeled` | common item modifier functions applied by item modify |
+| `tag/<registry>` | `observed-noop` | general tags with replace semantics and resource-index visibility |
+| `banner_pattern` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
+| `cat_variant` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
+| `chat_type` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
+| `chicken_variant` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
+| `cow_variant` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
+| `damage_type` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
+| `dialog` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
+| `dimension` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
+| `dimension_type` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
+| `enchantment` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
+| `enchantment_provider` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
+| `equipment_asset` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
+| `frog_variant` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
+| `instrument` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
+| `jukebox_song` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
+| `painting_variant` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
+| `pig_variant` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
+| `test_environment` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
+| `test_instance` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
+| `trim_material` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
+| `trim_pattern` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
+| `wolf_sound_variant` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
+| `wolf_variant` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
+| `worldgen/biome` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
+| `worldgen/configured_carver` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
+| `worldgen/configured_feature` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
+| `worldgen/density_function` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
+| `worldgen/flat_level_generator_preset` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
+| `worldgen/multi_noise_biome_source_parameter_list` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
+| `worldgen/noise` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
+| `worldgen/noise_settings` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
+| `worldgen/placed_feature` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
+| `worldgen/processor_list` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
+| `worldgen/structure` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
+| `worldgen/structure_set` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
+| `worldgen/template_pool` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
+| `worldgen/world_preset` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
 
 ## `.dps.json` Manifests
 

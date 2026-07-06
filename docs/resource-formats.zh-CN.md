@@ -60,8 +60,11 @@ standalone CLI 可以导出资源目录，供脚本和文档使用：
 java -jar cli/build/libs/datapack-sandbox-cli.jar resources
 java -jar cli/build/libs/datapack-sandbox-cli.jar resources --docs
 java -jar cli/build/libs/datapack-sandbox-cli.jar resources --docs --output docs/resource-catalog.md
+java -jar cli/build/libs/datapack-sandbox-cli.jar resources --check docs/resource-formats.md
 java -jar cli/build/libs/datapack-sandbox-cli.jar resources --json --output build/resource-catalog.json
 ```
+
+`resources --check` 会校验目录里的每个资源类型都出现在文档中，并带有匹配的行为等级。Gradle `check` 生命周期会通过 standalone jar smoke task 运行这个检查。
 
 | 等级 | 含义 |
 |---|---|
@@ -71,16 +74,52 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar resources --json --output buil
 | `unsupported` | 资源不会加载，或会被当前沙盒拒绝。 |
 
 | 资源 | 行为等级 | 运行时 / debug 表面 |
-|---|---:|---|
-| `function`、`tag/function` | `modeled` | load/tick/function 执行、调度、trace source location 和缺失引用检查。 |
-| `loot_table` | `modeled` | 支持上下文内的确定性 loot 生成、loot 命令输出、advancement reward 和嵌套 loot 引用检查。 |
-| `predicate` | `modeled` | predicate 命令/API、advancement 条件、loot 条件、item modifier 和缺失 predicate 引用检查。 |
-| `advancement` | `modeled` | 玩家 progress、模拟事件触发 criteria、rewards、output/event trace，以及 parent/reward 缺失引用检查。 |
-| `recipe` | `modeled` | 进入资源索引和玩家 recipe 状态，供 `recipe` 命令与 advancement reward 使用；不模拟合成网格。 |
-| `item_modifier` | `modeled` | `item modify` 会应用常用 modifier 函数；未覆盖函数仍可 inspect，并在使用时给出诊断。 |
-| 普通 tag | `observed-noop` | 按 registry 加载并保留 `replace` 语义，可 inspect/debug；目前只有 function tag 参与执行入口。 |
-| 额外注册表 JSON（`damage_type`、`dimension`、`chat_type`、trim、variant 等） | `observed-noop` | 进行版本 profile 校验、索引和覆盖关系记录，可 inspect；不模拟完整原版注册表行为。 |
-| worldgen 与 structure JSON | `observed-noop` | 进行版本 profile 校验、索引和覆盖关系记录，可 inspect；不模拟地形生成或结构放置。 |
+|---|---|---|
+| `function` | `modeled` | mcfunction 执行、trace source location 和缺失引用检查。 |
+| `tag/function` | `modeled` | load/tick/function tag 执行和 `replace` 语义。 |
+| `loot_table` | `modeled` | 支持上下文内的确定性 loot 生成和命令输出。 |
+| `predicate` | `modeled` | predicate 命令/API、advancement 条件、loot 条件和 item modifier。 |
+| `advancement` | `modeled` | 玩家 progress、criteria 匹配、rewards、output 和事件 trace。 |
+| `recipe` | `modeled` | 进入资源索引和玩家 recipe 状态，供命令与 rewards 使用。 |
+| `item_modifier` | `modeled` | `item modify` 会应用常用 item modifier 函数。 |
+| `tag/<registry>` | `observed-noop` | 普通 tag 保留 `replace` 语义，并进入资源索引供 inspect。 |
+| `banner_pattern` | `observed-noop` | 经版本校验的 raw JSON 资源，进入索引供 inspect。 |
+| `cat_variant` | `observed-noop` | 经版本校验的 raw JSON 资源，进入索引供 inspect。 |
+| `chat_type` | `observed-noop` | 经版本校验的 raw JSON 资源，进入索引供 inspect。 |
+| `chicken_variant` | `observed-noop` | 经版本校验的 raw JSON 资源，进入索引供 inspect。 |
+| `cow_variant` | `observed-noop` | 经版本校验的 raw JSON 资源，进入索引供 inspect。 |
+| `damage_type` | `observed-noop` | 经版本校验的 raw JSON 资源，进入索引供 inspect。 |
+| `dialog` | `observed-noop` | 经版本校验的 raw JSON 资源，进入索引供 inspect。 |
+| `dimension` | `observed-noop` | 经版本校验的 raw JSON 资源，进入索引供 inspect。 |
+| `dimension_type` | `observed-noop` | 经版本校验的 raw JSON 资源，进入索引供 inspect。 |
+| `enchantment` | `observed-noop` | 经版本校验的 raw JSON 资源，进入索引供 inspect。 |
+| `enchantment_provider` | `observed-noop` | 经版本校验的 raw JSON 资源，进入索引供 inspect。 |
+| `equipment_asset` | `observed-noop` | 经版本校验的 raw JSON 资源，进入索引供 inspect。 |
+| `frog_variant` | `observed-noop` | 经版本校验的 raw JSON 资源，进入索引供 inspect。 |
+| `instrument` | `observed-noop` | 经版本校验的 raw JSON 资源，进入索引供 inspect。 |
+| `jukebox_song` | `observed-noop` | 经版本校验的 raw JSON 资源，进入索引供 inspect。 |
+| `painting_variant` | `observed-noop` | 经版本校验的 raw JSON 资源，进入索引供 inspect。 |
+| `pig_variant` | `observed-noop` | 经版本校验的 raw JSON 资源，进入索引供 inspect。 |
+| `test_environment` | `observed-noop` | 经版本校验的 raw JSON 资源，进入索引供 inspect。 |
+| `test_instance` | `observed-noop` | 经版本校验的 raw JSON 资源，进入索引供 inspect。 |
+| `trim_material` | `observed-noop` | 经版本校验的 raw JSON 资源，进入索引供 inspect。 |
+| `trim_pattern` | `observed-noop` | 经版本校验的 raw JSON 资源，进入索引供 inspect。 |
+| `wolf_sound_variant` | `observed-noop` | 经版本校验的 raw JSON 资源，进入索引供 inspect。 |
+| `wolf_variant` | `observed-noop` | 经版本校验的 raw JSON 资源，进入索引供 inspect。 |
+| `worldgen/biome` | `observed-noop` | 经版本校验的 raw JSON 资源，进入索引供 inspect。 |
+| `worldgen/configured_carver` | `observed-noop` | 经版本校验的 raw JSON 资源，进入索引供 inspect。 |
+| `worldgen/configured_feature` | `observed-noop` | 经版本校验的 raw JSON 资源，进入索引供 inspect。 |
+| `worldgen/density_function` | `observed-noop` | 经版本校验的 raw JSON 资源，进入索引供 inspect。 |
+| `worldgen/flat_level_generator_preset` | `observed-noop` | 经版本校验的 raw JSON 资源，进入索引供 inspect。 |
+| `worldgen/multi_noise_biome_source_parameter_list` | `observed-noop` | 经版本校验的 raw JSON 资源，进入索引供 inspect。 |
+| `worldgen/noise` | `observed-noop` | 经版本校验的 raw JSON 资源，进入索引供 inspect。 |
+| `worldgen/noise_settings` | `observed-noop` | 经版本校验的 raw JSON 资源，进入索引供 inspect。 |
+| `worldgen/placed_feature` | `observed-noop` | 经版本校验的 raw JSON 资源，进入索引供 inspect。 |
+| `worldgen/processor_list` | `observed-noop` | 经版本校验的 raw JSON 资源，进入索引供 inspect。 |
+| `worldgen/structure` | `observed-noop` | 经版本校验的 raw JSON 资源，进入索引供 inspect。 |
+| `worldgen/structure_set` | `observed-noop` | 经版本校验的 raw JSON 资源，进入索引供 inspect。 |
+| `worldgen/template_pool` | `observed-noop` | 经版本校验的 raw JSON 资源，进入索引供 inspect。 |
+| `worldgen/world_preset` | `observed-noop` | 经版本校验的 raw JSON 资源，进入索引供 inspect。 |
 
 ## 函数
 

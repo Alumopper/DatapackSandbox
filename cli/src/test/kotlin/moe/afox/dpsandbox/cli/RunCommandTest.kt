@@ -1293,6 +1293,33 @@ class RunCommandTest {
     }
 
     @Test
+    fun `resources check markdown docs table in file`() {
+        val docsFile = Files.createTempFile("dps-resources-check", ".md")
+        val docs = captureStdout {
+            main(arrayOf("resources", "--docs"))
+        }
+        Files.writeString(docsFile, docs)
+
+        val output = captureStdout {
+            main(arrayOf("resources", "--check", docsFile.toString()))
+        }
+
+        assertTrue("resources docs cover catalog: $docsFile" in output, output)
+    }
+
+    @Test
+    fun `resources check fails when docs are stale`() {
+        val docsFile = Files.createTempFile("dps-resources-stale", ".md")
+        Files.writeString(docsFile, "| Resource | Behavior |${System.lineSeparator()}|---|---|${System.lineSeparator()}| `function` | `modeled` |")
+
+        val result = runCliProcess("resources", "--check", docsFile.toString())
+
+        assertEquals(ExitCodes.INPUT_FORMAT, result.exitCode, result.output)
+        assertTrue("resources docs are out of date: $docsFile" in result.output, result.output)
+        assertTrue("loot_table (modeled)" in result.output, result.output)
+    }
+
+    @Test
     fun `resources render catalog json`() {
         val output = captureStdout {
             main(arrayOf("resources", "--json"))

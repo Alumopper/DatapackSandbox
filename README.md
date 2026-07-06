@@ -79,6 +79,7 @@ List resource support and behavior levels:
 java -jar cli/build/libs/datapack-sandbox-cli.jar resources
 java -jar cli/build/libs/datapack-sandbox-cli.jar resources --docs
 java -jar cli/build/libs/datapack-sandbox-cli.jar resources --docs --output docs/resource-catalog.md
+java -jar cli/build/libs/datapack-sandbox-cli.jar resources --check docs/resource-formats.md
 java -jar cli/build/libs/datapack-sandbox-cli.jar resources --json --output build/resource-catalog.json
 ```
 

@@ -104,6 +104,18 @@ smokeCliJarCommandDocs.configure {
     inputs.file(commandSupportDoc)
 }
 
+val resourceFormatsDoc = rootProject.layout.projectDirectory.file("docs/resource-formats.md")
+val smokeCliJarResourceDocs = registerCliJarSmokeTask(
+    name = "smokeCliJarResourceDocs",
+    descriptionText = "Checks that resource format docs cover the resource behavior catalog.",
+    "resources",
+    "--check",
+    resourceFormatsDoc.asFile.absolutePath,
+)
+smokeCliJarResourceDocs.configure {
+    inputs.file(resourceFormatsDoc)
+}
+
 val examplesDir = rootProject.layout.projectDirectory.dir("examples")
 val fullStackExamplePack = examplesDir.dir("full-stack/pack")
 
@@ -210,6 +222,7 @@ tasks.register("smokeCliJar") {
         smokeCliJarVersion,
         smokeCliJarVersionDocs,
         smokeCliJarCommandDocs,
+        smokeCliJarResourceDocs,
         smokeCliJarSchema,
         smokeCliJarExamples,
         smokeCliJarReadmeLoot,
