@@ -844,16 +844,37 @@ class DatapackSandbox(
 
     private fun executeDifficulty(tokens: List<CommandToken>, location: SourceLocation?) {
         requireSize(tokens, 1, "difficulty [peaceful|easy|normal|hard]", location)
+        val before = world.difficulty
         tokens.getOrNull(1)?.let {
             val difficulty = normalizeDifficulty(it.text, location)
             world.difficulty = difficulty
         }
-        world.recordOutput("difficulty", "data", text = world.difficulty)
+        world.recordOutput(
+            "difficulty",
+            "data",
+            text = world.difficulty,
+            payload = JsonObject().also { payload ->
+                payload.addProperty("before", before)
+                payload.addProperty("after", world.difficulty)
+                payload.addProperty("changed", before != world.difficulty)
+            },
+        )
     }
 
     private fun executeDefaultGameMode(tokens: List<CommandToken>, location: SourceLocation?) {
         requireSize(tokens, 2, "defaultgamemode <mode>", location)
+        val before = world.defaultGameMode
         world.defaultGameMode = normalizeGameMode(tokens[1].text, location)
+        world.recordOutput(
+            "defaultgamemode",
+            "data",
+            text = world.defaultGameMode,
+            payload = JsonObject().also { payload ->
+                payload.addProperty("before", before)
+                payload.addProperty("after", world.defaultGameMode)
+                payload.addProperty("changed", before != world.defaultGameMode)
+            },
+        )
     }
 
     private fun executeGameMode(tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext) {

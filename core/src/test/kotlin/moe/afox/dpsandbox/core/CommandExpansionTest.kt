@@ -33,6 +33,18 @@ class CommandExpansionTest {
         assertEquals("creative", snapshot.get("defaultGameMode").asString)
         assertEquals("adventure", snapshot.getAsJsonObject("players").getAsJsonObject("Steve").get("gameMode").asString)
         assertEquals("creative", snapshot.getAsJsonObject("players").getAsJsonObject("Builder").get("gameMode").asString)
+        val difficultyOutput = sandbox.world.outputs.single { it.command == "difficulty" }
+        val difficultyPayload = difficultyOutput.payload?.asJsonObject ?: error("missing difficulty payload")
+        assertEquals("hard", difficultyOutput.text)
+        assertEquals("normal", difficultyPayload.get("before").asString)
+        assertEquals("hard", difficultyPayload.get("after").asString)
+        assertEquals(true, difficultyPayload.get("changed").asBoolean)
+        val defaultModeOutput = sandbox.world.outputs.single { it.command == "defaultgamemode" }
+        val defaultModePayload = defaultModeOutput.payload?.asJsonObject ?: error("missing defaultgamemode payload")
+        assertEquals("creative", defaultModeOutput.text)
+        assertEquals("survival", defaultModePayload.get("before").asString)
+        assertEquals("creative", defaultModePayload.get("after").asString)
+        assertEquals(true, defaultModePayload.get("changed").asBoolean)
         assertEquals(true, snapshot.get("tickFrozen").asBoolean)
         assertEquals(2, snapshot.get("gameTime").asLong)
         assertEquals(4, snapshot.getAsJsonArray("biomes").size())

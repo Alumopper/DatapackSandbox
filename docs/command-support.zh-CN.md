@@ -29,8 +29,8 @@
 | `data` | 部分支持 | 支持带可选数值 scale 的 `get`，以及 `merge`、`modify`、`remove`，目标支持 `storage`、`entity`、`block`；写入类操作会记录结构化前后输出；path 支持字段、正/负数字索引和简单对象匹配；`modify` 支持 `value`、`from` 和 `string` 来源；顶层 NBT 字段经过 schema 校验。 |
 | `datapack` | 部分支持 | `list` 报告已加载 typed/raw/tag/resource-index 资源数量和资源覆盖诊断；`enable`/`disable` 作为 no-op 接受，因为沙盒创建后 pack 顺序固定。 |
 | `debug`、`jfr`、`perf` | 未支持 | 原版 profiling 不适用于此运行时。 |
-| `defaultgamemode` | 支持 | 存储世界默认游戏模式。 |
-| `difficulty` | 支持 | 存储并报告世界难度。 |
+| `defaultgamemode` | 支持 | 存储世界默认游戏模式，并记录结构化前后输出。 |
+| `difficulty` | 支持 | 存储并报告世界难度，并记录结构化前后输出。 |
 | `deop`、`op` | 未支持 | 不模拟权限系统。 |
 | `effect` | 部分支持 | `give`、`clear`；更新玩家效果状态并触发相关 advancement 事件，也会更新非玩家实体 active effects，并通过 snapshot 和 `ActiveEffects` NBT 暴露；记录可用于 report/assertion 的结构化输出。 |
 | `enchant` | 部分支持 | 向玩家选中物品和非玩家实体主手装备写入附魔组件，并记录可用于 report/assertion 的结构化输出；不检查可附魔性。 |

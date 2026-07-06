@@ -36,8 +36,8 @@ run continues. Use `--unsupported error`, manifest `"unsupported": "error"`, or
 | `data` | Partial | `get` with optional numeric scale, `merge`, `modify`, `remove` for `storage`, `entity`, and `block`; write operations record structured before/after output; paths support fields, positive/negative numeric indexes, and simple object matchers; `modify` supports `value`, `from`, and `string` sources; top-level NBT is schema-checked. |
 | `datapack` | Partial | `list` reports loaded typed/raw/tag/resource-index counts plus resource overlay diagnostics; `enable`/`disable` are accepted as no-op because pack order is fixed at sandbox creation. |
 | `debug`, `jfr`, `perf` | Unsupported | Profiling commands do not apply to this runtime. |
-| `defaultgamemode` | Supported | Stores world default game mode. |
-| `difficulty` | Supported | Stores and reports world difficulty. |
+| `defaultgamemode` | Supported | Stores world default game mode and records structured before/after output. |
+| `difficulty` | Supported | Stores and reports world difficulty with structured before/after output. |
 | `deop`, `op` | Unsupported | Permission system is not simulated. |
 | `effect` | Partial | `give`, `clear`; updates player effect state with advancement events and non-player entity active effects visible through snapshot and `ActiveEffects` NBT; records structured output for reports/assertions. |
 | `enchant` | Partial | Writes enchantment components to player selected items and non-player mainhand equipment, with structured output for reports/assertions; no enchantability checks. |
