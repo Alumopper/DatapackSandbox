@@ -94,7 +94,7 @@ for world state.
 Set top-level `"failOnMissingResources": true`, or pass
 `check --fail-on-missing-resources`, to fail a manifest when loaded resources
 directly reference missing load/tick functions, advancement parents, or
-advancement reward resources.
+advancement reward resources, predicate references, or nested loot tables.
 The same missing references are always present in structured check reports and
 `check --verbose` resource summaries.
 
@@ -277,7 +277,7 @@ state, and pack overlay relationships. `datapack list` includes
 payload so generated command-output tests can assert overlay behavior without
 entering the REPL. `check --verbose` also prints a resource summary, overlay
 entries, and missing direct references from load/tick function tags and
-advancement parents/rewards.
+advancement parents/rewards, predicate references, and nested loot tables.
 
 ## SNBT and Data Paths
 

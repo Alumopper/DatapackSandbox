@@ -1331,7 +1331,15 @@ class ManifestRunnerTest {
             result.messages.any { "missing-reference advancement demo:child parent -> advancement demo:missing_parent" in it },
             result.messages.joinToString(),
         )
-        assertEquals(2, result.attempts.single().resourceSummary?.missingReferences?.size)
+        assertTrue(
+            result.messages.any { "missing-reference predicate demo:uses_missing reference -> predicate demo:missing_predicate" in it },
+            result.messages.joinToString(),
+        )
+        assertTrue(
+            result.messages.any { "missing-reference loot_table demo:outer entry -> loot_table demo:missing_nested" in it },
+            result.messages.joinToString(),
+        )
+        assertEquals(4, result.attempts.single().resourceSummary?.missingReferences?.size)
     }
 
     @Test
@@ -1486,6 +1494,39 @@ class ManifestRunnerTest {
                   "trigger": "minecraft:tick"
                 }
               }
+            }
+            """.trimIndent(),
+        )
+
+        val predicateRoot = root.resolve("data").resolve("demo").resolve("predicate")
+        Files.createDirectories(predicateRoot)
+        Files.writeString(
+            predicateRoot.resolve("uses_missing.json"),
+            """
+            {
+              "condition": "minecraft:reference",
+              "name": "demo:missing_predicate"
+            }
+            """.trimIndent(),
+        )
+
+        val lootRoot = root.resolve("data").resolve("demo").resolve("loot_table")
+        Files.createDirectories(lootRoot)
+        Files.writeString(
+            lootRoot.resolve("outer.json"),
+            """
+            {
+              "pools": [
+                {
+                  "rolls": 1,
+                  "entries": [
+                    {
+                      "type": "minecraft:loot_table",
+                      "value": "demo:missing_nested"
+                    }
+                  ]
+                }
+              ]
             }
             """.trimIndent(),
         )

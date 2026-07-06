@@ -159,7 +159,7 @@ inspect tags [registry]
 inspect resources [type]
 ```
 
-资源索引会记录 type、id、来源 pack、文件路径、active/overridden 状态，以及 pack overlay 覆盖关系。`datapack list` 的结构化输出 payload 会包含 `overriddenResources` 和 `resourceOverrides` 数组，便于命令生成器或测试用例直接断言覆盖行为，不必进入 REPL。`check --verbose` 也会打印资源摘要、覆盖条目，以及 load/tick 函数标签和 advancement parent/reward 中的直接缺失引用。
+资源索引会记录 type、id、来源 pack、文件路径、active/overridden 状态，以及 pack overlay 覆盖关系。`datapack list` 的结构化输出 payload 会包含 `overriddenResources` 和 `resourceOverrides` 数组，便于命令生成器或测试用例直接断言覆盖行为，不必进入 REPL。`check --verbose` 也会打印资源摘要、覆盖条目，以及 load/tick 函数标签、advancement parent/reward、predicate reference 和嵌套 loot table 中的直接缺失引用。
 
 ## SNBT 与 Data Path
 
@@ -217,7 +217,7 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar check ./sandbox-cases --valida
 
 顶层设置 `"failOnMissingResources": true`，或在 CLI 使用
 `check --fail-on-missing-resources`，可以在已加载资源直接引用缺失的 load/tick
-函数、advancement parent 或 advancement reward 资源时让 manifest 失败。同一批缺失引用始终会出现在
+函数、advancement parent/reward、predicate reference 或嵌套 loot table 资源时让 manifest 失败。同一批缺失引用始终会出现在
 结构化 check report 和 `check --verbose` 资源摘要中。
 
 在 `world` 内部，`fixture`、`fixtures` 和 `extends` 可以写一个相对 world
