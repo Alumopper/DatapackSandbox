@@ -70,7 +70,7 @@ println(report.traces.single().command)
 
 底层 sandbox factory 还可以传入 `SandboxLimits`，用于在单元测试或 CI 中确定性阻止
 runaway 执行。目前限制覆盖一个 sandbox 实例累计执行的命令行数、嵌套 function 调用深度，
-单次 `runTicks` 允许推进的最大 tick 数，以及保留的输出事件数：
+单次 `runTicks` 允许推进的最大 tick 数、保留的输出事件数，以及渲染后的 snapshot 大小：
 
 ```kotlin
 val sandbox = createFunctionSandbox(
@@ -81,6 +81,7 @@ val sandbox = createFunctionSandbox(
         maxFunctionDepth = 32,
         maxTicksPerRun = 5_000,
         maxOutputEvents = 2_000,
+        maxSnapshotBytes = 1_000_000,
     ),
 )
 ```

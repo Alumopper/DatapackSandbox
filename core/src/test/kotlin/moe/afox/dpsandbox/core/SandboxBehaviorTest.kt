@@ -161,6 +161,27 @@ class SandboxBehaviorTest {
     }
 
     @Test
+    fun `execution limits stop oversized snapshots`() {
+        val baseline = createFunctionSandboxFromString(version = "26.2", functionText = "say baseline")
+        val limit = baseline.snapshotString().toByteArray(Charsets.UTF_8).size + 200
+        val sandbox = createFunctionSandboxFromString(
+            version = "26.2",
+            functionText = "say ${"x".repeat(1024)}",
+            limits = SandboxLimits(maxSnapshotBytes = limit),
+        )
+
+        val error = assertFailsWith<SandboxException> {
+            sandbox.runFunction(SingleFunctionDatapack.DEFAULT_ID)
+        }
+
+        assertEquals(DiagnosticCode.COMMAND_ERROR, error.code)
+        assertTrue(error.message.contains("Snapshot size "))
+        assertTrue(error.message.contains("exceeds sandbox limit $limit bytes"))
+        assertEquals(1, sandbox.world.traces.size)
+        assertEquals(false, sandbox.world.traces.single().success)
+    }
+
+    @Test
     fun `execution limits make function depth configurable`() {
         val sandbox = createFunctionSandbox(
             version = "26.2",

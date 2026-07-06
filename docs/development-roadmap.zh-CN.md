@@ -286,7 +286,7 @@
   - 资源解析缓存、schema 缓存、版本 profile 缓存；保证不破坏 watch/reload。
 - 错误边界：
   - 函数递归深度、最大命令数、最大 tick 数、最大输出事件数、最大 snapshot 大小。
-  - `SandboxLimits` 已提供可配置的函数递归深度、sandbox 实例累计命令数、单次 `runTicks` 最大 tick 数和保留输出事件数边界，用于阻止 runaway 单元测试和 CI 任务。
+  - `SandboxLimits` 已提供可配置的函数递归深度、sandbox 实例累计命令数、单次 `runTicks` 最大 tick 数、保留输出事件数和渲染后 snapshot 大小边界，用于阻止 runaway 单元测试和 CI 任务。
 - 发布质量：
   - fat jar smoke test、Windows/Linux/macOS 命令测试、README 示例测试。
   - Maven 发布准备：坐标、版本号、源码包、文档包。

@@ -57,12 +57,15 @@ data class SandboxLimits(
     val maxTicksPerRun: Int = 100_000,
     /** Maximum output events retained by one sandbox world. */
     val maxOutputEvents: Int = 100_000,
+    /** Maximum rendered snapshot size in UTF-8 bytes. */
+    val maxSnapshotBytes: Int = 10_000_000,
 ) {
     init {
         require(maxCommands > 0) { "maxCommands must be positive" }
         require(maxFunctionDepth > 0) { "maxFunctionDepth must be positive" }
         require(maxTicksPerRun > 0) { "maxTicksPerRun must be positive" }
         require(maxOutputEvents > 0) { "maxOutputEvents must be positive" }
+        require(maxSnapshotBytes > 0) { "maxSnapshotBytes must be positive" }
     }
 }
 
@@ -215,7 +218,8 @@ class DatapackSandbox(
         if (normalized.isBlank()) return ExecutionResult(0)
         val before = commandsExecuted
         val outputsBefore = world.outputs.size
-        val beforeSnapshot = snapshotJson()
+        val beforeSnapshot = buildSnapshotJson()
+        checkSnapshotSize(beforeSnapshot)
         val source = CommandSource(
             file = location?.file,
             line = location?.line,
@@ -227,9 +231,12 @@ class DatapackSandbox(
         var success = false
         var errorCode: DiagnosticCode? = null
         var errorMessage: String? = null
+        var afterSnapshot: JsonObject? = null
         try {
             executeOne(normalized, location, context)
             checkOutputLimit(location)
+            afterSnapshot = buildSnapshotJson()
+            checkSnapshotSize(afterSnapshot)
             success = true
             return ExecutionResult(commandsExecuted - before)
         } catch (signal: ReturnSignal) {
@@ -254,7 +261,7 @@ class DatapackSandbox(
                 commandsExecuted = commandsExecuted - before,
                 outputs = world.outputs.size - outputsBefore,
                 outputEvents = world.outputs.drop(outputsBefore),
-                snapshotDiffs = SnapshotDiff.stateDiff(beforeSnapshot, snapshotJson()),
+                snapshotDiffs = SnapshotDiff.stateDiff(beforeSnapshot, afterSnapshot ?: buildSnapshotJson()),
                 errorCode = errorCode,
                 errorMessage = errorMessage,
             )
@@ -266,6 +273,12 @@ class DatapackSandbox(
      * Returns a deterministic JSON snapshot of the current sandbox state.
      */
     fun snapshotJson(): JsonObject {
+        val snapshot = buildSnapshotJson()
+        checkSnapshotSize(snapshot)
+        return snapshot
+    }
+
+    private fun buildSnapshotJson(): JsonObject {
         val snapshot = world.snapshot(profile)
         snapshot.addProperty("version", profile.id)
         return snapshot
@@ -274,7 +287,11 @@ class DatapackSandbox(
     /**
      * Returns [snapshotJson] rendered as stable JSON text.
      */
-    fun snapshotString(): String = JsonValues.render(snapshotJson())
+    fun snapshotString(): String {
+        val rendered = JsonValues.render(buildSnapshotJson())
+        checkSnapshotSize(rendered)
+        return rendered
+    }
 
     /**
      * Creates or reuses a sandbox player.
@@ -454,6 +471,21 @@ class DatapackSandbox(
                 DiagnosticCode.COMMAND_ERROR,
                 "Output event count ${world.outputs.size} exceeds sandbox limit ${limits.maxOutputEvents}",
                 location = location,
+                version = profile.id,
+            )
+        }
+    }
+
+    private fun checkSnapshotSize(snapshot: JsonObject) {
+        checkSnapshotSize(JsonValues.render(snapshot))
+    }
+
+    private fun checkSnapshotSize(renderedSnapshot: String) {
+        val bytes = renderedSnapshot.toByteArray(Charsets.UTF_8).size
+        if (bytes > limits.maxSnapshotBytes) {
+            throw SandboxException(
+                DiagnosticCode.COMMAND_ERROR,
+                "Snapshot size $bytes bytes exceeds sandbox limit ${limits.maxSnapshotBytes} bytes",
                 version = profile.id,
             )
         }
