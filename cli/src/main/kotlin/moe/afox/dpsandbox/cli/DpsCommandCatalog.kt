@@ -22,12 +22,17 @@ object DpsCommandCatalog {
         command("quit", "leave the REPL"),
         command("advancement", "grant, revoke, or test advancement progress"),
         command("attribute", "read or edit stored entity attributes"),
+        command("ban", "record a server ban request", CommandBehaviorLevel.OBSERVED_NOOP),
+        command("ban-ip", "record an IP ban request", CommandBehaviorLevel.OBSERVED_NOOP),
+        command("banlist", "record a ban-list query", CommandBehaviorLevel.OBSERVED_NOOP),
         command("bossbar", "edit stored bossbar state"),
         command("clear", "remove items from player inventories"),
         command("clone", "copy sparse sandbox blocks"),
         command("damage", "apply sandbox health damage"),
         command("data", "read or mutate storage/entity/block NBT"),
+        command("debug", "record a profiling request", CommandBehaviorLevel.OBSERVED_NOOP),
         command("defaultgamemode", "edit world default game mode"),
+        command("deop", "record a permission removal request", CommandBehaviorLevel.OBSERVED_NOOP),
         command("difficulty", "edit world difficulty"),
         command("effect", "give or clear player effects"),
         command("enchant", "write enchantment components"),
@@ -41,23 +46,34 @@ object DpsCommandCatalog {
         command("gamerule", "edit stored gamerule values"),
         command("give", "add items to players"),
         command("item", "replace entity item slots"),
+        command("jfr", "record a profiling request", CommandBehaviorLevel.OBSERVED_NOOP),
+        command("kick", "record a network kick request", CommandBehaviorLevel.OBSERVED_NOOP),
         command("kill", "remove entities"),
         command("list", "report sandbox players"),
         command("locate", "report deterministic void-world locate results"),
         command("loot", "generate or place loot"),
+        command("op", "record a permission grant request", CommandBehaviorLevel.OBSERVED_NOOP),
+        command("pardon", "record a pardon request", CommandBehaviorLevel.OBSERVED_NOOP),
+        command("pardon-ip", "record an IP pardon request", CommandBehaviorLevel.OBSERVED_NOOP),
+        command("publish", "record a LAN publish request", CommandBehaviorLevel.OBSERVED_NOOP),
         command("random", "generate deterministic random values"),
         command("recipe", "give or take player recipes"),
         command("return", "stop the current function"),
         command("ride", "edit riding relationships"),
         command("rotate", "edit entity yaw and pitch"),
+        command("save-all", "record a save lifecycle request", CommandBehaviorLevel.OBSERVED_NOOP),
+        command("save-off", "record a save lifecycle request", CommandBehaviorLevel.OBSERVED_NOOP),
+        command("save-on", "record a save lifecycle request", CommandBehaviorLevel.OBSERVED_NOOP),
         command("schedule", "schedule or clear functions"),
         command("scoreboard", "edit objectives and player scores"),
         command("seed", "report sandbox seed"),
         command("setblock", "place one sparse sandbox block"),
+        command("setidletimeout", "record an idle timeout request", CommandBehaviorLevel.OBSERVED_NOOP),
         command("setworldspawn", "edit world spawn point"),
         command("spawnpoint", "edit player spawn points"),
         command("spectate", "record spectator target"),
         command("spreadplayers", "deterministically spread entities"),
+        command("stop", "record a lifecycle stop request", CommandBehaviorLevel.OBSERVED_NOOP),
         command("summon", "create an entity"),
         command("tag", "edit entity tags"),
         command("team", "edit team state"),
@@ -66,8 +82,10 @@ object DpsCommandCatalog {
         command("time", "edit world time state"),
         command("weather", "edit weather state"),
         command("worldborder", "edit stored world border state"),
+        command("whitelist", "record a whitelist administration request", CommandBehaviorLevel.OBSERVED_NOOP),
         command("tellraw", "record a raw JSON chat output"),
         command("title", "record title output"),
+        command("transfer", "record a server transfer request", CommandBehaviorLevel.OBSERVED_NOOP),
         command("trigger", "edit trigger objective scores"),
         command("say", "record chat output"),
         command("me", "record chat output"),
@@ -81,7 +99,7 @@ object DpsCommandCatalog {
         command("particle", "record a visual output", CommandBehaviorLevel.OBSERVED_NOOP),
         command("place", "record a worldgen placement intent", CommandBehaviorLevel.OBSERVED_NOOP),
         command("datapack", "inspect loaded datapack resources"),
-        unsupported("debug"),
+        command("perf", "record a profiling request", CommandBehaviorLevel.OBSERVED_NOOP),
     ).distinctBy { it.value }.sortedBy { it.value }
 
     fun rootCommands(profile: VersionProfile = VersionProfiles.default): List<CompletionSuggestion> {
@@ -110,6 +128,11 @@ object DpsCommandCatalog {
             "inspect" -> " <score|storage|entities|blocks|player|loot|predicate|advancement|recipe|item_modifier|raw|tags|resources|registry|outputs|event-traces>"
             "event" -> " player <name> <type> [id] [action]"
             "attribute" -> " <target> <attribute> <get|base|modifier> ..."
+            "ban", "ban-ip", "kick" -> " <target> [reason]"
+            "banlist" -> " [ips|players]"
+            "op", "deop", "pardon", "pardon-ip" -> " <target>"
+            "whitelist" -> " <add|remove|list|on|off|reload> [target]"
+            "debug", "jfr", "perf" -> " <action> [...]"
             "scoreboard" -> " objectives|players ..."
             "execute" -> " as|at|if|unless|store ... run <command>"
             "data" -> " <get|modify|merge|remove> <storage|entity|block> ..."
@@ -135,6 +158,11 @@ object DpsCommandCatalog {
             "weather" -> " <clear|rain|thunder> [duration]"
             "time" -> " <set|add|query> ..."
             "worldborder" -> " <get|set|add|center|damage|warning> ..."
+            "publish" -> " [allowCommands] [gamemode] [port]"
+            "save-all" -> " [flush]"
+            "save-off", "save-on", "stop" -> ""
+            "setidletimeout" -> " <minutes>"
+            "transfer" -> " <host> [port] [players]"
             else -> baseRootCommands.firstOrNull { it.value == command }
                 ?.description
                 ?.takeIf { it.isNotBlank() }

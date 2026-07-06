@@ -146,7 +146,7 @@ class DpsCompleterTest {
         assertEquals(CommandBehaviorLevel.MODELED, commands.getValue("attribute").behaviorLevel)
         assertEquals(CommandBehaviorLevel.OBSERVED_NOOP, commands.getValue("playsound").behaviorLevel)
         assertEquals(CommandBehaviorLevel.OBSERVED_NOOP, commands.getValue("place").behaviorLevel)
-        assertEquals(CommandBehaviorLevel.UNSUPPORTED, commands.getValue("ban").behaviorLevel)
+        assertEquals(CommandBehaviorLevel.OBSERVED_NOOP, commands.getValue("ban").behaviorLevel)
         assertEquals("edit stored world border state", commands.getValue("worldborder").description)
         implementedRoots.forEach { root ->
             assertFalse(

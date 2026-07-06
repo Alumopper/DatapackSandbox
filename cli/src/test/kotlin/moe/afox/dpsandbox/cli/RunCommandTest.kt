@@ -501,7 +501,7 @@ class RunCommandTest {
                     "--command",
                     "summon minecraft:cow 0 0 0",
                     "--command",
-                    "ban Steve",
+                    "schedule noop demo:later 1t",
                     "--assert",
                     "entity:*=3",
                     "--assert",
@@ -511,11 +511,11 @@ class RunCommandTest {
                     "--assert",
                     "warning=1",
                     "--assert",
-                    "warning:Command 'ban'",
+                    "warning:Only 'schedule function'",
                     "--assert",
                     "unsupported=1",
                     "--assert",
-                    "unsupported:Command 'ban'",
+                    "unsupported:Only 'schedule function'",
                 ),
             )
         }
@@ -1034,10 +1034,10 @@ class RunCommandTest {
             "26.2",
             "--strict",
             "--command",
-            "ban Steve",
+            "schedule noop demo:later 1t",
         )
         assertEquals(ExitCodes.UNSUPPORTED_OR_VERSION, unsupportedResult.exitCode, unsupportedResult.output)
-        assertTrue("Command 'ban' is not implemented" in unsupportedResult.output, unsupportedResult.output)
+        assertTrue("Only 'schedule function' and 'schedule clear' are implemented" in unsupportedResult.output, unsupportedResult.output)
 
         val dir = Files.createTempDirectory("dps-cli-strict-missing-resource")
         val pack = writeMissingReferencePack(dir.resolve("pack"))
@@ -1527,7 +1527,7 @@ class RunCommandTest {
 
         assertTrue("advancement modeled - grant, revoke, or test advancement progress" in output, output)
         assertTrue("place observed-noop - record a worldgen placement intent" in output, output)
-        assertTrue("ban unsupported - vanilla command: warning unless --unsupported error is set" in output, output)
+        assertTrue("ban observed-noop - record a server ban request" in output, output)
         assertTrue("list modeled - report sandbox players" in output, output)
         assertTrue("locate modeled - report deterministic void-world locate results" in output, output)
         assertTrue("return modeled - stop the current function" in output, output)
@@ -1595,7 +1595,7 @@ class RunCommandTest {
         assertEquals("26.2", json.get("version").asString)
         assertEquals("modeled", commands.getValue("advancement").get("behavior").asString)
         assertEquals("observed-noop", commands.getValue("place").get("behavior").asString)
-        assertEquals("unsupported", commands.getValue("ban").get("behavior").asString)
+        assertEquals("observed-noop", commands.getValue("ban").get("behavior").asString)
         assertEquals("modeled", commands.getValue("list").get("behavior").asString)
         assertEquals("modeled", commands.getValue("locate").get("behavior").asString)
         assertEquals("modeled", commands.getValue("return").get("behavior").asString)
@@ -1613,7 +1613,7 @@ class RunCommandTest {
         assertTrue("commands output written: $reportFile" in output, output)
         assertEquals("26.2", json.get("version").asString)
         assertEquals("observed-noop", commands.getValue("place").get("behavior").asString)
-        assertEquals("unsupported", commands.getValue("ban").get("behavior").asString)
+        assertEquals("observed-noop", commands.getValue("ban").get("behavior").asString)
     }
 
     @Test

@@ -90,7 +90,7 @@ class CheckCommandTest {
               "version": "26.2",
               "packs": ["${manifestPath(pack)}"],
               "steps": [
-                { "command": "ban Steve" }
+                { "command": "schedule noop demo:later 1t" }
               ]
             }
             """.trimIndent(),
@@ -98,7 +98,7 @@ class CheckCommandTest {
 
         val unsupportedResult = runCliProcess("check", unsupportedManifest.toString(), "--strict")
         assertEquals(ExitCodes.UNSUPPORTED_OR_VERSION, unsupportedResult.exitCode, unsupportedResult.output)
-        assertTrue("Command 'ban' is not implemented" in unsupportedResult.output, unsupportedResult.output)
+        assertTrue("Only 'schedule function' and 'schedule clear' are implemented" in unsupportedResult.output, unsupportedResult.output)
 
         val missingPack = writeVerbosePack(runtimeDir, "strict-missing-pack", "missing", includeMissingLoad = true)
         val missingManifest = runtimeDir.resolve("missing.dps.json")
