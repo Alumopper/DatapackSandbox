@@ -62,7 +62,7 @@ class AdvancementRuntime(private val sandbox: DatapackSandbox) {
         if (!triggerMatchesEvent(trigger, event.type)) return false
         val conditions = criterion.conditions ?: return true
         val incomingDamageEvent = event.type in setOf("damage", "death", "entity_killed_player", "entity_hurt_player")
-        val playerAttackEvent = event.type in setOf("killed_entity", "player_hurt_entity")
+        val playerAttackEvent = event.type in setOf("killed_entity", "entity_killed", "player_killed_entity", "player_hurt_entity")
         val attacker = when {
             incomingDamageEvent -> event.entity
             playerAttackEvent -> player
@@ -127,12 +127,12 @@ class AdvancementRuntime(private val sandbox: DatapackSandbox) {
             "death" -> eventType == "death"
             "entity_hurt_player" -> eventType in setOf("damage", "entity_hurt_player")
             "player_hurt_entity" -> eventType == "player_hurt_entity"
-            "player_killed_entity" -> eventType == "killed_entity"
+            "player_killed_entity" -> eventType in setOf("killed_entity", "entity_killed", "player_killed_entity")
             "entity_killed_player" -> eventType == "entity_killed_player"
             "location" -> eventType in setOf("location", "moved")
             "changed_dimension" -> eventType == "changed_dimension"
-            "placed_block" -> eventType == "placed_block"
-            "bee_nest_destroyed" -> eventType == "broke_block"
+            "placed_block" -> eventType in setOf("placed_block", "block_placed")
+            "bee_nest_destroyed" -> eventType in setOf("broke_block", "block_broken", "broken_block")
             "recipe_unlocked" -> eventType == "recipe_unlocked"
             "effects_changed" -> eventType == "effects_changed"
             "key_input", "keyboard_input" -> eventType in setOf("key_input", "keyboard_input", "key_pressed", "key_released")

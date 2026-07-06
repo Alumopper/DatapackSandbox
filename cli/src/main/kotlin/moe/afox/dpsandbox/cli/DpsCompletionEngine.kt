@@ -103,9 +103,9 @@ class DpsCompletionEngine(private val sandbox: () -> DatapackSandbox) {
             3 -> eventTypes.suggest("event types", appendSpace = true)
             4 -> when (words.getOrNull(3)) {
                 "item_used", "item_consumed", "inventory_changed", "item_picked_up" -> sandbox().profile.registryView.items.mapResource("items")
-                "entity_interacted", "killed_entity", "entity_killed_player" -> sandbox().profile.registryView.entityTypes.mapResource("entity types")
+                "entity_interacted", "killed_entity", "entity_killed", "player_killed_entity", "entity_killed_player" -> sandbox().profile.registryView.entityTypes.mapResource("entity types")
                 "damage", "death" -> sandbox().profile.registryView.damageTypes.mapResource("damage types")
-                "placed_block", "broke_block" -> sandbox().profile.registryView.blocks.mapResource("blocks")
+                "placed_block", "block_placed", "broke_block", "block_broken", "broken_block" -> sandbox().profile.registryView.blocks.mapResource("blocks")
                 "changed_dimension" -> sandbox().profile.registryView.dimensions.mapResource("dimensions")
                 "recipe_unlocked" -> listOf("minecraft:bread", "minecraft:stick").suggest("recipes")
                 "key_input", "key_pressed", "key_released" -> commonKeys.suggest("keys")
@@ -539,11 +539,16 @@ class DpsCompletionEngine(private val sandbox: () -> DatapackSandbox) {
             "damage",
             "death",
             "killed_entity",
+            "entity_killed",
+            "player_killed_entity",
             "entity_killed_player",
             "location",
             "changed_dimension",
             "placed_block",
+            "block_placed",
             "broke_block",
+            "block_broken",
+            "broken_block",
             "recipe_unlocked",
             "effects_changed",
         )

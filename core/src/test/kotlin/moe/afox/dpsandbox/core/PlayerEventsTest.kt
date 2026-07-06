@@ -95,6 +95,57 @@ class PlayerEventsTest {
     }
 
     @Test
+    fun `roadmap event names trigger matching advancement aliases`() {
+        val placedId = ResourceLocation.parse("demo:placed_stone")
+        val brokenId = ResourceLocation.parse("demo:broke_nest")
+        val killedId = ResourceLocation.parse("demo:killed_zombie")
+        val sandbox = DatapackSandbox(
+            profile = VersionProfiles.default,
+            datapack = Datapack(
+                functions = emptyMap(),
+                loadFunctions = emptyList(),
+                tickFunctions = emptyList(),
+                advancements = mapOf(
+                    placedId to advancement(
+                        placedId,
+                        "placed_stone",
+                        "minecraft:placed_block",
+                        JsonObject().also { it.addProperty("block", "minecraft:stone") },
+                    ),
+                    brokenId to advancement(
+                        brokenId,
+                        "broke_nest",
+                        "minecraft:bee_nest_destroyed",
+                        JsonObject().also { it.addProperty("block", "minecraft:bee_nest") },
+                    ),
+                    killedId to advancement(
+                        killedId,
+                        "killed_zombie",
+                        "minecraft:player_killed_entity",
+                        JsonObject().also { condition ->
+                            condition.add(
+                                "entity",
+                                JsonObject().also { it.addProperty("type", "minecraft:zombie") },
+                            )
+                        },
+                    ),
+                ),
+            ),
+        )
+        val player = sandbox.createPlayer("Steve")
+
+        sandbox.handlePlayerEvent(PlayerEvents.shorthand("Steve", "block_placed", "minecraft:stone"))
+        sandbox.handlePlayerEvent(PlayerEvents.shorthand("Steve", "block_broken", "minecraft:bee_nest"))
+        sandbox.handlePlayerEvent(PlayerEvents.shorthand("Steve", "entity_killed", "minecraft:zombie"))
+
+        assertTrue(player.advancementProgress.getValue(placedId).criteria.getValue("placed_stone"))
+        assertTrue(player.advancementProgress.getValue(brokenId).criteria.getValue("broke_nest"))
+        assertTrue(player.advancementProgress.getValue(killedId).criteria.getValue("killed_zombie"))
+        assertEquals(listOf("block_placed", "block_broken", "entity_killed"), sandbox.world.playerEventTraces.map { it.type })
+        assertTrue(sandbox.world.playerEventTraces.all { it.success })
+    }
+
+    @Test
     fun `shorthand damage event triggers hurt player advancements`() {
         val criterion = Criterion(
             name = "fell_far",
@@ -229,5 +280,22 @@ class PlayerEventsTest {
                     ),
                 ),
             ),
+        )
+
+    private fun advancement(id: ResourceLocation, criterionName: String, trigger: String, conditions: JsonObject): AdvancementDefinition =
+        AdvancementDefinition(
+            id = id,
+            file = "<test>",
+            root = JsonObject(),
+            parent = null,
+            criteria = mapOf(
+                criterionName to Criterion(
+                    name = criterionName,
+                    trigger = ResourceLocation.parse(trigger),
+                    conditions = conditions,
+                ),
+            ),
+            requirements = listOf(listOf(criterionName)),
+            rewards = AdvancementReward(),
         )
 }

@@ -8,8 +8,8 @@
 dps> event player Steve item_used minecraft:carrot_on_a_stick
 dps> event player Steve entity_interacted minecraft:villager
 dps> event player Steve damage minecraft:fall 4.5
-dps> event player Steve killed_entity minecraft:zombie
-dps> event player Steve placed_block minecraft:oak_log
+dps> event player Steve entity_killed minecraft:zombie
+dps> event player Steve block_placed minecraft:oak_log
 dps> event player Steve changed_dimension minecraft:overworld minecraft:the_nether
 dps> event player Steve key_input key.jump
 dps> event player Steve mouse_input left
@@ -26,9 +26,9 @@ event player <name> <event-type> [resource-id] [detail]
 可选 `resource-id` 会按事件类型解释：
 
 - `item_used`、`item_consumed`、`inventory_changed`、`item_picked_up`：物品 id。
-- `entity_interacted`、`killed_entity`、`entity_killed_player`：实体类型 id。
+- `entity_interacted`、`killed_entity`、`entity_killed`、`player_killed_entity`、`entity_killed_player`：实体类型 id。
 - `damage`、`death`：damage source 类型 id，`detail` 可填写伤害数值。
-- `placed_block`、`broke_block`：方块 id。
+- `placed_block`、`block_placed`、`broke_block`、`block_broken`、`broken_block`：方块 id。
 - `changed_dimension`：`resource-id` 是来源维度，`detail` 是目标维度。
 - `recipe_unlocked`：recipe id。
 
@@ -107,12 +107,12 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar run --version 26.2 \
 | `entity_interacted` | `entity` | 触发 `minecraft:player_interacted_with_entity`。 |
 | `damage` | `damageSource`、`amount`、`entity` | 触发 `minecraft:entity_hurt_player`；`entity` 表示伤害来源实体。 |
 | `death` | `damageSource`、`amount`、`entity` | 触发沙盒自定义 `death`；带来源实体的 `damage` 命令击杀玩家时也会触发 `entity_killed_player`。 |
-| `killed_entity` | `entity` | 触发 `minecraft:player_killed_entity`。 |
+| `killed_entity` / `entity_killed` / `player_killed_entity` | `entity` | 触发 `minecraft:player_killed_entity`。 |
 | `entity_killed_player` | `entity` | 触发 `minecraft:entity_killed_player`。 |
 | `location` | 无 | 用于 location 条件。 |
 | `changed_dimension` | `from`、`to` | 用于 dimension change 条件。 |
-| `placed_block` | `block` | 用于 placed block 条件。 |
-| `broke_block` | `block` | 映射到已实现的 block break trigger 子集。 |
+| `placed_block` / `block_placed` | `block` | 用于 placed block 条件。 |
+| `broke_block` / `block_broken` / `broken_block` | `block` | 映射到已实现的 block break trigger 子集。 |
 | `recipe_unlocked` | `recipe` | 用于 recipe unlocked 条件。 |
 | `effects_changed` | 无 | 用于 effects changed 条件。 |
 

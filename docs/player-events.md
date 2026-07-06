@@ -11,8 +11,8 @@ contexts, loot contexts, and advancement triggers.
 dps> event player Steve item_used minecraft:carrot_on_a_stick
 dps> event player Steve entity_interacted minecraft:villager
 dps> event player Steve damage minecraft:fall 4.5
-dps> event player Steve killed_entity minecraft:zombie
-dps> event player Steve placed_block minecraft:oak_log
+dps> event player Steve entity_killed minecraft:zombie
+dps> event player Steve block_placed minecraft:oak_log
 dps> event player Steve changed_dimension minecraft:overworld minecraft:the_nether
 dps> event player Steve key_input key.jump
 dps> event player Steve mouse_input left
@@ -27,9 +27,10 @@ event player <name> <event-type> [resource-id] [detail]
 ```
 
 The optional resource id is interpreted by event type: `item_used` treats it as
-an item, `entity_interacted`/`killed_entity` as an entity type,
-`damage`/`death` as a damage source type, `placed_block`/`broke_block` as a
-block, `recipe_unlocked` as a recipe, and `changed_dimension` as the source
+an item, `entity_interacted`/`killed_entity`/`entity_killed` as an entity type,
+`damage`/`death` as a damage source type,
+`placed_block`/`block_placed`/`broke_block`/`block_broken` as a block,
+`recipe_unlocked` as a recipe, and `changed_dimension` as the source
 dimension. For `damage`/`death`, optional `[detail]` is the damage amount. For
 `changed_dimension`, the optional `[detail]` argument is the destination
 dimension.
@@ -105,12 +106,12 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar run --version 26.2 \
 | `entity_interacted` | `entity` | `minecraft:player_interacted_with_entity` |
 | `damage` | `damageSource`, `amount`, `entity` | `minecraft:entity_hurt_player`; `entity` is the source entity when provided |
 | `death` | `damageSource`, `amount`, `entity` | Sandbox `death` trigger; command damage with a source entity also emits `entity_killed_player` |
-| `killed_entity` | `entity` | `minecraft:player_killed_entity` |
+| `killed_entity` / `entity_killed` / `player_killed_entity` | `entity` | `minecraft:player_killed_entity` |
 | `entity_killed_player` | `entity` | `minecraft:entity_killed_player` |
 | `location` | none | Location advancement conditions |
 | `changed_dimension` | `from`, `to` | Dimension-change advancement conditions |
-| `placed_block` | `block` | Placed-block advancement conditions |
-| `broke_block` | `block` | Mapped to the implemented block-break trigger subset |
+| `placed_block` / `block_placed` | `block` | Placed-block advancement conditions |
+| `broke_block` / `block_broken` / `broken_block` | `block` | Mapped to the implemented block-break trigger subset |
 | `recipe_unlocked` | `recipe` | Recipe-unlocked advancement conditions |
 | `effects_changed` | none | Effects-changed advancement conditions |
 
