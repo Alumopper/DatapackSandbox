@@ -797,14 +797,14 @@ class DatapackSandbox(
         when (tokens[3].text) {
             "get" -> {
                 val scale = tokens.getOrNull(4)?.text?.let { parseDouble(it, "attribute scale", location) } ?: 1.0
-                world.recordOutput("attribute get", "data", text = ((entity.attributes[attribute] ?: defaultAttribute(attribute)) * scale).toString())
+                recordAttributeOutput("attribute get", entity, attribute, "total", scale)
             }
             "base" -> {
                 requireSize(tokens, 5, "attribute <target> <attribute> base <get|set|reset>", location)
                 when (tokens[4].text) {
                     "get" -> {
                         val scale = tokens.getOrNull(5)?.text?.let { parseDouble(it, "attribute scale", location) } ?: 1.0
-                        world.recordOutput("attribute base get", "data", text = ((entity.attributes[attribute] ?: defaultAttribute(attribute)) * scale).toString())
+                        recordAttributeOutput("attribute base get", entity, attribute, "base", scale)
                     }
                     "set" -> {
                         requireSize(tokens, 6, "attribute <target> <attribute> base set <value>", location)
@@ -819,6 +819,30 @@ class DatapackSandbox(
             }
             else -> unsupportedFeature("Unsupported attribute action '${tokens[3].text}'", profile.id, location)
         }
+    }
+
+    private fun recordAttributeOutput(
+        command: String,
+        entity: SandboxEntity,
+        attribute: ResourceLocation,
+        field: String,
+        scale: Double,
+    ) {
+        val rawValue = entity.attributes[attribute] ?: defaultAttribute(attribute)
+        val value = rawValue * scale
+        world.recordOutput(
+            command,
+            "data",
+            text = value.toString(),
+            payload = JsonObject().also { payload ->
+                payload.addProperty("target", entity.scoreHolder)
+                payload.addProperty("attribute", attribute.toString())
+                payload.addProperty("field", field)
+                payload.addProperty("scale", scale)
+                payload.addProperty("rawValue", rawValue)
+                payload.addProperty("value", value)
+            },
+        )
     }
 
     private fun executeScoreboard(tokens: List<CommandToken>, location: SourceLocation?) {

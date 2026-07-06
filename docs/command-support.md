@@ -27,7 +27,7 @@ run continues. Use `--unsupported error`, manifest `"unsupported": "error"`, or
 | Command | Status | Supported forms / sandbox behavior |
 |---|---:|---|
 | `advancement` | Partial | `grant`, `revoke`, `test`; `test` records passed counts and per-player result payloads; progress is per player; rewards support functions, loot, XP, and recipes. |
-| `attribute` | Partial | `get`, `base get`, `base set`, `base reset`; modifier subcommands are accepted as no-op warning output. |
+| `attribute` | Partial | `get`, `base get`, `base set`, `base reset`; get commands record structured data output for assertions and `execute store result`; modifier subcommands are accepted as no-op warning output. |
 | `ban`, `ban-ip`, `banlist` | Unsupported | Server administration and ban lists are not simulated. |
 | `bossbar` | Partial | `add`, `remove`, `list`, `get`, `set`; state is stored and appears in snapshots, no real client UI. |
 | `clear` | Partial | Removes matching item stacks from sandbox player inventories, records the matched/removed count, and treats `maxCount=0` as a query-only check. |

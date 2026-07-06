@@ -65,10 +65,23 @@ class CommandExpansionTest {
 
         sandbox.executeCommand("summon minecraft:zombie 0 64 0")
         sandbox.executeCommand("attribute @e[type=minecraft:zombie,limit=1] minecraft:max_health base set 40")
+        sandbox.executeCommand("attribute @e[type=minecraft:zombie,limit=1] minecraft:max_health get 0.5")
+        sandbox.executeCommand("scoreboard objectives add attr dummy")
+        sandbox.executeCommand("execute store result score #max attr run attribute @e[type=minecraft:zombie,limit=1] minecraft:max_health base get 0.25")
         sandbox.executeCommand("loot give Steve loot demo:gift")
 
         val zombie = sandbox.world.entities.first { it.type == ResourceLocation.parse("minecraft:zombie") }
         assertEquals(40.0, zombie.attributes[ResourceLocation.parse("minecraft:max_health")])
+        val attributeOutput = sandbox.world.outputs.first { it.command == "attribute get" }
+        val attributePayload = attributeOutput.payload?.asJsonObject ?: error("missing attribute payload")
+        assertEquals("20.0", attributeOutput.text)
+        assertEquals(zombie.uuid, attributePayload.get("target").asString)
+        assertEquals("minecraft:max_health", attributePayload.get("attribute").asString)
+        assertEquals("total", attributePayload.get("field").asString)
+        assertEquals(0.5, attributePayload.get("scale").asDouble)
+        assertEquals(40.0, attributePayload.get("rawValue").asDouble)
+        assertEquals(20.0, attributePayload.get("value").asDouble)
+        assertEquals(10, sandbox.world.getScore("#max", "attr"))
         val emerald = sandbox.world.requirePlayer("Steve").inventory.first { it.id == ResourceLocation.parse("minecraft:emerald") }
         assertEquals("Gift", emerald.components.getAsJsonObject("minecraft:custom_name").get("text").asString)
         assertEquals("from loot", emerald.components.getAsJsonArray("minecraft:lore")[0].asJsonObject.get("text").asString)

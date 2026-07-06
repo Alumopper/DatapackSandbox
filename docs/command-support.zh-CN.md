@@ -20,7 +20,7 @@
 | 命令 | 状态 | 已实现形式 / 沙盒行为 |
 |---|---:|---|
 | `advancement` | 部分支持 | `grant`、`revoke`、`test`；`test` 会记录通过数量和逐玩家结果 payload；每个玩家独立记录进度；奖励支持 function、loot、XP 和 recipe。 |
-| `attribute` | 部分支持 | `get`、`base get`、`base set`、`base reset`；modifier 子命令作为 no-op warning 接受。 |
+| `attribute` | 部分支持 | `get`、`base get`、`base set`、`base reset`；get 命令会记录结构化 data 输出，供断言和 `execute store result` 使用；modifier 子命令作为 no-op warning 接受。 |
 | `ban`、`ban-ip`、`banlist` | 未支持 | 不模拟服务器封禁列表。 |
 | `bossbar` | 部分支持 | `add`、`remove`、`list`、`get`、`set`；状态进入 snapshot，不模拟客户端 UI。 |
 | `clear` | 部分支持 | 从沙盒玩家背包移除匹配物品，记录 matched/removed 数量；`maxCount=0` 作为只查询不删除的检查。 |
