@@ -252,7 +252,9 @@ data/<namespace>/item_modifiers/**/*.json
 Tags are loaded from `data/<namespace>/tags/<registry>/**/*.json`. The loader
 keeps the registry directory, tag id, `replace`, and `values`; values may be
 strings or `{ "id": "...", "required": false }` objects, and tag references
-keep the leading `#`.
+keep the leading `#`. When a later pack sets `"replace": true`, earlier values
+for the same tag are discarded; function `load`/`tick` tags use the same replace
+semantics when building runtime entrypoint lists.
 
 REPL inspection:
 

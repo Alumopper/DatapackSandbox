@@ -145,7 +145,7 @@ data/<namespace>/recipes/**/*.json
 data/<namespace>/item_modifiers/**/*.json
 ```
 
-普通 tag 会从 `data/<namespace>/tags/<registry>/**/*.json` 读取，保留 registry 目录名、tag id、`replace` 和 `values`。`values` 支持字符串和 `{ "id": "...", "required": false }` 对象；tag 引用会保留 `#` 前缀。
+普通 tag 会从 `data/<namespace>/tags/<registry>/**/*.json` 读取，保留 registry 目录名、tag id、`replace` 和 `values`。`values` 支持字符串和 `{ "id": "...", "required": false }` 对象；tag 引用会保留 `#` 前缀。后加载的 pack 设置 `"replace": true` 时，会丢弃同一 tag 的旧值；function `load`/`tick` 标签生成运行入口列表时也使用同样的 replace 语义。
 
 REPL 中可以查看：
 

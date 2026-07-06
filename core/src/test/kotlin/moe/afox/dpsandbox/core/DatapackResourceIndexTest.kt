@@ -116,6 +116,18 @@ class DatapackResourceIndexTest {
         assertTrue(overriddenRecipe.get("overriddenBy").asString.contains("overlay-second"), overriddenRecipe.toString())
     }
 
+    @Test
+    fun `function tag replace resets earlier load entries`() {
+        val first = writeFunctionTagPack("load-first", replace = false, functionName = "first_load", message = "first load")
+        val second = writeFunctionTagPack("load-second", replace = true, functionName = "second_load", message = "second load")
+
+        val sandbox = createSandbox("26.2", listOf(first, second))
+
+        assertEquals(listOf(ResourceLocation.parse("demo:second_load")), sandbox.datapack.loadFunctions)
+        sandbox.runLoad()
+        assertEquals(listOf("<Server> second load"), sandbox.world.outputs.map { it.text })
+    }
+
     private fun writePack(
         name: String,
         packFormat: String,
@@ -182,6 +194,36 @@ class DatapackResourceIndexTest {
         )
 
         writeRawRegistryResources(root, recipeMarker)
+        return root
+    }
+
+    private fun writeFunctionTagPack(name: String, replace: Boolean, functionName: String, message: String): Path {
+        val root = Files.createTempDirectory("dps-$name-pack")
+        Files.writeString(
+            root.resolve("pack.mcmeta"),
+            """
+            {
+              "pack": {
+                "pack_format": 107.1,
+                "description": "temporary $name pack"
+              }
+            }
+            """.trimIndent(),
+        )
+        val functionRoot = root.resolve("data").resolve("demo").resolve("function")
+        Files.createDirectories(functionRoot)
+        Files.writeString(functionRoot.resolve("$functionName.mcfunction"), "say $message")
+        val tagRoot = root.resolve("data").resolve("minecraft").resolve("tags").resolve("function")
+        Files.createDirectories(tagRoot)
+        Files.writeString(
+            tagRoot.resolve("load.json"),
+            """
+            {
+              "replace": $replace,
+              "values": ["demo:$functionName"]
+            }
+            """.trimIndent(),
+        )
         return root
     }
 

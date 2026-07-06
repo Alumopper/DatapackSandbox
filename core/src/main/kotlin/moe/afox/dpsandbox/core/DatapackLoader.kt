@@ -21,6 +21,11 @@ import kotlin.io.path.relativeTo
  * Loads datapack resources from directories, zip files, or synthetic function sources.
  */
 object DatapackLoader {
+    private data class FunctionTagDefinition(
+        val replace: Boolean,
+        val values: List<ResourceLocation>,
+    )
+
     private data class RawJsonResourceSpec(
         val kind: String,
         val directories: List<String> = listOf(kind),
@@ -109,8 +114,8 @@ object DatapackLoader {
                 val packFunctions = readFunctions(root, profile)
                 resourceIndex.recordAll("function", packFunctions, packLabel)
                 functions.putAll(packFunctions)
-                loadFunctions += readFunctionTag(root, profile, "load")
-                tickFunctions += readFunctionTag(root, profile, "tick")
+                mergeFunctionTags(loadFunctions, readFunctionTag(root, profile, "load"))
+                mergeFunctionTags(tickFunctions, readFunctionTag(root, profile, "tick"))
 
                 val packLootTables = readLootTables(root, profile)
                 resourceIndex.recordAll("loot_table", packLootTables, packLabel)
@@ -476,12 +481,12 @@ object DatapackLoader {
             }
         }
 
-    private fun readFunctionTag(root: Path, profile: VersionProfile, tagName: String): List<ResourceLocation> {
+    private fun readFunctionTag(root: Path, profile: VersionProfile, tagName: String): List<FunctionTagDefinition> {
         val tags = root.resolve("data").resolve("minecraft").resolve("tags")
         val candidates = profile.resourceDirectories.functionTags
             .map { tags.resolve(it).resolve("$tagName.json") }
 
-        return candidates.filter { it.exists() }.flatMap { tagPath ->
+        return candidates.filter { it.exists() }.map { tagPath ->
             val json = try {
                 JsonParser.parseString(Files.readString(tagPath, StandardCharsets.UTF_8)).asJsonObject
             } catch (error: Exception) {
@@ -492,7 +497,17 @@ object DatapackLoader {
                     cause = error,
                 )
             }
-            readTagValues(json, tagPath)
+            FunctionTagDefinition(
+                replace = json.get("replace")?.takeIf { it.isJsonPrimitive }?.asBoolean ?: false,
+                values = readTagValues(json, tagPath),
+            )
+        }
+    }
+
+    private fun mergeFunctionTags(target: MutableList<ResourceLocation>, definitions: List<FunctionTagDefinition>) {
+        definitions.forEach { definition ->
+            if (definition.replace) target.clear()
+            target += definition.values
         }
     }
 
