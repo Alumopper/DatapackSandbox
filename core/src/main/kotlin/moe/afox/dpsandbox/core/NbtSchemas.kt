@@ -190,12 +190,22 @@ object NbtSchemas {
         entity.nbt.entrySet().forEach { (key, value) -> json.add(key, value.deepCopy()) }
         addEquipmentNbt(entity, profile, json)
         addActiveEffectsNbt(entity, profile, json)
-        if (entity.attributes.isNotEmpty()) {
+        if (entity.attributes.isNotEmpty() || entity.attributeModifiers.isNotEmpty()) {
             json.add("Attributes", JsonArray().also { array ->
-                entity.attributes.toSortedMap().forEach { (id, base) ->
+                (entity.attributes.keys + entity.attributeModifiers.keys).sorted().forEach { id ->
                     array.add(JsonObject().also {
                         it.addProperty("id", id.toString())
-                        it.addProperty("base", base)
+                        it.addProperty("base", entity.attributes[id] ?: 0.0)
+                        entity.attributeModifiers[id]?.takeIf { modifiers -> modifiers.isNotEmpty() }?.let { modifiers ->
+                            it.add(
+                                "modifiers",
+                                JsonArray().also { modifiersJson ->
+                                    modifiers.values.sortedBy { modifier -> modifier.id.toString() }.forEach { modifier ->
+                                        modifiersJson.add(modifier.toJson())
+                                    }
+                                },
+                            )
+                        }
                     })
                 }
             })

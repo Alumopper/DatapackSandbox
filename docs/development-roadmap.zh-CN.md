@@ -80,6 +80,7 @@
   - `tick rate/freeze/unfreeze/step/sprint` 已记录结构化 tick 状态和推进输出，便于调试 tick rate、冻结状态、gameTime 前后变化和命令生成器结果。
   - `worldborder set/add/center/damage/warning` 已记录结构化前后状态输出，便于调试边界尺寸、中心点、伤害参数和警告参数变化。
   - `bossbar add/remove/set` 已记录结构化前后状态输出，便于调试 UI 状态、玩家目标、字段输入和生成器输出。
+  - `attribute modifier add/remove/value get` 已建模实体属性修饰器、total 计算、结构化输出和 `execute store` 结果，便于调试属性命令生成器和快照中的属性状态。
   - `gamerule <rule> <value>` 已记录结构化修改输出，便于调试规则值输入、前值和 query 链路。
   - `team add/remove/list/join/leave/empty/modify` 已记录结构化队伍状态输出，便于调试成员变化、显示名和选项输入。
   - `place feature|jigsaw|structure|template` 已作为 observed-noop 接受并记录结构化 worldgen 输出，便于命令生成器验证放置目标、位置和额外参数。
@@ -104,7 +105,7 @@
   - 方块状态、方块实体 NBT、biome override、强加载 chunk、世界边界、时间、天气、难度、gamerule、spawn。
   - 支持区域 fixture、结构 fixture、从 Java Anvil 存档按 chunk 或坐标范围导入。
 - 完善实体模型：
-  - 类型、UUID、位置、旋转、维度、tag、score holder、attributes、effects、passengers/vehicle、equipment、health、custom NBT；`item replace/modify entity` 已覆盖非玩家实体 `weapon.*`/`armor.*` 装备槽读写、复制、snapshot 与 NBT 投影，`effect give/clear` 已覆盖非玩家实体 active effects，entity predicate 的 `equipment`、`effects` 和 `nbt` 条件也复用该模型；world fixture、manifest world 和 quick-test world builder 均可直接声明非玩家实体装备、active effects、attributes、dimension、health 与 passengers/vehicle，并通过 entity assertion/quick-test assertion 验证完整 NBT path。
+  - 类型、UUID、位置、旋转、维度、tag、score holder、attributes、attribute modifiers、effects、passengers/vehicle、equipment、health、custom NBT；`item replace/modify entity` 已覆盖非玩家实体 `weapon.*`/`armor.*` 装备槽读写、复制、snapshot 与 NBT 投影，`attribute modifier` 已进入 snapshot 与 `Attributes[].modifiers` NBT 投影，`effect give/clear` 已覆盖非玩家实体 active effects，entity predicate 的 `equipment`、`effects` 和 `nbt` 条件也复用该模型；world fixture、manifest world 和 quick-test world builder 均可直接声明非玩家实体装备、active effects、attributes、dimension、health 与 passengers/vehicle，并通过 entity assertion/quick-test assertion 验证完整 NBT path。
   - 不执行 AI tick，但保留数据包可读写字段和明确的 no-AI 语义说明。
 - 完善玩家模型：
   - inventory、selected slot、ender items、recipes、stats、xp、health、food、gamemode、spawn、advancement progress、last input。

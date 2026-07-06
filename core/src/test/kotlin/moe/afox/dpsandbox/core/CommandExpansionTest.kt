@@ -229,26 +229,65 @@ class CommandExpansionTest {
 
         sandbox.executeCommand("summon minecraft:zombie 0 64 0")
         sandbox.executeCommand("attribute @e[type=minecraft:zombie,limit=1] minecraft:max_health base set 40")
+        sandbox.executeCommand("attribute @e[type=minecraft:zombie,limit=1] minecraft:max_health modifier add demo:bonus 5 add_value")
         sandbox.executeCommand("attribute @e[type=minecraft:zombie,limit=1] minecraft:max_health get 0.5")
+        sandbox.executeCommand("attribute @e[type=minecraft:zombie,limit=1] minecraft:max_health modifier value get demo:bonus 2")
         sandbox.executeCommand("scoreboard objectives add attr dummy")
         sandbox.executeCommand("execute store result score #max attr run attribute @e[type=minecraft:zombie,limit=1] minecraft:max_health base get 0.25")
+        sandbox.executeCommand("execute store result score #bonus attr run attribute @e[type=minecraft:zombie,limit=1] minecraft:max_health modifier value get demo:bonus")
+        sandbox.executeCommand("attribute @e[type=minecraft:zombie,limit=1] minecraft:max_health modifier remove demo:bonus")
+        sandbox.executeCommand("attribute @e[type=minecraft:zombie,limit=1] minecraft:max_health get")
         sandbox.executeCommand("loot give Steve loot demo:gift")
 
         val zombie = sandbox.world.entities.first { it.type == ResourceLocation.parse("minecraft:zombie") }
         assertEquals(40.0, zombie.attributes[ResourceLocation.parse("minecraft:max_health")])
         val attributeOutput = sandbox.world.outputs.first { it.command == "attribute get" }
         val attributePayload = attributeOutput.payload?.asJsonObject ?: error("missing attribute payload")
-        assertEquals("20.0", attributeOutput.text)
+        assertEquals("22.5", attributeOutput.text)
         assertEquals(zombie.uuid, attributePayload.get("target").asString)
         assertEquals("minecraft:max_health", attributePayload.get("attribute").asString)
         assertEquals("total", attributePayload.get("field").asString)
         assertEquals(0.5, attributePayload.get("scale").asDouble)
-        assertEquals(40.0, attributePayload.get("rawValue").asDouble)
-        assertEquals(20.0, attributePayload.get("value").asDouble)
+        assertEquals(45.0, attributePayload.get("rawValue").asDouble)
+        assertEquals(22.5, attributePayload.get("value").asDouble)
+        val modifierOutput = sandbox.world.outputs.first {
+            it.command == "attribute modifier value get" &&
+                it.payload?.asJsonObject?.get("scale")?.asDouble == 2.0
+        }
+        val modifierPayload = modifierOutput.payload?.asJsonObject ?: error("missing attribute modifier payload")
+        assertEquals("10.0", modifierOutput.text)
+        assertEquals("demo:bonus", modifierPayload.get("modifier").asString)
+        assertEquals("add_value", modifierPayload.get("operation").asString)
+        assertEquals(5.0, modifierPayload.get("rawValue").asDouble)
         assertEquals(10, sandbox.world.getScore("#max", "attr"))
+        assertEquals(5, sandbox.world.getScore("#bonus", "attr"))
+        assertTrue(zombie.attributeModifiers[ResourceLocation.parse("minecraft:max_health")].isNullOrEmpty())
+        assertEquals("40.0", sandbox.world.outputs.last { it.command == "attribute get" }.text)
         val emerald = sandbox.world.requirePlayer("Steve").inventory.first { it.id == ResourceLocation.parse("minecraft:emerald") }
         assertEquals("Gift", emerald.components.getAsJsonObject("minecraft:custom_name").get("text").asString)
         assertEquals("from loot", emerald.components.getAsJsonArray("minecraft:lore")[0].asJsonObject.get("text").asString)
+
+        val error = assertFailsWith<SandboxException> {
+            sandbox.executeCommand("attribute @e[type=minecraft:zombie,limit=1] minecraft:max_health modifier add demo:bad 1 divide")
+        }
+        assertEquals(DiagnosticCode.INPUT_FORMAT, error.code)
+
+        sandbox.executeCommand("attribute @e[type=minecraft:zombie,limit=1] minecraft:max_health modifier add demo:snapshot 0.1 add_multiplied_base")
+        val modifierJson = zombie.toJson(sandbox.profile)
+            .asJsonObject
+            .getAsJsonObject("attributeModifiers")
+            .getAsJsonArray("minecraft:max_health")[0]
+            .asJsonObject
+        assertEquals("demo:snapshot", modifierJson.get("id").asString)
+        assertEquals("add_multiplied_base", modifierJson.get("operation").asString)
+        val attributeNbt = zombie.fullNbt(sandbox.profile)
+            .getAsJsonArray("Attributes")
+            .first { it.asJsonObject.get("id").asString == "minecraft:max_health" }
+            .asJsonObject
+        val modifierNbt = attributeNbt.getAsJsonArray("modifiers")[0].asJsonObject
+        assertEquals("demo:snapshot", modifierNbt.get("id").asString)
+        assertEquals(0.1, modifierNbt.get("amount").asDouble)
+        assertEquals("add_multiplied_base", modifierNbt.get("operation").asString)
     }
 
     @Test

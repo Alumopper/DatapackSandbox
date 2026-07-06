@@ -42,7 +42,7 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar commands --json --output build
 | 命令 | 状态 | 行为等级 | 已实现形式 / 沙盒行为 |
 |---|---:|---:|---|
 | `advancement` | 部分支持 | `modeled` | `grant`、`revoke`、`test`；`test` 会记录通过数量和逐玩家结果 payload；每个玩家独立记录进度；奖励支持 function、loot、XP 和 recipe。 |
-| `attribute` | 部分支持 | `modeled` | `get`、`base get`、`base set`、`base reset`；get 命令会记录结构化 data 输出，供断言和 `execute store result` 使用；modifier 子命令作为 no-op warning 接受。 |
+| `attribute` | 部分支持 | `modeled` | `get`、`base get`、`base set`、`base reset`、`modifier add`、`modifier remove` 和 `modifier value get`；get 命令会记录结构化 data 输出，供断言和 `execute store result` 使用；modifier 状态会进入 snapshot 和实体 NBT。 |
 | `ban`、`ban-ip`、`banlist` | 未支持 | `unsupported` | 不模拟服务器封禁列表。 |
 | `bossbar` | 部分支持 | `modeled` | `add`、`remove`、`list`、`get`、`set`；修改命令和 `get` 都会记录结构化 data 输出，供断言和 `execute store result` 使用；状态进入 snapshot，不模拟客户端 UI。 |
 | `clear` | 部分支持 | `modeled` | 从沙盒玩家背包移除匹配物品，支持 JSON/SNBT-lite NBT 和 components payload 过滤，记录 matched/removed 数量；`maxCount=0` 作为只查询不删除的检查。 |

@@ -194,6 +194,22 @@ internal fun effectFromNbtJson(json: JsonObject): PlayerEffect? {
 }
 
 /**
+ * Attribute modifier attached to one entity attribute.
+ */
+data class AttributeModifier(
+    val id: ResourceLocation,
+    val amount: Double,
+    val operation: String,
+) {
+    fun toJson(): JsonObject =
+        JsonObject().also {
+            it.addProperty("id", id.toString())
+            it.addProperty("amount", amount)
+            it.addProperty("operation", operation)
+        }
+}
+
+/**
  * Per-player advancement criterion progress.
  */
 data class AdvancementProgress(
@@ -223,6 +239,7 @@ open class SandboxEntity(
 ) {
     open val scoreHolder: String get() = uuid
     val attributes: MutableMap<ResourceLocation, Double> = linkedMapOf()
+    val attributeModifiers: MutableMap<ResourceLocation, MutableMap<ResourceLocation, AttributeModifier>> = linkedMapOf()
     val equipment: MutableMap<String, ItemStack> = linkedMapOf()
     val activeEffects: MutableMap<ResourceLocation, PlayerEffect> = linkedMapOf()
 
@@ -1077,6 +1094,21 @@ fun SandboxEntity.toJson(profile: VersionProfile = VersionProfiles.default): Jso
     val attributesJson = JsonObject()
     attributes.toSortedMap().forEach { (id, value) -> attributesJson.addProperty(id.toString(), value) }
     json.add("attributes", attributesJson)
+    if (attributeModifiers.isNotEmpty()) {
+        json.add(
+            "attributeModifiers",
+            JsonObject().also { modifiersJson ->
+                attributeModifiers.toSortedMap().forEach { (attribute, modifiers) ->
+                    modifiersJson.add(
+                        attribute.toString(),
+                        JsonArray().also { array ->
+                            modifiers.values.sortedBy { it.id.toString() }.forEach { array.add(it.toJson()) }
+                        },
+                    )
+                }
+            },
+        )
+    }
     return json
 }
 

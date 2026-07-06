@@ -54,7 +54,7 @@ runs this through the standalone jar smoke task.
 | Command | Status | Behavior | Supported forms / sandbox behavior |
 |---|---:|---:|---|
 | `advancement` | Partial | `modeled` | `grant`, `revoke`, `test`; `test` records passed counts and per-player result payloads; progress is per player; rewards support functions, loot, XP, and recipes. |
-| `attribute` | Partial | `modeled` | `get`, `base get`, `base set`, `base reset`; get commands record structured data output for assertions and `execute store result`; modifier subcommands are accepted as no-op warning output. |
+| `attribute` | Partial | `modeled` | `get`, `base get`, `base set`, `base reset`, `modifier add`, `modifier remove`, and `modifier value get`; get commands record structured data output for assertions and `execute store result`; modifier state is exposed in snapshots and entity NBT. |
 | `ban`, `ban-ip`, `banlist` | Unsupported | `unsupported` | Server administration and ban lists are not simulated. |
 | `bossbar` | Partial | `modeled` | `add`, `remove`, `list`, `get`, `set`; mutations and `get` record structured data output for assertions and `execute store result`; state is stored and appears in snapshots, no real client UI. |
 | `clear` | Partial | `modeled` | Removes matching item stacks from sandbox player inventories, including JSON/SNBT-lite NBT and component payload filters; records the matched/removed count, and treats `maxCount=0` as a query-only check. |

@@ -1086,7 +1086,40 @@ class DatapackSandbox(
                 }
             }
             "modifier" -> {
-                world.recordOutput("attribute modifier", "warning", text = "Attribute modifiers are accepted as a sandbox no-op; base values are supported")
+                requireSize(tokens, 5, "attribute <target> <attribute> modifier <add|remove|value>", location)
+                when (tokens[4].text) {
+                    "add" -> {
+                        requireSize(tokens, 8, "attribute <target> <attribute> modifier add <id> <value> <operation>", location)
+                        val modifier = AttributeModifier(
+                            id = ResourceLocation.parse(tokens[5].text),
+                            amount = parseDouble(tokens[6].text, "attribute modifier value", location),
+                            operation = normalizeAttributeModifierOperation(tokens[7].text, location),
+                        )
+                        entity.attributeModifiers.getOrPut(attribute) { linkedMapOf() }[modifier.id] = modifier
+                        recordAttributeModifierOutput("attribute modifier add", entity, attribute, modifier, attributeTotal(entity, attribute))
+                    }
+                    "remove" -> {
+                        requireSize(tokens, 6, "attribute <target> <attribute> modifier remove <id>", location)
+                        val id = ResourceLocation.parse(tokens[5].text)
+                        val removed = entity.attributeModifiers[attribute]?.remove(id)
+                        if (entity.attributeModifiers[attribute]?.isEmpty() == true) {
+                            entity.attributeModifiers.remove(attribute)
+                        }
+                        recordAttributeModifierOutput("attribute modifier remove", entity, attribute, removed, attributeTotal(entity, attribute), id)
+                    }
+                    "value" -> {
+                        requireSize(tokens, 7, "attribute <target> <attribute> modifier value get <id> [scale]", location)
+                        if (tokens[5].text != "get") {
+                            unsupportedFeature("Unsupported attribute modifier value action '${tokens[5].text}'", profile.id, location)
+                        }
+                        val id = ResourceLocation.parse(tokens[6].text)
+                        val modifier = entity.attributeModifiers[attribute]?.get(id)
+                            ?: throw SandboxException(DiagnosticCode.COMMAND_ERROR, "Attribute modifier '$id' was not found for '$attribute'", location)
+                        val scale = tokens.getOrNull(7)?.text?.let { parseDouble(it, "attribute modifier scale", location) } ?: 1.0
+                        recordAttributeModifierValueOutput(entity, attribute, modifier, scale)
+                    }
+                    else -> unsupportedFeature("Unsupported attribute modifier action '${tokens[4].text}'", profile.id, location)
+                }
             }
             else -> unsupportedFeature("Unsupported attribute action '${tokens[3].text}'", profile.id, location)
         }
@@ -1099,7 +1132,7 @@ class DatapackSandbox(
         field: String,
         scale: Double,
     ) {
-        val rawValue = entity.attributes[attribute] ?: defaultAttribute(attribute)
+        val rawValue = if (field == "total") attributeTotal(entity, attribute) else entity.attributes[attribute] ?: defaultAttribute(attribute)
         val value = rawValue * scale
         world.recordOutput(
             command,
@@ -1115,6 +1148,80 @@ class DatapackSandbox(
             },
         )
     }
+
+    private fun recordAttributeModifierOutput(
+        command: String,
+        entity: SandboxEntity,
+        attribute: ResourceLocation,
+        modifier: AttributeModifier?,
+        total: Double,
+        id: ResourceLocation? = modifier?.id,
+    ) {
+        world.recordOutput(
+            command,
+            "data",
+            targets = listOf(entity.scoreHolder),
+            text = if (modifier == null) "0" else "1",
+            payload = JsonObject().also { payload ->
+                payload.addProperty("target", entity.scoreHolder)
+                payload.addProperty("attribute", attribute.toString())
+                id?.let { payload.addProperty("modifier", it.toString()) }
+                payload.addProperty("changed", modifier != null)
+                payload.addProperty("total", total)
+                modifier?.let {
+                    payload.addProperty("amount", it.amount)
+                    payload.addProperty("operation", it.operation)
+                }
+            },
+        )
+    }
+
+    private fun recordAttributeModifierValueOutput(
+        entity: SandboxEntity,
+        attribute: ResourceLocation,
+        modifier: AttributeModifier,
+        scale: Double,
+    ) {
+        val value = modifier.amount * scale
+        world.recordOutput(
+            "attribute modifier value get",
+            "data",
+            targets = listOf(entity.scoreHolder),
+            text = value.toString(),
+            payload = JsonObject().also { payload ->
+                payload.addProperty("target", entity.scoreHolder)
+                payload.addProperty("attribute", attribute.toString())
+                payload.addProperty("modifier", modifier.id.toString())
+                payload.addProperty("operation", modifier.operation)
+                payload.addProperty("scale", scale)
+                payload.addProperty("rawValue", modifier.amount)
+                payload.addProperty("value", value)
+            },
+        )
+    }
+
+    private fun attributeTotal(entity: SandboxEntity, attribute: ResourceLocation): Double {
+        val base = entity.attributes[attribute] ?: defaultAttribute(attribute)
+        val modifiers = entity.attributeModifiers[attribute]?.values.orEmpty()
+        val withBaseModifiers = base +
+            modifiers.filter { it.operation == "add_value" }.sumOf { it.amount } +
+            modifiers.filter { it.operation == "add_multiplied_base" }.sumOf { base * it.amount }
+        return modifiers
+            .filter { it.operation == "add_multiplied_total" }
+            .fold(withBaseModifiers) { total, modifier -> total * (1.0 + modifier.amount) }
+    }
+
+    private fun normalizeAttributeModifierOperation(raw: String, location: SourceLocation?): String =
+        when (raw) {
+            "add_value", "addition" -> "add_value"
+            "add_multiplied_base", "multiply_base" -> "add_multiplied_base"
+            "add_multiplied_total", "multiply_total" -> "add_multiplied_total"
+            else -> throw SandboxException(
+                DiagnosticCode.INPUT_FORMAT,
+                "Unsupported attribute modifier operation '$raw'; expected add_value, add_multiplied_base, or add_multiplied_total",
+                location,
+            )
+        }
 
     private fun executeScoreboard(tokens: List<CommandToken>, location: SourceLocation?) {
         requireSize(tokens, 3, "scoreboard <objectives|players> ...", location)
