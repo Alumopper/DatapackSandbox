@@ -57,7 +57,7 @@
   - 所有写入都经过 NBT schema 或 sandbox state 规则校验。
 - 扩展 `loot`：
   - 补齐 source：`mine`、`kill`、`fish`、`entity`、`block`、`equipment` 等适合测试的确定性模型；命令 source 已覆盖 `fish`、`mine`、`kill`、`entity <table> <target>`、`block <table> <pos> [tool]`、`equipment <table> <target> <slot>`。
-  - 输出既能进入玩家/方块/实体，也能作为独立生成结果供 CLI 和 manifest 断言；`loot replace entity` 已可写入玩家背包、当前主手、`enderchest.*` 槽和非玩家实体装备槽。
+  - 输出既能进入玩家/方块/实体，也能作为独立生成结果供 CLI 和 manifest 断言；`loot` 命令会记录结构化输出事件，`loot replace entity` 已可写入玩家背包、当前主手、`enderchest.*` 槽和非玩家实体装备槽。
 - 扩展 `item` 和 item modifier：
   - 支持 entity/block slot 读写、modifier 应用、components/NBT 兼容差异；entity item 槽位已覆盖玩家背包、当前主手、`enderchest.*` 和非玩家实体装备；`give`、`clear` 与 `item replace ... with` 已支持 JSON/SNBT-lite NBT 和 components payload，`give`、`item replace` 与 `item modify` 会记录结构化输出便于 report/assertion 调试。
 - 扩展 `recipe`、`advancement`、`attribute`、`damage`、`effect`、`enchant`、`random`、`team`、`bossbar`、`worldborder` 的子命令覆盖。

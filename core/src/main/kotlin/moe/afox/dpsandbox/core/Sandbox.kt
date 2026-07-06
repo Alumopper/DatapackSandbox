@@ -499,25 +499,62 @@ class DatapackSandbox(
             "give" -> {
                 requireSize(tokens, 5, "loot give <players> loot <table>", location)
                 val items = parseLootSource(tokens, 3, context, location)
-                resolvePlayers(tokens[2].text, location, context).forEach { player ->
+                val players = resolvePlayers(tokens[2].text, location, context)
+                players.forEach { player ->
                     player.inventory += items.map { it.copy(components = it.components.deepCopy(), nbt = it.nbt.deepCopy()) }
                     items.forEach { advancements.handle(PlayerEvent(player.name, "inventory_changed", item = it)) }
                 }
+                recordLootOutput("loot give", "players", players.map { it.name }, items)
             }
             "insert" -> {
                 requireSize(tokens, 7, "loot insert <pos> loot <table>", location)
                 val pos = parseBlockPos(tokens, 2, context, location)
-                insertLootIntoBlock(pos, parseLootSource(tokens, 5, context, location), location)
+                val items = parseLootSource(tokens, 5, context, location)
+                insertLootIntoBlock(pos, items, location)
+                recordLootOutput("loot insert", "block", listOf(pos.toString()), items)
             }
             "spawn" -> {
                 requireSize(tokens, 7, "loot spawn <pos> loot <table>", location)
                 val pos = parsePosition(tokens, 2, context, location)
-                spawnLootItems(pos, parseLootSource(tokens, 5, context, location), context.dimension)
+                val items = parseLootSource(tokens, 5, context, location)
+                spawnLootItems(pos, items, context.dimension)
+                recordLootOutput(
+                    "loot spawn",
+                    "position",
+                    listOf("${pos.x} ${pos.y} ${pos.z}"),
+                    items,
+                    JsonObject().also { it.addProperty("dimension", context.dimension.toString()) },
+                )
             }
             "replace" -> executeLootReplace(tokens, location, context)
             else -> unsupportedFeature("Unsupported loot target '${tokens[1].text}'", profile.id, location)
         }
     }
+
+    private fun recordLootOutput(
+        command: String,
+        targetKind: String,
+        targets: List<String>,
+        items: List<ItemStack>,
+        extraPayload: JsonObject = JsonObject(),
+    ) {
+        world.recordOutput(
+            command,
+            "data",
+            targets = targets,
+            text = items.sumOf { it.count }.toString(),
+            payload = extraPayload.also { payload ->
+                payload.addProperty("targetKind", targetKind)
+                payload.add("targets", JsonArray().also { array -> targets.forEach { array.add(it) } })
+                payload.add("items", itemStacksJson(items))
+                payload.addProperty("stacks", items.size)
+                payload.addProperty("totalCount", items.sumOf { it.count })
+            },
+        )
+    }
+
+    private fun itemStacksJson(items: List<ItemStack>): JsonArray =
+        JsonArray().also { array -> items.forEach { array.add(it.toJson()) } }
 
     private fun executeLocate(tokens: List<CommandToken>, location: SourceLocation?) {
         requireSize(tokens, 3, "locate <biome|structure|poi> <id>", location)
@@ -569,10 +606,21 @@ class DatapackSandbox(
                 val sourceIndex = if (tokens[5].text == "loot") 5 else 6
                 val count = if (sourceIndex == 6) parseInt(tokens[5].text, "loot replace count", location) else 1
                 val items = parseLootSource(tokens, sourceIndex, context, location).take(count.coerceAtLeast(0))
-                EntitySelectors.select(world, tokens[3].text, context, location).forEach { entity ->
+                val entities = EntitySelectors.select(world, tokens[3].text, context, location)
+                entities.forEach { entity ->
                     val item = items.firstOrNull() ?: ItemStack(ResourceLocation("minecraft", "air"), 0)
                     entityItemAccess(entity, tokens[4].text, location).set(item)
                 }
+                recordLootOutput(
+                    "loot replace",
+                    "entity",
+                    entities.map { it.scoreHolder },
+                    items,
+                    JsonObject().also { payload ->
+                        payload.addProperty("slot", tokens[4].text)
+                        payload.addProperty("count", count)
+                    },
+                )
             }
             "block" -> {
                 requireSize(tokens, 9, "loot replace block <pos> <slot> [count] loot <table>", location)
@@ -582,6 +630,16 @@ class DatapackSandbox(
                 val count = if (sourceIndex == 8) parseInt(tokens[7].text, "loot replace count", location) else 1
                 val item = parseLootSource(tokens, sourceIndex, context, location).take(count.coerceAtLeast(0)).firstOrNull()
                 replaceBlockItem(pos, slot, item, location)
+                recordLootOutput(
+                    "loot replace",
+                    "block",
+                    listOf(pos.toString()),
+                    listOfNotNull(item),
+                    JsonObject().also { payload ->
+                        payload.addProperty("slot", tokens[6].text)
+                        payload.addProperty("count", count)
+                    },
+                )
             }
             else -> unsupportedFeature("Unsupported loot replace target '${tokens[2].text}'", profile.id, location)
         }

@@ -129,6 +129,16 @@ class CommandExpansionTest {
                 it.nbt.getAsJsonObject("Item")?.get("id")?.asString == "minecraft:stone"
         }
         assertEquals(ResourceLocation.parse("minecraft:the_nether"), spawnedItem.dimension)
+
+        val lootGiveOutputs = sandbox.world.outputs.filter { it.command == "loot give" }
+        assertEquals(6, lootGiveOutputs.size)
+        assertEquals("players", lootGiveOutputs.first().payload?.asJsonObject?.get("targetKind")?.asString)
+        assertEquals("minecraft:diamond", lootGiveOutputs.first().payload?.asJsonObject?.getAsJsonArray("items")?.get(0)?.asJsonObject?.get("id")?.asString)
+        val lootSpawnOutput = sandbox.world.outputs.single { it.command == "loot spawn" }
+        assertEquals("minecraft:the_nether", lootSpawnOutput.payload?.asJsonObject?.get("dimension")?.asString)
+        val lootReplaceOutput = sandbox.world.outputs.single { it.command == "loot replace" }
+        assertEquals("weapon.offhand", lootReplaceOutput.payload?.asJsonObject?.get("slot")?.asString)
+        assertEquals("minecraft:diamond", lootReplaceOutput.payload?.asJsonObject?.getAsJsonArray("items")?.get(0)?.asJsonObject?.get("id")?.asString)
     }
 
     @Test
