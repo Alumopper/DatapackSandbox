@@ -775,8 +775,8 @@ class CommandExpansionTest {
         sandbox.createPlayer("Alex").position = Position(0.0, 64.0, 0.0)
         sandbox.createPlayer("Blair").position = Position(8.0, 64.0, 0.0)
 
-        sandbox.executeCommand("""summon minecraft:pig 1 64 1 {Tags:["near"]}""")
-        sandbox.executeCommand("""summon minecraft:pig 9 64 0 {Tags:["far"]}""")
+        sandbox.executeCommand("""summon minecraft:pig 1 64 1 {Tags:["near"],Health:7f}""")
+        sandbox.executeCommand("""summon minecraft:pig 9 64 0 {Tags:["far"],Health:3f}""")
         sandbox.executeCommand("""summon minecraft:cow 2 64 0 {Tags:["near"]}""")
         sandbox.executeCommand("scoreboard objectives add selector dummy")
         sandbox.executeCommand("scoreboard objectives add selector_scores dummy")
@@ -806,6 +806,9 @@ class CommandExpansionTest {
         sandbox.executeCommand("""execute if entity @a[gamemode=!spectator,scores={selector_scores=2..5,selector_other=3},limit=2] run scoreboard players add #score selector 1""")
         sandbox.executeCommand("""execute if entity @e[type=minecraft:pig,scores={selector_scores=..1},limit=1] run scoreboard players add #score selector 1""")
         sandbox.executeCommand("""execute unless entity @e[type=minecraft:pig,scores={selector_scores=2..6}] run scoreboard players add #score selector 1""")
+        sandbox.executeCommand("""execute if entity @e[type=minecraft:pig,nbt={Health:7f},limit=1] run scoreboard players add #nbt selector 1""")
+        sandbox.executeCommand("""execute if entity @e[type=minecraft:pig,nbt=!{Health:7f},limit=1] run scoreboard players add #nbt selector 1""")
+        sandbox.executeCommand("""execute unless entity @e[type=minecraft:pig,nbt={Health:9f}] run scoreboard players add #nbt selector 1""")
         sandbox.executeCommand("""execute if entity @a[team=red,level=5] run scoreboard players add #teamlevel selector 1""")
         sandbox.executeCommand("""execute if entity @a[team=!red,level=..2] run scoreboard players add #teamlevel selector 1""")
         sandbox.executeCommand("""execute if entity @a[team=!,limit=2] run scoreboard players add #teamlevel selector 1""")
@@ -822,6 +825,7 @@ class CommandExpansionTest {
         assertEquals(1, sandbox.world.getScore("#near", "selector"))
         assertEquals(2, sandbox.world.getScore("#name", "selector"))
         assertEquals(4, sandbox.world.getScore("#score", "selector"))
+        assertEquals(3, sandbox.world.getScore("#nbt", "selector"))
         assertEquals(4, sandbox.world.getScore("#teamlevel", "selector"))
         assertEquals(3, sandbox.world.getScore("#rotation", "selector"))
         assertEquals(2, sandbox.world.getScore("#sort", "selector"))
@@ -835,6 +839,11 @@ class CommandExpansionTest {
             sandbox.executeCommand("""execute if entity @a[scores={selector_scores=5..2}] run say invalid""")
         }
         assertEquals(DiagnosticCode.INPUT_FORMAT, invalidScoreRange.code)
+
+        val invalidNbt = assertFailsWith<SandboxException> {
+            sandbox.executeCommand("""execute if entity @e[nbt=1] run say invalid""")
+        }
+        assertEquals(DiagnosticCode.INPUT_FORMAT, invalidNbt.code)
 
         val invalidRotationRange = assertFailsWith<SandboxException> {
             sandbox.executeCommand("""execute if entity @e[x_rotation=10..-10] run say invalid""")

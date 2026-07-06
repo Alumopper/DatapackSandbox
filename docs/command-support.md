@@ -147,10 +147,11 @@ both plain text and segment metadata.
 
 Implemented selectors: `@s`, `@a`, `@p`, `@e`, `@n`.
 
-Implemented options: `type`, `tag`, `name`, `gamemode`, `team`, `scores`,
+Implemented options: `type`, `tag`, `name`, `gamemode`, `team`, `nbt`, `scores`,
 `level`, `x_rotation`, `y_rotation`, `limit`, `sort`, `distance`, `x`, `y`,
 `z`, `dx`, `dy`, `dz`. Score and level filters support integer ranges such as
-`scores={kills=1..,deaths=..0}` and `level=..5`; rotation filters support signed
+`scores={kills=1..,deaths=..0}` and `level=..5`; NBT filters use contains-style
+object matching with numeric equality, and rotation filters support signed
 numeric ranges. `sort=random` uses a deterministic per-origin ordering for
 repeatable tests. Unsupported selector options produce an unsupported diagnostic
 under the active unsupported policy.

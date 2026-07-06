@@ -1,11 +1,16 @@
 ﻿package moe.afox.dpsandbox.core
 
+import com.google.gson.JsonElement
+import com.google.gson.JsonObject
+import com.google.gson.JsonPrimitive
+
 private data class SelectorOptions(
     val tags: List<Pair<String, Boolean>> = emptyList(),
     val type: Pair<ResourceLocation, Boolean>? = null,
     val name: Pair<String, Boolean>? = null,
     val gamemode: Pair<String, Boolean>? = null,
     val team: Pair<String, Boolean>? = null,
+    val nbt: Pair<JsonObject, Boolean>? = null,
     val scores: Map<String, SelectorScoreRange> = emptyMap(),
     val level: SelectorScoreRange? = null,
     val xRotation: ClosedFloatingPointRange<Double>? = null,
@@ -69,6 +74,11 @@ object EntitySelectors {
                 val expected = team.takeIf { it.isNotBlank() }
                 val matched = actual == expected
                 matched == positive
+            }
+        }
+        options.nbt?.let { (expected, positive) ->
+            result = result.filter { entity ->
+                nbtContains(entity.fullNbt(location), expected) == positive
             }
         }
         options.tags.forEach { (tag, positive) ->
@@ -147,6 +157,7 @@ object EntitySelectors {
         var name: Pair<String, Boolean>? = null
         var gamemode: Pair<String, Boolean>? = null
         var team: Pair<String, Boolean>? = null
+        var nbt: Pair<JsonObject, Boolean>? = null
         var scores: Map<String, SelectorScoreRange> = emptyMap()
         var level: SelectorScoreRange? = null
         var xRotation: ClosedFloatingPointRange<Double>? = null
@@ -185,6 +196,10 @@ object EntitySelectors {
                     val positive = !value.startsWith("!")
                     team = value.removePrefix("!") to positive
                 }
+                "nbt" -> {
+                    val positive = !value.startsWith("!")
+                    nbt = parseSelectorNbt(value.removePrefix("!"), location) to positive
+                }
                 "scores" -> scores = parseSelectorScores(value, location)
                 "level" -> level = parseSelectorIntRange(value, "level", location)
                 "x_rotation" -> xRotation = parseSignedSelectorRange(value, "x_rotation", location)
@@ -213,6 +228,7 @@ object EntitySelectors {
             name = name,
             gamemode = gamemode,
             team = team,
+            nbt = nbt,
             scores = scores,
             level = level,
             xRotation = xRotation,
@@ -295,6 +311,14 @@ object EntitySelectors {
         }
     }
 
+    private fun parseSelectorNbt(value: String, location: SourceLocation?): JsonObject {
+        val parsed = JsonValues.parse(value, location)
+        if (!parsed.isJsonObject) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Invalid selector nbt: $value", location = location)
+        }
+        return parsed.asJsonObject
+    }
+
     private fun parseSelectorIntRange(value: String, label: String, location: SourceLocation?): SelectorScoreRange {
         if (!value.contains("..")) {
             val exact = value.toIntOrNull()
@@ -367,3 +391,28 @@ private fun SandboxEntity.selectorName(): String =
 
 private fun SandboxWorld.teamFor(entity: SandboxEntity): String? =
     teams.entries.firstOrNull { (_, team) -> entity.scoreHolder in team.members }?.key
+
+private fun nbtContains(actual: JsonObject, expected: JsonObject): Boolean =
+    expected.entrySet().all { (key, expectedValue) ->
+        val actualValue = actual.get(key) ?: return@all false
+        nbtElementMatches(actualValue, expectedValue)
+    }
+
+private fun nbtElementMatches(actual: JsonElement, expected: JsonElement): Boolean =
+    when {
+        expected.isJsonObject -> actual.isJsonObject && nbtContains(actual.asJsonObject, expected.asJsonObject)
+        expected.isJsonArray -> actual.isJsonArray &&
+            actual.asJsonArray.size() == expected.asJsonArray.size() &&
+            actual.asJsonArray.zip(expected.asJsonArray).all { (actualElement, expectedElement) ->
+                nbtElementMatches(actualElement, expectedElement)
+            }
+        expected.isJsonPrimitive && actual.isJsonPrimitive -> nbtPrimitiveMatches(actual.asJsonPrimitive, expected.asJsonPrimitive)
+        else -> actual == expected
+    }
+
+private fun nbtPrimitiveMatches(actual: JsonPrimitive, expected: JsonPrimitive): Boolean =
+    when {
+        actual.isNumber && expected.isNumber -> actual.asDouble == expected.asDouble
+        actual.isBoolean && expected.isBoolean -> actual.asBoolean == expected.asBoolean
+        else -> actual.asString == expected.asString
+    }
