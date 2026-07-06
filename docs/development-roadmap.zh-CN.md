@@ -162,7 +162,7 @@
   - `--trace`：记录每条命令、上下文、结果、错误、输出事件。
   - `--trace-file`：写出 JSONL，适合 CI artifact。
   - `--trace-filter`：按 command、function、selector、output、score/storage 变化过滤。
-  - CLI `run`/`check` 的 `--trace-filter` 已支持 `selector=`/`target=`、文本型 `output=`、数量/布尔型 `outputs=`、`output-channel=` 和 `output-payload=`，并在 trace JSON 中保留每条命令产生的 `outputEvents`。
+  - CLI `run`/`check` 的 `--trace-filter` 已支持 `selector=`/`target=`、`success=`、`error=`/`diagnostic=`、`error-code=`/`diagnostic-code=`、`error-message=`/`diagnostic-message=`、文本型 `output=`、数量/布尔型 `outputs=`、`output-channel=` 和 `output-payload=`，并在 trace JSON 中保留每条命令产生的 `outputEvents`。
   - quick-test `TraceExpectation` 已支持按输出数量、输出文本/目标、是否产生 snapshot diff、diff path、diff kind 和 diff 渲染文本匹配，便于定位命令副作用。
   - manifest `trace` 断言已支持同样的输出数量、输出文本/目标和 snapshot diff 匹配字段，并已写入 JSON Schema，便于 `.dps.json` 回归测试直接定位命令副作用。
   - REPL/CLI 命令目录会把 `place` 标记为 `observed-noop` 并提供基础子命令补全，避免工具提示和核心执行语义不一致。

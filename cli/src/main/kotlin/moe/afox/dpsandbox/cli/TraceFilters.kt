@@ -26,6 +26,9 @@ object TraceFilters {
             "file", "source" -> value in (event.source?.file ?: "")
             "selector", "target" -> selectorMatches(event, value)
             "success" -> value.toBooleanStrictOrNull()?.let { event.success == it } ?: false
+            "error", "diagnostic" -> diagnosticMatches(event, value)
+            "error-code", "diagnostic-code" -> event.errorCode?.name == value.uppercase()
+            "error-message", "diagnostic-message" -> value in (event.errorMessage ?: "")
             "outputs" -> outputCountMatches(event, value)
             "output" -> outputCountMatches(event, value) || event.outputEvents.any { outputMatches(it, value) }
             "output-channel" -> event.outputEvents.any { it.channel == value }
@@ -40,6 +43,7 @@ object TraceFilters {
     private fun contains(event: CommandTraceEvent, value: String): Boolean =
         value in event.command ||
             value == event.root ||
+            value == event.errorCode?.name ||
             value in (event.source?.file ?: "") ||
             event.source?.functionStack?.any { value in it.id.toString() } == true ||
             value in (event.errorMessage ?: "") ||
@@ -50,6 +54,16 @@ object TraceFilters {
         value.toIntOrNull()?.let { event.outputs == it }
             ?: value.toBooleanStrictOrNull()?.let { if (it) event.outputs > 0 else event.outputs == 0 }
             ?: false
+
+    private fun diagnosticMatches(event: CommandTraceEvent, value: String): Boolean =
+        value.toBooleanStrictOrNull()?.let { expected ->
+            (event.errorCode != null) == expected
+        } ?: (
+            value == event.errorCode?.name ||
+                value in (event.errorMessage ?: "") ||
+                value in event.command ||
+                value == event.root
+            )
 
     private fun selectorMatches(event: CommandTraceEvent, value: String): Boolean =
         value in event.command ||

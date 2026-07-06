@@ -1230,6 +1230,41 @@ class RunCommandTest {
     }
 
     @Test
+    fun `run filters traces by diagnostics`() {
+        val traceFile = Files.createTempFile("dps-cli-diagnostic-filtered-trace", ".jsonl")
+
+        val output = captureStdout {
+            main(
+                arrayOf(
+                    "run",
+                    "--version",
+                    "26.2",
+                    "--allow-command-failure",
+                    "--command",
+                    "scoreboard players set #bad missing 1",
+                    "--command",
+                    "say hidden after diagnostic",
+                    "--trace",
+                    "--trace-filter",
+                    "error-code=COMMAND_ERROR",
+                    "--trace-filter",
+                    "diagnostic=Unknown scoreboard objective",
+                    "--trace-file",
+                    traceFile.toString(),
+                ),
+            )
+        }
+
+        assertTrue("trace ERR scoreboard players set #bad missing 1" in output, output)
+        assertFalse("trace OK say hidden after diagnostic" in output, output)
+        val traceJson = Files.readString(traceFile)
+        assertTrue("\"errorCode\": \"COMMAND_ERROR\"" in traceJson, traceJson)
+        assertTrue("\"errorMessage\": \"Unknown scoreboard objective 'missing'\"" in traceJson, traceJson)
+        assertTrue("\"command\": \"scoreboard players set #bad missing 1\"" in traceJson, traceJson)
+        assertFalse("\"command\": \"say hidden after diagnostic\"" in traceJson, traceJson)
+    }
+
+    @Test
     fun `run inline assertions can check snapshot diffs`() {
         val output = captureStdout {
             main(
