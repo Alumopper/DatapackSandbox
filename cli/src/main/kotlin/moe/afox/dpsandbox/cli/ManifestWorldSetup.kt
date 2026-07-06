@@ -151,6 +151,10 @@ object ManifestWorldSetup {
                 if (!it.isJsonObject) throw SandboxException(DiagnosticCode.INPUT_FORMAT, "world player inventory entries must be objects")
                 parseManifestItem(it.asJsonObject)
             },
+            enderItems = player.manifestArray("enderItems", "world player enderItems").map {
+                if (!it.isJsonObject) throw SandboxException(DiagnosticCode.INPUT_FORMAT, "world player enderItems entries must be objects")
+                parseManifestItem(it.asJsonObject)
+            },
         )
         player.manifestStringArray("recipes", "world player recipes").forEach { setup.playerRecipe(player.requiredManifestString("name"), it) }
         player.getAsJsonObject("stats")?.entrySet()?.forEach { (id, value) -> setup.playerStat(player.requiredManifestString("name"), id, value.asInt) }

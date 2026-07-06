@@ -350,6 +350,7 @@ class SandboxWorldSetup {
         food: Int = 20,
         selectedSlot: Int = 0,
         inventory: Iterable<ItemStack> = emptyList(),
+        enderItems: Iterable<ItemStack> = emptyList(),
     ): SandboxWorldSetup = apply {
         operations += { world, _ ->
             val player = world.createPlayer(name)
@@ -362,6 +363,8 @@ class SandboxWorldSetup {
             player.selectedSlot = selectedSlot.coerceAtLeast(0)
             player.inventory.clear()
             player.inventory += inventory.map { it.copy(components = it.components.deepCopy(), nbt = it.nbt.deepCopy()) }
+            player.enderItems.clear()
+            player.enderItems += enderItems.map { it.copy(components = it.components.deepCopy(), nbt = it.nbt.deepCopy()) }
         }
     }
 

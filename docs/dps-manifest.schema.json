@@ -317,6 +317,10 @@
           "type": "array",
           "items": { "$ref": "#/$defs/itemFixture" }
         },
+        "enderItems": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/itemFixture" }
+        },
         "recipes": { "$ref": "#/$defs/stringArray" },
         "stats": {
           "type": "object",
@@ -687,6 +691,7 @@
         "exists": { "type": "boolean" },
         "xp": { "type": "integer" },
         "inventoryCount": { "type": "integer", "minimum": 0 },
+        "enderItemCount": { "type": "integer", "minimum": 0 },
         "dimension": { "type": "string" },
         "gameMode": { "type": "string" },
         "gamemode": { "type": "string" },

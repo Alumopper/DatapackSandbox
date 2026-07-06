@@ -456,6 +456,9 @@ class ManifestRunnerTest {
                     "inventory": [
                       { "id": "minecraft:stick", "count": 2 }
                     ],
+                    "enderItems": [
+                      { "id": "minecraft:ender_pearl", "count": 4 }
+                    ],
                     "recipes": ["minecraft:bread"],
                     "stats": { "minecraft:jump": 3 },
                     "effects": [
@@ -556,10 +559,11 @@ class ManifestRunnerTest {
                     "health": 18.0,
                     "food": 17,
                     "selectedSlot": 0,
+                    "enderItemCount": 1,
                     "recipe": "minecraft:bread",
                     "effect": "minecraft:speed",
                     "stat": { "id": "minecraft:jump", "equals": 3 },
-                    "nbt": { "path": "Health", "equals": 18.0 },
+                    "nbt": { "path": "EnderItems[0].id", "equals": "minecraft:ender_pearl" },
                     "spawn": { "pos": [2, 66, 3], "dimension": "minecraft:overworld", "angle": 90, "forced": true }
                   }
                 },

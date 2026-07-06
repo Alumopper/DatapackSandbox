@@ -17,7 +17,7 @@ snapshot 会包含用于测试的确定性状态，包括：
 
 - `blocks`：稀疏方块与方块实体 NBT。
 - `entities`：非玩家实体、位置、旋转、tag、属性、乘骑关系和 NBT。
-- `players`：玩家位置、维度、游戏模式、背包、XP、生命值、饥饿值、效果、recipe、advancement progress、输入事件和出生点。
+- `players`：玩家位置、维度、游戏模式、背包、末影箱物品、XP、生命值、饥饿值、效果、recipe、advancement progress、输入事件和出生点。
 - `scores`、`storage`、`gamerules`。
 - `gameTime`、`dayTime`、`weather`、`difficulty`、`defaultGameMode`、`seed`。
 - `worldSpawn`、`worldBorder`、`forcedChunks`、`biomes`。
@@ -31,7 +31,7 @@ snapshot 会包含用于测试的确定性状态，包括：
 
 - `blocks`：方块 id、state properties 和校验后的方块实体 NBT。
 - `entities`：实体类型、UUID、位置、维度、health、tag、旋转、vehicle/passengers、装备、active effects、attributes 和校验后的实体 NBT。
-- `players`：位置、维度、游戏模式、背包、XP、生命值、饥饿值。
+- `players`：位置、维度、游戏模式、背包、末影箱物品、XP、生命值、饥饿值。
 - `scores`、`storage`、`gamerules`、`gameTime`、`dayTime`、`weather`。
 
 示例清单：

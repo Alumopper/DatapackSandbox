@@ -619,6 +619,7 @@ class SandboxQuickTestTest {
                             nbt = JsonValues.parse("{tag:{level:2}}").asJsonObject,
                         ),
                     ),
+                    enderItems = listOf(item("minecraft:ender_pearl", 4)),
                 )
                 playerEffect("Alex", "minecraft:speed", durationTicks = 40, amplifier = 1)
                 playerRecipe("Alex", "minecraft:bread")
@@ -704,6 +705,7 @@ class SandboxQuickTestTest {
                 gameMode = "survival",
                 xp = 5,
                 inventoryCount = 1,
+                enderItemCount = 1,
                 recipe = "minecraft:bread",
                 effect = "minecraft:speed",
                 stat = "minecraft:jump",
@@ -712,8 +714,8 @@ class SandboxQuickTestTest {
                 spawnDimension = "minecraft:overworld",
                 spawnAngle = 90.0,
                 spawnForced = true,
-                nbtPath = "Health",
-                nbtEquals = "20.0",
+                nbtPath = "EnderItems[0].id",
+                nbtEquals = "minecraft:ender_pearl",
             )
             .assertTeam("red", member = "Alex", memberCount = 1, optionName = "color", optionEquals = "red")
             .assertBossbar("demo:bar", name = "Demo", value = 3, max = 10, player = "Alex")
@@ -754,6 +756,15 @@ class SandboxQuickTestTest {
         assertEquals(1, snapshot.get("entities").asJsonArray.count { it.asJsonObject.get("type").asString == "minecraft:pig" })
         assertEquals("hard", snapshot.get("difficulty").asString)
         assertEquals(1, snapshot.get("forcedChunks").asJsonArray.size())
+        assertEquals(
+            "minecraft:ender_pearl",
+            snapshot.getAsJsonObject("players")
+                .getAsJsonObject("Alex")
+                .getAsJsonArray("enderItems")[0]
+                .asJsonObject
+                .get("id")
+                .asString,
+        )
         assertEquals("Alex", snapshot.get("teams").asJsonObject.get("red").asJsonObject.getAsJsonArray("members")[0].asString)
         assertEquals(3, snapshot.get("bossbars").asJsonObject.get("demo:bar").asJsonObject.get("value").asInt)
     }

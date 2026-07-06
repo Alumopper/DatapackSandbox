@@ -267,6 +267,7 @@ class SandboxPlayer(
     override val scoreHolder: String get() = name
 
     val inventory: MutableList<ItemStack> = mutableListOf()
+    val enderItems: MutableList<ItemStack> = mutableListOf()
     var selectedSlot: Int = 0
     val effects: MutableSet<ResourceLocation> = sortedSetOf()
     val effectDetails: MutableMap<ResourceLocation, PlayerEffect> = linkedMapOf()
@@ -338,7 +339,13 @@ class SandboxPlayer(
         }
         json.add("ActiveEffects", effectsJson)
 
-        json.add("EnderItems", JsonArray())
+        val enderItemsJson = JsonArray()
+        enderItems.forEachIndexed { index, item ->
+            val itemJson = item.toJson()
+            itemJson.addProperty("Slot", index)
+            enderItemsJson.add(itemJson)
+        }
+        json.add("EnderItems", enderItemsJson)
         json.add("abilities", JsonObject().also {
             it.addProperty("invulnerable", false)
             it.addProperty("flying", false)
@@ -1054,6 +1061,10 @@ fun SandboxPlayer.toPlayerJson(profile: VersionProfile = VersionProfiles.default
     val inventoryJson = JsonArray()
     inventory.forEach { inventoryJson.add(it.toJson()) }
     json.add("inventory", inventoryJson)
+
+    val enderItemsJson = JsonArray()
+    enderItems.forEach { enderItemsJson.add(it.toJson()) }
+    json.add("enderItems", enderItemsJson)
 
     val effectsJson = JsonArray()
     effects.sorted().forEach { effect ->

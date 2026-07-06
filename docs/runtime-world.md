@@ -29,7 +29,7 @@ state before any `steps` or commands run. Supported fixture inputs include:
 - `blocks` with block id, state properties, and validated block entity NBT.
 - `entities` with type, UUID, position, dimension, health, tags, rotation,
   vehicle/passengers, equipment, active effects, attributes, and validated entity NBT.
-- `players` with position, dimension, game mode, inventory, XP, health, and
+- `players` with position, dimension, game mode, inventory, ender items, XP, health, and
   food.
 - `scores`, `storage`, `gamerules`, `gameTime`, `dayTime`, and `weather`.
 

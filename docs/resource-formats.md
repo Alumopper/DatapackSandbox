@@ -139,7 +139,7 @@ Add `"allowFailure": true` to a step when the failure itself is expected and
 should be asserted later with a `diagnostic` assertion.
 
 `world` can predefine sparse blocks/entities/players, including non-player
-entity dimensions, health, vehicle/passenger links, equipment, active effects, and attributes, plus scoreboards, storage,
+entity dimensions, health, vehicle/passenger links, equipment, active effects, attributes, and player ender items, plus scoreboards, storage,
 gamerules, time/weather, seed/difficulty/default game mode, world/player spawn
 points, world border, forced chunks, biome overrides, teams, bossbars, and scoped Java save
 imports.
@@ -198,7 +198,7 @@ path, for example `assertion 1 (/assertions/0): ...`.
 `entity` assertions can check existence/count after type/tag/uuid/position/dimension/health/vehicle/passenger
 filtering, plus full entity NBT path checks, equipment item id/count/components/NBT, active effect
 duration/amplifier/particle state, and explicit attribute values. `player` assertions can also check existence, dimension, game mode, health,
-food, selected slot, recipe, effect, stat, full NBT path, position, last input, and spawn point. `team` and
+food, selected slot, ender item count, recipe, effect, stat, full NBT path, position, last input, and spawn point. `team` and
 `bossbar` assertions inspect their stored runtime state. `item` assertions can
 check player inventory by slot, id, exact/min/max count, components path, and
 NBT path. `block` assertions can check sparse-world existence, id, and block

@@ -207,7 +207,15 @@ SandboxQuickTest.create(
             uuid = "00000000-0000-0000-0000-000000000102",
             passengers = listOf("00000000-0000-0000-0000-000000000101"),
         )
-        player("Alex", x = 2.0, y = 65.0, z = 3.0, xp = 5, inventory = listOf(item("minecraft:stick", 2)))
+        player(
+            "Alex",
+            x = 2.0,
+            y = 65.0,
+            z = 3.0,
+            xp = 5,
+            inventory = listOf(item("minecraft:stick", 2)),
+            enderItems = listOf(item("minecraft:ender_pearl", 4)),
+        )
         playerEffect("Alex", "minecraft:speed", durationTicks = 40, amplifier = 1)
         playerRecipe("Alex", "minecraft:bread")
         playerSpawn("Alex", 2.0, 66.0, 3.0, angle = 90.0)
@@ -364,7 +372,7 @@ class MyDatapackTest {
 | `assertStorageExists(id, path)` | Assert that a storage root or path exists |
 | `assertStorageMissing(id, path)` | Assert that a storage root or path is absent |
 | `assertWorld(...)` | Assert selected world-level state, forced chunks, biome overrides, world spawn, and world border |
-| `assertPlayer(...)` | Assert selected player state, spawn point details, and full-NBT path filters |
+| `assertPlayer(...)` | Assert selected player state, ender item count, spawn point details, and full-NBT path filters |
 | `assertTeam(...)` | Assert selected team state, members, member count, and options |
 | `assertBossbar(...)` | Assert selected bossbar state and assigned players |
 | `assertPredicate(id, expected, playerName)` | Assert a loaded predicate result |

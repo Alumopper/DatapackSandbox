@@ -377,6 +377,7 @@ class SandboxQuickTestMatrix private constructor(
         food: Int? = null,
         selectedSlot: Int? = null,
         inventoryCount: Int? = null,
+        enderItemCount: Int? = null,
         recipe: String? = null,
         effect: String? = null,
         stat: String? = null,
@@ -401,6 +402,7 @@ class SandboxQuickTestMatrix private constructor(
                 food = food,
                 selectedSlot = selectedSlot,
                 inventoryCount = inventoryCount,
+                enderItemCount = enderItemCount,
                 recipe = recipe,
                 effect = effect,
                 stat = stat,
@@ -1288,6 +1290,7 @@ class SandboxQuickTest private constructor(
         food: Int? = null,
         selectedSlot: Int? = null,
         inventoryCount: Int? = null,
+        enderItemCount: Int? = null,
         recipe: String? = null,
         effect: String? = null,
         stat: String? = null,
@@ -1318,6 +1321,7 @@ class SandboxQuickTest private constructor(
         food?.let { if (player.food != it) failures += "player $name food expected $it but was ${player.food}" }
         selectedSlot?.let { if (player.selectedSlot != it) failures += "player $name selectedSlot expected $it but was ${player.selectedSlot}" }
         inventoryCount?.let { if (player.inventory.size != it) failures += "player $name inventoryCount expected $it but was ${player.inventory.size}" }
+        enderItemCount?.let { if (player.enderItems.size != it) failures += "player $name enderItemCount expected $it but was ${player.enderItems.size}" }
         recipe?.let {
             val id = ResourceLocation.parse(it)
             if (id !in player.recipes) failures += "player $name expected recipe $id"

@@ -183,7 +183,15 @@ SandboxQuickTest.create(
             uuid = "00000000-0000-0000-0000-000000000102",
             passengers = listOf("00000000-0000-0000-0000-000000000101"),
         )
-        player("Alex", x = 2.0, y = 65.0, z = 3.0, xp = 5, inventory = listOf(item("minecraft:stick", 2)))
+        player(
+            "Alex",
+            x = 2.0,
+            y = 65.0,
+            z = 3.0,
+            xp = 5,
+            inventory = listOf(item("minecraft:stick", 2)),
+            enderItems = listOf(item("minecraft:ender_pearl", 4)),
+        )
         playerEffect("Alex", "minecraft:speed", durationTicks = 40, amplifier = 1)
         playerRecipe("Alex", "minecraft:bread")
         playerSpawn("Alex", 2.0, 66.0, 3.0, angle = 90.0)
@@ -338,7 +346,7 @@ class MyDatapackTest {
 | `assertStorageExists(id, path)` | 断言 storage 根对象或路径存在。 |
 | `assertStorageMissing(id, path)` | 断言 storage 根对象或路径不存在。 |
 | `assertWorld(...)` | 断言选定的世界级状态、force-loaded chunk、biome override、世界出生点和世界边界。 |
-| `assertPlayer(...)` | 断言选定的玩家状态、出生点细节和完整 NBT path。 |
+| `assertPlayer(...)` | 断言选定的玩家状态、末影箱物品数量、出生点细节和完整 NBT path。 |
 | `assertTeam(...)` | 断言选定 team 状态、成员、成员数量和选项。 |
 | `assertBossbar(...)` | 断言选定 bossbar 状态和关联玩家。 |
 | `assertPredicate(id, expected, playerName)` | 断言已加载 predicate 的执行结果。 |
