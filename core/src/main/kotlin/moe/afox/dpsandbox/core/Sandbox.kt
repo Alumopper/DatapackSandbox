@@ -3582,6 +3582,14 @@ class DatapackSandbox(
         val position = if (tokens.size >= 4) parsePosition(tokens, 1, context, location) else context.position
         val angle = tokens.getOrNull(if (tokens.size >= 4) 4 else 1)?.text?.let { parseDouble(it, "spawn angle", location) }
         world.worldSpawn = SpawnPoint(position = position, dimension = ResourceLocation("minecraft", "overworld"), angle = angle)
+        world.recordOutput(
+            "setworldspawn",
+            "data",
+            text = "${position.x} ${position.y} ${position.z}",
+            payload = JsonObject().also { payload ->
+                payload.add("spawn", world.worldSpawn.toJson())
+            },
+        )
     }
 
     private fun executeSpawnPoint(tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext) {
@@ -3598,6 +3606,31 @@ class DatapackSandbox(
         targets.forEach {
             it.spawnPoint = SpawnPoint(position = position, dimension = it.dimension, angle = angle)
         }
+        world.recordOutput(
+            "spawnpoint",
+            "data",
+            targets = targets.map { it.name },
+            text = targets.size.toString(),
+            payload = JsonObject().also { payload ->
+                payload.addProperty("count", targets.size)
+                payload.add("position", positionOutput(position))
+                angle?.let { payload.addProperty("angle", it) }
+                payload.add(
+                    "players",
+                    JsonArray().also { players ->
+                        targets.forEach { player ->
+                            players.add(
+                                JsonObject().also { entry ->
+                                    entry.addProperty("player", player.name)
+                                    entry.addProperty("uuid", player.uuid)
+                                    player.spawnPoint?.let { entry.add("spawn", it.toJson()) }
+                                },
+                            )
+                        }
+                    },
+                )
+            },
+        )
     }
 
     private fun executeTick(tokens: List<CommandToken>, location: SourceLocation?) {

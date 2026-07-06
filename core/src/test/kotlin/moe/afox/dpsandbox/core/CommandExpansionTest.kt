@@ -47,6 +47,22 @@ class CommandExpansionTest {
         assertEquals(3, unloadedPayload.getAsJsonObject("chunk").get("x").asInt)
         assertEquals(100.0, snapshot.getAsJsonObject("worldBorder").get("size").asDouble)
         assertEquals(1.0, snapshot.getAsJsonObject("players").getAsJsonObject("Steve").getAsJsonObject("spawnPoint").get("x").asDouble)
+        val worldSpawnOutput = sandbox.world.outputs.single { it.command == "setworldspawn" }
+        val worldSpawn = worldSpawnOutput.payload?.asJsonObject?.getAsJsonObject("spawn") ?: error("missing world spawn payload")
+        assertEquals("10.0 70.0 10.0", worldSpawnOutput.text)
+        assertEquals(10.0, worldSpawn.get("x").asDouble)
+        assertEquals(70.0, worldSpawn.get("y").asDouble)
+        assertEquals(10.0, worldSpawn.get("z").asDouble)
+        assertEquals(45.0, worldSpawn.get("angle").asDouble)
+        val spawnpointOutput = sandbox.world.outputs.single { it.command == "spawnpoint" }
+        val spawnpointPayload = spawnpointOutput.payload?.asJsonObject ?: error("missing spawnpoint payload")
+        val playerSpawn = spawnpointPayload.getAsJsonArray("players")[0].asJsonObject.getAsJsonObject("spawn")
+        assertEquals("1", spawnpointOutput.text)
+        assertEquals(listOf("Steve"), spawnpointOutput.targets)
+        assertEquals(1.0, playerSpawn.get("x").asDouble)
+        assertEquals(65.0, playerSpawn.get("y").asDouble)
+        assertEquals(2.0, playerSpawn.get("z").asDouble)
+        assertEquals(90.0, playerSpawn.get("angle").asDouble)
     }
 
     @Test

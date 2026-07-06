@@ -77,8 +77,8 @@ run continues. Use `--unsupported error`, manifest `"unsupported": "error"`, or
 | `seed` | Supported | Reports deterministic sandbox seed. |
 | `setblock` | Partial | Mutates sparse block state/NBT and records structured before/after block output; position arguments accept local coordinates; no neighbor updates. |
 | `setidletimeout` | Unsupported | Server administration command. |
-| `setworldspawn` | Partial | Stores sandbox world spawn position and angle. |
-| `spawnpoint` | Partial | Stores per-player spawn point and angle. |
+| `setworldspawn` | Partial | Stores sandbox world spawn position/angle and records structured spawn output. |
+| `spawnpoint` | Partial | Stores per-player spawn point/angle and records structured target output. |
 | `spectate` | Partial | Sets spectator mode and records target; no camera/client state. |
 | `spreadplayers` | Partial | Deterministically distributes selected entities around a center; no collision/team algorithm. |
 | `stop` | Unsupported | Runtime lifecycle is controlled by the host process, not commands. |
