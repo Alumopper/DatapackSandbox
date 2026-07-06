@@ -30,9 +30,12 @@ CLI 可以导出按版本裁剪后的命令目录，供脚本、文档和 CI 使
 java -jar cli/build/libs/datapack-sandbox-cli.jar commands
 java -jar cli/build/libs/datapack-sandbox-cli.jar commands --docs
 java -jar cli/build/libs/datapack-sandbox-cli.jar commands --docs --output docs/command-catalog.md
+java -jar cli/build/libs/datapack-sandbox-cli.jar commands --check docs/command-support.md
 java -jar cli/build/libs/datapack-sandbox-cli.jar commands --json --version 26.2
 java -jar cli/build/libs/datapack-sandbox-cli.jar commands --json --output build/command-catalog.json --version 26.2
 ```
+
+`commands --check` 会校验按版本裁剪后的每个根命令都出现在文档中，并带有匹配的行为等级。
 
 ## 原版命令矩阵
 
@@ -143,35 +146,37 @@ JSON text component 支持 `text`、`score`、`selector`、`translate`、`keybin
 
 这些是工具命令，不是原版命令：
 
-| 命令 | 用途 |
-|---|---|
-| `event player <name> <type> ...` | 注入玩家事件，用于 advancement/predicate 测试。 |
-| `player <name>` | 创建或复用沙盒玩家。 |
-| `inspect <...>` | 查看 score、storage、entities、blocks、player、loot、predicate、advancement、recipe、item_modifier、raw JSON resource、tags、resource index、registry、outputs。 |
-| `snapshot [file]` | 打印或写出确定性的世界 JSON。 |
-| `reload` | REPL 专用，保留世界状态并重载数据包文件。 |
-| `load` | 在 REPL 中运行 `#minecraft:load`。 |
-| `load fixture <file>` | 在 REPL 中应用 manifest-style world JSON fixture。 |
-| `tick [n]` | 在 REPL 中推进 tick。 |
-| `trace <on|off|status>` | 开关 REPL 对新执行命令的自动 trace 输出。 |
-| `diff last` | 输出上一条被跟踪 REPL 命令执行前后的 snapshot diff。 |
-| `rerun last` | 重新执行上一条被跟踪 REPL 命令。 |
-| `reset world` | 用全新的 sparse world 替换当前 REPL 世界。 |
-| CLI `loot --table <id> --context <context>` | 直接生成 loot table。 |
-| CLI `run --trace --trace-filter <filter>` | 只打印或写出匹配的 trace 事件；过滤器支持 `root=`、`command=`、`contains=`、`function=`、`file=`、`selector=`/`target=`、`success=`、文本型 `output=`、数量/布尔型 `outputs=`、`output-channel=`、`output-payload=<path>[=<json>]`、`diff=`、`path=`、`score=` 和 `storage=`。Trace JSONL 条目会包含每条命令产生的输出事件和 snapshot diff。 |
-| CLI `run --outputs-file <file>` | 将可观察输出事件写成 JSONL，适合作为 CI artifact 或命令生成器回归测试产物。 |
-| CLI `run --report-file <file>` | 写出综合 JSON 报告，包括通过状态、断言失败、输出、trace、事件 trace、最终 snapshot、snapshot diff 和资源摘要明细。 |
-| CLI `run --resources` | 在轻量验包中打印确定性的资源数量、覆盖诊断和直接缺失资源引用。 |
-| CLI `run --snapshot-diff` | 输出执行前后的状态差异，可配合 `--snapshot-diff-file` 写出 JSON。 |
-| CLI `run --stdin` | 从标准输入读取 `.mcfunction` 文本；`--stdin-mode commands` 会按原始命令行执行 stdin。 |
-| CLI `run --command-file <file>` | 按参数顺序执行一个或多个原始命令文件，适合命令生成器输出。 |
-| CLI `run --event "<event>"` | 在轻量 run 流程中注入玩家事件，格式为 `player <name> <type> [id] [detail/action]`，之后可断言玩家状态或 `eventTrace`。 |
-| CLI `run --event-file <file>` | 按文件中的非空、非注释行逐条注入玩家事件，格式与 `--event` 相同。 |
-| CLI `run --event-trace-file <file>` | 写出玩家事件 trace JSONL，适合作为事件驱动数据包调试和 CI artifact。 |
-| CLI `run --seed <long>` | 在 world fixture 应用后覆盖轻量运行的世界 seed。 |
-| CLI `run --world` | 执行前应用 manifest-style world JSON fixture，包括 fixture 引用链。 |
-| CLI `run --strict` | 将未支持的原版命令视为错误，并让直接缺失资源引用导致运行失败，无需同时写 `--unsupported error` 和 `--fail-on-missing-resources`。 |
-| CLI `run --assert`、`run --assert-file` | 执行后评估内联或文件形式的 manifest assertion，包括需要执行前后上下文的 `snapshotDiff` 断言。`--assert-file` 支持 JSON object/array 文件，也支持非空、非注释行逐行写 shorthand。简写包括 `score:<target>:<objective>=N`、`score:<target>:<objective>>=N`、`score:<target>:<objective><=N`、`storage:<id>[:<path>]=<json>`、`storage:<id>[:<path>]?`、`storage:<id>[:<path>]!`、`advancement:<player>:<id>[=<true\|false>]`、`player:<name>[:<field>=<value>]`、`item:<player>:<id>[@slot]=N`、`entity:<type|*>[@tag]=N`、`diff:<json-pointer>[=<kind>]`、`event-trace:<player>:<type>[=N]`、`trace:<root>=N`、`trace:<text>`、`trace-output:<text>[@target]`、`warning=N`、`warning:<text>`、`unsupported=N`、`unsupported:<text>`、`output:<text>`、`output-normalized:<text>` 和 `output-payload:<command>:<path>[=<json>]`。 |
-| CLI `run --fail-on-missing-resources` | 在轻量 run 中把 load/tick 标签、advancement parent/reward、predicate/loot/item modifier 资源中的 predicate reference 和嵌套 loot table 的直接缺失资源引用视为失败，适合在编写完整 manifest 前快速验包。 |
-| CLI `check <manifest-or-directory>` | 运行 `.dps.json` 清单；`--validate-schema` 会在执行前校验 manifest 结构；`--fail-on-missing-resources` 会把直接资源缺失引用视为失败；`--strict` 会组合 schema 校验、unsupported-command error 和直接缺失引用失败；`--verbose` 会打印资源摘要、覆盖条目、缺失引用和输出事件；可用 `--snapshot-diff-on-fail` 输出状态差异，也可用 `--trace-file`、`--trace-filter`、`--outputs-file`、`--event-trace-file` 和 `--report-file` 写出 CI artifact。Report JSON 会按 attempt 包含输出、命令 trace、玩家事件 trace、最终 snapshot、snapshot diff 和资源摘要明细。 |
-| CLI `schema [--output <file>]` | 打印或写出内置 `.dps.json` manifest JSON Schema，用于编辑器和 CI 集成。 |
+| 命令 | 行为等级 | 用途 |
+|---|---:|---|
+| `event player <name> <type> ...` | `modeled` | 注入玩家事件，用于 advancement/predicate 测试。 |
+| `player <name>` | `modeled` | 创建或复用沙盒玩家。 |
+| `inspect <...>` | `modeled` | 查看 score、storage、entities、blocks、player、loot、predicate、advancement、recipe、item_modifier、raw JSON resource、tags、resource index、registry、outputs。 |
+| `snapshot [file]` | `modeled` | 打印或写出确定性的世界 JSON。 |
+| `help` | `modeled` | 显示 REPL 帮助。 |
+| `exit`、`quit` | `modeled` | 退出 REPL。 |
+| `reload` | `observed-noop` | REPL 专用，保留世界状态并重载数据包文件。 |
+| `load` | `modeled` | 在 REPL 中运行 `#minecraft:load`。 |
+| `load fixture <file>` | `modeled` | 在 REPL 中应用 manifest-style world JSON fixture。 |
+| `tick [n]` | `modeled` | 在 REPL 中推进 tick。 |
+| `trace <on|off|status>` | `modeled` | 开关 REPL 对新执行命令的自动 trace 输出。 |
+| `diff last` | `modeled` | 输出上一条被跟踪 REPL 命令执行前后的 snapshot diff。 |
+| `rerun last` | `modeled` | 重新执行上一条被跟踪 REPL 命令。 |
+| `reset world` | `modeled` | 用全新的 sparse world 替换当前 REPL 世界。 |
+| CLI `loot --table <id> --context <context>` | | 直接生成 loot table。 |
+| CLI `run --trace --trace-filter <filter>` | | 只打印或写出匹配的 trace 事件；过滤器支持 `root=`、`command=`、`contains=`、`function=`、`file=`、`selector=`/`target=`、`success=`、文本型 `output=`、数量/布尔型 `outputs=`、`output-channel=`、`output-payload=<path>[=<json>]`、`diff=`、`path=`、`score=` 和 `storage=`。Trace JSONL 条目会包含每条命令产生的输出事件和 snapshot diff。 |
+| CLI `run --outputs-file <file>` | | 将可观察输出事件写成 JSONL，适合作为 CI artifact 或命令生成器回归测试产物。 |
+| CLI `run --report-file <file>` | | 写出综合 JSON 报告，包括通过状态、断言失败、输出、trace、事件 trace、最终 snapshot、snapshot diff 和资源摘要明细。 |
+| CLI `run --resources` | | 在轻量验包中打印确定性的资源数量、覆盖诊断和直接缺失资源引用。 |
+| CLI `run --snapshot-diff` | | 输出执行前后的状态差异，可配合 `--snapshot-diff-file` 写出 JSON。 |
+| CLI `run --stdin` | | 从标准输入读取 `.mcfunction` 文本；`--stdin-mode commands` 会按原始命令行执行 stdin。 |
+| CLI `run --command-file <file>` | | 按参数顺序执行一个或多个原始命令文件，适合命令生成器输出。 |
+| CLI `run --event "<event>"` | | 在轻量 run 流程中注入玩家事件，格式为 `player <name> <type> [id] [detail/action]`，之后可断言玩家状态或 `eventTrace`。 |
+| CLI `run --event-file <file>` | | 按文件中的非空、非注释行逐条注入玩家事件，格式与 `--event` 相同。 |
+| CLI `run --event-trace-file <file>` | | 写出玩家事件 trace JSONL，适合作为事件驱动数据包调试和 CI artifact。 |
+| CLI `run --seed <long>` | | 在 world fixture 应用后覆盖轻量运行的世界 seed。 |
+| CLI `run --world` | | 执行前应用 manifest-style world JSON fixture，包括 fixture 引用链。 |
+| CLI `run --strict` | | 将未支持的原版命令视为错误，并让直接缺失资源引用导致运行失败，无需同时写 `--unsupported error` 和 `--fail-on-missing-resources`。 |
+| CLI `run --assert`、`run --assert-file` | | 执行后评估内联或文件形式的 manifest assertion，包括需要执行前后上下文的 `snapshotDiff` 断言。`--assert-file` 支持 JSON object/array 文件，也支持非空、非注释行逐行写 shorthand。简写包括 `score:<target>:<objective>=N`、`score:<target>:<objective>>=N`、`score:<target>:<objective><=N`、`storage:<id>[:<path>]=<json>`、`storage:<id>[:<path>]?`、`storage:<id>[:<path>]!`、`advancement:<player>:<id>[=<true\|false>]`、`player:<name>[:<field>=<value>]`、`item:<player>:<id>[@slot]=N`、`entity:<type|*>[@tag]=N`、`diff:<json-pointer>[=<kind>]`、`event-trace:<player>:<type>[=N]`、`trace:<root>=N`、`trace:<text>`、`trace-output:<text>[@target]`、`warning=N`、`warning:<text>`、`unsupported=N`、`unsupported:<text>`、`output:<text>`、`output-normalized:<text>` 和 `output-payload:<command>:<path>[=<json>]`。 |
+| CLI `run --fail-on-missing-resources` | | 在轻量 run 中把 load/tick 标签、advancement parent/reward、predicate/loot/item modifier 资源中的 predicate reference 和嵌套 loot table 的直接缺失资源引用视为失败，适合在编写完整 manifest 前快速验包。 |
+| CLI `check <manifest-or-directory>` | | 运行 `.dps.json` 清单；`--validate-schema` 会在执行前校验 manifest 结构；`--fail-on-missing-resources` 会把直接资源缺失引用视为失败；`--strict` 会组合 schema 校验、unsupported-command error 和直接缺失引用失败；`--verbose` 会打印资源摘要、覆盖条目、缺失引用和输出事件；可用 `--snapshot-diff-on-fail` 输出状态差异，也可用 `--trace-file`、`--trace-filter`、`--outputs-file`、`--event-trace-file` 和 `--report-file` 写出 CI artifact。Report JSON 会按 attempt 包含输出、命令 trace、玩家事件 trace、最终 snapshot、snapshot diff 和资源摘要明细。 |
+| CLI `schema [--output <file>]` | | 打印或写出内置 `.dps.json` manifest JSON Schema，用于编辑器和 CI 集成。 |

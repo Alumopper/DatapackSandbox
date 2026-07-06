@@ -1169,6 +1169,9 @@ class RunCommandTest {
         assertTrue("advancement modeled - grant, revoke, or test advancement progress" in output, output)
         assertTrue("place observed-noop - record a worldgen placement intent" in output, output)
         assertTrue("ban unsupported - vanilla command: warning unless --unsupported error is set" in output, output)
+        assertTrue("list modeled - report sandbox players" in output, output)
+        assertTrue("locate modeled - report deterministic void-world locate results" in output, output)
+        assertTrue("return modeled - stop the current function" in output, output)
     }
 
     @Test
@@ -1180,6 +1183,33 @@ class RunCommandTest {
         assertTrue("| Command | Behavior | Description |" in output, output)
         assertTrue("| `advancement` | `modeled` | grant, revoke, or test advancement progress |" in output, output)
         assertTrue("| `place` | `observed-noop` | record a worldgen placement intent |" in output, output)
+    }
+
+    @Test
+    fun `commands check markdown docs table in file`() {
+        val docsFile = Files.createTempFile("dps-commands-check", ".md")
+        val docs = captureStdout {
+            main(arrayOf("commands", "--docs"))
+        }
+        Files.writeString(docsFile, docs)
+
+        val output = captureStdout {
+            main(arrayOf("commands", "--check", docsFile.toString()))
+        }
+
+        assertTrue("commands docs cover catalog: $docsFile" in output, output)
+    }
+
+    @Test
+    fun `commands check fails when docs are stale`() {
+        val docsFile = Files.createTempFile("dps-commands-stale", ".md")
+        Files.writeString(docsFile, "| Command | Behavior |${System.lineSeparator()}|---|---|${System.lineSeparator()}| `place` | `observed-noop` |")
+
+        val result = runCliProcess("commands", "--check", docsFile.toString())
+
+        assertEquals(ExitCodes.INPUT_FORMAT, result.exitCode, result.output)
+        assertTrue("commands docs are out of date: $docsFile" in result.output, result.output)
+        assertTrue("advancement (modeled)" in result.output, result.output)
     }
 
     @Test
@@ -1207,6 +1237,9 @@ class RunCommandTest {
         assertEquals("modeled", commands.getValue("advancement").get("behavior").asString)
         assertEquals("observed-noop", commands.getValue("place").get("behavior").asString)
         assertEquals("unsupported", commands.getValue("ban").get("behavior").asString)
+        assertEquals("modeled", commands.getValue("list").get("behavior").asString)
+        assertEquals("modeled", commands.getValue("locate").get("behavior").asString)
+        assertEquals("modeled", commands.getValue("return").get("behavior").asString)
     }
 
     @Test

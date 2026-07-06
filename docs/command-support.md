@@ -40,9 +40,13 @@ The CLI can export the version-scoped command catalog for scripts, docs, and CI:
 java -jar cli/build/libs/datapack-sandbox-cli.jar commands
 java -jar cli/build/libs/datapack-sandbox-cli.jar commands --docs
 java -jar cli/build/libs/datapack-sandbox-cli.jar commands --docs --output docs/command-catalog.md
+java -jar cli/build/libs/datapack-sandbox-cli.jar commands --check docs/command-support.md
 java -jar cli/build/libs/datapack-sandbox-cli.jar commands --json --version 26.2
 java -jar cli/build/libs/datapack-sandbox-cli.jar commands --json --output build/command-catalog.json --version 26.2
 ```
+
+`commands --check` verifies that each version-scoped root command appears in
+the document with the matching behavior level.
 
 ## Vanilla Command Matrix
 
@@ -162,35 +166,37 @@ diagnostic under the active unsupported policy.
 
 These are tooling commands, not vanilla commands:
 
-| Command | Purpose |
-|---|---|
-| `event player <name> <type> ...` | Inject player events for advancements/predicates. |
-| `player <name>` | Create or reuse a sandbox player. |
-| `inspect <...>` | Inspect score, storage, entities, blocks, player, loot, predicate, advancement, recipe, item_modifier, raw JSON resources, tags, resource index, registry, outputs. |
-| `snapshot [file]` | Print or write deterministic world JSON. |
-| `reload` | REPL-only datapack reload while preserving world state. |
-| `load` | Run `#minecraft:load` in REPL. |
-| `load fixture <file>` | Apply a manifest-style world JSON fixture in REPL. |
-| `tick [n]` | Advance sandbox ticks in REPL. |
-| `trace <on|off|status>` | Toggle automatic REPL trace printing for newly executed commands. |
-| `diff last` | Print the before/after snapshot diff for the last tracked REPL command. |
-| `rerun last` | Re-execute the last tracked REPL command. |
-| `reset world` | Replace the current REPL world with a fresh sparse world. |
-| CLI `loot --table <id> --context <context>` | Generate a loot table directly. |
-| CLI `run --trace --trace-filter <filter>` | Print or write only matching trace events; filters support `root=`, `command=`, `contains=`, `function=`, `file=`, `selector=`/`target=`, `success=`, `output=` text, `outputs=` count/boolean, `output-channel=`, `output-payload=<path>[=<json>]`, `diff=`, `path=`, `score=`, and `storage=`. Trace JSONL entries include per-command output events and snapshot diffs for state changed by that command. |
-| CLI `run --outputs-file <file>` | Write observable output events as JSONL for CI artifacts or generated-command regression tests. |
-| CLI `run --report-file <file>` | Write a combined JSON report with pass/fail status, assertion failures, outputs, traces, event traces, the final snapshot, snapshot diffs, and resource summary details. |
-| CLI `run --resources` | Print deterministic resource counts, overlay diagnostics, and missing direct resource references for quick pack checks. |
-| CLI `run --snapshot-diff` | Print before/after state changes; use `--snapshot-diff-file` to write JSON. |
-| CLI `run --stdin` | Read `.mcfunction` text from standard input; `--stdin-mode commands` executes stdin as raw command lines. |
-| CLI `run --command-file <file>` | Execute one or more raw command files in argument order, useful for command-generator output. |
-| CLI `run --event "<event>"` | Inject player events in quick runs using `player <name> <type> [id] [detail/action]`, then assert player state or `eventTrace`. |
-| CLI `run --event-file <file>` | Inject one player event per non-empty, non-comment line, using the same `--event` shorthand. |
-| CLI `run --event-trace-file <file>` | Write player event trace JSONL for event-driven datapack debugging and CI artifacts. |
-| CLI `run --seed <long>` | Override the quick-run world seed after world fixtures are applied. |
-| CLI `run --world` | Apply a manifest-style world JSON fixture, including fixture references, before execution. |
-| CLI `run --strict` | Treat unsupported vanilla commands as errors and fail the run on direct missing resource references, without needing separate `--unsupported error` and `--fail-on-missing-resources` flags. |
-| CLI `run --assert`, `run --assert-file` | Evaluate inline or file-backed manifest assertions after execution, including before/after `snapshotDiff` assertions. `--assert-file` accepts JSON object/array files or one shorthand per non-empty, non-comment line. Shorthands include `score:<target>:<objective>=N`, `score:<target>:<objective>>=N`, `score:<target>:<objective><=N`, `storage:<id>[:<path>]=<json>`, `storage:<id>[:<path>]?`, `storage:<id>[:<path>]!`, `advancement:<player>:<id>[=<true\|false>]`, `player:<name>[:<field>=<value>]`, `item:<player>:<id>[@slot]=N`, `entity:<type|*>[@tag]=N`, `diff:<json-pointer>[=<kind>]`, `event-trace:<player>:<type>[=N]`, `trace:<root>=N`, `trace:<text>`, `trace-output:<text>[@target]`, `warning=N`, `warning:<text>`, `unsupported=N`, `unsupported:<text>`, `output:<text>`, `output-normalized:<text>`, and `output-payload:<command>:<path>[=<json>]`. |
-| CLI `run --fail-on-missing-resources` | Fail a quick run when direct load/tick tag, advancement parent/reward, predicate references in predicate/loot/item modifier resources, or nested loot table references point at missing resources, useful before creating a full manifest. |
-| CLI `check <manifest-or-directory>` | Run `.dps.json` manifests; `--validate-schema` checks manifest structure before execution; `--fail-on-missing-resources` turns direct missing resource references into failures; `--strict` combines schema validation, unsupported-command errors, and direct missing-reference failures; `--verbose` prints resource summaries, overlay entries, missing references, and output events; use `--snapshot-diff-on-fail` for state changes, plus `--trace-file`, `--trace-filter`, `--outputs-file`, `--event-trace-file`, and `--report-file` for CI artifacts. Report JSON includes output, command trace, player event trace, final snapshot, snapshot diff, and resource summary details per attempt. |
-| CLI `schema [--output <file>]` | Print or write the bundled `.dps.json` manifest JSON Schema for editor and CI integration. |
+| Command | Behavior | Purpose |
+|---|---:|---|
+| `event player <name> <type> ...` | `modeled` | Inject player events for advancements/predicates. |
+| `player <name>` | `modeled` | Create or reuse a sandbox player. |
+| `inspect <...>` | `modeled` | Inspect score, storage, entities, blocks, player, loot, predicate, advancement, recipe, item_modifier, raw JSON resources, tags, resource index, registry, outputs. |
+| `snapshot [file]` | `modeled` | Print or write deterministic world JSON. |
+| `help` | `modeled` | Show REPL help. |
+| `exit`, `quit` | `modeled` | Leave the REPL. |
+| `reload` | `observed-noop` | REPL-only datapack reload while preserving world state. |
+| `load` | `modeled` | Run `#minecraft:load` in REPL. |
+| `load fixture <file>` | `modeled` | Apply a manifest-style world JSON fixture in REPL. |
+| `tick [n]` | `modeled` | Advance sandbox ticks in REPL. |
+| `trace <on|off|status>` | `modeled` | Toggle automatic REPL trace printing for newly executed commands. |
+| `diff last` | `modeled` | Print the before/after snapshot diff for the last tracked REPL command. |
+| `rerun last` | `modeled` | Re-execute the last tracked REPL command. |
+| `reset world` | `modeled` | Replace the current REPL world with a fresh sparse world. |
+| CLI `loot --table <id> --context <context>` | | Generate a loot table directly. |
+| CLI `run --trace --trace-filter <filter>` | | Print or write only matching trace events; filters support `root=`, `command=`, `contains=`, `function=`, `file=`, `selector=`/`target=`, `success=`, `output=` text, `outputs=` count/boolean, `output-channel=`, `output-payload=<path>[=<json>]`, `diff=`, `path=`, `score=`, and `storage=`. Trace JSONL entries include per-command output events and snapshot diffs for state changed by that command. |
+| CLI `run --outputs-file <file>` | | Write observable output events as JSONL for CI artifacts or generated-command regression tests. |
+| CLI `run --report-file <file>` | | Write a combined JSON report with pass/fail status, assertion failures, outputs, traces, event traces, the final snapshot, snapshot diffs, and resource summary details. |
+| CLI `run --resources` | | Print deterministic resource counts, overlay diagnostics, and missing direct resource references for quick pack checks. |
+| CLI `run --snapshot-diff` | | Print before/after state changes; use `--snapshot-diff-file` to write JSON. |
+| CLI `run --stdin` | | Read `.mcfunction` text from standard input; `--stdin-mode commands` executes stdin as raw command lines. |
+| CLI `run --command-file <file>` | | Execute one or more raw command files in argument order, useful for command-generator output. |
+| CLI `run --event "<event>"` | | Inject player events in quick runs using `player <name> <type> [id] [detail/action]`, then assert player state or `eventTrace`. |
+| CLI `run --event-file <file>` | | Inject one player event per non-empty, non-comment line, using the same `--event` shorthand. |
+| CLI `run --event-trace-file <file>` | | Write player event trace JSONL for event-driven datapack debugging and CI artifacts. |
+| CLI `run --seed <long>` | | Override the quick-run world seed after world fixtures are applied. |
+| CLI `run --world` | | Apply a manifest-style world JSON fixture, including fixture references, before execution. |
+| CLI `run --strict` | | Treat unsupported vanilla commands as errors and fail the run on direct missing resource references, without needing separate `--unsupported error` and `--fail-on-missing-resources` flags. |
+| CLI `run --assert`, `run --assert-file` | | Evaluate inline or file-backed manifest assertions after execution, including before/after `snapshotDiff` assertions. `--assert-file` accepts JSON object/array files or one shorthand per non-empty, non-comment line. Shorthands include `score:<target>:<objective>=N`, `score:<target>:<objective>>=N`, `score:<target>:<objective><=N`, `storage:<id>[:<path>]=<json>`, `storage:<id>[:<path>]?`, `storage:<id>[:<path>]!`, `advancement:<player>:<id>[=<true\|false>]`, `player:<name>[:<field>=<value>]`, `item:<player>:<id>[@slot]=N`, `entity:<type|*>[@tag]=N`, `diff:<json-pointer>[=<kind>]`, `event-trace:<player>:<type>[=N]`, `trace:<root>=N`, `trace:<text>`, `trace-output:<text>[@target]`, `warning=N`, `warning:<text>`, `unsupported=N`, `unsupported:<text>`, `output:<text>`, `output-normalized:<text>`, and `output-payload:<command>:<path>[=<json>]`. |
+| CLI `run --fail-on-missing-resources` | | Fail a quick run when direct load/tick tag, advancement parent/reward, predicate references in predicate/loot/item modifier resources, or nested loot table references point at missing resources, useful before creating a full manifest. |
+| CLI `check <manifest-or-directory>` | | Run `.dps.json` manifests; `--validate-schema` checks manifest structure before execution; `--fail-on-missing-resources` turns direct missing resource references into failures; `--strict` combines schema validation, unsupported-command errors, and direct missing-reference failures; `--verbose` prints resource summaries, overlay entries, missing references, and output events; use `--snapshot-diff-on-fail` for state changes, plus `--trace-file`, `--trace-filter`, `--outputs-file`, `--event-trace-file`, and `--report-file` for CI artifacts. Report JSON includes output, command trace, player event trace, final snapshot, snapshot diff, and resource summary details per attempt. |
+| CLI `schema [--output <file>]` | | Print or write the bundled `.dps.json` manifest JSON Schema for editor and CI integration. |

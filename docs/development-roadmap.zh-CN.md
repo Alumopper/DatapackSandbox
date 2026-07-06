@@ -276,7 +276,7 @@
   - `modeled`：沙盒内确定性模型，覆盖数据包测试所需行为。
   - `observed-noop`：接受命令并记录输出/诊断，不改变真实副作用。
   - `unsupported`：按策略 warn/error/ignore。
-  - `commands` CLI 已可按版本导出命令目录、行为等级和描述，支持 plain、Markdown、JSON 与 `--output <file>` artifact 输出，便于文档生成和 CI 复核。
+  - `commands` CLI 已可按版本导出命令目录、行为等级和描述，支持 plain、Markdown、JSON、`--output <file>` artifact 输出和 `--check <file>` 文档覆盖检查，便于文档生成和 CI 复核。
 
 验收标准：
 

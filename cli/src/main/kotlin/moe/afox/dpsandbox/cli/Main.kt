@@ -1298,15 +1298,21 @@ class CommandsCommand : CliktCommand(name = "commands") {
     private val docs by option("--docs").flag(default = false)
     private val json by option("--json").flag(default = false)
     private val output by option("--output", "-o").path()
+    private val check by option("--check").path()
 
     override fun run() {
         try {
             if (docs && json) {
                 throw SandboxException(DiagnosticCode.INPUT_FORMAT, "commands accepts only one output mode: --docs or --json")
             }
+            if (check != null && output != null) {
+                throw SandboxException(DiagnosticCode.INPUT_FORMAT, "commands accepts only one file mode: --output or --check")
+            }
             val profile = VersionProfiles.get(version)
             val commands = DpsCommandCatalog.rootCommands(profile)
+            val checkPath = check
             when {
+                checkPath != null -> checkCommandDocs(checkPath, commands)
                 docs -> emit(renderMarkdown(commands))
                 json -> emit(JsonValues.render(renderJson(profile.id, commands)))
                 else -> emit(renderPlain(commands))
@@ -1366,6 +1372,29 @@ class CommandsCommand : CliktCommand(name = "commands") {
             println(ConsoleStyle.green("commands output written: $outputPath"))
         }
     }
+
+    private fun checkCommandDocs(path: Path, commands: List<CompletionSuggestion>) {
+        if (!Files.exists(path)) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "commands check file does not exist: $path")
+        }
+        val docLines = normalizeDoc(Files.readString(path, StandardCharsets.UTF_8)).lineSequence().toList()
+        val missing = commands.mapNotNull { command ->
+            val behavior = command.behaviorLevel?.id ?: "unknown"
+            val commandPattern = Regex("""`[^`]*\b${Regex.escape(command.value)}\b[^`]*`""")
+            val covered = docLines.any { line -> commandPattern.containsMatchIn(line) && "`$behavior`" in line }
+            if (covered) null else "${command.value} ($behavior)"
+        }
+        if (missing.isNotEmpty()) {
+            throw SandboxException(
+                DiagnosticCode.INPUT_FORMAT,
+                "commands docs are out of date: $path; missing ${missing.joinToString()}",
+            )
+        }
+        println(ConsoleStyle.green("commands docs cover catalog: $path"))
+    }
+
+    private fun normalizeDoc(value: String): String =
+        value.replace("\r\n", "\n").replace('\r', '\n')
 }
 
 fun unsupportedFeatureMode(value: String): UnsupportedFeatureMode =
