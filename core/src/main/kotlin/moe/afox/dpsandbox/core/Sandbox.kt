@@ -2846,6 +2846,29 @@ class DatapackSandbox(
         nbt.entrySet().forEach { (key, value) -> fullNbt.add(key, value.deepCopy()) }
         entity.writeFullNbt(profile, fullNbt, location)
         world.entities += entity
+        world.recordOutput(
+            "summon",
+            "data",
+            targets = listOf(entity.scoreHolder),
+            text = "1",
+            payload = JsonObject().also { payload ->
+                payload.addProperty("count", 1)
+                payload.addProperty("target", entity.scoreHolder)
+                payload.addProperty("uuid", entity.uuid)
+                payload.addProperty("type", entity.type.toString())
+                payload.addProperty("dimension", entity.dimension.toString())
+                payload.add(
+                    "position",
+                    JsonObject().also { pos ->
+                        pos.addProperty("x", entity.position.x)
+                        pos.addProperty("y", entity.position.y)
+                        pos.addProperty("z", entity.position.z)
+                    },
+                )
+                payload.add("tags", JsonArray().also { tagsArray -> entity.tags.forEach { tagsArray.add(it) } })
+                payload.add("nbt", nbt.deepCopy())
+            },
+        )
     }
 
     private fun executeKill(tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext) {

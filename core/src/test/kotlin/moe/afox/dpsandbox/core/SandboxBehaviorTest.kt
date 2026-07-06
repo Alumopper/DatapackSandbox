@@ -432,6 +432,19 @@ class SandboxBehaviorTest {
         assertEquals(10.0, nbt.get("Health").asDouble)
         assertTrue("mob" in entity.tags)
         assertTrue(!nbt.has("NoAI"), "Entities do not tick AI, but NoAI is not injected")
+        val output = sandbox.world.outputs.single { it.command == "summon" }
+        val payload = output.payload?.asJsonObject ?: error("missing summon payload")
+        val position = payload.getAsJsonObject("position")
+        assertEquals("1", output.text)
+        assertEquals(listOf(entity.uuid), output.targets)
+        assertEquals(entity.uuid, payload.get("uuid").asString)
+        assertEquals("minecraft:zombie", payload.get("type").asString)
+        assertEquals("minecraft:overworld", payload.get("dimension").asString)
+        assertEquals(1.0, position.get("x").asDouble)
+        assertEquals(2.0, position.get("y").asDouble)
+        assertEquals(3.0, position.get("z").asDouble)
+        assertTrue(payload.getAsJsonArray("tags").any { it.asString == "mob" })
+        assertEquals(20.0, payload.getAsJsonObject("nbt").get("Health").asDouble)
     }
 
     @Test

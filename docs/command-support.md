@@ -83,7 +83,7 @@ run continues. Use `--unsupported error`, manifest `"unsupported": "error"`, or
 | `spreadplayers` | Partial | Deterministically distributes selected entities around a center; no collision/team algorithm. |
 | `stop` | Unsupported | Runtime lifecycle is controlled by the host process, not commands. |
 | `stopsound` | Partial | Recorded as sound output event. |
-| `summon` | Partial | Creates entities in the current execution dimension with position, tags, and schema-checked NBT; AI does not tick. |
+| `summon` | Partial | Creates entities in the current execution dimension with position, tags, schema-checked NBT, and structured creation output for reports/assertions; AI does not tick. |
 | `tag` | Supported | `add`, `remove`, `list`. |
 | `team` | Partial | `add`, `remove`, `list`, `join`, `leave`, `empty`, `modify`; no gameplay effects. |
 | `teammsg`, `tm` | Supported | Recorded as team chat output. |

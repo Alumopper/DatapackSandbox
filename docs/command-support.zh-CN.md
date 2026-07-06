@@ -76,7 +76,7 @@
 | `spreadplayers` | 部分支持 | 确定性地把选中实体分布到中心附近；不实现原版碰撞/队伍算法。 |
 | `stop` | 未支持 | 运行时生命周期由宿主进程控制。 |
 | `stopsound` | 部分支持 | 记录为 sound 输出事件。 |
-| `summon` | 部分支持 | 在当前执行维度创建带位置、tag 和 schema 校验 NBT 的实体；实体 AI 不 tick。 |
+| `summon` | 部分支持 | 在当前执行维度创建带位置、tag 和 schema 校验 NBT 的实体，并记录可用于 report/assertion 的结构化创建输出；实体 AI 不 tick。 |
 | `tag` | 支持 | `add`、`remove`、`list`。 |
 | `team` | 部分支持 | `add`、`remove`、`list`、`join`、`leave`、`empty`、`modify`；不执行 gameplay 副作用。 |
 | `teammsg`、`tm` | 支持 | 记录为 team chat 输出事件。 |
