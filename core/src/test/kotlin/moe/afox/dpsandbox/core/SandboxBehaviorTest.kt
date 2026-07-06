@@ -582,6 +582,18 @@ class SandboxBehaviorTest {
         assertEquals(3, list.size())
         assertEquals(1, list[1].asInt)
         assertEquals(1, list[2].asJsonObject.get("foo").asInt)
+        val mergeOutput = sandbox.world.outputs.single { it.command == "data merge" }
+        val mergePayload = mergeOutput.payload?.asJsonObject ?: error("missing data merge payload")
+        val mergeResult = mergePayload.getAsJsonArray("results")[0].asJsonObject
+        assertEquals("1", mergeOutput.text)
+        assertEquals(listOf("demo:src"), mergeOutput.targets)
+        assertEquals("storage", mergePayload.get("targetKind").asString)
+        assertEquals(1, mergePayload.get("changed").asInt)
+        assertEquals(1, mergePayload.get("count").asInt)
+        assertTrue(mergePayload.getAsJsonObject("value").has("value"))
+        assertEquals(true, mergeResult.get("changed").asBoolean)
+        assertEquals("demo:src", mergeResult.get("target").asString)
+        assertEquals(1, mergeResult.getAsJsonObject("after").getAsJsonObject("value").get("foo").asInt)
 
         val error = assertFailsWith<SandboxException> {
             sandbox.executeCommand("data modify storage demo:dst missing set from storage demo:src nope")

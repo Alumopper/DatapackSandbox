@@ -1631,7 +1631,10 @@ class DatapackSandbox(
         val (target, valueIndex) = parseDataTarget(tokens, 2, context, location)
         requireIndex(tokens, valueIndex, "data merge <target> <nbt>", location)
         val value = JsonValues.parse(CommandTokenizer.tailFrom(command, tokens[valueIndex]), location)
+        val before = dataTargetNbtValues(target, location).map { it.deepCopy() }
         mutateDataTarget(target, location) { JsonPaths.merge(it, null, value) }
+        val after = dataTargetNbtValues(target, location).map { it.deepCopy() }
+        recordDataMutationOutput("data merge", target, value, before, after)
     }
 
     private fun executeDataGet(tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext): JsonElement? {
@@ -1682,6 +1685,60 @@ class DatapackSandbox(
             is DataTargetSpec.Storage -> listOf(world.storage(target.id))
             is DataTargetSpec.Entities -> target.entities.map { it.fullNbt(profile, location) }
             is DataTargetSpec.Block -> listOf(world.requireBlock(target.pos).fullNbt(target.pos, profile, location))
+        }
+
+    private fun recordDataMutationOutput(
+        command: String,
+        target: DataTargetSpec,
+        value: JsonElement,
+        before: List<JsonObject>,
+        after: List<JsonObject>,
+    ) {
+        val targetNames = dataTargetNames(target)
+        val changed = before.zip(after).count { (beforeValue, afterValue) -> beforeValue != afterValue }
+        world.recordOutput(
+            command,
+            "data",
+            targets = targetNames,
+            text = changed.toString(),
+            payload = JsonObject().also { payload ->
+                payload.addProperty("targetKind", dataTargetKind(target))
+                payload.addProperty("count", after.size)
+                payload.addProperty("changed", changed)
+                payload.add("targets", JsonArray().also { array -> targetNames.forEach { array.add(it) } })
+                payload.add("value", value.deepCopy())
+                payload.add(
+                    "results",
+                    JsonArray().also { results ->
+                        after.forEachIndexed { index, afterValue ->
+                            val beforeValue = before.getOrNull(index)
+                            results.add(
+                                JsonObject().also { entry ->
+                                    entry.addProperty("target", targetNames.getOrElse(index) { index.toString() })
+                                    beforeValue?.let { entry.add("before", it.deepCopy()) }
+                                    entry.add("after", afterValue.deepCopy())
+                                    entry.addProperty("changed", beforeValue != afterValue)
+                                },
+                            )
+                        }
+                    },
+                )
+            },
+        )
+    }
+
+    private fun dataTargetKind(target: DataTargetSpec): String =
+        when (target) {
+            is DataTargetSpec.Storage -> "storage"
+            is DataTargetSpec.Entities -> "entity"
+            is DataTargetSpec.Block -> "block"
+        }
+
+    private fun dataTargetNames(target: DataTargetSpec): List<String> =
+        when (target) {
+            is DataTargetSpec.Storage -> listOf(target.id.toString())
+            is DataTargetSpec.Entities -> target.entities.map { it.scoreHolder }
+            is DataTargetSpec.Block -> listOf(target.pos.toString())
         }
 
     private fun mutateDataTarget(target: DataTargetSpec, location: SourceLocation?, mutation: (JsonObject) -> Unit) {
