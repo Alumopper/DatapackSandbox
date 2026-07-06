@@ -76,6 +76,7 @@ data class RegistryView(
                 "set_name",
                 "set_lore",
                 "discard",
+                "copy_name",
                 "copy_components",
                 "copy_nbt",
                 "set_damage",

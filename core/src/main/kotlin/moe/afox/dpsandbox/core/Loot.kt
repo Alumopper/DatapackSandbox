@@ -215,6 +215,7 @@ class LootEngine(
                 "set_damage" -> stack.components.addProperty("minecraft:damage", rollDouble(function.root.get("damage"), random))
                 "set_name" -> stack.components.add("minecraft:custom_name", lootFunctionText(function.root, "name", function.type))
                 "set_lore" -> stack.components.add("minecraft:lore", lootFunctionLore(function.root))
+                "copy_name" -> copyNameFromContext(stack, function, context)
                 "copy_nbt", "copy_components" -> copyFromContext(stack, function, context)
                 "explosion_decay" -> stack.count = if (context.predicateContext.random.nextBoolean()) stack.count else 0
                 "apply_bonus" -> stack.count = applyBonus(stack.count, function.root, context, random).coerceAtLeast(0)
@@ -339,6 +340,46 @@ class LootEngine(
             }
         }
     }
+
+    private fun copyNameFromContext(stack: ItemStack, function: LootFunction, context: LootContext) {
+        val source = function.root.string("source") ?: "this"
+        val entity = entityNameSource(source, context)
+            ?: throw SandboxException(DiagnosticCode.MISSING_CONTEXT, "copy_name requires entity source '$source'")
+        val name = entityCustomName(entity)
+            ?: throw SandboxException(DiagnosticCode.MISSING_CONTEXT, "copy_name source '$source' has no custom name")
+        stack.components.add("minecraft:custom_name", name)
+    }
+
+    private fun entityNameSource(source: String, context: LootContext): SandboxEntity? =
+        when (source) {
+            "this" -> context.predicateContext.thisEntity
+            "attacker" -> context.predicateContext.attacker
+            "direct_attacker" -> context.predicateContext.directEntity
+            "killer" -> context.predicateContext.killer
+            "attacking_player", "killer_player" -> context.predicateContext.attackingPlayer
+                ?: context.predicateContext.player
+                ?: context.predicateContext.attacker as? SandboxPlayer
+            else -> null
+        }
+
+    private fun entityCustomName(entity: SandboxEntity): JsonElement? {
+        val customName = entity.nbt.get("CustomName")
+        if (customName != null) {
+            return decodeCustomName(customName)
+        }
+        if (entity is SandboxPlayer) {
+            return JsonObject().also { it.addProperty("text", entity.name) }
+        }
+        return null
+    }
+
+    private fun decodeCustomName(name: JsonElement): JsonElement =
+        if (name.isJsonPrimitive && name.asJsonPrimitive.isString) {
+            runCatching { JsonValues.parse(name.asString) }
+                .getOrElse { JsonObject().also { fallback -> fallback.addProperty("text", name.asString) } }
+        } else {
+            name.deepCopy()
+        }
 
     private fun componentSource(source: String, context: LootContext): JsonObject {
         val playerItem = when (source) {

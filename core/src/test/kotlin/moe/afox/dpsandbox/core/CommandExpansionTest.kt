@@ -299,10 +299,12 @@ class CommandExpansionTest {
         sandbox.executeCommand("loot give Steve fish demo:fish 0 64 0 minecraft:stick")
         sandbox.executeCommand("loot give Steve mine 0 64 0 minecraft:stick")
         sandbox.executeCommand("summon minecraft:zombie 2 64 0")
+        sandbox.executeCommand("""summon minecraft:zombie 3 64 0 {Tags:["named"],CustomName:'{"text":"Named Zombie"}'}""")
         sandbox.executeCommand("item replace entity @e[type=minecraft:zombie,limit=1] weapon.mainhand with minecraft:stick")
         sandbox.executeCommand("loot give Steve kill @e[type=minecraft:zombie,limit=1]")
         sandbox.executeCommand("execute in minecraft:the_nether run loot spawn 1 64 1 mine 0 64 0")
         sandbox.executeCommand("loot give Steve entity demo:entity_context @e[type=minecraft:zombie,limit=1]")
+        sandbox.executeCommand("loot give Steve entity demo:copy_name @e[tag=named,limit=1]")
         sandbox.executeCommand("loot give Steve block demo:block_context 0 64 0 minecraft:diamond_pickaxe")
         sandbox.executeCommand("loot give Steve block demo:copy_components 0 64 0 minecraft:diamond_pickaxe[minecraft:damage=7,demo:copied=true,demo:skip=true]")
         sandbox.executeCommand("loot give Steve block demo:apply_bonus 0 64 0 minecraft:diamond_pickaxe[minecraft:enchantments={\"minecraft:fortune\":2}]")
@@ -331,6 +333,8 @@ class CommandExpansionTest {
         assertTrue(2 in rawGoldCounts)
         val emerald = sandbox.world.requirePlayer("Steve").inventory.first { it.id == ResourceLocation.parse("minecraft:emerald") }
         assertEquals(2, emerald.count)
+        val nameTag = sandbox.world.requirePlayer("Steve").inventory.first { it.id == ResourceLocation.parse("minecraft:name_tag") }
+        assertEquals("Named Zombie", nameTag.components.getAsJsonObject("minecraft:custom_name").get("text").asString)
         val enchanted = sandbox.world.requirePlayer("Steve").inventory.first { it.id == ResourceLocation.parse("minecraft:experience_bottle") }
         val enchantments = enchanted.components.getAsJsonObject("minecraft:enchantments")
         assertEquals(1, enchantments.get("minecraft:sharpness").asInt)
@@ -343,7 +347,7 @@ class CommandExpansionTest {
         assertEquals(ResourceLocation.parse("minecraft:the_nether"), spawnedItem.dimension)
 
         val lootGiveOutputs = sandbox.world.outputs.filter { it.command == "loot give" }
-        assertEquals(11, lootGiveOutputs.size)
+        assertEquals(12, lootGiveOutputs.size)
         assertEquals("players", lootGiveOutputs.first().payload?.asJsonObject?.get("targetKind")?.asString)
         assertEquals("minecraft:diamond", lootGiveOutputs.first().payload?.asJsonObject?.getAsJsonArray("items")?.get(0)?.asJsonObject?.get("id")?.asString)
         val copiedOutputItem = lootGiveOutputs.first {
@@ -358,6 +362,12 @@ class CommandExpansionTest {
             } == true
         }.payload?.asJsonObject?.getAsJsonArray("items")?.get(0)?.asJsonObject ?: error("missing apply_bonus loot output")
         assertEquals(4, bonusOutputItem.get("count").asInt)
+        val nameTagOutputItem = lootGiveOutputs.first {
+            it.payload?.asJsonObject?.getAsJsonArray("items")?.any { item ->
+                item.asJsonObject.get("id").asString == "minecraft:name_tag"
+            } == true
+        }.payload?.asJsonObject?.getAsJsonArray("items")?.get(0)?.asJsonObject ?: error("missing copy_name loot output")
+        assertEquals("Named Zombie", nameTagOutputItem.getAsJsonObject("components").getAsJsonObject("minecraft:custom_name").get("text").asString)
         val enchantedOutputItem = lootGiveOutputs.first {
             it.payload?.asJsonObject?.getAsJsonArray("items")?.any { item ->
                 item.asJsonObject.get("id").asString == "minecraft:experience_bottle"
@@ -1151,6 +1161,31 @@ class CommandExpansionTest {
                     {
                       "type": "minecraft:item",
                       "name": "minecraft:gold_ingot"
+                    }
+                  ]
+                }
+              ]
+            }
+            """.trimIndent(),
+        )
+        Files.writeString(
+            lootRoot.resolve("copy_name.json"),
+            """
+            {
+              "type": "minecraft:entity",
+              "pools": [
+                {
+                  "rolls": 1,
+                  "entries": [
+                    {
+                      "type": "minecraft:item",
+                      "name": "minecraft:name_tag",
+                      "functions": [
+                        {
+                          "function": "minecraft:copy_name",
+                          "source": "this"
+                        }
+                      ]
                     }
                   ]
                 }
