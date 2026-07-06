@@ -77,6 +77,7 @@
   - `forceload add/remove/remove all` 已记录结构化 chunk 修改输出，便于调试强加载区域和变化数量。
   - `fillbiome` 已记录结构化 biome 覆盖输出，便于调试区域、过滤条件、目标 biome 和实际变化位置。
   - `tick rate/freeze/unfreeze/step/sprint` 已记录结构化 tick 状态和推进输出，便于调试 tick rate、冻结状态、gameTime 前后变化和命令生成器结果。
+  - `worldborder set/add/center/damage/warning` 已记录结构化前后状态输出，便于调试边界尺寸、中心点、伤害参数和警告参数变化。
   - `damage` 已记录结构化生命值变化输出，便于 report/assertion 调试。
   - `kill` 已记录结构化目标输出，便于确认选择器命中、实体移除和 advancement 触发结果。
   - `enchant` 已覆盖玩家选中物品和非玩家实体主手装备的附魔组件写入，并记录结构化输出；`effect give/clear` 已记录结构化输出，便于 report/assertion 调试。

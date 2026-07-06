@@ -124,6 +124,69 @@ class CommandExpansionTest {
     }
 
     @Test
+    fun `worldborder mutations record structured outputs`() {
+        val sandbox = createSandbox("26.1.2", listOf(fixturePack()))
+
+        sandbox.executeCommand("worldborder set 200 4")
+        sandbox.executeCommand("worldborder add -50 2")
+        sandbox.executeCommand("worldborder center 8 -9")
+        sandbox.executeCommand("worldborder damage buffer 3.5")
+        sandbox.executeCommand("worldborder warning time 30")
+
+        val border = sandbox.snapshotJson().getAsJsonObject("worldBorder")
+        assertEquals(150.0, border.get("size").asDouble)
+        assertEquals(150.0, border.get("targetSize").asDouble)
+        assertEquals(2, border.get("lerpTimeSeconds").asLong)
+        assertEquals(8.0, border.get("centerX").asDouble)
+        assertEquals(-9.0, border.get("centerZ").asDouble)
+        assertEquals(3.5, border.get("damageBuffer").asDouble)
+        assertEquals(30, border.get("warningTime").asInt)
+
+        val setOutput = sandbox.world.outputs.single { it.command == "worldborder set" }
+        val setPayload = setOutput.payload?.asJsonObject ?: error("missing worldborder set payload")
+        assertEquals("200.0", setOutput.text)
+        assertEquals("set", setPayload.get("action").asString)
+        assertEquals(59999968.0, setPayload.getAsJsonObject("before").get("size").asDouble)
+        assertEquals(200.0, setPayload.get("size").asDouble)
+        assertEquals(200.0, setPayload.get("requestedSize").asDouble)
+        assertEquals(4, setPayload.get("lerpTimeSeconds").asLong)
+
+        val addOutput = sandbox.world.outputs.single { it.command == "worldborder add" }
+        val addPayload = addOutput.payload?.asJsonObject ?: error("missing worldborder add payload")
+        assertEquals("150.0", addOutput.text)
+        assertEquals("add", addPayload.get("action").asString)
+        assertEquals(200.0, addPayload.getAsJsonObject("before").get("size").asDouble)
+        assertEquals(-50.0, addPayload.get("delta").asDouble)
+        assertEquals(150.0, addPayload.get("size").asDouble)
+
+        val centerOutput = sandbox.world.outputs.single { it.command == "worldborder center" }
+        val centerPayload = centerOutput.payload?.asJsonObject ?: error("missing worldborder center payload")
+        assertEquals("8.0 -9.0", centerOutput.text)
+        assertEquals("center", centerPayload.get("action").asString)
+        assertEquals(0.0, centerPayload.getAsJsonObject("before").get("centerX").asDouble)
+        assertEquals(8.0, centerPayload.get("centerX").asDouble)
+        assertEquals(-9.0, centerPayload.get("centerZ").asDouble)
+
+        val damageOutput = sandbox.world.outputs.single { it.command == "worldborder damage" }
+        val damagePayload = damageOutput.payload?.asJsonObject ?: error("missing worldborder damage payload")
+        assertEquals("3.5", damageOutput.text)
+        assertEquals("damage", damagePayload.get("action").asString)
+        assertEquals("buffer", damagePayload.get("field").asString)
+        assertEquals(5.0, damagePayload.getAsJsonObject("before").get("damageBuffer").asDouble)
+        assertEquals(3.5, damagePayload.get("value").asDouble)
+        assertEquals(3.5, damagePayload.get("damageBuffer").asDouble)
+
+        val warningOutput = sandbox.world.outputs.single { it.command == "worldborder warning" }
+        val warningPayload = warningOutput.payload?.asJsonObject ?: error("missing worldborder warning payload")
+        assertEquals("30", warningOutput.text)
+        assertEquals("warning", warningPayload.get("action").asString)
+        assertEquals("time", warningPayload.get("field").asString)
+        assertEquals(15, warningPayload.getAsJsonObject("before").get("warningTime").asInt)
+        assertEquals(30, warningPayload.get("value").asInt)
+        assertEquals(30, warningPayload.get("warningTime").asInt)
+    }
+
+    @Test
     fun `utility commands record deterministic outputs`() {
         val sandbox = createSandbox("26.1.2", listOf(fixturePack()))
 

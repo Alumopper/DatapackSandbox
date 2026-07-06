@@ -3843,39 +3843,92 @@ class DatapackSandbox(
     private fun executeWorldBorder(tokens: List<CommandToken>, location: SourceLocation?) {
         requireSize(tokens, 2, "worldborder <add|center|damage|get|set|warning>", location)
         val border = world.worldBorder
+        fun recordWorldBorderOutput(
+            command: String,
+            action: String,
+            text: String,
+            before: SandboxWorldBorder,
+            extra: JsonObject.() -> Unit = {},
+        ) {
+            world.recordOutput(
+                command,
+                "data",
+                text = text,
+                payload = border.toJson().also { payload ->
+                    payload.addProperty("action", action)
+                    payload.add("before", before.toJson())
+                    payload.extra()
+                },
+            )
+        }
         when (tokens[1].text) {
             "get" -> world.recordOutput("worldborder get", "data", text = border.size.toString(), payload = border.toJson())
             "set" -> {
                 requireSize(tokens, 3, "worldborder set <distance> [time]", location)
-                border.targetSize = parseDouble(tokens[2].text, "worldborder size", location).coerceAtLeast(1.0)
+                val before = border.copy()
+                val requestedSize = parseDouble(tokens[2].text, "worldborder size", location)
+                border.targetSize = requestedSize.coerceAtLeast(1.0)
                 border.size = border.targetSize
                 border.lerpTimeSeconds = tokens.getOrNull(3)?.text?.let { parseLong(it, "worldborder time", location) } ?: 0
+                recordWorldBorderOutput("worldborder set", "set", border.size.toString(), before) {
+                    addProperty("requestedSize", requestedSize)
+                }
             }
             "add" -> {
                 requireSize(tokens, 3, "worldborder add <distance> [time]", location)
-                border.targetSize = (border.size + parseDouble(tokens[2].text, "worldborder size delta", location)).coerceAtLeast(1.0)
+                val before = border.copy()
+                val delta = parseDouble(tokens[2].text, "worldborder size delta", location)
+                border.targetSize = (border.size + delta).coerceAtLeast(1.0)
                 border.size = border.targetSize
                 border.lerpTimeSeconds = tokens.getOrNull(3)?.text?.let { parseLong(it, "worldborder time", location) } ?: 0
+                recordWorldBorderOutput("worldborder add", "add", border.size.toString(), before) {
+                    addProperty("delta", delta)
+                }
             }
             "center" -> {
                 requireSize(tokens, 4, "worldborder center <x> <z>", location)
+                val before = border.copy()
                 border.centerX = parseCoordinate(tokens[2].text, border.centerX, location)
                 border.centerZ = parseCoordinate(tokens[3].text, border.centerZ, location)
+                recordWorldBorderOutput(
+                    "worldborder center",
+                    "center",
+                    "${border.centerX} ${border.centerZ}",
+                    before,
+                )
             }
             "damage" -> {
                 requireSize(tokens, 4, "worldborder damage <amount|buffer> <value>", location)
-                when (tokens[2].text) {
-                    "amount" -> border.damageAmount = parseDouble(tokens[3].text, "worldborder damage amount", location)
-                    "buffer" -> border.damageBuffer = parseDouble(tokens[3].text, "worldborder damage buffer", location)
+                val before = border.copy()
+                val field = tokens[2].text
+                val value = when (field) {
+                    "amount", "buffer" -> parseDouble(tokens[3].text, "worldborder damage $field", location)
                     else -> unsupportedFeature("Unsupported worldborder damage field '${tokens[2].text}'", profile.id, location)
+                }
+                when (field) {
+                    "amount" -> border.damageAmount = value
+                    "buffer" -> border.damageBuffer = value
+                }
+                recordWorldBorderOutput("worldborder damage", "damage", value.toString(), before) {
+                    addProperty("field", field)
+                    addProperty("value", value)
                 }
             }
             "warning" -> {
                 requireSize(tokens, 4, "worldborder warning <distance|time> <value>", location)
-                when (tokens[2].text) {
-                    "distance" -> border.warningDistance = parseInt(tokens[3].text, "worldborder warning distance", location)
-                    "time" -> border.warningTime = parseInt(tokens[3].text, "worldborder warning time", location)
+                val before = border.copy()
+                val field = tokens[2].text
+                val value = when (field) {
+                    "distance", "time" -> parseInt(tokens[3].text, "worldborder warning $field", location)
                     else -> unsupportedFeature("Unsupported worldborder warning field '${tokens[2].text}'", profile.id, location)
+                }
+                when (field) {
+                    "distance" -> border.warningDistance = value
+                    "time" -> border.warningTime = value
+                }
+                recordWorldBorderOutput("worldborder warning", "warning", value.toString(), before) {
+                    addProperty("field", field)
+                    addProperty("value", value)
                 }
             }
             else -> unsupportedFeature("Unsupported worldborder action '${tokens[1].text}'", profile.id, location)

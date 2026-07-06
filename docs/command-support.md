@@ -96,7 +96,7 @@ run continues. Use `--unsupported error`, manifest `"unsupported": "error"`, or
 | `trigger` | Partial | `trigger <objective> [add|set] [value]`; uses current/default sandbox player. |
 | `weather` | Partial | `clear`, `rain`, `thunder`; stores state and records structured weather output. |
 | `whitelist` | Unsupported | Server administration command. |
-| `worldborder` | Partial | `get`, `set`, `add`, `center`, `damage`, `warning`; stored state only. |
+| `worldborder` | Partial | `get`, `set`, `add`, `center`, `damage`, `warning`; stores state and records structured mutation/query output for assertions. |
 
 ## Text And Output Commands
 
