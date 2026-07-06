@@ -4,7 +4,7 @@
 
 这个沙盒不嵌入原版服务端。这里的“支持”表示：命令会按沙盒当前建模的、数据包可见状态执行，并产生确定性结果。网络、权限、世界生成、客户端 UI、红石、实体 AI、完整战斗系统和真实服务端生命周期不在运行时范围内。
 
-未支持的原版根命令默认不会让运行失败。默认策略是 `warn`：记录 warning 输出事件并继续执行。需要严格验证时可以使用 CLI `--unsupported error`、清单 `"unsupported": "error"` 或 API `UnsupportedFeatureMode.ERROR`；需要静默跳过时使用 `ignore`。用于快速检查命令生成器输出时，`run --strict` 会同时启用 unsupported error 和直接缺失资源引用失败。
+未支持的原版根命令默认不会让运行失败。默认策略是 `warn`：记录 warning 输出事件并继续执行。需要严格验证时可以使用 CLI `--unsupported error`、清单 `"unsupported": "error"` 或 API `UnsupportedFeatureMode.ERROR`；需要静默跳过时使用 `ignore`。用于检查命令生成器输出时，`run --strict` 和 `check --strict` 会同时启用 unsupported error 和直接缺失资源引用失败；`check --strict` 还会在执行前校验 manifest schema。
 
 ## 状态说明
 
@@ -151,5 +151,5 @@ JSON text component 支持 `text`、`score`、`selector`、`translate`、`keybin
 | CLI `run --strict` | 将未支持的原版命令视为错误，并让直接缺失资源引用导致运行失败，无需同时写 `--unsupported error` 和 `--fail-on-missing-resources`。 |
 | CLI `run --assert`、`run --assert-file` | 执行后评估内联或文件形式的 manifest assertion，包括需要执行前后上下文的 `snapshotDiff` 断言。`--assert-file` 支持 JSON object/array 文件，也支持非空、非注释行逐行写 shorthand。简写包括 `score:<target>:<objective>=N`、`score:<target>:<objective>>=N`、`score:<target>:<objective><=N`、`storage:<id>[:<path>]=<json>`、`storage:<id>[:<path>]?`、`storage:<id>[:<path>]!`、`advancement:<player>:<id>[=<true\|false>]`、`player:<name>[:<field>=<value>]`、`item:<player>:<id>[@slot]=N`、`entity:<type|*>[@tag]=N`、`diff:<json-pointer>[=<kind>]`、`event-trace:<player>:<type>[=N]`、`trace:<root>=N`、`trace:<text>`、`trace-output:<text>[@target]`、`warning=N`、`warning:<text>`、`unsupported=N`、`unsupported:<text>`、`output:<text>` 和 `output-normalized:<text>`。 |
 | CLI `run --fail-on-missing-resources` | 在轻量 run 中把 load/tick 标签、advancement parent/reward、predicate/loot/item modifier 资源中的 predicate reference 和嵌套 loot table 的直接缺失资源引用视为失败，适合在编写完整 manifest 前快速验包。 |
-| CLI `check <manifest-or-directory>` | 运行 `.dps.json` 清单；`--validate-schema` 会在执行前校验 manifest 结构；`--fail-on-missing-resources` 会把直接资源缺失引用视为失败；`--verbose` 会打印资源摘要、覆盖条目、缺失引用和输出事件；可用 `--snapshot-diff-on-fail` 输出状态差异，也可用 `--trace-file`、`--trace-filter`、`--outputs-file`、`--event-trace-file` 和 `--report-file` 写出 CI artifact。Report JSON 会按 attempt 包含输出、命令 trace、玩家事件 trace、最终 snapshot、snapshot diff 和资源摘要明细。 |
+| CLI `check <manifest-or-directory>` | 运行 `.dps.json` 清单；`--validate-schema` 会在执行前校验 manifest 结构；`--fail-on-missing-resources` 会把直接资源缺失引用视为失败；`--strict` 会组合 schema 校验、unsupported-command error 和直接缺失引用失败；`--verbose` 会打印资源摘要、覆盖条目、缺失引用和输出事件；可用 `--snapshot-diff-on-fail` 输出状态差异，也可用 `--trace-file`、`--trace-filter`、`--outputs-file`、`--event-trace-file` 和 `--report-file` 写出 CI artifact。Report JSON 会按 attempt 包含输出、命令 trace、玩家事件 trace、最终 snapshot、snapshot diff 和资源摘要明细。 |
 | CLI `schema [--output <file>]` | 打印或写出内置 `.dps.json` manifest JSON Schema，用于编辑器和 CI 集成。 |

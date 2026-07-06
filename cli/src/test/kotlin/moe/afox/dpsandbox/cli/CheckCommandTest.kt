@@ -5,7 +5,9 @@ import java.io.ByteArrayOutputStream
 import java.io.PrintStream
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.concurrent.TimeUnit
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class CheckCommandTest {
@@ -55,6 +57,67 @@ class CheckCommandTest {
 
         assertTrue(errors.any { it.contains("$/packs") }, errors.joinToString())
         assertTrue(errors.any { it.contains("$/steps/0/ticks") }, errors.joinToString())
+    }
+
+    @Test
+    fun `check strict mode validates schema and fails strict runtime issues`() {
+        val schemaDir = Files.createTempDirectory("dps-check-strict-schema")
+        val invalidManifest = schemaDir.resolve("invalid.dps.json")
+        Files.writeString(
+            invalidManifest,
+            """
+            {
+              "version": "26.2",
+              "packs": "pack",
+              "steps": [
+                { "ticks": "one" }
+              ]
+            }
+            """.trimIndent(),
+        )
+
+        val schemaResult = runCliProcess("check", invalidManifest.toString(), "--strict")
+        assertEquals(ExitCodes.INPUT_FORMAT, schemaResult.exitCode, schemaResult.output)
+        assertTrue("Manifest schema validation failed" in schemaResult.output, schemaResult.output)
+
+        val runtimeDir = Files.createTempDirectory("dps-check-strict-runtime")
+        val pack = writeVerbosePack(runtimeDir, "strict-pack", "strict", includeMissingLoad = false)
+        val unsupportedManifest = runtimeDir.resolve("unsupported.dps.json")
+        Files.writeString(
+            unsupportedManifest,
+            """
+            {
+              "version": "26.2",
+              "packs": ["${manifestPath(pack)}"],
+              "steps": [
+                { "command": "ban Steve" }
+              ]
+            }
+            """.trimIndent(),
+        )
+
+        val unsupportedResult = runCliProcess("check", unsupportedManifest.toString(), "--strict")
+        assertEquals(ExitCodes.UNSUPPORTED_OR_VERSION, unsupportedResult.exitCode, unsupportedResult.output)
+        assertTrue("Command 'ban' is not implemented" in unsupportedResult.output, unsupportedResult.output)
+
+        val missingPack = writeVerbosePack(runtimeDir, "strict-missing-pack", "missing", includeMissingLoad = true)
+        val missingManifest = runtimeDir.resolve("missing.dps.json")
+        Files.writeString(
+            missingManifest,
+            """
+            {
+              "version": "26.2",
+              "packs": ["${manifestPath(missingPack)}"]
+            }
+            """.trimIndent(),
+        )
+
+        val missingResult = runCliProcess("check", missingManifest.toString(), "--strict")
+        assertEquals(ExitCodes.ASSERTION_FAILED, missingResult.exitCode, missingResult.output)
+        assertTrue(
+            "missing-reference #minecraft:load -> function demo:missing_load" in missingResult.output,
+            missingResult.output,
+        )
     }
 
     @Test
@@ -377,4 +440,31 @@ class CheckCommandTest {
             System.setOut(original)
         }
     }
+
+    private fun runCliProcess(vararg args: String): ProcessResult {
+        val javaBinary = Path.of(
+            System.getProperty("java.home"),
+            "bin",
+            if (System.getProperty("os.name").startsWith("Windows")) "java.exe" else "java",
+        )
+        val process = ProcessBuilder(
+            listOf(
+                javaBinary.toString(),
+                "-cp",
+                System.getProperty("java.class.path"),
+                "moe.afox.dpsandbox.cli.MainKt",
+            ) + args,
+        )
+            .redirectErrorStream(true)
+            .start()
+        val finished = process.waitFor(30, TimeUnit.SECONDS)
+        val output = process.inputStream.readAllBytes().toString(Charsets.UTF_8)
+        if (!finished) {
+            process.destroyForcibly()
+            error("CLI process timed out:${System.lineSeparator()}$output")
+        }
+        return ProcessResult(process.exitValue(), output)
+    }
+
+    private data class ProcessResult(val exitCode: Int, val output: String)
 }

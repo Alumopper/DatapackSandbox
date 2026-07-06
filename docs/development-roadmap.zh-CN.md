@@ -197,7 +197,7 @@
   - 断言：输出文本、score/storage、NBT、实体数量、unsupported warning 数量。
 - 提供严格模式：
   - unknown command、unsupported command、schema mismatch、资源缺失都可作为失败。
-  - `run --strict` 已把 unsupported command 设为 error，并自动启用直接缺失资源引用失败，适合命令生成器产物的快速验收。
+  - `run --strict`/`check --strict` 已把 unsupported command 设为 error，并自动启用直接缺失资源引用失败；`check --strict` 还会先做 manifest schema 校验，适合命令生成器产物的快速验收。
   - 输出规范化，避免生成器因为空白、斜杠、换行差异导致误判。
 
 验收标准：

@@ -75,6 +75,7 @@ class CheckCommand : CliktCommand(name = "check") {
     private val snapshotDiffOnFail by option("--snapshot-diff-on-fail").flag(default = false)
     private val validateSchema by option("--validate-schema").flag(default = false)
     private val failOnMissingResources by option("--fail-on-missing-resources").flag(default = false)
+    private val strict by option("--strict").flag(default = false)
     private val trace by option("--trace").flag(default = false)
     private val traceFile by option("--trace-file").path()
     private val eventTraceFile by option("--event-trace-file").path()
@@ -87,7 +88,7 @@ class CheckCommand : CliktCommand(name = "check") {
     override fun run() {
         try {
             val manifests = ManifestRunner.discover(inputs)
-            if (validateSchema) {
+            if (validateSchema || strict) {
                 val schemaFailures = manifests.flatMap(ManifestSchemaValidator::validateFileTree)
                 if (schemaFailures.isNotEmpty()) {
                     throw SandboxException(
@@ -109,8 +110,8 @@ class CheckCommand : CliktCommand(name = "check") {
                         verbose = verbose,
                         snapshotOnFail = snapshotOnFail,
                         snapshotDiffOnFail = snapshotDiffOnFail,
-                        failOnMissingResources = failOnMissingResources,
-                        unsupportedFeatureMode = unsupportedFeatureMode(unsupported),
+                        failOnMissingResources = failOnMissingResources || strict,
+                        unsupportedFeatureMode = if (strict) UnsupportedFeatureMode.ERROR else unsupportedFeatureMode(unsupported),
                     ),
                 )
                 val resultTraces = TraceFilters.apply(result.traces, traceFilters)
