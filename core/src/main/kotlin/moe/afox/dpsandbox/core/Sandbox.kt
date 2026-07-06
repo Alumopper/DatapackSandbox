@@ -986,18 +986,23 @@ class DatapackSandbox(
                 requireSize(tokens, 3, "random ${tokens[1].text} <range> [sequence]", location)
                 val (min, max) = parseIntRange(tokens[2].text, location)
                 val sequence = tokens.getOrNull(3)?.text ?: "default"
-                val seed = world.randomSequences.getOrPut(sequence) { world.gameTime xor sequence.hashCode().toLong() }
+                val seed = world.randomSequences.getOrPut(sequence) { randomSequenceSeed(sequence) }
                 val random = Random(seed + world.gameTime + world.outputs.size)
                 val value = if (max <= min) min else random.nextInt(min, max + 1)
                 world.recordOutput("random ${tokens[1].text}", "data", text = value.toString())
             }
             "reset" -> {
-                tokens.getOrNull(2)?.text?.let { world.randomSequences[it] = tokens.getOrNull(3)?.text?.toLongOrNull() ?: world.gameTime }
+                tokens.getOrNull(2)?.text?.let { sequence ->
+                    world.randomSequences[sequence] = tokens.getOrNull(3)?.text?.toLongOrNull() ?: randomSequenceSeed(sequence)
+                }
                     ?: world.randomSequences.clear()
             }
             else -> unsupportedFeature("Unsupported random action '${tokens[1].text}'", profile.id, location)
         }
     }
+
+    private fun randomSequenceSeed(sequence: String): Long =
+        world.seed xor world.gameTime xor sequence.hashCode().toLong()
 
     private fun executeScoreOperation(tokens: List<CommandToken>, location: SourceLocation?) {
         requireSize(tokens, 8, "scoreboard players operation <target> <objective> <op> <source> <sourceObjective>", location)

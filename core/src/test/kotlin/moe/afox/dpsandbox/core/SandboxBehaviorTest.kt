@@ -5,6 +5,7 @@ import java.nio.file.Path
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
 
 class SandboxBehaviorTest {
@@ -224,6 +225,18 @@ class SandboxBehaviorTest {
         assertEquals(7, sandbox.world.bossbars[ResourceLocation.parse("demo:stored")]?.value)
         assertEquals(1, sandbox.world.bossbars[ResourceLocation.parse("demo:stored")]?.max)
         assertTrue(sandbox.world.outputs.any { it.command == "random value" && it.text == "3" })
+    }
+
+    @Test
+    fun `random default sequences include world seed`() {
+        fun randomValue(seed: Long): String {
+            val sandbox = createSandbox("26.1.2", listOf(fixturePack()), world = SandboxWorld().apply { this.seed = seed })
+            sandbox.executeCommand("random value 0..1000000")
+            return sandbox.world.outputs.single { it.command == "random value" }.text.orEmpty()
+        }
+
+        assertEquals(randomValue(123), randomValue(123))
+        assertNotEquals(randomValue(123), randomValue(456))
     }
 
     @Test

@@ -64,7 +64,7 @@ run continues. Use `--unsupported error`, manifest `"unsupported": "error"`, or
 | `place` | Unsupported | Structure/feature placement and worldgen are not simulated. |
 | `playsound` | Partial | Recorded as sound output event. |
 | `publish` | Unsupported | LAN/networking is not simulated. |
-| `random` | Partial | `value`, `roll`, `reset`; deterministic sandbox sequence state. |
+| `random` | Partial | `value`, `roll`, `reset`; deterministic sandbox sequence state seeded from the world seed unless explicitly reset. |
 | `recipe` | Partial | `give`, `take`; supports `*` for loaded datapack recipes, updates per-player recipe sets, and records changed counts. |
 | `reload` | No-op | Accepted and recorded; REPL `reload` performs real datapack reload, vanilla command does not mutate this immutable sandbox instance. |
 | `return` | Supported | Stops the current function; supports `return <value>`, `return fail`, and `return run <command>` for function conditions and store result tests. |

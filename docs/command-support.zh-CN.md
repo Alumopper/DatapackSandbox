@@ -57,7 +57,7 @@
 | `place` | 未支持 | 不模拟结构、地物或世界生成放置。 |
 | `playsound` | 部分支持 | 记录为 sound 输出事件。 |
 | `publish` | 未支持 | 不模拟 LAN/网络发布。 |
-| `random` | 部分支持 | `value`、`roll`、`reset`；使用确定性的沙盒随机序列状态。 |
+| `random` | 部分支持 | `value`、`roll`、`reset`；使用确定性的沙盒随机序列状态，默认混入 world seed，显式 reset seed 时优先使用 reset 值。 |
 | `recipe` | 部分支持 | `give`、`take`；支持对已加载数据包 recipe 使用 `*`，更新玩家 recipe 集合并记录 changed 数量。 |
 | `reload` | 空操作 | 原版命令作为 no-op 记录；REPL 工具命令 `reload` 会真正重载数据包并保留世界状态。 |
 | `return` | 支持 | 结束当前 function；支持 `return <value>`、`return fail` 和 `return run <command>`，用于 function 条件和 store result 测试。 |

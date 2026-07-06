@@ -200,7 +200,8 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar check ./sandbox-cases --trace-
 
 For ad hoc checks without a full manifest, `run` can apply a manifest-style
 world fixture, override its seed, and evaluate one or more inline JSON
-assertions:
+assertions. The seed is visible to the `seed` command and default `random`
+sequences:
 
 ```bash
 java -jar cli/build/libs/datapack-sandbox-cli.jar run --version 26.2 \
