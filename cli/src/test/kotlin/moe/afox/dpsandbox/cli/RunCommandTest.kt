@@ -1734,6 +1734,76 @@ class RunCommandTest {
     }
 
     @Test
+    fun `diff exports manifest replay scripts for external differential runs`() {
+        val dir = Files.createTempDirectory("dps-diff-script")
+        val pack = dir.resolve("pack")
+        Files.createDirectories(pack)
+        Files.writeString(pack.resolve("pack.mcmeta"), """{"pack":{"pack_format":107.1,"description":"external diff script test"}}""")
+        val packPath = pack.toAbsolutePath().normalize().toString().replace("\\", "\\\\")
+        val generated = dir.resolve("generated.mcfunction")
+        Files.writeString(
+            generated,
+            """
+            scoreboard players add #generator runs 2
+            say generated file
+            """.trimIndent(),
+        )
+        val manifest = dir.resolve("external.dps.json")
+        Files.writeString(
+            manifest,
+            """
+            {
+              "version": "26.2",
+              "packs": ["$packPath"],
+              "world": {
+                "scores": [
+                  { "target": "#fixture", "objective": "runs", "value": 1 }
+                ]
+              },
+              "steps": [
+                { "load": true },
+                { "ticks": 2 },
+                {
+                  "commands": [
+                    "/scoreboard objectives add runs dummy",
+                    "scoreboard players set #generator runs 1"
+                  ],
+                  "source": "<generator:setup>"
+                },
+                {
+                  "functionText": "say inline output\n# generator comment",
+                  "source": "<generator:inline>"
+                },
+                { "mcfunction": "generated.mcfunction" },
+                { "event": { "player": "Steve", "type": "key_input", "key": "key.jump", "action": "press" } }
+              ]
+            }
+            """.trimIndent(),
+        )
+        val script = Files.createTempFile("dps-external-replay", ".mcfunction")
+
+        val output = captureStdout {
+            main(arrayOf("diff", "--script", "--output", script.toString(), manifest.toString()))
+        }
+
+        assertTrue("diff script written: $script" in output, output)
+        val content = Files.readString(script)
+        assertTrue("# manifest: ${manifest.toAbsolutePath().normalize()}" in content, content)
+        assertTrue("function #minecraft:load" in content, content)
+        assertEquals(2, Regex("function #minecraft:tick").findAll(content).count(), content)
+        assertTrue("# source: <generator:setup>" in content, content)
+        assertTrue("scoreboard objectives add runs dummy" in content, content)
+        assertTrue("scoreboard players set #generator runs 1" in content, content)
+        assertTrue("# source: <generator:inline>" in content, content)
+        assertTrue("say inline output" in content, content)
+        assertTrue("# generator comment" in content, content)
+        assertTrue("# source: ${generated.toAbsolutePath().normalize()}" in content, content)
+        assertTrue("say generated file" in content, content)
+        assertTrue("# sandbox event step:" in content, content)
+        assertTrue("key.jump" in content, content)
+    }
+
+    @Test
     fun `benchmark reports built in scenarios`() {
         val output = captureStdout {
             main(arrayOf("benchmark", "--version", "26.2", "--scale", "4"))

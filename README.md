@@ -156,10 +156,16 @@ Compare two raw JSON snapshots, or extract `snapshot` from run/check reports,
 when building an external differential workflow:
 
 ```bash
+java -jar cli/build/libs/datapack-sandbox-cli.jar diff --script --output external-replay.mcfunction cases/demo.dps.json
 java -jar cli/build/libs/datapack-sandbox-cli.jar diff expected-snapshot.json actual-snapshot.json
 java -jar cli/build/libs/datapack-sandbox-cli.jar diff --snapshot --check vanilla-report.json sandbox-report.json
 java -jar cli/build/libs/datapack-sandbox-cli.jar diff --json --output build/snapshot-diff.json expected-snapshot.json actual-snapshot.json
 ```
+
+`diff --script` exports manifest `command`, `commands`, `functionText`,
+`mcfunction`, `load`, and `ticks` steps into a replayable command script, while
+sandbox-only event, fixture, trace, snapshot, and reset steps are preserved as
+comments for external harnesses.
 
 Run the built-in benchmark smoke profile, or scale it up and write JSON for CI
 artifacts:

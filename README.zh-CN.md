@@ -104,10 +104,13 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar run --pack ./my_pack --functio
 report 中抽取 `snapshot` 字段再比较：
 
 ```bash
+java -jar cli/build/libs/datapack-sandbox-cli.jar diff --script --output external-replay.mcfunction cases/demo.dps.json
 java -jar cli/build/libs/datapack-sandbox-cli.jar diff expected-snapshot.json actual-snapshot.json
 java -jar cli/build/libs/datapack-sandbox-cli.jar diff --snapshot --check vanilla-report.json sandbox-report.json
 java -jar cli/build/libs/datapack-sandbox-cli.jar diff --json --output build/snapshot-diff.json expected-snapshot.json actual-snapshot.json
 ```
+
+`diff --script` 会把 manifest 里的 `command`、`commands`、`functionText`、`mcfunction`、`load` 和 `ticks` 步骤导出为可重放命令脚本；event、fixture、trace、snapshot 和 reset 等沙盒专用步骤会保留为注释，方便外部 harness 对齐输入。
 
 可以运行内置 benchmark smoke profile，也可以提高 scale 并写出 JSON CI artifact：
 

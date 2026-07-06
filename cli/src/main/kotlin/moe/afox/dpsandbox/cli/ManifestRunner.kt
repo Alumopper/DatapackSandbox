@@ -184,6 +184,34 @@ object ManifestRunner {
         )
     }
 
+    fun exportExternalDiffScript(path: Path): String {
+        val json = try {
+            JsonParser.parseString(Files.readString(path, StandardCharsets.UTF_8)).asJsonObject
+        } catch (error: Exception) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Invalid manifest JSON: ${path.toAbsolutePath().normalize()}", cause = error)
+        }
+        val document = resolveManifest(path, json)
+        val configs = runConfigs(document.root, document.base, document.path)
+        val lines = mutableListOf<String>()
+        lines += "# Datapack Sandbox external differential replay script"
+        lines += "# manifest: ${document.path}"
+        lines += "# versions: ${configs.joinToString { it.version }}"
+        configs.forEach { config ->
+            lines += "# packs[${config.version}]: ${config.packs.joinToString()}"
+        }
+        if (document.worlds.isNotEmpty()) {
+            lines += "# world fixtures are sandbox setup only; recreate equivalent state in the external runtime before replay."
+        }
+        lines += ""
+        document.steps.forEachIndexed { index, section ->
+            if (!section.element.isJsonObject) {
+                throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Manifest steps must be objects: ${document.path}")
+            }
+            appendExternalScriptStep(lines, index + 1, section.element.asJsonObject, section.base)
+        }
+        return lines.joinToString(System.lineSeparator()) + System.lineSeparator()
+    }
+
     internal fun evaluateAssertions(assertions: List<JsonObject>, sandbox: DatapackSandbox): List<String> =
         evaluateAssertions(assertions, sandbox, beforeSnapshot = null)
 
@@ -789,6 +817,59 @@ object ManifestRunner {
             }
         }.forEach { (command, location) ->
             sandbox.executeCommand(command, location)
+        }
+    }
+
+    private fun appendExternalScriptStep(lines: MutableList<String>, stepNumber: Int, step: JsonObject, base: Path) {
+        lines += "# step $stepNumber"
+        when {
+            step.has("load") -> {
+                if (step.get("load").asBoolean) lines += "function #minecraft:load" else lines += "# load=false"
+            }
+            step.has("ticks") -> {
+                val ticks = step.get("ticks").asInt
+                lines += "# ticks $ticks: replaying the tick function tag once per requested tick"
+                repeat(ticks) { lines += "function #minecraft:tick" }
+            }
+            step.has("function") -> lines += "function ${step.requiredManifestString("function")}"
+            step.has("command") -> appendExternalCommand(lines, step.requiredManifestString("command"))
+            step.has("commands") -> {
+                val source = step.manifestString("source") ?: "<manifest commands step $stepNumber>"
+                lines += "# source: $source"
+                step.manifestStringArray("commands", "Manifest step commands").forEach { appendExternalCommand(lines, it) }
+            }
+            step.has("functionText") -> {
+                val source = step.manifestString("source") ?: "<manifest functionText step $stepNumber>"
+                lines += "# source: $source"
+                step.requiredManifestString("functionText").lines().forEach { appendExternalCommand(lines, it) }
+            }
+            step.has("mcfunction") -> {
+                val file = base.resolve(step.requiredManifestString("mcfunction")).normalize()
+                lines += "# source: $file"
+                if (!Files.isRegularFile(file)) {
+                    throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Manifest mcfunction file not found: $file")
+                }
+                Files.readAllLines(file, StandardCharsets.UTF_8).forEach { appendExternalCommand(lines, it) }
+            }
+            step.has("event") -> lines += "# sandbox event step: ${JsonValues.render(step.get("event"))}"
+            step.has("player") -> lines += "# sandbox player fixture step: ${JsonValues.render(step.get("player"))}"
+            step.has("block") -> lines += "# sandbox block fixture step: ${JsonValues.render(step.get("block"))}"
+            step.has("snapshot") -> lines += "# sandbox snapshot artifact step"
+            step.has("trace") -> lines += "# sandbox trace artifact step"
+            step.has("reset") -> lines += "# sandbox reset-world step; recreate a fresh external world before continuing"
+            step.has("loot") -> lines += "# sandbox loot generator step: ${JsonValues.render(step.get("loot"))}"
+            else -> lines += "# unsupported manifest step for external script export: ${JsonValues.render(step)}"
+        }
+        lines += ""
+    }
+
+    private fun appendExternalCommand(lines: MutableList<String>, raw: String) {
+        val command = raw.removePrefix("\uFEFF").trim()
+        if (command.isBlank()) return
+        if (command.startsWith("#")) {
+            lines += command
+        } else {
+            lines += command.removePrefix("/")
         }
     }
 

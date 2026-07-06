@@ -287,7 +287,7 @@
   - manifest `snapshot` 断言已支持把最终 snapshot 根对象或选定 path 与内联 JSON 或仓库中的 golden JSON 文件比较，`examples/golden-snapshot` 已覆盖该回归模式。
   - 对 bugfix 增加回归用例。
 - 建立可选的外部差分流程：
-  - 用户本地提供原版服务端或第三方测试环境时，生成同一输入脚本并比较可观察结果。
+  - 用户本地提供原版服务端或第三方测试环境时，生成同一输入脚本并比较可观察结果；`diff --script --output <file> <manifest.dps.json>` 已可从 manifest/include 合并后的步骤导出可重放命令脚本，并把 event、fixture、trace、snapshot、reset 等沙盒专用步骤作为注释保留给外部 harness 对齐。
   - `diff` CLI 已可比较两份确定性 JSON snapshot/report，支持从 report 抽取 `snapshot`、输出字段级 JSON Pointer 差异、写 JSON artifact，并用 `--check` 作为外部差分 CI gate。
   - 该流程不作为核心构建依赖，不提交 Mojang 代码或产物。
 - 建立行为等级：
