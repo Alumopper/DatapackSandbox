@@ -50,7 +50,8 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar version --docs --check docs/ve
 ```
 
 Use `--check` in CI to fail when the generated English Markdown table no
-longer appears in the checked-in document.
+longer appears in the checked-in document. The Gradle `check` lifecycle runs
+this through the standalone jar smoke task.
 
 Compare two profiles to inspect pack format, NBT schema, resource directory,
 command-root, and registry differences:

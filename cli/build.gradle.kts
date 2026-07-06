@@ -79,6 +79,19 @@ val smokeCliJarVersion = registerCliJarSmokeTask(
     "version",
 )
 
+val versionProfileDoc = rootProject.layout.projectDirectory.file("docs/version-profile.md")
+val smokeCliJarVersionDocs = registerCliJarSmokeTask(
+    name = "smokeCliJarVersionDocs",
+    descriptionText = "Checks that the generated version profile docs table is current.",
+    "version",
+    "--docs",
+    "--check",
+    versionProfileDoc.asFile.absolutePath,
+)
+smokeCliJarVersionDocs.configure {
+    inputs.file(versionProfileDoc)
+}
+
 val examplesDir = rootProject.layout.projectDirectory.dir("examples")
 val fullStackExamplePack = examplesDir.dir("full-stack/pack")
 
@@ -181,7 +194,15 @@ val smokeCliJarReadmeRunAssert = registerCliJarSmokeTask(
 tasks.register("smokeCliJar") {
     group = "verification"
     description = "Builds the standalone CLI jar and runs release smoke checks."
-    dependsOn(smokeCliJarVersion, smokeCliJarSchema, smokeCliJarExamples, smokeCliJarReadmeLoot, smokeCliJarReadmeEvent, smokeCliJarReadmeRunAssert)
+    dependsOn(
+        smokeCliJarVersion,
+        smokeCliJarVersionDocs,
+        smokeCliJarSchema,
+        smokeCliJarExamples,
+        smokeCliJarReadmeLoot,
+        smokeCliJarReadmeEvent,
+        smokeCliJarReadmeRunAssert,
+    )
 }
 
 tasks.named("check") {

@@ -248,7 +248,7 @@
 - 增加版本 profile 差异报告：
   - 哪些资源目录变化、命令根变化、NBT 字段变化、注册表项变化。
   - `version --docs/--json --output <file>` 已可把 Markdown 表格、profile 元数据和差异报告写入 UTF-8 文件，便于文档更新、CI artifact 和本地脚本复核。
-  - `version --docs --check <file>` 已可在 CI 中校验英文文档是否包含当前生成表格，防止 profile 文档过期。
+  - `version --docs --check <file>` 已可在 CI 中校验英文文档是否包含当前生成表格，且 standalone jar smoke task 已接入 Gradle `check`，防止 profile 文档过期。
 - 增加多版本测试矩阵：
   - 同一行为在 `1.20.4`、中间版本和默认最新版本运行。
   - 对 pack format 不同的示例使用 per-version pack。
