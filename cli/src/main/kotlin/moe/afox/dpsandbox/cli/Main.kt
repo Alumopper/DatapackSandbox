@@ -617,6 +617,8 @@ class RunCommand : CliktCommand(name = "run") {
             trimmed.startsWith("advancement:") -> parseAdvancementAssertion(trimmed.removePrefix("advancement:"), label)
             trimmed.startsWith("entity:") -> parseEntityCountAssertion(trimmed.removePrefix("entity:"), label)
             trimmed.startsWith("block:") -> parseBlockAssertion(trimmed.removePrefix("block:"), label)
+            trimmed.startsWith("team:") -> parseTeamAssertion(trimmed.removePrefix("team:"), label)
+            trimmed.startsWith("bossbar:") -> parseBossbarAssertion(trimmed.removePrefix("bossbar:"), label)
             trimmed.startsWith("item:") -> parseItemAssertion(trimmed.removePrefix("item:"), label)
             trimmed.startsWith("player:") -> parsePlayerAssertion(trimmed.removePrefix("player:"), label)
             trimmed.startsWith("random-sequence:") -> parseRandomSequenceAssertion(trimmed.removePrefix("random-sequence:"), label)
@@ -635,7 +637,7 @@ class RunCommand : CliktCommand(name = "run") {
             trimmed.startsWith("output:") -> parseOutputAssertion(trimmed.removePrefix("output:"), label)
             else -> throw SandboxException(
                 DiagnosticCode.INPUT_FORMAT,
-                "$label must be a JSON object or shorthand score:<target>:<objective>=N, storage:<id>[:<path>]=<json>, advancement:<player>:<id>[=<true|false>], entity:<type|*>[@tag]=N, block:<x>,<y>,<z>=<id>, block:<x>,<y>,<z>?, block:<x>,<y>,<z>!, item:<player>:<id>[@slot]=N, player:<name>[:<field>=<value>], random-sequence:<name>=N, snapshot:<path>=<json>, snapshot:<path>?, snapshot:<path>!, diff:<json-pointer>[=<kind>], event-trace:<player>:<type>[=N], trace:<root>=N, trace:<text>, trace-output:<text>[@target], warning=N, warning:<text>, unsupported=N, unsupported:<text>, output:<text>, output-normalized:<text>, output-segment:<text>[|color=<color>|bold=<true|false>][@target], or output-payload:<command>:<path>[=<json>]",
+                "$label must be a JSON object or shorthand score:<target>:<objective>=N, storage:<id>[:<path>]=<json>, advancement:<player>:<id>[=<true|false>], entity:<type|*>[@tag]=N, block:<x>,<y>,<z>=<id>, block:<x>,<y>,<z>?, block:<x>,<y>,<z>!, team:<name>[?|!|=N|@member], bossbar:<id>[?|!|:<field>=<value>], item:<player>:<id>[@slot]=N, player:<name>[:<field>=<value>], random-sequence:<name>=N, snapshot:<path>=<json>, snapshot:<path>?, snapshot:<path>!, diff:<json-pointer>[=<kind>], event-trace:<player>:<type>[=N], trace:<root>=N, trace:<text>, trace-output:<text>[@target], warning=N, warning:<text>, unsupported=N, unsupported:<text>, output:<text>, output-normalized:<text>, output-segment:<text>[|color=<color>|bold=<true|false>][@target], or output-payload:<command>:<path>[=<json>]",
             )
         }
     }
@@ -786,6 +788,92 @@ class RunCommand : CliktCommand(name = "run") {
         val pos = JsonArray().also { array -> parts.map { it.trim().toInt() }.forEach { array.add(it) } }
         return JsonObject().also { it.add("pos", pos) }
     }
+
+    private fun parseTeamAssertion(spec: String, label: String): JsonObject {
+        val trimmed = spec.trim()
+        if (trimmed.isEmpty()) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label team shorthand must be team:<name>[?|!|=N|@member]")
+        }
+        val team = when {
+            trimmed.endsWith("?") -> teamAssertionObject(trimmed.dropLast(1), label).also { it.addProperty("exists", true) }
+            trimmed.endsWith("!") -> teamAssertionObject(trimmed.dropLast(1), label).also { it.addProperty("exists", false) }
+            "@" in trimmed -> {
+                val splitAt = trimmed.indexOf('@')
+                val member = trimmed.substring(splitAt + 1).trim()
+                if (member.isEmpty()) {
+                    throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label team member shorthand must be team:<name>@<member>")
+                }
+                teamAssertionObject(trimmed.substring(0, splitAt), label).also { it.addProperty("member", member) }
+            }
+            "=" in trimmed -> {
+                val splitAt = trimmed.indexOf('=')
+                val count = trimmed.substring(splitAt + 1).trim().toIntOrNull()
+                    ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label team member count must be an integer")
+                teamAssertionObject(trimmed.substring(0, splitAt), label).also { it.addProperty("memberCount", count) }
+            }
+            else -> teamAssertionObject(trimmed, label).also { it.addProperty("exists", true) }
+        }
+        return JsonObject().also { it.add("team", team) }
+    }
+
+    private fun teamAssertionObject(name: String, label: String): JsonObject {
+        val trimmed = name.trim()
+        if (trimmed.isEmpty()) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label team shorthand name must not be empty")
+        }
+        return JsonObject().also { it.addProperty("name", trimmed) }
+    }
+
+    private fun parseBossbarAssertion(spec: String, label: String): JsonObject {
+        val trimmed = spec.trim()
+        if (trimmed.isEmpty()) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label bossbar shorthand must be bossbar:<id>[?|!|:<field>=<value>]")
+        }
+        val bossbar = when {
+            trimmed.endsWith("?") -> bossbarAssertionObject(trimmed.dropLast(1), label).also { it.addProperty("exists", true) }
+            trimmed.endsWith("!") -> bossbarAssertionObject(trimmed.dropLast(1), label).also { it.addProperty("exists", false) }
+            "=" in trimmed -> parseBossbarFieldAssertion(trimmed, label)
+            else -> bossbarAssertionObject(trimmed, label).also { it.addProperty("exists", true) }
+        }
+        return JsonObject().also { it.add("bossbar", bossbar) }
+    }
+
+    private fun parseBossbarFieldAssertion(spec: String, label: String): JsonObject {
+        val splitAt = spec.indexOf('=')
+        val left = spec.substring(0, splitAt).trim()
+        val value = spec.substring(splitAt + 1).trim()
+        val fieldSeparator = left.lastIndexOf(':')
+        if (fieldSeparator <= 0 || fieldSeparator == left.lastIndex || value.isEmpty()) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label bossbar field shorthand must be bossbar:<id>:<field>=<value>")
+        }
+        val field = left.substring(fieldSeparator + 1).trim()
+        return bossbarAssertionObject(left.substring(0, fieldSeparator), label).also { bossbar ->
+            when (field) {
+                "value", "max" -> bossbar.addProperty(
+                    field,
+                    value.toIntOrNull() ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label bossbar $field must be an integer"),
+                )
+                "visible" -> bossbar.addProperty("visible", parseBossbarBoolean(value, field, label))
+                "name", "color", "style", "player" -> bossbar.addProperty(field, value)
+                else -> throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label unsupported bossbar field '$field'; use name, value, max, color, style, visible, or player")
+            }
+        }
+    }
+
+    private fun bossbarAssertionObject(id: String, label: String): JsonObject {
+        val trimmed = id.trim()
+        if (trimmed.isEmpty()) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label bossbar id must not be empty")
+        }
+        return JsonObject().also { it.addProperty("id", ResourceLocation.parse(trimmed).toString()) }
+    }
+
+    private fun parseBossbarBoolean(value: String, field: String, label: String): Boolean =
+        when (value.lowercase()) {
+            "true" -> true
+            "false" -> false
+            else -> throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label bossbar $field expected true or false but got '$value'")
+        }
 
     private fun parseItemAssertion(spec: String, label: String): JsonObject {
         val operator = listOf(">=", "<=", "=").firstOrNull { it in spec }

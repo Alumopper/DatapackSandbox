@@ -490,6 +490,47 @@ class RunCommandTest {
     }
 
     @Test
+    fun `run accepts team and bossbar shorthand inline assertions`() {
+        val output = captureStdout {
+            main(
+                arrayOf(
+                    "run",
+                    "--version",
+                    "26.2",
+                    "--command",
+                    "team add red",
+                    "--command",
+                    "team join red Steve",
+                    "--command",
+                    "bossbar add demo:progress Progress",
+                    "--command",
+                    "bossbar set demo:progress value 7",
+                    "--command",
+                    "bossbar set demo:progress max 10",
+                    "--command",
+                    "bossbar set demo:progress players Steve",
+                    "--assert",
+                    "team:red?",
+                    "--assert",
+                    "team:red@Steve",
+                    "--assert",
+                    "team:red=1",
+                    "--assert",
+                    "bossbar:demo:progress?",
+                    "--assert",
+                    "bossbar:demo:progress:value=7",
+                    "--assert",
+                    "bossbar:demo:progress:max=10",
+                    "--assert",
+                    "bossbar:demo:progress:player=Steve",
+                ),
+            )
+        }
+
+        assertTrue("OK version=26.2" in output, output)
+    }
+
+    @Test
     fun `run injects player events for inline assertions`() {
         val output = captureStdout {
             main(

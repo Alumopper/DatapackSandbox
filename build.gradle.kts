@@ -8,7 +8,7 @@ plugins {
 
 allprojects {
     group = "moe.afox.dpsandbox"
-    version = "0.5.302-SNAPSHOT"
+    version = "0.5.303-SNAPSHOT"
 }
 
 subprojects {
