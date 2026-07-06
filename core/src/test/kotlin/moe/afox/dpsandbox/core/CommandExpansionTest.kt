@@ -175,6 +175,30 @@ class CommandExpansionTest {
     }
 
     @Test
+    fun `execute align floors selected axes and rejects invalid swizzles`() {
+        val sandbox = createFunctionSandboxFromString(
+            version = "26.2",
+            functionText = "",
+            functionId = "demo:empty",
+        )
+
+        sandbox.executeCommand("""execute positioned 1.9 2.9 -1.2 align xz run summon minecraft:marker ~ ~ ~ {Tags:["aligned"]}""")
+
+        val aligned = sandbox.world.entities.single { "aligned" in it.tags }
+        assertEquals(Position(1.0, 2.9, -2.0), aligned.position)
+
+        val invalidAxis = assertFailsWith<SandboxException> {
+            sandbox.executeCommand("execute align xq run say invalid")
+        }
+        assertEquals(DiagnosticCode.INPUT_FORMAT, invalidAxis.code)
+
+        val duplicateAxis = assertFailsWith<SandboxException> {
+            sandbox.executeCommand("execute align xx run say invalid")
+        }
+        assertEquals(DiagnosticCode.INPUT_FORMAT, duplicateAxis.code)
+    }
+
+    @Test
     fun `execute rotated controls relative teleport rotation`() {
         val sandbox = createFunctionSandboxFromString(
             version = "26.2",

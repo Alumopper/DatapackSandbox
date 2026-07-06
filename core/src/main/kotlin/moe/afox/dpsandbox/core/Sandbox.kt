@@ -1091,11 +1091,15 @@ class DatapackSandbox(
                 }
                 "align" -> {
                     requireIndex(tokens, index + 1, "execute align <axes>", location)
+                    val axes = tokens[index + 1].text
+                    if (axes.isBlank() || axes.any { it !in setOf('x', 'y', 'z') } || axes.toSet().size != axes.length) {
+                        throw SandboxException(DiagnosticCode.INPUT_FORMAT, "execute align axes must be a unique combination of x, y, and z", location)
+                    }
                     contexts = contexts.map { ctx ->
                         var pos = ctx.position
-                        if ('x' in tokens[index + 1].text) pos = pos.copy(x = floor(pos.x))
-                        if ('y' in tokens[index + 1].text) pos = pos.copy(y = floor(pos.y))
-                        if ('z' in tokens[index + 1].text) pos = pos.copy(z = floor(pos.z))
+                        if ('x' in axes) pos = pos.copy(x = floor(pos.x))
+                        if ('y' in axes) pos = pos.copy(y = floor(pos.y))
+                        if ('z' in axes) pos = pos.copy(z = floor(pos.z))
                         ctx.copy(position = pos)
                     }
                     index += 2
