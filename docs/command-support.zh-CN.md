@@ -149,6 +149,6 @@ JSON text component 支持 `text`、`score`、`selector`、`translate`、`keybin
 | CLI `run --seed <long>` | 在 world fixture 应用后覆盖轻量运行的世界 seed。 |
 | CLI `run --world` | 执行前应用 manifest-style world JSON fixture，包括 fixture 引用链。 |
 | CLI `run --assert`、`run --assert-file` | 执行后评估内联或文件形式的 manifest assertion，包括需要执行前后上下文的 `snapshotDiff` 断言。`--assert-file` 支持 JSON object/array 文件，也支持非空、非注释行逐行写 shorthand。简写包括 `score:<target>:<objective>=N`、`score:<target>:<objective>>=N`、`score:<target>:<objective><=N`、`storage:<id>[:<path>]=<json>`、`storage:<id>[:<path>]?`、`storage:<id>[:<path>]!`、`player:<name>[:<field>=<value>]`、`item:<player>:<id>[@slot]=N`、`entity:<type|*>[@tag]=N`、`trace:<root>=N`、`trace:<text>`、`warning=N`、`warning:<text>` 和 `output:<text>`。 |
-| CLI `run --fail-on-missing-resources` | 在轻量 run 中把 load/tick 标签和 advancement reward 的直接缺失资源引用视为失败，适合在编写完整 manifest 前快速验包。 |
+| CLI `run --fail-on-missing-resources` | 在轻量 run 中把 load/tick 标签和 advancement parent/reward 的直接缺失资源引用视为失败，适合在编写完整 manifest 前快速验包。 |
 | CLI `check <manifest-or-directory>` | 运行 `.dps.json` 清单；`--validate-schema` 会在执行前校验 manifest 结构；`--fail-on-missing-resources` 会把直接资源缺失引用视为失败；`--verbose` 会打印资源摘要、覆盖条目、缺失引用和输出事件；可用 `--snapshot-diff-on-fail` 输出状态差异，也可用 `--trace-file`、`--trace-filter`、`--outputs-file`、`--event-trace-file` 和 `--report-file` 写出 CI artifact。Report JSON 会按 attempt 包含输出、命令 trace、玩家事件 trace、最终 snapshot、snapshot diff 和资源摘要明细。 |
 | CLI `schema [--output <file>]` | 打印或写出内置 `.dps.json` manifest JSON Schema，用于编辑器和 CI 集成。 |

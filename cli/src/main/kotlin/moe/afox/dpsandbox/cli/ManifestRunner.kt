@@ -278,6 +278,9 @@ object ManifestRunner {
                 .filterNot { it in datapack.functions }
                 .forEach { add(ManifestMissingResourceReference("#minecraft:tick", "function", it)) }
             datapack.advancements.toSortedMap().forEach { (advancementId, advancement) ->
+                advancement.parent
+                    ?.takeIf { it !in datapack.advancements }
+                    ?.let { add(ManifestMissingResourceReference("advancement $advancementId parent", "advancement", it)) }
                 advancement.rewards.function
                     ?.takeIf { it !in datapack.functions }
                     ?.let { add(ManifestMissingResourceReference("advancement $advancementId rewards.function", "function", it)) }

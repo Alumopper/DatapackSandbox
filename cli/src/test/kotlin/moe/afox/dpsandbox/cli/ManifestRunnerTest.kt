@@ -1327,7 +1327,11 @@ class ManifestRunnerTest {
             result.messages.any { "missing-reference #minecraft:load -> function demo:missing_load" in it },
             result.messages.joinToString(),
         )
-        assertEquals(1, result.attempts.single().resourceSummary?.missingReferences?.size)
+        assertTrue(
+            result.messages.any { "missing-reference advancement demo:child parent -> advancement demo:missing_parent" in it },
+            result.messages.joinToString(),
+        )
+        assertEquals(2, result.attempts.single().resourceSummary?.missingReferences?.size)
     }
 
     @Test
@@ -1469,6 +1473,22 @@ class ManifestRunnerTest {
         val tagRoot = root.resolve("data").resolve("minecraft").resolve("tags").resolve("function")
         Files.createDirectories(tagRoot)
         Files.writeString(tagRoot.resolve("load.json"), """{"values":["demo:missing_load"]}""")
+
+        val advancementRoot = root.resolve("data").resolve("demo").resolve("advancement")
+        Files.createDirectories(advancementRoot)
+        Files.writeString(
+            advancementRoot.resolve("child.json"),
+            """
+            {
+              "parent": "demo:missing_parent",
+              "criteria": {
+                "tick": {
+                  "trigger": "minecraft:tick"
+                }
+              }
+            }
+            """.trimIndent(),
+        )
         return root
     }
 
