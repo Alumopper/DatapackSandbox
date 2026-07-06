@@ -1297,6 +1297,7 @@ class CommandsCommand : CliktCommand(name = "commands") {
     private val version by option("--version", "-v").default(VersionProfiles.default.id)
     private val docs by option("--docs").flag(default = false)
     private val json by option("--json").flag(default = false)
+    private val output by option("--output", "-o").path()
 
     override fun run() {
         try {
@@ -1306,18 +1307,21 @@ class CommandsCommand : CliktCommand(name = "commands") {
             val profile = VersionProfiles.get(version)
             val commands = DpsCommandCatalog.rootCommands(profile)
             when {
-                docs -> println(renderMarkdown(commands))
-                json -> println(JsonValues.render(renderJson(profile.id, commands)))
-                else -> commands.forEach { command ->
-                    val behavior = command.behaviorLevel?.id ?: "unknown"
-                    println("${command.value} $behavior - ${command.description}")
-                }
+                docs -> emit(renderMarkdown(commands))
+                json -> emit(JsonValues.render(renderJson(profile.id, commands)))
+                else -> emit(renderPlain(commands))
             }
         } catch (error: SandboxException) {
             println(ConsoleStyle.diagnostic(error.render()))
             exitProcess(ExitCodes.forException(error))
         }
     }
+
+    private fun renderPlain(commands: List<CompletionSuggestion>): String =
+        commands.joinToString(System.lineSeparator()) { command ->
+            val behavior = command.behaviorLevel?.id ?: "unknown"
+            "${command.value} $behavior - ${command.description}"
+        }
 
     private fun renderMarkdown(commands: List<CompletionSuggestion>): String =
         buildString {
@@ -1351,6 +1355,17 @@ class CommandsCommand : CliktCommand(name = "commands") {
 
     private fun markdownCell(value: String): String =
         value.replace("|", "\\|").replace("\r", " ").replace("\n", " ")
+
+    private fun emit(content: String) {
+        val outputPath = output
+        if (outputPath == null) {
+            println(content)
+        } else {
+            outputPath.parent?.let(Files::createDirectories)
+            Files.writeString(outputPath, content, StandardCharsets.UTF_8)
+            println(ConsoleStyle.green("commands output written: $outputPath"))
+        }
+    }
 }
 
 fun unsupportedFeatureMode(value: String): UnsupportedFeatureMode =

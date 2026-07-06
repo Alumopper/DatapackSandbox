@@ -1183,6 +1183,19 @@ class RunCommandTest {
     }
 
     @Test
+    fun `commands write markdown docs table to file`() {
+        val reportFile = Files.createTempFile("dps-commands-docs", ".md")
+        val output = captureStdout {
+            main(arrayOf("commands", "--docs", "--output", reportFile.toString()))
+        }
+        val report = Files.readString(reportFile)
+
+        assertTrue("commands output written: $reportFile" in output, output)
+        assertTrue("| Command | Behavior | Description |" in report, report)
+        assertTrue("| `place` | `observed-noop` | record a worldgen placement intent |" in report, report)
+    }
+
+    @Test
     fun `commands render catalog json`() {
         val output = captureStdout {
             main(arrayOf("commands", "--json", "--version", "26.2"))
@@ -1192,6 +1205,21 @@ class RunCommandTest {
 
         assertEquals("26.2", json.get("version").asString)
         assertEquals("modeled", commands.getValue("advancement").get("behavior").asString)
+        assertEquals("observed-noop", commands.getValue("place").get("behavior").asString)
+        assertEquals("unsupported", commands.getValue("ban").get("behavior").asString)
+    }
+
+    @Test
+    fun `commands write catalog json to file`() {
+        val reportFile = Files.createTempFile("dps-commands", ".json")
+        val output = captureStdout {
+            main(arrayOf("commands", "--json", "--output", reportFile.toString(), "--version", "26.2"))
+        }
+        val json = JsonParser.parseString(Files.readString(reportFile)).asJsonObject
+        val commands = json.getAsJsonArray("commands").map { it.asJsonObject }.associateBy { it.get("command").asString }
+
+        assertTrue("commands output written: $reportFile" in output, output)
+        assertEquals("26.2", json.get("version").asString)
         assertEquals("observed-noop", commands.getValue("place").get("behavior").asString)
         assertEquals("unsupported", commands.getValue("ban").get("behavior").asString)
     }

@@ -39,7 +39,9 @@ The CLI can export the version-scoped command catalog for scripts, docs, and CI:
 ```bash
 java -jar cli/build/libs/datapack-sandbox-cli.jar commands
 java -jar cli/build/libs/datapack-sandbox-cli.jar commands --docs
+java -jar cli/build/libs/datapack-sandbox-cli.jar commands --docs --output docs/command-catalog.md
 java -jar cli/build/libs/datapack-sandbox-cli.jar commands --json --version 26.2
+java -jar cli/build/libs/datapack-sandbox-cli.jar commands --json --output build/command-catalog.json --version 26.2
 ```
 
 ## Vanilla Command Matrix

@@ -29,7 +29,9 @@ CLI 可以导出按版本裁剪后的命令目录，供脚本、文档和 CI 使
 ```bash
 java -jar cli/build/libs/datapack-sandbox-cli.jar commands
 java -jar cli/build/libs/datapack-sandbox-cli.jar commands --docs
+java -jar cli/build/libs/datapack-sandbox-cli.jar commands --docs --output docs/command-catalog.md
 java -jar cli/build/libs/datapack-sandbox-cli.jar commands --json --version 26.2
+java -jar cli/build/libs/datapack-sandbox-cli.jar commands --json --output build/command-catalog.json --version 26.2
 ```
 
 ## 原版命令矩阵

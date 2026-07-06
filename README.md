@@ -67,7 +67,9 @@ List command support and behavior levels:
 ```bash
 java -jar cli/build/libs/datapack-sandbox-cli.jar commands
 java -jar cli/build/libs/datapack-sandbox-cli.jar commands --docs
+java -jar cli/build/libs/datapack-sandbox-cli.jar commands --docs --output docs/command-catalog.md
 java -jar cli/build/libs/datapack-sandbox-cli.jar commands --json --version 26.2
+java -jar cli/build/libs/datapack-sandbox-cli.jar commands --json --output build/command-catalog.json --version 26.2
 ```
 
 The REPL supports TAB completion, live multi-line suggestions while typing,
