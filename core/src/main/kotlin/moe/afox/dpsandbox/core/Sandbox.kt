@@ -998,7 +998,17 @@ class DatapackSandbox(
         if (tokens.size >= 3) {
             world.gamerules[rule] = tokens[2].text
         } else {
-            world.recordOutput("gamerule", "data", text = world.gamerules[rule] ?: "<unset>")
+            val value = world.gamerules[rule]
+            world.recordOutput(
+                "gamerule",
+                "data",
+                text = value ?: "<unset>",
+                payload = JsonObject().also { payload ->
+                    payload.addProperty("rule", rule)
+                    payload.addProperty("exists", value != null)
+                    value?.let { payload.addProperty("value", it) }
+                },
+            )
         }
     }
 

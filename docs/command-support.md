@@ -48,7 +48,7 @@ run continues. Use `--unsupported error`, manifest `"unsupported": "error"`, or
 | `forceload` | Partial | `add`, `remove`, `remove all`, `query`, `query <pos>`; stores forced chunk coordinates and records structured query output. |
 | `function` | Supported | `function <id>`. |
 | `gamemode` | Supported | `gamemode <mode> [targets]`; updates sandbox player game mode. |
-| `gamerule` | Partial | Stores arbitrary gamerule string values; no gameplay side effects. |
+| `gamerule` | Partial | Stores arbitrary gamerule string values and records structured query output; no gameplay side effects. |
 | `give` | Partial | Adds item stacks to player inventories and fires inventory advancement events. |
 | `help` | Partial | Reports command roots and basic sandbox help text. |
 | `item` | Partial | `replace entity|block ... with <item> [count]` and `from entity|block ...`; `modify entity|block ... <modifier>` applies common item modifier functions (`set_components`, `set_custom_data`, `set_count`, `limit_count`, `set_item`, `discard`, `set_damage`, `set_name`, `set_lore`, `filtered`, `reference`, `sequence`). |

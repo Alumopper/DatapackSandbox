@@ -41,7 +41,7 @@
 | `forceload` | 部分支持 | `add`、`remove`、`remove all`、`query`、`query <pos>`；记录强加载 chunk 坐标，并为 query 记录结构化输出。 |
 | `function` | 支持 | `function <id>`。 |
 | `gamemode` | 支持 | `gamemode <mode> [targets]`；更新沙盒玩家游戏模式。 |
-| `gamerule` | 部分支持 | 存储任意 gamerule 字符串值；不执行具体游戏规则副作用。 |
+| `gamerule` | 部分支持 | 存储任意 gamerule 字符串值，并为查询记录结构化输出；不执行具体游戏规则副作用。 |
 | `give` | 部分支持 | 向玩家背包添加物品并触发 inventory advancement 事件。 |
 | `help` | 部分支持 | 输出命令根节点和基础沙盒帮助。 |
 | `item` | 部分支持 | `replace entity|block ... with <item> [count]` 和 `from entity|block ...`；`modify entity|block ... <modifier>` 会应用常用 item modifier 函数（`set_components`、`set_custom_data`、`set_count`、`limit_count`、`set_item`、`discard`、`set_damage`、`set_name`、`set_lore`、`filtered`、`reference`、`sequence`）。 |
