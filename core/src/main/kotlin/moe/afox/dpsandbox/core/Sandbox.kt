@@ -511,6 +511,7 @@ class DatapackSandbox(
                 "place" -> executePlace(tokens, location, context)
                 "loot" -> executeLoot(tokens, location, context)
                 "tp", "teleport" -> executeTeleport(tokens, location, context)
+                "publish" -> executePublish(tokens, location)
                 "reload" -> executeReload(tokens, location)
                 "setblock" -> executeSetBlock(tokens, location, context)
                 "fill" -> executeFill(tokens, location, context)
@@ -524,6 +525,7 @@ class DatapackSandbox(
                 "spawnpoint" -> executeSpawnPoint(tokens, location, context)
                 "spectate" -> executeSpectate(tokens, location, context)
                 "spreadplayers" -> executeSpreadPlayers(tokens, location, context)
+                "stop" -> executeStop(tokens, location)
                 "team" -> executeTeam(command, tokens, location)
                 "time" -> executeTime(tokens, location)
                 "tick" -> executeTick(tokens, location)
@@ -4327,7 +4329,7 @@ class DatapackSandbox(
         val targetTokenIndex = if (!targetFirst && tokens.getOrNull(2)?.text?.toIntOrNull() != null) 3 else 2
         val port = tokens.getOrNull(portIndex)
             ?.takeIf { it.text.toIntOrNull() != null }
-            ?.let { parseTransferPort(it.text, location) }
+            ?.let { parseNetworkPort(it.text, "transfer port", location) }
             ?: 25565
         val targetToken = if (targetFirst) tokens.getOrNull(1)?.text else tokens.getOrNull(targetTokenIndex)?.text
         val targets = targetToken
@@ -4356,12 +4358,39 @@ class DatapackSandbox(
         return firstArgument == "@a" || EntitySelectors.isSelector(firstArgument) || firstArgument in world.players
     }
 
-    private fun parseTransferPort(raw: String, location: SourceLocation?): Int {
-        val port = parseInt(raw, "transfer port", location)
+    private fun parseNetworkPort(raw: String, label: String, location: SourceLocation?): Int {
+        val port = parseInt(raw, label, location)
         if (port !in 1..65535) {
-            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Invalid transfer port: '$raw' (expected 1..65535)", location)
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Invalid $label: '$raw' (expected 1..65535)", location)
         }
         return port
+    }
+
+    private fun executePublish(tokens: List<CommandToken>, location: SourceLocation?) {
+        requireSize(tokens, 1, "publish [allowCommands] [gamemode] [port]", location)
+        val allowCommands = tokens.getOrNull(1)?.text?.let { parseBoolean(it, "publish allowCommands", location) }
+        val gameMode = tokens.getOrNull(2)?.text?.let { normalizeGameMode(it, location) }
+        val port = tokens.getOrNull(3)?.text?.let { parseNetworkPort(it, "publish port", location) }
+        val payload = JsonObject()
+        allowCommands?.let { payload.addProperty("allowCommands", it) }
+        gameMode?.let { payload.addProperty("gamemode", it) }
+        port?.let { payload.addProperty("port", it) }
+        payload.addProperty("noOp", true)
+        payload.addProperty("reason", "LAN/network publishing is not simulated by the sandbox")
+        world.recordOutput("publish", "debug", text = port?.toString().orEmpty(), payload = payload)
+    }
+
+    private fun executeStop(tokens: List<CommandToken>, location: SourceLocation?) {
+        requireSize(tokens, 1, "stop", location)
+        world.recordOutput(
+            "stop",
+            "debug",
+            text = "stop requested",
+            payload = JsonObject().also { payload ->
+                payload.addProperty("noOp", true)
+                payload.addProperty("reason", "Runtime lifecycle is controlled by the host process")
+            },
+        )
     }
 
     private fun executeSchedule(tokens: List<CommandToken>, location: SourceLocation?) {

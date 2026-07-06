@@ -197,7 +197,9 @@ class CommandExpansionTest {
         sandbox.executeCommand("place structure demo:ruin 1 64 2")
         sandbox.executeCommand("place template demo:room ~ ~1 ~ clockwise_90 front_back 0.5 123")
         sandbox.executeCommand("datapack list")
+        sandbox.executeCommand("publish true creative 25566")
         sandbox.executeCommand("reload")
+        sandbox.executeCommand("stop")
         sandbox.executeCommand("scoreboard objectives add trig trigger")
         sandbox.executeCommand("trigger trig set 4")
 
@@ -219,7 +221,20 @@ class CommandExpansionTest {
         assertEquals(1.0, placeTemplatePayload.getAsJsonObject("position").get("y").asDouble)
         assertEquals(listOf("clockwise_90", "front_back", "0.5", "123"), placeTemplatePayload.getAsJsonArray("extra").map { it.asString })
         assertTrue(sandbox.world.outputs.any { it.command == "datapack list" })
+        val publishPayload = sandbox.world.outputs.single { it.command == "publish" }.payload?.asJsonObject
+            ?: error("missing publish payload")
+        assertEquals("debug", sandbox.world.outputs.single { it.command == "publish" }.channel)
+        assertEquals(true, publishPayload.get("allowCommands").asBoolean)
+        assertEquals("creative", publishPayload.get("gamemode").asString)
+        assertEquals(25566, publishPayload.get("port").asInt)
+        assertEquals(true, publishPayload.get("noOp").asBoolean)
         assertTrue(sandbox.world.outputs.any { it.command == "reload" })
+        assertEquals(true, sandbox.world.outputs.single { it.command == "stop" }.payload?.asJsonObject?.get("noOp")?.asBoolean)
+        val publishError = assertFailsWith<SandboxException> {
+            sandbox.executeCommand("publish true creative 70000")
+        }
+        assertEquals(DiagnosticCode.INPUT_FORMAT, publishError.code)
+        assertTrue(publishError.message.contains("publish port"), publishError.message)
     }
 
     @Test

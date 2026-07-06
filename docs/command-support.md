@@ -90,7 +90,7 @@ runs this through the standalone jar smoke task.
 | `particle` | Partial | `observed-noop` | Recorded as visual output event; no client particles. |
 | `place` | Partial | `observed-noop` | Accepts `feature`, `jigsaw`, `structure`, and `template`; records kind, resource id, position, and extra placement arguments as structured worldgen output, but does not mutate the world. |
 | `playsound` | Partial | `observed-noop` | Recorded as sound output event. |
-| `publish` | Unsupported | `unsupported` | LAN/networking is not simulated. |
+| `publish` | No-op | `observed-noop` | Accepts `allowCommands`, `gamemode`, and `port`, records the requested LAN publish settings as structured debug output, and performs no network publishing. |
 | `random` | Partial | `modeled` | `value`, `roll`, `reset`; deterministic sandbox sequence state seeded from the world seed unless explicitly reset; value/roll/reset record structured sequence-state output for assertions and `execute store result`. |
 | `recipe` | Partial | `modeled` | `give`, `take`; supports `*` for loaded datapack recipes, updates per-player recipe sets, and records changed counts. |
 | `reload` | No-op | `observed-noop` | Accepted and recorded; REPL `reload` performs real datapack reload, vanilla command does not mutate this immutable sandbox instance. |
@@ -108,7 +108,7 @@ runs this through the standalone jar smoke task.
 | `spawnpoint` | Partial | `modeled` | Stores per-player spawn point/angle and records structured target output. |
 | `spectate` | Partial | `modeled` | Sets spectator mode and records target; no camera/client state. |
 | `spreadplayers` | Partial | `modeled` | Deterministically distributes selected entities around a center; no collision/team algorithm. |
-| `stop` | Unsupported | `unsupported` | Runtime lifecycle is controlled by the host process, not commands. |
+| `stop` | No-op | `observed-noop` | Records a structured debug lifecycle request; the host process remains in control and is not stopped by sandbox commands. |
 | `stopsound` | Partial | `observed-noop` | Recorded as sound output event. |
 | `summon` | Partial | `modeled` | Creates entities in the current execution dimension with position, tags, schema-checked NBT, and structured creation output for reports/assertions; AI does not tick. |
 | `tag` | Supported | `modeled` | `add`, `remove`, `list`. |
@@ -135,7 +135,7 @@ REPL output, `run`, `check --verbose`, and the code test API:
 - sound: `playsound`, `stopsound`
 - visual: `particle`
 - data: structured state and query outputs from modeled commands
-- debug: manifest/tooling helper outputs and observed-noop network requests such as `transfer`
+- debug: manifest/tooling helper outputs and observed-noop network/lifecycle requests such as `transfer`, `publish`, and `stop`
 - worldgen: `place`
 - warning: unsupported or no-op command notices
 

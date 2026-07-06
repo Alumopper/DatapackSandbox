@@ -78,7 +78,7 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar commands --json --output build
 | `particle` | 部分支持 | `observed-noop` | 记录为 visual 输出事件；不模拟客户端粒子。 |
 | `place` | 部分支持 | `observed-noop` | 接受 `feature`、`jigsaw`、`structure` 和 `template`；把类型、资源 id、位置和额外放置参数记录为结构化 worldgen 输出，但不修改世界。 |
 | `playsound` | 部分支持 | `observed-noop` | 记录为 sound 输出事件。 |
-| `publish` | 未支持 | `unsupported` | 不模拟 LAN/网络发布。 |
+| `publish` | 空操作 | `observed-noop` | 接受 `allowCommands`、`gamemode` 和 `port`，把请求的 LAN publish 设置记录为结构化 debug 输出；不执行真实网络发布。 |
 | `random` | 部分支持 | `modeled` | `value`、`roll`、`reset`；使用确定性的沙盒随机序列状态，默认混入 world seed，显式 reset seed 时优先使用 reset 值；value/roll/reset 会记录结构化序列状态输出，供断言和 `execute store result` 使用。 |
 | `recipe` | 部分支持 | `modeled` | `give`、`take`；支持对已加载数据包 recipe 使用 `*`，更新玩家 recipe 集合并记录 changed 数量和实际变更的 recipe id 列表。 |
 | `reload` | 空操作 | `observed-noop` | 原版命令作为 no-op 记录；REPL 工具命令 `reload` 会真正重载数据包并保留世界状态。 |
@@ -96,7 +96,7 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar commands --json --output build
 | `spawnpoint` | 部分支持 | `modeled` | 存储玩家出生点和角度，并记录结构化目标输出。 |
 | `spectate` | 部分支持 | `modeled` | 设置旁观模式并记录目标；不模拟客户端镜头状态。 |
 | `spreadplayers` | 部分支持 | `modeled` | 确定性地把选中实体分布到中心附近；不实现原版碰撞/队伍算法。 |
-| `stop` | 未支持 | `unsupported` | 运行时生命周期由宿主进程控制。 |
+| `stop` | 空操作 | `observed-noop` | 记录结构化 debug 生命周期请求；宿主进程仍然控制运行时，不会被沙盒命令停止。 |
 | `stopsound` | 部分支持 | `observed-noop` | 记录为 sound 输出事件。 |
 | `summon` | 部分支持 | `modeled` | 在当前执行维度创建带位置、tag 和 schema 校验 NBT 的实体，并记录可用于 report/assertion 的结构化创建输出；实体 AI 不 tick。 |
 | `tag` | 支持 | `modeled` | `add`、`remove`、`list`。 |
@@ -122,7 +122,7 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar commands --json --output build
 - sound：`playsound`、`stopsound`
 - visual：`particle`
 - data：modeled 命令的结构化状态和 query 输出
-- debug：manifest/工具辅助输出，以及 `transfer` 等网络类 observed-noop 请求
+- debug：manifest/工具辅助输出，以及 `transfer`、`publish`、`stop` 等网络/生命周期类 observed-noop 请求
 - worldgen：`place`
 - warning：未支持或 no-op 命令提示
 
