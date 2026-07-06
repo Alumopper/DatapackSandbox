@@ -840,6 +840,11 @@ object ManifestRunner {
                         val actualValue = actual.stats[id] ?: 0
                         if (actualValue != expected) failures += "player ${actual.name} stat $id expected $expected but was $actualValue"
                     }
+                    player.getAsJsonObject("nbt")?.let { nbt ->
+                        if (!itemPathMatches(actual.fullNbt(sandbox.profile), nbt)) {
+                            failures += "player ${actual.name} expected ${describePathExpectation("nbt", nbt)}"
+                        }
+                    }
                     player.getAsJsonArray("position")?.let {
                         val expected = parseManifestPosition(it)
                         if (actual.position != expected) failures += "player ${actual.name} position expected $expected but was ${actual.position}"

@@ -242,6 +242,8 @@ SandboxQuickTest.create(
         spawnDimension = "minecraft:overworld",
         spawnAngle = 90.0,
         spawnForced = false,
+        nbtPath = "Health",
+        nbtEquals = "20.0",
     )
     .assertTeam("red", member = "Alex", memberCount = 1, optionName = "color", optionEquals = "red")
     .assertBossbar("demo:bar", name = "Demo", value = 3, max = 10, player = "Alex")
@@ -336,7 +338,7 @@ class MyDatapackTest {
 | `assertStorageExists(id, path)` | 断言 storage 根对象或路径存在。 |
 | `assertStorageMissing(id, path)` | 断言 storage 根对象或路径不存在。 |
 | `assertWorld(...)` | 断言选定的世界级状态、force-loaded chunk、biome override、世界出生点和世界边界。 |
-| `assertPlayer(...)` | 断言选定的玩家状态，包括出生点细节。 |
+| `assertPlayer(...)` | 断言选定的玩家状态、出生点细节和完整 NBT path。 |
 | `assertTeam(...)` | 断言选定 team 状态、成员、成员数量和选项。 |
 | `assertBossbar(...)` | 断言选定 bossbar 状态和关联玩家。 |
 | `assertPredicate(id, expected, playerName)` | 断言已加载 predicate 的执行结果。 |

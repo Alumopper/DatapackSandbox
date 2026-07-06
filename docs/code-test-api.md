@@ -266,6 +266,8 @@ SandboxQuickTest.create(
         spawnDimension = "minecraft:overworld",
         spawnAngle = 90.0,
         spawnForced = false,
+        nbtPath = "Health",
+        nbtEquals = "20.0",
     )
     .assertTeam("red", member = "Alex", memberCount = 1, optionName = "color", optionEquals = "red")
     .assertBossbar("demo:bar", name = "Demo", value = 3, max = 10, player = "Alex")
@@ -362,7 +364,7 @@ class MyDatapackTest {
 | `assertStorageExists(id, path)` | Assert that a storage root or path exists |
 | `assertStorageMissing(id, path)` | Assert that a storage root or path is absent |
 | `assertWorld(...)` | Assert selected world-level state, forced chunks, biome overrides, world spawn, and world border |
-| `assertPlayer(...)` | Assert selected player state, including spawn point details |
+| `assertPlayer(...)` | Assert selected player state, spawn point details, and full-NBT path filters |
 | `assertTeam(...)` | Assert selected team state, members, member count, and options |
 | `assertBossbar(...)` | Assert selected bossbar state and assigned players |
 | `assertPredicate(id, expected, playerName)` | Assert a loaded predicate result |

@@ -84,7 +84,7 @@
   - 不执行 AI tick，但保留数据包可读写字段和明确的 no-AI 语义说明。
 - 完善玩家模型：
   - inventory、selected slot、ender items、recipes、stats、xp、health、food、gamemode、spawn、advancement progress、last input。
-  - 玩家 NBT 默认只读；可通过命令、fixture 或事件改变玩家状态。
+  - 玩家 NBT 默认只读；可通过命令、fixture 或事件改变玩家状态；`assertPlayer`/manifest player assertion 可检查完整 NBT path。
 - 完善 item stack：
   - 兼容旧版 NBT 和新版 components。
   - 提供 matcher，支持 id、count、components path、NBT path、slot、enchantment、custom data；item predicate 已支持 `enchantments`/`stored_enchantments` 直接匹配。

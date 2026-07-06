@@ -704,6 +704,7 @@
           },
           "additionalProperties": false
         },
+        "nbt": { "$ref": "#/$defs/pathExpectation" },
         "position": { "$ref": "#/$defs/position" },
         "lastInput": {
           "type": "object",

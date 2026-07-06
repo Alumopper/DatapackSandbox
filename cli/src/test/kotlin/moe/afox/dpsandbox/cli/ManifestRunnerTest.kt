@@ -559,6 +559,7 @@ class ManifestRunnerTest {
                     "recipe": "minecraft:bread",
                     "effect": "minecraft:speed",
                     "stat": { "id": "minecraft:jump", "equals": 3 },
+                    "nbt": { "path": "Health", "equals": 18.0 },
                     "spawn": { "pos": [2, 66, 3], "dimension": "minecraft:overworld", "angle": 90, "forced": true }
                   }
                 },

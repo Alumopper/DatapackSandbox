@@ -712,6 +712,8 @@ class SandboxQuickTestTest {
                 spawnDimension = "minecraft:overworld",
                 spawnAngle = 90.0,
                 spawnForced = true,
+                nbtPath = "Health",
+                nbtEquals = "20.0",
             )
             .assertTeam("red", member = "Alex", memberCount = 1, optionName = "color", optionEquals = "red")
             .assertBossbar("demo:bar", name = "Demo", value = 3, max = 10, player = "Alex")

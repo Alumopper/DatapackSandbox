@@ -198,7 +198,7 @@ path, for example `assertion 1 (/assertions/0): ...`.
 `entity` assertions can check existence/count after type/tag/uuid/position/dimension/health/vehicle/passenger
 filtering, plus full entity NBT path checks, equipment item id/count/components/NBT, active effect
 duration/amplifier/particle state, and explicit attribute values. `player` assertions can also check existence, dimension, game mode, health,
-food, selected slot, recipe, effect, stat, position, last input, and spawn point. `team` and
+food, selected slot, recipe, effect, stat, full NBT path, position, last input, and spawn point. `team` and
 `bossbar` assertions inspect their stored runtime state. `item` assertions can
 check player inventory by slot, id, exact/min/max count, components path, and
 NBT path. `block` assertions can check sparse-world existence, id, and block

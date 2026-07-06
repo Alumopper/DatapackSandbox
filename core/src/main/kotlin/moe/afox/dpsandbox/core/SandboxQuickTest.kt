@@ -385,6 +385,9 @@ class SandboxQuickTestMatrix private constructor(
         spawnDimension: String? = null,
         spawnAngle: Double? = null,
         spawnForced: Boolean? = null,
+        nbtPath: String? = null,
+        nbtEquals: String? = null,
+        nbtExists: Boolean? = null,
     ): SandboxQuickTestMatrix = apply {
         scenarios.values.forEach {
             it.assertPlayer(
@@ -406,6 +409,9 @@ class SandboxQuickTestMatrix private constructor(
                 spawnDimension = spawnDimension,
                 spawnAngle = spawnAngle,
                 spawnForced = spawnForced,
+                nbtPath = nbtPath,
+                nbtEquals = nbtEquals,
+                nbtExists = nbtExists,
             )
         }
     }
@@ -1290,6 +1296,9 @@ class SandboxQuickTest private constructor(
         spawnDimension: String? = null,
         spawnAngle: Double? = null,
         spawnForced: Boolean? = null,
+        nbtPath: String? = null,
+        nbtEquals: String? = null,
+        nbtExists: Boolean? = null,
     ): SandboxQuickTest = apply {
         val player = sandbox.world.players[name]
         if (!exists) {
@@ -1347,6 +1356,7 @@ class SandboxQuickTest private constructor(
                 failures += "player $name spawn forced expected $it but was ${player.spawnPoint?.forced ?: "<missing>"}"
             }
         }
+        pathExpectationFailure("player $name nbt", player.fullNbt(sandbox.profile), nbtPath, nbtEquals, nbtExists)?.let { failures += it }
     }
 
     /**
