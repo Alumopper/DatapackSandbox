@@ -127,8 +127,9 @@ diagnostic under the active unsupported policy.
 - Blocks exist only when explicitly placed or imported from a save fixture.
 - Block and entity NBT writes are validated against generated vanilla mcdoc
   schemas; unknown top-level custom fields fail.
-- Player NBT is readable but not writable through `data`; use commands/events to
-  change player state.
+- Player NBT is readable but not writable through `data`; the view includes the
+  current non-empty mainhand `SelectedItem`; use commands/events to change
+  player state.
 - Entity AI, gravity, redstone, block updates, loot drops from block breaking,
   and real combat are not simulated.
 

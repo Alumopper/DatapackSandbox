@@ -306,15 +306,19 @@ class CommandExpansionTest {
         sandbox.executeCommand("item replace entity Steve weapon.mainhand with minecraft:carrot 2")
         sandbox.executeCommand("item replace entity Steve hotbar.0 from entity Steve weapon.mainhand")
         sandbox.executeCommand("loot replace entity Steve hotbar.selected loot demo:fish")
+        sandbox.executeCommand("scoreboard objectives add items dummy")
+        sandbox.executeCommand("execute if data entity Steve SelectedItem run scoreboard players set #selected items 1")
 
         assertEquals(ResourceLocation.parse("minecraft:carrot"), player.inventory[0].id)
         assertEquals(2, player.inventory[0].count)
         assertEquals(ResourceLocation.parse("minecraft:diamond"), player.inventory[4].id)
+        assertEquals(1, sandbox.world.getScore("#selected", "items"))
 
         val inventoryNbt = player.fullNbt(sandbox.profile)
             .getAsJsonArray("Inventory")
         val selectedItemNbt = inventoryNbt.single { it.asJsonObject.get("Slot").asInt == 4 }.asJsonObject
         assertEquals("minecraft:diamond", selectedItemNbt.get("id").asString)
+        assertEquals("minecraft:diamond", player.fullNbt(sandbox.profile).getAsJsonObject("SelectedItem").get("id").asString)
     }
 
     @Test

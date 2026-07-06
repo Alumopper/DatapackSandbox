@@ -8,7 +8,7 @@
 - 运行时默认创建名为 `Steve` 的玩家。玩家可被 selector 匹配，并暴露可读的原版风格 NBT。
 - 实体保存确定性 NBT 视图，包含生成的 `id`、`UUID`、`Pos`、`Tags`，以及 vanilla mcdoc schema 允许的字段。非玩家实体 NBT 可通过 `data` 修改，未知顶层字段会被拒绝。
 - 方块实体由生成的 mcdoc block-to-block-entity 映射识别。其 NBT 视图包含原版风格 `id`、`x`、`y`、`z` 和 schema 字段。未知自定义顶层字段不会被当作任意 JSON 保存。
-- 玩家 NBT 可读但通过 `data` 写入会失败。移动玩家应使用 `tp`/`teleport`、manifest/API fixture 或玩家事件。
+- 玩家 NBT 可读但通过 `data` 写入会失败；NBT 视图包含 `SelectedItemSlot`、`Inventory`、当前非空主手 `SelectedItem` 和 `EnderItems`。移动玩家应使用 `tp`/`teleport`、manifest/API fixture 或玩家事件。
 - Tick 会执行 scheduled function、tick tag 和沙盒玩家事件。实体 AI 和重力不模拟；沙盒不会自动注入 `NoAI`。
 
 ## 世界状态字段

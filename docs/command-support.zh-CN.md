@@ -114,7 +114,7 @@ JSON text component 支持 `text`、`score`、`selector`、`translate`、`keybin
 - 初始世界是稀疏虚空。
 - 方块只有在显式放置、fixture 定义或从存档导入后才存在。
 - 方块和实体 NBT 写入会使用生成的 vanilla mcdoc schema 校验；未知顶层自定义字段会失败。
-- 玩家 NBT 可读但不可通过 `data` 写入；玩家状态应通过命令或事件改变。
+- 玩家 NBT 可读但不可通过 `data` 写入；视图包含当前非空主手 `SelectedItem`，玩家状态应通过命令或事件改变。
 - 不模拟实体 AI、重力、红石、方块更新、破坏方块掉落和完整战斗系统。
 
 ## 沙盒专用 CLI/REPL 命令

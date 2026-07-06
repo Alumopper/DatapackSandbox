@@ -326,6 +326,9 @@ class SandboxPlayer(
             inventoryJson.add(itemJson)
         }
         json.add("Inventory", inventoryJson)
+        selectedItem?.takeIf { it.count > 0 && it.id != ResourceLocation("minecraft", "air") }?.let {
+            json.add("SelectedItem", it.toNbtJson())
+        }
 
         val effectsJson = JsonArray()
         effects.sorted().forEach { effect ->
