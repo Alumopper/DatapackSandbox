@@ -1,0 +1,52 @@
+{
+  "version": "26.2",
+  "packs": ["pack"],
+  "steps": [
+    {
+      "commands": [
+        "scoreboard objectives add golden dummy",
+        "scoreboard players set #golden golden 7",
+        "data merge storage demo:golden {ready:true,label:golden}",
+        "say golden snapshot ok"
+      ],
+      "source": "<example:golden-snapshot>"
+    }
+  ],
+  "assertions": [
+    {
+      "snapshot": {
+        "path": "scores.golden",
+        "equalsFile": "expected-snapshot.json"
+      }
+    },
+    {
+      "snapshot": {
+        "path": "storage.demo:golden.ready",
+        "equals": true
+      }
+    },
+    {
+      "snapshot": {
+        "path": "storage.demo:golden.missing",
+        "missing": true
+      }
+    },
+    {
+      "snapshotDiff": {
+        "path": "/scores/golden",
+        "kind": "added",
+        "after": {
+          "#golden": 7
+        },
+        "count": 1
+      }
+    },
+    {
+      "output": {
+        "command": "say",
+        "contains": "golden snapshot ok",
+        "count": 1
+      }
+    }
+  ]
+}

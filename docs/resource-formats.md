@@ -221,7 +221,7 @@ imports.
 
 Assertions support score, storage, world, player, team, bossbar, block,
 entity, entityCount, advancement, predicate, loot, output, item, trace, event trace,
-diagnostic, and snapshot diff checks:
+diagnostic, snapshot, and snapshot diff checks:
 
 Assertion failures are prefixed with the merged assertion index and JSON Pointer
 path, for example `assertion 1 (/assertions/0/output): ...`.
@@ -271,6 +271,10 @@ path, for example `assertion 1 (/assertions/0/output): ...`.
 ```
 
 ```json
+{ "snapshot": { "path": "scores.runs", "equalsFile": "expected-snapshot.json" } }
+```
+
+```json
 { "snapshotDiff": { "path": "/scores/runs/#clock", "kind": "changed", "after": 20, "count": 1 } }
 ```
 
@@ -298,6 +302,9 @@ advancement id, criterion, failed advancement id/criterion, failure reason
 substring, and count; misses include actual player event trace candidates. `diagnostic`
 assertions check expected step failures by step, version, code, command, root,
 message substring, and count; misses include actual diagnostic candidates.
+`snapshot` assertions compare the final snapshot root or a selected `path`
+with inline `equals`, JSON `equalsFile`, `exists`, or `missing`; files are
+resolved relative to the manifest or include file that declared the assertion.
 `snapshotDiff` assertions compare the manifest state before and after steps by
 JSON Pointer path, diff kind, before/after values, rendered text substring, and
 count; misses include actual snapshot diff candidates.

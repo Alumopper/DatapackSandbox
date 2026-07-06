@@ -193,9 +193,10 @@ object ManifestRunner {
         diagnostics: List<ManifestDiagnostic>,
         beforeSnapshot: JsonObject?,
         defaultLootSeed: Long,
+        base: Path = Path.of("."),
     ): List<String> =
         assertions.flatMapIndexed { index, assertion ->
-            evaluateAssertion(assertion, sandbox, diagnostics, beforeSnapshot, defaultLootSeed).map { "${assertionLabel(index, assertion)}: $it" }
+            evaluateAssertion(assertion, sandbox, diagnostics, beforeSnapshot, defaultLootSeed, base).map { "${assertionLabel(index, assertion)}: $it" }
         }
 
     private fun runOne(
@@ -240,7 +241,7 @@ object ManifestRunner {
                 failures += "${assertionLabel(index)}: Assertion must be an object"
             } else {
                 val assertionObject = assertion.element.asJsonObject
-                failures += evaluateAssertion(assertionObject, sandbox, diagnostics, beforeSnapshot, options.seed).map { "${assertionLabel(index, assertionObject)}: $it" }
+                failures += evaluateAssertion(assertionObject, sandbox, diagnostics, beforeSnapshot, options.seed, assertion.base).map { "${assertionLabel(index, assertionObject)}: $it" }
             }
         }
         if (failures.isNotEmpty() && options.snapshotOnFail) {
@@ -631,6 +632,7 @@ object ManifestRunner {
         "trace",
         "eventTrace",
         "diagnostic",
+        "snapshot",
         "snapshotDiff",
         "output",
     )
@@ -775,6 +777,7 @@ object ManifestRunner {
         diagnostics: List<ManifestDiagnostic> = emptyList(),
         beforeSnapshot: JsonObject? = null,
         defaultLootSeed: Long = 0,
+        base: Path = Path.of("."),
     ): List<String> {
         val failures = mutableListOf<String>()
         when {
@@ -997,6 +1000,9 @@ object ManifestRunner {
             assertion.has("diagnostic") -> {
                 failures += evaluateDiagnosticAssertion(assertion.getAsJsonObject("diagnostic"), diagnostics, sandbox)
             }
+            assertion.has("snapshot") -> {
+                failures += evaluateSnapshotAssertion(assertion.getAsJsonObject("snapshot"), sandbox, base)
+            }
             assertion.has("snapshotDiff") -> {
                 failures += evaluateSnapshotDiffAssertion(assertion.getAsJsonObject("snapshotDiff"), beforeSnapshot, sandbox)
             }
@@ -1004,6 +1010,59 @@ object ManifestRunner {
         }
         return failures
     }
+
+    private fun evaluateSnapshotAssertion(snapshot: JsonObject, sandbox: DatapackSandbox, base: Path): List<String> {
+        val path = snapshot.manifestString("path")
+        val actual = JsonPaths.get(sandbox.snapshotJson(), path)
+        val label = "snapshot ${path ?: "<root>"}"
+        val failures = mutableListOf<String>()
+        var checked = false
+
+        snapshot.get("equals")?.let { expected ->
+            checked = true
+            if (actual != expected) {
+                failures += "$label expected ${JsonValues.render(expected).truncateForManifestFailure()} but was ${renderManifestActual(actual)}"
+            }
+        }
+        snapshot.manifestString("equalsFile")?.let { expectedFile ->
+            checked = true
+            val expectedPath = base.resolve(expectedFile).normalize()
+            if (!Files.isRegularFile(expectedPath)) {
+                failures += "$label expected file does not exist: $expectedFile"
+            } else {
+                val expected = try {
+                    JsonParser.parseString(Files.readString(expectedPath, StandardCharsets.UTF_8))
+                } catch (error: RuntimeException) {
+                    throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Manifest snapshot expected file is not valid JSON: $expectedPath", cause = error)
+                }
+                if (actual != expected) {
+                    failures += "$label expected file $expectedFile to match ${JsonValues.render(expected).truncateForManifestFailure()} but was ${renderManifestActual(actual)}"
+                }
+            }
+        }
+        snapshot.get("exists")?.let { expected ->
+            checked = true
+            val exists = actual != null
+            if (exists != expected.asBoolean) {
+                failures += "$label exists expected ${expected.asBoolean} but was $exists"
+            }
+        }
+        snapshot.get("missing")?.let { expected ->
+            checked = true
+            val shouldBeMissing = expected.asBoolean
+            when {
+                shouldBeMissing && actual != null -> failures += "$label expected missing but was ${JsonValues.render(actual).truncateForManifestFailure()}"
+                !shouldBeMissing && actual == null -> failures += "$label expected present but was <missing>"
+            }
+        }
+        if (!checked) {
+            failures += "$label assertion requires equals, equalsFile, exists, or missing"
+        }
+        return failures
+    }
+
+    private fun renderManifestActual(actual: JsonElement?): String =
+        actual?.let { JsonValues.render(it).truncateForManifestFailure() } ?: "<missing>"
 
     private fun evaluateSnapshotDiffAssertion(snapshotDiff: JsonObject, beforeSnapshot: JsonObject?, sandbox: DatapackSandbox): List<String> {
         if (beforeSnapshot == null) {

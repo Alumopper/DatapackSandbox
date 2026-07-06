@@ -141,6 +141,9 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar check ./sandbox-cases --valida
 java -jar cli/build/libs/datapack-sandbox-cli.jar check ./sandbox-cases --fail-on-missing-resources
 ```
 
+manifest 可以用 `{"snapshot":{"equalsFile":"expected.json"}}` 将最终 snapshot
+或某个 snapshot path 与仓库里的 golden JSON 文件比较。
+
 导出随 CLI 打包的 manifest JSON Schema，供编辑器或 CI 工具使用：
 
 ```bash
@@ -290,6 +293,8 @@ world fixture 可以用 `fixture`、`fixtures` 或 `extends` 引用可复用 fix
 ```powershell
 java -jar cli/build/libs/datapack-sandbox-cli.jar check examples
 ```
+
+`examples/` 目录覆盖完整数据包事件、单函数随手测试、命令生成器输出、golden snapshot 断言和多版本 manifest。
 
 直接生成一个 loot table 结果：
 

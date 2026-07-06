@@ -202,6 +202,9 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar check ./sandbox-cases --valida
 java -jar cli/build/libs/datapack-sandbox-cli.jar check ./sandbox-cases --fail-on-missing-resources
 ```
 
+Manifests can compare the final snapshot, or a selected snapshot path, with a
+committed golden JSON file using `{"snapshot":{"equalsFile":"expected.json"}}`.
+
 Export the bundled manifest JSON Schema for editors or CI tooling:
 
 ```bash
@@ -416,7 +419,8 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar check examples
 ```
 
 The `examples/` directory covers full-stack datapack events, single-function
-scratch tests, command-generator output, and multi-version manifests.
+scratch tests, command-generator output, golden snapshot assertions, and
+multi-version manifests.
 
 Generate a loot table:
 

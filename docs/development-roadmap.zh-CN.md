@@ -267,6 +267,7 @@
 
 - 建立 golden case：
   - 对常见命令、资源、事件和输出保存稳定 expected snapshot。
+  - manifest `snapshot` 断言已支持把最终 snapshot 根对象或选定 path 与内联 JSON 或仓库中的 golden JSON 文件比较，`examples/golden-snapshot` 已覆盖该回归模式。
   - 对 bugfix 增加回归用例。
 - 建立可选的外部差分流程：
   - 用户本地提供原版服务端或第三方测试环境时，生成同一输入脚本并比较可观察结果。

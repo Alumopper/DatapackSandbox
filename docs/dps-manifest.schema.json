@@ -483,6 +483,7 @@
         { "required": ["trace"] },
         { "required": ["eventTrace"] },
         { "required": ["diagnostic"] },
+        { "required": ["snapshot"] },
         { "required": ["snapshotDiff"] },
         { "required": ["output"] }
       ],
@@ -503,6 +504,7 @@
         "trace": { "$ref": "#/$defs/traceAssertion" },
         "eventTrace": { "$ref": "#/$defs/eventTraceAssertion" },
         "diagnostic": { "$ref": "#/$defs/diagnosticAssertion" },
+        "snapshot": { "$ref": "#/$defs/snapshotAssertion" },
         "snapshotDiff": { "$ref": "#/$defs/snapshotDiffAssertion" },
         "output": { "$ref": "#/$defs/outputAssertion" }
       }
@@ -937,6 +939,23 @@
         "after": {},
         "contains": { "type": "string" },
         "count": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "snapshotAssertion": {
+      "type": "object",
+      "anyOf": [
+        { "required": ["equals"] },
+        { "required": ["equalsFile"] },
+        { "required": ["exists"] },
+        { "required": ["missing"] }
+      ],
+      "properties": {
+        "path": { "type": "string" },
+        "equals": {},
+        "equalsFile": { "type": "string" },
+        "exists": { "type": "boolean" },
+        "missing": { "type": "boolean" }
       },
       "additionalProperties": false
     }

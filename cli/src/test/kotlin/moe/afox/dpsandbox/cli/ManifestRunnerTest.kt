@@ -159,17 +159,25 @@ class ManifestRunnerTest {
         }
         val diagnosticRef = assertion.getAsJsonObject("properties").getAsJsonObject("diagnostic")
         val diagnosticProperties = defs.getAsJsonObject("diagnosticAssertion").getAsJsonObject("properties")
+        val snapshotRef = assertion.getAsJsonObject("properties").getAsJsonObject("snapshot")
+        val snapshotProperties = defs.getAsJsonObject("snapshotAssertion").getAsJsonObject("properties")
         val snapshotDiffRef = assertion.getAsJsonObject("properties").getAsJsonObject("snapshotDiff")
         val snapshotDiffProperties = defs.getAsJsonObject("snapshotDiffAssertion").getAsJsonObject("properties")
 
         assertTrue("diagnostic" in assertionRequired)
+        assertTrue("snapshot" in assertionRequired)
         assertTrue("snapshotDiff" in assertionRequired)
         assertEquals("#/\$defs/diagnosticAssertion", diagnosticRef.get("\$ref").asString)
+        assertEquals("#/\$defs/snapshotAssertion", snapshotRef.get("\$ref").asString)
         assertEquals("#/\$defs/snapshotDiffAssertion", snapshotDiffRef.get("\$ref").asString)
         assertEquals("integer", diagnosticProperties.getAsJsonObject("step").get("type").asString)
         assertEquals("string", diagnosticProperties.getAsJsonObject("code").get("type").asString)
         assertEquals("string", diagnosticProperties.getAsJsonObject("contains").get("type").asString)
         assertEquals("integer", diagnosticProperties.getAsJsonObject("count").get("type").asString)
+        assertEquals("string", snapshotProperties.getAsJsonObject("path").get("type").asString)
+        assertEquals("string", snapshotProperties.getAsJsonObject("equalsFile").get("type").asString)
+        assertEquals("boolean", snapshotProperties.getAsJsonObject("exists").get("type").asString)
+        assertEquals("boolean", snapshotProperties.getAsJsonObject("missing").get("type").asString)
         assertEquals("string", snapshotDiffProperties.getAsJsonObject("path").get("type").asString)
         assertEquals("string", snapshotDiffProperties.getAsJsonObject("kind").get("type").asString)
         assertEquals("integer", snapshotDiffProperties.getAsJsonObject("count").get("type").asString)
@@ -1224,6 +1232,37 @@ class ManifestRunnerTest {
               "assertions": [
                 { "snapshotDiff": { "path": "/scores/runs", "kind": "added", "after": { "#diff": 3 }, "count": 1 } },
                 { "snapshotDiff": { "contains": "\"#diff\": 3", "count": 1 } }
+              ]
+            }
+            """.trimIndent(),
+        )
+
+        val result = ManifestRunner.run(manifest)
+
+        assertTrue(result.passed, result.messages.joinToString())
+    }
+
+    @Test
+    fun `asserts final manifest snapshots against golden files`() {
+        val dir = Files.createTempDirectory("dps-snapshot-golden-manifest")
+        val pack = Path.of("../core/src/test/resources/packs/counter").toAbsolutePath().normalize().toString().replace("\\", "\\\\")
+        val manifest = dir.resolve("snapshot-golden.dps.json")
+        Files.writeString(dir.resolve("expected-score.json"), "7")
+        Files.writeString(
+            manifest,
+            """
+            {
+              "version": "26.1.2",
+              "packs": ["$pack"],
+              "steps": [
+                { "command": "scoreboard objectives add runs dummy" },
+                { "command": "scoreboard players set #golden runs 7" }
+              ],
+              "assertions": [
+                { "snapshot": { "path": "scores.runs.#golden", "equalsFile": "expected-score.json" } },
+                { "snapshot": { "path": "scores.runs.#golden", "equals": 7 } },
+                { "snapshot": { "path": "scores.runs", "exists": true } },
+                { "snapshot": { "path": "scores.runs.#missing", "missing": true } }
               ]
             }
             """.trimIndent(),
