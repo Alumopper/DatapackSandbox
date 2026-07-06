@@ -3501,6 +3501,7 @@ class DatapackSandbox(
                 "set_damage" -> stack.components.addProperty("minecraft:damage", itemModifierNumber(function.get("damage"), 0.0))
                 "set_name" -> stack.components.add("minecraft:custom_name", itemModifierText(function, "name", type, location))
                 "set_lore" -> stack.components.add("minecraft:lore", itemModifierLore(function, location))
+                "copy_nbt" -> copyItemModifierNbt(stack, function, predicateContext(stack), location)
                 "copy_components" -> copyItemModifierComponents(stack, function, predicateContext(stack), location)
                 "reference" -> {
                     val id = itemModifierResource(function, "name", type, location)
@@ -3644,6 +3645,43 @@ class DatapackSandbox(
         return lore.deepCopy().asJsonArray
     }
 
+    private fun copyItemModifierNbt(
+        stack: ItemStack,
+        function: JsonObject,
+        context: PredicateContext,
+        location: SourceLocation?,
+    ) {
+        val source = function.get("source")?.takeIf { it.isJsonPrimitive && it.asJsonPrimitive.isString }?.asString ?: "tool"
+        val sourceNbt = itemModifierNbtSource(source, stack, context, location)
+        val ops = function.getAsJsonArray("ops")
+            ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Item modifier 'copy_nbt' requires 'ops'", location)
+        ops.forEachIndexed { index, element ->
+            if (!element.isJsonObject) {
+                throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Item modifier copy_nbt ops entries must be objects at index $index", location)
+            }
+            val op = element.asJsonObject
+            val value = JsonPaths.get(sourceNbt, op.requiredItemModifierString("source", "copy_nbt", location)) ?: return@forEachIndexed
+            JsonPaths.set(stack.nbt, op.requiredItemModifierString("target", "copy_nbt", location), value)
+        }
+    }
+
+    private fun itemModifierNbtSource(
+        source: String,
+        stack: ItemStack,
+        context: PredicateContext,
+        location: SourceLocation?,
+    ): JsonObject {
+        val nbt = when (source) {
+            "tool" -> context.tool?.nbt ?: stack.nbt
+            "this" -> context.thisEntity?.nbt ?: context.player?.nbt ?: stack.nbt
+            "attacker" -> context.attacker?.nbt
+            "direct_attacker" -> context.directEntity?.nbt
+            "killer" -> context.killer?.nbt
+            else -> null
+        }
+        return nbt ?: throw SandboxException(DiagnosticCode.MISSING_CONTEXT, "copy_nbt requires source context '$source'", location)
+    }
+
     private fun copyItemModifierComponents(
         stack: ItemStack,
         function: JsonObject,
@@ -3694,6 +3732,10 @@ class DatapackSandbox(
             else -> throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Item modifier copy_components '$key' must be a string or array of strings", location)
         }
     }
+
+    private fun JsonObject.requiredItemModifierString(name: String, type: String, location: SourceLocation?): String =
+        get(name)?.takeIf { it.isJsonPrimitive && it.asJsonPrimitive.isString }?.asString
+            ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Item modifier '$type' requires string '$name'", location)
 
     private fun executeTag(tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext) {
         requireSize(tokens, 3, "tag <targets> <add|remove|list> [name]", location)

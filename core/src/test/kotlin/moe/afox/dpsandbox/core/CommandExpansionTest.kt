@@ -415,6 +415,12 @@ class CommandExpansionTest {
         assertEquals(3.0, copiedComponents.components.get("minecraft:damage").asDouble)
         assertTrue(!copiedComponents.components.has("demo:skip"))
 
+        sandbox.executeCommand("item replace entity Steve hotbar.4 with minecraft:diamond{source:{level:2}} 1")
+        sandbox.executeCommand("item modify entity Steve hotbar.4 demo:copy_nbt")
+
+        val copiedNbt = sandbox.world.requirePlayer("Steve").inventory[4]
+        assertEquals(2, copiedNbt.nbt.getAsJsonObject("copied").get("level").asInt)
+
         sandbox.executeCommand("item replace entity Steve hotbar.1 with minecraft:diamond 1")
         sandbox.executeCommand("item modify entity Steve hotbar.1 demo:mark")
 
@@ -436,7 +442,7 @@ class CommandExpansionTest {
         assertEquals(0, discarded.count)
 
         val modifyOutputs = sandbox.world.outputs.filter { it.command == "item modify" }
-        assertEquals(5, modifyOutputs.size)
+        assertEquals(6, modifyOutputs.size)
         val firstModifyPayload = modifyOutputs.first().payload?.asJsonObject ?: error("missing item modify payload")
         assertEquals("entity", firstModifyPayload.get("targetKind").asString)
         assertEquals("hotbar.0", firstModifyPayload.get("slot").asString)
@@ -1522,6 +1528,21 @@ class CommandExpansionTest {
               ],
               "exclude": [
                 "demo:skip"
+              ]
+            }
+            """.trimIndent(),
+        )
+        Files.writeString(
+            modifierRoot.resolve("copy_nbt.json"),
+            """
+            {
+              "function": "minecraft:copy_nbt",
+              "source": "tool",
+              "ops": [
+                {
+                  "source": "source.level",
+                  "target": "copied.level"
+                }
               ]
             }
             """.trimIndent(),
