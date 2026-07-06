@@ -2641,21 +2641,25 @@ class DatapackSandbox(
         val recipe = tokens[3].text
         val recipeIds = if (recipe == "*") datapack.recipes.keys.sorted() else listOf(ResourceLocation.parse(recipe))
         var changed = 0
+        val changedRecipes = sortedSetOf<ResourceLocation>()
         targets.forEach { player ->
             when (tokens[1].text) {
                 "give" -> recipeIds.forEach { id ->
                     if (player.recipes.add(id)) {
                         changed += 1
+                        changedRecipes += id
                         advancements.handle(PlayerEvent(player.name, "recipe_unlocked", recipe = id))
                     }
                 }
                 "take" -> {
-                    val before = player.recipes.size
                     if (recipe == "*") {
+                        val removed = player.recipes.toList()
+                        changed += removed.size
+                        changedRecipes += removed
                         player.recipes.clear()
-                        changed += before
                     } else if (player.recipes.remove(recipeIds.single())) {
                         changed += 1
+                        changedRecipes += recipeIds.single()
                     }
                 }
                 else -> unsupportedFeature("Unsupported recipe action '${tokens[1].text}'", profile.id, location)
@@ -2669,6 +2673,9 @@ class DatapackSandbox(
                 payload.add("targets", JsonArray().also { array -> targets.forEach { array.add(it.name) } })
                 payload.addProperty("recipe", recipe)
                 payload.addProperty("changed", changed)
+                payload.add("changedRecipes", JsonArray().also { array ->
+                    changedRecipes.forEach { array.add(it.toString()) }
+                })
             },
         )
     }

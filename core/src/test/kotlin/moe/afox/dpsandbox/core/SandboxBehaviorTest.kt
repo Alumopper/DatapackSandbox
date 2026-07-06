@@ -454,6 +454,7 @@ class SandboxBehaviorTest {
         assertEquals("1", giveOutput.text)
         assertEquals("*", giveOutput.payload?.asJsonObject?.get("recipe")?.asString)
         assertEquals(1, giveOutput.payload?.asJsonObject?.get("changed")?.asInt)
+        assertEquals("demo:marker", giveOutput.payload?.asJsonObject?.getAsJsonArray("changedRecipes")?.get(0)?.asString)
 
         sandbox.executeCommand("scoreboard objectives add recipes dummy")
         sandbox.executeCommand("execute store result score Steve recipes run recipe take Steve *")
@@ -461,6 +462,7 @@ class SandboxBehaviorTest {
         val takeOutput = sandbox.world.outputs.last { it.command == "recipe take" }
         assertTrue(recipe !in player.recipes)
         assertEquals("1", takeOutput.text)
+        assertEquals("demo:marker", takeOutput.payload?.asJsonObject?.getAsJsonArray("changedRecipes")?.get(0)?.asString)
         assertEquals(1, sandbox.world.getScore("Steve", "recipes"))
     }
 
