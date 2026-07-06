@@ -578,7 +578,7 @@ class RunCommand : CliktCommand(name = "run") {
             trimmed.startsWith("output:") -> parseOutputAssertion(trimmed.removePrefix("output:"), label)
             else -> throw SandboxException(
                 DiagnosticCode.INPUT_FORMAT,
-                "$label must be a JSON object or shorthand score:<target>:<objective>=N, storage:<id>[:<path>]=<json>, advancement:<player>:<id>[=<true|false>], entity:<type|*>[@tag]=N, item:<player>:<id>[@slot]=N, player:<name>[:<field>=<value>], diff:<json-pointer>[=<kind>], event-trace:<player>:<type>[=N], trace:<root>=N, trace:<text>, trace-output:<text>[@target], warning=N, warning:<text>, unsupported=N, unsupported:<text>, output:<text>, output-normalized:<text>, or output-payload:<command>:<path>=<json>",
+                "$label must be a JSON object or shorthand score:<target>:<objective>=N, storage:<id>[:<path>]=<json>, advancement:<player>:<id>[=<true|false>], entity:<type|*>[@tag]=N, item:<player>:<id>[@slot]=N, player:<name>[:<field>=<value>], diff:<json-pointer>[=<kind>], event-trace:<player>:<type>[=N], trace:<root>=N, trace:<text>, trace-output:<text>[@target], warning=N, warning:<text>, unsupported=N, unsupported:<text>, output:<text>, output-normalized:<text>, or output-payload:<command>:<path>[=<json>]",
             )
         }
     }
@@ -921,29 +921,31 @@ class RunCommand : CliktCommand(name = "run") {
     private fun parseOutputPayloadAssertion(spec: String, label: String): JsonObject {
         val trimmed = spec.trim()
         val splitAt = trimmed.indexOf('=')
-        if (splitAt <= 0 || splitAt == trimmed.lastIndex) {
-            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label output payload shorthand must be output-payload:<command>:<path>=<json>")
+        if (splitAt == trimmed.lastIndex) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label output payload shorthand must be output-payload:<command>:<path>[=<json>]")
         }
-        val left = trimmed.substring(0, splitAt)
+        val left = if (splitAt < 0) trimmed else trimmed.substring(0, splitAt)
         val separator = left.indexOf(':')
         if (separator <= 0 || separator == left.lastIndex) {
-            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label output payload shorthand must be output-payload:<command>:<path>=<json>")
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label output payload shorthand must be output-payload:<command>:<path>[=<json>]")
         }
         val command = left.substring(0, separator).trim()
         val path = left.substring(separator + 1).trim()
         if (command.isEmpty() || path.isEmpty()) {
-            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label output payload shorthand must be output-payload:<command>:<path>=<json>")
-        }
-        val expectedText = trimmed.substring(splitAt + 1).trim()
-        val expected = try {
-            JsonValues.parse(expectedText)
-        } catch (error: SandboxException) {
-            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label output payload shorthand expected JSON/SNBT-lite value but got '$expectedText'", cause = error)
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label output payload shorthand must be output-payload:<command>:<path>[=<json>]")
         }
         val output = JsonObject().also { json ->
             json.addProperty("command", command)
             json.addProperty("payloadPath", path)
-            json.add("payloadEquals", expected)
+            if (splitAt >= 0) {
+                val expectedText = trimmed.substring(splitAt + 1).trim()
+                val expected = try {
+                    JsonValues.parse(expectedText)
+                } catch (error: SandboxException) {
+                    throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label output payload shorthand expected JSON/SNBT-lite value but got '$expectedText'", cause = error)
+                }
+                json.add("payloadEquals", expected)
+            }
         }
         return JsonObject().also { it.add("output", output) }
     }

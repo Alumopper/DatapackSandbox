@@ -234,6 +234,8 @@ class RunCommandTest {
                     "output-payload:place structure:id=demo:ruin",
                     "--assert",
                     "output-payload:place structure:position.y=64.0",
+                    "--assert",
+                    "output-payload:place structure:reason",
                 ),
             )
         }
