@@ -830,6 +830,8 @@ class RunCommandTest {
                     "scoreboard objectives add runs dummy\nscoreboard players set #inline_diff runs 8",
                     "--assert",
                     """{"snapshotDiff":{"path":"/scores/runs","kind":"added","contains":"\"#inline_diff\": 8","count":1}}""",
+                    "--assert",
+                    "diff:/scores/runs=added",
                 ),
             )
         }

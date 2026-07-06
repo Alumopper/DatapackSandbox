@@ -558,6 +558,7 @@ class RunCommand : CliktCommand(name = "run") {
             trimmed.startsWith("entity:") -> parseEntityCountAssertion(trimmed.removePrefix("entity:"), label)
             trimmed.startsWith("item:") -> parseItemAssertion(trimmed.removePrefix("item:"), label)
             trimmed.startsWith("player:") -> parsePlayerAssertion(trimmed.removePrefix("player:"), label)
+            trimmed.startsWith("diff:") -> parseSnapshotDiffAssertion(trimmed.removePrefix("diff:"), label)
             trimmed.startsWith("event-trace:") -> parseEventTraceAssertion(trimmed.removePrefix("event-trace:"), label)
             trimmed.startsWith("trace:") -> parseTraceAssertion(trimmed.removePrefix("trace:"), label)
             trimmed.startsWith("trace-output:") -> parseTraceOutputAssertion(trimmed.removePrefix("trace-output:"), label)
@@ -566,7 +567,7 @@ class RunCommand : CliktCommand(name = "run") {
             trimmed.startsWith("output:") -> parseOutputAssertion(trimmed.removePrefix("output:"), label)
             else -> throw SandboxException(
                 DiagnosticCode.INPUT_FORMAT,
-                "$label must be a JSON object or shorthand score:<target>:<objective>=N, storage:<id>[:<path>]=<json>, entity:<type|*>[@tag]=N, item:<player>:<id>[@slot]=N, player:<name>[:<field>=<value>], event-trace:<player>:<type>[=N], trace:<root>=N, trace:<text>, trace-output:<text>[@target], warning=N, warning:<text>, or output:<text>",
+                "$label must be a JSON object or shorthand score:<target>:<objective>=N, storage:<id>[:<path>]=<json>, entity:<type|*>[@tag]=N, item:<player>:<id>[@slot]=N, player:<name>[:<field>=<value>], diff:<json-pointer>[=<kind>], event-trace:<player>:<type>[=N], trace:<root>=N, trace:<text>, trace-output:<text>[@target], warning=N, warning:<text>, or output:<text>",
             )
         }
     }
@@ -797,6 +798,27 @@ class RunCommand : CliktCommand(name = "run") {
             }
         }
         return JsonObject().also { it.add("eventTrace", eventTrace) }
+    }
+
+    private fun parseSnapshotDiffAssertion(spec: String, label: String): JsonObject {
+        val trimmed = spec.trim()
+        if (trimmed.isEmpty()) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label diff shorthand must be diff:<json-pointer>[=<kind>]")
+        }
+        val splitAt = trimmed.indexOf('=')
+        val path = if (splitAt < 0) trimmed else trimmed.substring(0, splitAt).trim()
+        val kind = splitAt.takeIf { it >= 0 }?.let { trimmed.substring(it + 1).trim() }
+        if (path.isEmpty() || !path.startsWith("/")) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label diff shorthand path must be a JSON Pointer starting with '/'")
+        }
+        if (kind != null && kind !in setOf("added", "removed", "changed", "ADDED", "REMOVED", "CHANGED")) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label diff shorthand kind must be added, removed, or changed")
+        }
+        val diff = JsonObject().also { json ->
+            json.addProperty("path", path)
+            kind?.let { json.addProperty("kind", it) }
+        }
+        return JsonObject().also { it.add("snapshotDiff", diff) }
     }
 
     private fun parseTraceOutputAssertion(spec: String, label: String): JsonObject {
