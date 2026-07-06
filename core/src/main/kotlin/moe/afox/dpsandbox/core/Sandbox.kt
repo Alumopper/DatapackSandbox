@@ -1648,7 +1648,7 @@ class DatapackSandbox(
 
     private fun executeClear(tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext) {
         val targets = tokens.getOrNull(1)?.text?.let { resolvePlayers(it, location, context) } ?: world.players.values.toList()
-        val item = tokens.getOrNull(2)?.text?.let(ResourceLocation::parse)
+        val item = tokens.getOrNull(2)?.text?.let { parseItemStackArgument(it, 1, location) }
         val maxCount = tokens.getOrNull(3)?.text?.let { parseInt(it, "clear max count", location) } ?: Int.MAX_VALUE
         if (maxCount < 0) {
             throw SandboxException(DiagnosticCode.INPUT_FORMAT, "clear max count must be non-negative", location)
@@ -1661,7 +1661,7 @@ class DatapackSandbox(
             val iterator = player.inventory.listIterator()
             while (iterator.hasNext()) {
                 val stack = iterator.next()
-                if (item == null || stack.id == item) {
+                if (item == null || stack.matchesClearItem(item)) {
                     matched += stack.count
                     if (!queryOnly && remaining > 0) {
                         val removedFromStack = minOf(stack.count, remaining)
@@ -1680,7 +1680,7 @@ class DatapackSandbox(
             text = result.toString(),
             payload = JsonObject().also { payload ->
                 payload.add("targets", JsonArray().also { array -> targets.forEach { array.add(it.name) } })
-                item?.let { payload.addProperty("item", it.toString()) }
+                item?.let { payload.addProperty("item", it.id.toString()) }
                 payload.addProperty("maxCount", maxCount)
                 payload.addProperty("query", queryOnly)
                 payload.addProperty("matched", matched)
@@ -2374,6 +2374,21 @@ class DatapackSandbox(
         }
         throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Malformed item argument '$raw'", location)
     }
+
+    private fun ItemStack.matchesClearItem(expected: ItemStack): Boolean =
+        id == expected.id &&
+            jsonContainsAll(components, expected.components) &&
+            jsonContainsAll(nbt, expected.nbt)
+
+    private fun jsonContainsAll(actual: JsonObject, expected: JsonObject): Boolean =
+        expected.entrySet().all { (key, expectedValue) ->
+            val actualValue = actual.get(key) ?: return@all false
+            when {
+                expectedValue.isJsonObject && actualValue.isJsonObject -> jsonContainsAll(actualValue.asJsonObject, expectedValue.asJsonObject)
+                expectedValue.isJsonArray && actualValue.isJsonArray -> actualValue == expectedValue
+                else -> actualValue == expectedValue
+            }
+        }
 
     private fun ItemStack.copyStack(): ItemStack =
         copy(components = components.deepCopy(), nbt = nbt.deepCopy())

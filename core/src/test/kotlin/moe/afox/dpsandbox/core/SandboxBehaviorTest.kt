@@ -179,6 +179,8 @@ class SandboxBehaviorTest {
     fun `clear can query and remove bounded inventory stacks`() {
         val sandbox = createSandbox("26.1.2", listOf(fixturePack()))
         val apple = ResourceLocation.parse("minecraft:apple")
+        val stick = ResourceLocation.parse("minecraft:stick")
+        val diamond = ResourceLocation.parse("minecraft:diamond")
 
         sandbox.executeCommand("give Steve minecraft:apple 5")
         sandbox.executeCommand("give Steve minecraft:stick 2")
@@ -208,6 +210,20 @@ class SandboxBehaviorTest {
 
         assertEquals(3, sandbox.world.getScore("Steve", "cleared"))
         assertEquals(3, player.inventory.single { it.id == apple }.count)
+
+        sandbox.executeCommand("give Steve minecraft:stick{marked:true} 4")
+        sandbox.executeCommand("give Steve minecraft:stick{marked:false} 3")
+        sandbox.executeCommand("clear Steve minecraft:stick{marked:true} 2")
+
+        assertEquals(2, player.inventory.single { it.id == stick && it.nbt.get("marked")?.asBoolean == true }.count)
+        assertEquals(3, player.inventory.single { it.id == stick && it.nbt.get("marked")?.asBoolean == false }.count)
+
+        sandbox.executeCommand("give Steve minecraft:diamond[damage=3] 2")
+        sandbox.executeCommand("give Steve minecraft:diamond[damage=4] 2")
+        sandbox.executeCommand("clear Steve minecraft:diamond[damage=3] 1")
+
+        assertEquals(1, player.inventory.single { it.id == diamond && it.components.get("minecraft:damage").asInt == 3 }.count)
+        assertEquals(2, player.inventory.single { it.id == diamond && it.components.get("minecraft:damage").asInt == 4 }.count)
     }
 
     @Test

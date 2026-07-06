@@ -232,7 +232,7 @@ models common item modifier functions such as `set_components`,
 Entity item commands support player inventory, selected-mainhand, and
 `enderchest.*` slots, plus non-player equipment slots such as
 `weapon.mainhand`, `weapon.offhand`, and
-`armor.*`. `give` and `item replace ... with` accept item arguments with
+`armor.*`. `give`, `clear`, and `item replace ... with` accept item arguments with
 JSON/SNBT-lite NBT (`minecraft:stick{marked:true}`) and component payloads
 (`minecraft:stick[custom_data={marked:true}]`); whitespace inside bracketed
 payloads is preserved during command tokenization. Equipment is also exposed through snapshots and
