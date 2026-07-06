@@ -1339,7 +1339,15 @@ class ManifestRunnerTest {
             result.messages.any { "missing-reference loot_table demo:outer entry -> loot_table demo:missing_nested" in it },
             result.messages.joinToString(),
         )
-        assertEquals(4, result.attempts.single().resourceSummary?.missingReferences?.size)
+        assertTrue(
+            result.messages.any { "missing-reference loot_table demo:outer conditions -> predicate demo:missing_loot_condition" in it },
+            result.messages.joinToString(),
+        )
+        assertTrue(
+            result.messages.any { "missing-reference item_modifier demo:conditional conditions -> predicate demo:missing_item_modifier_condition" in it },
+            result.messages.joinToString(),
+        )
+        assertEquals(6, result.attempts.single().resourceSummary?.missingReferences?.size)
     }
 
     @Test
@@ -1516,6 +1524,12 @@ class ManifestRunnerTest {
             lootRoot.resolve("outer.json"),
             """
             {
+              "conditions": [
+                {
+                  "condition": "minecraft:reference",
+                  "name": "demo:missing_loot_condition"
+                }
+              ],
               "pools": [
                 {
                   "rolls": 1,
@@ -1525,6 +1539,24 @@ class ManifestRunnerTest {
                       "value": "demo:missing_nested"
                     }
                   ]
+                }
+              ]
+            }
+            """.trimIndent(),
+        )
+
+        val itemModifierRoot = root.resolve("data").resolve("demo").resolve("item_modifier")
+        Files.createDirectories(itemModifierRoot)
+        Files.writeString(
+            itemModifierRoot.resolve("conditional.json"),
+            """
+            {
+              "function": "minecraft:set_count",
+              "count": 1,
+              "conditions": [
+                {
+                  "condition": "minecraft:reference",
+                  "name": "demo:missing_item_modifier_condition"
                 }
               ]
             }

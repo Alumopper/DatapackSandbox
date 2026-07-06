@@ -281,7 +281,10 @@ object ManifestRunner {
                 addAll(missingPredicateReferences(predicateId, predicate.root, datapack.predicates.keys))
             }
             datapack.lootTables.toSortedMap().forEach { (lootTableId, lootTable) ->
-                addAll(missingLootTableReferences(lootTableId, lootTable.root, datapack.lootTables.keys))
+                addAll(missingLootTableReferences(lootTableId, lootTable.root, datapack.lootTables.keys, datapack.predicates.keys))
+            }
+            datapack.itemModifiers.toSortedMap().forEach { (itemModifierId, itemModifier) ->
+                addAll(missingItemModifierReferences(itemModifierId, itemModifier.root, datapack.predicates.keys))
             }
             datapack.advancements.toSortedMap().forEach { (advancementId, advancement) ->
                 advancement.parent
@@ -322,12 +325,12 @@ object ManifestRunner {
         knownPredicates: Set<ResourceLocation>,
     ): List<ManifestMissingResourceReference> {
         val missing = mutableListOf<ManifestMissingResourceReference>()
-        collectPredicateReferences(predicateId, root, knownPredicates, missing)
+        collectPredicateReferences("predicate $predicateId reference", root, knownPredicates, missing)
         return missing
     }
 
     private fun collectPredicateReferences(
-        predicateId: ResourceLocation,
+        source: String,
         element: JsonElement?,
         knownPredicates: Set<ResourceLocation>,
         missing: MutableList<ManifestMissingResourceReference>,
@@ -335,7 +338,7 @@ object ManifestRunner {
         if (element == null || element.isJsonNull) return
         when {
             element.isJsonArray -> element.asJsonArray.forEach {
-                collectPredicateReferences(predicateId, it, knownPredicates, missing)
+                collectPredicateReferences(source, it, knownPredicates, missing)
             }
             element.isJsonObject -> {
                 val obj = element.asJsonObject
@@ -343,9 +346,9 @@ object ManifestRunner {
                     "reference" -> jsonString(obj.get("name"))
                         ?.let(ResourceLocation::parse)
                         ?.takeIf { it !in knownPredicates }
-                        ?.let { missing += ManifestMissingResourceReference("predicate $predicateId reference", "predicate", it) }
-                    "all_of", "any_of", "alternative" -> collectPredicateReferences(predicateId, obj.get("terms"), knownPredicates, missing)
-                    "inverted" -> collectPredicateReferences(predicateId, obj.get("term") ?: obj.get("predicate"), knownPredicates, missing)
+                        ?.let { missing += ManifestMissingResourceReference(source, "predicate", it) }
+                    "all_of", "any_of", "alternative" -> collectPredicateReferences(source, obj.get("terms"), knownPredicates, missing)
+                    "inverted" -> collectPredicateReferences(source, obj.get("term") ?: obj.get("predicate"), knownPredicates, missing)
                 }
             }
         }
@@ -355,11 +358,16 @@ object ManifestRunner {
         lootTableId: ResourceLocation,
         root: JsonObject,
         knownLootTables: Set<ResourceLocation>,
+        knownPredicates: Set<ResourceLocation>,
     ): List<ManifestMissingResourceReference> {
         val missing = mutableListOf<ManifestMissingResourceReference>()
+        collectPredicateReferences("loot_table $lootTableId conditions", root.get("conditions"), knownPredicates, missing)
+        collectLootFunctionReferences(lootTableId, root.get("functions"), knownPredicates, missing)
         root.arrayOrNull("pools")?.forEach { pool ->
             val poolObject = pool.takeIf { it.isJsonObject }?.asJsonObject ?: return@forEach
-            collectLootEntryReferences(lootTableId, poolObject.get("entries"), knownLootTables, missing)
+            collectPredicateReferences("loot_table $lootTableId conditions", poolObject.get("conditions"), knownPredicates, missing)
+            collectLootEntryReferences(lootTableId, poolObject.get("entries"), knownLootTables, knownPredicates, missing)
+            collectLootFunctionReferences(lootTableId, poolObject.get("functions"), knownPredicates, missing)
         }
         return missing
     }
@@ -368,23 +376,72 @@ object ManifestRunner {
         lootTableId: ResourceLocation,
         element: JsonElement?,
         knownLootTables: Set<ResourceLocation>,
+        knownPredicates: Set<ResourceLocation>,
         missing: MutableList<ManifestMissingResourceReference>,
     ) {
         if (element == null || element.isJsonNull) return
         when {
             element.isJsonArray -> element.asJsonArray.forEach {
-                collectLootEntryReferences(lootTableId, it, knownLootTables, missing)
+                collectLootEntryReferences(lootTableId, it, knownLootTables, knownPredicates, missing)
             }
             element.isJsonObject -> {
                 val obj = element.asJsonObject
+                collectPredicateReferences("loot_table $lootTableId conditions", obj.get("conditions"), knownPredicates, missing)
                 if (canonicalResourceKind(jsonString(obj.get("type"))) == "loot_table") {
                     jsonString(obj.get("value"))
                         ?.let(ResourceLocation::parse)
                         ?.takeIf { it !in knownLootTables }
                         ?.let { missing += ManifestMissingResourceReference("loot_table $lootTableId entry", "loot_table", it) }
                 }
-                collectLootEntryReferences(lootTableId, obj.get("children"), knownLootTables, missing)
+                collectLootFunctionReferences(lootTableId, obj.get("functions"), knownPredicates, missing)
+                collectLootEntryReferences(lootTableId, obj.get("children"), knownLootTables, knownPredicates, missing)
             }
+        }
+    }
+
+    private fun collectLootFunctionReferences(
+        lootTableId: ResourceLocation,
+        element: JsonElement?,
+        knownPredicates: Set<ResourceLocation>,
+        missing: MutableList<ManifestMissingResourceReference>,
+    ) {
+        if (element == null || element.isJsonNull) return
+        when {
+            element.isJsonArray -> element.asJsonArray.forEach {
+                collectLootFunctionReferences(lootTableId, it, knownPredicates, missing)
+            }
+            element.isJsonObject -> {
+                val obj = element.asJsonObject
+                collectPredicateReferences("loot_table $lootTableId conditions", obj.get("conditions"), knownPredicates, missing)
+                collectLootFunctionReferences(lootTableId, obj.get("functions"), knownPredicates, missing)
+                collectLootFunctionReferences(lootTableId, obj.get("function"), knownPredicates, missing)
+            }
+        }
+    }
+
+    private fun missingItemModifierReferences(
+        itemModifierId: ResourceLocation,
+        root: JsonElement,
+        knownPredicates: Set<ResourceLocation>,
+    ): List<ManifestMissingResourceReference> {
+        val missing = mutableListOf<ManifestMissingResourceReference>()
+        collectItemModifierFunctionReferences(itemModifierId, root, knownPredicates, missing)
+        return missing
+    }
+
+    private fun collectItemModifierFunctionReferences(
+        itemModifierId: ResourceLocation,
+        element: JsonElement?,
+        knownPredicates: Set<ResourceLocation>,
+        missing: MutableList<ManifestMissingResourceReference>,
+    ) {
+        if (element == null || element.isJsonNull) return
+        when {
+            element.isJsonArray -> element.asJsonArray.forEach {
+                collectItemModifierFunctionReferences(itemModifierId, it, knownPredicates, missing)
+            }
+            element.isJsonObject ->
+                collectPredicateReferences("item_modifier $itemModifierId conditions", element.asJsonObject.get("conditions"), knownPredicates, missing)
         }
     }
 
