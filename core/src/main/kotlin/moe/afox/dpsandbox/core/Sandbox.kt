@@ -4068,41 +4068,137 @@ class DatapackSandbox(
 
     private fun executeTeam(command: String, tokens: List<CommandToken>, location: SourceLocation?) {
         requireSize(tokens, 2, "team <add|remove|list|join|leave|empty|modify> ...", location)
+        fun teamArray(teams: Collection<SandboxTeam>): JsonArray =
+            JsonArray().also { array -> teams.sortedBy { it.name }.forEach { array.add(it.toJson()) } }
+
+        fun memberArray(members: Collection<String>): JsonArray =
+            JsonArray().also { array -> members.sorted().forEach { array.add(it) } }
+
+        fun teamMap(teams: Collection<SandboxTeam>): JsonObject =
+            JsonObject().also { json -> teams.sortedBy { it.name }.forEach { json.add(it.name, it.toJson()) } }
+
+        fun recordTeamOutput(
+            command: String,
+            action: String,
+            teamName: String,
+            text: String,
+            team: SandboxTeam? = null,
+            before: JsonObject? = null,
+            extra: JsonObject.() -> Unit = {},
+        ) {
+            world.recordOutput(
+                command,
+                "data",
+                text = text,
+                payload = (team?.toJson() ?: JsonObject().also { it.addProperty("name", teamName) }).also { payload ->
+                    payload.addProperty("action", action)
+                    before?.let { payload.add("before", it) }
+                    payload.extra()
+                },
+            )
+        }
+
         when (tokens[1].text) {
             "add" -> {
                 requireSize(tokens, 3, "team add <team> [displayName]", location)
                 val name = tokens[2].text
-                world.teams[name] = SandboxTeam(name, tokens.getOrNull(3)?.let { CommandTokenizer.tailFrom(command, it) } ?: name)
+                val before = world.teams[name]?.toJson()
+                val team = SandboxTeam(name, tokens.getOrNull(3)?.let { CommandTokenizer.tailFrom(command, it) } ?: name)
+                world.teams[name] = team
+                recordTeamOutput("team add", "add", name, name, team, before) {
+                    addProperty("replaced", before != null)
+                }
             }
             "remove" -> {
                 requireSize(tokens, 3, "team remove <team>", location)
-                world.teams.remove(tokens[2].text)
+                val name = tokens[2].text
+                val removed = world.teams.remove(name)
+                recordTeamOutput("team remove", "remove", name, if (removed != null) "1" else "0", before = removed?.toJson()) {
+                    addProperty("removed", removed != null)
+                }
             }
             "list" -> {
                 val team = tokens.getOrNull(2)?.text
                 val text = if (team == null) world.teams.keys.sorted().joinToString() else world.teams[team]?.members?.joinToString().orEmpty()
-                world.recordOutput("team list", "data", text = text)
+                world.recordOutput(
+                    "team list",
+                    "data",
+                    text = text,
+                    payload = JsonObject().also { payload ->
+                        payload.addProperty("action", "list")
+                        if (team == null) {
+                            payload.add("teams", teamArray(world.teams.values))
+                            payload.addProperty("count", world.teams.size)
+                        } else {
+                            val existing = world.teams[team]
+                            payload.addProperty("name", team)
+                            payload.addProperty("exists", existing != null)
+                            payload.add("members", memberArray(existing?.members.orEmpty()))
+                            payload.addProperty("count", existing?.members?.size ?: 0)
+                        }
+                    },
+                )
             }
             "join" -> {
                 requireSize(tokens, 4, "team join <team> <members...>", location)
                 val team = world.teams.getOrPut(tokens[2].text) { SandboxTeam(tokens[2].text) }
-                tokens.drop(3).forEach { team.members += it.text }
+                val before = team.toJson()
+                val members = tokens.drop(3).map { it.text }
+                val added = members.count { it !in team.members }
+                team.members += members
+                recordTeamOutput("team join", "join", team.name, added.toString(), team, before) {
+                    add("requestedMembers", memberArray(members))
+                    addProperty("added", added)
+                }
             }
             "leave" -> {
                 requireSize(tokens, 3, "team leave <members...>", location)
-                tokens.drop(2).forEach { member -> world.teams.values.forEach { it.members -= member.text } }
+                val beforeTeams = teamMap(world.teams.values)
+                val members = tokens.drop(2).map { it.text }
+                var removed = 0
+                members.forEach { member ->
+                    world.teams.values.forEach { team ->
+                        if (team.members.remove(member)) removed += 1
+                    }
+                }
+                world.recordOutput(
+                    "team leave",
+                    "data",
+                    text = removed.toString(),
+                    payload = JsonObject().also { payload ->
+                        payload.addProperty("action", "leave")
+                        payload.add("members", memberArray(members))
+                        payload.addProperty("removed", removed)
+                        payload.add("beforeTeams", beforeTeams)
+                        payload.add("teams", teamArray(world.teams.values))
+                    },
+                )
             }
             "empty" -> {
                 requireSize(tokens, 3, "team empty <team>", location)
-                world.teams[tokens[2].text]?.members?.clear()
+                val name = tokens[2].text
+                val team = world.teams[name]
+                val before = team?.toJson()
+                val removed = team?.members?.size ?: 0
+                team?.members?.clear()
+                recordTeamOutput("team empty", "empty", name, removed.toString(), team, before) {
+                    addProperty("removed", removed)
+                }
             }
             "modify" -> {
                 requireSize(tokens, 5, "team modify <team> <option> <value>", location)
                 val team = world.teams.getOrPut(tokens[2].text) { SandboxTeam(tokens[2].text) }
-                if (tokens[3].text == "displayName") {
-                    team.displayName = CommandTokenizer.tailFrom(command, tokens[4])
+                val before = team.toJson()
+                val option = tokens[3].text
+                val value = if (option == "displayName") {
+                    CommandTokenizer.tailFrom(command, tokens[4])
                 } else {
-                    team.options[tokens[3].text] = tokens[4].text
+                    tokens[4].text
+                }
+                if (option == "displayName") team.displayName = value else team.options[option] = value
+                recordTeamOutput("team modify", "modify", team.name, value, team, before) {
+                    addProperty("option", option)
+                    addProperty("value", value)
                 }
             }
             else -> unsupportedFeature("Unsupported team action '${tokens[1].text}'", profile.id, location)

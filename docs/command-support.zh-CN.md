@@ -78,7 +78,7 @@
 | `stopsound` | 部分支持 | 记录为 sound 输出事件。 |
 | `summon` | 部分支持 | 在当前执行维度创建带位置、tag 和 schema 校验 NBT 的实体，并记录可用于 report/assertion 的结构化创建输出；实体 AI 不 tick。 |
 | `tag` | 支持 | `add`、`remove`、`list`。 |
-| `team` | 部分支持 | `add`、`remove`、`list`、`join`、`leave`、`empty`、`modify`；不执行 gameplay 副作用。 |
+| `team` | 部分支持 | `add`、`remove`、`list`、`join`、`leave`、`empty`、`modify`；记录结构化队伍/成员/选项输出，不执行 gameplay 副作用。 |
 | `teammsg`、`tm` | 支持 | 记录为 team chat 输出事件。 |
 | `teleport`、`tp` | 部分支持 | 坐标传送支持局部坐标、可选旋转、`facing` 和当前执行维度；目标实体传送会复制目标位置、维度和旋转；记录可用于 report/assertion 的结构化移动输出。 |
 | `tellraw` | 支持 | 解析 JSON text component 并记录输出事件。 |
