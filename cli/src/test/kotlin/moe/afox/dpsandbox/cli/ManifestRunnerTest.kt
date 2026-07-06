@@ -414,9 +414,11 @@ class ManifestRunnerTest {
                 "entities": [
                   {
                     "type": "minecraft:pig",
+                    "uuid": "00000000-0000-0000-0000-000000000101",
                     "pos": [1, 64, 0],
                     "dimension": "minecraft:the_nether",
                     "health": 8.0,
+                    "vehicle": "00000000-0000-0000-0000-000000000102",
                     "tags": ["fixture"],
                     "equipment": {
                       "weapon.mainhand": {
@@ -432,6 +434,13 @@ class ManifestRunnerTest {
                     "attributes": {
                       "minecraft:max_health": 12.0
                     }
+                  },
+                  {
+                    "type": "minecraft:cow",
+                    "uuid": "00000000-0000-0000-0000-000000000102",
+                    "pos": [1, 64, 1],
+                    "tags": ["fixture_vehicle"],
+                    "passengers": ["00000000-0000-0000-0000-000000000101"]
                   }
                 ],
                 "players": [
@@ -497,9 +506,11 @@ class ManifestRunnerTest {
                   "entity": {
                     "type": "minecraft:pig",
                     "tag": "fixture",
+                    "uuid": "00000000-0000-0000-0000-000000000101",
                     "position": [1, 64, 0],
                     "dimension": "minecraft:the_nether",
                     "health": 8.0,
+                    "vehicle": "00000000-0000-0000-0000-000000000102",
                     "count": 1,
                     "equipment": {
                       "slot": "weapon.mainhand",
@@ -507,6 +518,15 @@ class ManifestRunnerTest {
                       "components": { "path": "custom.fixture", "equals": true },
                       "nbt": { "path": "tag.level", "equals": 4 }
                     }
+                  }
+                },
+                {
+                  "entity": {
+                    "type": "minecraft:cow",
+                    "tag": "fixture_vehicle",
+                    "uuid": "00000000-0000-0000-0000-000000000102",
+                    "passenger": "00000000-0000-0000-0000-000000000101",
+                    "passengerCount": 1
                   }
                 },
                 {

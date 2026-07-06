@@ -1196,13 +1196,19 @@ object ManifestRunner {
         val expectedHealth = entity.get("health")?.asDouble
         val expectedUuid = entity.manifestString("uuid")
         val expectedTag = entity.manifestString("tag")
+        val expectedVehicle = entity.manifestString("vehicle")
+        val expectedPassenger = entity.manifestString("passenger")
+        val expectedPassengerCount = entity.get("passengerCount")?.asInt
         return sandbox.world.entities.filter { sandboxEntity ->
             (expectedType == null || sandboxEntity.type == expectedType) &&
                 (expectedTag == null || expectedTag in sandboxEntity.tags) &&
                 (expectedUuid == null || sandboxEntity.uuid == expectedUuid) &&
                 (expectedPosition == null || sandboxEntity.position == expectedPosition) &&
                 (expectedDimension == null || sandboxEntity.dimension == expectedDimension) &&
-                (expectedHealth == null || manifestEntityHealth(sandboxEntity, sandbox) == expectedHealth)
+                (expectedHealth == null || manifestEntityHealth(sandboxEntity, sandbox) == expectedHealth) &&
+                (expectedVehicle == null || sandboxEntity.vehicle == expectedVehicle) &&
+                (expectedPassenger == null || expectedPassenger in sandboxEntity.passengers) &&
+                (expectedPassengerCount == null || sandboxEntity.passengers.size == expectedPassengerCount)
         }
     }
 
@@ -1344,6 +1350,9 @@ object ManifestRunner {
             (entity.getAsJsonArray("pos") ?: entity.getAsJsonArray("position"))?.let { "position=${parseManifestPosition(it)}" },
             entity.manifestString("dimension")?.let { "dimension=$it" },
             entity.get("health")?.let { "health=${it.asDouble}" },
+            entity.manifestString("vehicle")?.let { "vehicle=$it" },
+            entity.manifestString("passenger")?.let { "passenger=$it" },
+            entity.get("passengerCount")?.let { "passengerCount=${it.asInt}" },
         ).ifEmpty { listOf("<any entity>") }.joinToString(", ")
 
     private fun describeEntityCountExpectation(entity: JsonObject): String =

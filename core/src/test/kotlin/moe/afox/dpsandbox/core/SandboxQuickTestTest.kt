@@ -554,6 +554,8 @@ class SandboxQuickTestTest {
 
     @Test
     fun `quick tests can predefine world state`() {
+        val riderUuid = "00000000-0000-0000-0000-000000000101"
+        val vehicleUuid = "00000000-0000-0000-0000-000000000102"
         val report = SandboxQuickTest.create(listOf(fixturePack()), version = "26.1.2", defaultPlayerName = null)
             .world {
                 seed(123)
@@ -591,6 +593,17 @@ class SandboxQuickTestTest {
                     attributes = mapOf("minecraft:max_health" to 12.0),
                     dimension = "minecraft:the_nether",
                     health = 8.0,
+                    uuid = riderUuid,
+                    vehicle = vehicleUuid,
+                )
+                entity(
+                    "minecraft:cow",
+                    1.0,
+                    64.0,
+                    1.0,
+                    tags = listOf("fixture_vehicle"),
+                    uuid = vehicleUuid,
+                    passengers = listOf(riderUuid),
                 )
                 player(
                     "Alex",
@@ -648,7 +661,9 @@ class SandboxQuickTestTest {
                 position = Position(1.0, 64.0, 0.0),
                 dimension = "minecraft:the_nether",
                 health = 8.0,
+                vehicle = vehicleUuid,
             )
+            .assertEntity(type = "minecraft:cow", tag = "fixture_vehicle", uuid = vehicleUuid, passenger = riderUuid, passengerCount = 1)
             .assertEntityEquipment(
                 "weapon.mainhand",
                 type = "minecraft:pig",
@@ -724,8 +739,11 @@ class SandboxQuickTestTest {
         assertEquals("minecraft:chest", snapshot.get("blocks").asJsonArray[0].asJsonObject.get("id").asString)
         assertEquals("false", snapshot.get("gamerules").asJsonObject.get("doDaylightCycle").asString)
         val pig = snapshot.get("entities").asJsonArray.single { it.asJsonObject.get("type").asString == "minecraft:pig" }.asJsonObject
+        val cow = snapshot.get("entities").asJsonArray.single { it.asJsonObject.get("type").asString == "minecraft:cow" }.asJsonObject
         assertEquals("minecraft:the_nether", pig.get("dimension").asString)
         assertEquals(8.0, pig.get("health").asDouble)
+        assertEquals(vehicleUuid, pig.get("vehicle").asString)
+        assertEquals(riderUuid, cow.getAsJsonArray("passengers")[0].asString)
         assertEquals("minecraft:iron_sword", pig.getAsJsonObject("equipment").getAsJsonObject("weapon.mainhand").get("id").asString)
         assertEquals("minecraft:strength", pig.getAsJsonArray("effects")[0].asJsonObject.get("id").asString)
         assertEquals(12.0, pig.getAsJsonObject("attributes").get("minecraft:max_health").asDouble)

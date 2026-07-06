@@ -453,6 +453,9 @@ class SandboxQuickTestMatrix private constructor(
         count: Int? = null,
         dimension: String? = null,
         health: Double? = null,
+        vehicle: String? = null,
+        passenger: String? = null,
+        passengerCount: Int? = null,
     ): SandboxQuickTestMatrix = apply {
         scenarios.values.forEach {
             it.assertEntity(
@@ -464,6 +467,9 @@ class SandboxQuickTestMatrix private constructor(
                 count = count,
                 dimension = dimension,
                 health = health,
+                vehicle = vehicle,
+                passenger = passenger,
+                passengerCount = passengerCount,
             )
         }
     }
@@ -1548,6 +1554,9 @@ class SandboxQuickTest private constructor(
         count: Int? = null,
         dimension: String? = null,
         health: Double? = null,
+        vehicle: String? = null,
+        passenger: String? = null,
+        passengerCount: Int? = null,
     ): SandboxQuickTest = apply {
         val expectedType = type?.let(ResourceLocation::parse)
         val expectedDimension = dimension?.let(ResourceLocation::parse)
@@ -1557,9 +1566,12 @@ class SandboxQuickTest private constructor(
                 (uuid == null || entity.uuid == uuid) &&
                 (position == null || entity.position == position) &&
                 (expectedDimension == null || entity.dimension == expectedDimension) &&
-                (health == null || entityHealth(entity) == health)
+                (health == null || entityHealth(entity) == health) &&
+                (vehicle == null || entity.vehicle == vehicle) &&
+                (passenger == null || passenger in entity.passengers) &&
+                (passengerCount == null || entity.passengers.size == passengerCount)
         }
-        val description = describeEntityExpectation(type, tag, uuid, position, dimension, health)
+        val description = describeEntityExpectation(type, tag, uuid, position, dimension, health, vehicle, passenger, passengerCount)
         if (count != null) {
             if (matches.size != count) failures += "entity expected $count match(es) but found ${matches.size}: $description"
             return@apply
@@ -2276,6 +2288,9 @@ class SandboxQuickTest private constructor(
         position: Position?,
         dimension: String?,
         health: Double? = null,
+        vehicle: String? = null,
+        passenger: String? = null,
+        passengerCount: Int? = null,
     ): String =
         listOfNotNull(
             type?.let { "type=$it" },
@@ -2284,6 +2299,9 @@ class SandboxQuickTest private constructor(
             position?.let { "position=$it" },
             dimension?.let { "dimension=$it" },
             health?.let { "health=$it" },
+            vehicle?.let { "vehicle=$it" },
+            passenger?.let { "passenger=$it" },
+            passengerCount?.let { "passengerCount=$it" },
         ).ifEmpty { listOf("<any entity>") }.joinToString(", ")
 
     private fun describeSnapshotDiffExpectation(path: String?, kind: SnapshotDiffKind?, contains: String?): String =

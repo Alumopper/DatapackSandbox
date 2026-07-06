@@ -3,6 +3,7 @@ package moe.afox.dpsandbox.core
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 import java.nio.file.Path
+import java.util.UUID
 
 /**
  * Chunk coordinate in Java Edition Anvil region space.
@@ -31,6 +32,15 @@ class SandboxWorldSetup {
      */
     fun applyTo(world: SandboxWorld, profile: VersionProfile) {
         operations.forEach { it(world, profile) }
+        normalizeEntityRelationships(world)
+    }
+
+    private fun normalizeEntityRelationships(world: SandboxWorld) {
+        val entitiesByUuid = (world.entities + world.players.values).associateBy { it.uuid }
+        entitiesByUuid.values.forEach { entity ->
+            entity.vehicle?.let { vehicleId -> entitiesByUuid[vehicleId]?.passengers?.add(entity.uuid) }
+            entity.passengers.toList().forEach { passengerId -> entitiesByUuid[passengerId]?.vehicle = entity.uuid }
+        }
     }
 
     /**
@@ -239,6 +249,9 @@ class SandboxWorldSetup {
         attributes: Map<String, Double> = emptyMap(),
         dimension: String = "minecraft:overworld",
         health: Double? = null,
+        uuid: String? = null,
+        vehicle: String? = null,
+        passengers: Iterable<String> = emptyList(),
     ): SandboxWorldSetup =
         entity(
             type = ResourceLocation.parse(type),
@@ -252,6 +265,9 @@ class SandboxWorldSetup {
             attributes = attributes,
             dimension = ResourceLocation.parse(dimension),
             health = health,
+            uuid = uuid,
+            vehicle = vehicle,
+            passengers = passengers,
         )
 
     /**
@@ -272,18 +288,25 @@ class SandboxWorldSetup {
         attributes: Map<String, Double> = emptyMap(),
         dimension: ResourceLocation = ResourceLocation("minecraft", "overworld"),
         health: Double? = null,
+        uuid: String? = null,
+        vehicle: String? = null,
+        passengers: Iterable<String> = emptyList(),
     ): SandboxWorldSetup = apply {
         val equipmentCopies = equipment.map { (slot, item) -> slot to item.copyForSetup() }
         val effectCopies = effects.map { it.copy() }
         val attributeCopies = attributes.map { (id, value) -> ResourceLocation.parse(id) to value }
+        val passengerCopies = passengers.toMutableSet()
         operations += { world, profile ->
             val entity = SandboxEntity(
+                uuid = uuid ?: UUID.randomUUID().toString(),
                 type = type,
                 position = position,
                 tags = tags.toMutableSet(),
                 yaw = yaw,
                 pitch = pitch,
                 dimension = dimension,
+                vehicle = vehicle,
+                passengers = passengerCopies.toMutableSet(),
             )
             val hasNbt = nbt != null && nbt.entrySet().isNotEmpty()
             if (hasNbt || health != null) {

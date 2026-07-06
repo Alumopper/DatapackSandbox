@@ -124,6 +124,9 @@ object ManifestWorldSetup {
             attributes = parseEntityAttributes(entity),
             dimension = ResourceLocation.parse(entity.manifestString("dimension") ?: "minecraft:overworld"),
             health = entity.get("health")?.asDouble,
+            uuid = entity.manifestString("uuid"),
+            vehicle = entity.manifestString("vehicle"),
+            passengers = entity.manifestStringArray("passengers", "world entity passengers"),
         )
     }
 

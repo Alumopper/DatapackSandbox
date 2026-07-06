@@ -30,7 +30,7 @@ snapshot 会包含用于测试的确定性状态，包括：
 `.dps.json` 清单和 quick-test API 都可以在执行步骤前定义初始世界。支持的 fixture 包括：
 
 - `blocks`：方块 id、state properties 和校验后的方块实体 NBT。
-- `entities`：实体类型、位置、维度、health、tag、旋转、装备、active effects、attributes 和校验后的实体 NBT。
+- `entities`：实体类型、UUID、位置、维度、health、tag、旋转、vehicle/passengers、装备、active effects、attributes 和校验后的实体 NBT。
 - `players`：位置、维度、游戏模式、背包、XP、生命值、饥饿值。
 - `scores`、`storage`、`gamerules`、`gameTime`、`dayTime`、`weather`。
 
@@ -47,9 +47,11 @@ snapshot 会包含用于测试的确定性状态，包括：
     "entities": [
       {
         "type": "minecraft:pig",
+        "uuid": "00000000-0000-0000-0000-000000000101",
         "pos": [1, 64, 0],
         "dimension": "minecraft:the_nether",
         "health": 8.0,
+        "vehicle": "00000000-0000-0000-0000-000000000102",
         "tags": ["fixture"],
         "equipment": {
           "weapon.mainhand": { "id": "minecraft:iron_sword" }
@@ -60,6 +62,13 @@ snapshot 会包含用于测试的确定性状态，包括：
         "attributes": {
           "minecraft:max_health": 12.0
         }
+      },
+      {
+        "type": "minecraft:cow",
+        "uuid": "00000000-0000-0000-0000-000000000102",
+        "pos": [1, 64, 1],
+        "tags": ["fixture_vehicle"],
+        "passengers": ["00000000-0000-0000-0000-000000000101"]
       }
     ],
     "players": [
@@ -77,6 +86,7 @@ snapshot 会包含用于测试的确定性状态，包括：
         "tag": "fixture",
         "dimension": "minecraft:the_nether",
         "health": 8.0,
+        "vehicle": "00000000-0000-0000-0000-000000000102",
         "equipment": { "slot": "weapon.mainhand", "id": "minecraft:iron_sword" },
         "effect": { "id": "minecraft:strength", "duration": 80, "amplifier": 2 },
         "attribute": { "id": "minecraft:max_health", "equals": 12.0 }
