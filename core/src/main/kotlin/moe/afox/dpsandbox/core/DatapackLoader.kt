@@ -826,7 +826,18 @@ object DatapackLoader {
                         walk.filter { it.isRegularFile() && it.name.endsWith(".json") }
                             .forEach { file ->
                                 val relative = file.relativeTo(resourceRoot).toString().replace('\\', '/')
-                                val id = ResourceLocation(namespace, relative.removeSuffix(".json"))
+                                val idPath = relative.removeSuffix(".json")
+                                val id = try {
+                                    ResourceLocation(namespace, idPath)
+                                } catch (error: IllegalArgumentException) {
+                                    throw SandboxException(
+                                        code = DiagnosticCode.INPUT_FORMAT,
+                                        message = "Invalid $kind resource id '$namespace:$idPath': ${error.message}",
+                                        location = SourceLocation(file = file.toString()),
+                                        version = profile.id,
+                                        cause = error,
+                                    )
+                                }
                                 val element = try {
                                     JsonParser.parseString(Files.readString(file, StandardCharsets.UTF_8))
                                 } catch (error: Exception) {

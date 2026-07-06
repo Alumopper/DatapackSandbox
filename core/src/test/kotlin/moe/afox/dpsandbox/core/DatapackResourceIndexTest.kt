@@ -279,6 +279,21 @@ class DatapackResourceIndexTest {
         assertTrue(error.location?.file?.endsWith("replace_items.json") == true, error.render())
     }
 
+    @Test
+    fun `json resource validation reports invalid resource ids with location and version`() {
+        val pack = writeInvalidRecipeIdPack()
+
+        val error = assertFailsWith<SandboxException> {
+            createSandbox("26.2", listOf(pack))
+        }
+
+        assertEquals(DiagnosticCode.INPUT_FORMAT, error.code)
+        assertEquals("26.2", error.version)
+        assertTrue(error.message.contains("Invalid recipe resource id 'Demo:marker'"), error.render())
+        assertTrue(error.message.contains("Invalid namespace: Demo"), error.render())
+        assertTrue(error.location?.file?.endsWith("marker.json") == true, error.render())
+    }
+
     private fun writePack(
         name: String,
         packFormat: String,
@@ -406,6 +421,34 @@ class DatapackResourceIndexTest {
             {
               "replace": $replace,
               "values": ["$value"]
+            }
+            """.trimIndent(),
+        )
+        return root
+    }
+
+    private fun writeInvalidRecipeIdPack(): Path {
+        val root = Files.createTempDirectory("dps-invalid-recipe-id-pack")
+        Files.writeString(
+            root.resolve("pack.mcmeta"),
+            """
+            {
+              "pack": {
+                "pack_format": 107.1,
+                "description": "temporary invalid recipe id pack"
+              }
+            }
+            """.trimIndent(),
+        )
+        val recipeRoot = root.resolve("data").resolve("Demo").resolve("recipe")
+        Files.createDirectories(recipeRoot)
+        Files.writeString(
+            recipeRoot.resolve("marker.json"),
+            """
+            {
+              "type": "minecraft:crafting_shapeless",
+              "ingredients": [],
+              "result": { "id": "minecraft:stone", "count": 1 }
             }
             """.trimIndent(),
         )
