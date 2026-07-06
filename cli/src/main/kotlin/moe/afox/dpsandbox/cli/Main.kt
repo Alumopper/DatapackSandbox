@@ -333,6 +333,7 @@ class RunCommand : CliktCommand(name = "run") {
     private val eventFiles by option("--event-file").path(mustExist = true).multiple()
     private val assertions by option("--assert").multiple()
     private val assertionFiles by option("--assert-file").path(mustExist = true).multiple()
+    private val failOnMissingResources by option("--fail-on-missing-resources").flag(default = false)
     private val snapshot by option("--snapshot").flag(default = false)
     private val snapshotFile by option("--snapshot-file").path()
     private val snapshotDiff by option("--snapshot-diff").flag(default = false)
@@ -442,7 +443,12 @@ class RunCommand : CliktCommand(name = "run") {
                 writeEventTraceFile(it, sandbox.world.playerEventTraces)
             }
             outputsFile?.let { writeOutputsFile(it, sandbox.world.outputs) }
-            val assertionFailures = ManifestRunner.evaluateAssertions(parseAssertions(), sandbox, beforeSnapshot)
+            val assertionFailures = ManifestRunner.evaluateAssertions(parseAssertions(), sandbox, beforeSnapshot) +
+                if (failOnMissingResources) {
+                    ManifestRunner.missingResourceFailures(ManifestRunner.summarizeResources(sandbox))
+                } else {
+                    emptyList()
+                }
             reportFile?.let { writeRunReportFile(it, sandbox, total, assertionFailures, traces, beforeSnapshot) }
             if (assertionFailures.isNotEmpty()) {
                 assertionFailures.forEach { println(ConsoleStyle.red(it)) }

@@ -121,6 +121,12 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar run --version 26.2 ^
   --mcfunction-text "demo:main=function library:setup"
 ```
 
+快速验包时，`run` 也可以直接使用和 manifest 检查相同的缺失资源引用校验：
+
+```bash
+java -jar cli/build/libs/datapack-sandbox-cli.jar run --pack ./my_pack --fail-on-missing-resources
+```
+
 运行 JSON 检查清单：
 
 ```bash

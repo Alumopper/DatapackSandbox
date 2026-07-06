@@ -157,6 +157,13 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar run --version 26.2 \
   --mcfunction-text "demo:main=function library:setup"
 ```
 
+For quick pack-level sanity checks, `run` can use the same direct missing
+resource validation as manifest checks:
+
+```bash
+java -jar cli/build/libs/datapack-sandbox-cli.jar run --pack ./my_pack --fail-on-missing-resources
+```
+
 Run JSON check manifests:
 
 ```bash

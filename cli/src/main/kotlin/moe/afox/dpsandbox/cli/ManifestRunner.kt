@@ -259,12 +259,12 @@ object ManifestRunner {
         )
     }
 
-    private fun missingResourceFailures(summary: ManifestResourceSummary): List<String> =
+    internal fun missingResourceFailures(summary: ManifestResourceSummary): List<String> =
         summary.missingReferences.map { reference ->
             "missing-reference ${reference.source} -> ${reference.type} ${reference.id}"
         }
 
-    private fun summarizeResources(sandbox: DatapackSandbox): ManifestResourceSummary {
+    internal fun summarizeResources(sandbox: DatapackSandbox): ManifestResourceSummary {
         val datapack = sandbox.datapack
         val overlays = datapack.resourceIndex.filter { !it.active || it.overrides != null || it.overriddenBy != null }
         val missingReferences = buildList {

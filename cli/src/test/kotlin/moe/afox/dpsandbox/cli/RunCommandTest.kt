@@ -5,9 +5,11 @@ import java.io.ByteArrayOutputStream
 import java.io.PrintStream
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.concurrent.TimeUnit
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
@@ -615,6 +617,27 @@ class RunCommandTest {
     }
 
     @Test
+    fun `run can fail on missing resource references`() {
+        val dir = Files.createTempDirectory("dps-cli-missing-resource")
+        val pack = writeMissingReferencePack(dir.resolve("pack"))
+
+        val result = runCliProcess(
+            "run",
+            "--version",
+            "26.2",
+            "--pack",
+            pack.toString(),
+            "--fail-on-missing-resources",
+        )
+
+        assertEquals(ExitCodes.ASSERTION_FAILED, result.exitCode, result.output)
+        assertTrue(
+            "missing-reference #minecraft:load -> function demo:missing_load" in result.output,
+            result.output,
+        )
+    }
+
+    @Test
     fun `run filters printed and written command traces`() {
         val traceFile = Files.createTempFile("dps-cli-filtered-trace", ".jsonl")
 
@@ -827,6 +850,34 @@ class RunCommandTest {
         }
     }
 
+    private fun runCliProcess(vararg args: String): ProcessResult {
+        val javaBinary = Path.of(
+            System.getProperty("java.home"),
+            "bin",
+            if (System.getProperty("os.name").startsWith("Windows")) "java.exe" else "java",
+        )
+        val process = ProcessBuilder(
+            listOf(
+                javaBinary.toString(),
+                "-cp",
+                System.getProperty("java.class.path"),
+                "moe.afox.dpsandbox.cli.MainKt",
+            ) + args,
+        )
+            .redirectErrorStream(true)
+            .start()
+
+        val finished = process.waitFor(30, TimeUnit.SECONDS)
+        val output = process.inputStream.readAllBytes().toString(Charsets.UTF_8)
+        if (!finished) {
+            process.destroyForcibly()
+            error("CLI process timed out:${System.lineSeparator()}$output")
+        }
+        return ProcessResult(process.exitValue(), output)
+    }
+
+    private data class ProcessResult(val exitCode: Int, val output: String)
+
     private fun writeDependencyPack(root: Path, functionName: String, body: String): Path {
         Files.createDirectories(root)
         Files.writeString(
@@ -843,6 +894,25 @@ class RunCommandTest {
         val functionRoot = root.resolve("data").resolve("demo").resolve("function")
         Files.createDirectories(functionRoot)
         Files.writeString(functionRoot.resolve("$functionName.mcfunction"), body)
+        return root
+    }
+
+    private fun writeMissingReferencePack(root: Path): Path {
+        Files.createDirectories(root)
+        Files.writeString(
+            root.resolve("pack.mcmeta"),
+            """
+            {
+              "pack": {
+                "pack_format": 107.1,
+                "description": "missing resource reference test"
+              }
+            }
+            """.trimIndent(),
+        )
+        val tagRoot = root.resolve("data").resolve("minecraft").resolve("tags").resolve("function")
+        Files.createDirectories(tagRoot)
+        Files.writeString(tagRoot.resolve("load.json"), """{"values":["demo:missing_load"]}""")
         return root
     }
 
