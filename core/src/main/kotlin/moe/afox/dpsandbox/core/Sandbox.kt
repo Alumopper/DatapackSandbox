@@ -258,11 +258,14 @@ class DatapackSandbox(
         val player = world.requirePlayer(normalized.playerName)
         normalized.input?.let(player::recordInput)
         var updates: List<AdvancementUpdate> = emptyList()
+        var advancementFailures: List<AdvancementCriterionFailure> = emptyList()
         var success = false
         var errorCode: DiagnosticCode? = null
         var errorMessage: String? = null
         try {
-            updates = advancements.handle(normalized)
+            val result = advancements.handleWithDebug(normalized)
+            updates = result.updates
+            advancementFailures = result.failures
             success = true
             return updates
         } catch (error: SandboxException) {
@@ -277,6 +280,7 @@ class DatapackSandbox(
                 tick = world.gameTime,
                 event = normalized,
                 updates = updates,
+                advancementFailures = advancementFailures,
                 success = success,
                 errorCode = errorCode,
                 errorMessage = errorMessage,

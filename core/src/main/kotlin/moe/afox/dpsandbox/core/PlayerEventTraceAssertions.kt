@@ -17,6 +17,12 @@ data class PlayerEventTraceExpectation(
     val advancement: ResourceLocation? = null,
     /** Criterion name that must appear in the event's matched criteria. */
     val criterion: String? = null,
+    /** Advancement id that must appear in the event's failed advancement criteria. */
+    val failedAdvancement: ResourceLocation? = null,
+    /** Criterion name that must appear in the event's failed advancement criteria. */
+    val failedCriterion: String? = null,
+    /** Substring that must appear in a failed advancement criterion reason. */
+    val failureContains: String? = null,
     /** Exact expected number of matching event traces, or null to require at least one. */
     val count: Int? = null,
     /** Item id recorded on the event trace. */
@@ -53,6 +59,7 @@ data class PlayerEventTraceExpectation(
             (success == null || event.success == success) &&
             (advancement == null || event.advancements.any { it.advancement == advancement }) &&
             (criterion == null || event.advancements.any { it.criterion == criterion }) &&
+            failureMatches(event) &&
             (item == null || event.item == item) &&
             (entity == null || event.entity == entity) &&
             (block == null || event.block == block) &&
@@ -64,6 +71,15 @@ data class PlayerEventTraceExpectation(
             (inputDevice == null || event.input?.device == inputDevice) &&
             (inputCode == null || event.input?.code == inputCode) &&
             (inputAction == null || event.input?.action == inputAction)
+
+    private fun failureMatches(event: PlayerEventTraceEvent): Boolean {
+        if (failedAdvancement == null && failedCriterion == null && failureContains == null) return true
+        return event.advancementFailures.any { failure ->
+            (failedAdvancement == null || failure.advancement == failedAdvancement) &&
+                (failedCriterion == null || failure.criterion == failedCriterion) &&
+                (failureContains == null || failure.reason.contains(failureContains))
+        }
+    }
 
     /**
      * Returns every player event trace that satisfies this expectation.
@@ -97,6 +113,9 @@ data class PlayerEventTraceExpectation(
             success?.let { "success=$it" },
             advancement?.let { "advancement=$it" },
             criterion?.let { "criterion=$it" },
+            failedAdvancement?.let { "failedAdvancement=$it" },
+            failedCriterion?.let { "failedCriterion=$it" },
+            failureContains?.let { "failureContains=$it" },
             item?.let { "item=$it" },
             entity?.let { "entity=$it" },
             block?.let { "block=$it" },
@@ -117,7 +136,10 @@ data class PlayerEventTraceExpectation(
             val advancements = event.advancements
                 .take(3)
                 .joinToString(prefix = "[", postfix = "]") { "${it.advancement}/${it.criterion}:completed=${it.completed}" }
-            "#${index + 1} [$status] player=${event.playerName} type=${event.type} advancements=$advancements"
+            val failures = event.advancementFailures
+                .take(3)
+                .joinToString(prefix = "[", postfix = "]") { "${it.advancement}/${it.criterion}:${it.reason}" }
+            "#${index + 1} [$status] player=${event.playerName} type=${event.type} advancements=$advancements failures=$failures"
         }
         val suffix = if (events.size > rendered.size) "; ... +${events.size - rendered.size} more" else ""
         return "actual event traces: ${rendered.joinToString("; ")}$suffix"

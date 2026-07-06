@@ -108,6 +108,14 @@ class ManifestRunnerTest {
             "string",
             defs.getAsJsonObject("eventTraceAssertion")
                 .getAsJsonObject("properties")
+                .getAsJsonObject("failedAdvancement")
+                .get("type")
+                .asString,
+        )
+        assertEquals(
+            "string",
+            defs.getAsJsonObject("eventTraceAssertion")
+                .getAsJsonObject("properties")
                 .getAsJsonObject("inputCode")
                 .get("type")
                 .asString,
@@ -900,6 +908,75 @@ class ManifestRunnerTest {
         val result = ManifestRunner.run(manifest)
 
         assertTrue(result.passed, result.messages.joinToString())
+    }
+
+    @Test
+    fun `runs manifest event trace assertions for failed advancement criteria`() {
+        val dir = Files.createTempDirectory("dps-event-failure-manifest")
+        val pack = dir.resolve("pack")
+        val advancementRoot = pack.resolve("data").resolve("demo").resolve("advancement")
+        Files.createDirectories(advancementRoot)
+        Files.writeString(
+            pack.resolve("pack.mcmeta"),
+            """
+            {
+              "pack": {
+                "pack_format": 107.1,
+                "description": "event failure fixture"
+              }
+            }
+            """.trimIndent(),
+        )
+        Files.writeString(
+            advancementRoot.resolve("place_diamond.json"),
+            """
+            {
+              "criteria": {
+                "place_diamond": {
+                  "trigger": "minecraft:placed_block",
+                  "conditions": {
+                    "block": "minecraft:diamond_block"
+                  }
+                }
+              }
+            }
+            """.trimIndent(),
+        )
+        val manifest = dir.resolve("event-failure.dps.json")
+        val packPath = pack.toAbsolutePath().normalize().toString().replace("\\", "\\\\")
+        Files.writeString(
+            manifest,
+            """
+            {
+              "version": "26.2",
+              "packs": ["$packPath"],
+              "steps": [
+                { "event": { "player": "Steve", "type": "block_placed", "block": "minecraft:stone" } }
+              ],
+              "assertions": [
+                { "advancement": { "player": "Steve", "id": "demo:place_diamond", "criterion": "place_diamond", "criterionDone": false } },
+                {
+                  "eventTrace": {
+                    "player": "Steve",
+                    "type": "block_placed",
+                    "success": true,
+                    "failedAdvancement": "demo:place_diamond",
+                    "failedCriterion": "place_diamond",
+                    "failureContains": "block expected minecraft:diamond_block",
+                    "count": 1
+                  }
+                }
+              ]
+            }
+            """.trimIndent(),
+        )
+
+        val schemaFailures = ManifestSchemaValidator.validate(JsonParser.parseString(Files.readString(manifest)))
+        val result = ManifestRunner.run(manifest)
+
+        assertTrue(schemaFailures.isEmpty(), schemaFailures.joinToString())
+        assertTrue(result.passed, result.messages.joinToString())
+        assertTrue("minecraft:stone" in result.eventTraces.single().advancementFailures.single().reason)
     }
 
     @Test

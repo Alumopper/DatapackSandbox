@@ -9,6 +9,17 @@ data class AdvancementUpdate(
     val completed: Boolean,
 )
 
+data class AdvancementCriterionFailure(
+    val advancement: ResourceLocation,
+    val criterion: String,
+    val reason: String,
+)
+
+data class AdvancementEventResult(
+    val updates: List<AdvancementUpdate>,
+    val failures: List<AdvancementCriterionFailure>,
+)
+
 class AdvancementRuntime(private val sandbox: DatapackSandbox) {
     private val predicates = PredicateEngine(sandbox.datapack, sandbox.profile)
     private val loot = LootEngine(sandbox.datapack, sandbox.profile.registryView, sandbox.profile)
@@ -38,29 +49,41 @@ class AdvancementRuntime(private val sandbox: DatapackSandbox) {
     fun progress(player: SandboxPlayer, id: ResourceLocation): AdvancementProgress =
         progressFor(player, sandbox.datapack.advancement(id))
 
-    fun handle(rawEvent: PlayerEvent): List<AdvancementUpdate> {
+    fun handle(rawEvent: PlayerEvent): List<AdvancementUpdate> =
+        handleWithDebug(rawEvent).updates
+
+    fun handleWithDebug(rawEvent: PlayerEvent): AdvancementEventResult {
         val event = rawEvent.normalized()
         val player = sandbox.world.requirePlayer(event.playerName)
         val updates = mutableListOf<AdvancementUpdate>()
+        val failures = mutableListOf<AdvancementCriterionFailure>()
         sandbox.datapack.advancements.values.forEach { advancement ->
             val progress = progressFor(player, advancement)
             advancement.criteria.values.forEach { criterion ->
                 if (progress.criteria[criterion.name] == true) return@forEach
-                if (matchesCriterion(player, event, criterion)) {
+                val evaluation = evaluateCriterion(player, event, criterion)
+                if (evaluation.matched) {
                     progress.criteria[criterion.name] = true
                     val done = progress.isDone(advancement.requirements)
                     updates += AdvancementUpdate(advancement.id, criterion.name, done)
                     if (done) applyRewards(player, advancement)
+                } else if (evaluation.reason != null) {
+                    failures += AdvancementCriterionFailure(advancement.id, criterion.name, evaluation.reason)
                 }
             }
         }
-        return updates
+        return AdvancementEventResult(updates, failures)
     }
 
-    private fun matchesCriterion(player: SandboxPlayer, event: PlayerEvent, criterion: Criterion): Boolean {
+    private data class CriterionEvaluation(
+        val matched: Boolean,
+        val reason: String? = null,
+    )
+
+    private fun evaluateCriterion(player: SandboxPlayer, event: PlayerEvent, criterion: Criterion): CriterionEvaluation {
         val trigger = criterion.trigger.path
-        if (!triggerMatchesEvent(trigger, event.type)) return false
-        val conditions = criterion.conditions ?: return true
+        if (!triggerMatchesEvent(trigger, event.type)) return CriterionEvaluation(false)
+        val conditions = criterion.conditions ?: return CriterionEvaluation(true)
         val incomingDamageEvent = event.type in setOf("damage", "death", "entity_killed_player", "entity_hurt_player")
         val playerAttackEvent = event.type in setOf("killed_entity", "entity_killed", "player_killed_entity", "player_hurt_entity")
         val attacker = when {
@@ -87,33 +110,93 @@ class AdvancementRuntime(private val sandbox: DatapackSandbox) {
             damageSource = event.damageSource,
         )
         conditions.getAsJsonObject("player")?.let {
-            if (!predicates.testElement(entityCondition("this", it), predicateContext.copy(thisEntity = player))) return false
+            if (!predicates.testElement(entityCondition("this", it), predicateContext.copy(thisEntity = player))) {
+                return CriterionEvaluation(false, "player predicate did not match")
+            }
         }
         conditions.getAsJsonObject("entity")?.let {
-            if (!predicates.testElement(entityCondition("this", it), predicateContext.copy(thisEntity = event.entity))) return false
+            if (event.entity == null) return CriterionEvaluation(false, "entity context missing")
+            if (!predicates.testElement(entityCondition("this", it), predicateContext.copy(thisEntity = event.entity))) {
+                return CriterionEvaluation(false, "entity predicate did not match")
+            }
         }
         conditions.getAsJsonObject("item")?.let {
-            if (event.item == null || !predicates.testItemPredicate(event.item, it)) return false
+            if (event.item == null) return CriterionEvaluation(false, "item context missing")
+            if (!predicates.testItemPredicate(event.item, it)) {
+                return CriterionEvaluation(false, "item predicate did not match item ${event.item.id}")
+            }
         }
         conditions.getAsJsonArray("items")?.let { items ->
-            val matched = player.inventory.any { stack -> items.any { it.isJsonObject && predicates.testItemPredicate(stack, it.asJsonObject) } }
-            if (!matched) return false
+            val matched = player.inventory.any { stack ->
+                items.any { it.isJsonObject && predicates.testItemPredicate(stack, it.asJsonObject) }
+            }
+            if (!matched) return CriterionEvaluation(false, "player inventory did not match any items predicate")
         }
-        conditions.string("recipe")?.let { if (event.recipe != ResourceLocation.parse(it)) return false }
-        conditions.string("block")?.let { if (event.block != ResourceLocation.parse(it)) return false }
-        conditions.string("from")?.let { if (event.fromDimension != ResourceLocation.parse(it)) return false }
-        conditions.string("to")?.let { if (event.toDimension != ResourceLocation.parse(it)) return false }
-        conditions.string("damage_source")?.let { if (event.damageSource != ResourceLocation.parse(it)) return false }
-        conditions.string("damageType")?.let { if (event.damageSource != ResourceLocation.parse(it)) return false }
-        conditions.getAsJsonObject("damage")?.let { if (!damageMatches(event, it, predicateContext)) return false }
-        conditions.string("key")?.let { if (event.input?.device != "keyboard" || event.input.code != it) return false }
-        conditions.string("button")?.let { if (event.input?.device != "mouse" || event.input.code != it) return false }
-        conditions.string("input")?.let { if (event.input?.code != it) return false }
-        conditions.string("action")?.let { if (event.input?.action != it) return false }
+        conditions.string("recipe")?.let {
+            val expected = ResourceLocation.parse(it)
+            if (event.recipe != expected) {
+                return CriterionEvaluation(false, "recipe expected $expected but was ${event.recipe ?: "<missing>"}")
+            }
+        }
+        conditions.string("block")?.let {
+            val expected = ResourceLocation.parse(it)
+            if (event.block != expected) {
+                return CriterionEvaluation(false, "block expected $expected but was ${event.block ?: "<missing>"}")
+            }
+        }
+        conditions.string("from")?.let {
+            val expected = ResourceLocation.parse(it)
+            if (event.fromDimension != expected) {
+                return CriterionEvaluation(false, "from dimension expected $expected but was ${event.fromDimension ?: "<missing>"}")
+            }
+        }
+        conditions.string("to")?.let {
+            val expected = ResourceLocation.parse(it)
+            if (event.toDimension != expected) {
+                return CriterionEvaluation(false, "to dimension expected $expected but was ${event.toDimension ?: "<missing>"}")
+            }
+        }
+        conditions.string("damage_source")?.let {
+            val expected = ResourceLocation.parse(it)
+            if (event.damageSource != expected) {
+                return CriterionEvaluation(false, "damage source expected $expected but was ${event.damageSource ?: "<missing>"}")
+            }
+        }
+        conditions.string("damageType")?.let {
+            val expected = ResourceLocation.parse(it)
+            if (event.damageSource != expected) {
+                return CriterionEvaluation(false, "damage source expected $expected but was ${event.damageSource ?: "<missing>"}")
+            }
+        }
+        conditions.getAsJsonObject("damage")?.let {
+            damageMismatch(event, it, predicateContext)?.let { reason -> return CriterionEvaluation(false, reason) }
+        }
+        conditions.string("key")?.let {
+            if (event.input?.device != "keyboard" || event.input.code != it) {
+                return CriterionEvaluation(false, "keyboard input expected $it but was ${event.input?.code ?: "<missing>"}")
+            }
+        }
+        conditions.string("button")?.let {
+            if (event.input?.device != "mouse" || event.input.code != it) {
+                return CriterionEvaluation(false, "mouse input expected $it but was ${event.input?.code ?: "<missing>"}")
+            }
+        }
+        conditions.string("input")?.let {
+            if (event.input?.code != it) {
+                return CriterionEvaluation(false, "input expected $it but was ${event.input?.code ?: "<missing>"}")
+            }
+        }
+        conditions.string("action")?.let {
+            if (event.input?.action != it) {
+                return CriterionEvaluation(false, "input action expected $it but was ${event.input?.action ?: "<missing>"}")
+            }
+        }
         conditions.getAsJsonObject("location")?.let {
-            if (!predicates.testElement(locationCondition(it), predicateContext)) return false
+            if (!predicates.testElement(locationCondition(it), predicateContext)) {
+                return CriterionEvaluation(false, "location predicate did not match")
+            }
         }
-        return true
+        return CriterionEvaluation(true)
     }
 
     private fun triggerMatchesEvent(trigger: String, eventType: String): Boolean =
@@ -176,35 +259,63 @@ class AdvancementRuntime(private val sandbox: DatapackSandbox) {
         return condition
     }
 
-    private fun damageMatches(event: PlayerEvent, predicate: JsonObject, context: PredicateContext): Boolean {
-        predicate.get("amount")?.let { if (!rangeMatches(event.damageAmount, it)) return false }
-        predicate.get("dealt")?.let { if (!rangeMatches(event.damageAmount, it)) return false }
-        predicate.get("taken")?.let { if (!rangeMatches(event.damageAmount, it)) return false }
+    private fun damageMismatch(event: PlayerEvent, predicate: JsonObject, context: PredicateContext): String? {
+        predicate.get("amount")?.let {
+            rangeMismatch("damage amount", event.damageAmount, it)?.let { reason -> return reason }
+        }
+        predicate.get("dealt")?.let {
+            rangeMismatch("damage dealt", event.damageAmount, it)?.let { reason -> return reason }
+        }
+        predicate.get("taken")?.let {
+            rangeMismatch("damage taken", event.damageAmount, it)?.let { reason -> return reason }
+        }
         predicate.get("type")?.let { typePredicate ->
             when {
-                typePredicate.isJsonPrimitive -> if (event.damageSource != ResourceLocation.parse(typePredicate.asString)) return false
-                typePredicate.isJsonObject -> typePredicate.asJsonObject.string("type")?.let {
-                    if (event.damageSource != ResourceLocation.parse(it)) return false
+                typePredicate.isJsonPrimitive -> {
+                    val expected = ResourceLocation.parse(typePredicate.asString)
+                    if (event.damageSource != expected) {
+                        return "damage source expected $expected but was ${event.damageSource ?: "<missing>"}"
+                    }
                 }
-                else -> return false
+                typePredicate.isJsonObject -> typePredicate.asJsonObject.string("type")?.let {
+                    val expected = ResourceLocation.parse(it)
+                    if (event.damageSource != expected) {
+                        return "damage source expected $expected but was ${event.damageSource ?: "<missing>"}"
+                    }
+                }
+                else -> return "damage type predicate must be a string or object"
             }
         }
         predicate.getAsJsonObject("source_entity")?.let {
-            if (!predicates.testElement(entityCondition("this", it), context.copy(thisEntity = event.entity))) return false
+            if (event.entity == null) return "damage source entity context missing"
+            if (!predicates.testElement(entityCondition("this", it), context.copy(thisEntity = event.entity))) {
+                return "damage source entity predicate did not match"
+            }
         }
         predicate.getAsJsonObject("direct_entity")?.let {
-            if (!predicates.testElement(entityCondition("this", it), context.copy(thisEntity = event.entity))) return false
+            if (event.entity == null) return "damage direct entity context missing"
+            if (!predicates.testElement(entityCondition("this", it), context.copy(thisEntity = event.entity))) {
+                return "damage direct entity predicate did not match"
+            }
         }
-        return true
+        return null
     }
 
-    private fun rangeMatches(actual: Double?, expected: JsonElement): Boolean {
-        val value = actual ?: return false
-        if (expected.isJsonPrimitive) return value == expected.asDouble
-        val range = expected.takeIf { it.isJsonObject }?.asJsonObject ?: return false
-        range.get("min")?.let { if (value < it.asDouble) return false }
-        range.get("max")?.let { if (value > it.asDouble) return false }
-        return true
+    private fun rangeMismatch(label: String, actual: Double?, expected: JsonElement): String? {
+        val value = actual ?: return "$label missing"
+        if (expected.isJsonPrimitive) {
+            val expectedValue = expected.asDouble
+            return if (value == expectedValue) null else "$label expected $expectedValue but was $value"
+        }
+        val range = expected.takeIf { it.isJsonObject }?.asJsonObject
+            ?: return "$label predicate must be a number or range object"
+        range.get("min")?.let {
+            if (value < it.asDouble) return "$label expected at least ${it.asDouble} but was $value"
+        }
+        range.get("max")?.let {
+            if (value > it.asDouble) return "$label expected at most ${it.asDouble} but was $value"
+        }
+        return null
     }
 
     private fun JsonObject.string(name: String): String? =

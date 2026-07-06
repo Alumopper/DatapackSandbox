@@ -188,6 +188,10 @@ path, for example `assertion 1 (/assertions/0): ...`.
 ```
 
 ```json
+{ "eventTrace": { "player": "Steve", "type": "block_placed", "failedAdvancement": "demo:place_diamond", "failedCriterion": "place_diamond", "failureContains": "block expected minecraft:diamond_block", "count": 1 } }
+```
+
+```json
 { "diagnostic": { "step": 1, "code": "COMMAND_ERROR", "contains": "Unknown scoreboard objective", "count": 1 } }
 ```
 
@@ -215,7 +219,8 @@ source file, and function stack. When a trace assertion misses, the failure
 message includes a bounded list of actual command trace candidates. `eventTrace`
 assertions check player event dispatch by player, type, success, item/entity/block/recipe
 context, dimension changes, damage source/amount, input device/code/action,
-advancement id, criterion, and count; misses include actual player event trace candidates. `diagnostic`
+advancement id, criterion, failed advancement id/criterion, failure reason
+substring, and count; misses include actual player event trace candidates. `diagnostic`
 assertions check expected step failures by step, version, code, command, root,
 message substring, and count. `snapshotDiff` assertions compare the manifest
 state before and after steps by JSON Pointer path, diff kind, before/after

@@ -608,6 +608,7 @@ data class PlayerEventTraceEvent(
     val damageAmount: Double? = null,
     val input: PlayerInput? = null,
     val advancements: List<AdvancementUpdate> = emptyList(),
+    val advancementFailures: List<AdvancementCriterionFailure> = emptyList(),
     val success: Boolean = true,
     val errorCode: DiagnosticCode? = null,
     val errorMessage: String? = null,
@@ -646,6 +647,26 @@ data class PlayerEventTraceEvent(
                         }
                 },
             )
+            json.add(
+                "advancementFailures",
+                JsonArray().also { array ->
+                    advancementFailures
+                        .sortedWith(
+                            compareBy<AdvancementCriterionFailure> { it.advancement.toString() }
+                                .thenBy { it.criterion }
+                                .thenBy { it.reason },
+                        )
+                        .forEach { failure ->
+                            array.add(
+                                JsonObject().also { advancement ->
+                                    advancement.addProperty("id", failure.advancement.toString())
+                                    advancement.addProperty("criterion", failure.criterion)
+                                    advancement.addProperty("reason", failure.reason)
+                                },
+                            )
+                        }
+                },
+            )
             errorCode?.let { json.addProperty("errorCode", it.name) }
             errorMessage?.let { json.addProperty("errorMessage", it) }
         }
@@ -655,6 +676,7 @@ data class PlayerEventTraceEvent(
             tick: Long,
             event: PlayerEvent,
             updates: List<AdvancementUpdate>,
+            advancementFailures: List<AdvancementCriterionFailure> = emptyList(),
             success: Boolean = true,
             errorCode: DiagnosticCode? = null,
             errorMessage: String? = null,
@@ -673,6 +695,7 @@ data class PlayerEventTraceEvent(
                 damageAmount = event.damageAmount,
                 input = event.input,
                 advancements = updates,
+                advancementFailures = advancementFailures,
                 success = success,
                 errorCode = errorCode,
                 errorMessage = errorMessage,

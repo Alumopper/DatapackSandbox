@@ -1493,6 +1493,10 @@ object ManifestRunner {
                 success = trace.get("success")?.asBoolean,
                 advancement = trace.manifestString("advancement")?.let(ResourceLocation::parse),
                 criterion = trace.manifestString("criterion"),
+                failedAdvancement = trace.manifestString("failedAdvancement")?.let(ResourceLocation::parse),
+                failedCriterion = trace.manifestString("failedCriterion"),
+                failureContains = trace.manifestString("failureContains")
+                    ?: trace.manifestString("failureReasonContains"),
                 item = trace.manifestString("item")?.let(ResourceLocation::parse),
                 entity = trace.manifestString("entity")?.let(ResourceLocation::parse),
                 block = trace.manifestString("block")?.let(ResourceLocation::parse),

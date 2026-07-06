@@ -239,6 +239,58 @@ class PlayerEventsTest {
     }
 
     @Test
+    fun `player event traces explain failed advancement criteria`() {
+        val advancementId = ResourceLocation.parse("demo:place_diamond")
+        val sandbox = DatapackSandbox(
+            profile = VersionProfiles.default,
+            datapack = Datapack(
+                functions = emptyMap(),
+                loadFunctions = emptyList(),
+                tickFunctions = emptyList(),
+                advancements = mapOf(
+                    advancementId to advancement(
+                        advancementId,
+                        "place_diamond",
+                        "minecraft:placed_block",
+                        JsonObject().also { it.addProperty("block", "minecraft:diamond_block") },
+                    ),
+                ),
+            ),
+        )
+        sandbox.createPlayer("Steve")
+
+        sandbox.handlePlayerEvent(PlayerEvents.shorthand("Steve", "block_placed", "minecraft:stone"))
+
+        val trace = sandbox.world.playerEventTraces.single()
+        val failure = trace.advancementFailures.single()
+        assertEquals(advancementId, failure.advancement)
+        assertEquals("place_diamond", failure.criterion)
+        assertTrue("block expected minecraft:diamond_block" in failure.reason, failure.reason)
+        assertEquals(
+            1,
+            PlayerEventTraceAssertions.matching(
+                sandbox.world.playerEventTraces,
+                PlayerEventTraceExpectation(
+                    failedAdvancement = advancementId,
+                    failedCriterion = "place_diamond",
+                    failureContains = "minecraft:stone",
+                ),
+            ).size,
+        )
+        assertTrue(
+            "block expected minecraft:diamond_block" in sandbox.snapshotJson()
+                .getAsJsonArray("playerEventTraces")
+                .single()
+                .asJsonObject
+                .getAsJsonArray("advancementFailures")
+                .single()
+                .asJsonObject
+                .get("reason")
+                .asString,
+        )
+    }
+
+    @Test
     fun `damage command with source entity fires killed player advancement event`() {
         val criterion = Criterion(
             name = "killed_by_zombie",
