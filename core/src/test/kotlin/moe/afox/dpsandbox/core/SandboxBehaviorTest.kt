@@ -476,6 +476,9 @@ class SandboxBehaviorTest {
         sandbox.executeCommand("execute store success bossbar demo:stored max run random value 1..1")
         sandbox.executeCommand("execute store success score Steve success run random value 1..1")
         sandbox.executeCommand("execute if entity @e[type=minecraft:skeleton] store success score #none success run random value 1..1")
+        sandbox.executeCommand("execute store success score #nested success run execute if entity @e[type=minecraft:skeleton] run random value 1..1")
+        sandbox.executeCommand("execute store result score #nested runs run execute if entity @e[type=minecraft:skeleton] run random value 1..1")
+        sandbox.executeCommand("execute store success score #nested_pass success run execute if entity Steve run random value 1..1")
 
         assertEquals(ResourceLocation.parse("minecraft:stone"), sandbox.world.requireBlock(BlockPos(0, 1, 0)).id)
         assertEquals(ResourceLocation.parse("minecraft:stone"), sandbox.world.requireBlock(BlockPos(1, 1, 0)).id)
@@ -512,6 +515,9 @@ class SandboxBehaviorTest {
         assertEquals(3, sandbox.world.getScore("Steve", "runs"))
         assertEquals(1, sandbox.world.getScore("Steve", "success"))
         assertEquals(0, sandbox.world.getScore("#none", "success"))
+        assertEquals(0, sandbox.world.getScore("#nested", "success"))
+        assertEquals(0, sandbox.world.getScore("#nested", "runs"))
+        assertEquals(1, sandbox.world.getScore("#nested_pass", "success"))
         assertEquals(6L, JsonPaths.get(sandbox.world.storage(ResourceLocation.parse("demo:store")), "value")?.asLong)
         assertEquals(
             6,

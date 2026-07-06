@@ -921,12 +921,16 @@ class CommandExpansionTest {
         sandbox.executeCommand("execute if function #demo:group run scoreboard players add #pass checks 1")
         sandbox.executeCommand("execute if function demo:fail run scoreboard players add #fail checks 1")
         sandbox.executeCommand("execute unless function demo:pass run scoreboard players add #fail checks 1")
+        sandbox.executeCommand("execute store success score #function_pass checks run function demo:pass")
+        sandbox.executeCommand("execute store success score #function_fail checks run function demo:fail")
         sandbox.executeCommand("execute store result score #return checks run function demo:return_run")
         sandbox.executeCommand("execute store result score #explicit checks run function demo:return_after_output")
 
         assertEquals(3, sandbox.world.getScore("#pass", "checks"))
         assertEquals(0, sandbox.world.getScore("#fail", "checks"))
-        assertEquals(33, sandbox.world.getScore("#condition", "checks"))
+        assertEquals(1, sandbox.world.getScore("#function_pass", "checks"))
+        assertEquals(0, sandbox.world.getScore("#function_fail", "checks"))
+        assertEquals(44, sandbox.world.getScore("#condition", "checks"))
         assertEquals(4, sandbox.world.getScore("#return", "checks"))
         assertEquals(4, sandbox.world.getScore("#explicit", "checks"))
     }

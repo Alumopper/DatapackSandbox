@@ -43,6 +43,8 @@ data class ExecutionResult(
     val commandsExecuted: Int,
     /** Explicit value returned by `return <value>` or `return run <command>`, when present. */
     val returnValue: Int? = null,
+    /** Whether the operation produced a successful command result. */
+    val success: Boolean = commandsExecuted > 0,
 )
 
 /**
@@ -200,7 +202,9 @@ class DatapackSandbox(
             functionStack.removeLast()
             functionDepth -= 1
         }
-        return ExecutionResult(commandsExecuted - before, returnValue)
+        val executed = commandsExecuted - before
+        val success = returnValue?.let { it > 0 } ?: (executed > 0)
+        return ExecutionResult(executed, returnValue, success)
     }
 
     /**
@@ -233,12 +237,12 @@ class DatapackSandbox(
         var errorMessage: String? = null
         var afterSnapshot: JsonObject? = null
         try {
-            executeOne(normalized, location, context)
+            val commandSuccess = executeOne(normalized, location, context)
             checkOutputLimit(location)
             afterSnapshot = buildSnapshotJson()
             checkSnapshotSize(afterSnapshot)
-            success = true
-            return ExecutionResult(commandsExecuted - before)
+            success = commandSuccess
+            return ExecutionResult(commandsExecuted - before, success = commandSuccess)
         } catch (signal: ReturnSignal) {
             success = true
             throw signal
@@ -367,15 +371,15 @@ class DatapackSandbox(
             ),
         )
 
-    private fun executeOne(command: String, location: SourceLocation?, context: ExecutionContext) {
-        if (command.isBlank()) return
+    private fun executeOne(command: String, location: SourceLocation?, context: ExecutionContext): Boolean {
+        if (command.isBlank()) return false
         val tokens = CommandTokenizer.tokenize(command, location)
-        if (tokens.isEmpty()) return
+        if (tokens.isEmpty()) return false
         countCommand(location)
 
         try {
             when (tokens[0].text) {
-                "function" -> executeFunction(tokens, location, context)
+                "function" -> return executeFunction(tokens, location, context).success
                 "return" -> executeReturn(command, tokens, location, context)
                 "attribute" -> executeAttribute(tokens, location, context)
                 "scoreboard" -> executeScoreboard(tokens, location)
@@ -386,7 +390,7 @@ class DatapackSandbox(
                 "datapack" -> executeDatapack(tokens, location)
                 "defaultgamemode" -> executeDefaultGameMode(tokens, location)
                 "difficulty" -> executeDifficulty(tokens, location)
-                "execute" -> executeExecute(command, tokens, location, context)
+                "execute" -> return executeExecute(command, tokens, location, context)
                 "data" -> executeData(command, tokens, location, context)
                 "effect" -> executeEffect(tokens, location, context)
                 "enchant" -> executeEnchant(tokens, location, context)
@@ -437,6 +441,7 @@ class DatapackSandbox(
                 "particle" -> executeParticle(command, tokens, location)
                 else -> handleUnknownCommand(tokens[0].text, command, location)
             }
+            return true
         } catch (error: SandboxException) {
             if (error.code == DiagnosticCode.UNSUPPORTED_FEATURE &&
                 unsupportedFeatureMode != UnsupportedFeatureMode.ERROR &&
@@ -445,7 +450,7 @@ class DatapackSandbox(
                 if (unsupportedFeatureMode == UnsupportedFeatureMode.WARN) {
                     recordUnsupportedWarning(command, error, location)
                 }
-                return
+                return true
             }
             if (error.location == null && location != null) {
                 throw SandboxException(error.code, error.message, location, error.version ?: profile.id, error.command, error)
@@ -528,9 +533,11 @@ class DatapackSandbox(
         )
     }
 
-    private fun executeFunction(tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext) {
+    private fun executeFunction(tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext): ExecutionResult {
         requireSize(tokens, 2, "function <id>", location)
-        lastFunctionReturnValue = runFunction(ResourceLocation.parse(tokens[1].text), context).returnValue
+        val result = runFunction(ResourceLocation.parse(tokens[1].text), context)
+        lastFunctionReturnValue = result.returnValue
+        return result
     }
 
     private fun executeReturn(command: String, tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext): Nothing {
@@ -545,9 +552,9 @@ class DatapackSandbox(
                 val commandsBefore = commandsExecuted
                 val outputsBefore = world.outputs.size
                 lastFunctionReturnValue = null
-                executeOne(rest, location, context)
+                val success = executeOne(rest, location, context)
                 val commandsRun = (commandsExecuted - commandsBefore).coerceAtLeast(0)
-                throw ReturnSignal(executeStoreValue("result", commandsRun, outputsBefore, lastFunctionReturnValue))
+                throw ReturnSignal(executeStoreValue("result", commandsRun, outputsBefore, lastFunctionReturnValue, success))
             }
             else -> throw ReturnSignal(parseInt(tokens[1].text, "return value", location))
         }
@@ -1473,7 +1480,7 @@ class DatapackSandbox(
             listOf(token)
         }
 
-    private fun executeExecute(command: String, tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext) {
+    private fun executeExecute(command: String, tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext): Boolean {
         var index = 1
         var contexts = listOf(context)
 
@@ -1481,8 +1488,7 @@ class DatapackSandbox(
             when (tokens[index].text) {
                 "run" -> {
                     val rest = CommandTokenizer.tailAfter(command, tokens[index])
-                    contexts.forEach { executeOne(rest, location, it) }
-                    return
+                    return contexts.map { executeOne(rest, location, it) }.any { it }
                 }
                 "as" -> {
                     requireIndex(tokens, index + 1, "execute as <selector>", location)
@@ -1594,16 +1600,17 @@ class DatapackSandbox(
                     val outputsBefore = world.outputs.size
                     val rest = CommandTokenizer.tailAfter(command, tokens[runIndex])
                     lastFunctionReturnValue = null
-                    contexts.forEach { executeOne(rest, location, it) }
+                    val commandSuccess = contexts.map { executeOne(rest, location, it) }.any { it }
                     val commandsRun = (commandsExecuted - commandsBefore).coerceAtLeast(0)
                     val stored = executeStoreValue(
                         tokens.getOrNull(index + 1)?.text ?: "result",
                         commandsRun,
                         outputsBefore,
                         lastFunctionReturnValue,
+                        commandSuccess,
                     )
                     storeExecuteValue(tokens, index + 1, stored, location, contexts.firstOrNull() ?: context)
-                    return
+                    return commandSuccess
                 }
                 "if", "unless" -> {
                     val positive = tokens[index].text == "if"
@@ -1616,6 +1623,7 @@ class DatapackSandbox(
                 else -> unsupportedFeature("Unsupported execute subcommand '${tokens[index].text}'", profile.id, location, command)
             }
         }
+        return contexts.isNotEmpty()
     }
 
     private fun evaluateCondition(tokens: List<CommandToken>, index: Int, location: SourceLocation?, context: ExecutionContext): Pair<Boolean, Int> {
@@ -4708,10 +4716,16 @@ class DatapackSandbox(
         return if (scaled % 1.0 == 0.0) JsonPrimitive(scaled.toLong()) else JsonPrimitive(scaled)
     }
 
-    private fun executeStoreValue(storeType: String, commandsRun: Int, outputsBefore: Int, returnValue: Int? = null): Int =
+    private fun executeStoreValue(
+        storeType: String,
+        commandsRun: Int,
+        outputsBefore: Int,
+        returnValue: Int? = null,
+        success: Boolean = commandsRun > 0,
+    ): Int =
         when (storeType) {
-            "success" -> if (commandsRun > 0) 1 else 0
-            else -> returnValue ?: latestNumericOutput(outputsBefore) ?: commandsRun
+            "success" -> if (success) 1 else 0
+            else -> if (success) returnValue ?: latestNumericOutput(outputsBefore) ?: commandsRun else 0
         }
 
     private fun latestNumericOutput(outputsBefore: Int): Int? =
