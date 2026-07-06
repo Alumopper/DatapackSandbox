@@ -950,15 +950,26 @@ class DatapackSandbox(
             "list" -> world.recordOutput("bossbar list", "data", text = world.bossbars.keys.sorted().joinToString())
             "get" -> {
                 requireSize(tokens, 4, "bossbar get <id> <field>", location)
-                val bar = world.bossbars[ResourceLocation.parse(tokens[2].text)] ?: throw SandboxException(DiagnosticCode.COMMAND_ERROR, "Bossbar '${tokens[2].text}' does not exist", location)
-                val value = when (tokens[3].text) {
-                    "value" -> bar.value.toString()
-                    "max" -> bar.max.toString()
-                    "visible" -> bar.visible.toString()
-                    "players" -> bar.players.joinToString()
-                    else -> bar.toJson().get(tokens[3].text)?.asString ?: ""
+                val id = ResourceLocation.parse(tokens[2].text)
+                val bar = world.bossbars[id] ?: throw SandboxException(DiagnosticCode.COMMAND_ERROR, "Bossbar '${tokens[2].text}' does not exist", location)
+                val field = tokens[3].text
+                val value = when (field) {
+                    "value" -> JsonPrimitive(bar.value)
+                    "max" -> JsonPrimitive(bar.max)
+                    "visible" -> JsonPrimitive(bar.visible)
+                    "players" -> JsonArray().also { array -> bar.players.forEach { array.add(it) } }
+                    else -> bar.toJson().get(field)?.deepCopy() ?: JsonPrimitive("")
                 }
-                world.recordOutput("bossbar get", "data", text = value)
+                world.recordOutput(
+                    "bossbar get",
+                    "data",
+                    text = if (value.isJsonPrimitive) value.asJsonPrimitive.asString else JsonValues.render(value),
+                    payload = JsonObject().also { payload ->
+                        payload.addProperty("id", id.toString())
+                        payload.addProperty("field", field)
+                        payload.add("value", value)
+                    },
+                )
             }
             "set" -> {
                 requireSize(tokens, 5, "bossbar set <id> <field> <value>", location)

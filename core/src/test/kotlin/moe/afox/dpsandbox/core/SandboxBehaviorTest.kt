@@ -93,6 +93,9 @@ class SandboxBehaviorTest {
 
         sandbox.executeCommand("bossbar add demo:timer {\"text\":\"Timer\"}")
         sandbox.executeCommand("bossbar set demo:timer value 5")
+        sandbox.executeCommand("bossbar get demo:timer value")
+        sandbox.executeCommand("scoreboard objectives add boss_copy dummy")
+        sandbox.executeCommand("execute store result score #boss boss_copy run bossbar get demo:timer value")
         sandbox.executeCommand("gamerule doDaylightCycle false")
         sandbox.executeCommand("time set noon")
         sandbox.executeCommand("time query daytime")
@@ -112,6 +115,13 @@ class SandboxBehaviorTest {
 
         val player = sandbox.world.requirePlayer("Steve")
         assertEquals(5, sandbox.world.bossbars[ResourceLocation.parse("demo:timer")]?.value)
+        val bossbarOutput = sandbox.world.outputs.first { it.command == "bossbar get" }
+        val bossbarPayload = bossbarOutput.payload?.asJsonObject ?: error("missing bossbar get payload")
+        assertEquals("5", bossbarOutput.text)
+        assertEquals("demo:timer", bossbarPayload.get("id").asString)
+        assertEquals("value", bossbarPayload.get("field").asString)
+        assertEquals(5, bossbarPayload.get("value").asInt)
+        assertEquals(5, sandbox.world.getScore("#boss", "boss_copy"))
         assertEquals("false", sandbox.world.gamerules["doDaylightCycle"])
         assertEquals(6000, sandbox.world.dayTime)
         val timeOutput = sandbox.world.outputs.first { it.command == "time query" }
