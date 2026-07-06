@@ -167,11 +167,42 @@ class PredicateEngine(private val datapack: Datapack) {
             if (!testPlayerPredicate(player, playerPredicate, context)) return false
         }
         predicate.getAsJsonObject("equipment")?.let {
-            val player = actual as? SandboxPlayer ?: return false
-            val mainhand = it.getAsJsonObject("mainhand")
-            if (mainhand != null && !testItemPredicate(player.selectedItem ?: return false, mainhand)) return false
+            if (!testEquipmentPredicate(actual, it)) return false
         }
         return true
+    }
+
+    private fun testEquipmentPredicate(entity: SandboxEntity, predicate: JsonObject): Boolean {
+        predicate.entrySet().forEach { (key, value) ->
+            if (!value.isJsonObject) return false
+            val item = equipmentItem(entity, key) ?: return false
+            if (!testItemPredicate(item, value.asJsonObject)) return false
+        }
+        return true
+    }
+
+    private fun equipmentItem(entity: SandboxEntity, key: String): ItemStack? {
+        if (entity is SandboxPlayer) {
+            return when (key) {
+                "mainhand", EquipmentSlots.MAINHAND -> entity.selectedItem
+                "offhand", EquipmentSlots.OFFHAND -> entity.inventory.getOrNull(40)
+                "feet", EquipmentSlots.FEET -> entity.inventory.getOrNull(36)
+                "legs", EquipmentSlots.LEGS -> entity.inventory.getOrNull(37)
+                "chest", EquipmentSlots.CHEST -> entity.inventory.getOrNull(38)
+                "head", EquipmentSlots.HEAD -> entity.inventory.getOrNull(39)
+                else -> null
+            }
+        }
+        val slot = when (key) {
+            "mainhand", EquipmentSlots.MAINHAND -> EquipmentSlots.MAINHAND
+            "offhand", EquipmentSlots.OFFHAND -> EquipmentSlots.OFFHAND
+            "feet", EquipmentSlots.FEET -> EquipmentSlots.FEET
+            "legs", EquipmentSlots.LEGS -> EquipmentSlots.LEGS
+            "chest", EquipmentSlots.CHEST -> EquipmentSlots.CHEST
+            "head", EquipmentSlots.HEAD -> EquipmentSlots.HEAD
+            else -> null
+        }
+        return slot?.let { entity.equipment[it] }
     }
 
     private fun testPlayerPredicate(player: SandboxPlayer, predicate: JsonObject, context: PredicateContext): Boolean {

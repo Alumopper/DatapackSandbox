@@ -212,12 +212,16 @@ class CommandExpansionTest {
     @Test
     fun `item commands support non-player entity equipment slots`() {
         val pack = writeItemModifierPack(Files.createTempDirectory("dps-entity-equipment-pack"))
+        writeEquipmentPredicateEntries(pack)
         val sandbox = createSandbox("26.2", listOf(pack))
 
         sandbox.executeCommand("summon minecraft:zombie 0 64 0")
         sandbox.executeCommand("item replace entity @e[type=minecraft:zombie,limit=1] weapon.mainhand with minecraft:stick 1")
         sandbox.executeCommand("item modify entity @e[type=minecraft:zombie,limit=1] weapon.mainhand demo:mark")
         sandbox.executeCommand("item replace entity Steve hotbar.3 from entity @e[type=minecraft:zombie,limit=1] weapon.mainhand")
+        sandbox.executeCommand("scoreboard objectives add equipment dummy")
+        sandbox.executeCommand("execute as @e[type=minecraft:zombie,limit=1] if predicate demo:zombie_mainhand_stick run scoreboard players add #predicate equipment 1")
+        sandbox.executeCommand("execute as @e[type=minecraft:zombie,limit=1] unless predicate demo:zombie_offhand_stick run scoreboard players add #predicate equipment 1")
 
         val zombie = sandbox.world.entities.first { it.type == ResourceLocation.parse("minecraft:zombie") }
         val equipped = zombie.equipment[EquipmentSlots.MAINHAND] ?: error("missing zombie mainhand equipment")
@@ -241,6 +245,7 @@ class CommandExpansionTest {
             .asJsonObject
             .getAsJsonObject("equipment")
         assertEquals("minecraft:stick", snapshotEquipment.getAsJsonObject("weapon.mainhand").get("id").asString)
+        assertEquals(2, sandbox.world.getScore("#predicate", "equipment"))
     }
 
     @Test
@@ -805,6 +810,47 @@ class CommandExpansionTest {
             """.trimIndent(),
         )
         return root
+    }
+
+    private fun writeEquipmentPredicateEntries(root: Path) {
+        val predicateRoot = root.resolve("data").resolve("demo").resolve("predicate")
+        Files.createDirectories(predicateRoot)
+        Files.writeString(
+            predicateRoot.resolve("zombie_mainhand_stick.json"),
+            """
+            {
+              "condition": "minecraft:entity_properties",
+              "entity": "this",
+              "predicate": {
+                "type": "minecraft:zombie",
+                "equipment": {
+                  "mainhand": {
+                    "items": "minecraft:stick",
+                    "count": 4,
+                    "nbt": "{marked:true}"
+                  }
+                }
+              }
+            }
+            """.trimIndent(),
+        )
+        Files.writeString(
+            predicateRoot.resolve("zombie_offhand_stick.json"),
+            """
+            {
+              "condition": "minecraft:entity_properties",
+              "entity": "this",
+              "predicate": {
+                "type": "minecraft:zombie",
+                "equipment": {
+                  "offhand": {
+                    "items": "minecraft:stick"
+                  }
+                }
+              }
+            }
+            """.trimIndent(),
+        )
     }
 
     private fun writePredicatePack(root: Path): Path {
