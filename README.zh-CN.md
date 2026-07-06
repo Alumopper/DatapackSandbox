@@ -88,6 +88,15 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar run --pack ./my_pack --functio
 java -jar cli/build/libs/datapack-sandbox-cli.jar run --pack ./my_pack --function demo:main --snapshot-diff
 ```
 
+构建外部差分流程时，可以比较两份原始 JSON snapshot，也可以从 run/check
+report 中抽取 `snapshot` 字段再比较：
+
+```bash
+java -jar cli/build/libs/datapack-sandbox-cli.jar diff expected-snapshot.json actual-snapshot.json
+java -jar cli/build/libs/datapack-sandbox-cli.jar diff --snapshot --check vanilla-report.json sandbox-report.json
+java -jar cli/build/libs/datapack-sandbox-cli.jar diff --json --output build/snapshot-diff.json expected-snapshot.json actual-snapshot.json
+```
+
 不创建完整数据包，直接运行单个 `.mcfunction` 文件：
 
 ```bash

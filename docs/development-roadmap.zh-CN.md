@@ -271,6 +271,7 @@
   - 对 bugfix 增加回归用例。
 - 建立可选的外部差分流程：
   - 用户本地提供原版服务端或第三方测试环境时，生成同一输入脚本并比较可观察结果。
+  - `diff` CLI 已可比较两份确定性 JSON snapshot/report，支持从 report 抽取 `snapshot`、输出字段级 JSON Pointer 差异、写 JSON artifact，并用 `--check` 作为外部差分 CI gate。
   - 该流程不作为核心构建依赖，不提交 Mojang 代码或产物。
 - 建立行为等级：
   - `exact`：与原版可观察行为高度一致。

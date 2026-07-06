@@ -13,6 +13,7 @@ import com.github.ajalt.clikt.parameters.types.int
 import com.github.ajalt.clikt.parameters.types.long
 import com.github.ajalt.clikt.parameters.types.path
 import com.google.gson.JsonArray
+import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import moe.afox.dpsandbox.core.CommandTraceEvent
@@ -50,6 +51,7 @@ fun main(args: Array<String>) = DatapackSandboxCli()
         ReplCommand(),
         CheckCommand(),
         RunCommand(),
+        DiffCommand(),
         LootCommand(),
         AdvancementCommand(),
         EventCommand(),
@@ -1197,6 +1199,79 @@ class ManifestSchemaCommand : CliktCommand(name = "schema") {
         } catch (error: SandboxException) {
             println(ConsoleStyle.diagnostic(error.render()))
             exitProcess(ExitCodes.forException(error))
+        }
+    }
+}
+
+class DiffCommand : CliktCommand(name = "diff") {
+    private val before by argument("before").path(mustExist = true)
+    private val after by argument("after").path(mustExist = true)
+    private val snapshot by option("--snapshot").flag(default = false)
+    private val state by option("--state").flag(default = false)
+    private val json by option("--json").flag(default = false)
+    private val output by option("--output", "-o").path()
+    private val check by option("--check").flag(default = false)
+
+    override fun run() {
+        try {
+            val beforeJson = readComparisonJson(before)
+            val afterJson = readComparisonJson(after)
+            val entries = if (state) {
+                SnapshotDiff.stateDiff(beforeJson, afterJson)
+            } else {
+                SnapshotDiff.diff(beforeJson, afterJson)
+            }
+            val content = if (json) JsonValues.render(SnapshotDiff.toJson(entries)) else SnapshotDiff.render(entries)
+            emit(content)
+            if (check && entries.isNotEmpty()) {
+                exitProcess(ExitCodes.ASSERTION_FAILED)
+            }
+        } catch (error: SandboxException) {
+            println(ConsoleStyle.diagnostic(error.render()))
+            exitProcess(ExitCodes.forException(error))
+        }
+    }
+
+    private fun readComparisonJson(path: Path): JsonElement {
+        val parsed = try {
+            JsonParser.parseString(Files.readString(path, StandardCharsets.UTF_8))
+        } catch (error: Exception) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Invalid JSON for diff input $path", cause = error)
+        }
+        return if (snapshot) extractSingleSnapshot(path, parsed) else parsed
+    }
+
+    private fun extractSingleSnapshot(path: Path, root: JsonElement): JsonElement {
+        val snapshots = collectSnapshots(root)
+        return when (snapshots.size) {
+            1 -> snapshots.single().deepCopy()
+            0 -> throw SandboxException(DiagnosticCode.INPUT_FORMAT, "diff --snapshot input has no snapshot field: $path")
+            else -> throw SandboxException(DiagnosticCode.INPUT_FORMAT, "diff --snapshot input has ${snapshots.size} snapshots; compare a single attempt or a raw snapshot: $path")
+        }
+    }
+
+    private fun collectSnapshots(root: JsonElement): List<JsonElement> =
+        when {
+            root.isJsonObject -> {
+                val obj = root.asJsonObject
+                when {
+                    obj.has("snapshot") -> listOf(obj.get("snapshot"))
+                    obj.has("attempts") && obj.get("attempts").isJsonArray -> obj.getAsJsonArray("attempts").flatMap(::collectSnapshots)
+                    else -> emptyList()
+                }
+            }
+            root.isJsonArray -> root.asJsonArray.flatMap(::collectSnapshots)
+            else -> emptyList()
+        }
+
+    private fun emit(content: String) {
+        val outputPath = output
+        if (outputPath == null) {
+            println(content)
+        } else {
+            outputPath.parent?.let(Files::createDirectories)
+            Files.writeString(outputPath, content, StandardCharsets.UTF_8)
+            println(ConsoleStyle.green("diff output written: $outputPath"))
         }
     }
 }

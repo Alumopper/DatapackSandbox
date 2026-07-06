@@ -137,6 +137,15 @@ To inspect state changes before and after a run, print a snapshot diff:
 java -jar cli/build/libs/datapack-sandbox-cli.jar run --pack ./my_pack --function demo:main --snapshot-diff
 ```
 
+Compare two raw JSON snapshots, or extract `snapshot` from run/check reports,
+when building an external differential workflow:
+
+```bash
+java -jar cli/build/libs/datapack-sandbox-cli.jar diff expected-snapshot.json actual-snapshot.json
+java -jar cli/build/libs/datapack-sandbox-cli.jar diff --snapshot --check vanilla-report.json sandbox-report.json
+java -jar cli/build/libs/datapack-sandbox-cli.jar diff --json --output build/snapshot-diff.json expected-snapshot.json actual-snapshot.json
+```
+
 Run a single `.mcfunction` file without creating a full datapack:
 
 ```bash

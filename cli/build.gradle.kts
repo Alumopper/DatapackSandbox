@@ -134,6 +134,30 @@ smokeCliJarSchema.configure {
     }
 }
 
+val smokeDiffBefore = layout.buildDirectory.file("smoke/diff-before-report.json")
+val smokeDiffAfter = layout.buildDirectory.file("smoke/diff-after-report.json")
+val smokeCliJarDiff = registerCliJarSmokeTask(
+    name = "smokeCliJarDiff",
+    descriptionText = "Checks the standalone CLI jar can compare report snapshots.",
+    "diff",
+    "--snapshot",
+    "--check",
+    smokeDiffBefore.get().asFile.absolutePath,
+    smokeDiffAfter.get().asFile.absolutePath,
+)
+smokeCliJarDiff.configure {
+    doFirst {
+        smokeDiffBefore.get().asFile.apply {
+            parentFile.mkdirs()
+            writeText("""{"snapshot":{"scores":{"runs":{"#smoke":1}}}}""")
+        }
+        smokeDiffAfter.get().asFile.apply {
+            parentFile.mkdirs()
+            writeText("""{"snapshot":{"scores":{"runs":{"#smoke":1}}}}""")
+        }
+    }
+}
+
 val smokeCliJarExamples = registerCliJarSmokeTask(
     name = "smokeCliJarExamples",
     descriptionText = "Runs all example manifests through the standalone CLI jar.",
@@ -224,6 +248,7 @@ tasks.register("smokeCliJar") {
         smokeCliJarCommandDocs,
         smokeCliJarResourceDocs,
         smokeCliJarSchema,
+        smokeCliJarDiff,
         smokeCliJarExamples,
         smokeCliJarReadmeLoot,
         smokeCliJarReadmeEvent,

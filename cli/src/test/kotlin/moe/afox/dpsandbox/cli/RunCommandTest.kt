@@ -1258,6 +1258,70 @@ class RunCommandTest {
     }
 
     @Test
+    fun `diff reports field level json changes`() {
+        val before = Files.createTempFile("dps-diff-before", ".json")
+        val after = Files.createTempFile("dps-diff-after", ".json")
+        Files.writeString(before, """{"scores":{"runs":{"#one":1}}}""")
+        Files.writeString(after, """{"scores":{"runs":{"#one":3,"#two":2}}}""")
+
+        val output = captureStdout {
+            main(arrayOf("diff", before.toString(), after.toString()))
+        }
+
+        assertTrue("~ /scores/runs/#one: 1 -> 3" in output, output)
+        assertTrue("+ /scores/runs/#two = 2" in output, output)
+    }
+
+    @Test
+    fun `diff writes json report to file`() {
+        val before = Files.createTempFile("dps-diff-json-before", ".json")
+        val after = Files.createTempFile("dps-diff-json-after", ".json")
+        val reportFile = Files.createTempFile("dps-diff-report", ".json")
+        Files.writeString(before, """{"storage":{"demo:env":{"ready":false}}}""")
+        Files.writeString(after, """{"storage":{"demo:env":{"ready":true}}}""")
+
+        val output = captureStdout {
+            main(arrayOf("diff", "--json", "--output", reportFile.toString(), before.toString(), after.toString()))
+        }
+        val report = JsonParser.parseString(Files.readString(reportFile)).asJsonArray
+        val entry = report.single().asJsonObject
+
+        assertTrue("diff output written: $reportFile" in output, output)
+        assertEquals("/storage/demo:env/ready", entry.get("path").asString)
+        assertEquals("changed", entry.get("kind").asString)
+        assertEquals(false, entry.get("before").asBoolean)
+        assertEquals(true, entry.get("after").asBoolean)
+    }
+
+    @Test
+    fun `diff check exits when json differs`() {
+        val before = Files.createTempFile("dps-diff-check-before", ".json")
+        val after = Files.createTempFile("dps-diff-check-after", ".json")
+        Files.writeString(before, """{"scores":{"runs":{"#one":1}}}""")
+        Files.writeString(after, """{"scores":{"runs":{"#one":2}}}""")
+
+        val result = runCliProcess("diff", "--check", before.toString(), after.toString())
+
+        assertEquals(ExitCodes.ASSERTION_FAILED, result.exitCode, result.output)
+        assertTrue("~ /scores/runs/#one: 1 -> 2" in result.output, result.output)
+    }
+
+    @Test
+    fun `diff can compare snapshots extracted from reports`() {
+        val before = Files.createTempFile("dps-diff-report-before", ".json")
+        val after = Files.createTempFile("dps-diff-report-after", ".json")
+        Files.writeString(before, """{"passed":true,"snapshot":{"scores":{"runs":{"#one":1}}}}""")
+        Files.writeString(after, """{"passed":true,"snapshot":{"scores":{"runs":{"#one":1,"#two":2}}}}""")
+
+        val output = captureStdout {
+            main(arrayOf("diff", "--snapshot", before.toString(), after.toString()))
+        }
+
+        assertTrue("+ /scores/runs/#two = 2" in output, output)
+        assertTrue("passed" !in output, output)
+    }
+
+    @Test
     fun `resources list reports behavior levels`() {
         val output = captureStdout {
             main(arrayOf("resources"))
