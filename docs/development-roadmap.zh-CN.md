@@ -277,7 +277,7 @@
   - `observed-noop`：接受命令并记录输出/诊断，不改变真实副作用。
   - `unsupported`：按策略 warn/error/ignore。
   - `commands` CLI 已可按版本导出命令目录、行为等级和描述，支持 plain、Markdown、JSON、`--output <file>` artifact 输出和 `--check <file>` 文档覆盖检查；standalone jar smoke task 已接入 Gradle `check`，便于文档生成和 CI 复核。
-  - `ResourceCatalog` 已集中维护资源类型与行为等级，`DatapackLoader` 的额外 raw JSON 资源读取复用该目录，避免 loader、文档和后续检查工具分叉。
+  - `ResourceCatalog` 已集中维护资源类型与行为等级，`DatapackLoader` 的额外 raw JSON 资源读取复用该目录，`resources` CLI 已可导出 plain、Markdown、JSON 和 `--output <file>` artifact，避免 loader、文档和后续检查工具分叉。
 
 验收标准：
 

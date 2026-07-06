@@ -24,6 +24,8 @@ import moe.afox.dpsandbox.core.OutputEvent
 import moe.afox.dpsandbox.core.PlayerEvent
 import moe.afox.dpsandbox.core.PlayerEventTraceEvent
 import moe.afox.dpsandbox.core.PlayerEvents
+import moe.afox.dpsandbox.core.ResourceCatalog
+import moe.afox.dpsandbox.core.ResourceCatalogEntry
 import moe.afox.dpsandbox.core.ResourceLocation
 import moe.afox.dpsandbox.core.SandboxException
 import moe.afox.dpsandbox.core.SingleFunctionDatapack
@@ -54,6 +56,7 @@ fun main(args: Array<String>) = DatapackSandboxCli()
         ManifestSchemaCommand(),
         VersionCommand(),
         CommandsCommand(),
+        ResourcesCommand(),
     )
     .main(args)
 
@@ -1395,6 +1398,75 @@ class CommandsCommand : CliktCommand(name = "commands") {
 
     private fun normalizeDoc(value: String): String =
         value.replace("\r\n", "\n").replace('\r', '\n')
+}
+
+class ResourcesCommand : CliktCommand(name = "resources") {
+    private val docs by option("--docs").flag(default = false)
+    private val json by option("--json").flag(default = false)
+    private val output by option("--output", "-o").path()
+
+    override fun run() {
+        try {
+            if (docs && json) {
+                throw SandboxException(DiagnosticCode.INPUT_FORMAT, "resources accepts only one output mode: --docs or --json")
+            }
+            val entries = ResourceCatalog.all
+            when {
+                docs -> emit(renderMarkdown(entries))
+                json -> emit(JsonValues.render(renderJson(entries)))
+                else -> emit(renderPlain(entries))
+            }
+        } catch (error: SandboxException) {
+            println(ConsoleStyle.diagnostic(error.render()))
+            exitProcess(ExitCodes.forException(error))
+        }
+    }
+
+    private fun renderPlain(entries: List<ResourceCatalogEntry>): String =
+        entries.joinToString(System.lineSeparator()) { entry ->
+            "${entry.type} ${entry.behaviorLevel.id} - ${entry.summary}"
+        }
+
+    private fun renderMarkdown(entries: List<ResourceCatalogEntry>): String =
+        buildString {
+            appendLine("| Resource | Behavior | Runtime/debug surface |")
+            appendLine("|---|---|---|")
+            entries.forEach { entry ->
+                appendLine("| `${markdownCell(entry.type)}` | `${entry.behaviorLevel.id}` | ${markdownCell(entry.summary)} |")
+            }
+        }.trimEnd()
+
+    private fun renderJson(entries: List<ResourceCatalogEntry>): JsonObject =
+        JsonObject().also { root ->
+            root.add(
+                "resources",
+                JsonArray().also { array ->
+                    entries.forEach { entry ->
+                        array.add(
+                            JsonObject().also { json ->
+                                json.addProperty("type", entry.type)
+                                json.addProperty("behavior", entry.behaviorLevel.id)
+                                json.addProperty("summary", entry.summary)
+                            },
+                        )
+                    }
+                },
+            )
+        }
+
+    private fun markdownCell(value: String): String =
+        value.replace("|", "\\|").replace("\r", " ").replace("\n", " ")
+
+    private fun emit(content: String) {
+        val outputPath = output
+        if (outputPath == null) {
+            println(content)
+        } else {
+            outputPath.parent?.let(Files::createDirectories)
+            Files.writeString(outputPath, content, StandardCharsets.UTF_8)
+            println(ConsoleStyle.green("resources output written: $outputPath"))
+        }
+    }
 }
 
 fun unsupportedFeatureMode(value: String): UnsupportedFeatureMode =

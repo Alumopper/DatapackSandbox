@@ -64,6 +64,15 @@ The runtime exposes the same type list through `ResourceCatalog`; loader raw
 JSON coverage and docs tooling should use that catalog instead of maintaining
 separate resource-type lists.
 
+The standalone CLI can export the resource catalog for scripts and docs:
+
+```bash
+java -jar cli/build/libs/datapack-sandbox-cli.jar resources
+java -jar cli/build/libs/datapack-sandbox-cli.jar resources --docs
+java -jar cli/build/libs/datapack-sandbox-cli.jar resources --docs --output docs/resource-catalog.md
+java -jar cli/build/libs/datapack-sandbox-cli.jar resources --json --output build/resource-catalog.json
+```
+
 | Level | Meaning |
 |---|---|
 | `exact` | The documented surface is intended to match vanilla-observable behavior. |

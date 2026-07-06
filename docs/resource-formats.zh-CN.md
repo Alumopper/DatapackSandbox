@@ -54,6 +54,15 @@ Minecraft Java `26.2` 使用 data pack format `107.1`，当前资源目录是单
 
 运行时通过 `ResourceCatalog` 暴露同一份资源类型列表；loader 的 raw JSON 覆盖和后续文档工具应复用这个目录，而不是各自维护一份资源类型清单。
 
+standalone CLI 可以导出资源目录，供脚本和文档使用：
+
+```bash
+java -jar cli/build/libs/datapack-sandbox-cli.jar resources
+java -jar cli/build/libs/datapack-sandbox-cli.jar resources --docs
+java -jar cli/build/libs/datapack-sandbox-cli.jar resources --docs --output docs/resource-catalog.md
+java -jar cli/build/libs/datapack-sandbox-cli.jar resources --json --output build/resource-catalog.json
+```
+
 | 等级 | 含义 |
 |---|---|
 | `exact` | 文档覆盖的行为目标是与原版可观察结果一致。 |

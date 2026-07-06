@@ -1257,6 +1257,54 @@ class RunCommandTest {
         assertEquals("unsupported", commands.getValue("ban").get("behavior").asString)
     }
 
+    @Test
+    fun `resources list reports behavior levels`() {
+        val output = captureStdout {
+            main(arrayOf("resources"))
+        }
+
+        assertTrue("function modeled - mcfunction execution" in output, output)
+        assertTrue("tag/<registry> observed-noop - general tags" in output, output)
+        assertTrue("worldgen/structure observed-noop - version-checked raw JSON resource" in output, output)
+    }
+
+    @Test
+    fun `resources render markdown docs table`() {
+        val output = captureStdout {
+            main(arrayOf("resources", "--docs"))
+        }
+
+        assertTrue("| Resource | Behavior | Runtime/debug surface |" in output, output)
+        assertTrue("| `function` | `modeled` | mcfunction execution" in output, output)
+        assertTrue("| `worldgen/structure` | `observed-noop` | version-checked raw JSON resource" in output, output)
+    }
+
+    @Test
+    fun `resources write markdown docs table to file`() {
+        val reportFile = Files.createTempFile("dps-resources-docs", ".md")
+        val output = captureStdout {
+            main(arrayOf("resources", "--docs", "--output", reportFile.toString()))
+        }
+        val report = Files.readString(reportFile)
+
+        assertTrue("resources output written: $reportFile" in output, output)
+        assertTrue("| Resource | Behavior | Runtime/debug surface |" in report, report)
+        assertTrue("| `damage_type` | `observed-noop` | version-checked raw JSON resource" in report, report)
+    }
+
+    @Test
+    fun `resources render catalog json`() {
+        val output = captureStdout {
+            main(arrayOf("resources", "--json"))
+        }
+        val json = JsonParser.parseString(output).asJsonObject
+        val resources = json.getAsJsonArray("resources").map { it.asJsonObject }.associateBy { it.get("type").asString }
+
+        assertEquals("modeled", resources.getValue("function").get("behavior").asString)
+        assertEquals("observed-noop", resources.getValue("tag/<registry>").get("behavior").asString)
+        assertEquals("observed-noop", resources.getValue("worldgen/structure").get("behavior").asString)
+    }
+
     private fun captureStdout(stdin: String? = null, block: () -> Unit): String {
         val original = System.out
         val originalIn = System.`in`
