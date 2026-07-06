@@ -171,6 +171,7 @@ class DatapackSandbox(
         if (normalized.isBlank()) return ExecutionResult(0)
         val before = commandsExecuted
         val outputsBefore = world.outputs.size
+        val beforeSnapshot = snapshotJson()
         val source = CommandSource(
             file = location?.file,
             line = location?.line,
@@ -207,6 +208,7 @@ class DatapackSandbox(
                 success = success,
                 commandsExecuted = commandsExecuted - before,
                 outputs = world.outputs.size - outputsBefore,
+                snapshotDiffs = SnapshotDiff.stateDiff(beforeSnapshot, snapshotJson()),
                 errorCode = errorCode,
                 errorMessage = errorMessage,
             )
@@ -694,7 +696,7 @@ class DatapackSandbox(
             world.entities += SandboxEntity(
                 type = ResourceLocation("minecraft", "item"),
                 position = position,
-                nbt = JsonObject().also { it.add("Item", item.toJson()) },
+                nbt = JsonObject().also { it.add("Item", blockItemJson(item)) },
             )
         }
     }

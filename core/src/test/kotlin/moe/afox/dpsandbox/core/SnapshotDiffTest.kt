@@ -35,4 +35,33 @@ class SnapshotDiffTest {
         assertTrue(diff.any { it.render() == "~ /scores/runs/#clock: 1 -> 2" })
         assertTrue(JsonValues.render(SnapshotDiff.toJson(diff)).contains("\"kind\": \"changed\""))
     }
+
+    @Test
+    fun `state diff excludes trace metadata`() {
+        val before = JsonValues.parse(
+            """
+            {
+              "scores": {},
+              "traces": [],
+              "playerEventTraces": []
+            }
+            """.trimIndent(),
+        )
+        val after = JsonValues.parse(
+            """
+            {
+              "scores": { "runs": { "#clock": 1 } },
+              "traces": [
+                { "command": "scoreboard players set #clock runs 1", "snapshotDiffs": [{ "path": "/scores/runs" }] }
+              ],
+              "playerEventTraces": [
+                { "player": "Steve", "type": "tick" }
+              ]
+            }
+            """.trimIndent(),
+        )
+
+        assertTrue(SnapshotDiff.diff(before, after).any { it.path.startsWith("/traces") })
+        assertEquals(listOf("/scores/runs"), SnapshotDiff.stateDiff(before, after).map { it.path })
+    }
 }

@@ -504,6 +504,7 @@ data class CommandTraceEvent(
     val success: Boolean,
     val commandsExecuted: Int,
     val outputs: Int,
+    val snapshotDiffs: List<SnapshotDiffEntry> = emptyList(),
     val errorCode: DiagnosticCode? = null,
     val errorMessage: String? = null,
 ) {
@@ -518,6 +519,7 @@ data class CommandTraceEvent(
             json.addProperty("success", success)
             json.addProperty("commandsExecuted", commandsExecuted)
             json.addProperty("outputs", outputs)
+            json.add("snapshotDiffs", SnapshotDiff.toJson(snapshotDiffs))
             executor?.let { json.addProperty("executor", it) }
             json.add("position", JsonObject().also { pos ->
                 pos.addProperty("x", position.x)

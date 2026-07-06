@@ -645,6 +645,39 @@ class RunCommandTest {
     }
 
     @Test
+    fun `run filters traces by command state changes`() {
+        val traceFile = Files.createTempFile("dps-cli-state-filtered-trace", ".jsonl")
+
+        val output = captureStdout {
+            main(
+                arrayOf(
+                    "run",
+                    "--version",
+                    "26.2",
+                    "--mcfunction-text",
+                    "say hidden from state filter\nscoreboard objectives add runs dummy\nscoreboard players set #state_filtered runs 2\ndata merge storage demo:env {ready:true}",
+                    "--trace",
+                    "--trace-filter",
+                    "score=#state_filtered",
+                    "--trace-file",
+                    traceFile.toString(),
+                ),
+            )
+        }
+
+        assertTrue("trace OK scoreboard players set #state_filtered runs 2" in output, output)
+        assertTrue("changes=+1" in output, output)
+        assertFalse("trace OK say hidden from state filter" in output, output)
+        assertFalse("trace OK data merge storage demo:env" in output, output)
+        val traceJson = Files.readString(traceFile)
+        assertTrue("\"command\": \"scoreboard players set #state_filtered runs 2\"" in traceJson, traceJson)
+        assertTrue("\"snapshotDiffs\"" in traceJson, traceJson)
+        assertTrue("\"path\": \"/scores/runs\"" in traceJson, traceJson)
+        assertTrue("\"#state_filtered\": 2" in traceJson, traceJson)
+        assertFalse("\"command\": \"data merge storage demo:env {ready:true}\"" in traceJson, traceJson)
+    }
+
+    @Test
     fun `run inline assertions can check snapshot diffs`() {
         val output = captureStdout {
             main(

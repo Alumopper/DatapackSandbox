@@ -211,7 +211,7 @@ private fun writeRunReportFile(
         })
         val snapshot = sandbox.snapshotJson()
         report.add("snapshot", snapshot)
-        report.add("snapshotDiffs", SnapshotDiff.toJson(SnapshotDiff.diff(beforeSnapshot, snapshot)))
+        report.add("snapshotDiffs", SnapshotDiff.toJson(SnapshotDiff.stateDiff(beforeSnapshot, snapshot)))
     }
     Files.writeString(path, JsonValues.render(json), StandardCharsets.UTF_8)
     println(ConsoleStyle.green("report written: $path"))
@@ -425,7 +425,7 @@ class RunCommand : CliktCommand(name = "run") {
                 Files.writeString(it, sandbox.snapshotString(), StandardCharsets.UTF_8)
                 println(ConsoleStyle.green("snapshot written: $it"))
             }
-            val diff = if (snapshotDiff || snapshotDiffFile != null) SnapshotDiff.diff(beforeSnapshot, sandbox.snapshotJson()) else emptyList()
+            val diff = if (snapshotDiff || snapshotDiffFile != null) SnapshotDiff.stateDiff(beforeSnapshot, sandbox.snapshotJson()) else emptyList()
             if (snapshotDiff) println(SnapshotDiff.render(diff))
             snapshotDiffFile?.let {
                 Files.writeString(it, JsonValues.render(SnapshotDiff.toJson(diff)), StandardCharsets.UTF_8)

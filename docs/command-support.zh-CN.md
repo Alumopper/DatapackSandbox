@@ -136,7 +136,7 @@ JSON text component 支持 `text`、`score`、`selector`、`translate`、`keybin
 | `rerun last` | 重新执行上一条被跟踪 REPL 命令。 |
 | `reset world` | 用全新的 sparse world 替换当前 REPL 世界。 |
 | CLI `loot --table <id> --context <context>` | 直接生成 loot table。 |
-| CLI `run --trace --trace-filter <filter>` | 只打印或写出匹配的 trace 事件；过滤器支持 `root=`、`command=`、`contains=`、`function=`、`file=`、`success=` 和 `outputs=`。 |
+| CLI `run --trace --trace-filter <filter>` | 只打印或写出匹配的 trace 事件；过滤器支持 `root=`、`command=`、`contains=`、`function=`、`file=`、`success=`、`outputs=`、`diff=`、`path=`、`score=` 和 `storage=`。Trace JSONL 条目会包含每条命令造成的 snapshot diff。 |
 | CLI `run --outputs-file <file>` | 将可观察输出事件写成 JSONL，适合作为 CI artifact 或命令生成器回归测试产物。 |
 | CLI `run --report-file <file>` | 写出综合 JSON 报告，包括通过状态、断言失败、输出、trace、事件 trace、最终 snapshot 和 snapshot diff。 |
 | CLI `run --snapshot-diff` | 输出执行前后的状态差异，可配合 `--snapshot-diff-file` 写出 JSON。 |

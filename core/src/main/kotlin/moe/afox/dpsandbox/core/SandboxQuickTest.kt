@@ -1872,7 +1872,7 @@ class SandboxQuickTest private constructor(
      * Returns stable JSON Pointer diffs from the initial scenario state to now.
      */
     fun snapshotDiffs(): List<SnapshotDiffEntry> =
-        SnapshotDiff.diff(initialSnapshot, sandbox.snapshotJson())
+        SnapshotDiff.stateDiff(initialSnapshot, sandbox.snapshotJson())
 
     /**
      * Asserts that the current scenario changed the initial snapshot as expected.

@@ -97,8 +97,10 @@ traces, the final snapshot, and snapshot diffs:
 java -jar cli/build/libs/datapack-sandbox-cli.jar run --pack ./my_pack --function demo:main --report-file run-report.json
 ```
 
-Use `--trace-filter root=scoreboard` or `--trace-filter contains=reward` to
-keep only the relevant trace events in both console output and JSONL files.
+Use `--trace-filter root=scoreboard`, `--trace-filter score=#clock`, or
+`--trace-filter contains=reward` to keep only the relevant trace events in both
+console output and JSONL files. Trace entries include per-command
+`snapshotDiffs`, so filters can target state paths as well as command text.
 
 To inspect state changes before and after a run, print a snapshot diff:
 

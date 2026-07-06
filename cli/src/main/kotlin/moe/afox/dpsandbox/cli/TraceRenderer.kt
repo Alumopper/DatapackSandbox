@@ -15,8 +15,12 @@ object TraceRenderer {
             ?.takeIf { it.isNotEmpty() }
             ?.joinToString(prefix = " stack=", separator = " > ") { it.id.toString() }
             .orEmpty()
+        val changes = event.snapshotDiffs
+            .takeIf { it.isNotEmpty() }
+            ?.let { " changes=+${it.size}" }
+            .orEmpty()
         val error = event.errorCode?.let { " ${ConsoleStyle.red("${it.name}: ${event.errorMessage}")}" }.orEmpty()
-        return "${ConsoleStyle.dim("[${event.tick}]")} trace $status ${ConsoleStyle.bold(event.command)} commands=${event.commandsExecuted} outputs=${event.outputs}$source$stack$error"
+        return "${ConsoleStyle.dim("[${event.tick}]")} trace $status ${ConsoleStyle.bold(event.command)} commands=${event.commandsExecuted} outputs=${event.outputs}$changes$source$stack$error"
     }
 
     fun print(events: List<CommandTraceEvent>) {

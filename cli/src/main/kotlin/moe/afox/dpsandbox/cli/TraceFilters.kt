@@ -25,6 +25,9 @@ object TraceFilters {
             "output", "outputs" -> value.toIntOrNull()?.let { event.outputs == it }
                 ?: value.toBooleanStrictOrNull()?.let { if (it) event.outputs > 0 else event.outputs == 0 }
                 ?: false
+            "diff", "path", "state" -> event.snapshotDiffs.any { value in it.path || value in it.render() }
+            "score", "scores" -> event.snapshotDiffs.any { it.path.startsWith("/scores") && (value in it.path || value in it.render()) }
+            "storage" -> event.snapshotDiffs.any { it.path.startsWith("/storage") && (value in it.path || value in it.render()) }
             else -> contains(event, raw)
         }
     }
@@ -34,5 +37,6 @@ object TraceFilters {
             value == event.root ||
             value in (event.source?.file ?: "") ||
             event.source?.functionStack?.any { value in it.id.toString() } == true ||
-            value in (event.errorMessage ?: "")
+            value in (event.errorMessage ?: "") ||
+            event.snapshotDiffs.any { value in it.path || value in it.render() }
 }

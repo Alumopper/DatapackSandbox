@@ -64,6 +64,17 @@ object SnapshotDiff {
     }
 
     /**
+     * Returns sandbox state differences while excluding trace bookkeeping.
+     *
+     * Command traces expose their own per-command [CommandTraceEvent.snapshotDiffs].
+     * Filtering trace metadata here keeps user-facing snapshot diffs focused on
+     * modeled world state, outputs, scores, storage, players, entities, and blocks.
+     */
+    @JvmStatic
+    fun stateDiff(before: JsonElement, after: JsonElement): List<SnapshotDiffEntry> =
+        diff(before, after).filterNot { it.path.isTraceMetadataPath() }
+
+    /**
      * Serializes a diff list into a JSON array.
      */
     @JvmStatic
@@ -123,4 +134,10 @@ object SnapshotDiff {
 
     private fun escape(token: String): String =
         token.replace("~", "~0").replace("/", "~1")
+
+    private fun String.isTraceMetadataPath(): Boolean =
+        this == "/traces" ||
+            startsWith("/traces/") ||
+            this == "/playerEventTraces" ||
+            startsWith("/playerEventTraces/")
 }

@@ -287,7 +287,7 @@ class Repl(
             println("<no previous command>")
             return
         }
-        println(SnapshotDiff.render(SnapshotDiff.diff(before, after)))
+        println(SnapshotDiff.render(SnapshotDiff.stateDiff(before, after)))
     }
 
     private fun rerunLast() {

@@ -241,7 +241,7 @@ object ManifestRunner {
             failures += "snapshot: ${sandbox.snapshotString()}"
         }
         if (failures.isNotEmpty() && options.snapshotDiffOnFail) {
-            failures += "snapshot diff:${System.lineSeparator()}${SnapshotDiff.render(SnapshotDiff.diff(beforeSnapshot, sandbox.snapshotJson()))}"
+            failures += "snapshot diff:${System.lineSeparator()}${SnapshotDiff.render(SnapshotDiff.stateDiff(beforeSnapshot, sandbox.snapshotJson()))}"
         }
         val finalSnapshot = sandbox.snapshotJson()
 
@@ -254,7 +254,7 @@ object ManifestRunner {
             traces = sandbox.world.traces.toList(),
             eventTraces = sandbox.world.playerEventTraces.toList(),
             snapshot = finalSnapshot,
-            snapshotDiffs = SnapshotDiff.diff(beforeSnapshot, finalSnapshot),
+            snapshotDiffs = SnapshotDiff.stateDiff(beforeSnapshot, finalSnapshot),
             resourceSummary = resourceSummary,
         )
     }
@@ -806,7 +806,7 @@ object ManifestRunner {
         if (beforeSnapshot == null) {
             return listOf("snapshotDiff assertion requires a manifest execution context")
         }
-        val entries = SnapshotDiff.diff(beforeSnapshot, sandbox.snapshotJson())
+        val entries = SnapshotDiff.stateDiff(beforeSnapshot, sandbox.snapshotJson())
         val expectedPath = snapshotDiff.manifestString("path")
         val expectedPathContains = snapshotDiff.manifestString("pathContains")
         val expectedKind = snapshotDiff.manifestString("kind")
