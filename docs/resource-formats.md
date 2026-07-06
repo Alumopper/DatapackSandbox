@@ -232,7 +232,9 @@ models common item modifier functions such as `set_components`,
 Entity item commands support player inventory, selected-mainhand, and
 `enderchest.*` slots, plus non-player equipment slots such as
 `weapon.mainhand`, `weapon.offhand`, and
-`armor.*`; equipment is also exposed through snapshots and
+`armor.*`. `give` and `item replace ... with` accept item arguments with
+JSON/SNBT-lite NBT (`minecraft:stick{marked:true}`) and component payloads
+(`minecraft:stick[custom_data={marked:true}]`). Equipment is also exposed through snapshots and
 `HandItems`/`ArmorItems` entity NBT. Entity
 predicates can match `equipment` fields for `mainhand`, `offhand`, `head`,
 `chest`, `legs`, and `feet`, active `effects` with amplifier/duration and

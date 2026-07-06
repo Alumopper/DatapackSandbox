@@ -597,14 +597,14 @@ class DatapackSandbox(
             "fish" -> {
                 requireSizeFrom(tokens, index, 5, "loot source fish <table> <pos> [tool]", location)
                 val origin = parsePosition(tokens, index + 2, context, location)
-                val tool = tokens.getOrNull(index + 5)?.text?.let(::lootTool)
+                val tool = tokens.getOrNull(index + 5)?.text?.let { lootTool(it, location) }
                 generateLootItems(ResourceLocation.parse(tokens[index + 1].text), ResourceLocation("minecraft", "fishing"), context, origin = origin, tool = tool)
             }
             "mine" -> {
                 requireSizeFrom(tokens, index, 4, "loot source mine <pos> [tool]", location)
                 val pos = parseBlockPos(tokens, index + 1, context, location)
                 val block = world.block(pos) ?: return emptyList()
-                val tool = tokens.getOrNull(index + 4)?.text?.let(::lootTool)
+                val tool = tokens.getOrNull(index + 4)?.text?.let { lootTool(it, location) }
                 val table = block.nbt.get("LootTable")?.takeIf { it.isJsonPrimitive }?.asString?.let(ResourceLocation::parse)
                 if (table == null) {
                     listOf(ItemStack(block.id))
@@ -633,7 +633,7 @@ class DatapackSandbox(
                 val table = ResourceLocation.parse(tokens[index + 1].text)
                 val pos = parseBlockPos(tokens, index + 2, context, location)
                 val block = world.block(pos) ?: return emptyList()
-                val tool = tokens.getOrNull(index + 5)?.text?.let(::lootTool)
+                val tool = tokens.getOrNull(index + 5)?.text?.let { lootTool(it, location) }
                 generateLootItems(table, ResourceLocation("minecraft", "block"), context, origin = Position(pos.x.toDouble(), pos.y.toDouble(), pos.z.toDouble()), tool = tool, block = block.id)
             }
             "equipment" -> {
@@ -680,8 +680,8 @@ class DatapackSandbox(
         ).items
     }
 
-    private fun lootTool(raw: String): ItemStack =
-        ItemStack(ResourceLocation.parse(raw))
+    private fun lootTool(raw: String, location: SourceLocation?): ItemStack =
+        parseItemStackArgument(raw, 1, location)
 
     private fun insertLootIntoBlock(pos: BlockPos, items: List<ItemStack>, location: SourceLocation?) {
         val block = world.requireBlock(pos)
@@ -1691,11 +1691,11 @@ class DatapackSandbox(
 
     private fun executeGive(tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext) {
         requireSize(tokens, 3, "give <targets> <item> [count]", location)
-        val item = ResourceLocation.parse(tokens[2].text)
         val count = tokens.getOrNull(3)?.text?.let { parseInt(it, "item count", location) } ?: 1
+        val item = parseItemStackArgument(tokens[2].text, count.coerceAtLeast(0), location)
         resolvePlayers(tokens[1].text, location, context).forEach { player ->
-            player.inventory += ItemStack(item, count.coerceAtLeast(0))
-            advancements.handle(PlayerEvent(player.name, "inventory_changed", item = ItemStack(item, count)))
+            player.inventory += item.copyStack()
+            advancements.handle(PlayerEvent(player.name, "inventory_changed", item = item.copyStack()))
         }
     }
 
@@ -2096,7 +2096,8 @@ class DatapackSandbox(
                 val item = when (tokens[5].text) {
                     "with" -> {
                         requireSize(tokens, 7, "item replace entity <targets> <slot> with <item> [count]", location)
-                        ItemStack(ResourceLocation.parse(tokens[6].text), tokens.getOrNull(7)?.text?.let { parseInt(it, "item count", location) } ?: 1)
+                        val count = tokens.getOrNull(7)?.text?.let { parseInt(it, "item count", location) } ?: 1
+                        parseItemStackArgument(tokens[6].text, count, location)
                     }
                     "from" -> readItemSource(tokens, 6, context, location)
                     else -> unsupportedFeature("Expected 'with' or 'from' in item replace entity", profile.id, location)
@@ -2112,7 +2113,8 @@ class DatapackSandbox(
                 val item = when (tokens[7].text) {
                     "with" -> {
                         requireSize(tokens, 9, "item replace block <pos> <slot> with <item> [count]", location)
-                        ItemStack(ResourceLocation.parse(tokens[8].text), tokens.getOrNull(9)?.text?.let { parseInt(it, "item count", location) } ?: 1)
+                        val count = tokens.getOrNull(9)?.text?.let { parseInt(it, "item count", location) } ?: 1
+                        parseItemStackArgument(tokens[8].text, count, location)
                     }
                     "from" -> readItemSource(tokens, 8, context, location)
                     else -> unsupportedFeature("Expected 'with' or 'from' in item replace block", profile.id, location)
@@ -2217,6 +2219,160 @@ class DatapackSandbox(
             }
             else -> unsupportedFeature("Unsupported item source '${tokens[index].text}'", profile.id, location)
         }
+    }
+
+    private fun parseItemStackArgument(raw: String, count: Int, location: SourceLocation?): ItemStack {
+        val firstPayload = raw.indexOfFirst { it == '[' || it == '{' }
+        val idText = if (firstPayload >= 0) raw.substring(0, firstPayload) else raw
+        if (idText.isBlank()) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Item id is missing in '$raw'", location)
+        }
+
+        val components = JsonObject()
+        val nbt = JsonObject()
+        var index = firstPayload.takeIf { it >= 0 } ?: raw.length
+        while (index < raw.length) {
+            when (raw[index]) {
+                '[' -> {
+                    val end = matchingItemPayloadEnd(raw, index, '[', ']', location)
+                    parseItemComponents(raw.substring(index + 1, end), components, nbt, location)
+                    index = end + 1
+                }
+                '{' -> {
+                    val end = matchingItemPayloadEnd(raw, index, '{', '}', location)
+                    val parsed = JsonValues.parse(raw.substring(index, end + 1), location)
+                    if (!parsed.isJsonObject) {
+                        throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Item NBT must be an object", location)
+                    }
+                    JsonPaths.merge(nbt, null, parsed.asJsonObject)
+                    index = end + 1
+                }
+                else -> throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Malformed item argument '$raw'", location)
+            }
+        }
+        return ItemStack(ResourceLocation.parse(idText), count, components, nbt)
+    }
+
+    private fun parseItemComponents(raw: String, components: JsonObject, nbt: JsonObject, location: SourceLocation?) {
+        splitItemPayload(raw, location)
+            .map { it.trim() }
+            .filter { it.isNotEmpty() && !it.startsWith("!") }
+            .forEach { entry ->
+                val equalsIndex = topLevelEquals(entry, location)
+                if (equalsIndex <= 0) {
+                    throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Malformed item component '$entry'", location)
+                }
+                val key = canonicalItemComponent(entry.substring(0, equalsIndex).trim())
+                val value = JsonValues.parse(entry.substring(equalsIndex + 1).trim(), location)
+                components.add(key, value.deepCopy())
+                if (key == "minecraft:custom_data") {
+                    if (!value.isJsonObject) {
+                        throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Item custom_data component must be an object", location)
+                    }
+                    JsonPaths.merge(nbt, null, value)
+                }
+            }
+    }
+
+    private fun canonicalItemComponent(raw: String): String {
+        if (raw.isBlank()) return raw
+        return if (':' in raw) raw else "minecraft:$raw"
+    }
+
+    private fun splitItemPayload(raw: String, location: SourceLocation?): List<String> {
+        val parts = mutableListOf<String>()
+        var start = 0
+        var objectDepth = 0
+        var arrayDepth = 0
+        var quote: Char? = null
+        var escaped = false
+        raw.forEachIndexed { index, char ->
+            if (quote != null) {
+                when {
+                    escaped -> escaped = false
+                    char == '\\' -> escaped = true
+                    char == quote -> quote = null
+                }
+                return@forEachIndexed
+            }
+            when (char) {
+                '"', '\'' -> quote = char
+                '{' -> objectDepth++
+                '}' -> objectDepth--
+                '[' -> arrayDepth++
+                ']' -> arrayDepth--
+                ',' -> if (objectDepth == 0 && arrayDepth == 0) {
+                    parts += raw.substring(start, index)
+                    start = index + 1
+                }
+            }
+            if (objectDepth < 0 || arrayDepth < 0) {
+                throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Malformed item component payload '$raw'", location)
+            }
+        }
+        if (quote != null || objectDepth != 0 || arrayDepth != 0) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Malformed item component payload '$raw'", location)
+        }
+        parts += raw.substring(start)
+        return parts
+    }
+
+    private fun topLevelEquals(raw: String, location: SourceLocation?): Int {
+        var objectDepth = 0
+        var arrayDepth = 0
+        var quote: Char? = null
+        var escaped = false
+        raw.forEachIndexed { index, char ->
+            if (quote != null) {
+                when {
+                    escaped -> escaped = false
+                    char == '\\' -> escaped = true
+                    char == quote -> quote = null
+                }
+                return@forEachIndexed
+            }
+            when (char) {
+                '"', '\'' -> quote = char
+                '{' -> objectDepth++
+                '}' -> objectDepth--
+                '[' -> arrayDepth++
+                ']' -> arrayDepth--
+                '=' -> if (objectDepth == 0 && arrayDepth == 0) return index
+            }
+            if (objectDepth < 0 || arrayDepth < 0) {
+                throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Malformed item component '$raw'", location)
+            }
+        }
+        if (quote != null || objectDepth != 0 || arrayDepth != 0) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Malformed item component '$raw'", location)
+        }
+        return -1
+    }
+
+    private fun matchingItemPayloadEnd(raw: String, start: Int, open: Char, close: Char, location: SourceLocation?): Int {
+        var depth = 0
+        var quote: Char? = null
+        var escaped = false
+        for (index in start until raw.length) {
+            val char = raw[index]
+            if (quote != null) {
+                when {
+                    escaped -> escaped = false
+                    char == '\\' -> escaped = true
+                    char == quote -> quote = null
+                }
+                continue
+            }
+            when (char) {
+                '"', '\'' -> quote = char
+                open -> depth++
+                close -> {
+                    depth--
+                    if (depth == 0) return index
+                }
+            }
+        }
+        throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Malformed item argument '$raw'", location)
     }
 
     private fun ItemStack.copyStack(): ItemStack =
