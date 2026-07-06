@@ -27,6 +27,7 @@ import moe.afox.dpsandbox.core.PlayerEventTraceEvent
 import moe.afox.dpsandbox.core.PlayerEvents
 import moe.afox.dpsandbox.core.ResourceCatalog
 import moe.afox.dpsandbox.core.ResourceCatalogEntry
+import moe.afox.dpsandbox.core.ResourceIndexEntry
 import moe.afox.dpsandbox.core.ResourceLocation
 import moe.afox.dpsandbox.core.SandboxException
 import moe.afox.dpsandbox.core.SandboxLimits
@@ -1762,6 +1763,12 @@ class CommandsCommand : CliktCommand(name = "commands") {
 }
 
 class ResourcesCommand : CliktCommand(name = "resources") {
+    private val version by option("--version", "-v").default(VersionProfiles.default.id)
+    private val packs by option("--pack", "-p").path(mustExist = true).multiple()
+    private val types by option("--type").multiple()
+    private val namespaces by option("--namespace").multiple()
+    private val activeOnly by option("--active-only").flag(default = false)
+    private val overriddenOnly by option("--overridden-only").flag(default = false)
     private val docs by option("--docs").flag(default = false)
     private val json by option("--json").flag(default = false)
     private val output by option("--output", "-o").path()
@@ -1769,16 +1776,16 @@ class ResourcesCommand : CliktCommand(name = "resources") {
 
     override fun run() {
         try {
-            if (docs && json) {
-                throw SandboxException(DiagnosticCode.INPUT_FORMAT, "resources accepts only one output mode: --docs or --json")
+            validateModes()
+            if (packs.isNotEmpty()) {
+                emitLoadedResources()
+                return
             }
-            if (check != null && output != null) {
-                throw SandboxException(DiagnosticCode.INPUT_FORMAT, "resources accepts only one file mode: --output or --check")
-            }
-            val entries = ResourceCatalog.all
+            validateCatalogFilters()
+            val entries = filterCatalog(ResourceCatalog.all)
             val checkPath = check
             when {
-                checkPath != null -> checkResourceDocs(checkPath, entries)
+                checkPath != null -> checkResourceDocs(checkPath, ResourceCatalog.all)
                 docs -> emit(renderMarkdown(entries))
                 json -> emit(JsonValues.render(renderJson(entries)))
                 else -> emit(renderPlain(entries))
@@ -1788,6 +1795,130 @@ class ResourcesCommand : CliktCommand(name = "resources") {
             exitProcess(ExitCodes.forException(error))
         }
     }
+
+    private fun validateModes() {
+        if (docs && json) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "resources accepts only one output mode: --docs or --json")
+        }
+        if (check != null && output != null) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "resources accepts only one file mode: --output or --check")
+        }
+        if (activeOnly && overriddenOnly) {
+            throw SandboxException(
+                DiagnosticCode.INPUT_FORMAT,
+                "resources accepts only one state filter: --active-only or --overridden-only",
+            )
+        }
+        if (packs.isNotEmpty() && docs) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "resources --docs describes the catalog and cannot be combined with --pack")
+        }
+        if (packs.isNotEmpty() && check != null) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "resources --check validates docs and cannot be combined with --pack")
+        }
+        if (check != null && (types.isNotEmpty() || namespaces.isNotEmpty() || activeOnly || overriddenOnly)) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "resources --check always validates the full catalog and accepts no filters")
+        }
+    }
+
+    private fun validateCatalogFilters() {
+        if (namespaces.isNotEmpty() || activeOnly || overriddenOnly) {
+            throw SandboxException(
+                DiagnosticCode.INPUT_FORMAT,
+                "resources resource-index filters require --pack: --namespace, --active-only, --overridden-only",
+            )
+        }
+    }
+
+    private fun emitLoadedResources() {
+        val sandbox = createSandbox(version, packs)
+        val summary = ManifestRunner.summarizeResources(sandbox)
+        val entries = filterLoadedResources(sandbox.datapack.resourceIndex)
+        val rendered = if (json) {
+            JsonValues.render(renderLoadedJson(summary, entries))
+        } else {
+            renderLoadedPlain(summary, entries)
+        }
+        emit(rendered)
+    }
+
+    private fun filterCatalog(entries: List<ResourceCatalogEntry>): List<ResourceCatalogEntry> {
+        val typeSet = types.toSet()
+        return entries.filter { entry -> typeSet.isEmpty() || entry.type in typeSet }
+    }
+
+    private fun filterLoadedResources(entries: List<ResourceIndexEntry>): List<ResourceIndexEntry> {
+        val typeSet = types.toSet()
+        val namespaceSet = namespaces.toSet()
+        return entries.filter { entry ->
+            (typeSet.isEmpty() || entry.type in typeSet) &&
+                (namespaceSet.isEmpty() || entry.id.namespace in namespaceSet) &&
+                (!activeOnly || entry.active) &&
+                (!overriddenOnly || !entry.active)
+        }
+    }
+
+    private fun renderLoadedPlain(summary: ManifestResourceSummary, entries: List<ResourceIndexEntry>): String =
+        buildString {
+            appendLine(
+                "resources version=$version " +
+                    "packs=${packs.size} " +
+                    "resourceIndex=${summary.resourceIndex} " +
+                    "active=${summary.activeResources} " +
+                    "overridden=${summary.overriddenResources} " +
+                    "selected=${entries.size}",
+            )
+            entries.forEach { entry ->
+                appendLine(renderLoadedEntry(entry))
+            }
+        }.trimEnd()
+
+    private fun renderLoadedEntry(entry: ResourceIndexEntry): String {
+        val state = if (entry.active) "active" else "overridden"
+        val overlay = listOfNotNull(
+            entry.overrides?.let { "overrides=$it" },
+            entry.overriddenBy?.let { "overriddenBy=$it" },
+        ).joinToString(separator = " ").takeIf { it.isNotBlank() }?.let { " $it" }.orEmpty()
+        return "resource ${entry.type} ${entry.id} ${entry.behaviorLevel.id} $state " +
+            "pack=${entry.pack} order=${entry.order} file=${entry.file}$overlay"
+    }
+
+    private fun renderLoadedJson(summary: ManifestResourceSummary, entries: List<ResourceIndexEntry>): JsonObject =
+        JsonObject().also { root ->
+            root.addProperty("version", version)
+            root.add("packs", stringArray(packs.map { it.toString() }))
+            root.add("filters", renderFiltersJson())
+            root.add("summary", summary.toReportJson())
+            root.add(
+                "resources",
+                JsonArray().also { array ->
+                    entries.forEach { entry ->
+                        array.add(
+                            JsonObject().also { json ->
+                                json.addProperty("type", entry.type)
+                                json.addProperty("id", entry.id.toString())
+                                json.addProperty("namespace", entry.id.namespace)
+                                json.addProperty("path", entry.id.path)
+                                json.addProperty("file", entry.file)
+                                json.addProperty("pack", entry.pack)
+                                json.addProperty("order", entry.order)
+                                json.addProperty("behavior", entry.behaviorLevel.id)
+                                json.addProperty("active", entry.active)
+                                entry.overrides?.let { json.addProperty("overrides", it) }
+                                entry.overriddenBy?.let { json.addProperty("overriddenBy", it) }
+                            },
+                        )
+                    }
+                },
+            )
+        }
+
+    private fun renderFiltersJson(): JsonObject =
+        JsonObject().also { json ->
+            json.add("types", stringArray(types))
+            json.add("namespaces", stringArray(namespaces))
+            json.addProperty("activeOnly", activeOnly)
+            json.addProperty("overriddenOnly", overriddenOnly)
+        }
 
     private fun renderPlain(entries: List<ResourceCatalogEntry>): String =
         entries.joinToString(System.lineSeparator()) { entry ->

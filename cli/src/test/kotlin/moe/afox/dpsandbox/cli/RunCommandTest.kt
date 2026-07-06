@@ -1472,6 +1472,85 @@ class RunCommandTest {
         assertEquals("observed-noop", resources.getValue("worldgen/structure").get("behavior").asString)
     }
 
+    @Test
+    fun `resources lists loaded pack index with filters`() {
+        val pack = writeDependencyPack(Files.createTempDirectory("dps-resources-pack"), "main", "say indexed")
+
+        val output = captureStdout {
+            main(
+                arrayOf(
+                    "resources",
+                    "--version",
+                    "26.2",
+                    "--pack",
+                    pack.toString(),
+                    "--type",
+                    "function",
+                    "--namespace",
+                    "demo",
+                ),
+            )
+        }
+
+        assertTrue("resources version=26.2 packs=1 resourceIndex=1 active=1 overridden=0 selected=1" in output, output)
+        assertTrue("resource function demo:main modeled active" in output, output)
+        assertTrue("file=" in output, output)
+    }
+
+    @Test
+    fun `resources writes loaded pack index json`() {
+        val pack = writeDependencyPack(Files.createTempDirectory("dps-resources-json-pack"), "main", "say indexed")
+        val reportFile = Files.createTempFile("dps-resources-loaded", ".json")
+        val output = captureStdout {
+            main(
+                arrayOf(
+                    "resources",
+                    "--version",
+                    "26.2",
+                    "--pack",
+                    pack.toString(),
+                    "--json",
+                    "--output",
+                    reportFile.toString(),
+                ),
+            )
+        }
+        val json = JsonParser.parseString(Files.readString(reportFile)).asJsonObject
+        val resources = json.getAsJsonArray("resources").map { it.asJsonObject }
+
+        assertTrue("resources output written: $reportFile" in output, output)
+        assertEquals("26.2", json.get("version").asString)
+        assertEquals(1, json.getAsJsonObject("summary").get("resourceIndex").asInt)
+        assertEquals("function", resources.single().get("type").asString)
+        assertEquals("demo:main", resources.single().get("id").asString)
+        assertEquals(true, resources.single().get("active").asBoolean)
+    }
+
+    @Test
+    fun `resources can filter overridden pack entries`() {
+        val first = writeDependencyPack(Files.createTempDirectory("dps-resources-first"), "main", "say first")
+        val second = writeDependencyPack(Files.createTempDirectory("dps-resources-second"), "main", "say second")
+
+        val output = captureStdout {
+            main(
+                arrayOf(
+                    "resources",
+                    "--version",
+                    "26.2",
+                    "--pack",
+                    first.toString(),
+                    "--pack",
+                    second.toString(),
+                    "--overridden-only",
+                ),
+            )
+        }
+
+        assertTrue("resources version=26.2 packs=2 resourceIndex=2 active=1 overridden=1 selected=1" in output, output)
+        assertTrue("resource function demo:main modeled overridden" in output, output)
+        assertTrue("overriddenBy=" in output, output)
+    }
+
     private fun captureStdout(stdin: String? = null, block: () -> Unit): String {
         val original = System.out
         val originalIn = System.`in`

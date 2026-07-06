@@ -81,6 +81,8 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar resources --docs
 java -jar cli/build/libs/datapack-sandbox-cli.jar resources --docs --output docs/resource-catalog.md
 java -jar cli/build/libs/datapack-sandbox-cli.jar resources --check docs/resource-formats.md
 java -jar cli/build/libs/datapack-sandbox-cli.jar resources --json --output build/resource-catalog.json
+java -jar cli/build/libs/datapack-sandbox-cli.jar resources --pack ./my_pack --type function --namespace demo
+java -jar cli/build/libs/datapack-sandbox-cli.jar resources --pack ./my_pack --json --output build/loaded-resources.json
 ```
 
 The REPL supports TAB completion, live multi-line suggestions while typing,

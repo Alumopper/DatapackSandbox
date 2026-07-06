@@ -149,6 +149,14 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar run --version 26.2 ^
 java -jar cli/build/libs/datapack-sandbox-cli.jar run --pack ./my_pack --resources --fail-on-missing-resources
 ```
 
+需要单独检查某个数据包实际加载了哪些资源时，可以导出资源索引，并按类型、namespace 或覆盖状态过滤：
+
+```bash
+java -jar cli/build/libs/datapack-sandbox-cli.jar resources --pack ./my_pack --type function --namespace demo
+java -jar cli/build/libs/datapack-sandbox-cli.jar resources --pack ./my_pack --active-only
+java -jar cli/build/libs/datapack-sandbox-cli.jar resources --pack ./my_pack --json --output build/loaded-resources.json
+```
+
 为了保证 CI 安全，`run` 和 `check` 都可以用 `--max-commands`、
 `--max-function-depth`、`--max-ticks-per-run`、`--max-output-events` 和
 `--max-snapshot-bytes` 限制执行边界。

@@ -119,6 +119,27 @@ smokeCliJarResourceDocs.configure {
 val examplesDir = rootProject.layout.projectDirectory.dir("examples")
 val fullStackExamplePack = examplesDir.dir("full-stack/pack")
 
+val smokeResourceIndexOutput = layout.buildDirectory.file("smoke/resources-loaded.json")
+val smokeCliJarResourcesLoaded = registerCliJarSmokeTask(
+    name = "smokeCliJarResourcesLoaded",
+    descriptionText = "Checks the standalone CLI jar can export a loaded pack resource index.",
+    "resources",
+    "--version",
+    "26.2",
+    "--pack",
+    fullStackExamplePack.asFile.absolutePath,
+    "--json",
+    "--output",
+    smokeResourceIndexOutput.get().asFile.absolutePath,
+)
+smokeCliJarResourcesLoaded.configure {
+    inputs.dir(fullStackExamplePack)
+    outputs.file(smokeResourceIndexOutput)
+    doFirst {
+        smokeResourceIndexOutput.get().asFile.parentFile.mkdirs()
+    }
+}
+
 val smokeSchemaOutput = layout.buildDirectory.file("smoke/dps-manifest.schema.json")
 val smokeCliJarSchema = registerCliJarSmokeTask(
     name = "smokeCliJarSchema",
@@ -281,6 +302,7 @@ tasks.register("smokeCliJar") {
         smokeCliJarVersionDocs,
         smokeCliJarCommandDocs,
         smokeCliJarResourceDocs,
+        smokeCliJarResourcesLoaded,
         smokeCliJarSchema,
         smokeCliJarDiff,
         smokeCliJarBenchmark,
