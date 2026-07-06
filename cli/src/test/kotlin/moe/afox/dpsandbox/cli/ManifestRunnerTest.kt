@@ -878,6 +878,52 @@ class ManifestRunnerTest {
     }
 
     @Test
+    fun `runs manifests with world structure fixtures`() {
+        val dir = Files.createTempDirectory("dps-world-structure-manifest")
+        val pack = Path.of("../core/src/test/resources/packs/counter").toAbsolutePath().normalize().toString().replace("\\", "\\\\")
+        val manifest = dir.resolve("world-structure.dps.json")
+        Files.writeString(
+            manifest,
+            """
+            {
+              "version": "26.1.2",
+              "packs": ["$pack"],
+              "world": {
+                "structures": [
+                  {
+                    "origin": [10, 64, 10],
+                    "blocks": [
+                      { "offset": [0, 0, 0], "id": "minecraft:stone" },
+                      { "offset": [1, 0, 0], "id": "minecraft:chest", "nbt": { "Items": [] } }
+                    ],
+                    "entities": [
+                      {
+                        "offset": [0.5, 1.0, 0.5],
+                        "type": "minecraft:pig",
+                        "tags": ["structure_fixture"],
+                        "health": 6.0
+                      }
+                    ]
+                  }
+                ]
+              },
+              "assertions": [
+                { "block": { "pos": [10, 64, 10], "id": "minecraft:stone" } },
+                { "block": { "pos": [11, 64, 10], "id": "minecraft:chest", "nbt": { "path": "Items", "equals": [] } } },
+                { "entity": { "type": "minecraft:pig", "tag": "structure_fixture", "position": [10.5, 65.0, 10.5], "health": 6.0 } }
+              ]
+            }
+            """.trimIndent(),
+        )
+
+        val schemaFailures = ManifestSchemaValidator.validate(JsonParser.parseString(Files.readString(manifest)))
+        val result = ManifestRunner.run(manifest)
+
+        assertTrue(schemaFailures.isEmpty(), schemaFailures.joinToString())
+        assertTrue(result.passed, result.messages.joinToString())
+    }
+
+    @Test
     fun `runs keyboard input events from manifests`() {
         val dir = Files.createTempDirectory("dps-input-manifest")
         val pack = Path.of("../core/src/test/resources/packs/counter").toAbsolutePath().normalize().toString().replace("\\", "\\\\")

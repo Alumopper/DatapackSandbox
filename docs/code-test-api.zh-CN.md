@@ -179,6 +179,10 @@ SandboxQuickTest.create(
         biome(0, 64, 0, "minecraft:plains")
         worldBorder(centerX = 5.0, centerZ = -6.0, size = 100.0, warningDistance = 8)
         block(0, 64, 0, "minecraft:chest", nbt = "{Items:[]}")
+        structure(10, 64, 10) {
+            block(0, 0, 0, "minecraft:stone")
+            entity("minecraft:pig", offsetX = 0.5, offsetY = 1.0, offsetZ = 0.5, tags = listOf("structure_fixture"))
+        }
         entity(
             "minecraft:pig",
             1.0,

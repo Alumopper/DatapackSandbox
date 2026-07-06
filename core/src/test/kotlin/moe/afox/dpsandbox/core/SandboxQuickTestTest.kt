@@ -158,6 +158,37 @@ class SandboxQuickTestTest {
     }
 
     @Test
+    fun `quick world fixture can place structures`() {
+        val report = SandboxQuickTest.create(listOf(fixturePack()), version = "26.1.2", defaultPlayerName = null)
+            .world {
+                structure(10, 64, 10) {
+                    block(0, 0, 0, "minecraft:stone")
+                    block(1, 0, 0, "minecraft:chest", nbt = "{Items:[]}")
+                    entity(
+                        "minecraft:pig",
+                        offsetX = 0.5,
+                        offsetY = 1.0,
+                        offsetZ = 0.5,
+                        tags = listOf("structure_fixture"),
+                        health = 6.0,
+                    )
+                }
+            }
+            .assertBlock(10, 64, 10, "minecraft:stone")
+            .assertBlock(11, 64, 10, "minecraft:chest", nbtPath = "Items", nbtEquals = "[]")
+            .assertEntity(
+                type = "minecraft:pig",
+                tag = "structure_fixture",
+                position = Position(10.5, 65.0, 10.5),
+                health = 6.0,
+            )
+            .requirePassed()
+
+        assertEquals(2, report.snapshot.asJsonObject.getAsJsonArray("blocks").size())
+        assertEquals(1, report.snapshot.asJsonObject.getAsJsonArray("entities").size())
+    }
+
+    @Test
     fun `quick world fixture assertions explain failures`() {
         val report = SandboxQuickTest.create(listOf(fixturePack()), version = "26.1.2")
             .world {

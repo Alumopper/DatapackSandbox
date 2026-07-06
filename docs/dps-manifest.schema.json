@@ -172,6 +172,10 @@
           "type": "array",
           "items": { "$ref": "#/$defs/regionFixture" }
         },
+        "structures": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/structureFixture" }
+        },
         "entities": {
           "type": "array",
           "items": { "$ref": "#/$defs/entityFixture" }
@@ -260,6 +264,76 @@
           "additionalProperties": true
         },
         "nbt": true
+      },
+      "additionalProperties": false
+    },
+    "structureFixture": {
+      "type": "object",
+      "properties": {
+        "origin": { "$ref": "#/$defs/blockPos" },
+        "pos": { "$ref": "#/$defs/blockPos" },
+        "blocks": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/structureBlockFixture" }
+        },
+        "entities": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/structureEntityFixture" }
+        }
+      },
+      "anyOf": [
+        { "required": ["origin"] },
+        { "required": ["pos"] }
+      ],
+      "additionalProperties": false
+    },
+    "structureBlockFixture": {
+      "type": "object",
+      "required": ["id"],
+      "properties": {
+        "offset": { "$ref": "#/$defs/blockPos" },
+        "pos": { "$ref": "#/$defs/blockPos" },
+        "id": { "type": "string" },
+        "properties": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "nbt": true
+      },
+      "anyOf": [
+        { "required": ["offset"] },
+        { "required": ["pos"] }
+      ],
+      "additionalProperties": false
+    },
+    "structureEntityFixture": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": { "type": "string" },
+        "uuid": { "type": "string" },
+        "offset": { "$ref": "#/$defs/position" },
+        "pos": { "$ref": "#/$defs/position" },
+        "dimension": { "type": "string" },
+        "tags": { "$ref": "#/$defs/stringArray" },
+        "nbt": true,
+        "yaw": { "type": "number" },
+        "pitch": { "type": "number" },
+        "health": { "type": "number" },
+        "vehicle": { "type": "string" },
+        "passengers": { "$ref": "#/$defs/stringArray" },
+        "equipment": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/itemFixture" }
+        },
+        "effects": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/effectFixture" }
+        },
+        "attributes": {
+          "type": "object",
+          "additionalProperties": { "type": "number" }
+        }
       },
       "additionalProperties": false
     },

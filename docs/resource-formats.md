@@ -213,7 +213,8 @@ default `Steve` player while keeping the loaded packs and manifest default seed.
 Add `"allowFailure": true` to a step when the failure itself is expected and
 should be asserted later with a `diagnostic` assertion.
 
-`world` can predefine sparse blocks or inclusive `regions`, entities, and players, including non-player
+`world` can predefine sparse blocks, inclusive `regions`, compact `structures`
+with relative blocks/entities, and players, including non-player
 entity dimensions, health, vehicle/passenger links, equipment, active effects, attributes, player ender items, and player advancement progress, plus scoreboards, storage,
 gamerules, time/weather, seed/difficulty/default game mode, world/player spawn
 points, world border, forced chunks, biome overrides, teams, bossbars, and scoped Java save

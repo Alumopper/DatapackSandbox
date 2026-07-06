@@ -12,6 +12,7 @@ import moe.afox.dpsandbox.core.PlayerEffect
 import moe.afox.dpsandbox.core.Position
 import moe.afox.dpsandbox.core.ResourceLocation
 import moe.afox.dpsandbox.core.SandboxException
+import moe.afox.dpsandbox.core.SandboxStructureSetup
 import moe.afox.dpsandbox.core.SandboxWorldSetup
 import moe.afox.dpsandbox.core.chunksInBlockRange
 import java.nio.charset.StandardCharsets
@@ -56,6 +57,7 @@ object ManifestWorldSetup {
         parseScores(world).forEach { score -> setup.score(score.target, score.objective, score.value, score.criteria) }
         parseStorages(world).forEach { storage -> setup.storage(storage.id, storage.value) }
         world.manifestArray("regions", "world.regions").forEach { setupRegion(setup, it) }
+        world.manifestArray("structures", "world.structures").forEach { setupStructure(setup, it) }
         world.manifestArray("blocks", "world.blocks").forEach { setupBlock(setup, it) }
         world.manifestArray("entities", "world.entities").forEach { setupEntity(setup, it) }
         world.manifestArray("players", "world.players").forEach { setupPlayer(setup, it) }
@@ -126,6 +128,59 @@ object ManifestWorldSetup {
             id = ResourceLocation.parse(region.requiredManifestString("id")),
             properties = properties,
             nbt = parseManifestNbtObject(region.get("nbt"), "world region nbt"),
+        )
+    }
+
+    private fun setupStructure(setup: SandboxWorldSetup, element: JsonElement) {
+        if (!element.isJsonObject) throw SandboxException(DiagnosticCode.INPUT_FORMAT, "world.structures entries must be objects")
+        val structure = element.asJsonObject
+        val origin = parseManifestBlockPos(
+            structure.getAsJsonArray("origin") ?: structure.getAsJsonArray("pos"),
+            "world structure origin",
+        )
+        setup.structure(origin) {
+            structure.manifestArray("blocks", "world structure blocks").forEach { setupStructureBlock(this, it) }
+            structure.manifestArray("entities", "world structure entities").forEach { setupStructureEntity(this, it) }
+        }
+    }
+
+    private fun setupStructureBlock(setup: SandboxStructureSetup, element: JsonElement) {
+        if (!element.isJsonObject) throw SandboxException(DiagnosticCode.INPUT_FORMAT, "world structure blocks entries must be objects")
+        val block = element.asJsonObject
+        val offset = parseManifestBlockPos(
+            block.getAsJsonArray("offset") ?: block.getAsJsonArray("pos"),
+            "world structure block offset",
+        )
+        val properties = linkedMapOf<String, String>()
+        block.getAsJsonObject("properties")?.entrySet()?.forEach { (key, value) -> properties[key] = manifestPrimitiveString(value) }
+        setup.block(
+            offset = offset,
+            id = ResourceLocation.parse(block.requiredManifestString("id")),
+            properties = properties,
+            nbt = parseManifestNbtObject(block.get("nbt"), "world structure block nbt"),
+        )
+    }
+
+    private fun setupStructureEntity(setup: SandboxStructureSetup, element: JsonElement) {
+        if (!element.isJsonObject) throw SandboxException(DiagnosticCode.INPUT_FORMAT, "world structure entities entries must be objects")
+        val entity = element.asJsonObject
+        setup.entity(
+            type = ResourceLocation.parse(entity.requiredManifestString("type")),
+            offset = entity.getAsJsonArray("offset")?.let { parseManifestPosition(it, "world structure entity offset") }
+                ?: entity.getAsJsonArray("pos")?.let { parseManifestPosition(it, "world structure entity pos") }
+                ?: Position.zero,
+            tags = entity.manifestStringArray("tags", "world structure entity tags"),
+            nbt = parseManifestNbtObject(entity.get("nbt"), "world structure entity nbt"),
+            yaw = entity.get("yaw")?.asDouble ?: 0.0,
+            pitch = entity.get("pitch")?.asDouble ?: 0.0,
+            equipment = parseEntityEquipment(entity),
+            effects = entity.manifestArray("effects", "world structure entity effects").map { parseManifestEffect(it, "world structure entity effects") },
+            attributes = parseEntityAttributes(entity),
+            dimension = ResourceLocation.parse(entity.manifestString("dimension") ?: "minecraft:overworld"),
+            health = entity.get("health")?.asDouble,
+            uuid = entity.manifestString("uuid"),
+            vehicle = entity.manifestString("vehicle"),
+            passengers = entity.manifestStringArray("passengers", "world structure entity passengers"),
         )
     }
 

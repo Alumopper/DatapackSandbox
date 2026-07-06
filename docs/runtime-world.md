@@ -29,6 +29,8 @@ state before any `steps` or commands run. Supported fixture inputs include:
 - `blocks` with block id, state properties, and validated block entity NBT.
 - `regions` with inclusive `from`/`to` block positions, block id, optional
   state properties, and optional NBT for compact sparse-world area fixtures.
+- `structures` with an origin plus relative block and entity offsets; expanded
+  entries use the same validation and snapshot shape as ordinary fixtures.
 - `entities` with type, UUID, position, dimension, health, tags, rotation,
   vehicle/passengers, equipment, active effects, attributes, and validated entity NBT.
 - `players` with position, dimension, game mode, inventory, ender items,
@@ -46,6 +48,17 @@ Example manifest:
   "world": {
     "regions": [
       { "from": [0, 63, 0], "to": [3, 63, 3], "id": "minecraft:stone" }
+    ],
+    "structures": [
+      {
+        "origin": [10, 64, 10],
+        "blocks": [
+          { "offset": [0, 0, 0], "id": "minecraft:stone" }
+        ],
+        "entities": [
+          { "offset": [0.5, 1.0, 0.5], "type": "minecraft:pig", "tags": ["structure_fixture"] }
+        ]
+      }
     ],
     "blocks": [
       { "pos": [0, 64, 0], "id": "minecraft:chest", "nbt": { "Items": [] } }

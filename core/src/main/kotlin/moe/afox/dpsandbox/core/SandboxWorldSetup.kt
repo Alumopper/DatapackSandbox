@@ -300,6 +300,66 @@ class SandboxWorldSetup {
         )
 
     /**
+     * Places a compact structure fixture relative to [origin].
+     *
+     * Structure blocks are expanded into ordinary sparse-world blocks, and
+     * structure entities are expanded into ordinary entity fixtures. This keeps
+     * snapshots, assertions, and command behavior identical to hand-written
+     * `blocks` and `entities` fixtures while making larger scenes easier to
+     * declare.
+     *
+     * @return this setup for fluent chaining.
+     */
+    fun structure(origin: BlockPos, configure: SandboxStructureSetup.() -> Unit): SandboxWorldSetup = apply {
+        val structure = SandboxStructureSetup().apply(configure)
+        if (structure.blocks.size > 32768) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "World structure fixture has ${structure.blocks.size} blocks; limit is 32768")
+        }
+        structure.blocks.forEach { fixture ->
+            block(
+                pos = BlockPos(
+                    x = origin.x + fixture.offset.x,
+                    y = origin.y + fixture.offset.y,
+                    z = origin.z + fixture.offset.z,
+                ),
+                id = fixture.id,
+                properties = fixture.properties,
+                nbt = fixture.nbt?.deepCopy(),
+            )
+        }
+        structure.entities.forEach { fixture ->
+            entity(
+                type = fixture.type,
+                position = Position(
+                    x = origin.x + fixture.offset.x,
+                    y = origin.y + fixture.offset.y,
+                    z = origin.z + fixture.offset.z,
+                ),
+                tags = fixture.tags,
+                nbt = fixture.nbt?.deepCopy(),
+                yaw = fixture.yaw,
+                pitch = fixture.pitch,
+                equipment = fixture.equipment,
+                effects = fixture.effects,
+                attributes = fixture.attributes,
+                dimension = fixture.dimension,
+                health = fixture.health,
+                uuid = fixture.uuid,
+                vehicle = fixture.vehicle,
+                passengers = fixture.passengers,
+            )
+        }
+    }
+
+    /**
+     * Places a compact structure fixture relative to primitive block coordinates.
+     *
+     * @return this setup for fluent chaining.
+     */
+    fun structure(originX: Int, originY: Int, originZ: Int, configure: SandboxStructureSetup.() -> Unit): SandboxWorldSetup =
+        structure(BlockPos(originX, originY, originZ), configure)
+
+    /**
      * Adds a non-player entity fixture using primitive coordinates and optional SNBT/JSON NBT text.
      *
      * Entity NBT is validated against the active version profile when applied.
@@ -706,6 +766,160 @@ class SandboxWorldSetup {
     ): SandboxWorldSetup =
         importSave(path, chunksInBlockRange(from, to), dimension, includeBlocks, includeBlockEntities, includeEntities)
 }
+
+/**
+ * Builder for relative structure fixtures.
+ */
+class SandboxStructureSetup {
+    internal val blocks = mutableListOf<SandboxStructureBlockFixture>()
+    internal val entities = mutableListOf<SandboxStructureEntityFixture>()
+
+    /**
+     * Adds a block at an integer offset from the structure origin.
+     *
+     * @return this structure setup for fluent chaining.
+     */
+    @JvmOverloads
+    fun block(
+        offsetX: Int,
+        offsetY: Int,
+        offsetZ: Int,
+        id: String,
+        properties: Map<String, String> = emptyMap(),
+        nbt: String? = null,
+    ): SandboxStructureSetup =
+        block(
+            offset = BlockPos(offsetX, offsetY, offsetZ),
+            id = ResourceLocation.parse(id),
+            properties = properties,
+            nbt = nbt?.let { JsonValues.parse(it).asJsonObject },
+        )
+
+    /**
+     * Adds a block at an integer offset from the structure origin.
+     *
+     * @return this structure setup for fluent chaining.
+     */
+    @JvmOverloads
+    fun block(
+        offset: BlockPos,
+        id: ResourceLocation,
+        properties: Map<String, String> = emptyMap(),
+        nbt: JsonObject? = null,
+    ): SandboxStructureSetup = apply {
+        blocks += SandboxStructureBlockFixture(
+            offset = offset,
+            id = id,
+            properties = properties.toMap(),
+            nbt = nbt?.deepCopy(),
+        )
+    }
+
+    /**
+     * Adds a non-player entity at a decimal offset from the structure origin.
+     *
+     * @return this structure setup for fluent chaining.
+     */
+    @JvmOverloads
+    fun entity(
+        type: String,
+        offsetX: Double = 0.0,
+        offsetY: Double = 0.0,
+        offsetZ: Double = 0.0,
+        tags: Iterable<String> = emptyList(),
+        nbt: String? = null,
+        yaw: Double = 0.0,
+        pitch: Double = 0.0,
+        equipment: Map<String, ItemStack> = emptyMap(),
+        effects: Iterable<PlayerEffect> = emptyList(),
+        attributes: Map<String, Double> = emptyMap(),
+        dimension: String = "minecraft:overworld",
+        health: Double? = null,
+        uuid: String? = null,
+        vehicle: String? = null,
+        passengers: Iterable<String> = emptyList(),
+    ): SandboxStructureSetup =
+        entity(
+            type = ResourceLocation.parse(type),
+            offset = Position(offsetX, offsetY, offsetZ),
+            tags = tags,
+            nbt = nbt?.let { JsonValues.parse(it).asJsonObject },
+            yaw = yaw,
+            pitch = pitch,
+            equipment = equipment,
+            effects = effects,
+            attributes = attributes,
+            dimension = ResourceLocation.parse(dimension),
+            health = health,
+            uuid = uuid,
+            vehicle = vehicle,
+            passengers = passengers,
+        )
+
+    /**
+     * Adds a non-player entity at a decimal offset from the structure origin.
+     *
+     * @return this structure setup for fluent chaining.
+     */
+    @JvmOverloads
+    fun entity(
+        type: ResourceLocation,
+        offset: Position = Position.zero,
+        tags: Iterable<String> = emptyList(),
+        nbt: JsonObject? = null,
+        yaw: Double = 0.0,
+        pitch: Double = 0.0,
+        equipment: Map<String, ItemStack> = emptyMap(),
+        effects: Iterable<PlayerEffect> = emptyList(),
+        attributes: Map<String, Double> = emptyMap(),
+        dimension: ResourceLocation = ResourceLocation("minecraft", "overworld"),
+        health: Double? = null,
+        uuid: String? = null,
+        vehicle: String? = null,
+        passengers: Iterable<String> = emptyList(),
+    ): SandboxStructureSetup = apply {
+        entities += SandboxStructureEntityFixture(
+            type = type,
+            offset = offset,
+            tags = tags.toList(),
+            nbt = nbt?.deepCopy(),
+            yaw = yaw,
+            pitch = pitch,
+            equipment = equipment.map { (slot, item) -> slot to item.copyForSetup() }.toMap(),
+            effects = effects.map { it.copy() },
+            attributes = attributes.toMap(),
+            dimension = dimension,
+            health = health,
+            uuid = uuid,
+            vehicle = vehicle,
+            passengers = passengers.toList(),
+        )
+    }
+}
+
+internal data class SandboxStructureBlockFixture(
+    val offset: BlockPos,
+    val id: ResourceLocation,
+    val properties: Map<String, String>,
+    val nbt: JsonObject?,
+)
+
+internal data class SandboxStructureEntityFixture(
+    val type: ResourceLocation,
+    val offset: Position,
+    val tags: List<String>,
+    val nbt: JsonObject?,
+    val yaw: Double,
+    val pitch: Double,
+    val equipment: Map<String, ItemStack>,
+    val effects: List<PlayerEffect>,
+    val attributes: Map<String, Double>,
+    val dimension: ResourceLocation,
+    val health: Double?,
+    val uuid: String?,
+    val vehicle: String?,
+    val passengers: List<String>,
+)
 
 private fun ItemStack.copyForSetup(): ItemStack =
     copy(components = components.deepCopy(), nbt = nbt.deepCopy())
