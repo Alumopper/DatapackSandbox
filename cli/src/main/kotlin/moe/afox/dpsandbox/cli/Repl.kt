@@ -232,7 +232,7 @@ class Repl(
         "Commands: load, load fixture <file>, reload, tick [n], function <id>, player <name>, event player <name> <type> [id] [detail/action|x y z|pos=x,y,z], trace <on|off|status>, diff last, rerun last, reset world, ${inspectUsage()}, snapshot [file], exit"
 
     private fun inspectUsage(): String =
-        "inspect <score|storage|random|entities|blocks|player|loot|predicate|advancement|recipe|item_modifier|raw|tags|resources|registry|outputs|event-traces>"
+        "inspect <score|storage|random|entities|blocks|player|loot|predicate|advancement|recipe|item_modifier|raw|tags|resources|registry [group]|outputs|event-traces>"
 
     private fun reload() {
         if (packs.isEmpty()) {
@@ -398,11 +398,7 @@ class Repl(
                 ResourceSummaryRenderer.print(sandbox.profile.id, ManifestRunner.summarizeResources(sandbox))
                 inspectResourceIndex(typeFilter)
             }
-            "registry" -> {
-                println("items=${sandbox.profile.registryView.items.size} blocks=${sandbox.profile.registryView.blocks.size} entities=${sandbox.profile.registryView.entityTypes.size}")
-                println("lootConditions=${sandbox.profile.registryView.lootConditions.joinToString()}")
-                println("lootFunctions=${sandbox.profile.registryView.lootFunctions.joinToString()}")
-            }
+            "registry" -> inspectRegistry(args)
             "outputs" -> OutputRenderer.print(sandbox.world.outputs)
             "event-traces", "event_traces", "player-event-traces", "player_event_traces" -> {
                 sandbox.world.playerEventTraces.forEach { println(JsonValues.render(it.toJson())) }
@@ -422,6 +418,68 @@ class Repl(
                 ).joinToString(prefix = " ", separator = " ").takeIf { it.isNotBlank() }.orEmpty()
                 println("${entry.type} ${entry.id} ${entry.behaviorLevel.id} $active pack=${entry.pack} file=${entry.file}$overlay")
             }
+    }
+
+    private data class RegistryInspectionGroup(val name: String, val entries: Set<ResourceLocation>)
+
+    private fun inspectRegistry(args: List<String>) {
+        val groupFilter = args.getOrNull(1)?.replace('-', '_')
+        val groups = registryInspectionGroups()
+        val selected = if (groupFilter == null) {
+            groups
+        } else {
+            groups.filter { group -> groupFilter in registryGroupAliases(group.name) }
+        }
+
+        if (groupFilter != null && selected.isEmpty()) {
+            println("<missing registry group $groupFilter>")
+            return
+        }
+
+        val source = "profile:${sandbox.profile.id}"
+        selected.forEach { group ->
+            println("registry ${group.name} count=${group.entries.size} source=$source")
+            group.entries.forEach { entry ->
+                println("registry ${group.name} $entry source=$source")
+            }
+        }
+    }
+
+    private fun registryInspectionGroups(): List<RegistryInspectionGroup> {
+        val view = sandbox.profile.registryView
+        return listOf(
+            RegistryInspectionGroup("items", view.items),
+            RegistryInspectionGroup("blocks", view.blocks),
+            RegistryInspectionGroup("entity_types", view.entityTypes),
+            RegistryInspectionGroup("biomes", view.biomes),
+            RegistryInspectionGroup("damage_types", view.damageTypes),
+            RegistryInspectionGroup("enchantments", view.enchantments),
+            RegistryInspectionGroup("effects", view.effects),
+            RegistryInspectionGroup("dimensions", view.dimensions),
+            RegistryInspectionGroup("loot_context_types", view.lootContextTypes),
+            RegistryInspectionGroup("advancement_triggers", view.advancementTriggers),
+            RegistryInspectionGroup("loot_conditions", view.lootConditions),
+            RegistryInspectionGroup("loot_functions", view.lootFunctions),
+        )
+    }
+
+    private fun registryGroupAliases(name: String): Set<String> {
+        val singular = when (name) {
+            "items" -> setOf("item")
+            "blocks" -> setOf("block")
+            "entity_types" -> setOf("entity_type", "entities", "entity")
+            "biomes" -> setOf("biome")
+            "damage_types" -> setOf("damage_type")
+            "enchantments" -> setOf("enchantment")
+            "effects" -> setOf("effect")
+            "dimensions" -> setOf("dimension")
+            "loot_context_types" -> setOf("loot_context_type", "loot_contexts")
+            "advancement_triggers" -> setOf("advancement_trigger", "triggers")
+            "loot_conditions" -> setOf("loot_condition", "conditions")
+            "loot_functions" -> setOf("loot_function")
+            else -> emptySet()
+        }
+        return (setOf(name, name.replace('_', '-')) + singular).map { it.replace('-', '_') }.toSet()
     }
 
     private fun inspectRawResource(args: List<String>) {

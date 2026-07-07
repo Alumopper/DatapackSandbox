@@ -195,6 +195,24 @@ class ReplTest {
         assertTrue(output.contains("recipe demo:marker modeled active pack="), output)
     }
 
+    @Test
+    fun `inspect registry prints group entries and profile source`() {
+        val dir = Files.createTempDirectory("dps-repl-registry")
+        val pack = writeResourceDebugPack(dir, "registry", "profile", includeMissingLoad = false)
+        val repl = Repl(createSandbox("26.2", listOf(pack)))
+
+        val output = captureStdout {
+            repl.handle("inspect registry damage_types")
+            repl.handle("inspect registry loot_conditions")
+            repl.handle("inspect registry missing")
+        }
+
+        assertTrue(output.contains("registry damage_types count=5 source=profile:26.2"), output)
+        assertTrue(output.contains("registry damage_types minecraft:generic source=profile:26.2"), output)
+        assertTrue(output.contains("registry loot_conditions minecraft:random_chance source=profile:26.2"), output)
+        assertTrue(output.contains("<missing registry group missing>"), output)
+    }
+
     private fun writeResourceDebugPack(root: Path, name: String, marker: String, includeMissingLoad: Boolean): Path {
         val pack = root.resolve(name)
         Files.createDirectories(pack)

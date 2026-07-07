@@ -415,6 +415,7 @@ inspect raw <type>
 inspect raw <type> <id>
 inspect tags [registry]
 inspect resources [type]
+inspect registry [group]
 ```
 
 The resource index records type, id, source pack, file path, active/overridden
@@ -424,7 +425,10 @@ payload so generated command-output tests can assert overlay behavior without
 entering the REPL. `check --verbose` also prints a resource summary, overlay
 entries, and missing direct references from load/tick function tags and
 advancement parents/rewards, predicate references in predicate/loot/item
-modifier resources, and nested loot tables.
+modifier resources, and nested loot tables. `inspect registry [group]` lists
+version-profile registry entries with `source=profile:<version>`, so registry
+lookups can be debugged with the same loaded profile that command execution and
+completion use.
 
 ## SNBT and Data Paths
 

@@ -231,9 +231,11 @@ inspect raw <type>
 inspect raw <type> <id>
 inspect tags [registry]
 inspect resources [type]
+inspect registry [group]
 ```
 
 资源索引会记录 type、id、来源 pack、文件路径、active/overridden 状态，以及 pack overlay 覆盖关系。`datapack list` 的结构化输出 payload 会包含 `overriddenResources` 和 `resourceOverrides` 数组，便于命令生成器或测试用例直接断言覆盖行为，不必进入 REPL。`check --verbose` 也会打印资源摘要、覆盖条目，以及 load/tick 函数标签、advancement parent/reward、predicate/loot/item modifier 资源中的 predicate reference 和嵌套 loot table 中的直接缺失引用。
+`inspect registry [group]` 会列出当前 version profile 中的 registry 条目，并带上 `source=profile:<version>`，便于按实际执行和补全使用的 profile 调试 registry 查找。
 
 ## SNBT 与 Data Path
 
