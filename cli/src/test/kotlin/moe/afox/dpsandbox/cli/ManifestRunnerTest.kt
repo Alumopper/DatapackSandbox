@@ -395,6 +395,29 @@ class ManifestRunnerTest {
     }
 
     @Test
+    fun `manifest schema documents random sequence and forced chunk assertions`() {
+        val schema = JsonParser.parseString(Files.readString(Path.of("../docs/dps-manifest.schema.json"))).asJsonObject
+        val defs = schema.getAsJsonObject("\$defs")
+        val assertion = defs.getAsJsonObject("assertion")
+        val assertionRequired = assertion.getAsJsonArray("oneOf").map {
+            it.asJsonObject.getAsJsonArray("required").single().asString
+        }
+        val assertionProperties = assertion.getAsJsonObject("properties")
+        val randomProperties = defs.getAsJsonObject("randomSequenceAssertion").getAsJsonObject("properties")
+        val forcedChunkProperties = defs.getAsJsonObject("forcedChunkAssertion").getAsJsonObject("properties")
+
+        assertTrue("randomSequence" in assertionRequired)
+        assertTrue("forcedChunk" in assertionRequired)
+        assertEquals("#/\$defs/randomSequenceAssertion", assertionProperties.getAsJsonObject("randomSequence").get("\$ref").asString)
+        assertEquals("#/\$defs/forcedChunkAssertion", assertionProperties.getAsJsonObject("forcedChunk").get("\$ref").asString)
+        assertEquals("string", randomProperties.getAsJsonObject("name").get("type").asString)
+        assertEquals("integer", randomProperties.getAsJsonObject("state").get("type").asString)
+        assertEquals("integer", forcedChunkProperties.getAsJsonObject("x").get("type").asString)
+        assertEquals("integer", forcedChunkProperties.getAsJsonObject("z").get("type").asString)
+        assertEquals("boolean", forcedChunkProperties.getAsJsonObject("exists").get("type").asString)
+    }
+
+    @Test
     fun `manifest schema documents scoreboard UI assertions`() {
         val schema = JsonParser.parseString(Files.readString(Path.of("../docs/dps-manifest.schema.json"))).asJsonObject
         val defs = schema.getAsJsonObject("\$defs")
@@ -536,6 +559,57 @@ class ManifestRunnerTest {
                 {
                   "gamerule": {
                     "name": "missingRule",
+                    "exists": false
+                  }
+                }
+              ]
+            }
+            """.trimIndent(),
+        )
+
+        val result = ManifestRunner.run(manifest)
+
+        assertTrue(result.passed, result.messages.joinToString())
+    }
+
+    @Test
+    fun `runs manifest random sequence and forced chunk assertions`() {
+        val dir = Files.createTempDirectory("dps-world-state-manifest")
+        val pack = Path.of("../core/src/test/resources/packs/counter").toAbsolutePath().normalize().toString().replace("\\", "\\\\")
+        val manifest = dir.resolve("world-state.dps.json")
+        Files.writeString(
+            manifest,
+            """
+            {
+              "version": "26.1.2",
+              "packs": ["$pack"],
+              "world": {
+                "randomSequences": { "demo:seq": 42 },
+                "forcedChunks": [[0, 0]]
+              },
+              "assertions": [
+                {
+                  "randomSequence": {
+                    "name": "demo:seq",
+                    "state": 42
+                  }
+                },
+                {
+                  "randomSequence": {
+                    "name": "demo:missing",
+                    "exists": false
+                  }
+                },
+                {
+                  "forcedChunk": {
+                    "x": 0,
+                    "z": 0
+                  }
+                },
+                {
+                  "forcedChunk": {
+                    "x": 1,
+                    "z": 1,
                     "exists": false
                   }
                 }

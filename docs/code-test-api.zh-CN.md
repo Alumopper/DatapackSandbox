@@ -336,6 +336,7 @@ SandboxQuickTest.create(
     .assertStorageExists("demo:env", "ready")
     .assertStorageMissing("demo:env", "debug.last")
     .assertRandomSequence("demo:seq", 42)
+    .assertForcedChunk(0, 0)
     .assertPlayerXp("Alex", 5)
     .assertPlayerXpLevels("Alex", 4)
     .requirePassed()
@@ -427,7 +428,8 @@ class MyDatapackTest {
 | `assertStorageExists(id, path)` | 断言 storage 根对象或路径存在。 |
 | `assertStorageMissing(id, path)` | 断言 storage 根对象或路径不存在。 |
 | `assertWorld(...)` | 断言选定的世界级状态、force-loaded chunk、biome override、世界出生点和世界边界。 |
-| `assertRandomSequence(name, expected)` | 断言确定性随机序列状态。 |
+| `assertRandomSequence(name, expected, exists)` | 断言确定性随机序列状态或缺失状态。 |
+| `assertForcedChunk(x, z, exists)` | 按 chunk 坐标断言强加载状态。 |
 | `assertGamerule(name, value, exists)` | 以字符串值断言已保存的 gamerule 状态。 |
 | `assertScheduledFunction(id, dueTick, exists, count)` | 按函数 id、绝对 due tick、存在性或重复条目数量断言 scheduled function 队列。 |
 | `assertScoreboardObjective(name, exists, criteria, displayName, renderType, displayAutoUpdate)` | 断言 scoreboard objective 的 criteria 和 UI 元数据。 |

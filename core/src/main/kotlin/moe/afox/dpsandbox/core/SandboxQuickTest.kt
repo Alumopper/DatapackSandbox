@@ -357,8 +357,17 @@ class SandboxQuickTestMatrix private constructor(
     /**
      * Applies a random sequence state assertion to every scenario.
      */
-    fun assertRandomSequence(name: String, expected: Long): SandboxQuickTestMatrix = apply {
-        scenarios.values.forEach { it.assertRandomSequence(name, expected) }
+    @JvmOverloads
+    fun assertRandomSequence(name: String, expected: Long? = null, exists: Boolean = true): SandboxQuickTestMatrix = apply {
+        scenarios.values.forEach { it.assertRandomSequence(name, expected, exists) }
+    }
+
+    /**
+     * Applies a forced chunk assertion to every scenario.
+     */
+    @JvmOverloads
+    fun assertForcedChunk(x: Int, z: Int, exists: Boolean = true): SandboxQuickTestMatrix = apply {
+        scenarios.values.forEach { it.assertForcedChunk(x, z, exists) }
     }
 
     /**
@@ -1458,10 +1467,31 @@ class SandboxQuickTest private constructor(
     /**
      * Asserts a deterministic random sequence state.
      */
-    fun assertRandomSequence(name: String, expected: Long): SandboxQuickTest = apply {
+    @JvmOverloads
+    fun assertRandomSequence(name: String, expected: Long? = null, exists: Boolean = true): SandboxQuickTest = apply {
         val actual = sandbox.world.randomSequences[name]
-        if (actual != expected) {
-            failures += "random sequence $name expected $expected but was ${actual ?: "<missing>"}"
+        if (!exists) {
+            if (actual != null) failures += "random sequence $name expected missing but was $actual; ${actualRandomSequences()}"
+            return@apply
+        }
+        if (actual == null) {
+            failures += "random sequence $name expected present but was <missing>; ${actualRandomSequences()}"
+            return@apply
+        }
+        expected?.let {
+            if (actual != it) failures += "random sequence $name expected $it but was $actual"
+        }
+    }
+
+    /**
+     * Asserts forced chunk state by chunk coordinates.
+     */
+    @JvmOverloads
+    fun assertForcedChunk(x: Int, z: Int, exists: Boolean = true): SandboxQuickTest = apply {
+        val chunk = ChunkPos(x, z)
+        val actual = chunk in sandbox.world.forcedChunks
+        if (actual != exists) {
+            failures += "forced chunk $x,$z exists expected $exists but was $actual; ${actualForcedChunks()}"
         }
     }
 
@@ -2824,6 +2854,25 @@ class SandboxQuickTest private constructor(
             .joinToString("; ") { "${it.id}@${it.dueTick}" }
         val suffix = if (sandbox.world.scheduledFunctions.size > 5) "; ... +${sandbox.world.scheduledFunctions.size - 5} more" else ""
         return "actual scheduled functions: $rendered$suffix"
+    }
+
+    private fun actualRandomSequences(): String {
+        if (sandbox.world.randomSequences.isEmpty()) return "actual random sequences: <none>"
+        val rendered = sandbox.world.randomSequences.toSortedMap()
+            .entries
+            .take(5)
+            .joinToString("; ") { (name, state) -> "$name=$state" }
+        val suffix = if (sandbox.world.randomSequences.size > 5) "; ... +${sandbox.world.randomSequences.size - 5} more" else ""
+        return "actual random sequences: $rendered$suffix"
+    }
+
+    private fun actualForcedChunks(): String {
+        if (sandbox.world.forcedChunks.isEmpty()) return "actual forced chunks: <none>"
+        val rendered = sandbox.world.forcedChunks.sorted()
+            .take(5)
+            .joinToString("; ") { "${it.x},${it.z}" }
+        val suffix = if (sandbox.world.forcedChunks.size > 5) "; ... +${sandbox.world.forcedChunks.size - 5} more" else ""
+        return "actual forced chunks: $rendered$suffix"
     }
 
     private fun actualGamerules(): String {

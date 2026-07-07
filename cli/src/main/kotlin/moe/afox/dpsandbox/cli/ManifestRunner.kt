@@ -5,6 +5,7 @@ import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import moe.afox.dpsandbox.core.BlockPos
+import moe.afox.dpsandbox.core.ChunkPos
 import moe.afox.dpsandbox.core.CommandTraceEvent
 import moe.afox.dpsandbox.core.DatapackMissingResourceReference
 import moe.afox.dpsandbox.core.DatapackResourceSummary
@@ -804,6 +805,12 @@ object ManifestRunner {
             assertion.has("gamerule") -> {
                 failures += evaluateGameruleAssertion(assertion.getAsJsonObject("gamerule"), sandbox)
             }
+            assertion.has("randomSequence") -> {
+                failures += evaluateRandomSequenceAssertion(assertion.getAsJsonObject("randomSequence"), sandbox)
+            }
+            assertion.has("forcedChunk") -> {
+                failures += evaluateForcedChunkAssertion(assertion.getAsJsonObject("forcedChunk"), sandbox)
+            }
             assertion.has("player") -> {
                 val player = assertion.getAsJsonObject("player")
                 val name = player.requiredManifestString("name")
@@ -1017,6 +1024,56 @@ object ManifestRunner {
                 if (actual != it) add("gamerule $name expected $it but was $actual")
             }
         }
+    }
+
+    private fun evaluateRandomSequenceAssertion(assertion: JsonObject, sandbox: DatapackSandbox): List<String> {
+        val name = assertion.requiredManifestString("name")
+        val actual = sandbox.world.randomSequences[name]
+        val exists = assertion.get("exists")?.asBoolean ?: true
+        return buildList {
+            if (!exists) {
+                if (actual != null) add("random sequence $name expected missing but was $actual; ${actualRandomSequences(sandbox)}")
+                return@buildList
+            }
+            if (actual == null) {
+                add("random sequence $name expected present but was <missing>; ${actualRandomSequences(sandbox)}")
+                return@buildList
+            }
+            assertion.get("state")?.let {
+                if (actual != it.asLong) add("random sequence $name expected ${it.asLong} but was $actual")
+            }
+        }
+    }
+
+    private fun evaluateForcedChunkAssertion(assertion: JsonObject, sandbox: DatapackSandbox): List<String> {
+        val x = assertion.get("x")?.asInt ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "forcedChunk assertion requires x")
+        val z = assertion.get("z")?.asInt ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "forcedChunk assertion requires z")
+        val exists = assertion.get("exists")?.asBoolean ?: true
+        val actual = ChunkPos(x, z) in sandbox.world.forcedChunks
+        return buildList {
+            if (actual != exists) {
+                add("forced chunk $x,$z exists expected $exists but was $actual; ${actualForcedChunks(sandbox)}")
+            }
+        }
+    }
+
+    private fun actualRandomSequences(sandbox: DatapackSandbox): String {
+        if (sandbox.world.randomSequences.isEmpty()) return "actual random sequences: <none>"
+        val rendered = sandbox.world.randomSequences.toSortedMap()
+            .entries
+            .take(5)
+            .joinToString("; ") { (name, state) -> "$name=$state" }
+        val suffix = if (sandbox.world.randomSequences.size > 5) "; ... +${sandbox.world.randomSequences.size - 5} more" else ""
+        return "actual random sequences: $rendered$suffix"
+    }
+
+    private fun actualForcedChunks(sandbox: DatapackSandbox): String {
+        if (sandbox.world.forcedChunks.isEmpty()) return "actual forced chunks: <none>"
+        val rendered = sandbox.world.forcedChunks.sorted()
+            .take(5)
+            .joinToString("; ") { "${it.x},${it.z}" }
+        val suffix = if (sandbox.world.forcedChunks.size > 5) "; ... +${sandbox.world.forcedChunks.size - 5} more" else ""
+        return "actual forced chunks: $rendered$suffix"
     }
 
     private fun actualGamerules(sandbox: DatapackSandbox): String {

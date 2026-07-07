@@ -132,7 +132,8 @@
 - world fixture、manifest world、quick-test world builder 三者能力一致或差异明确记录。
 - 所有新增状态都有 snapshot、assertion 和 inspect 路径。
   - schedule 状态已进入 snapshot，并可通过 QuickTest `assertScheduledFunction`、CLI `scheduled:<id>` 断言简写和 REPL `inspect schedule` 查看排程函数、dueTick、条目数量和 remaining ticks，便于调试 `schedule function` / `schedule clear` 与 tick 推进。
-  - forced chunk 状态已进入 snapshot，并可通过 QuickTest/manifest world assertion、CLI `forced-chunk:<x>,<z>` / `forceload:<x>,<z>` 断言简写和 REPL `inspect forced-chunks` 检查强加载 chunk，便于调试 `forceload` 与 `execute if/unless loaded`。
+  - random sequence 状态已进入 snapshot，并可通过 QuickTest `assertRandomSequence`、manifest `randomSequence` assertion、CLI `random-sequence:<name>` 断言简写和 REPL `inspect random` 检查确定性序列状态或缺失状态，便于调试 `random` 命令和 `execute store` 链路。
+  - forced chunk 状态已进入 snapshot，并可通过 QuickTest `assertForcedChunk`、manifest `forcedChunk` assertion、CLI `forced-chunk:<x>,<z>` / `forceload:<x>,<z>` 断言简写和 REPL `inspect forced-chunks` 检查强加载 chunk，便于调试 `forceload` 与 `execute if/unless loaded`。
   - gamerule 状态已进入 snapshot，并可通过 QuickTest `assertGamerule`、manifest `gamerule` assertion、CLI `gamerule:<rule>` 断言简写和 REPL `inspect gamerule` 检查规则值、存在性和缺失状态，便于调试规则类生成命令。
   - scoreboard objective 元数据已进入 `objectiveDetails` snapshot，并可通过 QuickTest、manifest `scoreboardObjective` 断言、CLI `scoreboard-objective:<name>` 断言简写和 REPL `inspect scoreboard` 检查 `criteria`、`displayName`、`renderType` 和 `displayAutoUpdate`，便于调试 scoreboard UI 命令生成结果。
   - scoreboard display slot 状态已进入 snapshot，并可通过 QuickTest、manifest `scoreboardDisplay` 断言、CLI `scoreboard-display:<slot>` 断言简写和 REPL `inspect scoreboard displays` 检查 `sidebar`、`list`、`below_name` 和 `sidebar.team.<color>` 等 slot，便于调试 UI 目标命令生成结果。
@@ -207,7 +208,7 @@
 ### 单元调试
 
 - 强化 `SandboxQuickTest` fluent API：
-  - `assertScore`、`assertStoragePath`、`assertPlayer`、`assertEntity`、`assertBlock`、`assertItem`、`assertOutput`、`assertTrace`、`assertRandomSequence`、`assertGamerule`、`assertScheduledFunction`、`assertScoreboardObjective` 和 `assertScoreboardDisplay`。
+  - `assertScore`、`assertStoragePath`、`assertPlayer`、`assertEntity`、`assertBlock`、`assertItem`、`assertOutput`、`assertTrace`、`assertRandomSequence`、`assertForcedChunk`、`assertGamerule`、`assertScheduledFunction`、`assertScoreboardObjective` 和 `assertScoreboardDisplay`。
   - 支持可复用 fixture：world setup、players、entities、blocks、storage、scoreboard、packs。
 - quick-test report 已暴露 `resourceSummary`，与 `run`/`check` report 和 REPL `inspect resources` 共用 core 的资源数量、overlay、missing-reference 诊断模型。
 - 增加 JUnit 辅助错误格式，失败时输出最小 snapshot diff 和 trace 摘要。
@@ -259,7 +260,7 @@
 - 扩展 `steps`：
   - 支持 `commands` 数组、`functionText`、`mcfunction`、`event`、`trace`、`snapshot`、`reset`。
 - 扩展 `assertions`：
-  - score、storage、player、entity、block、item、loot、predicate、advancement、gamerule、scheduled function、scoreboard objective/display、output、trace、diagnostic、snapshot diff；gamerule assertion 已可按规则名检查字符串值、存在性和缺失状态，scheduled function assertion 已可按函数 id、绝对 dueTick、存在性和重复条目数量检查排程队列，scoreboard UI assertion 已可按 objective 元数据和 display slot 检查生成器输出。
+  - score、storage、player、entity、block、item、loot、predicate、advancement、random sequence、forced chunk、gamerule、scheduled function、scoreboard objective/display、output、trace、diagnostic、snapshot diff；random sequence 和 forced chunk assertion 已可检查等值/存在/缺失状态，gamerule assertion 已可按规则名检查字符串值、存在性和缺失状态，scheduled function assertion 已可按函数 id、绝对 dueTick、存在性和重复条目数量检查排程队列，scoreboard UI assertion 已可按 objective 元数据和 display slot 检查生成器输出。
   - 支持 equals、contains、exists、missing、count、min/max、matches、path；output assertion 已支持 plain/normalized text 的正则 `matches`，segment assertion 也可按原始或 normalized segment text 做正则匹配；storage 以及 player/entity/block/item 的 NBT/components path expectation 已支持 `contains`、`matches` 和 `missing`。
 - 支持 manifest include：
   - 公共世界 fixture、公共断言、公共 pack matrix，减少重复；`include` 已按来源文件相对路径合并 world、steps、assertions，并会把公共/default packs 排在 case-local packs 之前，便于生成器批量用例复用依赖包和版本矩阵。

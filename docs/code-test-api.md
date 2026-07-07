@@ -364,6 +364,7 @@ SandboxQuickTest.create(
     .assertStorageExists("demo:env", "ready")
     .assertStorageMissing("demo:env", "debug.last")
     .assertRandomSequence("demo:seq", 42)
+    .assertForcedChunk(0, 0)
     .assertPlayerXp("Alex", 5)
     .assertPlayerXpLevels("Alex", 4)
     .requirePassed()
@@ -457,7 +458,8 @@ class MyDatapackTest {
 | `assertStorageExists(id, path)` | Assert that a storage root or path exists |
 | `assertStorageMissing(id, path)` | Assert that a storage root or path is absent |
 | `assertWorld(...)` | Assert selected world-level state, forced chunks, biome overrides, world spawn, and world border |
-| `assertRandomSequence(name, expected)` | Assert deterministic random sequence state |
+| `assertRandomSequence(name, expected, exists)` | Assert deterministic random sequence state or missing state |
+| `assertForcedChunk(x, z, exists)` | Assert forced chunk state by chunk coordinates |
 | `assertGamerule(name, value, exists)` | Assert stored gamerule state as string values |
 | `assertScheduledFunction(id, dueTick, exists, count)` | Assert queued scheduled functions by id, absolute due tick, existence, or duplicate count |
 | `assertScoreboardObjective(name, exists, criteria, displayName, renderType, displayAutoUpdate)` | Assert scoreboard objective criteria and UI metadata |

@@ -109,6 +109,22 @@ class SandboxQuickTestTest {
     }
 
     @Test
+    fun `quick world state assertions check random sequences and forced chunks`() {
+        val report = SandboxQuickTest.create(listOf(fixturePack()), version = "26.1.2")
+            .world {
+                randomSequence("demo:seq", 42)
+                forcedChunk(0, 0)
+            }
+            .assertRandomSequence("demo:seq", 42)
+            .assertRandomSequence("demo:missing", exists = false)
+            .assertForcedChunk(0, 0)
+            .assertForcedChunk(1, 1, exists = false)
+            .requirePassed()
+
+        assertTrue(report.passed)
+    }
+
+    @Test
     fun `quick scoreboard UI assertions check objective metadata and displays`() {
         val report = SandboxQuickTest.create(listOf(fixturePack()), version = "26.1.2")
             .command("scoreboard objectives add health dummy")

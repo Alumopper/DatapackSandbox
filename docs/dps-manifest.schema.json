@@ -602,6 +602,8 @@
         { "required": ["entity"] },
         { "required": ["world"] },
         { "required": ["gamerule"] },
+        { "required": ["randomSequence"] },
+        { "required": ["forcedChunk"] },
         { "required": ["player"] },
         { "required": ["team"] },
         { "required": ["bossbar"] },
@@ -627,6 +629,8 @@
         "entity": { "$ref": "#/$defs/entityAssertion" },
         "world": { "$ref": "#/$defs/worldAssertion" },
         "gamerule": { "$ref": "#/$defs/gameruleAssertion" },
+        "randomSequence": { "$ref": "#/$defs/randomSequenceAssertion" },
+        "forcedChunk": { "$ref": "#/$defs/forcedChunkAssertion" },
         "player": { "$ref": "#/$defs/playerAssertion" },
         "team": { "$ref": "#/$defs/teamAssertion" },
         "bossbar": { "$ref": "#/$defs/bossbarAssertion" },
@@ -721,6 +725,26 @@
       "properties": {
         "name": { "type": "string" },
         "value": { "type": "string" },
+        "exists": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "randomSequenceAssertion": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string" },
+        "state": { "type": "integer" },
+        "exists": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "forcedChunkAssertion": {
+      "type": "object",
+      "required": ["x", "z"],
+      "properties": {
+        "x": { "type": "integer" },
+        "z": { "type": "integer" },
         "exists": { "type": "boolean" }
       },
       "additionalProperties": false
