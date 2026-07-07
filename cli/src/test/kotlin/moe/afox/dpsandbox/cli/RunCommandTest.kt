@@ -694,6 +694,32 @@ class RunCommandTest {
     }
 
     @Test
+    fun `run accepts scheduled function shorthand inline assertions`() {
+        val output = captureStdout {
+            main(
+                arrayOf(
+                    "run",
+                    "--version",
+                    "26.2",
+                    "--command",
+                    "schedule function demo:scheduled 5t replace",
+                    "--assert",
+                    "scheduled:demo:scheduled=5",
+                    "--assert",
+                    "scheduled:demo:scheduled?",
+                    "--assert",
+                    "scheduled:demo:missing!",
+                    "--snapshot",
+                ),
+            )
+        }
+
+        assertTrue("OK version=26.2" in output, output)
+        assertTrue("\"function\": \"demo:scheduled\"" in output, output)
+        assertTrue("\"dueTick\": 5" in output, output)
+    }
+
+    @Test
     fun `run accepts biome shorthand inline assertions`() {
         val output = captureStdout {
             main(
