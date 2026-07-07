@@ -576,15 +576,16 @@ class CommandExpansionTest {
         assertNull(sandbox.world.block(BlockPos(20, 70, 30)))
         assertEquals(ResourceLocation.parse("minecraft:gold_block"), sandbox.world.requireBlock(BlockPos(21, 70, 30)).id)
         assertEquals(ResourceLocation.parse("minecraft:dirt"), sandbox.world.requireBlock(BlockPos(22, 70, 30)).id)
+        assertEquals(ResourceLocation.parse("minecraft:emerald_block"), sandbox.world.requireBlock(BlockPos(23, 70, 30)).id)
         val output = sandbox.world.outputs.single { it.command == "place structure" }
         val payload = output.payload?.asJsonObject ?: error("missing place structure payload")
         assertEquals(true, payload.get("placed").asBoolean)
-        assertEquals(2, payload.get("changedBlocks").asInt)
+        assertEquals(3, payload.get("changedBlocks").asInt)
         assertEquals(1, payload.get("skippedBlocks").asInt)
-        assertEquals(2, payload.get("processedBlocks").asInt)
+        assertEquals(3, payload.get("processedBlocks").asInt)
         assertEquals(0, payload.get("unsupportedProcessors").asInt)
         assertEquals("demo:cleanup", payload.getAsJsonArray("processorLists")[0].asString)
-        assertEquals(listOf("21 70 30", "22 70 30"), output.targets)
+        assertEquals(listOf("21 70 30", "22 70 30", "23 70 30"), output.targets)
     }
 
     @Test
@@ -2033,7 +2034,12 @@ class CommandExpansionTest {
               "blocks": [
                 { "offset": [0, 0, 0], "id": "minecraft:air" },
                 { "offset": [1, 0, 0], "id": "minecraft:stone" },
-                { "offset": [2, 0, 0], "id": "minecraft:dirt" }
+                { "offset": [2, 0, 0], "id": "minecraft:dirt" },
+                {
+                  "offset": [3, 0, 0],
+                  "id": "minecraft:jigsaw",
+                  "nbt": { "final_state": "minecraft:emerald_block" }
+                }
               ]
             }
             """.trimIndent(),
@@ -2048,6 +2054,9 @@ class CommandExpansionTest {
                 {
                   "type": "minecraft:block_ignore",
                   "blocks": ["minecraft:air"]
+                },
+                {
+                  "type": "minecraft:jigsaw_replacement"
                 },
                 {
                   "type": "minecraft:rule",

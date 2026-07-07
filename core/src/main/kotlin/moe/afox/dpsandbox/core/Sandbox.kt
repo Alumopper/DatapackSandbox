@@ -146,6 +146,7 @@ private data class SandboxStructureProcessor(
     val type: String,
     val ignoredBlocks: Set<ResourceLocation> = emptySet(),
     val rules: List<SandboxStructureProcessorRule> = emptyList(),
+    val jigsawReplacement: Boolean = false,
     val supported: Boolean = true,
 ) {
     fun apply(block: BlockArgument): SandboxProcessedStructureBlock {
@@ -1566,7 +1567,7 @@ class DatapackSandbox(
                 properties = properties,
                 nbt = blockNbt ?: JsonObject(),
             )
-            val processed = applyStructureProcessors(blockArgument, processors.processors)
+            val processed = applyStructureProcessors(blockArgument, processors.processors, location)
             if (processed.processed) processedBlocks++
             val processedArgument = processed.block
             if (processedArgument == null) {
@@ -1692,6 +1693,7 @@ class DatapackSandbox(
                     element.asPlaceJsonObject("$label rule $index", location).parseStructureProcessorRule("$label rule $index", location)
                 },
             )
+            "jigsaw_replacement" -> SandboxStructureProcessor(type = type, jigsawReplacement = true)
             else -> SandboxStructureProcessor(type = type, supported = false)
         }
     }
@@ -1745,15 +1747,35 @@ class DatapackSandbox(
     private fun applyStructureProcessors(
         block: BlockArgument,
         processors: List<SandboxStructureProcessor>,
+        location: SourceLocation?,
     ): SandboxProcessedStructureBlock {
         var current = block
         var processed = false
         processors.forEach { processor ->
-            val result = processor.apply(current)
+            val result = if (processor.jigsawReplacement) {
+                applyJigsawReplacementProcessor(current, location)
+            } else {
+                processor.apply(current)
+            }
             if (result.processed) processed = true
             current = result.block ?: return SandboxProcessedStructureBlock(block = null, processed = true)
         }
         return SandboxProcessedStructureBlock(current, processed)
+    }
+
+    private fun applyJigsawReplacementProcessor(
+        block: BlockArgument,
+        location: SourceLocation?,
+    ): SandboxProcessedStructureBlock {
+        if (block.id != ResourceLocation("minecraft", "jigsaw")) return SandboxProcessedStructureBlock(block)
+        val finalState = block.nbt.get("final_state")
+            ?: block.nbt.get("FinalState")
+            ?: return SandboxProcessedStructureBlock(block = null, processed = true)
+        if (!finalState.isJsonPrimitive) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "jigsaw final_state must be a block string", location)
+        }
+        val replacement = parseBlockArgument(finalState.asJsonPrimitive.asString, location)
+        return SandboxProcessedStructureBlock(block = replacement, processed = true)
     }
 
     private fun parseTemplatePlacement(
