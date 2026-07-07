@@ -98,7 +98,7 @@
   - `scoreboard objectives modify` 已记录 objective displayName、renderType 和 displayAutoUpdate 元数据，进入 `objectiveDetails` snapshot，并提供结构化输出，便于调试 UI/显示类生成命令。
   - `scoreboard objectives setdisplay` 已记录 objective display slot 状态和结构化输出，便于调试侧边栏、列表、队伍侧边栏等 UI 目标生成命令，并可通过 snapshot/断言检查。
   - `team add/remove/list/join/leave/empty/modify` 已记录结构化队伍状态输出，便于调试成员变化、显示名和选项输入。
-  - `place structure` 和 `place template` 已可把加载到 `worldgen/structure` 的沙盒结构 JSON（`blocks`/`entities`）、JSON 化 palette-style 结构（`palette`/`palettes` + `blocks[].state`）以及 `worldgen/structure`、`structure`、`structures` 目录里的二进制结构 NBT 按命令坐标展开到 sparse world，并记录 `placed`、`format`、`sourceFormat`、`changedBlocks`、`skippedBlocks`、`processedBlocks`、`unsupportedProcessors`、`entities`、变化坐标和实体目标；结构 JSON 可引用 `worldgen/processor_list`，已覆盖 `block_ignore`、`protected_blocks`、`jigsaw_replacement`、`capped`、`nop` 和带 block/tag 谓词的 rule 替换 processor；`place template` 支持确定性 rotation、mirror、integrity 和 seed 参数；`place jigsaw` 已可解析 `worldgen/template_pool` 的 single/legacy/list/feature 元素、fallback pool、元素 processor 和基础 jigsaw block `pool` connector 链接，`maxDepth > 1` 时会按确定性方向偏移展开子结构并输出 `jigsawConnections`、`jigsawPieces`、`jigsawChildChangedBlocks` 和 `totalChangedBlocks`，端到端回归已覆盖选中结构、feature 和多层 connector 的落地；`place feature` 已可解析 `worldgen/placed_feature`/`worldgen/configured_feature` 的 simple_block、block_column、disk、vegetation_patch、tree、basalt_columns、delta_feature、lake、spring_feature、block_pile、glowstone_blob、replace_single_block、replace_blob、selector、random_patch、flower 和 ore JSON，并在命令位置或确定性 disk/vegetation/tree/basalt_columns/delta/lake/spring/pile/blob/replacement/column/patch/ore 偏移上放置或替换一个或多个方块；缺失或不支持的资源仍保留结构化 worldgen intent 输出，便于命令生成器验证放置目标、位置和额外参数。
+  - `place structure` 和 `place template` 已可把加载到 `worldgen/structure` 的沙盒结构 JSON（`blocks`/`entities`）、JSON 化 palette-style 结构（`palette`/`palettes` + `blocks[].state`）以及 `worldgen/structure`、`structure`、`structures` 目录里的二进制结构 NBT 按命令坐标展开到 sparse world，并记录 `placed`、`format`、`sourceFormat`、`changedBlocks`、`skippedBlocks`、`processedBlocks`、`unsupportedProcessors`、`entities`、变化坐标和实体目标；结构 JSON 可引用 `worldgen/processor_list`，已覆盖 `block_ignore`、`protected_blocks`、`jigsaw_replacement`、`capped`、`nop` 和带 block/tag 谓词的 rule 替换 processor；`place template` 支持确定性 rotation、mirror、integrity 和 seed 参数；`place jigsaw` 已可解析 `worldgen/template_pool` 的 single/legacy/list/feature 元素、fallback pool、元素 processor 和基础 jigsaw block `pool` connector 链接，`maxDepth > 1` 时会按确定性方向偏移展开子结构并输出 `jigsawConnections`、`jigsawPieces`、`jigsawChildChangedBlocks` 和 `totalChangedBlocks`，端到端回归已覆盖选中结构、feature 和多层 connector 的落地；`place feature` 已可解析 `worldgen/placed_feature`/`worldgen/configured_feature` 的 simple_block、block_column、disk、vegetation_patch、tree、basalt_columns、delta_feature、lake、spring_feature、block_pile、glowstone_blob、forest_rock、netherrack_replace_blobs、chorus_plant、replace_single_block、replace_blob、selector、random_patch、flower 和 ore JSON，并在命令位置或确定性 disk/vegetation/tree/basalt_columns/delta/lake/spring/pile/blob/forest_rock/nether_blob/chorus/replacement/column/patch/ore 偏移上放置或替换一个或多个方块；缺失或不支持的资源仍保留结构化 worldgen intent 输出，便于命令生成器验证放置目标、位置和额外参数。
   - `datapack enable/disable` 和原版 `reload` 已作为 observed-noop/固定 pack 顺序调试面记录结构化 payload，便于断言生成器输出的 pack 名称、顺序参数和 no-op 原因。
   - `transfer` 已作为 observed-noop 接受并记录 host、port、目标玩家和语法顺序，便于调试网络跳转类生成结果而不触发真实网络行为。
   - `publish` 和 `stop` 已作为 observed-noop 记录结构化 debug 输出，便于调试 LAN 发布和生命周期类生成结果而不影响宿主进程。
@@ -352,7 +352,7 @@
   - `benchmark` CLI 已提供内置 smoke/CI 性能基准，覆盖 scoreboard 批量写入、大 storage merge、函数调用链、批量 manifest 执行、可选 pack 加载和可选 loot sampling，并可写 JSON artifact。
 - 缓存：
   - 资源解析缓存、schema 缓存、版本 profile 缓存；保证不破坏 watch/reload。
-  - `DatapackLoader` 已提供目录/zip 数据包解析缓存，缓存键使用版本 profile 与内容指纹；命中时返回深拷贝，并提供 `clearCache()` 供 REPL/watch 强制 reload 丢弃缓存。
+  - `DatapackLoader` 已提供目录/zip 数据包解析缓存，缓存键使用版本 profile 与内容指纹；命中时返回深拷贝，并提供 `clearCache()` 供 REPL/watch 强制 reload 丢弃缓存。NBT schema 会按 classpath 生成资源一次性加载并按 profile 复用，版本 profile、文档表和 registry 目录集中在不可变对象中复用；`ManifestSchemaValidator` 对 manifest JSON Schema 使用 lazy 缓存，满足 CLI、REPL、manifest 和 quick-test 的重复执行场景。
 - 错误边界：
   - 函数递归深度、最大命令数、最大 tick 数、最大输出事件数、最大 snapshot 大小。
   - `SandboxLimits` 已提供可配置的函数递归深度、sandbox 实例累计命令数、单次 `runTicks` 最大 tick 数、保留输出事件数和渲染后 snapshot 大小边界，用于阻止 runaway 单元测试和 CI 任务。
@@ -360,13 +360,15 @@
 - 发布质量：
   - fat jar smoke test、Windows/Linux/macOS 命令测试、README 示例测试。
   - standalone jar smoke 已覆盖 schema 导出与防漂移检查、示例 manifest、命令/资源/版本文档中英检查、资源索引、diff、benchmark、README loot/event/stdin 示例、run 断言简写、执行边界和预期失败命令的 diagnostic 断言。
-  - Maven 发布准备：坐标、版本号、源码包、文档包。
+  - `releaseCheck` 已作为 1.0 发布门禁聚合 `:core:check`、`:cli:check`、standalone CLI smoke、release jar/sources jar/javadoc jar、Maven POM 生成检查和非 snapshot 语义版本检查；CI 已在 Linux、Windows 和 macOS 矩阵上运行该门禁。
+  - Maven 发布准备已完成：统一坐标 `moe.afox.dpsandbox`、release 版本号 `1.0.0`、`maven-publish` publication、源码包、文档包、POM 元数据和带凭据校验的远端仓库配置均可检查。
 
 验收标准：
 
 - CI 至少运行 unit、manifest、examples、fat jar smoke 四类测试。
 - 大型测试失败时不会无限执行或输出不可控日志。
 - 发布前所有文档示例命令都能运行。
+- 1.0 发布前可用 `releaseCheck` 在本地和 CI 统一验证 artifacts、Maven metadata、standalone jar smoke 和三平台执行入口。
 
 ## 优先级建议
 
@@ -388,10 +390,10 @@ P1 紧随其后：
 
 P2 按需求推进：
 
-- worldgen/structure 更深入模拟；`place structure` / `place template` 已覆盖沙盒结构 JSON、JSON 化 palette-style 结构和二进制结构 NBT 的方块/实体落地、基础旋转/镜像、integrity 过滤以及 processor_list 的 block_ignore、protected_blocks、jigsaw_replacement、capped、nop 和带 block/tag 谓词的 rule 替换，`place jigsaw` 已覆盖 template_pool single/legacy/list/feature 元素、fallback pool、元素 processor 和基础 jigsaw connector 链接的落地与回归测试，`place feature` 已覆盖 placed/configured simple_block、block_column、disk、vegetation_patch、tree、basalt_columns、delta_feature、lake、spring_feature、block_pile、glowstone_blob、replace_single_block、replace_blob、selector、random_patch、flower 和 sparse-world ore 的确定性基础落地，后续可继续扩展剩余长尾 worldgen 行为。
-- 可选外部差分验证。
-- 高级性能缓存。
-- Maven 发布和更完整的平台测试。
+- worldgen/structure 更深入模拟；`place structure` / `place template` 已覆盖沙盒结构 JSON、JSON 化 palette-style 结构和二进制结构 NBT 的方块/实体落地、基础旋转/镜像、integrity 过滤以及 processor_list 的 block_ignore、protected_blocks、jigsaw_replacement、capped、nop 和带 block/tag 谓词的 rule 替换，`place jigsaw` 已覆盖 template_pool single/legacy/list/feature 元素、fallback pool、元素 processor 和基础 jigsaw connector 链接的落地与回归测试，`place feature` 已覆盖 placed/configured simple_block、block_column、disk、vegetation_patch、tree、basalt_columns、delta_feature、lake、spring_feature、block_pile、glowstone_blob、forest_rock、netherrack_replace_blobs、chorus_plant、replace_single_block、replace_blob、selector、random_patch、flower 和 sparse-world ore 的确定性基础落地；剩余 worldgen 行为按实用近似继续扩展，不作为 1.0 发布阻塞项。
+- 可选外部差分验证已收口到 `diff --script` 可重放脚本导出、`diff --snapshot --check` report/snapshot 比较和 JSON artifact 输出，外部原版或第三方 harness 只需提供可观察结果文件即可接入。
+- 高级性能缓存已由 pack 内容指纹缓存、schema lazy cache、版本 profile 静态目录和 manifest schema lazy cache 覆盖；watch/reload 通过 `DatapackLoader.clearCache()` 保留显式失效入口。
+- Maven 发布和更完整的平台测试已完成；1.0 使用 `releaseCheck` 验证 release artifacts、Maven POM、standalone jar smoke，并在 Linux/Windows/macOS CI 矩阵执行。
 
 ## 设计约束
 
@@ -408,4 +410,4 @@ P2 按需求推进：
 2. `0.3`：`execute/data/loot/item` 高频路径补齐，命令生成器测试模板可用。
 3. `0.4`：玩家事件和 world fixture 大幅增强，examples 覆盖主要使用场景。
 4. `0.5`：多版本 profile 更新流程稳定，P0/P1 资源覆盖完成。
-5. `1.0`：核心 API 稳定、CLI 行为稳定、文档示例可验证、CI 覆盖完整，适合作为数据包本地回归测试工具长期使用。
+5. `1.0`：核心 API 稳定、CLI 行为稳定、文档示例可验证、CI 覆盖完整，适合作为数据包本地回归测试工具长期使用；当前发布版本标记为 `1.0.0`。

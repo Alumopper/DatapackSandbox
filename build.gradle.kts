@@ -1,6 +1,10 @@
 ﻿import java.net.URI
 import java.util.zip.ZipInputStream
 import java.util.zip.ZipOutputStream
+import org.gradle.api.artifacts.repositories.PasswordCredentials
+import org.gradle.api.publish.PublishingExtension
+import org.gradle.api.publish.maven.MavenPublication
+import org.gradle.api.publish.maven.tasks.PublishToMavenRepository
 
 plugins {
     kotlin("jvm") version "2.4.0" apply false
@@ -8,13 +12,161 @@ plugins {
 
 allprojects {
     group = "moe.afox.dpsandbox"
-    version = "0.5.389-SNAPSHOT"
+    version = "1.0.0"
 }
 
+val mavenRepositoryBaseUrl = providers
+    .gradleProperty("nexusBaseUrl")
+    .orElse("https://nexus.mcfpp.top")
+val mavenReleasesRepository = providers
+    .gradleProperty("nexusReleasesRepository")
+    .orElse("maven-releases")
+val mavenSnapshotsRepository = providers
+    .gradleProperty("nexusSnapshotsRepository")
+    .orElse("maven-snapshots")
+val mavenRepositoryUsername = providers
+    .environmentVariable("MAVEN_USERNAME")
+    .orElse(providers.environmentVariable("MAVEN_USER"))
+    .orElse(providers.environmentVariable("NEXUS_USERNAME"))
+    .orElse(providers.environmentVariable("NEXUS_USER"))
+    .orElse(providers.gradleProperty("nexusUsername"))
+val mavenRepositoryPassword = providers
+    .environmentVariable("MAVEN_PASSWORD")
+    .orElse(providers.environmentVariable("MAVEN_PASS"))
+    .orElse(providers.environmentVariable("NEXUS_PASSWORD"))
+    .orElse(providers.environmentVariable("NEXUS_PASS"))
+    .orElse(providers.gradleProperty("nexusPassword"))
+
 subprojects {
+    apply(plugin = "maven-publish")
+
     tasks.withType<Test>().configureEach {
         useJUnitPlatform()
     }
+
+    plugins.withId("org.jetbrains.kotlin.jvm") {
+        extensions.configure<JavaPluginExtension> {
+            withSourcesJar()
+            withJavadocJar()
+        }
+
+        extensions.configure<PublishingExtension> {
+            publications {
+                create<MavenPublication>("mavenJava") {
+                    from(components["java"])
+                    artifactId = project.name
+
+                    pom {
+                        name.set("Datapack Sandbox ${project.name}")
+                        description.set("Datapack Sandbox ${project.name} module")
+                    }
+                }
+            }
+
+            repositories {
+                maven {
+                    name = "mcfpp"
+                    val repositoryName = if (project.version.toString().endsWith("-SNAPSHOT")) {
+                        mavenSnapshotsRepository.get()
+                    } else {
+                        mavenReleasesRepository.get()
+                    }
+                    url = uri(
+                        "${mavenRepositoryBaseUrl.get().trimEnd('/')}/repository/$repositoryName/",
+                    )
+
+                    credentials(PasswordCredentials::class) {
+                        username = mavenRepositoryUsername.orNull
+                        password = mavenRepositoryPassword.orNull
+                    }
+                }
+            }
+        }
+
+        tasks.withType<PublishToMavenRepository>().configureEach {
+            doFirst {
+                require(!mavenRepositoryUsername.orNull.isNullOrBlank()) {
+                    "Missing Maven repository username. Set MAVEN_USERNAME, MAVEN_USER, NEXUS_USERNAME, NEXUS_USER, or nexusUsername."
+                }
+                require(!mavenRepositoryPassword.orNull.isNullOrBlank()) {
+                    "Missing Maven repository password. Set MAVEN_PASSWORD, MAVEN_PASS, NEXUS_PASSWORD, NEXUS_PASS, or nexusPassword."
+                }
+            }
+        }
+    }
+}
+
+val releaseModules = listOf("core", "cli")
+
+tasks.register("verifyReleaseArtifacts") {
+    group = "verification"
+    description = "Verifies release jars and Maven publication metadata without publishing to a remote repository."
+    dependsOn(
+        releaseModules.flatMap { module ->
+            listOf(
+                ":$module:jar",
+                ":$module:sourcesJar",
+                ":$module:javadocJar",
+                ":$module:generatePomFileForMavenJavaPublication",
+            )
+        } + ":cli:fatJar",
+    )
+
+    doLast {
+        val releaseVersion = project.version.toString()
+        require(!releaseVersion.endsWith("-SNAPSHOT")) {
+            "Release version must not be a SNAPSHOT: $releaseVersion"
+        }
+        require(Regex("""\d+\.\d+\.\d+""").matches(releaseVersion)) {
+            "Release version must use semantic x.y.z format: $releaseVersion"
+        }
+
+        releaseModules.forEach { module ->
+            val moduleProject = project(":$module")
+            listOf(
+                "$module-$releaseVersion.jar",
+                "$module-$releaseVersion-sources.jar",
+                "$module-$releaseVersion-javadoc.jar",
+            ).forEach { artifactName ->
+                val artifact = moduleProject.layout.buildDirectory.file("libs/$artifactName").get().asFile
+                require(artifact.isFile && artifact.length() > 0L) {
+                    "Missing or empty release artifact: ${artifact.absolutePath}"
+                }
+            }
+
+            val pom = moduleProject.layout.buildDirectory
+                .file("publications/mavenJava/pom-default.xml")
+                .get()
+                .asFile
+            require(pom.isFile && pom.length() > 0L) {
+                "Missing generated Maven POM for :$module"
+            }
+            val pomText = pom.readText()
+            require("<groupId>moe.afox.dpsandbox</groupId>" in pomText) {
+                "Generated POM for :$module is missing the project groupId"
+            }
+            require("<artifactId>$module</artifactId>" in pomText) {
+                "Generated POM for :$module is missing artifactId $module"
+            }
+            require("<version>$releaseVersion</version>" in pomText) {
+                "Generated POM for :$module is missing version $releaseVersion"
+            }
+        }
+
+        val standalone = project(":cli").layout.buildDirectory
+            .file("libs/datapack-sandbox-cli.jar")
+            .get()
+            .asFile
+        require(standalone.isFile && standalone.length() > 0L) {
+            "Missing standalone CLI jar: ${standalone.absolutePath}"
+        }
+    }
+}
+
+tasks.register("releaseCheck") {
+    group = "verification"
+    description = "Runs the full 1.0 release gate: unit checks, standalone CLI smoke, and publication artifact checks."
+    dependsOn(":core:check", ":cli:check", "verifyReleaseArtifacts")
 }
 
 val vanillaMcdocArchive = layout.buildDirectory.file("vanilla-mcdoc/vanilla-mcdoc-main.zip")
@@ -140,6 +292,9 @@ project(":core") {
             resources.srcDir(vanillaNbtSchemaResourceDir)
         }
         tasks.named("processResources") {
+            dependsOn(rootProject.tasks.named("generateVanillaNbtSchemas"))
+        }
+        tasks.named("sourcesJar") {
             dependsOn(rootProject.tasks.named("generateVanillaNbtSchemas"))
         }
     }

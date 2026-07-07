@@ -1466,7 +1466,7 @@ class DatapackSandbox(
         if (plan == null || plan.blocks.isEmpty()) {
             payload.addProperty("placed", false)
             payload.addProperty("format", "raw-json-index-only")
-            payload.addProperty("reason", "Loaded feature resource has no sandbox block or supported simple_block/block_column/disk/vegetation_patch/tree/basalt_columns/delta_feature/lake/spring_feature/block_pile/glowstone_blob/replace_single_block/replace_blob/random_patch/flower/selector/ore state")
+            payload.addProperty("reason", "Loaded feature resource has no sandbox block or supported simple_block/block_column/disk/vegetation_patch/tree/basalt_columns/delta_feature/lake/spring_feature/block_pile/glowstone_blob/forest_rock/netherrack_replace_blobs/chorus_plant/replace_single_block/replace_blob/random_patch/flower/selector/ore state")
             return emptyList()
         }
 
@@ -1587,6 +1587,9 @@ class DatapackSandbox(
             "spring_feature", "spring" -> parseSpringFeature(type, location)
             "block_pile" -> parseBlockPileFeature(type, location)
             "glowstone_blob" -> parseGlowstoneBlobFeature(type, location)
+            "forest_rock" -> parseForestRockFeature(type, location)
+            "netherrack_replace_blobs" -> parseNetherrackReplaceBlobsFeature(type, location)
+            "chorus_plant" -> parseChorusPlantFeature(type, location)
             else -> parseFeatureBlockArgument(location)?.let { block ->
                 SandboxFeaturePlacementPlan(type, listOf(SandboxFeatureBlockPlacement(BlockPos(0, 0, 0), block)))
             }
@@ -1875,6 +1878,58 @@ class DatapackSandbox(
             type,
             blobOffsets(radius).map { offset -> SandboxFeatureBlockPlacement(offset, block, replaceBlocks) },
         )
+    }
+
+    private fun JsonObject.parseForestRockFeature(type: String, location: SourceLocation?): SandboxFeaturePlacementPlan? {
+        val config = getAsJsonObjectOrNull("config", location) ?: this
+        val block = config.getAsJsonObjectOrNull("state_provider", location)
+            ?.parseBlockStateProviderBlock("$type state_provider", location)
+            ?: config.getAsJsonObjectOrNull("provider", location)
+                ?.parseBlockStateProviderBlock("$type provider", location)
+            ?: config.get("state")?.parseFeatureBlockValue("$type state", location)
+            ?: BlockArgument(ResourceLocation.parse("minecraft:mossy_cobblestone"))
+        val radius = (config.get("radius")?.featureIntProvider("$type radius", location) ?: 1).coerceIn(0, 4)
+        val replaceBlocks = config.getAsJsonObjectOrNull("replaceable", location)
+            ?.featureTargetBlocks("$type replaceable", location)
+            ?: config.featureTargetListBlocks("targets", "$type target", location)
+        return SandboxFeaturePlacementPlan(
+            type,
+            blobOffsets(radius).map { offset -> SandboxFeatureBlockPlacement(offset, block, replaceBlocks) },
+        )
+    }
+
+    private fun JsonObject.parseNetherrackReplaceBlobsFeature(type: String, location: SourceLocation?): SandboxFeaturePlacementPlan? {
+        val config = getAsJsonObjectOrNull("config", location) ?: this
+        val block = config.get("target_state")?.parseFeatureBlockValue("$type target_state", location)
+            ?: config.get("state")?.parseFeatureBlockValue("$type state", location)
+            ?: config.getAsJsonObjectOrNull("state_provider", location)
+                ?.parseBlockStateProviderBlock("$type state_provider", location)
+            ?: BlockArgument(ResourceLocation.parse("minecraft:blackstone"))
+        val replaceBlocks = config.get("replace_state")?.parseFeatureBlockValue("$type replace_state", location)
+            ?.let { setOf(it.id) }
+            ?: config.getAsJsonObjectOrNull("replaceable", location)?.featureTargetBlocks("$type replaceable", location)
+            ?: config.featureTargetListBlocks("targets", "$type target", location)
+            ?: setOf(ResourceLocation.parse("minecraft:netherrack"))
+        val radius = (config.get("radius")?.featureIntProvider("$type radius", location) ?: 1).coerceIn(0, 4)
+        return SandboxFeaturePlacementPlan(
+            type,
+            blobOffsets(radius).map { offset -> SandboxFeatureBlockPlacement(offset, block, replaceBlocks) },
+        )
+    }
+
+    private fun JsonObject.parseChorusPlantFeature(type: String, location: SourceLocation?): SandboxFeaturePlacementPlan? {
+        val config = getAsJsonObjectOrNull("config", location) ?: this
+        val plant = config.get("plant_state")?.parseFeatureBlockValue("$type plant_state", location)
+            ?: config.get("body_state")?.parseFeatureBlockValue("$type body_state", location)
+            ?: config.get("state")?.parseFeatureBlockValue("$type state", location)
+            ?: BlockArgument(ResourceLocation.parse("minecraft:chorus_plant"))
+        val flower = config.get("flower_state")?.parseFeatureBlockValue("$type flower_state", location)
+            ?: BlockArgument(ResourceLocation.parse("minecraft:chorus_flower"))
+        val height = (config.get("height")?.featureIntProvider("$type height", location) ?: 4).coerceIn(1, 16)
+        val blocks = (0 until height).map { y ->
+            SandboxFeatureBlockPlacement(BlockPos(0, y, 0), plant)
+        } + SandboxFeatureBlockPlacement(BlockPos(0, height, 0), flower)
+        return SandboxFeaturePlacementPlan(type, blocks)
     }
 
     private fun JsonObject.parseSelectorFeature(

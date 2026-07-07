@@ -1123,6 +1123,54 @@ class CommandExpansionTest {
     }
 
     @Test
+    fun `place feature applies deterministic rock nether blob and chorus resources`() {
+        val pack = writeFeaturePlacePack(Files.createTempDirectory("dps-place-more-longtail-feature-pack"))
+        val sandbox = createSandbox("26.2", listOf(pack))
+
+        sandbox.executeCommand("setblock 120 30 120 minecraft:netherrack")
+        sandbox.executeCommand("setblock 121 30 120 minecraft:netherrack")
+        sandbox.executeCommand("setblock 120 31 120 minecraft:netherrack")
+        sandbox.executeCommand("place feature demo:placed_forest_rock 110 64 110")
+        sandbox.executeCommand("place feature demo:placed_nether_blob 120 30 120")
+        sandbox.executeCommand("place feature demo:placed_chorus 130 40 130")
+
+        assertEquals(ResourceLocation.parse("minecraft:mossy_cobblestone"), sandbox.world.requireBlock(BlockPos(110, 64, 110)).id)
+        assertEquals(ResourceLocation.parse("minecraft:mossy_cobblestone"), sandbox.world.requireBlock(BlockPos(111, 64, 110)).id)
+        assertEquals(ResourceLocation.parse("minecraft:mossy_cobblestone"), sandbox.world.requireBlock(BlockPos(110, 65, 110)).id)
+        assertEquals(ResourceLocation.parse("minecraft:basalt"), sandbox.world.requireBlock(BlockPos(120, 30, 120)).id)
+        assertEquals(ResourceLocation.parse("minecraft:basalt"), sandbox.world.requireBlock(BlockPos(121, 30, 120)).id)
+        assertEquals(ResourceLocation.parse("minecraft:basalt"), sandbox.world.requireBlock(BlockPos(120, 31, 120)).id)
+        assertEquals(ResourceLocation.parse("minecraft:chorus_plant"), sandbox.world.requireBlock(BlockPos(130, 40, 130)).id)
+        assertEquals(ResourceLocation.parse("minecraft:chorus_plant"), sandbox.world.requireBlock(BlockPos(130, 42, 130)).id)
+        assertEquals(ResourceLocation.parse("minecraft:chorus_flower"), sandbox.world.requireBlock(BlockPos(130, 43, 130)).id)
+
+        val outputs = sandbox.world.outputs.filter { it.command == "place feature" }
+        assertEquals(3, outputs.size)
+        val rockPayload = outputs[0].payload?.asJsonObject ?: error("missing rock payload")
+        assertEquals(true, rockPayload.get("placed").asBoolean)
+        assertEquals("configured-forest_rock", rockPayload.get("format").asString)
+        assertEquals("forest_rock", rockPayload.get("featureType").asString)
+        assertEquals(7, rockPayload.get("attemptedBlocks").asInt)
+        assertEquals(7, rockPayload.get("changedBlocks").asInt)
+
+        val netherPayload = outputs[1].payload?.asJsonObject ?: error("missing nether blob payload")
+        assertEquals(true, netherPayload.get("placed").asBoolean)
+        assertEquals("configured-netherrack_replace_blobs", netherPayload.get("format").asString)
+        assertEquals("netherrack_replace_blobs", netherPayload.get("featureType").asString)
+        assertEquals(7, netherPayload.get("attemptedBlocks").asInt)
+        assertEquals(3, netherPayload.get("changedBlocks").asInt)
+        assertEquals(4, netherPayload.get("skippedBlocks").asInt)
+
+        val chorusPayload = outputs[2].payload?.asJsonObject ?: error("missing chorus payload")
+        assertEquals(true, chorusPayload.get("placed").asBoolean)
+        assertEquals("configured-chorus_plant", chorusPayload.get("format").asString)
+        assertEquals("chorus_plant", chorusPayload.get("featureType").asString)
+        assertEquals(4, chorusPayload.get("attemptedBlocks").asInt)
+        assertEquals(4, chorusPayload.get("changedBlocks").asInt)
+        assertEquals(listOf("130 40 130", "130 41 130", "130 42 130", "130 43 130"), outputs[2].targets)
+    }
+
+    @Test
     fun `place feature applies deterministic block column feature resources`() {
         val pack = writeFeaturePlacePack(Files.createTempDirectory("dps-place-column-pack"))
         val sandbox = createSandbox("26.2", listOf(pack))
@@ -3321,6 +3369,47 @@ class CommandExpansionTest {
             """.trimIndent(),
         )
         Files.writeString(
+            configuredRoot.resolve("forest_rock.json"),
+            """
+            {
+              "type": "minecraft:forest_rock",
+              "config": {
+                "state_provider": {
+                  "type": "minecraft:simple_state_provider",
+                  "state": { "Name": "minecraft:mossy_cobblestone" }
+                },
+                "radius": 1
+              }
+            }
+            """.trimIndent(),
+        )
+        Files.writeString(
+            configuredRoot.resolve("nether_blob.json"),
+            """
+            {
+              "type": "minecraft:netherrack_replace_blobs",
+              "config": {
+                "target_state": { "Name": "minecraft:basalt" },
+                "replace_state": { "Name": "minecraft:netherrack" },
+                "radius": 1
+              }
+            }
+            """.trimIndent(),
+        )
+        Files.writeString(
+            configuredRoot.resolve("chorus.json"),
+            """
+            {
+              "type": "minecraft:chorus_plant",
+              "config": {
+                "height": 3,
+                "plant_state": { "Name": "minecraft:chorus_plant" },
+                "flower_state": { "Name": "minecraft:chorus_flower" }
+              }
+            }
+            """.trimIndent(),
+        )
+        Files.writeString(
             configuredRoot.resolve("disk.json"),
             """
             {
@@ -3475,6 +3564,33 @@ class CommandExpansionTest {
             """
             {
               "feature": "demo:glowstone",
+              "placement": []
+            }
+            """.trimIndent(),
+        )
+        Files.writeString(
+            placedRoot.resolve("placed_forest_rock.json"),
+            """
+            {
+              "feature": "demo:forest_rock",
+              "placement": []
+            }
+            """.trimIndent(),
+        )
+        Files.writeString(
+            placedRoot.resolve("placed_nether_blob.json"),
+            """
+            {
+              "feature": "demo:nether_blob",
+              "placement": []
+            }
+            """.trimIndent(),
+        )
+        Files.writeString(
+            placedRoot.resolve("placed_chorus.json"),
+            """
+            {
+              "feature": "demo:chorus",
               "placement": []
             }
             """.trimIndent(),

@@ -22,7 +22,13 @@ Windows：
 .\gradlew.bat :cli:smokeCliJar
 ```
 
-smoke 会构建 jar、导出内置 manifest schema、运行全部 examples manifest，并实际执行 README 里的 `loot`、玩家 `event` 和 stdin `run` 示例。标准 `check` 生命周期也会运行单元测试、manifest 示例和 standalone jar smoke；CI 会在 Linux、Windows 和 macOS 上运行 `check`。
+运行完整 1.0 发布门禁，包括单元检查、standalone jar smoke 和 Maven publication artifact 验证：
+
+```powershell
+.\gradlew.bat releaseCheck
+```
+
+smoke 会构建 jar、导出内置 manifest schema、运行全部 examples manifest，并实际执行 README 里的 `loot`、玩家 `event` 和 stdin `run` 示例。标准 `check` 生命周期也会运行单元测试、manifest 示例和 standalone jar smoke。CI 会在 Linux、Windows 和 macOS 上运行 `releaseCheck`，因此 release jar、sources jar、javadocs jar 和生成的 Maven POM 都会在三平台检查。
 
 standalone jar 输出到：
 
