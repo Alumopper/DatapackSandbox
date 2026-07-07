@@ -695,7 +695,7 @@ class RunCommand : CliktCommand(name = "run") {
             trimmed.startsWith("output:") -> parseOutputAssertion(trimmed.removePrefix("output:"), label)
             else -> throw SandboxException(
                 DiagnosticCode.INPUT_FORMAT,
-                "$label must be a JSON object or shorthand score:<target>:<objective>=N, storage:<id>[:<path>]=<json>, advancement:<player>:<id>[=<true|false>], predicate:<id>[=<true|false>], loot:<table>[:context=<id>][:player=<name>][:seed=N][:count=N][:item=<id>], entity:<type|*>[@tag]=N, block:<x>,<y>,<z>=<id>, block:<x>,<y>,<z>?, block:<x>,<y>,<z>!, biome:<x>,<y>,<z>=<id>, team:<name>[?|!|=N|@member], bossbar:<id>[?|!|:<field>=<value>], item:<player>:<id>[@slot]=N, player:<name>[:<field>=<value>], world:<field>=<value>, gamerule:<rule>=<value>, gamerule:<rule>?, gamerule:<rule>!, random-sequence:<name>=N, scheduled:<id>=<dueTick>, scheduled:<id>?, scheduled:<id>!, scoreboard-objective:<name>:<field>=<value>, scoreboard-objective:<name>?, scoreboard-objective:<name>!, scoreboard-display:<slot>=<objective>, scoreboard-display:<slot>?, scoreboard-display:<slot>!, forced-chunk:<x>,<z>?, forced-chunk:<x>,<z>!, snapshot:<path>=<json>, snapshot:<path>?, snapshot:<path>!, diff:<json-pointer>[=<kind>], event-trace:<player>:<type>[=N], trace:<root>=N, trace:<text>, trace-output:<text>[@target], diagnostic=N, diagnostic:<code>[=N], diagnostic:<code>:<text>[=N], warning=N, warning:<text>, unsupported=N, unsupported:<text>, output:<text>, output-count:<text>=N, output-order:<N>:<text>, output-exact:<text>, output-matches:<regex>, output-command:<command>[=N|?|!], output-channel:<channel>[=N|?|!], output-target:<target>[=N|?|!], output-normalized:<text>, output-normalized-exact:<text>, output-normalized-matches:<regex>, output-segment:<text>[|color=<color>|bold=<true|false>][@target], output-segment-exact:<text>[...], output-segment-matches:<regex>[...], or output-payload:<command>:<path>[=<json>]",
+                "$label must be a JSON object or shorthand score:<target>:<objective>=N, storage:<id>[:<path>]=<json>, advancement:<player>:<id>[=<true|false>][:done=<true|false>][:criterion=<name>][:criterionDone=<true|false>], predicate:<id>[=<true|false>][:player=<name>][:equals=<true|false>], loot:<table>[:context=<id>][:player=<name>][:seed=N][:count=N][:item=<id>], entity:<type|*>[@tag]=N, block:<x>,<y>,<z>=<id>, block:<x>,<y>,<z>?, block:<x>,<y>,<z>!, biome:<x>,<y>,<z>=<id>, team:<name>[?|!|=N|@member], bossbar:<id>[?|!|:<field>=<value>], item:<player>:<id>[@slot]=N, player:<name>[:<field>=<value>], world:<field>=<value>, gamerule:<rule>=<value>, gamerule:<rule>?, gamerule:<rule>!, random-sequence:<name>=N, scheduled:<id>=<dueTick>, scheduled:<id>?, scheduled:<id>!, scoreboard-objective:<name>:<field>=<value>, scoreboard-objective:<name>?, scoreboard-objective:<name>!, scoreboard-display:<slot>=<objective>, scoreboard-display:<slot>?, scoreboard-display:<slot>!, forced-chunk:<x>,<z>?, forced-chunk:<x>,<z>!, snapshot:<path>=<json>, snapshot:<path>?, snapshot:<path>!, diff:<json-pointer>[=<kind>], event-trace:<player>:<type>[=N], trace:<root>=N, trace:<text>, trace-output:<text>[@target], diagnostic=N, diagnostic:<code>[=N], diagnostic:<code>:<text>[=N], warning=N, warning:<text>, unsupported=N, unsupported:<text>, output:<text>, output-count:<text>=N, output-order:<N>:<text>, output-exact:<text>, output-matches:<regex>, output-command:<command>[=N|?|!], output-channel:<channel>[=N|?|!], output-target:<target>[=N|?|!], output-normalized:<text>, output-normalized-exact:<text>, output-normalized-matches:<regex>, output-segment:<text>[|color=<color>|bold=<true|false>][@target], output-segment-exact:<text>[...], output-segment-matches:<regex>[...], or output-payload:<command>:<path>[=<json>]",
             )
         }
     }
@@ -751,31 +751,67 @@ class RunCommand : CliktCommand(name = "run") {
     private fun parseAdvancementAssertion(spec: String, label: String): JsonObject {
         val trimmed = spec.trim()
         if (trimmed.isEmpty()) {
-            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label advancement shorthand must be advancement:<player>:<id>[=<true|false>]")
+            throw SandboxException(
+                DiagnosticCode.INPUT_FORMAT,
+                "$label advancement shorthand must be advancement:<player>:<id>[=<true|false>][:done=<true|false>][:criterion=<name>][:criterionDone=<true|false>]",
+            )
         }
-        val splitAt = trimmed.indexOf('=')
-        val left = if (splitAt < 0) trimmed else trimmed.substring(0, splitAt)
-        val doneText = splitAt.takeIf { it >= 0 }?.let { trimmed.substring(it + 1).trim() }
+        val optionPattern = Regex(":(done|criterion|criterionDone)=")
+        val optionMatches = optionPattern.findAll(trimmed).toList()
+        val head = if (optionMatches.isEmpty()) trimmed else trimmed.substring(0, optionMatches.first().range.first).trim()
+        val splitAt = head.indexOf('=')
+        val left = if (splitAt < 0) head else head.substring(0, splitAt)
         val separator = left.indexOf(':')
         if (separator <= 0 || separator == left.lastIndex) {
-            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label advancement shorthand must be advancement:<player>:<id>[=<true|false>]")
+            throw SandboxException(
+                DiagnosticCode.INPUT_FORMAT,
+                "$label advancement shorthand must be advancement:<player>:<id>[=<true|false>][:done=<true|false>][:criterion=<name>][:criterionDone=<true|false>]",
+            )
         }
         val player = left.substring(0, separator).trim()
         val id = left.substring(separator + 1).trim()
         if (player.isEmpty() || id.isEmpty()) {
-            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label advancement shorthand must be advancement:<player>:<id>[=<true|false>]")
+            throw SandboxException(
+                DiagnosticCode.INPUT_FORMAT,
+                "$label advancement shorthand must be advancement:<player>:<id>[=<true|false>][:done=<true|false>][:criterion=<name>][:criterionDone=<true|false>]",
+            )
         }
-        val done = doneText?.let {
-            when (it.lowercase()) {
-                "true" -> true
-                "false" -> false
-                else -> throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label advancement shorthand expected true or false but got '$it'")
+        var doneSpecified = splitAt >= 0
+        var done = splitAt.takeIf { it >= 0 }?.let {
+            parseBooleanShorthand(head.substring(it + 1).trim(), "$label advancement shorthand")
+        }
+        var criterion: String? = null
+        var criterionDone: Boolean? = null
+        optionMatches.forEachIndexed { index, match ->
+            val key = match.groupValues[1]
+            val valueStart = match.range.last + 1
+            val valueEnd = optionMatches.getOrNull(index + 1)?.range?.first ?: trimmed.length
+            val value = trimmed.substring(valueStart, valueEnd).trim()
+            if (value.isEmpty()) {
+                throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label advancement option '$key' must not be empty")
             }
-        } ?: true
+            when (key) {
+                "done" -> {
+                    doneSpecified = true
+                    done = parseBooleanShorthand(value, "$label advancement done")
+                }
+                "criterion" -> criterion = value
+                "criterionDone" -> criterionDone = parseBooleanShorthand(value, "$label advancement criterionDone")
+            }
+        }
+        if (criterion == null && criterionDone != null) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label advancement criterionDone requires criterion")
+        }
         val advancement = JsonObject().also { json ->
             json.addProperty("player", player)
             json.addProperty("id", id)
-            json.addProperty("done", done)
+            if (doneSpecified || criterion == null) {
+                json.addProperty("done", done ?: true)
+            }
+            criterion?.let {
+                json.addProperty("criterion", it)
+                json.addProperty("criterionDone", criterionDone ?: true)
+            }
         }
         return JsonObject().also { it.add("advancement", advancement) }
     }

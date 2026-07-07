@@ -348,6 +348,26 @@ class RunCommandTest {
     }
 
     @Test
+    fun `run accepts advancement criterion shorthand inline assertions`() {
+        val result = runCliProcess(
+            "run",
+            "--version",
+            "26.2",
+            "--pack",
+            "../examples/full-stack/pack",
+            "--event",
+            "player Steve item_used minecraft:carrot_on_a_stick",
+            "--assert",
+            "advancement:Steve:demo:use_carrot:criterion=use_carrot",
+            "--assert",
+            "advancement:Steve:demo:use_carrot:done=true",
+        )
+
+        assertEquals(0, result.exitCode, result.output)
+        assertTrue("OK version=26.2" in result.output, result.output)
+    }
+
+    @Test
     fun `run accepts storage shorthand inline assertions`() {
         val output = captureStdout {
             main(
