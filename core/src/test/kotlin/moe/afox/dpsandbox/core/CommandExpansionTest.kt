@@ -655,6 +655,51 @@ class CommandExpansionTest {
     }
 
     @Test
+    fun `place feature applies deterministic selector feature resources`() {
+        val pack = writeFeaturePlacePack(Files.createTempDirectory("dps-place-selector-pack"))
+        val sandbox = createSandbox("26.2", listOf(pack))
+
+        sandbox.executeCommand("place feature demo:placed_selector 12 70 12")
+
+        val block = sandbox.world.requireBlock(BlockPos(12, 70, 12))
+        assertEquals(ResourceLocation.parse("minecraft:oak_log"), block.id)
+        assertEquals("y", block.properties["axis"])
+        val output = sandbox.world.outputs.single { it.command == "place feature" }
+        val payload = output.payload?.asJsonObject ?: error("missing place feature payload")
+        assertEquals(true, payload.get("placed").asBoolean)
+        assertEquals("configured-simple_random_selector", payload.get("format").asString)
+        assertEquals("simple_random_selector", payload.get("featureType").asString)
+        assertEquals(1, payload.get("attemptedBlocks").asInt)
+        assertEquals(1, payload.get("changedBlocks").asInt)
+        assertEquals(listOf("12 70 12"), output.targets)
+    }
+
+    @Test
+    fun `place feature applies sparse ore replacement feature resources`() {
+        val pack = writeFeaturePlacePack(Files.createTempDirectory("dps-place-ore-pack"))
+        val sandbox = createSandbox("26.2", listOf(pack))
+        sandbox.executeCommand("setblock 20 40 20 minecraft:stone")
+        sandbox.executeCommand("setblock 21 40 20 minecraft:deepslate")
+        sandbox.executeCommand("setblock 19 40 20 minecraft:dirt")
+
+        sandbox.executeCommand("place feature demo:placed_ore 20 40 20")
+
+        assertEquals(ResourceLocation.parse("minecraft:diamond_ore"), sandbox.world.requireBlock(BlockPos(20, 40, 20)).id)
+        assertEquals(ResourceLocation.parse("minecraft:diamond_ore"), sandbox.world.requireBlock(BlockPos(21, 40, 20)).id)
+        assertEquals(ResourceLocation.parse("minecraft:dirt"), sandbox.world.requireBlock(BlockPos(19, 40, 20)).id)
+        val output = sandbox.world.outputs.single { it.command == "place feature" }
+        val payload = output.payload?.asJsonObject ?: error("missing place feature payload")
+        assertEquals(true, payload.get("placed").asBoolean)
+        assertEquals("configured-ore", payload.get("format").asString)
+        assertEquals("ore", payload.get("featureType").asString)
+        assertEquals(4, payload.get("attemptedBlocks").asInt)
+        assertEquals(2, payload.get("changedBlocks").asInt)
+        assertEquals(2, payload.get("skippedBlocks").asInt)
+        assertEquals("minecraft:diamond_ore", payload.getAsJsonObject("block").get("id").asString)
+        assertEquals(listOf("20 40 20", "21 40 20"), output.targets)
+    }
+
+    @Test
     fun `attribute and loot commands expose sandbox-visible state`() {
         val pack = writeLootPack(Files.createTempDirectory("dps-command-expansion-pack"))
         val sandbox = createSandbox("26.2", listOf(pack))
@@ -2153,6 +2198,50 @@ class CommandExpansionTest {
             }
             """.trimIndent(),
         )
+        Files.writeString(
+            configuredRoot.resolve("selector_log.json"),
+            """
+            {
+              "type": "minecraft:simple_random_selector",
+              "config": {
+                "features": [
+                  { "feature": "demo:simple_log" },
+                  {
+                    "feature": {
+                      "type": "minecraft:simple_block",
+                      "config": {
+                        "to_place": {
+                          "type": "minecraft:simple_state_provider",
+                          "state": { "Name": "minecraft:birch_log" }
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+            """.trimIndent(),
+        )
+        Files.writeString(
+            configuredRoot.resolve("ore_cluster.json"),
+            """
+            {
+              "type": "minecraft:ore",
+              "config": {
+                "size": 4,
+                "targets": [
+                  {
+                    "target": {
+                      "predicate_type": "minecraft:matching_blocks",
+                      "blocks": ["minecraft:stone", "minecraft:deepslate"]
+                    },
+                    "state": { "Name": "minecraft:diamond_ore" }
+                  }
+                ]
+              }
+            }
+            """.trimIndent(),
+        )
         val placedRoot = root.resolve("data").resolve("demo").resolve("worldgen").resolve("placed_feature")
         Files.createDirectories(placedRoot)
         Files.writeString(
@@ -2169,6 +2258,24 @@ class CommandExpansionTest {
             """
             {
               "feature": "demo:flower_patch",
+              "placement": []
+            }
+            """.trimIndent(),
+        )
+        Files.writeString(
+            placedRoot.resolve("placed_selector.json"),
+            """
+            {
+              "feature": "demo:selector_log",
+              "placement": []
+            }
+            """.trimIndent(),
+        )
+        Files.writeString(
+            placedRoot.resolve("placed_ore.json"),
+            """
+            {
+              "feature": "demo:ore_cluster",
               "placement": []
             }
             """.trimIndent(),

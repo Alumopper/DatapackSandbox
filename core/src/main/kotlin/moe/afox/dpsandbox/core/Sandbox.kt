@@ -125,6 +125,7 @@ private data class SandboxFeaturePlacementPlan(
 private data class SandboxFeatureBlockPlacement(
     val offset: BlockPos,
     val block: BlockArgument,
+    val replaceBlocks: Set<ResourceLocation>? = null,
 )
 
 private data class SandboxStructureProcessorList(
@@ -1187,12 +1188,13 @@ class DatapackSandbox(
         if (plan == null || plan.blocks.isEmpty()) {
             payload.addProperty("placed", false)
             payload.addProperty("format", "raw-json-index-only")
-            payload.addProperty("reason", "Loaded feature resource has no sandbox block or supported simple_block/random_patch/flower state")
+            payload.addProperty("reason", "Loaded feature resource has no sandbox block or supported simple_block/random_patch/flower/selector/ore state")
             return emptyList()
         }
 
         val origin = BlockPos(floor(position.x).toInt(), floor(position.y).toInt(), floor(position.z).toInt())
         val changedPositions = mutableListOf<BlockPos>()
+        var skippedBlocks = 0
         plan.blocks.forEach { placement ->
             val pos = BlockPos(
                 origin.x + placement.offset.x,
@@ -1200,6 +1202,11 @@ class DatapackSandbox(
                 origin.z + placement.offset.z,
             )
             val before = world.block(pos)?.copyForClone()
+            val currentId = before?.id ?: ResourceLocation("minecraft", "air")
+            if (placement.replaceBlocks != null && currentId !in placement.replaceBlocks) {
+                skippedBlocks++
+                return@forEach
+            }
             world.setBlock(pos, placement.block.toBlock(pos, profile, location))
             val after = world.block(pos)?.copyForClone()
             if (!sameBlock(before, after)) changedPositions += pos
@@ -1211,6 +1218,7 @@ class DatapackSandbox(
         payload.addProperty("resourceKind", feature.kind)
         payload.addProperty("attemptedBlocks", plan.blocks.size)
         payload.addProperty("changedBlocks", changedPositions.size)
+        payload.addProperty("skippedBlocks", skippedBlocks)
         payload.add("origin", blockPosOutput(origin))
         payload.add("positions", blockPosArrayOutput(changedPositions))
         payload.add("block", blockArgumentOutput(plan.blocks.first().block))
@@ -1222,6 +1230,14 @@ class DatapackSandbox(
                         JsonObject().also { entry ->
                             entry.add("offset", blockPosOutput(placement.offset))
                             entry.add("block", blockArgumentOutput(placement.block))
+                            placement.replaceBlocks?.let { replaceBlocks ->
+                                entry.add(
+                                    "replaceBlocks",
+                                    JsonArray().also { array ->
+                                        replaceBlocks.map { it.toString() }.sorted().forEach(array::add)
+                                    },
+                                )
+                            }
                         },
                     )
                 }
@@ -1279,10 +1295,79 @@ class DatapackSandbox(
         val type = placeString("type", location)?.removePrefix("minecraft:") ?: "sandbox_block"
         return when (type) {
             "random_patch", "flower" -> parseRandomPatchFeature(type, location, depth)
+            "random_selector", "simple_random_selector", "random_boolean_selector" -> parseSelectorFeature(type, location, depth)
+            "ore" -> parseOreFeature(location)
             else -> parseFeatureBlockArgument(location)?.let { block ->
                 SandboxFeaturePlacementPlan(type, listOf(SandboxFeatureBlockPlacement(BlockPos(0, 0, 0), block)))
             }
         }
+    }
+
+    private fun JsonObject.parseSelectorFeature(
+        type: String,
+        location: SourceLocation?,
+        depth: Int,
+    ): SandboxFeaturePlacementPlan? {
+        val config = getAsJsonObjectOrNull("config", location) ?: this
+        val selected = when (type) {
+            "random_boolean_selector" -> config.get("feature_true") ?: config.get("feature_false")
+            else -> {
+                val features = config.getAsJsonArrayOrNull("features")
+                val entry = features?.firstOrNull()
+                entry?.takeIf { it.isJsonObject }?.asJsonObject?.get("feature")
+                    ?: entry
+                    ?: config.get("default")
+                    ?: config.get("default_feature")
+            }
+        } ?: return null
+        return parseNestedFeaturePlan(selected, "$type feature", location, depth + 1)
+            ?.let { it.copy(type = type) }
+    }
+
+    private fun JsonObject.parseOreFeature(location: SourceLocation?): SandboxFeaturePlacementPlan? {
+        val config = getAsJsonObjectOrNull("config", location) ?: this
+        val targets = config.getAsJsonArrayOrNull("targets") ?: return null
+        val target = targets.mapIndexed { index, element ->
+            element.asPlaceJsonObject("ore target $index", location).parseOreTarget("ore target $index", location)
+        }.firstOrNull() ?: return null
+        val size = config.placeInt("size", 1, "ore size", location).coerceIn(0, 64)
+        val blocks = oreOffsets(size).map { offset ->
+            SandboxFeatureBlockPlacement(offset = offset, block = target.first, replaceBlocks = target.second)
+        }
+        return SandboxFeaturePlacementPlan("ore", blocks)
+    }
+
+    private fun JsonObject.parseOreTarget(label: String, location: SourceLocation?): Pair<BlockArgument, Set<ResourceLocation>?> {
+        val state = get("state")?.parseStructureProcessorBlockArgument("$label state", location)
+            ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label state is required", location)
+        val replaceBlocks = getAsJsonObjectOrNull("target", location)?.featureTargetBlocks("$label target", location)
+        return state to replaceBlocks
+    }
+
+    private fun JsonObject.featureTargetBlocks(label: String, location: SourceLocation?): Set<ResourceLocation>? {
+        val type = placeString("predicate_type", location) ?: placeString("type", location) ?: "minecraft:always_true"
+        return when (type.removePrefix("minecraft:")) {
+            "always_true" -> null
+            "matching_blocks" -> processorBlockIds("blocks", "block", "$label blocks", location)
+            "matching_block_tag" -> {
+                val tag = placeString("tag", location)
+                    ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label tag is required", location)
+                blockTagBlocks(ResourceLocation.parse(tag))
+            }
+            else -> emptySet()
+        }
+    }
+
+    private fun blockTagBlocks(id: ResourceLocation, visited: Set<ResourceLocation> = emptySet()): Set<ResourceLocation> {
+        if (id in visited) return emptySet()
+        val definition = datapack.tags[TagKey("block", id)] ?: datapack.tags[TagKey("blocks", id)] ?: return emptySet()
+        return definition.values.flatMap { value ->
+            if (value.id.startsWith("#")) {
+                blockTagBlocks(ResourceLocation.parse(value.id.removePrefix("#")), visited + id)
+            } else {
+                listOf(ResourceLocation.parse(value.id))
+            }
+        }.toSet()
     }
 
     private fun JsonObject.parseRandomPatchFeature(
@@ -1366,6 +1451,31 @@ class DatapackSandbox(
             }
         }
         return candidates.take(cappedTries)
+    }
+
+    private fun oreOffsets(size: Int): List<BlockPos> {
+        val cappedSize = size.coerceIn(0, 64)
+        if (cappedSize == 0) return emptyList()
+        val candidates = mutableListOf(
+            BlockPos(0, 0, 0),
+            BlockPos(1, 0, 0),
+            BlockPos(-1, 0, 0),
+            BlockPos(0, 0, 1),
+            BlockPos(0, 0, -1),
+            BlockPos(0, 1, 0),
+            BlockPos(0, -1, 0),
+        )
+        for (radius in 1..3) {
+            for (x in -radius..radius) {
+                for (y in -radius..radius) {
+                    for (z in -radius..radius) {
+                        val pos = BlockPos(x, y, z)
+                        if (pos !in candidates) candidates += pos
+                    }
+                }
+            }
+        }
+        return candidates.take(cappedSize)
     }
 
     private fun JsonObject.parseFeatureBlockArgument(location: SourceLocation?): BlockArgument? {
