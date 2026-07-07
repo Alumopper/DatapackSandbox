@@ -180,6 +180,16 @@ SandboxQuickTest.functions(
 `dueTick` 是排程函数应执行的绝对 sandbox game tick。`count` 适合检查
 `append` 模式下预期出现的重复排程条目。
 
+gamerule 状态以字符串保存，也可以不写 snapshot path 直接断言：
+
+```kotlin
+SandboxQuickTest.create(listOf(pack), version = "26.2")
+    .command("gamerule doDaylightCycle false")
+    .assertGamerule("doDaylightCycle", "false")
+    .assertGamerule("missingRule", exists = false)
+    .requirePassed()
+```
+
 scoreboard UI 状态也可以直接断言，适合检查命令生成器输出：
 
 ```kotlin
@@ -418,6 +428,7 @@ class MyDatapackTest {
 | `assertStorageMissing(id, path)` | 断言 storage 根对象或路径不存在。 |
 | `assertWorld(...)` | 断言选定的世界级状态、force-loaded chunk、biome override、世界出生点和世界边界。 |
 | `assertRandomSequence(name, expected)` | 断言确定性随机序列状态。 |
+| `assertGamerule(name, value, exists)` | 以字符串值断言已保存的 gamerule 状态。 |
 | `assertScheduledFunction(id, dueTick, exists, count)` | 按函数 id、绝对 due tick、存在性或重复条目数量断言 scheduled function 队列。 |
 | `assertScoreboardObjective(name, exists, criteria, displayName, renderType, displayAutoUpdate)` | 断言 scoreboard objective 的 criteria 和 UI 元数据。 |
 | `assertScoreboardDisplay(slot, objective, exists)` | 断言 `sidebar`、`list` 或 `sidebar.team.red` 等 scoreboard display slot。 |

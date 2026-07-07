@@ -362,6 +362,14 @@ class SandboxQuickTestMatrix private constructor(
     }
 
     /**
+     * Applies a gamerule state assertion to every scenario.
+     */
+    @JvmOverloads
+    fun assertGamerule(name: String, value: String? = null, exists: Boolean = true): SandboxQuickTestMatrix = apply {
+        scenarios.values.forEach { it.assertGamerule(name, value, exists) }
+    }
+
+    /**
      * Applies a scheduled function queue assertion to every scenario.
      */
     @JvmOverloads
@@ -1454,6 +1462,25 @@ class SandboxQuickTest private constructor(
         val actual = sandbox.world.randomSequences[name]
         if (actual != expected) {
             failures += "random sequence $name expected $expected but was ${actual ?: "<missing>"}"
+        }
+    }
+
+    /**
+     * Asserts stored gamerule state. The sandbox stores gamerule values as strings.
+     */
+    @JvmOverloads
+    fun assertGamerule(name: String, value: String? = null, exists: Boolean = true): SandboxQuickTest = apply {
+        val actual = sandbox.world.gamerules[name]
+        if (!exists) {
+            if (actual != null) failures += "gamerule $name expected missing but was $actual; ${actualGamerules()}"
+            return@apply
+        }
+        if (actual == null) {
+            failures += "gamerule $name expected present but was <missing>; ${actualGamerules()}"
+            return@apply
+        }
+        value?.let {
+            if (actual != it) failures += "gamerule $name expected $it but was $actual"
         }
     }
 
@@ -2797,6 +2824,16 @@ class SandboxQuickTest private constructor(
             .joinToString("; ") { "${it.id}@${it.dueTick}" }
         val suffix = if (sandbox.world.scheduledFunctions.size > 5) "; ... +${sandbox.world.scheduledFunctions.size - 5} more" else ""
         return "actual scheduled functions: $rendered$suffix"
+    }
+
+    private fun actualGamerules(): String {
+        if (sandbox.world.gamerules.isEmpty()) return "actual gamerules: <none>"
+        val rendered = sandbox.world.gamerules.toSortedMap()
+            .entries
+            .take(5)
+            .joinToString("; ") { (name, value) -> "$name=$value" }
+        val suffix = if (sandbox.world.gamerules.size > 5) "; ... +${sandbox.world.gamerules.size - 5} more" else ""
+        return "actual gamerules: $rendered$suffix"
     }
 
     private fun actualScoreboardObjectives(): String {

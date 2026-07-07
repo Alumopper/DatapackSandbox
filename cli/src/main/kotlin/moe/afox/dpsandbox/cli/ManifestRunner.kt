@@ -801,6 +801,9 @@ object ManifestRunner {
             assertion.has("world") -> {
                 failures += evaluateWorldAssertion(assertion.getAsJsonObject("world"), sandbox)
             }
+            assertion.has("gamerule") -> {
+                failures += evaluateGameruleAssertion(assertion.getAsJsonObject("gamerule"), sandbox)
+            }
             assertion.has("player") -> {
                 val player = assertion.getAsJsonObject("player")
                 val name = player.requiredManifestString("name")
@@ -995,6 +998,35 @@ object ManifestRunner {
             .joinToString("; ") { "${it.id}@${it.dueTick}" }
         val suffix = if (sandbox.world.scheduledFunctions.size > 5) "; ... +${sandbox.world.scheduledFunctions.size - 5} more" else ""
         return "actual scheduled functions: $rendered$suffix"
+    }
+
+    private fun evaluateGameruleAssertion(assertion: JsonObject, sandbox: DatapackSandbox): List<String> {
+        val name = assertion.requiredManifestString("name")
+        val actual = sandbox.world.gamerules[name]
+        val exists = assertion.get("exists")?.asBoolean ?: true
+        return buildList {
+            if (!exists) {
+                if (actual != null) add("gamerule $name expected missing but was $actual; ${actualGamerules(sandbox)}")
+                return@buildList
+            }
+            if (actual == null) {
+                add("gamerule $name expected present but was <missing>; ${actualGamerules(sandbox)}")
+                return@buildList
+            }
+            assertion.manifestString("value")?.let {
+                if (actual != it) add("gamerule $name expected $it but was $actual")
+            }
+        }
+    }
+
+    private fun actualGamerules(sandbox: DatapackSandbox): String {
+        if (sandbox.world.gamerules.isEmpty()) return "actual gamerules: <none>"
+        val rendered = sandbox.world.gamerules.toSortedMap()
+            .entries
+            .take(5)
+            .joinToString("; ") { (name, value) -> "$name=$value" }
+        val suffix = if (sandbox.world.gamerules.size > 5) "; ... +${sandbox.world.gamerules.size - 5} more" else ""
+        return "actual gamerules: $rendered$suffix"
     }
 
     private fun evaluateScoreboardObjectiveAssertion(assertion: JsonObject, sandbox: DatapackSandbox): List<String> {

@@ -96,6 +96,19 @@ class SandboxQuickTestTest {
     }
 
     @Test
+    fun `quick gamerule assertions check stored rule values`() {
+        val report = SandboxQuickTest.create(listOf(fixturePack()), version = "26.1.2")
+            .command("gamerule doDaylightCycle false")
+            .command("gamerule maxEntityCramming 0")
+            .assertGamerule("doDaylightCycle", "false")
+            .assertGamerule("maxEntityCramming", "0")
+            .assertGamerule("missingRule", exists = false)
+            .requirePassed()
+
+        assertTrue(report.passed)
+    }
+
+    @Test
     fun `quick scoreboard UI assertions check objective metadata and displays`() {
         val report = SandboxQuickTest.create(listOf(fixturePack()), version = "26.1.2")
             .command("scoreboard objectives add health dummy")

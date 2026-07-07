@@ -377,6 +377,24 @@ class ManifestRunnerTest {
     }
 
     @Test
+    fun `manifest schema documents gamerule assertions`() {
+        val schema = JsonParser.parseString(Files.readString(Path.of("../docs/dps-manifest.schema.json"))).asJsonObject
+        val defs = schema.getAsJsonObject("\$defs")
+        val assertion = defs.getAsJsonObject("assertion")
+        val assertionRequired = assertion.getAsJsonArray("oneOf").map {
+            it.asJsonObject.getAsJsonArray("required").single().asString
+        }
+        val assertionRef = assertion.getAsJsonObject("properties").getAsJsonObject("gamerule")
+        val properties = defs.getAsJsonObject("gameruleAssertion").getAsJsonObject("properties")
+
+        assertTrue("gamerule" in assertionRequired)
+        assertEquals("#/\$defs/gameruleAssertion", assertionRef.get("\$ref").asString)
+        assertEquals("string", properties.getAsJsonObject("name").get("type").asString)
+        assertEquals("string", properties.getAsJsonObject("value").get("type").asString)
+        assertEquals("boolean", properties.getAsJsonObject("exists").get("type").asString)
+    }
+
+    @Test
     fun `manifest schema documents scoreboard UI assertions`() {
         val schema = JsonParser.parseString(Files.readString(Path.of("../docs/dps-manifest.schema.json"))).asJsonObject
         val defs = schema.getAsJsonObject("\$defs")
@@ -474,6 +492,50 @@ class ManifestRunnerTest {
                 {
                   "scoreboardDisplay": {
                     "slot": "list",
+                    "exists": false
+                  }
+                }
+              ]
+            }
+            """.trimIndent(),
+        )
+
+        val result = ManifestRunner.run(manifest)
+
+        assertTrue(result.passed, result.messages.joinToString())
+    }
+
+    @Test
+    fun `runs manifest gamerule assertions`() {
+        val dir = Files.createTempDirectory("dps-gamerule-manifest")
+        val pack = Path.of("../core/src/test/resources/packs/counter").toAbsolutePath().normalize().toString().replace("\\", "\\\\")
+        val manifest = dir.resolve("gamerule.dps.json")
+        Files.writeString(
+            manifest,
+            """
+            {
+              "version": "26.1.2",
+              "packs": ["$pack"],
+              "steps": [
+                { "command": "gamerule doDaylightCycle false" },
+                { "command": "gamerule maxEntityCramming 0" }
+              ],
+              "assertions": [
+                {
+                  "gamerule": {
+                    "name": "doDaylightCycle",
+                    "value": "false"
+                  }
+                },
+                {
+                  "gamerule": {
+                    "name": "maxEntityCramming",
+                    "value": "0"
+                  }
+                },
+                {
+                  "gamerule": {
+                    "name": "missingRule",
                     "exists": false
                   }
                 }

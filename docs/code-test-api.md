@@ -205,6 +205,16 @@ SandboxQuickTest.functions(
 `count` is useful for `append` mode tests where duplicate schedule entries are
 expected.
 
+Gamerule state is stored as strings and can be asserted without snapshot paths:
+
+```kotlin
+SandboxQuickTest.create(listOf(pack), version = "26.2")
+    .command("gamerule doDaylightCycle false")
+    .assertGamerule("doDaylightCycle", "false")
+    .assertGamerule("missingRule", exists = false)
+    .requirePassed()
+```
+
 Scoreboard UI state can be asserted directly from generated command output:
 
 ```kotlin
@@ -448,6 +458,7 @@ class MyDatapackTest {
 | `assertStorageMissing(id, path)` | Assert that a storage root or path is absent |
 | `assertWorld(...)` | Assert selected world-level state, forced chunks, biome overrides, world spawn, and world border |
 | `assertRandomSequence(name, expected)` | Assert deterministic random sequence state |
+| `assertGamerule(name, value, exists)` | Assert stored gamerule state as string values |
 | `assertScheduledFunction(id, dueTick, exists, count)` | Assert queued scheduled functions by id, absolute due tick, existence, or duplicate count |
 | `assertScoreboardObjective(name, exists, criteria, displayName, renderType, displayAutoUpdate)` | Assert scoreboard objective criteria and UI metadata |
 | `assertScoreboardDisplay(slot, objective, exists)` | Assert scoreboard display slots such as `sidebar`, `list`, or `sidebar.team.red` |
