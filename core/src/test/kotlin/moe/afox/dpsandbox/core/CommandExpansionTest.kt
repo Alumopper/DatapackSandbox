@@ -335,6 +335,27 @@ class CommandExpansionTest {
     }
 
     @Test
+    fun `place feature applies placed simple block feature resources`() {
+        val pack = writeFeaturePlacePack(Files.createTempDirectory("dps-place-feature-pack"))
+        val sandbox = createSandbox("26.2", listOf(pack))
+
+        sandbox.executeCommand("place feature demo:placed_stone 4 65 6")
+
+        val block = sandbox.world.requireBlock(BlockPos(4, 65, 6))
+        assertEquals(ResourceLocation.parse("minecraft:oak_log"), block.id)
+        assertEquals("y", block.properties["axis"])
+        val output = sandbox.world.outputs.single { it.command == "place feature" }
+        val payload = output.payload?.asJsonObject ?: error("missing place feature payload")
+        assertEquals(true, payload.get("placed").asBoolean)
+        assertEquals("configured-simple-block", payload.get("format").asString)
+        assertEquals("worldgen/configured_feature", payload.get("resourceKind").asString)
+        assertEquals("demo:simple_log", payload.get("configuredFeature").asString)
+        assertEquals(1, payload.get("changedBlocks").asInt)
+        assertEquals("minecraft:oak_log", payload.getAsJsonObject("block").get("id").asString)
+        assertEquals(listOf("4 65 6"), output.targets)
+    }
+
+    @Test
     fun `attribute and loot commands expose sandbox-visible state`() {
         val pack = writeLootPack(Files.createTempDirectory("dps-command-expansion-pack"))
         val sandbox = createSandbox("26.2", listOf(pack))
@@ -1337,6 +1358,51 @@ class CommandExpansionTest {
                   "health": 6.0
                 }
               ]
+            }
+            """.trimIndent(),
+        )
+        return root
+    }
+
+    private fun writeFeaturePlacePack(root: Path): Path {
+        Files.writeString(
+            root.resolve("pack.mcmeta").also { Files.createDirectories(it.parent) },
+            """
+            {
+              "pack": {
+                "pack_format": 107.1,
+                "description": "place feature test"
+              }
+            }
+            """.trimIndent(),
+        )
+        val configuredRoot = root.resolve("data").resolve("demo").resolve("worldgen").resolve("configured_feature")
+        Files.createDirectories(configuredRoot)
+        Files.writeString(
+            configuredRoot.resolve("simple_log.json"),
+            """
+            {
+              "type": "minecraft:simple_block",
+              "config": {
+                "to_place": {
+                  "type": "minecraft:simple_state_provider",
+                  "state": {
+                    "Name": "minecraft:oak_log",
+                    "Properties": { "axis": "y" }
+                  }
+                }
+              }
+            }
+            """.trimIndent(),
+        )
+        val placedRoot = root.resolve("data").resolve("demo").resolve("worldgen").resolve("placed_feature")
+        Files.createDirectories(placedRoot)
+        Files.writeString(
+            placedRoot.resolve("placed_stone.json"),
+            """
+            {
+              "feature": "demo:simple_log",
+              "placement": []
             }
             """.trimIndent(),
         )

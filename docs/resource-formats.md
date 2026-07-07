@@ -123,13 +123,13 @@ smoke tasks.
 | `wolf_variant` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
 | `worldgen/biome` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
 | `worldgen/configured_carver` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
-| `worldgen/configured_feature` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
+| `worldgen/configured_feature` | `modeled` | simple_block feature JSON consumed by place feature |
 | `worldgen/density_function` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
 | `worldgen/flat_level_generator_preset` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
 | `worldgen/multi_noise_biome_source_parameter_list` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
 | `worldgen/noise` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
 | `worldgen/noise_settings` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
-| `worldgen/placed_feature` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
+| `worldgen/placed_feature` | `modeled` | placed feature JSON resolving configured simple_block resources for place feature |
 | `worldgen/processor_list` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
 | `worldgen/structure` | `modeled` | sandbox structure JSON `blocks`/`entities` can be expanded by `place structure` and `place template` |
 | `worldgen/structure_set` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
@@ -330,11 +330,12 @@ count; misses include actual snapshot diff candidates.
 
 Recipes, item modifiers, and additional registry resources are loaded as raw
 JSON resources and included in the resource index. The sandbox does not yet
-execute the full crafting system, every item modifier function, or worldgen
-semantics, but these resources are version-profile checked, participate in pack
-overlay behavior, and can be inspected from API or REPL. `recipe give` and
-`recipe take` update player recipe state and report the concrete changed recipe
-ids in structured output. Loot tables can expand
+execute the full crafting system, every item modifier function, or full
+worldgen semantics, but it models sandbox structure placement and simple_block
+feature placement; the remaining resources are version-profile checked,
+participate in pack overlay behavior, and can be inspected from API or REPL.
+`recipe give` and `recipe take` update player recipe state and report the
+concrete changed recipe ids in structured output. Loot tables can expand
 item tag entries, including nested tags and optional values; `expand=false`
 emits the full tag and `expand=true` makes tag items selectable entries. Loot functions include
 common count/item/component/enchantment mutations, tool-driven `apply_bonus`,

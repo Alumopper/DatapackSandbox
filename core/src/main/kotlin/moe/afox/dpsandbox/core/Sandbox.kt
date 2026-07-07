@@ -111,6 +111,12 @@ private data class SandboxStructurePlacement(
     }
 }
 
+private data class SandboxFeaturePlacement(
+    val kind: String,
+    val root: JsonObject,
+    val format: String,
+)
+
 /**
  * Execution safety limits used to stop runaway tests deterministically.
  */
@@ -885,16 +891,126 @@ class DatapackSandbox(
                 },
             )
         }
-        if (kind == "structure" || kind == "template") {
-            val placement = if (kind == "template") parseTemplatePlacement(extras, payload, location) else SandboxStructurePlacement()
-            placedTargets = placeSandboxStructure(placeId ?: error("missing place id"), position, context, payload, placement, location)
-        } else {
-            payload.addProperty("placed", false)
-            payload.addProperty("reason", "Sandbox records place commands but does not simulate this worldgen kind")
+        when (kind) {
+            "feature" -> {
+                placedTargets = placeSandboxFeature(placeId ?: error("missing place id"), position, payload, location)
+            }
+            "structure", "template" -> {
+                val placement = if (kind == "template") parseTemplatePlacement(extras, payload, location) else SandboxStructurePlacement()
+                placedTargets = placeSandboxStructure(placeId ?: error("missing place id"), position, context, payload, placement, location)
+            }
+            else -> {
+                payload.addProperty("placed", false)
+                payload.addProperty("reason", "Sandbox records place commands but does not simulate this worldgen kind")
+            }
         }
 
         val idText = payload.get("id")?.asString ?: payload.get("pool")?.asString.orEmpty()
         world.recordOutput("place $kind", "worldgen", targets = placedTargets, text = "$kind:$idText", payload = payload)
+    }
+
+    private fun placeSandboxFeature(
+        id: ResourceLocation,
+        position: Position,
+        payload: JsonObject,
+        location: SourceLocation?,
+    ): List<String> {
+        val feature = resolvePlaceFeature(id, payload, location)
+        if (feature == null) {
+            payload.addProperty("placed", false)
+            payload.addProperty("reason", "Sandbox records place commands but no placed/configured feature resource was loaded")
+            return emptyList()
+        }
+        val block = feature.root.parseFeatureBlockArgument(location)
+        if (block == null) {
+            payload.addProperty("placed", false)
+            payload.addProperty("format", "raw-json-index-only")
+            payload.addProperty("reason", "Loaded feature resource has no sandbox block or supported simple_block state")
+            return emptyList()
+        }
+
+        val pos = BlockPos(floor(position.x).toInt(), floor(position.y).toInt(), floor(position.z).toInt())
+        val before = world.block(pos)?.copyForClone()
+        world.setBlock(pos, block.toBlock(pos, profile, location))
+        val after = world.block(pos)?.copyForClone()
+        val changed = !sameBlock(before, after)
+        payload.addProperty("placed", true)
+        payload.addProperty("format", feature.format)
+        payload.addProperty("resourceKind", feature.kind)
+        payload.addProperty("changedBlocks", if (changed) 1 else 0)
+        payload.add("origin", blockPosOutput(pos))
+        payload.add("positions", blockPosArrayOutput(if (changed) listOf(pos) else emptyList()))
+        payload.add("block", blockArgumentOutput(block))
+        return if (changed) listOf(pos.toString()) else emptyList()
+    }
+
+    private fun resolvePlaceFeature(id: ResourceLocation, payload: JsonObject, location: SourceLocation?): SandboxFeaturePlacement? {
+        datapack.rawResources["worldgen/placed_feature"]?.get(id)?.let { placed ->
+            if (!placed.root.isJsonObject) {
+                throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Placed feature resource '$id' must be a JSON object", location)
+            }
+            val root = placed.root.asJsonObject
+            payload.addProperty("resourceKind", "worldgen/placed_feature")
+            root.get("feature")?.let { feature ->
+                if (feature.isJsonPrimitive) {
+                    val configuredId = ResourceLocation.parse(feature.asJsonPrimitive.asString)
+                    val configured = datapack.rawResources["worldgen/configured_feature"]?.get(configuredId)
+                        ?: throw SandboxException(DiagnosticCode.RESOURCE_NOT_FOUND, "Configured feature '$configuredId' referenced by placed feature '$id' was not found", location)
+                    if (!configured.root.isJsonObject) {
+                        throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Configured feature resource '$configuredId' must be a JSON object", location)
+                    }
+                    payload.addProperty("configuredFeature", configuredId.toString())
+                    return SandboxFeaturePlacement("worldgen/configured_feature", configured.root.asJsonObject, "configured-simple-block")
+                }
+                if (feature.isJsonObject) {
+                    payload.addProperty("configuredFeature", "inline")
+                    return SandboxFeaturePlacement("worldgen/placed_feature", feature.asJsonObject, "configured-simple-block")
+                }
+                throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Placed feature resource '$id' field 'feature' must be a string id or object", location)
+            }
+            return SandboxFeaturePlacement("worldgen/placed_feature", root, "sandbox-feature-json")
+        }
+        datapack.rawResources["worldgen/configured_feature"]?.get(id)?.let { configured ->
+            if (!configured.root.isJsonObject) {
+                throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Configured feature resource '$id' must be a JSON object", location)
+            }
+            payload.addProperty("resourceKind", "worldgen/configured_feature")
+            return SandboxFeaturePlacement("worldgen/configured_feature", configured.root.asJsonObject, "configured-simple-block")
+        }
+        return null
+    }
+
+    private fun JsonObject.parseFeatureBlockArgument(location: SourceLocation?): BlockArgument? {
+        get("block")?.let { block ->
+            return when {
+                block.isJsonPrimitive -> BlockArgument(ResourceLocation.parse(block.asJsonPrimitive.asString))
+                block.isJsonObject -> block.asJsonObject.parseBlockStateObject("feature block", location)
+                else -> throw SandboxException(DiagnosticCode.INPUT_FORMAT, "feature block must be a string or object", location)
+            }
+        }
+        getAsJsonObjectOrNull("state", location)?.let { return it.parseBlockStateObject("feature state", location) }
+        val type = placeString("type", location)
+        if (type == null || type == "minecraft:simple_block" || type == "simple_block") {
+            val config = getAsJsonObjectOrNull("config", location)
+            val provider = config?.getAsJsonObjectOrNull("to_place", location) ?: getAsJsonObjectOrNull("to_place", location)
+            val state = provider?.getAsJsonObjectOrNull("state", location) ?: provider?.takeIf { it.has("Name") || it.has("id") }
+            if (state != null) return state.parseBlockStateObject("simple_block state", location)
+        }
+        return null
+    }
+
+    private fun JsonObject.parseBlockStateObject(label: String, location: SourceLocation?): BlockArgument {
+        val rawId = placeString("id", location) ?: placeString("Name", location)
+            ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label requires id or Name", location)
+        val properties = (getAsJsonObjectOrNull("properties", location) ?: getAsJsonObjectOrNull("Properties", location))
+            ?.entrySet()
+            ?.associate { (key, value) ->
+                if (!value.isJsonPrimitive) throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label property '$key' must be a primitive", location)
+                key to value.asJsonPrimitive.asString
+            }
+            ?: emptyMap()
+        val nbt = getAsJsonObjectOrNull("nbt", location) ?: getAsJsonObjectOrNull("Nbt", location) ?: JsonObject()
+        return BlockArgument(ResourceLocation.parse(rawId), properties, nbt)
     }
 
     private fun placeSandboxStructure(
@@ -1019,6 +1135,14 @@ class DatapackSandbox(
             throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Structure field '$name' must be an array")
         }
         return value.asJsonArray
+    }
+
+    private fun JsonObject.getAsJsonObjectOrNull(name: String, location: SourceLocation? = null): JsonObject? {
+        val value = get(name) ?: return null
+        if (!value.isJsonObject) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "JSON field '$name' must be an object", location)
+        }
+        return value.asJsonObject
     }
 
     private fun JsonElement.asPlaceJsonObject(label: String, location: SourceLocation?): JsonObject {

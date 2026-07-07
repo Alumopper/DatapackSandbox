@@ -58,6 +58,8 @@ object ResourceCatalog {
     )
 
     private val modeledRawJsonSummaries = mapOf(
+        "worldgen/configured_feature" to "simple_block feature JSON consumed by place feature",
+        "worldgen/placed_feature" to "placed feature JSON resolving configured simple_block resources for place feature",
         "worldgen/structure" to "sandbox structure JSON blocks/entities consumed by place structure/template",
     )
 
@@ -94,6 +96,8 @@ object ResourceBehaviorLevels {
         "advancement",
         "recipe",
         "item_modifier",
+        "worldgen/configured_feature",
+        "worldgen/placed_feature",
         "worldgen/structure",
     )
 }

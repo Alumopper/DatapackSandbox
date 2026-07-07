@@ -2002,6 +2002,7 @@ class RunCommandTest {
 
         assertTrue("function modeled - mcfunction execution" in output, output)
         assertTrue("tag/<registry> observed-noop - general tags" in output, output)
+        assertTrue("worldgen/placed_feature modeled - placed feature JSON resolving configured simple_block" in output, output)
         assertTrue("worldgen/structure modeled - sandbox structure JSON blocks/entities" in output, output)
     }
 
@@ -2013,6 +2014,7 @@ class RunCommandTest {
 
         assertTrue("| Resource | Behavior | Runtime/debug surface |" in output, output)
         assertTrue("| `function` | `modeled` | mcfunction execution" in output, output)
+        assertTrue("| `worldgen/configured_feature` | `modeled` | simple_block feature JSON consumed by place feature |" in output, output)
         assertTrue("| `worldgen/structure` | `modeled` | sandbox structure JSON blocks/entities" in output, output)
     }
 
@@ -2024,6 +2026,7 @@ class RunCommandTest {
 
         assertTrue("| 资源 | 行为等级 | 运行时 / debug 表面 |" in output, output)
         assertTrue("| `function` | `modeled` | mcfunction 执行、trace source location 和缺失引用检查。" in output, output)
+        assertTrue("| `worldgen/placed_feature` | `modeled` | placed feature 会解析 configured simple_block 资源，供 place feature 使用。" in output, output)
         assertTrue("| `worldgen/structure` | `modeled` | 沙盒结构 JSON 的 blocks/entities 可被 place structure/template 展开。" in output, output)
     }
 
@@ -2092,6 +2095,8 @@ class RunCommandTest {
 
         assertEquals("modeled", resources.getValue("function").get("behavior").asString)
         assertEquals("observed-noop", resources.getValue("tag/<registry>").get("behavior").asString)
+        assertEquals("modeled", resources.getValue("worldgen/configured_feature").get("behavior").asString)
+        assertEquals("modeled", resources.getValue("worldgen/placed_feature").get("behavior").asString)
         assertEquals("modeled", resources.getValue("worldgen/structure").get("behavior").asString)
     }
 
