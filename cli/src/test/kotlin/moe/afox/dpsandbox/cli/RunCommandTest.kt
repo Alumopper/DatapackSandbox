@@ -1975,6 +1975,33 @@ class RunCommandTest {
     }
 
     @Test
+    fun `resources lists profile registry entries`() {
+        val output = captureStdout {
+            main(arrayOf("resources", "--version", "26.2", "--registry", "--registry-group", "damage_types"))
+        }
+
+        assertTrue("registry version=26.2 groups=12 selected=1 source=profile:26.2" in output, output)
+        assertTrue("registry damage_types count=5 source=profile:26.2" in output, output)
+        assertTrue("registry damage_types minecraft:generic source=profile:26.2" in output, output)
+    }
+
+    @Test
+    fun `resources renders profile registry json`() {
+        val output = captureStdout {
+            main(arrayOf("resources", "--version", "26.2", "--registry", "--registry-group", "loot_conditions", "--json"))
+        }
+        val json = JsonParser.parseString(output).asJsonObject
+        val registry = json.getAsJsonArray("registries").single().asJsonObject
+        val entries = registry.getAsJsonArray("entries").map { it.asString }
+
+        assertEquals("26.2", json.get("version").asString)
+        assertEquals("profile:26.2", json.get("source").asString)
+        assertEquals("loot_conditions", json.getAsJsonObject("filters").get("registryGroup").asString)
+        assertEquals("loot_conditions", registry.get("group").asString)
+        assertTrue("minecraft:random_chance" in entries, entries.toString())
+    }
+
+    @Test
     fun `resources lists loaded pack index with filters`() {
         val pack = writeDependencyPack(Files.createTempDirectory("dps-resources-pack"), "main", "say indexed")
 

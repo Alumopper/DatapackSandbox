@@ -131,7 +131,7 @@ class DpsCompletionEngine(private val sandbox: () -> DatapackSandbox) {
             words.getOrNull(1) == "raw" && context.wordIndex == 2 -> rawResourceKinds().suggest("raw resource types", appendSpace = true)
             words.getOrNull(1) == "raw" && context.wordIndex == 3 -> rawResourceIds(words.getOrNull(2)).suggest("raw resources")
             words.getOrNull(1) in setOf("resource", "resources") && context.wordIndex == 2 -> resourceIndexTypes().suggest("resource types")
-            words.getOrNull(1) == "registry" && context.wordIndex == 2 -> registryGroups.suggest("registry groups")
+            words.getOrNull(1) == "registry" && context.wordIndex == 2 -> RegistryInspection.groupNames.suggest("registry groups")
             else -> emptyList()
         }
 
@@ -543,20 +543,6 @@ class DpsCompletionEngine(private val sandbox: () -> DatapackSandbox) {
             "registry",
             "outputs",
             "event-traces",
-        )
-        private val registryGroups = listOf(
-            "items",
-            "blocks",
-            "entity_types",
-            "biomes",
-            "damage_types",
-            "enchantments",
-            "effects",
-            "dimensions",
-            "loot_context_types",
-            "advancement_triggers",
-            "loot_conditions",
-            "loot_functions",
         )
         private val chatTargetCommands = setOf("tellraw", "msg", "tell", "w", "stopsound")
         private val soundSources = listOf("master", "music", "record", "weather", "block", "hostile", "neutral", "player", "ambient", "voice")

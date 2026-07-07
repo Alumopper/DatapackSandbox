@@ -428,7 +428,9 @@ advancement parents/rewards, predicate references in predicate/loot/item
 modifier resources, and nested loot tables. `inspect registry [group]` lists
 version-profile registry entries with `source=profile:<version>`, so registry
 lookups can be debugged with the same loaded profile that command execution and
-completion use.
+completion use. The non-interactive `resources --registry --registry-group
+<group> --json` form exports the same profile registry data for CI artifacts and
+generated-command tests.
 
 ## SNBT and Data Paths
 

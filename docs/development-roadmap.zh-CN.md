@@ -29,7 +29,7 @@
 - 扩展 pack overlay 诊断：当后加载 pack 覆盖前一个资源时，可在 verbose/trace 中显示覆盖关系；`run --report-file` 和 `check --report-file` 已把资源覆盖条目与直接缺失引用写入结构化 artifact，便于 CI 和生成器测试读取。
 - 增加资源格式校验：JSON 解析、必填字段、resource location、版本目录布局、`pack.mcmeta` 格式范围、标签 `replace` 语义；function tag 和普通 tag 已对 `replace`、`required`、`values`、`id` 类型和 resource location 做带文件/版本的诊断，typed/raw JSON 资源 id 从目录和文件名推导失败时也会报告资源类型、id、文件和版本。
 - 扩展 `inspect registry/resource` 或新增等价 CLI/REPL 命令，列出资源和来源。
-  - REPL `inspect registry [group]` 已可列出当前 version profile 的 registry group、条目和 `source=profile:<version>`；`inspect resources [type]` 继续列出数据包资源索引中的来源 pack、文件、active/overridden 和 overlay 关系。
+  - REPL `inspect registry [group]` 和 CLI `resources --registry --registry-group <group>` 已可列出/导出当前 version profile 的 registry group、条目和 `source=profile:<version>`；`inspect resources [type]` 继续列出数据包资源索引中的来源 pack、文件、active/overridden 和 overlay 关系。
   - P0 资源矩阵测试已覆盖 current directory 与 legacy alias zip 两种布局，并确认 function、function tag、普通 tag、loot table、predicate、advancement、recipe 和 item modifier 都进入资源索引；function tag 现在以 `tag/function` 记录到 `resources --pack`/report 使用的同一套 resource index。
 
 优先资源：

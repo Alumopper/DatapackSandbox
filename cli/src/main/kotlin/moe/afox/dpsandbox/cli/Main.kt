@@ -2355,6 +2355,8 @@ class ResourcesCommand : CliktCommand(name = "resources") {
     private val orderMax by option("--order-max").int()
     private val activeOnly by option("--active-only").flag(default = false)
     private val overriddenOnly by option("--overridden-only").flag(default = false)
+    private val registry by option("--registry").flag(default = false)
+    private val registryGroup by option("--registry-group")
     private val docs by option("--docs").flag(default = false)
     private val json by option("--json").flag(default = false)
     private val output by option("--output", "-o").path()
@@ -2365,6 +2367,10 @@ class ResourcesCommand : CliktCommand(name = "resources") {
         try {
             validateModes()
             val locale = normalizedDocsLocale(docsLocale)
+            if (registry) {
+                emitRegistryResources()
+                return
+            }
             if (packs.isNotEmpty()) {
                 emitLoadedResources()
                 return
@@ -2418,10 +2424,25 @@ class ResourcesCommand : CliktCommand(name = "resources") {
         if (!docs && check == null && docsLocale != "en") {
             throw SandboxException(DiagnosticCode.INPUT_FORMAT, "resources --locale is only supported with --docs or --check")
         }
+        if (registry && (packs.isNotEmpty() || docs || check != null)) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "resources --registry cannot be combined with --pack, --docs, or --check")
+        }
+        if (!registry && registryGroup != null) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "resources --registry-group requires --registry")
+        }
+        if (registry && hasResourceIndexFilters()) {
+            throw SandboxException(
+                DiagnosticCode.INPUT_FORMAT,
+                "resources --registry cannot be combined with resource-index filters: --id, --namespace, --source-pack, --order-min, --order-max, --active-only, --overridden-only",
+            )
+        }
+        if (registry && types.isNotEmpty()) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "resources --registry uses --registry-group instead of --type")
+        }
     }
 
     private fun validateCatalogFilters() {
-        if (ids.isNotEmpty() || namespaces.isNotEmpty() || sourcePacks.isNotEmpty() || orderMin != null || orderMax != null || activeOnly || overriddenOnly) {
+        if (hasResourceIndexFilters()) {
             throw SandboxException(
                 DiagnosticCode.INPUT_FORMAT,
                 "resources resource-index filters require --pack: --id, --namespace, --source-pack, --order-min, --order-max, --active-only, --overridden-only",
@@ -2437,6 +2458,22 @@ class ResourcesCommand : CliktCommand(name = "resources") {
             JsonValues.render(renderLoadedJson(summary, entries))
         } else {
             renderLoadedPlain(summary, entries)
+        }
+        emit(rendered)
+    }
+
+    private fun emitRegistryResources() {
+        val profile = VersionProfiles.get(version)
+        val normalizedGroup = registryGroup?.replace('-', '_')
+        val groups = RegistryInspection.select(profile, normalizedGroup)
+        if (normalizedGroup != null && groups.isEmpty()) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "resources registry group '$normalizedGroup' was not found")
+        }
+        val source = "profile:${profile.id}"
+        val rendered = if (json) {
+            JsonValues.render(renderRegistryJson(profile.id, source, groups, normalizedGroup))
+        } else {
+            renderRegistryPlain(profile.id, source, groups)
         }
         emit(rendered)
     }
@@ -2471,6 +2508,15 @@ class ResourcesCommand : CliktCommand(name = "resources") {
     private fun hasFilters(): Boolean =
         types.isNotEmpty() ||
             ids.isNotEmpty() ||
+            namespaces.isNotEmpty() ||
+            sourcePacks.isNotEmpty() ||
+            orderMin != null ||
+            orderMax != null ||
+            activeOnly ||
+            overriddenOnly
+
+    private fun hasResourceIndexFilters(): Boolean =
+        ids.isNotEmpty() ||
             namespaces.isNotEmpty() ||
             sourcePacks.isNotEmpty() ||
             orderMin != null ||
@@ -2543,6 +2589,49 @@ class ResourcesCommand : CliktCommand(name = "resources") {
             orderMax?.let { json.addProperty("orderMax", it) }
             json.addProperty("activeOnly", activeOnly)
             json.addProperty("overriddenOnly", overriddenOnly)
+        }
+
+    private fun renderRegistryPlain(version: String, source: String, groups: List<RegistryInspectionGroup>): String =
+        buildString {
+            appendLine("registry version=$version groups=${RegistryInspection.groupNames.size} selected=${groups.size} source=$source")
+            groups.forEach { group ->
+                appendLine("registry ${group.name} count=${group.entries.size} source=$source")
+                group.entries.forEach { entry ->
+                    appendLine("registry ${group.name} $entry source=$source")
+                }
+            }
+        }.trimEnd()
+
+    private fun renderRegistryJson(
+        version: String,
+        source: String,
+        groups: List<RegistryInspectionGroup>,
+        groupFilter: String?,
+    ): JsonObject =
+        JsonObject().also { root ->
+            root.addProperty("version", version)
+            root.addProperty("source", source)
+            root.add(
+                "filters",
+                JsonObject().also { filters ->
+                    groupFilter?.let { filters.addProperty("registryGroup", it) }
+                },
+            )
+            root.add(
+                "registries",
+                JsonArray().also { array ->
+                    groups.forEach { group ->
+                        array.add(
+                            JsonObject().also { json ->
+                                json.addProperty("group", group.name)
+                                json.addProperty("count", group.entries.size)
+                                json.addProperty("source", source)
+                                json.add("entries", stringArray(group.entries.map { it.toString() }))
+                            },
+                        )
+                    }
+                },
+            )
         }
 
     private fun renderPlain(entries: List<ResourceCatalogEntry>): String =

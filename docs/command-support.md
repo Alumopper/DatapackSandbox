@@ -199,6 +199,7 @@ These are tooling commands, not vanilla commands:
 | CLI `run --report-file <file>` | | Write a combined JSON report with pass/fail status, assertion failures, outputs, traces, diagnostics derived from failed trace entries, event traces, the final snapshot, snapshot diffs, and resource summary details. |
 | CLI `run --resources` | | Print deterministic resource counts, overlay diagnostics, and missing direct resource references for quick pack checks. |
 | CLI `resources --pack <path>` | | Inspect the loaded resource index for one or more packs, including type, namespace/id, source file, pack label, load order, active/overridden state, overlay links, filters (`--type`, `--id`, `--namespace`, `--source-pack`, `--order-min`, `--order-max`, `--active-only`, `--overridden-only`), and JSON artifact output. |
+| CLI `resources --registry` | | Export version-profile registry groups and entries, optionally filtered with `--registry-group <group>`, in plain text or JSON. |
 | CLI `run --snapshot-diff` | | Print before/after state changes; use `--snapshot-diff-file` to write JSON. |
 | CLI `run --stdin` | | Read `.mcfunction` text from standard input; `--stdin-mode commands` executes stdin as raw command lines. |
 | CLI `run --command-file <file>` | | Execute one or more raw command files in argument order, useful for command-generator output. |
