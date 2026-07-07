@@ -181,7 +181,7 @@ These are tooling commands, not vanilla commands:
 |---|---:|---|
 | `event player <name> <type> ...` | `modeled` | Inject player events for advancements/predicates and observable player state such as consumed/picked-up items, dimension, health, recipes, and input metadata. |
 | `player <name>` | `modeled` | Create or reuse a sandbox player. |
-| `inspect <...>` | `modeled` | Inspect world state, world border, score, storage, gamerules, random sequences, scheduled functions, forced chunks, scoreboard objectives/displays, teams, bossbars, entities, blocks, player, loot, predicate, advancement, recipe, item_modifier, raw JSON resources, tags, resource index, registry groups, outputs, and player event traces. |
+| `inspect <...>` | `modeled` | Inspect world state, world border, score, storage, gamerules, random sequences, scheduled functions, forced chunks, scoreboard objectives/displays, teams, bossbars, entities, blocks, player, player recipes, advancement progress, loot, predicate, advancement, recipe, item_modifier, raw JSON resources, tags, resource index, registry groups, outputs, and player event traces. |
 | `snapshot [file]` | `modeled` | Print or write deterministic world JSON. |
 | `help` | `modeled` | Show REPL help. |
 | `exit`, `quit` | `modeled` | Leave the REPL. |

@@ -1,5 +1,7 @@
 ﻿package moe.afox.dpsandbox.cli
 
+import moe.afox.dpsandbox.core.AdvancementProgress
+import moe.afox.dpsandbox.core.ResourceLocation
 import moe.afox.dpsandbox.core.createSandbox
 import java.io.ByteArrayOutputStream
 import java.io.PrintStream
@@ -231,6 +233,31 @@ class ReplTest {
             output,
         )
         assertTrue(output.lines().count { it.trim() == "<missing>" } >= 2, output)
+    }
+
+    @Test
+    fun `inspects player recipe and advancement progress state`() {
+        val sandbox = createSandbox("26.1.2", listOf(Path.of("../core/src/test/resources/packs/counter")))
+        val player = sandbox.createPlayer("Steve")
+        player.recipes += ResourceLocation.parse("demo:toast")
+        player.advancementProgress[ResourceLocation.parse("demo:root")] =
+            AdvancementProgress(linkedMapOf("start" to true, "finish" to false))
+        val repl = Repl(sandbox)
+
+        val output = captureStdout {
+            repl.handle("inspect recipes")
+            repl.handle("inspect recipes Steve demo:toast")
+            repl.handle("inspect recipes Steve demo:missing")
+            repl.handle("inspect advancement-progress")
+            repl.handle("inspect advancement-progress Steve demo:root")
+            repl.handle("inspect advancement-progress Steve demo:missing")
+        }
+
+        assertTrue(output.contains("recipes Steve count=1 values=[demo:toast]"), output)
+        assertTrue(output.contains("recipe Steve demo:toast unlocked=true"), output)
+        assertTrue(output.contains("recipe Steve demo:missing unlocked=false"), output)
+        assertTrue(output.contains("advancement Steve demo:root done=true criteria=[finish=false, start=true]"), output)
+        assertTrue(output.contains("advancement Steve demo:missing <missing>"), output)
     }
 
     @Test

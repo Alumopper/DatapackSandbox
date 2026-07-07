@@ -152,7 +152,7 @@
   - `entity_killed`、`block_placed`、`block_broken` 等路线图自然命名已作为事件别名接入 advancement 匹配、CLI completion、REPL/CLI/manifest 简写输入和 event trace。
   - `PlayerEventTraceExpectation`、QuickTest API 和 manifest `eventTrace` 已可按 item/entity/block/recipe、from/to dimension、damage source/amount、input device/code/action 匹配事件输入上下文。
   - player event trace 已记录未匹配 advancement criterion 的可读失败原因，并可用 `failedAdvancement`、`failedCriterion`、`failureContains` 断言定位缺失上下文或失败字段。
-  - `item_consumed`、`inventory_changed`、`item_picked_up`/`item_added`、`changed_dimension`、`damage`/`death` 和 `recipe_unlocked` 已同步更新玩家可观察状态，包括背包数量、food、维度、health 和 recipe 集合，可通过 snapshot、inspect、manifest assertion 与 QuickTest assertion 检查。
+  - `item_consumed`、`inventory_changed`、`item_picked_up`/`item_added`、`changed_dimension`、`damage`/`death` 和 `recipe_unlocked` 已同步更新玩家可观察状态，包括背包数量、food、维度、health 和 recipe 集合，可通过 snapshot、`inspect player` / `inspect recipes` / `inspect advancement-progress`、manifest assertion 与 QuickTest assertion 检查。
   - 带 `blockPos` 的 `block_placed`/`block_broken` 玩家事件已可更新 sparse world 方块状态，并在 event trace 中暴露目标 block 坐标，便于事件驱动数据包测试直接断言方块变化。
   - CLI/REPL 玩家事件简写已支持 `x y z`、`pos=x,y,z`、`blockPos=x,y,z` 和 `@x,y,z` 四种 block 坐标输入，可用于随手小测、`--event-file` 和独立 `event` 命令。
   - `examples/player-events` 已提供玩家事件矩阵 full-stack manifest，覆盖 tick、背包变化、物品使用/消耗/拾取、键鼠输入、实体交互、伤害/死亡、击杀、location、维度切换、方块放置/破坏、recipe unlock 和 effects changed，并断言 advancement、event trace、玩家状态、物品和方块状态。
@@ -164,7 +164,7 @@
 验收标准：
 
 - 每类 P0 事件至少有一个 full-stack 示例和一个 manifest 测试；`examples/player-events/player-events.dps.json` 已接入示例 manifest 回归。
-- 输入事件可被 `assertPlayerLastInput`、snapshot、`inspect player` 检查。
+- 输入事件可被 `assertPlayerLastInput`、snapshot、`inspect player`、`inspect recipes` 和 `inspect advancement-progress` 检查。
 - advancement 条件不满足时能解释缺少的上下文或失败字段。
 
 ## 阶段 5：输出、Trace 与 Debug 体验
@@ -230,6 +230,7 @@
   - `inspect` 输出结构更稳定；`inspect event-traces` 已可直接打印玩家事件 trace JSON，并已接入 REPL/CLI 补全和命令目录，便于调试事件输入、block 坐标和 advancement 匹配。
   - `inspect forced-chunks` 已可列出当前强加载 chunk，并接入 REPL 补全和命令目录，便于随手检查 `forceload` 状态。
   - `inspect world` 和 `inspect worldborder` 已可列出世界时间、天气、默认模式、出生点、tick 状态和世界边界参数，并接入 REPL/CLI 补全和命令目录，便于随手检查世界级生成命令。
+  - `inspect recipes` 和 `inspect advancement-progress` 已可按玩家列出 recipe book 与 advancement criterion progress，并支持单个 recipe/advancement 查询和 REPL/CLI 补全，便于随手检查事件输入或命令生成器对玩家进度状态的影响。
   - `inspect gamerule`、`inspect scoreboard`、`inspect team` 和 `inspect bossbar` 已可列出规则值、objective 元数据、display slot、队伍成员/选项和 bossbar 参数，并接入 REPL/CLI 补全和命令目录，便于随手检查 UI/规则类生成命令。
   - `inspect resources` 已输出资源摘要、overlay 和 missing-reference，并保留按类型列出 resource index 条目的能力，便于随手小测时解释数据包实际加载结果。
   - 支持 `trace on/off`、`diff last`、`rerun last`、`reset world`、`load fixture`。

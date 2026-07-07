@@ -1,7 +1,9 @@
 package moe.afox.dpsandbox.cli
 
+import moe.afox.dpsandbox.core.AdvancementProgress
 import moe.afox.dpsandbox.core.Datapack
 import moe.afox.dpsandbox.core.DatapackSandbox
+import moe.afox.dpsandbox.core.ResourceLocation
 import moe.afox.dpsandbox.core.VersionProfiles
 import moe.afox.dpsandbox.core.createSandbox
 import java.nio.file.Path
@@ -93,6 +95,8 @@ class DpsCompleterTest {
         assertSuggests(completer, "inspect ", "worldborder")
         assertSuggests(completer, "inspect ", "team")
         assertSuggests(completer, "inspect ", "bossbar")
+        assertSuggests(completer, "inspect ", "recipes")
+        assertSuggests(completer, "inspect ", "advancement-progress")
         assertSuggests(completer, "inspect ", "raw")
         assertSuggests(completer, "inspect ", "gamerule")
         assertSuggests(completer, "inspect ", "random")
@@ -115,6 +119,16 @@ class DpsCompleterTest {
         uiSandbox.executeCommand("bossbar add demo:timer Timer")
         assertSuggests(DpsCompleter { uiSandbox }, "inspect team ", "red")
         assertSuggests(DpsCompleter { uiSandbox }, "inspect bossbar ", "demo:timer")
+
+        val playerStateSandbox = createSandbox("26.1.2", listOf(Path.of("../core/src/test/resources/packs/counter")))
+        val steve = playerStateSandbox.createPlayer("Steve")
+        steve.recipes += ResourceLocation.parse("demo:toast")
+        steve.advancementProgress[ResourceLocation.parse("demo:root")] =
+            AdvancementProgress(linkedMapOf("start" to true))
+        assertSuggests(DpsCompleter { playerStateSandbox }, "inspect recipes ", "Steve")
+        assertSuggests(DpsCompleter { playerStateSandbox }, "inspect recipes Steve ", "demo:toast")
+        assertSuggests(DpsCompleter { playerStateSandbox }, "inspect advancement-progress ", "Steve")
+        assertSuggests(DpsCompleter { playerStateSandbox }, "inspect advancement-progress Steve ", "demo:root")
     }
 
     @Test

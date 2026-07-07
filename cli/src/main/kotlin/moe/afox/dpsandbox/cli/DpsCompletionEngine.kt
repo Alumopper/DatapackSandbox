@@ -134,6 +134,14 @@ class DpsCompletionEngine(private val sandbox: () -> DatapackSandbox) {
                 listOf("objectives", "displays").suggest("scoreboard sections")
             words.getOrNull(1) in setOf("team", "teams") && context.wordIndex == 2 -> teamNames().suggest("teams")
             words.getOrNull(1) in setOf("bossbar", "bossbars") && context.wordIndex == 2 -> bossbarIds().suggest("bossbars")
+            words.getOrNull(1) in setOf("recipes", "recipe-book", "player-recipes") && context.wordIndex == 2 ->
+                playerTargets(includeSelectors = false).suggest("players", appendSpace = true)
+            words.getOrNull(1) in setOf("recipes", "recipe-book", "player-recipes") && context.wordIndex == 3 ->
+                recipeIds().suggest("recipes")
+            words.getOrNull(1) in setOf("advancement-progress", "advancements-progress", "player-advancements") && context.wordIndex == 2 ->
+                playerTargets(includeSelectors = false).suggest("players", appendSpace = true)
+            words.getOrNull(1) in setOf("advancement-progress", "advancements-progress", "player-advancements") && context.wordIndex == 3 ->
+                advancementProgressIds().suggest("advancements")
             words.getOrNull(1) == "raw" && context.wordIndex == 2 -> rawResourceKinds().suggest("raw resource types", appendSpace = true)
             words.getOrNull(1) == "raw" && context.wordIndex == 3 -> rawResourceIds(words.getOrNull(2)).suggest("raw resources")
             words.getOrNull(1) in setOf("resource", "resources") && context.wordIndex == 2 -> resourceIndexTypes().suggest("resource types")
@@ -529,6 +537,23 @@ class DpsCompletionEngine(private val sandbox: () -> DatapackSandbox) {
     private fun teamNames(): List<String> =
         sandbox().world.teams.keys.sorted()
 
+    private fun recipeIds(): List<String> {
+        val box = sandbox()
+        return (
+            box.datapack.recipes.keys.map { it.toString() } +
+                box.world.players.values.flatMap { player -> player.recipes.map { it.toString() } } +
+                listOf("minecraft:bread", "minecraft:stick")
+            ).distinct().sorted()
+    }
+
+    private fun advancementProgressIds(): List<String> {
+        val box = sandbox()
+        return (
+            box.datapack.advancements.keys.map { it.toString() } +
+                box.world.players.values.flatMap { player -> player.advancementProgress.keys.map { it.toString() } }
+            ).distinct().sorted()
+    }
+
     private fun randomSequenceNames(): List<String> =
         sandbox().world.randomSequences.keys.sorted()
 
@@ -561,6 +586,8 @@ class DpsCompletionEngine(private val sandbox: () -> DatapackSandbox) {
             "entities",
             "blocks",
             "player",
+            "recipes",
+            "advancement-progress",
             "loot",
             "predicate",
             "advancement",

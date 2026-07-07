@@ -227,14 +227,14 @@ class Repl(
           event player Steve changed_dimension minecraft:overworld minecraft:the_nether
           event player Steve key_input key.jump
           event player Steve mouse_input left
-        Use inspect player Steve, inspect advancement, and inspect outputs after dispatching events.
+        Use inspect player Steve, inspect advancement-progress Steve, inspect recipes Steve, and inspect outputs after dispatching events.
         """.trimIndent()
 
     private fun helpText(): String =
         "Commands: load, load fixture <file>, reload, tick [n], function <id>, player <name>, event player <name> <type> [id] [detail/action|x y z|pos=x,y,z], trace <on|off|status>, diff last, rerun last, reset world, ${inspectUsage()}, snapshot [file], exit"
 
     private fun inspectUsage(): String =
-        "inspect <world|worldborder|score|storage|gamerule|random|schedule|forced-chunks|scoreboard|team|bossbar|entities|blocks|player|loot|predicate|advancement|recipe|item_modifier|raw|tags|resources|registry [group]|outputs|event-traces>"
+        "inspect <world|worldborder|score|storage|gamerule|random|schedule|forced-chunks|scoreboard|team|bossbar|entities|blocks|player|recipes|advancement-progress|loot|predicate|advancement|recipe|item_modifier|raw|tags|resources|registry [group]|outputs|event-traces>"
 
     private fun reload() {
         if (packs.isEmpty()) {
@@ -407,6 +407,8 @@ class Repl(
                 val players = if (name == null) sandbox.world.players.values else listOf(sandbox.world.requirePlayer(name))
                 players.forEach { println(JsonValues.render(it.toPlayerJson(sandbox.profile))) }
             }
+            "recipes", "recipe-book", "player-recipes" -> inspectPlayerRecipes(args)
+            "advancement-progress", "advancements-progress", "player-advancements" -> inspectAdvancementProgress(args)
             "loot" -> sandbox.datapack.lootTables.keys.forEach { println(it) }
             "predicate" -> sandbox.datapack.predicates.keys.forEach { println(it) }
             "advancement" -> sandbox.datapack.advancements.keys.forEach { println(it) }
@@ -515,6 +517,48 @@ class Repl(
     private fun renderBossbar(bossbar: SandboxBossbar): String {
         val players = bossbar.players.sorted().joinToString(prefix = "[", postfix = "]")
         return "bossbar ${bossbar.id} name=${bossbar.name} value=${bossbar.value} max=${bossbar.max} color=${bossbar.color} style=${bossbar.style} visible=${bossbar.visible} players=$players"
+    }
+
+    private fun inspectPlayerRecipes(args: List<String>) {
+        val name = args.getOrNull(1)
+        val recipe = args.getOrNull(2)?.let { ResourceLocation.parse(it) }
+        val players = if (name == null) {
+            sandbox.world.players.values.sortedBy { it.name }
+        } else {
+            listOf(sandbox.world.requirePlayer(name))
+        }
+        players.forEach { player ->
+            if (recipe != null) {
+                println("recipe ${player.name} $recipe unlocked=${recipe in player.recipes}")
+            } else {
+                val recipes = player.recipes.sorted().joinToString(prefix = "[", postfix = "]")
+                println("recipes ${player.name} count=${player.recipes.size} values=$recipes")
+            }
+        }
+    }
+
+    private fun inspectAdvancementProgress(args: List<String>) {
+        val name = args.getOrNull(1)
+        val advancement = args.getOrNull(2)?.let { ResourceLocation.parse(it) }
+        val players = if (name == null) {
+            sandbox.world.players.values.sortedBy { it.name }
+        } else {
+            listOf(sandbox.world.requirePlayer(name))
+        }
+        players.forEach { player ->
+            val entries = player.advancementProgress.toSortedMap()
+                .filterKeys { advancement == null || it == advancement }
+            if (advancement != null && entries.isEmpty()) {
+                println("advancement ${player.name} $advancement <missing>")
+                return@forEach
+            }
+            entries.forEach { (id, progress) ->
+                val definition = sandbox.datapack.advancements[id]
+                val done = definition?.let { progress.isDone(it.requirements) } ?: progress.criteria.values.any { it }
+                val criteria = progress.criteria.toSortedMap().entries.joinToString(prefix = "[", postfix = "]") { "${it.key}=${it.value}" }
+                println("advancement ${player.name} $id done=$done criteria=$criteria")
+            }
+        }
     }
 
     private fun inspectResourceIndex(typeFilter: String?) {
