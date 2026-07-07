@@ -86,6 +86,7 @@ class DpsCompleterTest {
         assertSuggests(completer, "load ", "fixture")
         assertSuggests(completer, "inspect ", "raw")
         assertSuggests(completer, "inspect ", "random")
+        assertSuggests(completer, "inspect ", "schedule")
         assertSuggests(completer, "inspect ", "event-traces")
         assertSuggests(completer, "inspect resources ", "function")
         assertSuggests(completer, "inspect registry ", "damage_types")

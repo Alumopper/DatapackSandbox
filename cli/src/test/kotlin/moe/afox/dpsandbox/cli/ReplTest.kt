@@ -135,6 +135,19 @@ class ReplTest {
     }
 
     @Test
+    fun `inspects scheduled function state`() {
+        val repl = Repl(createSandbox("26.1.2", listOf(Path.of("../core/src/test/resources/packs/counter"))))
+
+        val output = captureStdout {
+            repl.handle("function demo:main")
+            repl.handle("inspect schedule")
+        }
+
+        assertTrue(output.contains("scheduled demo:scheduled dueTick=1 remaining=1"), output)
+        assertTrue(output.contains("outputs=+"), output)
+    }
+
+    @Test
     fun `inspects raw datapack resources`() {
         val pack = Files.createTempDirectory("dps-repl-raw-pack")
         Files.writeString(

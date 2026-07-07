@@ -129,6 +129,7 @@
 - `snapshotJson()` 输出稳定排序，不受 map/list 插入顺序影响。
 - world fixture、manifest world、quick-test world builder 三者能力一致或差异明确记录。
 - 所有新增状态都有 snapshot、assertion 和 inspect 路径。
+  - schedule 状态已进入 snapshot，并可通过 REPL `inspect schedule` 查看排程函数、dueTick 和 remaining ticks，便于调试 `schedule function` / `schedule clear` 与 tick 推进。
 
 ## 阶段 4：输入事件与玩家交互模拟
 

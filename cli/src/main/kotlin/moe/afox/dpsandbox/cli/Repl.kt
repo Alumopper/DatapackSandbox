@@ -232,7 +232,7 @@ class Repl(
         "Commands: load, load fixture <file>, reload, tick [n], function <id>, player <name>, event player <name> <type> [id] [detail/action|x y z|pos=x,y,z], trace <on|off|status>, diff last, rerun last, reset world, ${inspectUsage()}, snapshot [file], exit"
 
     private fun inspectUsage(): String =
-        "inspect <score|storage|random|entities|blocks|player|loot|predicate|advancement|recipe|item_modifier|raw|tags|resources|registry [group]|outputs|event-traces>"
+        "inspect <score|storage|random|schedule|entities|blocks|player|loot|predicate|advancement|recipe|item_modifier|raw|tags|resources|registry [group]|outputs|event-traces>"
 
     private fun reload() {
         if (packs.isEmpty()) {
@@ -359,6 +359,14 @@ class Repl(
                 } else {
                     println(sandbox.world.randomSequences[name]?.toString() ?: "<missing>")
                 }
+            }
+            "schedule", "scheduled", "scheduled-functions", "scheduled_functions" -> {
+                sandbox.world.scheduledFunctions
+                    .sortedWith(compareBy({ it.dueTick }, { it.id.toString() }))
+                    .forEach { scheduled ->
+                        val remaining = (scheduled.dueTick - sandbox.world.gameTime).coerceAtLeast(0)
+                        println("scheduled ${scheduled.id} dueTick=${scheduled.dueTick} remaining=$remaining")
+                    }
             }
             "entities" -> {
                 sandbox.world.entities.forEach { entity ->
