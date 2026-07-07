@@ -1193,7 +1193,7 @@ class DatapackSandbox(
         if (plan == null || plan.blocks.isEmpty()) {
             payload.addProperty("placed", false)
             payload.addProperty("format", "raw-json-index-only")
-            payload.addProperty("reason", "Loaded feature resource has no sandbox block or supported simple_block/block_column/disk/random_patch/flower/selector/ore state")
+            payload.addProperty("reason", "Loaded feature resource has no sandbox block or supported simple_block/block_column/disk/vegetation_patch/random_patch/flower/selector/ore state")
             return emptyList()
         }
 
@@ -1304,6 +1304,7 @@ class DatapackSandbox(
             "ore" -> parseOreFeature(location)
             "block_column" -> parseBlockColumnFeature(location)
             "disk", "disk_replace" -> parseDiskFeature(type, location)
+            "vegetation_patch", "waterlogged_vegetation_patch" -> parseVegetationPatchFeature(type, location, depth)
             else -> parseFeatureBlockArgument(location)?.let { block ->
                 SandboxFeaturePlacementPlan(type, listOf(SandboxFeatureBlockPlacement(BlockPos(0, 0, 0), block)))
             }
@@ -1351,6 +1352,47 @@ class DatapackSandbox(
             SandboxFeatureBlockPlacement(offset = offset, block = block, replaceBlocks = replaceBlocks)
         }
         return SandboxFeaturePlacementPlan(type, blocks)
+    }
+
+    private fun JsonObject.parseVegetationPatchFeature(
+        type: String,
+        location: SourceLocation?,
+        depth: Int,
+    ): SandboxFeaturePlacementPlan? {
+        val config = getAsJsonObjectOrNull("config", location) ?: this
+        val ground = config.getAsJsonObjectOrNull("ground_state", location)
+            ?.parseBlockStateProviderBlock("$type ground_state", location)
+            ?: config.getAsJsonObjectOrNull("ground_provider", location)
+                ?.parseBlockStateProviderBlock("$type ground_provider", location)
+            ?: return null
+        val radius = (config.get("xz_radius")?.featureIntProvider("$type xz_radius", location)
+            ?: config.get("radius")?.featureIntProvider("$type radius", location)
+            ?: 1).coerceIn(0, 8)
+        val groundDepth = (config.get("depth")?.featureIntProvider("$type depth", location) ?: 1).coerceIn(1, 4)
+        val replaceBlocks = config.getAsJsonObjectOrNull("replaceable", location)
+            ?.featureTargetBlocks("$type replaceable", location)
+            ?: config.featureTargetListBlocks("targets", "$type target", location)
+        val groundBlocks = diskOffsets(radius, 0).flatMap { offset ->
+            (0 until groundDepth).map { layer ->
+                SandboxFeatureBlockPlacement(
+                    offset = BlockPos(offset.x, offset.y - layer, offset.z),
+                    block = ground,
+                    replaceBlocks = replaceBlocks,
+                )
+            }
+        }
+        val vegetationBlocks = config.get("vegetation_feature")
+            ?.let { parseNestedFeaturePlan(it, "$type vegetation_feature", location, depth + 1) }
+            ?.blocks
+            ?.map { nested ->
+                SandboxFeatureBlockPlacement(
+                    offset = BlockPos(nested.offset.x, nested.offset.y + 1, nested.offset.z),
+                    block = nested.block,
+                    replaceBlocks = nested.replaceBlocks,
+                )
+            }
+            ?: emptyList()
+        return SandboxFeaturePlacementPlan(type, groundBlocks + vegetationBlocks)
     }
 
     private fun JsonObject.parseSelectorFeature(

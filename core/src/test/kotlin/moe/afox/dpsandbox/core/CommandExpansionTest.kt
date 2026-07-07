@@ -728,6 +728,34 @@ class CommandExpansionTest {
     }
 
     @Test
+    fun `place feature applies deterministic vegetation patch feature resources`() {
+        val pack = writeFeaturePlacePack(Files.createTempDirectory("dps-place-vegetation-pack"))
+        val sandbox = createSandbox("26.2", listOf(pack))
+        sandbox.executeCommand("setblock 35 60 35 minecraft:dirt")
+        sandbox.executeCommand("setblock 34 60 35 minecraft:dirt")
+        sandbox.executeCommand("setblock 35 60 34 minecraft:dirt")
+        sandbox.executeCommand("setblock 36 60 35 minecraft:stone")
+
+        sandbox.executeCommand("place feature demo:placed_grass_patch 35 60 35")
+
+        assertEquals(ResourceLocation.parse("minecraft:grass_block"), sandbox.world.requireBlock(BlockPos(35, 60, 35)).id)
+        assertEquals(ResourceLocation.parse("minecraft:grass_block"), sandbox.world.requireBlock(BlockPos(34, 60, 35)).id)
+        assertEquals(ResourceLocation.parse("minecraft:grass_block"), sandbox.world.requireBlock(BlockPos(35, 60, 34)).id)
+        assertEquals(ResourceLocation.parse("minecraft:poppy"), sandbox.world.requireBlock(BlockPos(35, 61, 35)).id)
+        assertNull(sandbox.world.block(BlockPos(35, 60, 36)))
+        assertEquals(ResourceLocation.parse("minecraft:stone"), sandbox.world.requireBlock(BlockPos(36, 60, 35)).id)
+        val output = sandbox.world.outputs.single { it.command == "place feature" }
+        val payload = output.payload?.asJsonObject ?: error("missing place feature payload")
+        assertEquals(true, payload.get("placed").asBoolean)
+        assertEquals("configured-vegetation_patch", payload.get("format").asString)
+        assertEquals("vegetation_patch", payload.get("featureType").asString)
+        assertEquals(6, payload.get("attemptedBlocks").asInt)
+        assertEquals(4, payload.get("changedBlocks").asInt)
+        assertEquals(2, payload.get("skippedBlocks").asInt)
+        assertEquals(listOf("35 60 35", "34 60 35", "35 60 34", "35 61 35"), output.targets)
+    }
+
+    @Test
     fun `place feature applies deterministic block column feature resources`() {
         val pack = writeFeaturePlacePack(Files.createTempDirectory("dps-place-column-pack"))
         val sandbox = createSandbox("26.2", listOf(pack))
@@ -2226,6 +2254,16 @@ class CommandExpansionTest {
         )
         val configuredRoot = root.resolve("data").resolve("demo").resolve("worldgen").resolve("configured_feature")
         Files.createDirectories(configuredRoot)
+        val tagRoot = root.resolve("data").resolve("demo").resolve("tags").resolve("block")
+        Files.createDirectories(tagRoot)
+        Files.writeString(
+            tagRoot.resolve("soil.json"),
+            """
+            {
+              "values": ["minecraft:dirt"]
+            }
+            """.trimIndent(),
+        )
         Files.writeString(
             configuredRoot.resolve("simple_log.json"),
             """
@@ -2343,6 +2381,35 @@ class CommandExpansionTest {
             """.trimIndent(),
         )
         Files.writeString(
+            configuredRoot.resolve("grass_patch.json"),
+            """
+            {
+              "type": "minecraft:vegetation_patch",
+              "config": {
+                "replaceable": {
+                  "predicate_type": "minecraft:matching_block_tag",
+                  "tag": "demo:soil"
+                },
+                "ground_state": {
+                  "type": "minecraft:simple_state_provider",
+                  "state": { "Name": "minecraft:grass_block" }
+                },
+                "vegetation_feature": {
+                  "type": "minecraft:simple_block",
+                  "config": {
+                    "to_place": {
+                      "type": "minecraft:simple_state_provider",
+                      "state": { "Name": "minecraft:poppy" }
+                    }
+                  }
+                },
+                "xz_radius": { "type": "minecraft:constant", "value": 1 },
+                "depth": 1
+              }
+            }
+            """.trimIndent(),
+        )
+        Files.writeString(
             configuredRoot.resolve("disk.json"),
             """
             {
@@ -2407,6 +2474,15 @@ class CommandExpansionTest {
             """
             {
               "feature": "demo:column",
+              "placement": []
+            }
+            """.trimIndent(),
+        )
+        Files.writeString(
+            placedRoot.resolve("placed_grass_patch.json"),
+            """
+            {
+              "feature": "demo:grass_patch",
               "placement": []
             }
             """.trimIndent(),
