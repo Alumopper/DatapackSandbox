@@ -2,7 +2,35 @@
 
 除了 CLI 和 `.dps.json` 清单，Kotlin/Java 项目也可以直接调用 `:core` 的 quick-test API。适用场景包括本地单元测试、插件测试、构建脚本冒烟测试，以及只想验证一个 `.mcfunction` 文件的轻量用法。
 
+## Artifact 与运行要求
+
+API 库对应的是 `core` artifact：
+
+```text
+moe.afox.dpsandbox:core:1.0.0
+```
+
+`cli` 模块和 `datapack-sandbox-cli.jar` 面向命令行使用。JVM 项目集成时应依赖 `core`，不要把 standalone CLI jar 当作库依赖。
+
+发布 artifact 使用项目的 Java 25 toolchain 构建，因此消费方编译和测试执行需要 Java 25 或更新版本。运行时依赖会通过 Maven 传递解析，但外部构建需要包含 Maven Central 和 Mojang library 仓库，因为 core runtime 依赖 Gson、Brigadier 和 LZ4。
+
 ## Gradle 依赖
+
+使用已发布 artifact：
+
+```kotlin
+repositories {
+    maven("https://nexus.mcfpp.top/repository/maven-releases/")
+    mavenCentral()
+    maven("https://libraries.minecraft.net")
+}
+
+dependencies {
+    testImplementation("moe.afox.dpsandbox:core:1.0.0")
+}
+```
+
+如果要把沙盒嵌入自己的工具、插件或服务，而不是只在测试中使用，把 `testImplementation(...)` 改成 `implementation(...)`。如果使用 snapshot 版本，坐标版本使用 `-SNAPSHOT`，仓库改为 `https://nexus.mcfpp.top/repository/maven-snapshots/`。
 
 在同一个 multi-project build 中：
 
@@ -12,13 +40,46 @@ dependencies {
 }
 ```
 
-如果后续发布到 Maven，可改成常规坐标：
+## Maven 依赖
 
-```kotlin
-dependencies {
-    testImplementation("moe.afox.dpsandbox:core:<version>")
-}
+```xml
+<repositories>
+  <repository>
+    <id>dpsandbox-releases</id>
+    <url>https://nexus.mcfpp.top/repository/maven-releases/</url>
+  </repository>
+  <repository>
+    <id>mojang-libraries</id>
+    <url>https://libraries.minecraft.net</url>
+  </repository>
+</repositories>
+
+<dependencies>
+  <dependency>
+    <groupId>moe.afox.dpsandbox</groupId>
+    <artifactId>core</artifactId>
+    <version>1.0.0</version>
+    <scope>test</scope>
+  </dependency>
+</dependencies>
 ```
+
+## API 入口
+
+大多数测试应使用 `SandboxQuickTest`。它提供 fluent 的 setup、执行、断言和自包含的 `SandboxQuickTestReport`。Java 调用方可以使用 `DatapackSandboxTestApi`，这是同一套 quick-test API 的静态门面。
+
+只有需要完全控制 runtime 时，才直接使用底层 factory：
+
+| 入口 | 适用场景 |
+|---|---|
+| `SandboxQuickTest.create(...)` | 测试一个或多个真实数据包目录或 zip。 |
+| `SandboxQuickTest.singleFunction(...)` | 测试一个生成的 `.mcfunction` 文件。 |
+| `SandboxQuickTest.singleFunctionText(...)` | 不写文件，直接测试生成出的命令文本。 |
+| `SandboxQuickTest.functions(...)` | 测试多个 synthetic function，可附加数据包依赖。 |
+| `SandboxQuickTest.matrix(...)` | 同一场景跨多个 Minecraft version profile 运行。 |
+| `DatapackSandboxTestApi` | Java 侧用静态方法调用 quick-test API。 |
+| `createSandbox(...)` | 直接取得 `DatapackSandbox`，用于自定义 runner。 |
+| `createFunctionSandbox(...)` | 直接创建由 synthetic function source 支撑的底层 runtime。 |
 
 ## Kotlin 示例
 
@@ -382,17 +443,28 @@ SandboxQuickTest.matrix(
 ## Java 示例
 
 ```java
-import moe.afox.dpsandbox.core.SandboxQuickTest;
+import moe.afox.dpsandbox.core.DatapackSandboxTestApi;
 import java.nio.file.Path;
 import java.util.List;
 
 class MyDatapackTest {
     @org.junit.jupiter.api.Test
     void counterWorks() {
-        SandboxQuickTest.create(List.of(Path.of("packs/counter")))
+        DatapackSandboxTestApi.scenario(List.of(Path.of("packs/counter")), "26.2")
             .load()
             .ticks(20)
             .assertScore("#clock", "ticks", 20)
+            .requirePassed();
+    }
+
+    @org.junit.jupiter.api.Test
+    void generatedFunctionWorks() {
+        DatapackSandboxTestApi.singleFunctionTextScenario(
+            "scoreboard objectives add runs dummy\nscoreboard players set #java runs 1",
+            "26.2"
+        )
+            .function()
+            .assertScore("#java", "runs", 1)
             .requirePassed();
     }
 }
@@ -402,6 +474,8 @@ class MyDatapackTest {
 
 | 方法 | 用途 |
 |---|---|
+| `DatapackSandboxTestApi.scenario(...)` | Java 友好的 `SandboxQuickTest.create(...)` 静态门面。 |
+| `DatapackSandboxTestApi.runFunctionText(...)` | 从 Java 运行一段内存函数文本并返回 report。 |
 | `load()` | 运行 `#minecraft:load`。 |
 | `ticks(n)` | 推进沙盒 tick。 |
 | `function(id)` | 运行指定数据包函数。 |

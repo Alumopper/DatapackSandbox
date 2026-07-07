@@ -50,9 +50,37 @@ The standalone jar is written to:
 cli/build/libs/datapack-sandbox-cli.jar
 ```
 
-## CLI Examples
+## JVM Library Usage
 
-Use the same runtime directly from JVM tests:
+Use the `core` module as the embeddable API library. The `cli` module is the
+standalone application and should not be used as an application dependency.
+
+Released artifacts target Java 25. Configure the project Maven repository, Maven
+Central, and Mojang's library repository, then depend on `core`:
+
+```kotlin
+repositories {
+    maven("https://nexus.mcfpp.top/repository/maven-releases/")
+    mavenCentral()
+    maven("https://libraries.minecraft.net")
+}
+
+dependencies {
+    testImplementation("moe.afox.dpsandbox:core:1.0.0")
+}
+```
+
+Use `implementation(...)` instead of `testImplementation(...)` if you embed the
+sandbox in your own tool or plugin. Inside this repository or another included
+multi-project build, depend on the module directly:
+
+```kotlin
+dependencies {
+    testImplementation(project(":core"))
+}
+```
+
+The main Kotlin entry point is `SandboxQuickTest`:
 
 ```kotlin
 SandboxQuickTest.singleFunctionText(
@@ -63,6 +91,13 @@ SandboxQuickTest.singleFunctionText(
     .assertScore("#unit", "runs", 1)
     .requirePassed()
 ```
+
+Java callers can use the `DatapackSandboxTestApi` static facade. See
+`docs/code-test-api.md` for dependency variants, Java examples, lower-level
+runtime factories, reports, traces, fixtures, and the full quick-test method
+catalog.
+
+## CLI Examples
 
 Start a REPL:
 

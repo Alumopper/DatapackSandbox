@@ -4,7 +4,43 @@ In addition to the CLI and `.dps.json` manifests, Kotlin/Java projects can call
 the `:core` quick-test API directly. This is useful for local unit tests, plugin
 tests, and build-tool smoke tests.
 
+## Artifact and Requirements
+
+The API library is the `core` artifact:
+
+```text
+moe.afox.dpsandbox:core:1.0.0
+```
+
+The `cli` module and `datapack-sandbox-cli.jar` are for command-line use. JVM
+projects should depend on `core` instead.
+
+The published artifacts are built with the project's Java 25 toolchain, so
+consumers need Java 25 or newer for compilation and test execution. Runtime
+dependencies are resolved transitively, but external builds should include
+Maven Central and Mojang's library repository because the core runtime depends
+on Gson, Brigadier, and LZ4.
+
 ## Gradle Dependency
+
+For a released artifact:
+
+```kotlin
+repositories {
+    maven("https://nexus.mcfpp.top/repository/maven-releases/")
+    mavenCentral()
+    maven("https://libraries.minecraft.net")
+}
+
+dependencies {
+    testImplementation("moe.afox.dpsandbox:core:1.0.0")
+}
+```
+
+Use `implementation(...)` instead of `testImplementation(...)` when embedding
+the sandbox into a tool, plugin, or service instead of only using it from tests.
+For snapshot builds, use the same coordinates with a `-SNAPSHOT` version and
+the `https://nexus.mcfpp.top/repository/maven-snapshots/` repository.
 
 Inside the same multi-project build:
 
@@ -14,13 +50,48 @@ dependencies {
 }
 ```
 
-If the library is published later, use normal Maven coordinates instead:
+## Maven Dependency
 
-```kotlin
-dependencies {
-    testImplementation("moe.afox.dpsandbox:core:<version>")
-}
+```xml
+<repositories>
+  <repository>
+    <id>dpsandbox-releases</id>
+    <url>https://nexus.mcfpp.top/repository/maven-releases/</url>
+  </repository>
+  <repository>
+    <id>mojang-libraries</id>
+    <url>https://libraries.minecraft.net</url>
+  </repository>
+</repositories>
+
+<dependencies>
+  <dependency>
+    <groupId>moe.afox.dpsandbox</groupId>
+    <artifactId>core</artifactId>
+    <version>1.0.0</version>
+    <scope>test</scope>
+  </dependency>
+</dependencies>
 ```
+
+## API Entry Points
+
+Most tests should use `SandboxQuickTest`, which provides fluent setup, execution,
+assertions, and a self-contained `SandboxQuickTestReport`. Java callers can use
+`DatapackSandboxTestApi`, a static facade over the same quick-test API.
+
+Use the lower-level factories only when you need direct runtime control:
+
+| Entry point | Use when |
+|---|---|
+| `SandboxQuickTest.create(...)` | Testing one or more real datapack directories or zip files. |
+| `SandboxQuickTest.singleFunction(...)` | Testing one generated `.mcfunction` file. |
+| `SandboxQuickTest.singleFunctionText(...)` | Testing generated command text without writing a file. |
+| `SandboxQuickTest.functions(...)` | Testing several synthetic functions, optionally with datapack dependencies. |
+| `SandboxQuickTest.matrix(...)` | Running the same scenario across multiple Minecraft version profiles. |
+| `DatapackSandboxTestApi` | Calling the quick-test API from Java with static methods. |
+| `createSandbox(...)` | Direct access to `DatapackSandbox` for custom runners. |
+| `createFunctionSandbox(...)` | Direct low-level runtime backed by synthetic function sources. |
 
 ## Kotlin Example
 
@@ -412,17 +483,28 @@ SandboxQuickTest.matrix(
 ## Java Example
 
 ```java
-import moe.afox.dpsandbox.core.SandboxQuickTest;
+import moe.afox.dpsandbox.core.DatapackSandboxTestApi;
 import java.nio.file.Path;
 import java.util.List;
 
 class MyDatapackTest {
     @org.junit.jupiter.api.Test
     void counterWorks() {
-        SandboxQuickTest.create(List.of(Path.of("packs/counter")))
+        DatapackSandboxTestApi.scenario(List.of(Path.of("packs/counter")), "26.2")
             .load()
             .ticks(20)
             .assertScore("#clock", "ticks", 20)
+            .requirePassed();
+    }
+
+    @org.junit.jupiter.api.Test
+    void generatedFunctionWorks() {
+        DatapackSandboxTestApi.singleFunctionTextScenario(
+            "scoreboard objectives add runs dummy\nscoreboard players set #java runs 1",
+            "26.2"
+        )
+            .function()
+            .assertScore("#java", "runs", 1)
             .requirePassed();
     }
 }
@@ -432,6 +514,8 @@ class MyDatapackTest {
 
 | Method | Purpose |
 |---|---|
+| `DatapackSandboxTestApi.scenario(...)` | Java-friendly static facade for `SandboxQuickTest.create(...)` |
+| `DatapackSandboxTestApi.runFunctionText(...)` | Run one in-memory function from Java and return a report |
 | `load()` | Run `#minecraft:load` |
 | `ticks(n)` | Advance sandbox ticks |
 | `function(id)` | Run a datapack function |

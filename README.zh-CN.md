@@ -36,9 +36,33 @@ standalone jar 输出到：
 cli/build/libs/datapack-sandbox-cli.jar
 ```
 
-## CLI 示例
+## 作为 JVM API 库使用
 
-也可以在 JVM 单元测试里直接使用同一套运行时：
+把 `core` 模块作为可嵌入 API 库使用。`cli` 模块是 standalone 应用，不建议作为应用依赖引入。
+
+发布 artifact 目标运行环境是 Java 25。外部项目需要配置项目 Maven 仓库、Maven Central 和 Mojang library 仓库，再依赖 `core`：
+
+```kotlin
+repositories {
+    maven("https://nexus.mcfpp.top/repository/maven-releases/")
+    mavenCentral()
+    maven("https://libraries.minecraft.net")
+}
+
+dependencies {
+    testImplementation("moe.afox.dpsandbox:core:1.0.0")
+}
+```
+
+如果要把沙盒嵌入自己的工具或插件，改用 `implementation(...)`。在本仓库或同一个 included multi-project build 中，直接依赖模块：
+
+```kotlin
+dependencies {
+    testImplementation(project(":core"))
+}
+```
+
+Kotlin 主要入口是 `SandboxQuickTest`：
 
 ```kotlin
 SandboxQuickTest.singleFunctionText(
@@ -49,6 +73,10 @@ SandboxQuickTest.singleFunctionText(
     .assertScore("#unit", "runs", 1)
     .requirePassed()
 ```
+
+Java 调用方可以使用 `DatapackSandboxTestApi` 静态门面。完整依赖写法、Java 示例、底层 runtime factory、报告、trace、fixture 和 quick-test 方法目录见 `docs/code-test-api.zh-CN.md`。
+
+## CLI 示例
 
 启动 REPL：
 
