@@ -248,7 +248,7 @@
 - 扩展 `steps`：
   - 支持 `commands` 数组、`functionText`、`mcfunction`、`event`、`trace`、`snapshot`、`reset`。
 - 扩展 `assertions`：
-  - score、storage、player、entity、block、item、loot、predicate、advancement、output、trace、diagnostic、snapshot diff。
+  - score、storage、player、entity、block、item、loot、predicate、advancement、scheduled function、output、trace、diagnostic、snapshot diff；scheduled function assertion 已可按函数 id、绝对 dueTick、存在性和重复条目数量检查排程队列。
   - 支持 equals、contains、exists、missing、count、min/max、matches、path；output assertion 已支持 plain/normalized text 的正则 `matches`，segment assertion 也可按原始或 normalized segment text 做正则匹配；storage 以及 player/entity/block/item 的 NBT/components path expectation 已支持 `contains`、`matches` 和 `missing`。
 - 支持 manifest include：
   - 公共世界 fixture、公共断言、公共 pack matrix，减少重复；`include` 已按来源文件相对路径合并 world、steps、assertions，并会把公共/default packs 排在 case-local packs 之前，便于生成器批量用例复用依赖包和版本矩阵。

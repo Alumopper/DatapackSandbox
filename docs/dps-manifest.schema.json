@@ -604,6 +604,7 @@
         { "required": ["player"] },
         { "required": ["team"] },
         { "required": ["bossbar"] },
+        { "required": ["scheduled"] },
         { "required": ["block"] },
         { "required": ["advancement"] },
         { "required": ["predicate"] },
@@ -625,6 +626,7 @@
         "player": { "$ref": "#/$defs/playerAssertion" },
         "team": { "$ref": "#/$defs/teamAssertion" },
         "bossbar": { "$ref": "#/$defs/bossbarAssertion" },
+        "scheduled": { "$ref": "#/$defs/scheduledAssertion" },
         "block": { "$ref": "#/$defs/blockAssertion" },
         "advancement": { "$ref": "#/$defs/advancementAssertion" },
         "predicate": { "$ref": "#/$defs/predicateAssertion" },
@@ -908,6 +910,17 @@
         "style": { "type": "string" },
         "visible": { "type": "boolean" },
         "player": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "scheduledAssertion": {
+      "type": "object",
+      "required": ["id"],
+      "properties": {
+        "id": { "type": "string" },
+        "dueTick": { "type": "integer", "minimum": 0 },
+        "exists": { "type": "boolean" },
+        "count": { "type": "integer", "minimum": 0 }
       },
       "additionalProperties": false
     },

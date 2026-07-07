@@ -358,6 +358,25 @@ class ManifestRunnerTest {
     }
 
     @Test
+    fun `manifest schema documents scheduled assertions`() {
+        val schema = JsonParser.parseString(Files.readString(Path.of("../docs/dps-manifest.schema.json"))).asJsonObject
+        val defs = schema.getAsJsonObject("\$defs")
+        val assertion = defs.getAsJsonObject("assertion")
+        val assertionRequired = assertion.getAsJsonArray("oneOf").map {
+            it.asJsonObject.getAsJsonArray("required").single().asString
+        }
+        val assertionRef = assertion.getAsJsonObject("properties").getAsJsonObject("scheduled")
+        val properties = defs.getAsJsonObject("scheduledAssertion").getAsJsonObject("properties")
+
+        assertTrue("scheduled" in assertionRequired)
+        assertEquals("#/\$defs/scheduledAssertion", assertionRef.get("\$ref").asString)
+        assertEquals("string", properties.getAsJsonObject("id").get("type").asString)
+        assertEquals("integer", properties.getAsJsonObject("dueTick").get("type").asString)
+        assertEquals("boolean", properties.getAsJsonObject("exists").get("type").asString)
+        assertEquals("integer", properties.getAsJsonObject("count").get("type").asString)
+    }
+
+    @Test
     fun `runs a manifest check`() {
         val path = Path.of("src/test/resources/cases/counter.dps.json")
 
@@ -717,6 +736,77 @@ class ManifestRunnerTest {
 
         assertTrue(schemaFailures.isEmpty(), schemaFailures.joinToString())
         assertTrue(result.passed, result.messages.joinToString())
+    }
+
+    @Test
+    fun `manifest scheduled assertions inspect queue and due ticks`() {
+        val dir = Files.createTempDirectory("dps-scheduled-manifest")
+        val pack = writeSchedulePack(dir.resolve("pack")).toAbsolutePath().normalize().toString().replace("\\", "\\\\")
+        val pendingManifest = dir.resolve("scheduled-pending.dps.json")
+        Files.writeString(
+            pendingManifest,
+            """
+            {
+              "version": "26.2",
+              "packs": ["$pack"],
+              "steps": [
+                { "function": "demo:main" }
+              ],
+              "assertions": [
+                { "scheduled": { "id": "demo:later", "dueTick": 5, "count": 2 } },
+                { "scheduled": { "id": "demo:missing", "exists": false } }
+              ]
+            }
+            """.trimIndent(),
+        )
+        val finishedManifest = dir.resolve("scheduled-finished.dps.json")
+        Files.writeString(
+            finishedManifest,
+            """
+            {
+              "version": "26.2",
+              "packs": ["$pack"],
+              "steps": [
+                { "function": "demo:main" },
+                { "ticks": 5 }
+              ],
+              "assertions": [
+                { "scheduled": { "id": "demo:later", "exists": false } },
+                { "score": { "target": "#later", "objective": "runs", "equals": 2 } }
+              ]
+            }
+            """.trimIndent(),
+        )
+        val mismatchManifest = dir.resolve("scheduled-mismatch.dps.json")
+        Files.writeString(
+            mismatchManifest,
+            """
+            {
+              "version": "26.2",
+              "packs": ["$pack"],
+              "steps": [
+                { "function": "demo:main" }
+              ],
+              "assertions": [
+                { "scheduled": { "id": "demo:later", "dueTick": 6 } }
+              ]
+            }
+            """.trimIndent(),
+        )
+
+        val schemaFailures = ManifestSchemaValidator.validate(JsonParser.parseString(Files.readString(pendingManifest)))
+        val pending = ManifestRunner.run(pendingManifest)
+        val finished = ManifestRunner.run(finishedManifest)
+        val mismatch = ManifestRunner.run(mismatchManifest)
+
+        assertTrue(schemaFailures.isEmpty(), schemaFailures.joinToString())
+        assertTrue(pending.passed, pending.messages.joinToString())
+        assertTrue(finished.passed, finished.messages.joinToString())
+        assertFalse(mismatch.passed)
+        val messages = mismatch.messages.joinToString("\n")
+        assertTrue("assertion 1 (/assertions/0/scheduled):" in messages, messages)
+        assertTrue("scheduled function demo:later expected dueTick 6" in messages, messages)
+        assertTrue("actual scheduled functions: demo:later@5" in messages, messages)
     }
 
     @Test
@@ -2071,6 +2161,33 @@ class ManifestRunnerTest {
         assertTrue(result.passed, result.messages.joinToString())
         assertEquals(listOf("1.20.4", "26.1.2", "26.2"), result.attempts.map { it.version })
         assertTrue(result.attempts.all { it.passed })
+    }
+
+    private fun writeSchedulePack(root: Path): Path {
+        Files.createDirectories(root)
+        Files.writeString(
+            root.resolve("pack.mcmeta"),
+            """
+            {
+              "pack": {
+                "pack_format": 107.1,
+                "description": "scheduled assertion test"
+              }
+            }
+            """.trimIndent(),
+        )
+        val functionRoot = root.resolve("data").resolve("demo").resolve("function")
+        Files.createDirectories(functionRoot)
+        Files.writeString(
+            functionRoot.resolve("main.mcfunction"),
+            """
+            scoreboard objectives add runs dummy
+            schedule function demo:later 5t append
+            schedule function demo:later 5t append
+            """.trimIndent(),
+        )
+        Files.writeString(functionRoot.resolve("later.mcfunction"), "scoreboard players add #later runs 1")
+        return root
     }
 
     private fun writePack(root: Path, packFormat: String, functionDir: String, scoreTarget: String, scoreValue: Int): Path {

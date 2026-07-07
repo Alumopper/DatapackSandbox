@@ -520,6 +520,7 @@ object ManifestRunner {
         "player",
         "team",
         "bossbar",
+        "scheduled",
         "block",
         "advancement",
         "predicate",
@@ -874,6 +875,9 @@ object ManifestRunner {
             assertion.has("bossbar") -> {
                 failures += evaluateBossbarAssertion(assertion.getAsJsonObject("bossbar"), sandbox)
             }
+            assertion.has("scheduled") -> {
+                failures += evaluateScheduledAssertion(assertion.getAsJsonObject("scheduled"), sandbox)
+            }
             assertion.has("block") -> {
                 val block = assertion.getAsJsonObject("block")
                 val posArray = block.getAsJsonArray("pos")
@@ -953,6 +957,37 @@ object ManifestRunner {
             else -> failures += "Unknown assertion kind: ${assertion.keySet().joinToString()}"
         }
         return failures
+    }
+
+    private fun evaluateScheduledAssertion(scheduled: JsonObject, sandbox: DatapackSandbox): List<String> {
+        val id = ResourceLocation.parse(scheduled.requiredManifestString("id"))
+        val dueTick = scheduled.get("dueTick")?.asLong
+        val exists = scheduled.get("exists")?.asBoolean ?: true
+        val count = scheduled.get("count")?.asInt
+        val byId = sandbox.world.scheduledFunctions.filter { it.id == id }
+        val matches = if (dueTick == null) byId else byId.filter { it.dueTick == dueTick }
+        return buildList {
+            if (exists) {
+                if (matches.isEmpty()) {
+                    val actualDueTicks = if (byId.isEmpty()) "<missing>" else byId.map { it.dueTick }.sorted().joinToString()
+                    add("scheduled function $id expected ${dueTick?.let { "dueTick $it" } ?: "present"} but was $actualDueTicks; ${actualScheduledFunctions(sandbox)}")
+                } else if (count != null && matches.size != count) {
+                    add("scheduled function $id expected count $count${dueTick?.let { " at dueTick $it" }.orEmpty()} but was ${matches.size}; ${actualScheduledFunctions(sandbox)}")
+                }
+            } else if (matches.isNotEmpty()) {
+                add("scheduled function $id expected missing${dueTick?.let { " at dueTick $it" }.orEmpty()} but was ${matches.map { it.dueTick }.sorted().joinToString()}; ${actualScheduledFunctions(sandbox)}")
+            }
+        }
+    }
+
+    private fun actualScheduledFunctions(sandbox: DatapackSandbox): String {
+        if (sandbox.world.scheduledFunctions.isEmpty()) return "actual scheduled functions: <none>"
+        val rendered = sandbox.world.scheduledFunctions
+            .sortedWith(compareBy({ it.dueTick }, { it.id.toString() }))
+            .take(5)
+            .joinToString("; ") { "${it.id}@${it.dueTick}" }
+        val suffix = if (sandbox.world.scheduledFunctions.size > 5) "; ... +${sandbox.world.scheduledFunctions.size - 5} more" else ""
+        return "actual scheduled functions: $rendered$suffix"
     }
 
     private fun evaluateSnapshotAssertion(snapshot: JsonObject, sandbox: DatapackSandbox, base: Path): List<String> {

@@ -226,7 +226,7 @@ gamerules, time/weather, seed/difficulty/default game mode, world/player spawn
 points, world border, forced chunks, biome overrides, teams, bossbars, and scoped Java save
 imports.
 
-Assertions support score, storage, world, player, team, bossbar, block,
+Assertions support score, storage, world, player, team, bossbar, scheduled, block,
 entity, entityCount, advancement, predicate, loot, output, item, trace, event trace,
 diagnostic, snapshot, and snapshot diff checks:
 
@@ -253,6 +253,10 @@ before the pointer.
 
 ```json
 { "world": { "difficulty": "hard", "forcedChunk": [0, 0], "worldBorder": { "size": 100 } } }
+```
+
+```json
+{ "scheduled": { "id": "demo:later", "dueTick": 5, "count": 2 } }
 ```
 
 ```json
@@ -291,7 +295,9 @@ before the pointer.
 filtering, plus full entity NBT path checks, equipment item id/count/components/NBT, active effect
 duration/amplifier/particle state, and explicit attribute values. `player` assertions can also check existence, dimension, game mode, health,
 food, selected slot, ender item count, recipe, effect, stat, advancement progress, full NBT path, position, last input, and spawn point. `team` and
-`bossbar` assertions inspect their stored runtime state. `item` assertions can
+`bossbar` assertions inspect their stored runtime state. `scheduled` assertions
+inspect queued scheduled functions by id, absolute `dueTick`, existence, and
+duplicate count. `item` assertions can
 check player inventory or `enderItems` by slot, id, exact/min/max count,
 components path, and NBT path. `block` assertions can check sparse-world existence, id, and block
 entity NBT path equality or existence.
