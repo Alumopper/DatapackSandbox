@@ -311,6 +311,30 @@ class CommandExpansionTest {
     }
 
     @Test
+    fun `place template applies sandbox structure json with transforms`() {
+        val pack = writeStructurePlacePack(Files.createTempDirectory("dps-place-template-pack"))
+        val sandbox = createSandbox("26.2", listOf(pack))
+
+        sandbox.executeCommand("place template demo:room 30 64 40 clockwise_90 front_back 1.0 123")
+
+        assertEquals(ResourceLocation.parse("minecraft:stone"), sandbox.world.requireBlock(BlockPos(30, 64, 40)).id)
+        val chest = sandbox.world.requireBlock(BlockPos(30, 64, 41))
+        assertEquals(ResourceLocation.parse("minecraft:chest"), chest.id)
+        assertEquals("north", chest.properties["facing"])
+        val marker = sandbox.world.entities.single { it.type == ResourceLocation.parse("minecraft:pig") && "placed_structure" in it.tags }
+        assertEquals(Position(30.5, 65.0, 40.5), marker.position)
+
+        val output = sandbox.world.outputs.single { it.command == "place template" }
+        val payload = output.payload?.asJsonObject ?: error("missing place template payload")
+        assertEquals(true, payload.get("placed").asBoolean)
+        assertEquals("clockwise_90", payload.get("rotation").asString)
+        assertEquals("front_back", payload.get("mirror").asString)
+        assertEquals(1.0, payload.get("integrity").asDouble)
+        assertEquals(123, payload.get("seed").asLong)
+        assertEquals(listOf("30 64 40", "30 64 41", marker.uuid), output.targets)
+    }
+
+    @Test
     fun `attribute and loot commands expose sandbox-visible state`() {
         val pack = writeLootPack(Files.createTempDirectory("dps-command-expansion-pack"))
         val sandbox = createSandbox("26.2", listOf(pack))

@@ -49,6 +49,68 @@ data class ExecutionResult(
     val success: Boolean = commandsExecuted > 0,
 )
 
+private data class SandboxStructurePlacement(
+    val rotation: String = "none",
+    val mirror: String = "none",
+    val integrity: Double = 1.0,
+    val seed: Long? = null,
+) {
+    fun transform(offset: BlockPos): BlockPos {
+        val mirrored = mirror(offset.x, offset.z)
+        val rotated = rotate(mirrored.first, mirrored.second)
+        return BlockPos(rotated.first, offset.y, rotated.second)
+    }
+
+    fun transform(offset: Position): Position {
+        val mirrored = mirror(offset.x, offset.z)
+        val rotated = rotate(mirrored.first, mirrored.second)
+        return Position(rotated.first, offset.y, rotated.second)
+    }
+
+    fun shouldPlace(id: ResourceLocation, origin: BlockPos, index: Int): Boolean {
+        if (integrity >= 1.0) return true
+        if (integrity <= 0.0) return false
+        val raw = "$id|$origin|$index|${seed ?: 0L}".hashCode().toLong()
+        val normalized = (raw - Int.MIN_VALUE.toLong()).toDouble() / 4_294_967_296.0
+        return normalized < integrity
+    }
+
+    private fun mirror(x: Int, z: Int): Pair<Int, Int> =
+        when (mirror) {
+            "front_back" -> x to -z
+            "left_right" -> -x to z
+            else -> x to z
+        }
+
+    private fun mirror(x: Double, z: Double): Pair<Double, Double> =
+        when (mirror) {
+            "front_back" -> x to -z
+            "left_right" -> -x to z
+            else -> x to z
+        }
+
+    private fun rotate(x: Int, z: Int): Pair<Int, Int> =
+        when (rotation) {
+            "clockwise_90" -> -z to x
+            "clockwise_180" -> -x to -z
+            "counterclockwise_90" -> z to -x
+            else -> x to z
+        }
+
+    private fun rotate(x: Double, z: Double): Pair<Double, Double> =
+        when (rotation) {
+            "clockwise_90" -> -z to x
+            "clockwise_180" -> -x to -z
+            "counterclockwise_90" -> z to -x
+            else -> x to z
+        }
+
+    companion object {
+        val rotations = setOf("none", "clockwise_90", "clockwise_180", "counterclockwise_90")
+        val mirrors = setOf("none", "front_back", "left_right")
+    }
+}
+
 /**
  * Execution safety limits used to stop runaway tests deterministically.
  */
@@ -814,16 +876,18 @@ class DatapackSandbox(
             payload.add("position", positionOutput(position))
             positionIndex
         }
-        if (tokens.size > extraStart) {
+        val extras = tokens.drop(extraStart).map { it.text }
+        if (extras.isNotEmpty()) {
             payload.add(
                 "extra",
                 JsonArray().also { extra ->
-                    tokens.drop(extraStart).forEach { extra.add(it.text) }
+                    extras.forEach { extra.add(it) }
                 },
             )
         }
-        if (kind == "structure") {
-            placedTargets = placeSandboxStructure(placeId ?: error("missing place id"), position, context, payload, location)
+        if (kind == "structure" || kind == "template") {
+            val placement = if (kind == "template") parseTemplatePlacement(extras, payload, location) else SandboxStructurePlacement()
+            placedTargets = placeSandboxStructure(placeId ?: error("missing place id"), position, context, payload, placement, location)
         } else {
             payload.addProperty("placed", false)
             payload.addProperty("reason", "Sandbox records place commands but does not simulate this worldgen kind")
@@ -838,6 +902,7 @@ class DatapackSandbox(
         position: Position,
         context: ExecutionContext,
         payload: JsonObject,
+        placement: SandboxStructurePlacement,
         location: SourceLocation?,
     ): List<String> {
         val resource = datapack.rawResources["worldgen/structure"]?.get(id)
@@ -864,10 +929,16 @@ class DatapackSandbox(
 
         val origin = BlockPos(floor(position.x).toInt(), floor(position.y).toInt(), floor(position.z).toInt())
         val changedBlocks = mutableListOf<BlockPos>()
+        var skippedBlocks = 0
         blocks?.forEachIndexed { index, element ->
             val block = element.asPlaceJsonObject("structure block $index", location)
             val offset = block.placeBlockPos("offset", "pos", "structure block $index offset", location)
-            val pos = BlockPos(origin.x + offset.x, origin.y + offset.y, origin.z + offset.z)
+            if (!placement.shouldPlace(id, origin, index)) {
+                skippedBlocks++
+                return@forEachIndexed
+            }
+            val transformedOffset = placement.transform(offset)
+            val pos = BlockPos(origin.x + transformedOffset.x, origin.y + transformedOffset.y, origin.z + transformedOffset.z)
             val properties = block.placeProperties(location)
             val blockNbt = block.placeJsonObject("nbt", "structure block $index nbt", location)
             val placedBlock = BlockArgument(
@@ -885,7 +956,8 @@ class DatapackSandbox(
         entities?.forEachIndexed { index, element ->
             val entityRoot = element.asPlaceJsonObject("structure entity $index", location)
             val offset = entityRoot.optionalPlacePosition("offset", "pos", "structure entity $index offset", location)
-            val positionAtOffset = Position(origin.x + offset.x, origin.y + offset.y, origin.z + offset.z)
+            val transformedOffset = placement.transform(offset)
+            val positionAtOffset = Position(origin.x + transformedOffset.x, origin.y + transformedOffset.y, origin.z + transformedOffset.z)
             val entityNbt = entityRoot.placeJsonObject("nbt", "structure entity $index nbt", location)
             val tags = entityRoot.placeStringArray("tags", "structure entity $index tags", location).toMutableSet()
             if (entityNbt != null) tags += extractTags(entityNbt)
@@ -908,6 +980,7 @@ class DatapackSandbox(
         payload.addProperty("placed", true)
         payload.addProperty("format", "sandbox-structure-json")
         payload.addProperty("changedBlocks", changedBlocks.size)
+        payload.addProperty("skippedBlocks", skippedBlocks)
         payload.addProperty("entities", createdEntities.size)
         payload.add("origin", blockPosOutput(origin))
         payload.add("positions", blockPosArrayOutput(changedBlocks))
@@ -916,6 +989,28 @@ class DatapackSandbox(
             JsonArray().also { targets -> createdEntities.map { it.scoreHolder }.sorted().forEach { targets.add(it) } },
         )
         return changedBlocks.map { it.toString() } + createdEntities.map { it.scoreHolder }
+    }
+
+    private fun parseTemplatePlacement(
+        extras: List<String>,
+        payload: JsonObject,
+        location: SourceLocation?,
+    ): SandboxStructurePlacement {
+        val rotation = extras.getOrNull(0) ?: "none"
+        val mirror = extras.getOrNull(1) ?: "none"
+        val integrity = extras.getOrNull(2)?.let { parseDouble(it, "template integrity", location).coerceIn(0.0, 1.0) } ?: 1.0
+        val seed = extras.getOrNull(3)?.let { parseLong(it, "template seed", location) }
+        if (rotation !in SandboxStructurePlacement.rotations) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Unsupported template rotation '$rotation'", location)
+        }
+        if (mirror !in SandboxStructurePlacement.mirrors) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Unsupported template mirror '$mirror'", location)
+        }
+        payload.addProperty("rotation", rotation)
+        payload.addProperty("mirror", mirror)
+        payload.addProperty("integrity", integrity)
+        seed?.let { payload.addProperty("seed", it) }
+        return SandboxStructurePlacement(rotation = rotation, mirror = mirror, integrity = integrity, seed = seed)
     }
 
     private fun JsonObject.getAsJsonArrayOrNull(name: String): JsonArray? {

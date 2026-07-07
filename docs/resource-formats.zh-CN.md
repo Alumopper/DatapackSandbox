@@ -117,7 +117,7 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar resources --json --output buil
 | `worldgen/noise_settings` | `observed-noop` | 经版本校验的 raw JSON 资源，进入索引供 inspect。 |
 | `worldgen/placed_feature` | `observed-noop` | 经版本校验的 raw JSON 资源，进入索引供 inspect。 |
 | `worldgen/processor_list` | `observed-noop` | 经版本校验的 raw JSON 资源，进入索引供 inspect。 |
-| `worldgen/structure` | `observed-noop` | 经版本校验的 raw JSON 资源，进入索引供 inspect。 |
+| `worldgen/structure` | `modeled` | 沙盒结构 JSON 的 `blocks`/`entities` 可被 `place structure` 和 `place template` 展开。 |
 | `worldgen/structure_set` | `observed-noop` | 经版本校验的 raw JSON 资源，进入索引供 inspect。 |
 | `worldgen/template_pool` | `observed-noop` | 经版本校验的 raw JSON 资源，进入索引供 inspect。 |
 | `worldgen/world_preset` | `observed-noop` | 经版本校验的 raw JSON 资源，进入索引供 inspect。 |

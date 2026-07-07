@@ -57,6 +57,10 @@ object ResourceCatalog {
         "worldgen/world_preset",
     )
 
+    private val modeledRawJsonSummaries = mapOf(
+        "worldgen/structure" to "sandbox structure JSON blocks/entities consumed by place structure/template",
+    )
+
     val all: List<ResourceCatalogEntry> = listOf(
         ResourceCatalogEntry("function", summary = "mcfunction execution, trace source locations, and missing-reference checks"),
         ResourceCatalogEntry("tag/function", summary = "load/tick/function tag execution and replace semantics"),
@@ -67,7 +71,11 @@ object ResourceCatalog {
         ResourceCatalogEntry("item_modifier", summary = "common item modifier functions applied by item modify"),
         ResourceCatalogEntry("tag/<registry>", ResourceBehaviorLevel.OBSERVED_NOOP, "general tags with replace semantics and resource-index visibility"),
     ) + additionalRawJsonTypes.map { type ->
-        ResourceCatalogEntry(type, ResourceBehaviorLevel.OBSERVED_NOOP, "version-checked raw JSON resource indexed for inspection")
+        ResourceCatalogEntry(
+            type,
+            if (type in modeledRawJsonSummaries) ResourceBehaviorLevel.MODELED else ResourceBehaviorLevel.OBSERVED_NOOP,
+            modeledRawJsonSummaries[type] ?: "version-checked raw JSON resource indexed for inspection",
+        )
     }
 }
 
@@ -86,5 +94,6 @@ object ResourceBehaviorLevels {
         "advancement",
         "recipe",
         "item_modifier",
+        "worldgen/structure",
     )
 }

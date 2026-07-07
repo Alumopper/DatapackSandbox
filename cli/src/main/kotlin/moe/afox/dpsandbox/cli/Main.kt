@@ -2826,6 +2826,7 @@ class ResourcesCommand : CliktCommand(name = "resources") {
             "recipe" -> "进入资源索引和玩家 recipe 状态，供命令与 rewards 使用。"
             "item_modifier" -> "`item modify` 会应用常用 item modifier 函数。"
             "tag/<registry>" -> "普通 tag 保留 `replace` 语义，并进入资源索引供 inspect。"
+            "worldgen/structure" -> "沙盒结构 JSON 的 blocks/entities 可被 place structure/template 展开。"
             else -> "经版本校验的 raw JSON 资源，进入索引供 inspect。"
         }
     }

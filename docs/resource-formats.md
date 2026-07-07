@@ -131,7 +131,7 @@ smoke tasks.
 | `worldgen/noise_settings` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
 | `worldgen/placed_feature` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
 | `worldgen/processor_list` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
-| `worldgen/structure` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
+| `worldgen/structure` | `modeled` | sandbox structure JSON `blocks`/`entities` can be expanded by `place structure` and `place template` |
 | `worldgen/structure_set` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
 | `worldgen/template_pool` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
 | `worldgen/world_preset` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
