@@ -2825,6 +2825,7 @@ class ResourcesCommand : CliktCommand(name = "resources") {
             "advancement" -> "玩家 progress、criteria 匹配、rewards、output 和事件 trace。"
             "recipe" -> "进入资源索引和玩家 recipe 状态，供命令与 rewards 使用。"
             "item_modifier" -> "`item modify` 会应用常用 item modifier 函数。"
+            "damage_type" -> "damage 命令会暴露 damage type JSON 元数据。"
             "tag/<registry>" -> "普通 tag 保留 `replace` 语义，并进入资源索引供 inspect。"
             "worldgen/configured_feature" -> "simple_block feature JSON 可被 place feature 消费。"
             "worldgen/placed_feature" -> "placed feature 会解析 configured simple_block 资源，供 place feature 使用。"

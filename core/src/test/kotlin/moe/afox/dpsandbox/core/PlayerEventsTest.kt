@@ -1,6 +1,8 @@
 package moe.afox.dpsandbox.core
 
 import com.google.gson.JsonObject
+import java.nio.file.Files
+import java.nio.file.Path
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -432,6 +434,26 @@ class PlayerEventsTest {
         assertEquals(3.0, payload.getAsJsonObject("position").get("z").asDouble)
     }
 
+    @Test
+    fun `damage command exposes loaded damage type metadata`() {
+        val sandbox = createSandbox("26.2", listOf(writeDamageTypePack(Files.createTempDirectory("dps-damage-type-pack"))))
+        val player = sandbox.createPlayer("Steve")
+
+        sandbox.executeCommand("damage Steve 3 demo:acid")
+
+        assertEquals(17.0, player.health)
+        val payload = sandbox.world.outputs.single { it.command == "damage" }.payload?.asJsonObject ?: error("missing damage payload")
+        assertEquals("demo:acid", payload.get("damageSource").asString)
+        val damageType = payload.getAsJsonObject("damageType")
+        assertEquals("demo:acid", damageType.get("id").asString)
+        assertEquals("acid", damageType.get("messageId").asString)
+        assertEquals("always", damageType.get("scaling").asString)
+        assertEquals(0.25, damageType.get("exhaustion").asDouble)
+        assertEquals("burning", damageType.get("effects").asString)
+        assertEquals("intentional_game_design", damageType.get("deathMessageType").asString)
+        assertEquals("26.2", damageType.get("version").asString)
+    }
+
     private fun assertEventTraceCount(
         sandbox: DatapackSandbox,
         expectation: PlayerEventTraceExpectation,
@@ -477,4 +499,33 @@ class PlayerEventsTest {
             requirements = listOf(listOf(criterionName)),
             rewards = AdvancementReward(),
         )
+
+    private fun writeDamageTypePack(root: Path): Path {
+        Files.writeString(
+            root.resolve("pack.mcmeta").also { Files.createDirectories(it.parent) },
+            """
+            {
+              "pack": {
+                "pack_format": 107.1,
+                "description": "damage type test"
+              }
+            }
+            """.trimIndent(),
+        )
+        val damageTypeRoot = root.resolve("data").resolve("demo").resolve("damage_type")
+        Files.createDirectories(damageTypeRoot)
+        Files.writeString(
+            damageTypeRoot.resolve("acid.json"),
+            """
+            {
+              "message_id": "acid",
+              "scaling": "always",
+              "exhaustion": 0.25,
+              "effects": "burning",
+              "death_message_type": "intentional_game_design"
+            }
+            """.trimIndent(),
+        )
+        return root
+    }
 }

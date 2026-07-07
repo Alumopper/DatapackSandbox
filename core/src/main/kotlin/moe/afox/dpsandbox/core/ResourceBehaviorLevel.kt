@@ -58,6 +58,7 @@ object ResourceCatalog {
     )
 
     private val modeledRawJsonSummaries = mapOf(
+        "damage_type" to "damage type JSON metadata exposed by the damage command",
         "worldgen/configured_feature" to "simple_block feature JSON consumed by place feature",
         "worldgen/placed_feature" to "placed feature JSON resolving configured simple_block resources for place feature",
         "worldgen/processor_list" to "block_ignore and simple rule processors consumed by sandbox structure placement",
@@ -98,6 +99,7 @@ object ResourceBehaviorLevels {
         "advancement",
         "recipe",
         "item_modifier",
+        "damage_type",
         "worldgen/configured_feature",
         "worldgen/placed_feature",
         "worldgen/processor_list",

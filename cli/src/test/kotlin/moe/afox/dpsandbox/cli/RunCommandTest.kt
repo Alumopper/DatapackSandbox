@@ -2001,6 +2001,7 @@ class RunCommandTest {
         }
 
         assertTrue("function modeled - mcfunction execution" in output, output)
+        assertTrue("damage_type modeled - damage type JSON metadata exposed by the damage command" in output, output)
         assertTrue("tag/<registry> observed-noop - general tags" in output, output)
         assertTrue("worldgen/placed_feature modeled - placed feature JSON resolving configured simple_block" in output, output)
         assertTrue("worldgen/processor_list modeled - block_ignore and simple rule processors" in output, output)
@@ -2015,6 +2016,7 @@ class RunCommandTest {
         }
 
         assertTrue("| Resource | Behavior | Runtime/debug surface |" in output, output)
+        assertTrue("| `damage_type` | `modeled` | damage type JSON metadata exposed by the damage command |" in output, output)
         assertTrue("| `function` | `modeled` | mcfunction execution" in output, output)
         assertTrue("| `worldgen/configured_feature` | `modeled` | simple_block feature JSON consumed by place feature |" in output, output)
         assertTrue("| `worldgen/processor_list` | `modeled` | block_ignore and simple rule processors consumed by sandbox structure placement |" in output, output)
@@ -2029,6 +2031,7 @@ class RunCommandTest {
         }
 
         assertTrue("| 资源 | 行为等级 | 运行时 / debug 表面 |" in output, output)
+        assertTrue("| `damage_type` | `modeled` | damage 命令会暴露 damage type JSON 元数据。" in output, output)
         assertTrue("| `function` | `modeled` | mcfunction 执行、trace source location 和缺失引用检查。" in output, output)
         assertTrue("| `worldgen/placed_feature` | `modeled` | placed feature 会解析 configured simple_block 资源，供 place feature 使用。" in output, output)
         assertTrue("| `worldgen/processor_list` | `modeled` | block_ignore 和简单 rule processor 可被沙盒结构放置消费。" in output, output)
@@ -2046,7 +2049,7 @@ class RunCommandTest {
 
         assertTrue("resources output written: $reportFile" in output, output)
         assertTrue("| Resource | Behavior | Runtime/debug surface |" in report, report)
-        assertTrue("| `damage_type` | `observed-noop` | version-checked raw JSON resource" in report, report)
+        assertTrue("| `damage_type` | `modeled` | damage type JSON metadata exposed by the damage command |" in report, report)
     }
 
     @Test
@@ -2100,6 +2103,7 @@ class RunCommandTest {
         val resources = json.getAsJsonArray("resources").map { it.asJsonObject }.associateBy { it.get("type").asString }
 
         assertEquals("modeled", resources.getValue("function").get("behavior").asString)
+        assertEquals("modeled", resources.getValue("damage_type").get("behavior").asString)
         assertEquals("observed-noop", resources.getValue("tag/<registry>").get("behavior").asString)
         assertEquals("modeled", resources.getValue("worldgen/configured_feature").get("behavior").asString)
         assertEquals("modeled", resources.getValue("worldgen/placed_feature").get("behavior").asString)

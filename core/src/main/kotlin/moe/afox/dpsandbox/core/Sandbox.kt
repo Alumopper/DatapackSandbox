@@ -3686,6 +3686,7 @@ class DatapackSandbox(
             payload = JsonObject().also { payload ->
                 payload.addProperty("amount", amount)
                 payload.addProperty("damageSource", damageContext.damageSource.toString())
+                damageTypePayload(damageContext.damageSource, location)?.let { payload.add("damageType", it) }
                 damageContext.position?.let { payload.add("position", positionOutput(it)) }
                 sourceEntity?.let { source ->
                     payload.addProperty("source", source.scoreHolder)
@@ -3712,6 +3713,32 @@ class DatapackSandbox(
                 else -> entity.fullNbt(profile, location).get("Health")?.asDouble == 0.0
             }
         }
+    }
+
+    private fun damageTypePayload(id: ResourceLocation, location: SourceLocation?): JsonObject? {
+        val resource = datapack.rawResources["damage_type"]?.get(id) ?: return null
+        if (!resource.root.isJsonObject) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Damage type resource '$id' must be a JSON object", location)
+        }
+        val root = resource.root.asJsonObject
+        return JsonObject().also { payload ->
+            payload.addProperty("id", id.toString())
+            payload.addProperty("resource", resource.file)
+            payload.addProperty("version", resource.version ?: profile.id)
+            root.copyPrimitive("message_id", payload, "messageId", location)
+            root.copyPrimitive("scaling", payload, "scaling", location)
+            root.copyPrimitive("exhaustion", payload, "exhaustion", location)
+            root.copyPrimitive("effects", payload, "effects", location)
+            root.copyPrimitive("death_message_type", payload, "deathMessageType", location)
+        }
+    }
+
+    private fun JsonObject.copyPrimitive(source: String, target: JsonObject, targetName: String, location: SourceLocation?) {
+        val value = get(source) ?: return
+        if (!value.isJsonPrimitive) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Damage type field '$source' must be a primitive", location)
+        }
+        target.add(targetName, value.deepCopy())
     }
 
     private data class DamageCommandContext(
