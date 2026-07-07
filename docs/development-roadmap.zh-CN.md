@@ -37,6 +37,7 @@
 - P0：function tags、普通 tags、loot table、predicate、advancement、recipe、item modifier。
 - P1：damage type、chat type、dimension、dimension_type、worldgen configured/placed feature、structure、processor list。
 - P2：enchantment、jukebox song、trim material/pattern、banner pattern、wolf variant、painting variant 等版本相关注册表资源。
+  - 额外 raw JSON 资源矩阵测试已直接复用 `ResourceCatalog.additionalRawJsonTypes`，确保 catalog 中列出的 P1/P2 资源都会被目录/zip loader、raw resource map 和资源索引覆盖，而不是只覆盖手写子集。
 
 验收标准：
 

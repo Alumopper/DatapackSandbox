@@ -572,7 +572,7 @@ class DatapackResourceIndexTest {
 
     private fun writeRawRegistryResources(root: Path, marker: String) {
         expectedRawKinds.forEach { kind ->
-            val idPath = rawResourceIds.getValue(kind)
+            val idPath = rawResourceId(kind)
             val file = root.resolve("data").resolve("demo").resolve(kind).resolve("$idPath.json")
             Files.createDirectories(file.parent)
             Files.writeString(
@@ -719,25 +719,9 @@ class DatapackResourceIndexTest {
     }
 
     private companion object {
-        val expectedRawKinds = listOf(
-            "damage_type",
-            "chat_type",
-            "dimension",
-            "dimension_type",
-            "worldgen/configured_feature",
-            "worldgen/placed_feature",
-            "worldgen/structure",
-            "worldgen/processor_list",
-            "enchantment",
-            "jukebox_song",
-            "trim_material",
-            "trim_pattern",
-            "banner_pattern",
-            "wolf_variant",
-            "painting_variant",
-        )
+        val expectedRawKinds = ResourceCatalog.additionalRawJsonTypes
 
-        val rawResourceIds = mapOf(
+        val explicitRawResourceIds = mapOf(
             "damage_type" to "debug_damage",
             "chat_type" to "debug_chat",
             "dimension" to "debug_dimension",
@@ -754,6 +738,10 @@ class DatapackResourceIndexTest {
             "wolf_variant" to "debug_wolf",
             "painting_variant" to "debug_painting",
         )
+
+        fun rawResourceId(kind: String): String =
+            explicitRawResourceIds[kind]
+                ?: "debug_${kind.substringAfterLast('/').replace(Regex("[^a-z0-9_./-]"), "_")}"
 
         data class InvalidJsonResourceCase(
             val label: String,
