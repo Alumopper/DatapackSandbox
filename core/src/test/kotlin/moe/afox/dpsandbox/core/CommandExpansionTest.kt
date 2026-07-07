@@ -570,22 +570,23 @@ class CommandExpansionTest {
     fun `place structure applies sandbox processor list resources`() {
         val pack = writeProcessedStructurePlacePack(Files.createTempDirectory("dps-place-processor-pack"))
         val sandbox = createSandbox("26.2", listOf(pack))
+        sandbox.executeCommand("setblock 22 70 30 minecraft:obsidian")
 
         sandbox.executeCommand("place structure demo:processed 20 70 30")
 
         assertNull(sandbox.world.block(BlockPos(20, 70, 30)))
         assertEquals(ResourceLocation.parse("minecraft:gold_block"), sandbox.world.requireBlock(BlockPos(21, 70, 30)).id)
-        assertEquals(ResourceLocation.parse("minecraft:dirt"), sandbox.world.requireBlock(BlockPos(22, 70, 30)).id)
+        assertEquals(ResourceLocation.parse("minecraft:obsidian"), sandbox.world.requireBlock(BlockPos(22, 70, 30)).id)
         assertEquals(ResourceLocation.parse("minecraft:emerald_block"), sandbox.world.requireBlock(BlockPos(23, 70, 30)).id)
         val output = sandbox.world.outputs.single { it.command == "place structure" }
         val payload = output.payload?.asJsonObject ?: error("missing place structure payload")
         assertEquals(true, payload.get("placed").asBoolean)
-        assertEquals(3, payload.get("changedBlocks").asInt)
-        assertEquals(1, payload.get("skippedBlocks").asInt)
-        assertEquals(3, payload.get("processedBlocks").asInt)
+        assertEquals(2, payload.get("changedBlocks").asInt)
+        assertEquals(2, payload.get("skippedBlocks").asInt)
+        assertEquals(4, payload.get("processedBlocks").asInt)
         assertEquals(0, payload.get("unsupportedProcessors").asInt)
         assertEquals("demo:cleanup", payload.getAsJsonArray("processorLists")[0].asString)
-        assertEquals(listOf("21 70 30", "22 70 30", "23 70 30"), output.targets)
+        assertEquals(listOf("21 70 30", "23 70 30"), output.targets)
     }
 
     @Test
@@ -2090,6 +2091,16 @@ class CommandExpansionTest {
             }
             """.trimIndent(),
         )
+        val tagRoot = root.resolve("data").resolve("demo").resolve("tags").resolve("block")
+        Files.createDirectories(tagRoot)
+        Files.writeString(
+            tagRoot.resolve("protected.json"),
+            """
+            {
+              "values": ["minecraft:obsidian"]
+            }
+            """.trimIndent(),
+        )
         val processorRoot = root.resolve("data").resolve("demo").resolve("worldgen").resolve("processor_list")
         Files.createDirectories(processorRoot)
         Files.writeString(
@@ -2100,6 +2111,10 @@ class CommandExpansionTest {
                 {
                   "type": "minecraft:block_ignore",
                   "blocks": ["minecraft:air"]
+                },
+                {
+                  "type": "minecraft:protected_blocks",
+                  "value": "demo:protected"
                 },
                 {
                   "type": "minecraft:jigsaw_replacement"

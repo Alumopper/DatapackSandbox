@@ -145,11 +145,15 @@ private data class SandboxStructureProcessorList(
 private data class SandboxStructureProcessor(
     val type: String,
     val ignoredBlocks: Set<ResourceLocation> = emptySet(),
+    val protectedBlocks: Set<ResourceLocation> = emptySet(),
     val rules: List<SandboxStructureProcessorRule> = emptyList(),
     val jigsawReplacement: Boolean = false,
     val supported: Boolean = true,
 ) {
-    fun apply(block: BlockArgument): SandboxProcessedStructureBlock {
+    fun apply(block: BlockArgument, destinationId: ResourceLocation?): SandboxProcessedStructureBlock {
+        if (destinationId != null && destinationId in protectedBlocks) {
+            return SandboxProcessedStructureBlock(block = null, processed = true)
+        }
         if (block.id in ignoredBlocks) return SandboxProcessedStructureBlock(block = null, processed = true)
         val rule = rules.firstOrNull { it.matches(block) } ?: return SandboxProcessedStructureBlock(block)
         return SandboxProcessedStructureBlock(block = rule.output, processed = rule.output != block)
@@ -1189,7 +1193,7 @@ class DatapackSandbox(
         if (plan == null || plan.blocks.isEmpty()) {
             payload.addProperty("placed", false)
             payload.addProperty("format", "raw-json-index-only")
-            payload.addProperty("reason", "Loaded feature resource has no sandbox block or supported simple_block/random_patch/flower/selector/ore state")
+            payload.addProperty("reason", "Loaded feature resource has no sandbox block or supported simple_block/block_column/disk/random_patch/flower/selector/ore state")
             return emptyList()
         }
 
@@ -1667,7 +1671,8 @@ class DatapackSandbox(
                 properties = properties,
                 nbt = blockNbt ?: JsonObject(),
             )
-            val processed = applyStructureProcessors(blockArgument, processors.processors, location)
+            val before = world.block(pos)?.copyForClone()
+            val processed = applyStructureProcessors(blockArgument, before?.id, processors.processors, location)
             if (processed.processed) processedBlocks++
             val processedArgument = processed.block
             if (processedArgument == null) {
@@ -1675,7 +1680,6 @@ class DatapackSandbox(
                 return@forEachIndexed
             }
             val placedBlock = processedArgument.toBlock(pos, profile, location)
-            val before = world.block(pos)?.copyForClone()
             world.setBlock(pos, placedBlock)
             val after = world.block(pos)?.copyForClone()
             if (!sameBlock(before, after)) changedBlocks += pos
@@ -1787,6 +1791,10 @@ class DatapackSandbox(
                 type = type,
                 ignoredBlocks = processorBlockIds("blocks", "block", "$label block_ignore blocks", location),
             )
+            "protected_blocks" -> SandboxStructureProcessor(
+                type = type,
+                protectedBlocks = protectedProcessorBlockIds("$label protected_blocks", location),
+            )
             "rule" -> SandboxStructureProcessor(
                 type = type,
                 rules = (getAsJsonArrayOrNull("rules") ?: JsonArray()).mapIndexed { index, element ->
@@ -1818,6 +1826,12 @@ class DatapackSandbox(
         }
     }
 
+    private fun JsonObject.protectedProcessorBlockIds(label: String, location: SourceLocation?): Set<ResourceLocation> {
+        val tag = placeString("value", location) ?: placeString("tag", location)
+        if (tag != null) return blockTagBlocks(ResourceLocation.parse(tag))
+        return processorBlockIds("blocks", "block", "$label blocks", location)
+    }
+
     private fun JsonObject.processorBlockIds(
         primary: String,
         secondary: String,
@@ -1846,6 +1860,7 @@ class DatapackSandbox(
 
     private fun applyStructureProcessors(
         block: BlockArgument,
+        destinationId: ResourceLocation?,
         processors: List<SandboxStructureProcessor>,
         location: SourceLocation?,
     ): SandboxProcessedStructureBlock {
@@ -1855,7 +1870,7 @@ class DatapackSandbox(
             val result = if (processor.jigsawReplacement) {
                 applyJigsawReplacementProcessor(current, location)
             } else {
-                processor.apply(current)
+                processor.apply(current, destinationId)
             }
             if (result.processed) processed = true
             current = result.block ?: return SandboxProcessedStructureBlock(block = null, processed = true)

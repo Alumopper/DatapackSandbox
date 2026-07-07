@@ -98,7 +98,7 @@
   - `scoreboard objectives modify` 已记录 objective displayName、renderType 和 displayAutoUpdate 元数据，进入 `objectiveDetails` snapshot，并提供结构化输出，便于调试 UI/显示类生成命令。
   - `scoreboard objectives setdisplay` 已记录 objective display slot 状态和结构化输出，便于调试侧边栏、列表、队伍侧边栏等 UI 目标生成命令，并可通过 snapshot/断言检查。
   - `team add/remove/list/join/leave/empty/modify` 已记录结构化队伍状态输出，便于调试成员变化、显示名和选项输入。
-  - `place structure` 和 `place template` 已可把加载到 `worldgen/structure` 的沙盒结构 JSON（`blocks`/`entities`）按命令坐标展开到 sparse world，并记录 `placed`、`changedBlocks`、`skippedBlocks`、`processedBlocks`、`unsupportedProcessors`、`entities`、变化坐标和实体目标；结构 JSON 可引用 `worldgen/processor_list`，已覆盖 `block_ignore`、`jigsaw_replacement` 和简单 rule 替换 processor；`place template` 支持确定性 rotation、mirror、integrity 和 seed 参数；`place jigsaw` 已可解析 `worldgen/template_pool` 的 single/legacy 结构元素、应用元素 processor 并落地选中结构；`place feature` 已可解析 `worldgen/placed_feature`/`worldgen/configured_feature` 的 simple_block、block_column、disk、selector、random_patch、flower 和 ore JSON，并在命令位置或确定性 disk/column/patch/ore 偏移上放置或替换一个或多个方块；缺失或不支持的资源仍保留结构化 worldgen intent 输出，便于命令生成器验证放置目标、位置和额外参数。
+  - `place structure` 和 `place template` 已可把加载到 `worldgen/structure` 的沙盒结构 JSON（`blocks`/`entities`）按命令坐标展开到 sparse world，并记录 `placed`、`changedBlocks`、`skippedBlocks`、`processedBlocks`、`unsupportedProcessors`、`entities`、变化坐标和实体目标；结构 JSON 可引用 `worldgen/processor_list`，已覆盖 `block_ignore`、`protected_blocks`、`jigsaw_replacement` 和简单 rule 替换 processor；`place template` 支持确定性 rotation、mirror、integrity 和 seed 参数；`place jigsaw` 已可解析 `worldgen/template_pool` 的 single/legacy 结构元素、应用元素 processor 并落地选中结构；`place feature` 已可解析 `worldgen/placed_feature`/`worldgen/configured_feature` 的 simple_block、block_column、disk、selector、random_patch、flower 和 ore JSON，并在命令位置或确定性 disk/column/patch/ore 偏移上放置或替换一个或多个方块；缺失或不支持的资源仍保留结构化 worldgen intent 输出，便于命令生成器验证放置目标、位置和额外参数。
   - `datapack enable/disable` 和原版 `reload` 已作为 observed-noop/固定 pack 顺序调试面记录结构化 payload，便于断言生成器输出的 pack 名称、顺序参数和 no-op 原因。
   - `transfer` 已作为 observed-noop 接受并记录 host、port、目标玩家和语法顺序，便于调试网络跳转类生成结果而不触发真实网络行为。
   - `publish` 和 `stop` 已作为 observed-noop 记录结构化 debug 输出，便于调试 LAN 发布和生命周期类生成结果而不影响宿主进程。
@@ -388,7 +388,7 @@ P1 紧随其后：
 
 P2 按需求推进：
 
-- worldgen/structure 更深入模拟；`place structure` / `place template` 已覆盖沙盒结构 JSON 的方块/实体落地、基础旋转/镜像、integrity 过滤以及 processor_list 的 block_ignore、jigsaw_replacement 和简单 rule 替换，`place jigsaw` 已覆盖 template_pool single/legacy 结构元素的基础落地，`place feature` 已覆盖 placed/configured simple_block、block_column、disk、selector、random_patch、flower 和 sparse-world ore 的确定性基础落地，后续可继续扩展原版结构 NBT、更多 processor、更多 feature 与完整 jigsaw 连接语义。
+- worldgen/structure 更深入模拟；`place structure` / `place template` 已覆盖沙盒结构 JSON 的方块/实体落地、基础旋转/镜像、integrity 过滤以及 processor_list 的 block_ignore、protected_blocks、jigsaw_replacement 和简单 rule 替换，`place jigsaw` 已覆盖 template_pool single/legacy 结构元素的基础落地，`place feature` 已覆盖 placed/configured simple_block、block_column、disk、selector、random_patch、flower 和 sparse-world ore 的确定性基础落地，后续可继续扩展原版结构 NBT、更多 processor、更多 feature 与完整 jigsaw 连接语义。
 - 可选外部差分验证。
 - 高级性能缓存。
 - Maven 发布和更完整的平台测试。
