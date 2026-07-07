@@ -2828,6 +2828,8 @@ class ResourcesCommand : CliktCommand(name = "resources") {
             "cat_variant", "chicken_variant", "cow_variant", "frog_variant", "painting_variant", "pig_variant", "wolf_variant" ->
                 "summon 命令会暴露实体 variant JSON 元数据。"
             "wolf_sound_variant" -> "summon wolf 会暴露 wolf sound variant JSON 元数据。"
+            "trim_material" -> "item 输出会暴露 armor trim material JSON 元数据。"
+            "trim_pattern" -> "item 输出会暴露 armor trim pattern JSON 元数据。"
             "chat_type" -> "聊天命令会暴露 chat type JSON 元数据。"
             "damage_type" -> "damage 命令会暴露 damage type JSON 元数据。"
             "dimension" -> "维度感知命令输出会暴露 dimension JSON 元数据。"

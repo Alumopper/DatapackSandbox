@@ -65,9 +65,9 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar commands --json --output build
 | `function` | 支持 | `modeled` | `function <id>`。 |
 | `gamemode` | 支持 | `modeled` | `gamemode <mode> [targets]`；更新沙盒玩家游戏模式，并记录结构化前后输出。 |
 | `gamerule` | 部分支持 | `modeled` | 存储任意 gamerule 字符串值，并为修改/query 记录结构化输出；不执行具体游戏规则副作用。 |
-| `give` | 部分支持 | `modeled` | 向玩家背包添加物品，记录可用于 report/assertion 的结构化输出，并触发 inventory advancement 事件；item argument 支持沙盒 JSON/SNBT-lite NBT 和 components payload。 |
+| `give` | 部分支持 | `modeled` | 向玩家背包添加物品，记录可用于 report/assertion 的结构化输出；物品含 `minecraft:trim` 组件且命中已加载资源时会暴露 armor trim material/pattern 元数据；触发 inventory advancement 事件；item argument 支持沙盒 JSON/SNBT-lite NBT 和 components payload。 |
 | `help` | 部分支持 | `modeled` | 输出命令根节点和基础沙盒帮助。 |
-| `item` | 部分支持 | `modeled` | `replace entity|block ... with <item> [count]` 和 `from entity|block ...`；`replace` 与 `modify` 会记录可用于 report/assertion 的结构化输出；item argument 支持沙盒 JSON/SNBT-lite NBT 和 components payload；container item-stack NBT 校验接受旧/新版 `Count`/`count` 与 `Slot`/`slot` 别名；entity 槽位覆盖玩家背包、当前主手、`enderchest.*` 槽和非玩家实体装备槽；`modify entity|block ... <modifier>` 会应用常用 item modifier 函数（`set_components`、`set_custom_data`、`set_count`、`limit_count`、`set_item`、`discard`、`set_damage`、`set_name`、`set_lore`、`copy_nbt`、`copy_components`、`filtered`、`reference`、`sequence`）。 |
+| `item` | 部分支持 | `modeled` | `replace entity|block ... with <item> [count]` 和 `from entity|block ...`；`replace` 与 `modify` 会记录可用于 report/assertion 的结构化输出，物品含 `minecraft:trim` 组件且命中已加载资源时会暴露 armor trim material/pattern 元数据；item argument 支持沙盒 JSON/SNBT-lite NBT 和 components payload；container item-stack NBT 校验接受旧/新版 `Count`/`count` 与 `Slot`/`slot` 别名；entity 槽位覆盖玩家背包、当前主手、`enderchest.*` 槽和非玩家实体装备槽；`modify entity|block ... <modifier>` 会应用常用 item modifier 函数（`set_components`、`set_custom_data`、`set_count`、`limit_count`、`set_item`、`discard`、`set_damage`、`set_name`、`set_lore`、`copy_nbt`、`copy_components`、`filtered`、`reference`、`sequence`）。 |
 | `kick` | 空操作 | `observed-noop` | 记录请求的踢出目标和消息为结构化 debug 输出；不移除真实网络会话。 |
 | `kill` | 支持 | `modeled` | 移除选中的沙盒实体，并记录可用于 report/assertion 的结构化目标输出；目标维度命中已加载资源时会暴露 dimension 元数据；玩家执行上下文会为非玩家目标触发 `killed_entity` advancement 事件。 |
 | `list` | 支持 | `modeled` | 报告沙盒玩家及 UUID。 |

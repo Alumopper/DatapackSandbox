@@ -884,7 +884,40 @@ class DatapackSandbox(
     }
 
     private fun itemStacksJson(items: List<ItemStack>): JsonArray =
-        JsonArray().also { array -> items.forEach { array.add(it.toJson()) } }
+        JsonArray().also { array -> items.forEach { array.add(itemStackOutput(it)) } }
+
+    private fun itemStackOutput(item: ItemStack): JsonObject =
+        item.toJson().also { json ->
+            itemTrimResourcePayloads(item)?.let { json.add("trimResources", it) }
+        }
+
+    private fun itemTrimResourcePayloads(item: ItemStack): JsonArray? {
+        val trim = item.components.get("minecraft:trim")?.takeIf { it.isJsonObject }?.asJsonObject ?: return null
+        val resources = JsonArray()
+        trimResourcePayload(trim, "material", "trim_material")?.let(resources::add)
+        trimResourcePayload(trim, "pattern", "trim_pattern")?.let(resources::add)
+        return resources.takeIf { it.size() > 0 }
+    }
+
+    private fun trimResourcePayload(trim: JsonObject, field: String, kind: String): JsonObject? {
+        val id = trim.get(field)
+            ?.takeIf { it.isJsonPrimitive }
+            ?.asString
+            ?.let { runCatching { ResourceLocation.parse(it) }.getOrNull() }
+            ?: return null
+        val resource = datapack.rawResources[kind]?.get(id) ?: return null
+        if (!resource.root.isJsonObject) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Trim resource '$id' of type '$kind' must be a JSON object")
+        }
+        return JsonObject().also { payload ->
+            payload.addProperty("type", kind)
+            payload.addProperty("field", field)
+            payload.addProperty("id", id.toString())
+            payload.addProperty("resource", resource.file)
+            payload.addProperty("version", resource.version ?: profile.id)
+            payload.add("definition", resource.root.deepCopy())
+        }
+    }
 
     private fun executeLocate(tokens: List<CommandToken>, location: SourceLocation?) {
         requireSize(tokens, 3, "locate <biome|structure|poi> <id>", location)
@@ -3193,7 +3226,7 @@ class DatapackSandbox(
             text = (item.count * players.size).toString(),
             payload = JsonObject().also { payload ->
                 payload.add("targets", JsonArray().also { array -> players.forEach { array.add(it.name) } })
-                payload.add("item", item.toJson())
+                payload.add("item", itemStackOutput(item))
                 payload.addProperty("count", item.count)
                 payload.addProperty("totalCount", item.count * players.size)
             },
@@ -3331,7 +3364,7 @@ class DatapackSandbox(
                     enchanted.forEach { (target, item) ->
                         items.add(JsonObject().also { entry ->
                             entry.addProperty("target", target)
-                            entry.add("item", item.toJson())
+                            entry.add("item", itemStackOutput(item))
                         })
                     }
                 })
@@ -3998,7 +4031,7 @@ class DatapackSandbox(
                     modified.forEach { (target, item) ->
                         items.add(JsonObject().also { entry ->
                             entry.addProperty("target", target)
-                            entry.add("item", item.toJson())
+                            entry.add("item", itemStackOutput(item))
                         })
                     }
                 })
@@ -4056,7 +4089,7 @@ class DatapackSandbox(
                 payload.addProperty("targetKind", targetKind)
                 payload.add("targets", JsonArray().also { array -> targets.forEach { array.add(it) } })
                 payload.addProperty("slot", slot)
-                item?.let { payload.add("item", it.toJson()) }
+                item?.let { payload.add("item", itemStackOutput(it)) }
             },
         )
     }

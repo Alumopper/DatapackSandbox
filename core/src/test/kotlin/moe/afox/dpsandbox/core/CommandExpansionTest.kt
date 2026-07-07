@@ -385,6 +385,26 @@ class CommandExpansionTest {
     }
 
     @Test
+    fun `item outputs expose loaded armor trim metadata`() {
+        val sandbox = createSandbox("26.2", listOf(writeTrimPack(Files.createTempDirectory("dps-trim-pack"))))
+
+        sandbox.executeCommand("""give Steve minecraft:iron_chestplate[minecraft:trim={material:"demo:debug_gold",pattern:"demo:debug_spire"}]""")
+
+        val item = sandbox.world.outputs.single { it.command == "give" }
+            .payload
+            ?.asJsonObject
+            ?.getAsJsonObject("item")
+            ?: error("missing give item payload")
+        val trimResources = item.getAsJsonArray("trimResources")
+            .map { it.asJsonObject }
+            .associateBy { it.get("type").asString }
+        assertEquals("demo:debug_gold", trimResources.getValue("trim_material").get("id").asString)
+        assertEquals("debug_gold", trimResources.getValue("trim_material").getAsJsonObject("definition").get("asset_name").asString)
+        assertEquals("demo:debug_spire", trimResources.getValue("trim_pattern").get("id").asString)
+        assertEquals("demo:spire", trimResources.getValue("trim_pattern").getAsJsonObject("definition").get("asset_id").asString)
+    }
+
+    @Test
     fun `place structure applies sandbox structure json resources`() {
         val pack = writeStructurePlacePack(Files.createTempDirectory("dps-place-structure-pack"))
         val sandbox = createSandbox("26.2", listOf(pack))
@@ -1641,6 +1661,47 @@ class CommandExpansionTest {
               "hurt_sound": "minecraft:entity.wolf.hurt",
               "pant_sound": "minecraft:entity.wolf.pant",
               "whine_sound": "minecraft:entity.wolf.whine"
+            }
+            """.trimIndent(),
+        )
+        return root
+    }
+
+    private fun writeTrimPack(root: Path): Path {
+        Files.writeString(
+            root.resolve("pack.mcmeta").also { Files.createDirectories(it.parent) },
+            """
+            {
+              "pack": {
+                "pack_format": 107.1,
+                "description": "armor trim metadata test"
+              }
+            }
+            """.trimIndent(),
+        )
+        val materialRoot = root.resolve("data").resolve("demo").resolve("trim_material")
+        Files.createDirectories(materialRoot)
+        Files.writeString(
+            materialRoot.resolve("debug_gold.json"),
+            """
+            {
+              "asset_name": "debug_gold",
+              "ingredient": "minecraft:gold_ingot",
+              "item_model_index": 0.73,
+              "description": { "text": "Debug Gold" }
+            }
+            """.trimIndent(),
+        )
+        val patternRoot = root.resolve("data").resolve("demo").resolve("trim_pattern")
+        Files.createDirectories(patternRoot)
+        Files.writeString(
+            patternRoot.resolve("debug_spire.json"),
+            """
+            {
+              "asset_id": "demo:spire",
+              "template_item": "minecraft:spire_armor_trim_smithing_template",
+              "description": { "text": "Debug Spire" },
+              "decal": false
             }
             """.trimIndent(),
         )
