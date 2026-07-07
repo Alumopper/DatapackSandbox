@@ -5,6 +5,7 @@ import java.nio.file.Path
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class CommandExpansionTest {
@@ -332,6 +333,27 @@ class CommandExpansionTest {
         assertEquals(1.0, payload.get("integrity").asDouble)
         assertEquals(123, payload.get("seed").asLong)
         assertEquals(listOf("30 64 40", "30 64 41", marker.uuid), output.targets)
+    }
+
+    @Test
+    fun `place structure applies sandbox processor list resources`() {
+        val pack = writeProcessedStructurePlacePack(Files.createTempDirectory("dps-place-processor-pack"))
+        val sandbox = createSandbox("26.2", listOf(pack))
+
+        sandbox.executeCommand("place structure demo:processed 20 70 30")
+
+        assertNull(sandbox.world.block(BlockPos(20, 70, 30)))
+        assertEquals(ResourceLocation.parse("minecraft:gold_block"), sandbox.world.requireBlock(BlockPos(21, 70, 30)).id)
+        assertEquals(ResourceLocation.parse("minecraft:dirt"), sandbox.world.requireBlock(BlockPos(22, 70, 30)).id)
+        val output = sandbox.world.outputs.single { it.command == "place structure" }
+        val payload = output.payload?.asJsonObject ?: error("missing place structure payload")
+        assertEquals(true, payload.get("placed").asBoolean)
+        assertEquals(2, payload.get("changedBlocks").asInt)
+        assertEquals(1, payload.get("skippedBlocks").asInt)
+        assertEquals(2, payload.get("processedBlocks").asInt)
+        assertEquals(0, payload.get("unsupportedProcessors").asInt)
+        assertEquals("demo:cleanup", payload.getAsJsonArray("processorLists")[0].asString)
+        assertEquals(listOf("21 70 30", "22 70 30"), output.targets)
     }
 
     @Test
@@ -1356,6 +1378,65 @@ class CommandExpansionTest {
                   "tags": ["placed_structure"],
                   "dimension": "minecraft:the_nether",
                   "health": 6.0
+                }
+              ]
+            }
+            """.trimIndent(),
+        )
+        return root
+    }
+
+    private fun writeProcessedStructurePlacePack(root: Path): Path {
+        Files.writeString(
+            root.resolve("pack.mcmeta").also { Files.createDirectories(it.parent) },
+            """
+            {
+              "pack": {
+                "pack_format": 107.1,
+                "description": "place processor test"
+              }
+            }
+            """.trimIndent(),
+        )
+        val structureRoot = root.resolve("data").resolve("demo").resolve("worldgen").resolve("structure")
+        Files.createDirectories(structureRoot)
+        Files.writeString(
+            structureRoot.resolve("processed.json"),
+            """
+            {
+              "processors": "demo:cleanup",
+              "blocks": [
+                { "offset": [0, 0, 0], "id": "minecraft:air" },
+                { "offset": [1, 0, 0], "id": "minecraft:stone" },
+                { "offset": [2, 0, 0], "id": "minecraft:dirt" }
+              ]
+            }
+            """.trimIndent(),
+        )
+        val processorRoot = root.resolve("data").resolve("demo").resolve("worldgen").resolve("processor_list")
+        Files.createDirectories(processorRoot)
+        Files.writeString(
+            processorRoot.resolve("cleanup.json"),
+            """
+            {
+              "processors": [
+                {
+                  "type": "minecraft:block_ignore",
+                  "blocks": ["minecraft:air"]
+                },
+                {
+                  "type": "minecraft:rule",
+                  "rules": [
+                    {
+                      "input_predicate": {
+                        "predicate_type": "minecraft:matching_blocks",
+                        "blocks": ["minecraft:stone"]
+                      },
+                      "output_state": {
+                        "Name": "minecraft:gold_block"
+                      }
+                    }
+                  ]
                 }
               ]
             }

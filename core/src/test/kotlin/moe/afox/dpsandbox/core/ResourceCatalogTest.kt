@@ -17,6 +17,7 @@ class ResourceCatalogTest {
         assertEquals(ResourceBehaviorLevel.OBSERVED_NOOP, entries.getValue("damage_type").behaviorLevel)
         assertEquals(ResourceBehaviorLevel.MODELED, entries.getValue("worldgen/configured_feature").behaviorLevel)
         assertEquals(ResourceBehaviorLevel.MODELED, entries.getValue("worldgen/placed_feature").behaviorLevel)
+        assertEquals(ResourceBehaviorLevel.MODELED, entries.getValue("worldgen/processor_list").behaviorLevel)
         assertEquals(ResourceBehaviorLevel.MODELED, entries.getValue("worldgen/structure").behaviorLevel)
     }
 

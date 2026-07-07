@@ -117,6 +117,43 @@ private data class SandboxFeaturePlacement(
     val format: String,
 )
 
+private data class SandboxStructureProcessorList(
+    val ids: List<ResourceLocation>,
+    val processors: List<SandboxStructureProcessor>,
+) {
+    val unsupportedCount: Int = processors.count { !it.supported }
+
+    companion object {
+        val empty = SandboxStructureProcessorList(emptyList(), emptyList())
+    }
+}
+
+private data class SandboxStructureProcessor(
+    val type: String,
+    val ignoredBlocks: Set<ResourceLocation> = emptySet(),
+    val rules: List<SandboxStructureProcessorRule> = emptyList(),
+    val supported: Boolean = true,
+) {
+    fun apply(block: BlockArgument): SandboxProcessedStructureBlock {
+        if (block.id in ignoredBlocks) return SandboxProcessedStructureBlock(block = null, processed = true)
+        val rule = rules.firstOrNull { it.matches(block) } ?: return SandboxProcessedStructureBlock(block)
+        return SandboxProcessedStructureBlock(block = rule.output, processed = rule.output != block)
+    }
+}
+
+private data class SandboxStructureProcessorRule(
+    val inputBlocks: Set<ResourceLocation>?,
+    val output: BlockArgument,
+) {
+    fun matches(block: BlockArgument): Boolean =
+        inputBlocks?.contains(block.id) ?: true
+}
+
+private data class SandboxProcessedStructureBlock(
+    val block: BlockArgument?,
+    val processed: Boolean = false,
+)
+
 /**
  * Execution safety limits used to stop runaway tests deterministically.
  */
@@ -1033,6 +1070,7 @@ class DatapackSandbox(
         val root = resource.root.asJsonObject
         val blocks = root.getAsJsonArrayOrNull("blocks")
         val entities = root.getAsJsonArrayOrNull("entities")
+        val processors = parseStructureProcessors(root, location)
         if (blocks == null && entities == null) {
             payload.addProperty("placed", false)
             payload.addProperty("format", "raw-json-index-only")
@@ -1046,6 +1084,7 @@ class DatapackSandbox(
         val origin = BlockPos(floor(position.x).toInt(), floor(position.y).toInt(), floor(position.z).toInt())
         val changedBlocks = mutableListOf<BlockPos>()
         var skippedBlocks = 0
+        var processedBlocks = 0
         blocks?.forEachIndexed { index, element ->
             val block = element.asPlaceJsonObject("structure block $index", location)
             val offset = block.placeBlockPos("offset", "pos", "structure block $index offset", location)
@@ -1057,11 +1096,19 @@ class DatapackSandbox(
             val pos = BlockPos(origin.x + transformedOffset.x, origin.y + transformedOffset.y, origin.z + transformedOffset.z)
             val properties = block.placeProperties(location)
             val blockNbt = block.placeJsonObject("nbt", "structure block $index nbt", location)
-            val placedBlock = BlockArgument(
+            val blockArgument = BlockArgument(
                 id = ResourceLocation.parse(block.requiredPlaceString("id", "structure block $index id", location)),
                 properties = properties,
                 nbt = blockNbt ?: JsonObject(),
-            ).toBlock(pos, profile, location)
+            )
+            val processed = applyStructureProcessors(blockArgument, processors.processors)
+            if (processed.processed) processedBlocks++
+            val processedArgument = processed.block
+            if (processedArgument == null) {
+                skippedBlocks++
+                return@forEachIndexed
+            }
+            val placedBlock = processedArgument.toBlock(pos, profile, location)
             val before = world.block(pos)?.copyForClone()
             world.setBlock(pos, placedBlock)
             val after = world.block(pos)?.copyForClone()
@@ -1097,7 +1144,15 @@ class DatapackSandbox(
         payload.addProperty("format", "sandbox-structure-json")
         payload.addProperty("changedBlocks", changedBlocks.size)
         payload.addProperty("skippedBlocks", skippedBlocks)
+        payload.addProperty("processedBlocks", processedBlocks)
+        payload.addProperty("unsupportedProcessors", processors.unsupportedCount)
         payload.addProperty("entities", createdEntities.size)
+        if (processors.ids.isNotEmpty()) {
+            payload.add(
+                "processorLists",
+                JsonArray().also { array -> processors.ids.map { it.toString() }.sorted().forEach { array.add(it) } },
+            )
+        }
         payload.add("origin", blockPosOutput(origin))
         payload.add("positions", blockPosArrayOutput(changedBlocks))
         payload.add(
@@ -1105,6 +1160,135 @@ class DatapackSandbox(
             JsonArray().also { targets -> createdEntities.map { it.scoreHolder }.sorted().forEach { targets.add(it) } },
         )
         return changedBlocks.map { it.toString() } + createdEntities.map { it.scoreHolder }
+    }
+
+    private fun parseStructureProcessors(root: JsonObject, location: SourceLocation?): SandboxStructureProcessorList {
+        val value = root.get("processors") ?: root.get("processor_list") ?: return SandboxStructureProcessorList.empty
+        return parseStructureProcessorSource(value, "structure processors", location)
+    }
+
+    private fun parseStructureProcessorSource(
+        value: JsonElement,
+        label: String,
+        location: SourceLocation?,
+    ): SandboxStructureProcessorList =
+        when {
+            value.isJsonPrimitive -> {
+                val id = ResourceLocation.parse(value.asJsonPrimitive.asString)
+                val resource = datapack.rawResources["worldgen/processor_list"]?.get(id)
+                    ?: throw SandboxException(DiagnosticCode.RESOURCE_NOT_FOUND, "Processor list '$id' referenced by structure was not found", location)
+                if (!resource.root.isJsonObject) {
+                    throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Processor list resource '$id' must be a JSON object", location)
+                }
+                parseStructureProcessorListObject(resource.root.asJsonObject, "$label $id", location, listOf(id))
+            }
+            value.isJsonObject -> parseStructureProcessorListObject(value.asJsonObject, label, location)
+            value.isJsonArray -> SandboxStructureProcessorList(
+                ids = emptyList(),
+                processors = value.asJsonArray.mapIndexed { index, element ->
+                    element.asPlaceJsonObject("$label entry $index", location).parseStructureProcessor("$label entry $index", location)
+                },
+            )
+            else -> throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label must be a resource id, object, or array", location)
+        }
+
+    private fun parseStructureProcessorListObject(
+        root: JsonObject,
+        label: String,
+        location: SourceLocation?,
+        ids: List<ResourceLocation> = emptyList(),
+    ): SandboxStructureProcessorList {
+        val processors = root.getAsJsonArrayOrNull("processors")
+        if (processors != null) {
+            return SandboxStructureProcessorList(
+                ids = ids,
+                processors = processors.mapIndexed { index, element ->
+                    element.asPlaceJsonObject("$label processor $index", location).parseStructureProcessor("$label processor $index", location)
+                },
+            )
+        }
+        return SandboxStructureProcessorList(
+            ids = ids,
+            processors = listOf(root.parseStructureProcessor(label, location)),
+        )
+    }
+
+    private fun JsonObject.parseStructureProcessor(label: String, location: SourceLocation?): SandboxStructureProcessor {
+        val type = placeString("processor_type", location) ?: placeString("type", location)
+            ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label processor type is required", location)
+        return when (type.removePrefix("minecraft:")) {
+            "block_ignore" -> SandboxStructureProcessor(
+                type = type,
+                ignoredBlocks = processorBlockIds("blocks", "block", "$label block_ignore blocks", location),
+            )
+            "rule" -> SandboxStructureProcessor(
+                type = type,
+                rules = (getAsJsonArrayOrNull("rules") ?: JsonArray()).mapIndexed { index, element ->
+                    element.asPlaceJsonObject("$label rule $index", location).parseStructureProcessorRule("$label rule $index", location)
+                },
+            )
+            else -> SandboxStructureProcessor(type = type, supported = false)
+        }
+    }
+
+    private fun JsonObject.parseStructureProcessorRule(label: String, location: SourceLocation?): SandboxStructureProcessorRule {
+        val input = placeJsonObject("input_predicate", "$label input_predicate", location)
+            ?: placeJsonObject("input", "$label input", location)
+        val output = get("output_state") ?: get("output") ?: get("block")
+            ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label output_state is required", location)
+        return SandboxStructureProcessorRule(
+            inputBlocks = input?.structureProcessorPredicateBlocks("$label input_predicate", location),
+            output = output.parseStructureProcessorBlockArgument("$label output_state", location),
+        )
+    }
+
+    private fun JsonObject.structureProcessorPredicateBlocks(label: String, location: SourceLocation?): Set<ResourceLocation>? {
+        val type = placeString("predicate_type", location) ?: placeString("type", location) ?: "minecraft:always_true"
+        return when (type.removePrefix("minecraft:")) {
+            "always_true" -> null
+            "matching_blocks" -> processorBlockIds("blocks", "block", "$label blocks", location)
+            else -> emptySet()
+        }
+    }
+
+    private fun JsonObject.processorBlockIds(
+        primary: String,
+        secondary: String,
+        label: String,
+        location: SourceLocation?,
+    ): Set<ResourceLocation> {
+        val value = get(primary) ?: get(secondary) ?: return emptySet()
+        return when {
+            value.isJsonPrimitive -> setOf(ResourceLocation.parse(value.asJsonPrimitive.asString))
+            value.isJsonArray -> value.asJsonArray.mapIndexed { index, element ->
+                if (!element.isJsonPrimitive) {
+                    throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label entry $index must be a resource id string", location)
+                }
+                ResourceLocation.parse(element.asJsonPrimitive.asString)
+            }.toSet()
+            else -> throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label must be a resource id string or array", location)
+        }
+    }
+
+    private fun JsonElement.parseStructureProcessorBlockArgument(label: String, location: SourceLocation?): BlockArgument =
+        when {
+            isJsonPrimitive -> BlockArgument(ResourceLocation.parse(asJsonPrimitive.asString))
+            isJsonObject -> asJsonObject.parseBlockStateObject(label, location)
+            else -> throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label must be a block id string or state object", location)
+        }
+
+    private fun applyStructureProcessors(
+        block: BlockArgument,
+        processors: List<SandboxStructureProcessor>,
+    ): SandboxProcessedStructureBlock {
+        var current = block
+        var processed = false
+        processors.forEach { processor ->
+            val result = processor.apply(current)
+            if (result.processed) processed = true
+            current = result.block ?: return SandboxProcessedStructureBlock(block = null, processed = true)
+        }
+        return SandboxProcessedStructureBlock(current, processed)
     }
 
     private fun parseTemplatePlacement(
