@@ -148,6 +148,21 @@ class ReplTest {
     }
 
     @Test
+    fun `inspects forced chunk state`() {
+        val repl = Repl(createSandbox("26.1.2", listOf(Path.of("../core/src/test/resources/packs/counter"))))
+
+        val output = captureStdout {
+            repl.handle("forceload add 0 0")
+            repl.handle("forceload add 16 16")
+            repl.handle("inspect forced-chunks")
+        }
+
+        assertTrue(output.contains("forcedChunks count=2"), output)
+        assertTrue(output.contains("forcedChunk 0,0"), output)
+        assertTrue(output.contains("forcedChunk 1,1"), output)
+    }
+
+    @Test
     fun `inspects raw datapack resources`() {
         val pack = Files.createTempDirectory("dps-repl-raw-pack")
         Files.writeString(

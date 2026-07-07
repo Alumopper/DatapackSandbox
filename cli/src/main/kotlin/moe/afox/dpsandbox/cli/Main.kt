@@ -661,6 +661,8 @@ class RunCommand : CliktCommand(name = "run") {
             trimmed.startsWith("gamerule:") -> parseGameruleAssertion(trimmed.removePrefix("gamerule:"), label)
             trimmed.startsWith("random-sequence:") -> parseRandomSequenceAssertion(trimmed.removePrefix("random-sequence:"), label)
             trimmed.startsWith("scheduled:") -> parseScheduledAssertion(trimmed.removePrefix("scheduled:"), label)
+            trimmed.startsWith("forced-chunk:") -> parseForcedChunkAssertion(trimmed.removePrefix("forced-chunk:"), label)
+            trimmed.startsWith("forceload:") -> parseForcedChunkAssertion(trimmed.removePrefix("forceload:"), label)
             trimmed.startsWith("snapshot:") -> parseSnapshotAssertion(trimmed.removePrefix("snapshot:"), label)
             trimmed.startsWith("diff:") -> parseSnapshotDiffAssertion(trimmed.removePrefix("diff:"), label)
             trimmed.startsWith("event-trace:") -> parseEventTraceAssertion(trimmed.removePrefix("event-trace:"), label)
@@ -689,7 +691,7 @@ class RunCommand : CliktCommand(name = "run") {
             trimmed.startsWith("output:") -> parseOutputAssertion(trimmed.removePrefix("output:"), label)
             else -> throw SandboxException(
                 DiagnosticCode.INPUT_FORMAT,
-                "$label must be a JSON object or shorthand score:<target>:<objective>=N, storage:<id>[:<path>]=<json>, advancement:<player>:<id>[=<true|false>], entity:<type|*>[@tag]=N, block:<x>,<y>,<z>=<id>, block:<x>,<y>,<z>?, block:<x>,<y>,<z>!, biome:<x>,<y>,<z>=<id>, team:<name>[?|!|=N|@member], bossbar:<id>[?|!|:<field>=<value>], item:<player>:<id>[@slot]=N, player:<name>[:<field>=<value>], world:<field>=<value>, gamerule:<rule>=<value>, gamerule:<rule>?, gamerule:<rule>!, random-sequence:<name>=N, scheduled:<id>=<dueTick>, scheduled:<id>?, scheduled:<id>!, snapshot:<path>=<json>, snapshot:<path>?, snapshot:<path>!, diff:<json-pointer>[=<kind>], event-trace:<player>:<type>[=N], trace:<root>=N, trace:<text>, trace-output:<text>[@target], diagnostic=N, diagnostic:<code>[=N], diagnostic:<code>:<text>[=N], warning=N, warning:<text>, unsupported=N, unsupported:<text>, output:<text>, output-count:<text>=N, output-order:<N>:<text>, output-exact:<text>, output-matches:<regex>, output-command:<command>[=N|?|!], output-channel:<channel>[=N|?|!], output-target:<target>[=N|?|!], output-normalized:<text>, output-normalized-exact:<text>, output-normalized-matches:<regex>, output-segment:<text>[|color=<color>|bold=<true|false>][@target], output-segment-exact:<text>[...], output-segment-matches:<regex>[...], or output-payload:<command>:<path>[=<json>]",
+                "$label must be a JSON object or shorthand score:<target>:<objective>=N, storage:<id>[:<path>]=<json>, advancement:<player>:<id>[=<true|false>], entity:<type|*>[@tag]=N, block:<x>,<y>,<z>=<id>, block:<x>,<y>,<z>?, block:<x>,<y>,<z>!, biome:<x>,<y>,<z>=<id>, team:<name>[?|!|=N|@member], bossbar:<id>[?|!|:<field>=<value>], item:<player>:<id>[@slot]=N, player:<name>[:<field>=<value>], world:<field>=<value>, gamerule:<rule>=<value>, gamerule:<rule>?, gamerule:<rule>!, random-sequence:<name>=N, scheduled:<id>=<dueTick>, scheduled:<id>?, scheduled:<id>!, forced-chunk:<x>,<z>?, forced-chunk:<x>,<z>!, snapshot:<path>=<json>, snapshot:<path>?, snapshot:<path>!, diff:<json-pointer>[=<kind>], event-trace:<player>:<type>[=N], trace:<root>=N, trace:<text>, trace-output:<text>[@target], diagnostic=N, diagnostic:<code>[=N], diagnostic:<code>:<text>[=N], warning=N, warning:<text>, unsupported=N, unsupported:<text>, output:<text>, output-count:<text>=N, output-order:<N>:<text>, output-exact:<text>, output-matches:<regex>, output-command:<command>[=N|?|!], output-channel:<channel>[=N|?|!], output-target:<target>[=N|?|!], output-normalized:<text>, output-normalized-exact:<text>, output-normalized-matches:<regex>, output-segment:<text>[|color=<color>|bold=<true|false>][@target], output-segment-exact:<text>[...], output-segment-matches:<regex>[...], or output-payload:<command>:<path>[=<json>]",
             )
         }
     }
@@ -1150,6 +1152,29 @@ class RunCommand : CliktCommand(name = "run") {
         }
         val id = ResourceLocation.parse(idText)
         return JsonObject().also { it.addProperty("path", """scheduled[{function:"$id"}]$suffix""") }
+    }
+
+    private fun parseForcedChunkAssertion(spec: String, label: String): JsonObject {
+        val trimmed = spec.trim()
+        if (trimmed.isEmpty()) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label forced chunk shorthand must be forced-chunk:<x>,<z>?, forced-chunk:<x>,<z>!, or forced-chunk:<x>,<z>")
+        }
+        val snapshot = when {
+            trimmed.endsWith("?") -> forcedChunkSnapshotAssertion(trimmed.dropLast(1), label).also { it.addProperty("exists", true) }
+            trimmed.endsWith("!") -> forcedChunkSnapshotAssertion(trimmed.dropLast(1), label).also { it.addProperty("missing", true) }
+            else -> forcedChunkSnapshotAssertion(trimmed, label).also { it.addProperty("exists", true) }
+        }
+        return JsonObject().also { it.add("snapshot", snapshot) }
+    }
+
+    private fun forcedChunkSnapshotAssertion(rawChunk: String, label: String): JsonObject {
+        val parts = rawChunk.split(",")
+        if (parts.size != 2 || parts.any { it.trim().toIntOrNull() == null }) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label forced chunk coordinates must be x,z")
+        }
+        val x = parts[0].trim().toInt()
+        val z = parts[1].trim().toInt()
+        return JsonObject().also { it.addProperty("path", """forcedChunks[{x:$x,z:$z}]""") }
     }
 
     private fun parseTraceAssertion(spec: String, label: String): JsonObject {

@@ -530,6 +530,7 @@ class DpsCompletionEngine(private val sandbox: () -> DatapackSandbox) {
             "storage",
             "random",
             "schedule",
+            "forced-chunks",
             "entities",
             "blocks",
             "player",

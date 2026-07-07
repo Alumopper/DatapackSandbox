@@ -130,6 +130,7 @@
 - world fixture、manifest world、quick-test world builder 三者能力一致或差异明确记录。
 - 所有新增状态都有 snapshot、assertion 和 inspect 路径。
   - schedule 状态已进入 snapshot，并可通过 QuickTest `assertScheduledFunction`、CLI `scheduled:<id>` 断言简写和 REPL `inspect schedule` 查看排程函数、dueTick、条目数量和 remaining ticks，便于调试 `schedule function` / `schedule clear` 与 tick 推进。
+  - forced chunk 状态已进入 snapshot，并可通过 QuickTest/manifest world assertion、CLI `forced-chunk:<x>,<z>` / `forceload:<x>,<z>` 断言简写和 REPL `inspect forced-chunks` 检查强加载 chunk，便于调试 `forceload` 与 `execute if/unless loaded`。
 
 ## 阶段 4：输入事件与玩家交互模拟
 
@@ -214,8 +215,10 @@
   - 支持 `--stdin` 从标准输入读取函数或命令。
   - `--allow-command-failure` 已可让直接命令输入在预期失败后继续执行，配合 diagnostic/trace/output 断言检查错误码、错误消息和后续状态。
   - `--assert`/`--assert-file` 已支持 score、storage、advancement、player、world、gamerule、random sequence、scheduled function、snapshot、block、biome、team、bossbar、item、entity、diff、event-trace、trace、trace-output、diagnostic、warning、unsupported、output、output-count、output-order、output-exact、output-matches、output-command、output-channel、output-target、output-normalized、output-normalized-exact、output-normalized-matches、output-segment、output-segment-exact、output-segment-matches 和 output-payload 简写；`world:<field>=<value>` 可直接检查时间、天气、难度、seed 和默认游戏模式，`gamerule:<rule>=<value>`、`gamerule:<rule>?`、`gamerule:<rule>!` 可直接检查 gamerule snapshot 状态，`scheduled:<id>=<dueTick>`、`scheduled:<id>?`、`scheduled:<id>!` 可直接检查排程函数状态，`snapshot:<path>=<json>`、`snapshot:<path>?`、`snapshot:<path>!` 可直接检查最终 snapshot 路径，`block:<x>,<y>,<z>=<id>`、`block:<x>,<y>,<z>?`、`block:<x>,<y>,<z>!` 可直接检查 sparse world 方块，`biome:<x>,<y>,<z>=<id>` 可直接检查显式 biome 覆盖，`team:<name>?`、`team:<name>@<member>`、`team:<name>=N` 和 `bossbar:<id>:<field>=<value>` 可直接检查队伍/UI 状态，`event-trace:<player>:<type>@x,y,z[=N]` 可直接按 block event 坐标过滤，`diagnostic:<code>:<text>[=N]` 可直接检查预期 diagnostic 编码和消息片段，`output-command:<command>=N`、`output-channel:<channel>=N`、`output-target:<target>?` 这类简写可直接按命令、channel 或目标检查输出数量、存在或缺失，`output-count` 和 `output-order` 可直接检查匹配输出数量与全局输出顺序，`output-exact`、`output-matches`、`output-normalized-*` 和 `output-segment-*` 可覆盖精确、contains、normalized 与正则文本匹配，`output-payload` 支持 path 存在性和等值检查，`examples/generator-output` 已覆盖结构化输出 payload 断言，适合命令生成器结果的快速回归。
+  - `forced-chunk:<x>,<z>?`、`forced-chunk:<x>,<z>!` 和 `forceload:<x>,<z>?` 已可直接检查最终 snapshot 中的强加载 chunk 存在或缺失，适合快速验证 `forceload add/remove`、world fixture 和 `execute loaded` 条件。
 - 增强 REPL：
   - `inspect` 输出结构更稳定；`inspect event-traces` 已可直接打印玩家事件 trace JSON，并已接入 REPL/CLI 补全和命令目录，便于调试事件输入、block 坐标和 advancement 匹配。
+  - `inspect forced-chunks` 已可列出当前强加载 chunk，并接入 REPL 补全和命令目录，便于随手检查 `forceload` 状态。
   - `inspect resources` 已输出资源摘要、overlay 和 missing-reference，并保留按类型列出 resource index 条目的能力，便于随手小测时解释数据包实际加载结果。
   - 支持 `trace on/off`、`diff last`、`rerun last`、`reset world`、`load fixture`。
 

@@ -232,7 +232,7 @@ class Repl(
         "Commands: load, load fixture <file>, reload, tick [n], function <id>, player <name>, event player <name> <type> [id] [detail/action|x y z|pos=x,y,z], trace <on|off|status>, diff last, rerun last, reset world, ${inspectUsage()}, snapshot [file], exit"
 
     private fun inspectUsage(): String =
-        "inspect <score|storage|random|schedule|entities|blocks|player|loot|predicate|advancement|recipe|item_modifier|raw|tags|resources|registry [group]|outputs|event-traces>"
+        "inspect <score|storage|random|schedule|forced-chunks|entities|blocks|player|loot|predicate|advancement|recipe|item_modifier|raw|tags|resources|registry [group]|outputs|event-traces>"
 
     private fun reload() {
         if (packs.isEmpty()) {
@@ -367,6 +367,12 @@ class Repl(
                         val remaining = (scheduled.dueTick - sandbox.world.gameTime).coerceAtLeast(0)
                         println("scheduled ${scheduled.id} dueTick=${scheduled.dueTick} remaining=$remaining")
                     }
+            }
+            "forced-chunks", "forced_chunks", "forceload", "force-loaded", "force_loaded" -> {
+                println("forcedChunks count=${sandbox.world.forcedChunks.size}")
+                sandbox.world.forcedChunks.sorted().forEach { chunk ->
+                    println("forcedChunk ${chunk.x},${chunk.z}")
+                }
             }
             "entities" -> {
                 sandbox.world.entities.forEach { entity ->

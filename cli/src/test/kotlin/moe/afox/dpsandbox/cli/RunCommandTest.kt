@@ -720,6 +720,31 @@ class RunCommandTest {
     }
 
     @Test
+    fun `run accepts forced chunk shorthand inline assertions`() {
+        val output = captureStdout {
+            main(
+                arrayOf(
+                    "run",
+                    "--version",
+                    "26.2",
+                    "--command",
+                    "forceload add 0 0",
+                    "--assert",
+                    "forced-chunk:0,0?",
+                    "--assert",
+                    "forceload:1,1!",
+                    "--snapshot",
+                ),
+            )
+        }
+
+        assertTrue("OK version=26.2" in output, output)
+        assertTrue("\"forcedChunks\"" in output, output)
+        assertTrue("\"x\": 0" in output, output)
+        assertTrue("\"z\": 0" in output, output)
+    }
+
+    @Test
     fun `run accepts biome shorthand inline assertions`() {
         val output = captureStdout {
             main(
