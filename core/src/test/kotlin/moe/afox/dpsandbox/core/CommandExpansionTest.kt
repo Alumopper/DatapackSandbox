@@ -411,6 +411,7 @@ class CommandExpansionTest {
         sandbox.executeCommand("""give Steve minecraft:goat_horn[minecraft:instrument="demo:debug_horn"]""")
         sandbox.executeCommand("""give Steve minecraft:music_disc_cat[minecraft:jukebox_playable={song:"demo:debug_song"}]""")
         sandbox.executeCommand("""give Steve minecraft:white_banner[minecraft:banner_patterns=[{pattern:"demo:debug_banner",color:"red"}]]""")
+        sandbox.executeCommand("""give Steve minecraft:diamond_chestplate[minecraft:equippable={slot:"chest",asset_id:"demo:debug_armor"}]""")
 
         val items = sandbox.world.outputs
             .filter { it.command == "give" }
@@ -440,6 +441,15 @@ class CommandExpansionTest {
         assertEquals(0, banner.get("index").asInt)
         assertEquals("demo:debug_banner", banner.get("id").asString)
         assertEquals("demo:debug_banner", banner.getAsJsonObject("definition").get("asset_id").asString)
+
+        val equipment = items.getValue("minecraft:diamond_chestplate")
+            .getAsJsonArray("componentResources")[0]
+            .asJsonObject
+        assertEquals("equipment_asset", equipment.get("type").asString)
+        assertEquals("minecraft:equippable", equipment.get("component").asString)
+        assertEquals("asset_id", equipment.get("field").asString)
+        assertEquals("demo:debug_armor", equipment.get("id").asString)
+        assertEquals("demo:models/equipment/debug_armor", equipment.getAsJsonObject("definition").get("texture").asString)
     }
 
     @Test
@@ -1792,6 +1802,19 @@ class CommandExpansionTest {
             {
               "asset_id": "demo:debug_banner",
               "translation_key": "block.demo.banner.debug"
+            }
+            """.trimIndent(),
+        )
+        val equipmentRoot = root.resolve("data").resolve("demo").resolve("equipment_asset")
+        Files.createDirectories(equipmentRoot)
+        Files.writeString(
+            equipmentRoot.resolve("debug_armor.json"),
+            """
+            {
+              "texture": "demo:models/equipment/debug_armor",
+              "layers": [
+                { "texture": "demo:models/equipment/debug_armor", "dyeable": false }
+              ]
             }
             """.trimIndent(),
         )

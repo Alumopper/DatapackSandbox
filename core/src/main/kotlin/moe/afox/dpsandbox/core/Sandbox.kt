@@ -894,6 +894,10 @@ class DatapackSandbox(
 
     private fun itemComponentResourcePayloads(item: ItemStack): JsonArray? {
         val resources = JsonArray()
+        item.components.get("minecraft:equippable")
+            ?.componentResourceId("asset_id")
+            ?.let { itemComponentResourcePayload("minecraft:equippable", "asset_id", "equipment_asset", it) }
+            ?.let(resources::add)
         item.components.get("minecraft:instrument")
             ?.componentResourceId("value")
             ?.let { itemComponentResourcePayload("minecraft:instrument", "value", "instrument", it) }

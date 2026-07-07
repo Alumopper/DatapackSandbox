@@ -41,7 +41,7 @@ resource directories:
 - `data/<namespace>/advancement/**/*.json`
 - `data/<namespace>/recipe/**/*.json`
 - `data/<namespace>/item_modifier/**/*.json`
-- `data/<namespace>/(chat_type|damage_type|dimension|dimension_type|enchantment|jukebox_song|trim_material|trim_pattern|...)/**/*.json`
+- `data/<namespace>/(chat_type|damage_type|dimension|dimension_type|enchantment|equipment_asset|jukebox_song|trim_material|trim_pattern|...)/**/*.json`
 - `data/<namespace>/worldgen/(configured_feature|placed_feature|structure|processor_list|...)/**/*.json`
 - `data/<namespace>/tags/<registry>/**/*.json`
 
@@ -109,7 +109,7 @@ smoke tasks.
 | `dimension_type` | `modeled` | dimension type JSON metadata exposed through dimension resources |
 | `enchantment` | `modeled` | enchantment JSON metadata exposed by the enchant command |
 | `enchantment_provider` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
-| `equipment_asset` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
+| `equipment_asset` | `modeled` | equipment asset JSON metadata exposed by item command outputs |
 | `frog_variant` | `modeled` | entity variant JSON metadata exposed by the summon command |
 | `instrument` | `modeled` | instrument JSON metadata exposed by item command outputs |
 | `jukebox_song` | `modeled` | jukebox song JSON metadata exposed by item command outputs |
@@ -334,7 +334,7 @@ execute the full crafting system, every item modifier function, or full
 worldgen semantics, but it models sandbox structure placement, processor_list
 block_ignore/simple rule handling, template_pool single/legacy jigsaw placement,
 simple_block feature placement, chat type metadata in modeled chat commands, and
-damage type metadata in `damage` command output, dimension and dimension type metadata in dimension-aware command outputs, enchantment metadata in `enchant` command output, entity variant metadata in `summon` output, plus banner pattern, instrument, jukebox song, and armor trim material/pattern metadata in item command outputs; the remaining resources are version-profile checked,
+damage type metadata in `damage` command output, dimension and dimension type metadata in dimension-aware command outputs, enchantment metadata in `enchant` command output, entity variant metadata in `summon` output, plus equipment asset, banner pattern, instrument, jukebox song, and armor trim material/pattern metadata in item command outputs; the remaining resources are version-profile checked,
 participate in pack overlay behavior, and can be inspected from API or REPL.
 `recipe give` and `recipe take` update player recipe state and report the
 concrete changed recipe ids in structured output. Loot tables can expand
@@ -390,6 +390,7 @@ data/<namespace>/worldgen/placed_feature/**/*.json
 data/<namespace>/worldgen/structure/**/*.json
 data/<namespace>/worldgen/processor_list/**/*.json
 data/<namespace>/enchantment/**/*.json
+data/<namespace>/equipment_asset/**/*.json
 data/<namespace>/jukebox_song/**/*.json
 data/<namespace>/trim_material/**/*.json
 data/<namespace>/trim_pattern/**/*.json

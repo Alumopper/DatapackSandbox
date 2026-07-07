@@ -40,7 +40,7 @@ Minecraft Java `26.2` 使用 data pack format `107.1`，当前资源目录是单
 - `data/<namespace>/advancement/**/*.json`
 - `data/<namespace>/recipe/**/*.json`
 - `data/<namespace>/item_modifier/**/*.json`
-- `data/<namespace>/(chat_type|damage_type|dimension|dimension_type|enchantment|jukebox_song|trim_material|trim_pattern|...)/**/*.json`
+- `data/<namespace>/(chat_type|damage_type|dimension|dimension_type|enchantment|equipment_asset|jukebox_song|trim_material|trim_pattern|...)/**/*.json`
 - `data/<namespace>/worldgen/(configured_feature|placed_feature|structure|processor_list|...)/**/*.json`
 - `data/<namespace>/tags/<registry>/**/*.json`
 
@@ -95,7 +95,7 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar resources --json --output buil
 | `dimension_type` | `modeled` | dimension 资源会暴露关联的 dimension type JSON 元数据。 |
 | `enchantment` | `modeled` | enchant 命令会暴露 enchantment JSON 元数据。 |
 | `enchantment_provider` | `observed-noop` | 经版本校验的 raw JSON 资源，进入索引供 inspect。 |
-| `equipment_asset` | `observed-noop` | 经版本校验的 raw JSON 资源，进入索引供 inspect。 |
+| `equipment_asset` | `modeled` | item 输出会暴露 equipment asset JSON 元数据。 |
 | `frog_variant` | `modeled` | summon 命令会暴露实体 variant JSON 元数据。 |
 | `instrument` | `modeled` | item 输出会暴露 instrument JSON 元数据。 |
 | `jukebox_song` | `modeled` | item 输出会暴露 jukebox song JSON 元数据。 |
@@ -190,7 +190,7 @@ data/<namespace>/advancements/**/*.json
 
 ## Raw JSON Resource 与 Tags
 
-Chat type、damage type、dimension、dimension type、enchantment、实体 variant、item component registry、armor trim、recipe、item modifier 以及更多注册表资源会作为 raw JSON resource 加载并进入资源索引。当前沙盒还不执行完整合成系统、全部 item modifier 函数或完整 worldgen 语义，但已建模沙盒结构放置、processor_list 的 block_ignore/简单 rule 处理、template_pool single/legacy jigsaw 放置、simple_block feature 放置、聊天命令中的 chat type 元数据输出、维度感知命令输出中的 dimension/dimension_type 元数据、`enchant` 命令中的 enchantment 元数据、`summon` 输出中的实体 variant 元数据、item 输出中的 banner pattern/instrument/jukebox song/armor trim material/pattern 元数据以及 `damage` 命令中的 damage type 元数据输出；其余资源可以被版本 profile 校验目录布局、被 pack overlay 覆盖，并可通过 API 或 REPL inspect 调试；`recipe give` 和 `recipe take` 会更新玩家 recipe 状态，并在结构化输出中报告实际变更的 recipe id 列表。Loot table 可以展开 item tag entry，包括嵌套 tag 和 optional 值；`expand=false` 会输出整个 tag，`expand=true` 会把 tag 内物品作为展开候选参与选择。Loot function 已覆盖常见 count/item/component/enchantment 修改、基于工具附魔的 `apply_bonus`，并支持从实体上下文复制名称的 `copy_name`、从当前工具复制 components 的 `copy_components`、`include` 和 `exclude` 过滤，以及通过 `reference` 复用 item modifier 资源。`item modify entity` 会建模 `set_components`、`set_custom_data`、`set_count`、`limit_count`、`set_item`、`discard`、`set_damage`、`set_name`、`set_lore`、`copy_nbt`、带 `include`/`exclude` 的 `copy_components`、`filtered`、`reference`、`sequence` 等常用 item modifier 函数。实体物品命令支持玩家背包、当前主手、`enderchest.*` 槽和非玩家实体装备槽，例如 `weapon.mainhand`、`weapon.offhand` 与 `armor.*`；`give`、`clear` 和 `item replace ... with` 的 item argument 支持 JSON/SNBT-lite NBT（如 `minecraft:stick{marked:true}`）和 components payload（如 `minecraft:stick[custom_data={marked:true}]`），括号内空格会在命令分词时保留给后续解析。装备同时暴露在 snapshot 以及 `HandItems`/`ArmorItems` 实体 NBT 中，entity predicate 也可以匹配 `mainhand`、`offhand`、`head`、`chest`、`legs`、`feet` 等 `equipment` 字段、带 amplifier/duration/粒子可见性的 active `effects` 字段，以及 `absolute`、`horizontal`、`x`、`y`、`z` 距离范围；item predicate 可直接按 id 或 `#` item tag 匹配物品，并按等级范围匹配 `enchantments` 或 `stored_enchantments`，且 `nbt` 条件会按完整生成后的实体 NBT 视图检查；predicate `location_check` 的 block 条件会按 id、block tag、state/property 值和方块实体 NBT 读取被测位置的显式 sparse block，biome 条件会读取 `fillbiome`、world fixture、manifest 或 quick-test setup 声明的 sparse biome 覆盖，未声明的位置不会推断生成 biome；`block_state_property` 会检查当前 block id，并在存在完整 sparse block 上下文时检查 state properties：
+Chat type、damage type、dimension、dimension type、enchantment、实体 variant、item component registry、armor trim、recipe、item modifier 以及更多注册表资源会作为 raw JSON resource 加载并进入资源索引。当前沙盒还不执行完整合成系统、全部 item modifier 函数或完整 worldgen 语义，但已建模沙盒结构放置、processor_list 的 block_ignore/简单 rule 处理、template_pool single/legacy jigsaw 放置、simple_block feature 放置、聊天命令中的 chat type 元数据输出、维度感知命令输出中的 dimension/dimension_type 元数据、`enchant` 命令中的 enchantment 元数据、`summon` 输出中的实体 variant 元数据、item 输出中的 equipment asset/banner pattern/instrument/jukebox song/armor trim material/pattern 元数据以及 `damage` 命令中的 damage type 元数据输出；其余资源可以被版本 profile 校验目录布局、被 pack overlay 覆盖，并可通过 API 或 REPL inspect 调试；`recipe give` 和 `recipe take` 会更新玩家 recipe 状态，并在结构化输出中报告实际变更的 recipe id 列表。Loot table 可以展开 item tag entry，包括嵌套 tag 和 optional 值；`expand=false` 会输出整个 tag，`expand=true` 会把 tag 内物品作为展开候选参与选择。Loot function 已覆盖常见 count/item/component/enchantment 修改、基于工具附魔的 `apply_bonus`，并支持从实体上下文复制名称的 `copy_name`、从当前工具复制 components 的 `copy_components`、`include` 和 `exclude` 过滤，以及通过 `reference` 复用 item modifier 资源。`item modify entity` 会建模 `set_components`、`set_custom_data`、`set_count`、`limit_count`、`set_item`、`discard`、`set_damage`、`set_name`、`set_lore`、`copy_nbt`、带 `include`/`exclude` 的 `copy_components`、`filtered`、`reference`、`sequence` 等常用 item modifier 函数。实体物品命令支持玩家背包、当前主手、`enderchest.*` 槽和非玩家实体装备槽，例如 `weapon.mainhand`、`weapon.offhand` 与 `armor.*`；`give`、`clear` 和 `item replace ... with` 的 item argument 支持 JSON/SNBT-lite NBT（如 `minecraft:stick{marked:true}`）和 components payload（如 `minecraft:stick[custom_data={marked:true}]`），括号内空格会在命令分词时保留给后续解析。装备同时暴露在 snapshot 以及 `HandItems`/`ArmorItems` 实体 NBT 中，entity predicate 也可以匹配 `mainhand`、`offhand`、`head`、`chest`、`legs`、`feet` 等 `equipment` 字段、带 amplifier/duration/粒子可见性的 active `effects` 字段，以及 `absolute`、`horizontal`、`x`、`y`、`z` 距离范围；item predicate 可直接按 id 或 `#` item tag 匹配物品，并按等级范围匹配 `enchantments` 或 `stored_enchantments`，且 `nbt` 条件会按完整生成后的实体 NBT 视图检查；predicate `location_check` 的 block 条件会按 id、block tag、state/property 值和方块实体 NBT 读取被测位置的显式 sparse block，biome 条件会读取 `fillbiome`、world fixture、manifest 或 quick-test setup 声明的 sparse biome 覆盖，未声明的位置不会推断生成 biome；`block_state_property` 会检查当前 block id，并在存在完整 sparse block 上下文时检查 state properties：
 
 ```text
 data/<namespace>/recipe/**/*.json
@@ -204,6 +204,7 @@ data/<namespace>/worldgen/placed_feature/**/*.json
 data/<namespace>/worldgen/structure/**/*.json
 data/<namespace>/worldgen/processor_list/**/*.json
 data/<namespace>/enchantment/**/*.json
+data/<namespace>/equipment_asset/**/*.json
 data/<namespace>/jukebox_song/**/*.json
 data/<namespace>/trim_material/**/*.json
 data/<namespace>/trim_pattern/**/*.json
