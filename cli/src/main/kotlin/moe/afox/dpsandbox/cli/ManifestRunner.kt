@@ -90,6 +90,8 @@ object ManifestRunner {
     private data class ManifestSection(
         val element: JsonElement,
         val base: Path,
+        val source: Path,
+        val pointer: String,
     )
 
     private data class ResolvedManifest(
@@ -250,10 +252,10 @@ object ManifestRunner {
         }
         document.assertions.forEachIndexed { index, assertion ->
             if (!assertion.element.isJsonObject) {
-                failures += "${assertionLabel(index)}: Assertion must be an object"
+                failures += "${assertionLabel(index, assertion, document.path)}: Assertion must be an object"
             } else {
                 val assertionObject = assertion.element.asJsonObject
-                failures += evaluateAssertion(assertionObject, sandbox, diagnostics, beforeSnapshot, options.seed, assertion.base).map { "${assertionLabel(index, assertionObject)}: $it" }
+                failures += evaluateAssertion(assertionObject, sandbox, diagnostics, beforeSnapshot, options.seed, assertion.base).map { "${assertionLabel(index, assertion, assertionObject, document.path)}: $it" }
             }
         }
         if (failures.isNotEmpty() && options.snapshotOnFail) {
@@ -319,9 +321,11 @@ object ManifestRunner {
                 path = normalized,
                 base = base,
                 root = root,
-                worlds = included.flatMap { it.worlds } + listOfNotNull(json.get("world")?.let { ManifestSection(it, base) }),
-                steps = included.flatMap { it.steps } + json.manifestArray("steps").map { ManifestSection(it, base) },
-                assertions = included.flatMap { it.assertions } + json.manifestArray("assertions").map { ManifestSection(it, base) },
+                worlds = included.flatMap { it.worlds } + listOfNotNull(json.get("world")?.let { ManifestSection(it, base, normalized, "/world") }),
+                steps = included.flatMap { it.steps } + json.manifestArray("steps").mapIndexed { index, step -> ManifestSection(step, base, normalized, "/steps/$index") },
+                assertions = included.flatMap { it.assertions } + json.manifestArray("assertions").mapIndexed { index, assertion ->
+                    ManifestSection(assertion, base, normalized, "/assertions/$index")
+                },
             )
         } finally {
             stack.remove(normalized)
@@ -485,6 +489,25 @@ object ManifestRunner {
             assertionLabel(index)
         } else {
             "assertion ${index + 1} (/assertions/$index/$kind)"
+        }
+    }
+
+    private fun assertionLabel(index: Int, section: ManifestSection, documentPath: Path): String =
+        "assertion ${index + 1} (${section.sourcePointer(documentPath)})"
+
+    private fun assertionLabel(index: Int, section: ManifestSection, assertion: JsonObject, documentPath: Path): String {
+        val kind = assertionKinds.firstOrNull { assertion.has(it) }
+        val pointer = if (kind == null) section.sourcePointer(documentPath) else "${section.sourcePointer(documentPath)}/$kind"
+        return "assertion ${index + 1} ($pointer)"
+    }
+
+    private fun ManifestSection.sourcePointer(documentPath: Path): String {
+        val normalizedSource = source.toAbsolutePath().normalize()
+        val normalizedDocument = documentPath.toAbsolutePath().normalize()
+        return if (normalizedSource == normalizedDocument) {
+            pointer
+        } else {
+            "$normalizedSource$pointer"
         }
     }
 

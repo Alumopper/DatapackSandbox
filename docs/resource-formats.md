@@ -164,7 +164,9 @@ manifests are applied before the including manifest. Their `world`, `steps`, and
 `assertions` are concatenated in order, and their `version`/`versions`, `packs`,
 `unsupported`, `seed`, and `failOnMissingResources` fields act as defaults when the
 including manifest omits them. Relative paths inside included world setup and
-steps are resolved from the included file's directory.
+steps are resolved from the included file's directory. Assertion failures from
+included manifests keep the included file path and JSON Pointer in the failure
+prefix, so shared assertions can be located directly from CI logs.
 
 Set top-level `"seed"` to define the default deterministic world and loot seed
 for the manifest. A `world.seed` fixture value overrides the top-level default
@@ -228,8 +230,10 @@ Assertions support score, storage, world, player, team, bossbar, block,
 entity, entityCount, advancement, predicate, loot, output, item, trace, event trace,
 diagnostic, snapshot, and snapshot diff checks:
 
-Assertion failures are prefixed with the merged assertion index and JSON Pointer
-path, for example `assertion 1 (/assertions/0/output): ...`.
+Assertion failures are prefixed with the merged assertion index and source JSON
+Pointer path, for example `assertion 1 (/assertions/0/output): ...`. When the
+assertion came from an included manifest, the prefix keeps the included file path
+before the pointer.
 
 ```json
 { "score": { "target": "#clock", "objective": "ticks", "min": 20, "max": 40 } }

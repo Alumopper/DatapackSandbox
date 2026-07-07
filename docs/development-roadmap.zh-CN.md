@@ -256,6 +256,7 @@
 - JSON Schema 能被编辑器使用，并在 CLI 中可选校验。
 - manifest 失败消息包含 assertion index、path、expected、actual。
   - 断言失败前缀已细化到断言 kind 的 JSON Pointer，例如 `/assertions/0/output`，便于从编辑器或 CI 日志直接定位。
+  - include 合并进来的断言失败会保留来源 manifest 文件路径和该文件内的 JSON Pointer，例如 `common/base.dps.json/assertions/0/score`，便于公共断言复用时定位。
 
 ## 阶段 8：版本 Profile 与原版资料更新流程
 

@@ -1867,6 +1867,55 @@ class ManifestRunnerTest {
     }
 
     @Test
+    fun `included assertion failures include source manifest path`() {
+        val dir = Files.createTempDirectory("dps-include-assertion-source")
+        val common = dir.resolve("common")
+        val generated = common.resolve("generated")
+        Files.createDirectories(generated)
+        Files.writeString(
+            generated.resolve("common.mcfunction"),
+            """
+            scoreboard objectives add runs dummy
+            scoreboard players set #included runs 2
+            """.trimIndent(),
+        )
+        val pack = Path.of("../core/src/test/resources/packs/counter").toAbsolutePath().normalize().toString().replace("\\", "\\\\")
+        val commonManifest = common.resolve("base.dps.json")
+        Files.writeString(
+            commonManifest,
+            """
+            {
+              "version": "26.1.2",
+              "packs": ["$pack"],
+              "steps": [
+                { "mcfunction": "generated/common.mcfunction" }
+              ],
+              "assertions": [
+                { "score": { "target": "#included", "objective": "runs", "equals": 9 } }
+              ]
+            }
+            """.trimIndent(),
+        )
+        val manifest = dir.resolve("include.dps.json")
+        Files.writeString(
+            manifest,
+            """
+            {
+              "include": "common/base.dps.json"
+            }
+            """.trimIndent(),
+        )
+
+        val result = ManifestRunner.run(manifest)
+        val messages = result.messages.joinToString("\n")
+        val sourcePointer = "${commonManifest.toAbsolutePath().normalize()}/assertions/0/score"
+
+        assertFalse(result.passed)
+        assertTrue(sourcePointer in messages, messages)
+        assertTrue("score #included runs expected 9 but was 2" in messages, messages)
+    }
+
+    @Test
     fun `included pack defaults merge before local version packs`() {
         val dir = Files.createTempDirectory("dps-include-pack-merge")
         val common = dir.resolve("common")
