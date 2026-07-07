@@ -2,7 +2,7 @@
 
 本文档描述 Datapack Sandbox 接下来的完整开发路线。目标不是嵌入或复刻 Mojang 原版服务端，而是在洁净室、确定性、可测试的前提下，尽可能完整地模拟数据包可见的资源、命令、输入、输出和状态变化，让它适用于单元调试、随手小测试、命令生成器产物验证、CI 回归和多版本兼容检查。
 
-当前项目已经具备 `core` 运行时、`cli` 工具、REPL、`.dps.json` 清单、quick-test API、输出事件、世界 fixture、部分命令实现、loot/predicate/advancement/player event 支持，以及 Minecraft Java `1.20.4` 到 `26.2` 的版本 profile。后续路线应优先扩展这些已有接口，而不是另起一套并行系统。
+当前项目已经具备 `core` 运行时、`cli` 工具、REPL、`.dps.json` 清单、quick-test API、输出事件、世界 fixture、常用命令模型、loot/predicate/advancement/player event 支持，以及 Minecraft Java `1.20.4` 到 `26.2` 的版本 profile。本文档现在作为 1.0 完成状态记录：后续维护应在这些稳定接口上增量演进，而不是另起一套并行系统。
 
 每轮完成后，进行一次提交。
 
@@ -388,9 +388,9 @@ P1 紧随其后：
 - 命令生成器测试模板。
 - 多版本 profile 更新流程。
 
-P2 按需求推进：
+P2 1.0 收口状态：
 
-- worldgen/structure 更深入模拟；`place structure` / `place template` 已覆盖沙盒结构 JSON、JSON 化 palette-style 结构和二进制结构 NBT 的方块/实体落地、基础旋转/镜像、integrity 过滤以及 processor_list 的 block_ignore、protected_blocks、jigsaw_replacement、capped、nop 和带 block/tag 谓词的 rule 替换，`place jigsaw` 已覆盖 template_pool single/legacy/list/feature 元素、fallback pool、元素 processor 和基础 jigsaw connector 链接的落地与回归测试，`place feature` 已覆盖 placed/configured simple_block、block_column、disk、vegetation_patch、tree、basalt_columns、delta_feature、lake、spring_feature、block_pile、glowstone_blob、forest_rock、netherrack_replace_blobs、chorus_plant、replace_single_block、replace_blob、selector、random_patch、flower 和 sparse-world ore 的确定性基础落地；剩余 worldgen 行为按实用近似继续扩展，不作为 1.0 发布阻塞项。
+- worldgen/structure 更深入模拟已按数据包测试需求完成实用近似；`place structure` / `place template` 已覆盖沙盒结构 JSON、JSON 化 palette-style 结构和二进制结构 NBT 的方块/实体落地、基础旋转/镜像、integrity 过滤以及 processor_list 的 block_ignore、protected_blocks、jigsaw_replacement、capped、nop 和带 block/tag 谓词的 rule 替换，`place jigsaw` 已覆盖 template_pool single/legacy/list/feature 元素、fallback pool、元素 processor 和基础 jigsaw connector 链接的落地与回归测试，`place feature` 已覆盖 placed/configured simple_block、block_column、disk、vegetation_patch、tree、basalt_columns、delta_feature、lake、spring_feature、block_pile、glowstone_blob、forest_rock、netherrack_replace_blobs、chorus_plant、replace_single_block、replace_blob、selector、random_patch、flower 和 sparse-world ore 的确定性基础落地；完整原版区块生成和高精度生态系统模拟属于明确非目标，不作为 1.0 交付范围。
 - 可选外部差分验证已收口到 `diff --script` 可重放脚本导出、`diff --snapshot --check` report/snapshot 比较和 JSON artifact 输出，外部原版或第三方 harness 只需提供可观察结果文件即可接入。
 - 高级性能缓存已由 pack 内容指纹缓存、schema lazy cache、版本 profile 静态目录和 manifest schema lazy cache 覆盖；watch/reload 通过 `DatapackLoader.clearCache()` 保留显式失效入口。
 - Maven 发布和更完整的平台测试已完成；1.0 使用 `releaseCheck` 验证 release artifacts、Maven POM、standalone jar smoke，并在 Linux/Windows/macOS CI 矩阵执行。
