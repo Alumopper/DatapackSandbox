@@ -62,6 +62,8 @@ class DpsCompleterTest {
         assertSuggests(completer, "worldb", "worldborder")
         assertSuggests(completer, "worldborder ", "damage")
         assertSuggests(completer, "worldborder warning ", "distance")
+        assertSuggests(completer, "scoreboard objectives ", "setdisplay")
+        assertSuggests(completer, "scoreboard objectives setdisplay ", "sidebar")
         assertSuggests(completer, "scoreboard players ", "list")
         assertSuggests(completer, "scoreboard players ", "reset")
         assertSuggests(completer, "schedule ", "clear")

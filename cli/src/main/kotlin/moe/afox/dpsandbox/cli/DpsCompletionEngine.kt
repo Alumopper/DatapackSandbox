@@ -154,7 +154,11 @@ class DpsCompletionEngine(private val sandbox: () -> DatapackSandbox) {
         when {
             context.wordIndex == 1 -> listOf("objectives", "players").suggest("scoreboard groups", appendSpace = true)
             words.getOrNull(1) == "objectives" && context.wordIndex == 2 ->
-                listOf("add", "remove", "list").suggest("objective actions", appendSpace = true)
+                listOf("add", "remove", "list", "setdisplay").suggest("objective actions", appendSpace = true)
+            words.getOrNull(1) == "objectives" && words.getOrNull(2) == "setdisplay" && context.wordIndex == 3 ->
+                scoreboardDisplaySlots.suggest("display slots", appendSpace = true)
+            words.getOrNull(1) == "objectives" && words.getOrNull(2) == "setdisplay" && context.wordIndex == 4 ->
+                scoreboardObjectives().suggest("objectives")
             words.getOrNull(1) == "players" && context.wordIndex == 2 ->
                 listOf("set", "add", "remove", "get", "reset", "list", "enable", "operation").suggest("player score actions", appendSpace = true)
             words.getOrNull(1) == "players" && context.wordIndex == 3 -> scoreTargets().suggest("score holders", appendSpace = true)
@@ -584,6 +588,7 @@ class DpsCompletionEngine(private val sandbox: () -> DatapackSandbox) {
         private val mouseButtons = listOf("left", "right", "middle", "scroll")
         private val booleans = listOf("true", "false")
         private val gameModes = listOf("survival", "creative", "adventure", "spectator")
+        private val scoreboardDisplaySlots = listOf("list", "sidebar", "below_name", "sidebar.team.red", "sidebar.team.blue")
         private val difficulties = listOf("peaceful", "easy", "normal", "hard")
         private val attributes = listOf(
             "minecraft:generic.max_health",

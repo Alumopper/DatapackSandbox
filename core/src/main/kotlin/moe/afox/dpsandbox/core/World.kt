@@ -799,6 +799,7 @@ class SandboxWorld {
     var tickFrozen: Boolean = false
 
     val objectives: MutableMap<String, String> = linkedMapOf()
+    val scoreboardDisplays: MutableMap<String, String> = linkedMapOf()
     val scores: MutableMap<ScoreKey, Int> = linkedMapOf()
     val storages: MutableMap<ResourceLocation, JsonObject> = linkedMapOf()
     val entities: MutableList<SandboxEntity> = mutableListOf()
@@ -859,6 +860,7 @@ class SandboxWorld {
      */
     fun removeObjective(name: String) {
         objectives.remove(name)
+        scoreboardDisplays.keys.filter { scoreboardDisplays[it] == name }.forEach { scoreboardDisplays.remove(it) }
         scores.keys.filter { it.objective == name }.forEach { scores.remove(it) }
     }
 
@@ -984,6 +986,17 @@ class SandboxWorld {
             objectivesJson.addProperty(name, criteria)
         }
         root.add("objectives", objectivesJson)
+
+        val scoreboardDisplaysJson = JsonArray()
+        scoreboardDisplays.toSortedMap().forEach { (slot, objective) ->
+            scoreboardDisplaysJson.add(
+                JsonObject().also {
+                    it.addProperty("slot", slot)
+                    it.addProperty("objective", objective)
+                },
+            )
+        }
+        root.add("scoreboardDisplays", scoreboardDisplaysJson)
 
         val scoresJson = JsonObject()
         scores.toSortedMap().forEach { (key, value) ->

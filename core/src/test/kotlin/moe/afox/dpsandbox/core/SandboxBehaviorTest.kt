@@ -718,6 +718,30 @@ class SandboxBehaviorTest {
     }
 
     @Test
+    fun `scoreboard objective display slots are modeled and snapshotted`() {
+        val sandbox = createSandbox("26.1.2", listOf(fixturePack()))
+
+        sandbox.executeCommand("scoreboard objectives add runs dummy")
+        sandbox.executeCommand("scoreboard objectives setdisplay sidebar.team.red runs")
+        sandbox.executeCommand("scoreboard objectives setdisplay list runs")
+        sandbox.executeCommand("scoreboard objectives setdisplay list")
+
+        assertEquals("runs", sandbox.world.scoreboardDisplays["sidebar.team.red"])
+        assertEquals(null, sandbox.world.scoreboardDisplays["list"])
+        val displays = sandbox.snapshotJson().getAsJsonArray("scoreboardDisplays")
+        assertEquals(1, displays.size())
+        val display = displays.single().asJsonObject
+        assertEquals("sidebar.team.red", display.get("slot").asString)
+        assertEquals("runs", display.get("objective").asString)
+
+        val setOutput = sandbox.world.outputs.first { it.command == "scoreboard objectives setdisplay" }
+        assertEquals("sidebar.team.red=runs", setOutput.text)
+        assertEquals("sidebar.team.red", setOutput.payload?.asJsonObject?.get("slot")?.asString)
+        assertEquals("runs", setOutput.payload?.asJsonObject?.get("objective")?.asString)
+        assertEquals(false, setOutput.payload?.asJsonObject?.get("cleared")?.asBoolean)
+    }
+
+    @Test
     fun `creates a default player with readable vanilla style nbt`() {
         val sandbox = createSandbox("26.1.2", listOf(fixturePack()))
 

@@ -1352,9 +1352,36 @@ class DatapackSandbox(
                 requireSize(tokens, 4, "scoreboard objectives remove <objective>", location)
                 world.removeObjective(tokens[3].text)
             }
+            "setdisplay" -> {
+                requireSize(tokens, 4, "scoreboard objectives setdisplay <slot> [objective]", location)
+                val slot = tokens[3].text
+                val before = world.scoreboardDisplays[slot]
+                val objective = tokens.getOrNull(4)?.text
+                if (objective == null) {
+                    world.scoreboardDisplays.remove(slot)
+                } else {
+                    world.ensureObjective(objective)
+                    world.scoreboardDisplays[slot] = objective
+                }
+                recordScoreboardDisplay(slot, objective, before)
+            }
             "list" -> recordObjectiveList()
             else -> unsupportedFeature("Unsupported scoreboard objectives action '${tokens[2].text}'", profile.id, location)
         }
+    }
+
+    private fun recordScoreboardDisplay(slot: String, objective: String?, before: String?) {
+        world.recordOutput(
+            "scoreboard objectives setdisplay",
+            "data",
+            text = objective?.let { "$slot=$it" } ?: "cleared $slot",
+            payload = JsonObject().also { payload ->
+                payload.addProperty("slot", slot)
+                objective?.let { payload.addProperty("objective", it) }
+                before?.let { payload.addProperty("previous", it) }
+                payload.addProperty("cleared", objective == null)
+            },
+        )
     }
 
     private fun recordObjectiveList() {

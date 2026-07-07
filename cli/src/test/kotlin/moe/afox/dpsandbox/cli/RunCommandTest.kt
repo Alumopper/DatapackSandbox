@@ -745,6 +745,39 @@ class RunCommandTest {
     }
 
     @Test
+    fun `run accepts scoreboard display shorthand inline assertions`() {
+        val output = captureStdout {
+            main(
+                arrayOf(
+                    "run",
+                    "--version",
+                    "26.2",
+                    "--command",
+                    "scoreboard objectives add runs dummy",
+                    "--command",
+                    "scoreboard objectives setdisplay sidebar.team.red runs",
+                    "--command",
+                    "scoreboard objectives setdisplay list runs",
+                    "--command",
+                    "scoreboard objectives setdisplay list",
+                    "--assert",
+                    "scoreboard-display:sidebar.team.red=runs",
+                    "--assert",
+                    "scoreboard-display:sidebar.team.red?",
+                    "--assert",
+                    "scoreboard-display:list!",
+                    "--snapshot",
+                ),
+            )
+        }
+
+        assertTrue("OK version=26.2" in output, output)
+        assertTrue("\"scoreboardDisplays\"" in output, output)
+        assertTrue("\"slot\": \"sidebar.team.red\"" in output, output)
+        assertTrue("\"objective\": \"runs\"" in output, output)
+    }
+
+    @Test
     fun `run accepts biome shorthand inline assertions`() {
         val output = captureStdout {
             main(
