@@ -131,7 +131,7 @@ smoke tasks.
 | `worldgen/noise_settings` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
 | `worldgen/placed_feature` | `modeled` | placed feature JSON resolving configured simple_block/block_column/disk/vegetation_patch/tree/basalt_columns/delta_feature/lake/replace_single_block/replace_blob/selector/random_patch/flower/ore resources for place feature |
 | `worldgen/processor_list` | `modeled` | block_ignore, protected_blocks, jigsaw_replacement, capped, nop, and rule processors with block/tag predicates consumed by sandbox structure placement |
-| `worldgen/structure` | `modeled` | sandbox structure JSON `blocks`/`entities` and palette-style blocks can be expanded by `place structure` and `place template` |
+| `worldgen/structure` | `modeled` | sandbox structure JSON and binary structure NBT palette blocks/entities can be expanded by `place structure` and `place template` |
 | `worldgen/structure_set` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
 | `worldgen/template_pool` | `modeled` | single/legacy/list/feature pool elements and fallback pools consumed by sandbox place jigsaw |
 | `worldgen/world_preset` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
@@ -388,6 +388,9 @@ data/<namespace>/dimension_type/**/*.json
 data/<namespace>/worldgen/configured_feature/**/*.json
 data/<namespace>/worldgen/placed_feature/**/*.json
 data/<namespace>/worldgen/structure/**/*.json
+data/<namespace>/worldgen/structure/**/*.nbt
+data/<namespace>/structure/**/*.nbt
+data/<namespace>/structures/**/*.nbt
 data/<namespace>/worldgen/processor_list/**/*.json
 data/<namespace>/enchantment/**/*.json
 data/<namespace>/equipment_asset/**/*.json

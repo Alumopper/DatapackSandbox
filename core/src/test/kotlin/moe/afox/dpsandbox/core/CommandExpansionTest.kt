@@ -1,5 +1,6 @@
 package moe.afox.dpsandbox.core
 
+import java.io.DataOutputStream
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.test.Test
@@ -567,6 +568,31 @@ class CommandExpansionTest {
     }
 
     @Test
+    fun `place structure applies binary nbt structure resources`() {
+        val pack = writeStructurePlacePack(Files.createTempDirectory("dps-place-nbt-structure-pack"))
+        val sandbox = createSandbox("26.2", listOf(pack))
+
+        sandbox.executeCommand("place structure demo:binary_room 25 68 35")
+
+        assertEquals(ResourceLocation.parse("minecraft:cut_copper"), sandbox.world.requireBlock(BlockPos(25, 68, 35)).id)
+        val furnace = sandbox.world.requireBlock(BlockPos(26, 68, 35))
+        assertEquals(ResourceLocation.parse("minecraft:furnace"), furnace.id)
+        assertEquals("south", furnace.properties["facing"])
+        assertEquals("nbt", furnace.nbt.get("CustomName").asString)
+        val marker = sandbox.world.entities.single { it.type == ResourceLocation.parse("minecraft:armor_stand") && "binary_structure" in it.tags }
+        assertEquals(Position(25.5, 69.0, 35.5), marker.position)
+
+        val output = sandbox.world.outputs.single { it.command == "place structure" }
+        val payload = output.payload?.asJsonObject ?: error("missing place structure payload")
+        assertEquals(true, payload.get("placed").asBoolean)
+        assertEquals("palette-structure-json", payload.get("format").asString)
+        assertEquals("binary-structure-nbt", payload.get("sourceFormat").asString)
+        assertEquals(2, payload.get("changedBlocks").asInt)
+        assertEquals(1, payload.get("entities").asInt)
+        assertEquals(listOf("25 68 35", "26 68 35", marker.uuid), output.targets)
+    }
+
+    @Test
     fun `place template applies sandbox structure json with transforms`() {
         val pack = writeStructurePlacePack(Files.createTempDirectory("dps-place-template-pack"))
         val sandbox = createSandbox("26.2", listOf(pack))
@@ -683,6 +709,42 @@ class CommandExpansionTest {
         assertEquals(true, payload.get("usedFallback").asBoolean)
         assertEquals("demo:jigsaw_room", payload.get("structure").asString)
         assertEquals(listOf("45 70 55", "46 70 55"), output.targets)
+    }
+
+    @Test
+    fun `place jigsaw applies list pool and feature pool elements`() {
+        val pack = writeJigsawPlacePack(Files.createTempDirectory("dps-place-jigsaw-list-feature-pack"))
+        val sandbox = createSandbox("26.2", listOf(pack))
+
+        sandbox.executeCommand("place jigsaw demo:list_start demo:target 1 50 70 60")
+        sandbox.executeCommand("place jigsaw demo:feature_start demo:target 1 52 70 60")
+
+        assertEquals(ResourceLocation.parse("minecraft:emerald_block"), sandbox.world.requireBlock(BlockPos(50, 70, 60)).id)
+        assertEquals(ResourceLocation.parse("minecraft:chest"), sandbox.world.requireBlock(BlockPos(51, 70, 60)).id)
+        assertEquals(ResourceLocation.parse("minecraft:lapis_block"), sandbox.world.requireBlock(BlockPos(52, 70, 60)).id)
+        val outputs = sandbox.world.outputs.filter { it.command == "place jigsaw" }
+        assertEquals(2, outputs.size)
+
+        val listPayload = outputs[0].payload?.asJsonObject ?: error("missing list payload")
+        assertEquals(true, listPayload.get("placed").asBoolean)
+        assertEquals("sandbox-template-pool", listPayload.get("format").asString)
+        assertEquals("demo:list_start", listPayload.get("selectedPool").asString)
+        assertEquals(false, listPayload.get("usedFallback").asBoolean)
+        assertEquals("minecraft:list_pool_element", listPayload.get("elementType").asString)
+        assertEquals("demo:jigsaw_room", listPayload.get("structure").asString)
+        assertEquals(2, listPayload.get("changedBlocks").asInt)
+        assertEquals(listOf("50 70 60", "51 70 60"), outputs[0].targets)
+
+        val featurePayload = outputs[1].payload?.asJsonObject ?: error("missing feature payload")
+        assertEquals(true, featurePayload.get("placed").asBoolean)
+        assertEquals("sandbox-template-pool", featurePayload.get("format").asString)
+        assertEquals("demo:feature_start", featurePayload.get("selectedPool").asString)
+        assertEquals(false, featurePayload.get("usedFallback").asBoolean)
+        assertEquals("minecraft:feature_pool_element", featurePayload.get("elementType").asString)
+        assertEquals("demo:jigsaw_feature", featurePayload.get("feature").asString)
+        assertEquals("simple_block", featurePayload.get("featureType").asString)
+        assertEquals(1, featurePayload.get("changedBlocks").asInt)
+        assertEquals(listOf("52 70 60"), outputs[1].targets)
     }
 
     @Test
@@ -2333,7 +2395,91 @@ class CommandExpansionTest {
             }
             """.trimIndent(),
         )
+        val nbtStructureRoot = root.resolve("data").resolve("demo").resolve("structures")
+        Files.createDirectories(nbtStructureRoot)
+        writeBinaryStructureNbt(nbtStructureRoot.resolve("binary_room.nbt"))
         return root
+    }
+
+    private fun writeBinaryStructureNbt(file: Path) {
+        Files.newOutputStream(file).use { output ->
+            DataOutputStream(output).use { nbt ->
+                nbt.writeByte(10)
+                nbt.writeNbtString("")
+
+                nbt.writeNbtHeader(9, "palette")
+                nbt.writeByte(10)
+                nbt.writeInt(2)
+                nbt.writeNbtHeader(8, "Name")
+                nbt.writeNbtString("minecraft:cut_copper")
+                nbt.writeByte(0)
+                nbt.writeNbtHeader(8, "Name")
+                nbt.writeNbtString("minecraft:furnace")
+                nbt.writeNbtHeader(10, "Properties")
+                nbt.writeNbtHeader(8, "facing")
+                nbt.writeNbtString("south")
+                nbt.writeByte(0)
+                nbt.writeByte(0)
+
+                nbt.writeNbtHeader(9, "blocks")
+                nbt.writeByte(10)
+                nbt.writeInt(2)
+                nbt.writeNbtHeader(9, "pos")
+                nbt.writeByte(3)
+                nbt.writeInt(3)
+                nbt.writeInt(0)
+                nbt.writeInt(0)
+                nbt.writeInt(0)
+                nbt.writeNbtHeader(3, "state")
+                nbt.writeInt(0)
+                nbt.writeByte(0)
+                nbt.writeNbtHeader(9, "pos")
+                nbt.writeByte(3)
+                nbt.writeInt(3)
+                nbt.writeInt(1)
+                nbt.writeInt(0)
+                nbt.writeInt(0)
+                nbt.writeNbtHeader(3, "state")
+                nbt.writeInt(1)
+                nbt.writeNbtHeader(10, "nbt")
+                nbt.writeNbtHeader(8, "CustomName")
+                nbt.writeNbtString("nbt")
+                nbt.writeByte(0)
+                nbt.writeByte(0)
+
+                nbt.writeNbtHeader(9, "entities")
+                nbt.writeByte(10)
+                nbt.writeInt(1)
+                nbt.writeNbtHeader(9, "pos")
+                nbt.writeByte(6)
+                nbt.writeInt(3)
+                nbt.writeDouble(0.5)
+                nbt.writeDouble(1.0)
+                nbt.writeDouble(0.5)
+                nbt.writeNbtHeader(10, "nbt")
+                nbt.writeNbtHeader(8, "id")
+                nbt.writeNbtString("minecraft:armor_stand")
+                nbt.writeNbtHeader(9, "Tags")
+                nbt.writeByte(8)
+                nbt.writeInt(1)
+                nbt.writeNbtString("binary_structure")
+                nbt.writeByte(0)
+                nbt.writeByte(0)
+
+                nbt.writeByte(0)
+            }
+        }
+    }
+
+    private fun DataOutputStream.writeNbtHeader(type: Int, name: String) {
+        writeByte(type)
+        writeNbtString(name)
+    }
+
+    private fun DataOutputStream.writeNbtString(value: String) {
+        val bytes = value.toByteArray(Charsets.UTF_8)
+        writeShort(bytes.size)
+        write(bytes)
     }
 
     private fun writeProcessedStructurePlacePack(root: Path): Path {
@@ -2591,6 +2737,66 @@ class CommandExpansionTest {
                     "location": "demo:jigsaw_room",
                     "processors": "demo:jigsaw_processors",
                     "projection": "rigid"
+                  }
+                }
+              ]
+            }
+            """.trimIndent(),
+        )
+        Files.writeString(
+            poolRoot.resolve("list_start.json"),
+            """
+            {
+              "fallback": "minecraft:empty",
+              "elements": [
+                {
+                  "weight": 1,
+                  "element": {
+                    "element_type": "minecraft:list_pool_element",
+                    "elements": [
+                      {
+                        "element_type": "minecraft:empty_pool_element"
+                      },
+                      {
+                        "element_type": "minecraft:single_pool_element",
+                        "location": "demo:jigsaw_room",
+                        "processors": "demo:jigsaw_processors",
+                        "projection": "rigid"
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+            """.trimIndent(),
+        )
+        val configuredRoot = root.resolve("data").resolve("demo").resolve("worldgen").resolve("configured_feature")
+        Files.createDirectories(configuredRoot)
+        Files.writeString(
+            configuredRoot.resolve("jigsaw_feature.json"),
+            """
+            {
+              "type": "minecraft:simple_block",
+              "config": {
+                "to_place": {
+                  "type": "minecraft:simple_state_provider",
+                  "state": { "Name": "minecraft:lapis_block" }
+                }
+              }
+            }
+            """.trimIndent(),
+        )
+        Files.writeString(
+            poolRoot.resolve("feature_start.json"),
+            """
+            {
+              "fallback": "minecraft:empty",
+              "elements": [
+                {
+                  "weight": 1,
+                  "element": {
+                    "element_type": "minecraft:feature_pool_element",
+                    "feature": "demo:jigsaw_feature"
                   }
                 }
               ]

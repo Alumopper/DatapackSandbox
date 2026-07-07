@@ -102,6 +102,7 @@ data class RawJsonResource(
     val file: String,
     val root: JsonElement,
     val version: String? = null,
+    val sourceFormat: String? = null,
 )
 
 /**

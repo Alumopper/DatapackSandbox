@@ -1970,6 +1970,7 @@ class DatapackSandbox(
         val blocks = blockPlan?.blocks
         val entities = root.getAsJsonArrayOrNull("entities")
         val processors = parseStructureProcessors(root, location).plus(extraProcessors)
+        resource.sourceFormat?.let { payload.addProperty("sourceFormat", it) }
         if (blocks == null && entities == null) {
             payload.addProperty("placed", false)
             payload.addProperty("format", "raw-json-index-only")

@@ -117,7 +117,7 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar resources --json --output buil
 | `worldgen/noise_settings` | `observed-noop` | 经版本校验的 raw JSON 资源，进入索引供 inspect。 |
 | `worldgen/placed_feature` | `modeled` | placed feature 会解析 configured simple_block/block_column/disk/vegetation_patch/tree/basalt_columns/delta_feature/lake/replace_single_block/replace_blob/selector/random_patch/flower/ore 资源，供 place feature 使用。 |
 | `worldgen/processor_list` | `modeled` | block_ignore、protected_blocks、jigsaw_replacement、capped、nop 和带 block/tag 谓词的 rule processor 可被沙盒结构放置消费。 |
-| `worldgen/structure` | `modeled` | 沙盒结构 JSON 的 `blocks`/`entities` 与 palette-style blocks 可被 `place structure` 和 `place template` 展开。 |
+| `worldgen/structure` | `modeled` | 沙盒结构 JSON 与二进制结构 NBT 的 palette blocks/entities 可被 `place structure` 和 `place template` 展开。 |
 | `worldgen/structure_set` | `observed-noop` | 经版本校验的 raw JSON 资源，进入索引供 inspect。 |
 | `worldgen/template_pool` | `modeled` | single/legacy/list/feature pool element 和 fallback pool 可被 place jigsaw 展开。 |
 | `worldgen/world_preset` | `observed-noop` | 经版本校验的 raw JSON 资源，进入索引供 inspect。 |
@@ -202,6 +202,9 @@ data/<namespace>/dimension_type/**/*.json
 data/<namespace>/worldgen/configured_feature/**/*.json
 data/<namespace>/worldgen/placed_feature/**/*.json
 data/<namespace>/worldgen/structure/**/*.json
+data/<namespace>/worldgen/structure/**/*.nbt
+data/<namespace>/structure/**/*.nbt
+data/<namespace>/structures/**/*.nbt
 data/<namespace>/worldgen/processor_list/**/*.json
 data/<namespace>/enchantment/**/*.json
 data/<namespace>/equipment_asset/**/*.json

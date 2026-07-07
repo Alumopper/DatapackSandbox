@@ -4,6 +4,9 @@ import com.google.gson.JsonArray
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
+import com.google.gson.JsonPrimitive
+import java.io.ByteArrayInputStream
+import java.io.DataInputStream
 import java.net.URI
 import java.nio.charset.StandardCharsets
 import java.nio.file.FileSystem
@@ -12,6 +15,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.security.MessageDigest
 import java.util.LinkedHashMap
+import java.util.zip.GZIPInputStream
 import kotlin.io.path.exists
 import kotlin.io.path.extension
 import kotlin.io.path.isDirectory
@@ -172,6 +176,10 @@ object DatapackLoader {
                     resourceIndex.recordAll(kind, resources, packLabel)
                     mergeRawResources(kind, resources)
                 }
+
+                val packBinaryStructures = readBinaryStructureResources(root, profile)
+                resourceIndex.recordAll("worldgen/structure", packBinaryStructures, packLabel)
+                mergeRawResources("worldgen/structure", packBinaryStructures)
 
                 val packTags = readTags(root, profile)
                 mergeTags(tags, packTags)
@@ -722,6 +730,136 @@ object DatapackLoader {
         readJsonResources(root, profile, directoryNames, errorLabel)
             .mapValues { (_, resource) -> RawJsonResource(kind, resource.id, resource.file, resource.root, profile.id) }
 
+    private fun readBinaryStructureResources(root: Path, profile: VersionProfile): Map<ResourceLocation, RawJsonResource> {
+        val data = root.resolve("data")
+        if (!data.exists()) return emptyMap()
+
+        val resources = linkedMapOf<ResourceLocation, RawJsonResource>()
+        val directories = listOf("worldgen/structure", "structure", "structures")
+        Files.list(data).use { namespaces ->
+            namespaces.filter { it.isDirectory() }.forEach { namespaceDir ->
+                val namespace = namespaceDir.name
+                directories.forEach { directoryName ->
+                    val resourceRoot = namespaceDir.resolve(directoryName)
+                    if (!resourceRoot.exists()) return@forEach
+                    Files.walk(resourceRoot).use { walk ->
+                        walk.filter { it.isRegularFile() && it.name.lowercase().endsWith(".nbt") }
+                            .forEach { file ->
+                                val relative = file.relativeTo(resourceRoot).toString().replace('\\', '/')
+                                val idPath = relative.substring(0, relative.length - ".nbt".length)
+                                val id = try {
+                                    ResourceLocation(namespace, idPath)
+                                } catch (error: IllegalArgumentException) {
+                                    throw SandboxException(
+                                        code = DiagnosticCode.INPUT_FORMAT,
+                                        message = "Invalid binary structure resource id '$namespace:$idPath': ${error.message}",
+                                        location = SourceLocation(file = file.toString()),
+                                        version = profile.id,
+                                        cause = error,
+                                    )
+                                }
+                                val rootJson = try {
+                                    readNbtCompoundJson(file)
+                                } catch (error: Exception) {
+                                    throw SandboxException(
+                                        code = DiagnosticCode.INPUT_FORMAT,
+                                        message = "Invalid binary structure NBT for '$id': ${error.message}",
+                                        location = SourceLocation(file = file.toString()),
+                                        version = profile.id,
+                                        cause = error,
+                                    )
+                                }
+                                resources[id] = RawJsonResource(
+                                    kind = "worldgen/structure",
+                                    id = id,
+                                    file = file.toString(),
+                                    root = rootJson,
+                                    version = profile.id,
+                                    sourceFormat = "binary-structure-nbt",
+                                )
+                            }
+                    }
+                }
+            }
+        }
+        return resources
+    }
+
+    private fun readNbtCompoundJson(file: Path): JsonObject {
+        val bytes = Files.readAllBytes(file)
+        val rawInput = ByteArrayInputStream(bytes)
+        val payloadInput = if (bytes.size >= 2 && bytes[0] == 0x1f.toByte() && bytes[1] == 0x8b.toByte()) {
+            GZIPInputStream(rawInput)
+        } else {
+            rawInput
+        }
+        DataInputStream(payloadInput).use { input ->
+            val rootType = input.readUnsignedByte()
+            if (rootType == NBT_TAG_END) return JsonObject()
+            require(rootType == NBT_TAG_COMPOUND) { "root tag must be a compound, got tag $rootType" }
+            input.readNbtString()
+            return input.readNbtCompoundPayload()
+        }
+    }
+
+    private fun DataInputStream.readNbtPayload(type: Int): JsonElement =
+        when (type) {
+            NBT_TAG_BYTE -> JsonPrimitive(readByte().toInt())
+            NBT_TAG_SHORT -> JsonPrimitive(readShort().toInt())
+            NBT_TAG_INT -> JsonPrimitive(readInt())
+            NBT_TAG_LONG -> JsonPrimitive(readLong())
+            NBT_TAG_FLOAT -> JsonPrimitive(readFloat())
+            NBT_TAG_DOUBLE -> JsonPrimitive(readDouble())
+            NBT_TAG_BYTE_ARRAY -> JsonArray().also { array ->
+                val size = readInt()
+                require(size >= 0) { "negative NBT byte array length $size" }
+                repeat(size) { array.add(readByte().toInt()) }
+            }
+            NBT_TAG_STRING -> JsonPrimitive(readNbtString())
+            NBT_TAG_LIST -> readNbtListPayload()
+            NBT_TAG_COMPOUND -> readNbtCompoundPayload()
+            NBT_TAG_INT_ARRAY -> JsonArray().also { array ->
+                val size = readInt()
+                require(size >= 0) { "negative NBT int array length $size" }
+                repeat(size) { array.add(readInt()) }
+            }
+            NBT_TAG_LONG_ARRAY -> JsonArray().also { array ->
+                val size = readInt()
+                require(size >= 0) { "negative NBT long array length $size" }
+                repeat(size) { array.add(readLong()) }
+            }
+            else -> throw IllegalArgumentException("unsupported NBT tag type $type")
+        }
+
+    private fun DataInputStream.readNbtListPayload(): JsonArray {
+        val elementType = readUnsignedByte()
+        val size = readInt()
+        require(size >= 0) { "negative NBT list length $size" }
+        require(elementType != NBT_TAG_END || size == 0) { "NBT end-tag list must be empty" }
+        return JsonArray().also { array ->
+            repeat(size) {
+                array.add(readNbtPayload(elementType))
+            }
+        }
+    }
+
+    private fun DataInputStream.readNbtCompoundPayload(): JsonObject {
+        val compound = JsonObject()
+        while (true) {
+            val type = readUnsignedByte()
+            if (type == NBT_TAG_END) return compound
+            val name = readNbtString()
+            compound.add(name, readNbtPayload(type))
+        }
+    }
+
+    private fun DataInputStream.readNbtString(): String {
+        val size = readUnsignedShort()
+        val bytes = ByteArray(size)
+        readFully(bytes)
+        return String(bytes, StandardCharsets.UTF_8)
+    }
+
     private fun readTags(root: Path, profile: VersionProfile): Map<TagKey, TagDefinition> {
         val data = root.resolve("data")
         if (!data.exists()) return emptyMap()
@@ -985,6 +1123,20 @@ object DatapackLoader {
             location = SourceLocation(file = resource.file),
             version = profile.id,
         )
+
+    private const val NBT_TAG_END = 0
+    private const val NBT_TAG_BYTE = 1
+    private const val NBT_TAG_SHORT = 2
+    private const val NBT_TAG_INT = 3
+    private const val NBT_TAG_LONG = 4
+    private const val NBT_TAG_FLOAT = 5
+    private const val NBT_TAG_DOUBLE = 6
+    private const val NBT_TAG_BYTE_ARRAY = 7
+    private const val NBT_TAG_STRING = 8
+    private const val NBT_TAG_LIST = 9
+    private const val NBT_TAG_COMPOUND = 10
+    private const val NBT_TAG_INT_ARRAY = 11
+    private const val NBT_TAG_LONG_ARRAY = 12
 
     private fun Map<String, Map<ResourceLocation, RawJsonResource>>.toSortedRawResourceMap(): Map<String, Map<ResourceLocation, RawJsonResource>> =
         toSortedMap().mapValues { (_, resources) -> resources.toSortedMap() }
