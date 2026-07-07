@@ -17,6 +17,7 @@ class VersionProfileJsonTest {
         assertEquals("26.2:26.2", profile.get("nbtSchema").asString)
         assertTrue(profile.getAsJsonArray("commandRoots").map { it.asString }.contains("transfer"))
         assertTrue(profile.getAsJsonObject("registryCounts").get("items").asInt > 0)
+        assertTrue(profile.getAsJsonObject("registries").getAsJsonArray("damage_types").map { it.asString }.contains("minecraft:generic"))
     }
 
     @Test

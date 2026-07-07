@@ -29,6 +29,7 @@ object VersionProfileJson {
             json.add("resourceDirectories", resourceDirectories(profile.resourceDirectories))
             json.add("commandRoots", stringArray(profile.commands.roots.sorted()))
             json.add("registryCounts", registryCounts(profile.registryView))
+            json.add("registries", registries(profile.registryView))
         }
 
     fun diff(diff: VersionProfileDiff): JsonObject =
@@ -69,6 +70,22 @@ object VersionProfileJson {
             json.addProperty("advancementTriggers", view.advancementTriggers.size)
             json.addProperty("lootConditions", view.lootConditions.size)
             json.addProperty("lootFunctions", view.lootFunctions.size)
+        }
+
+    private fun registries(view: RegistryView): JsonObject =
+        JsonObject().also { json ->
+            json.add("items", stringArray(view.items.map { it.toString() }.sorted()))
+            json.add("blocks", stringArray(view.blocks.map { it.toString() }.sorted()))
+            json.add("entity_types", stringArray(view.entityTypes.map { it.toString() }.sorted()))
+            json.add("biomes", stringArray(view.biomes.map { it.toString() }.sorted()))
+            json.add("damage_types", stringArray(view.damageTypes.map { it.toString() }.sorted()))
+            json.add("enchantments", stringArray(view.enchantments.map { it.toString() }.sorted()))
+            json.add("effects", stringArray(view.effects.map { it.toString() }.sorted()))
+            json.add("dimensions", stringArray(view.dimensions.map { it.toString() }.sorted()))
+            json.add("loot_context_types", stringArray(view.lootContextTypes.map { it.toString() }.sorted()))
+            json.add("advancement_triggers", stringArray(view.advancementTriggers.map { it.toString() }.sorted()))
+            json.add("loot_conditions", stringArray(view.lootConditions.map { it.toString() }.sorted()))
+            json.add("loot_functions", stringArray(view.lootFunctions.map { it.toString() }.sorted()))
         }
 
     private fun setChangeMap(changes: Map<String, SetChange>): JsonObject =

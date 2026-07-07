@@ -72,6 +72,10 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar version --json 1.20.4 26.2
 java -jar cli/build/libs/datapack-sandbox-cli.jar version --json --output build/profile-diff.json 1.20.4 26.2
 ```
 
+Profile metadata JSON includes both `registryCounts` and full `registries`
+entry arrays, so scripts can diff or validate command-generator registry inputs
+without scraping docs.
+
 Check manifests can run a version matrix:
 
 ```json

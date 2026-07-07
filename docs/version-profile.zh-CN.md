@@ -73,6 +73,8 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar version --json 1.20.4 26.2
 java -jar cli/build/libs/datapack-sandbox-cli.jar version --json --output build/profile-diff.json 1.20.4 26.2
 ```
 
+Profile 元数据 JSON 会同时包含 `registryCounts` 和完整 `registries` 条目数组，脚本可以直接校验命令生成器使用的 registry 输入，不需要从文档中抓取。
+
 ## 多版本清单
 
 `check` 清单可以运行版本矩阵：
