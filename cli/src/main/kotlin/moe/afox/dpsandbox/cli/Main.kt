@@ -2827,6 +2827,8 @@ class ResourcesCommand : CliktCommand(name = "resources") {
             "item_modifier" -> "`item modify` 会应用常用 item modifier 函数。"
             "chat_type" -> "聊天命令会暴露 chat type JSON 元数据。"
             "damage_type" -> "damage 命令会暴露 damage type JSON 元数据。"
+            "dimension" -> "维度感知命令输出会暴露 dimension JSON 元数据。"
+            "dimension_type" -> "dimension 资源会暴露关联的 dimension type JSON 元数据。"
             "tag/<registry>" -> "普通 tag 保留 `replace` 语义，并进入资源索引供 inspect。"
             "worldgen/configured_feature" -> "simple_block feature JSON 可被 place feature 消费。"
             "worldgen/placed_feature" -> "placed feature 会解析 configured simple_block 资源，供 place feature 使用。"

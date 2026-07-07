@@ -69,10 +69,10 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar commands --json --output build
 | `help` | 部分支持 | `modeled` | 输出命令根节点和基础沙盒帮助。 |
 | `item` | 部分支持 | `modeled` | `replace entity|block ... with <item> [count]` 和 `from entity|block ...`；`replace` 与 `modify` 会记录可用于 report/assertion 的结构化输出；item argument 支持沙盒 JSON/SNBT-lite NBT 和 components payload；container item-stack NBT 校验接受旧/新版 `Count`/`count` 与 `Slot`/`slot` 别名；entity 槽位覆盖玩家背包、当前主手、`enderchest.*` 槽和非玩家实体装备槽；`modify entity|block ... <modifier>` 会应用常用 item modifier 函数（`set_components`、`set_custom_data`、`set_count`、`limit_count`、`set_item`、`discard`、`set_damage`、`set_name`、`set_lore`、`copy_nbt`、`copy_components`、`filtered`、`reference`、`sequence`）。 |
 | `kick` | 空操作 | `observed-noop` | 记录请求的踢出目标和消息为结构化 debug 输出；不移除真实网络会话。 |
-| `kill` | 支持 | `modeled` | 移除选中的沙盒实体，并记录可用于 report/assertion 的结构化目标输出；玩家执行上下文会为非玩家目标触发 `killed_entity` advancement 事件。 |
+| `kill` | 支持 | `modeled` | 移除选中的沙盒实体，并记录可用于 report/assertion 的结构化目标输出；目标维度命中已加载资源时会暴露 dimension 元数据；玩家执行上下文会为非玩家目标触发 `killed_entity` advancement 事件。 |
 | `list` | 支持 | `modeled` | 报告沙盒玩家及 UUID。 |
 | `locate` | 部分支持 | `modeled` | 接受 `biome`、`structure`、`poi`；虚空世界中报告没有结果。 |
-| `loot` | 部分支持 | `modeled` | 支持 `give`、`insert`、`spawn`、`replace entity`、`replace block`，并记录可用于 report/assertion 的结构化 loot 输出；`spawn` 会在当前执行维度创建 item 实体；`replace entity` 可写入玩家背包、当前主手、`enderchest.*` 槽和非玩家实体装备槽；source 支持 `loot <table>`、`fish <table> <pos> [tool]`、`mine <pos> [tool]`，以及实体声明 `DeathLootTable` 时的 `kill <target>`；还支持沙盒上下文 source：`entity <table> <target>`、`block <table> <pos> [tool]`、`equipment <table> <target> <slot>`；entry 覆盖 item、嵌套 loot table、group、alternatives、sequence，以及带嵌套/optional 值的 item tag，其中 `expand=false` 会输出整个 tag，`expand=true` 会把 tag 内物品作为展开候选参与选择；常用函数覆盖 count、item id、discard、components/custom data、工具组件复制、实体名称复制、确定性附魔组件、工具附魔数量奖励、damage、name 和 lore。 |
+| `loot` | 部分支持 | `modeled` | 支持 `give`、`insert`、`spawn`、`replace entity`、`replace block`，并记录可用于 report/assertion 的结构化 loot 输出；`spawn` 会在当前执行维度创建 item 实体，命中已加载资源时会暴露 dimension 元数据；`replace entity` 可写入玩家背包、当前主手、`enderchest.*` 槽和非玩家实体装备槽；source 支持 `loot <table>`、`fish <table> <pos> [tool]`、`mine <pos> [tool]`，以及实体声明 `DeathLootTable` 时的 `kill <target>`；还支持沙盒上下文 source：`entity <table> <target>`、`block <table> <pos> [tool]`、`equipment <table> <target> <slot>`；entry 覆盖 item、嵌套 loot table、group、alternatives、sequence，以及带嵌套/optional 值的 item tag，其中 `expand=false` 会输出整个 tag，`expand=true` 会把 tag 内物品作为展开候选参与选择；常用函数覆盖 count、item id、discard、components/custom data、工具组件复制、实体名称复制、确定性附魔组件、工具附魔数量奖励、damage、name 和 lore。 |
 | `me` | 支持 | `modeled` | 记录为 chat 输出事件；命中已加载的命令 chat type 时会暴露 `chat_type` JSON 元数据。 |
 | `msg`、`tell`、`w` | 支持 | `modeled` | 记录为私聊输出事件；命中已加载的命令 chat type 时会暴露 `chat_type` JSON 元数据。 |
 | `pardon`、`pardon-ip` | 空操作 | `observed-noop` | 记录请求的 pardon 目标/IP 为结构化 debug 输出；不存储封禁列表状态。 |
@@ -93,17 +93,17 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar commands --json --output build
 | `seed` | 支持 | `modeled` | 报告确定性的沙盒 seed。 |
 | `setblock` | 部分支持 | `modeled` | 修改稀疏世界方块状态和方块实体 NBT，并记录结构化前后方块输出；位置参数支持局部坐标；不执行邻居更新。 |
 | `setidletimeout` | 空操作 | `observed-noop` | 校验并记录请求的 idle timeout 分钟数为结构化 debug 输出；不模拟玩家空闲踢出。 |
-| `setworldspawn` | 部分支持 | `modeled` | 存储世界出生点和角度，并记录结构化出生点输出。 |
-| `spawnpoint` | 部分支持 | `modeled` | 存储玩家出生点和角度，并记录结构化目标输出。 |
+| `setworldspawn` | 部分支持 | `modeled` | 存储世界出生点和角度，并记录结构化出生点输出；命中已加载资源时会暴露 dimension 元数据。 |
+| `spawnpoint` | 部分支持 | `modeled` | 存储玩家出生点和角度，并记录结构化目标输出；命中已加载资源时会暴露 dimension 元数据。 |
 | `spectate` | 部分支持 | `modeled` | 设置旁观模式并记录目标；不模拟客户端镜头状态。 |
 | `spreadplayers` | 部分支持 | `modeled` | 确定性地把选中实体分布到中心附近；不实现原版碰撞/队伍算法。 |
 | `stop` | 空操作 | `observed-noop` | 记录结构化 debug 生命周期请求；宿主进程仍然控制运行时，不会被沙盒命令停止。 |
 | `stopsound` | 部分支持 | `observed-noop` | 记录为 sound 输出事件。 |
-| `summon` | 部分支持 | `modeled` | 在当前执行维度创建带位置、tag 和 schema 校验 NBT 的实体，并记录可用于 report/assertion 的结构化创建输出；实体 AI 不 tick。 |
+| `summon` | 部分支持 | `modeled` | 在当前执行维度创建带位置、tag 和 schema 校验 NBT 的实体，并记录可用于 report/assertion 的结构化创建输出；命中已加载资源时会暴露 dimension/dimension_type 元数据；实体 AI 不 tick。 |
 | `tag` | 支持 | `modeled` | `add`、`remove`、`list`。 |
 | `team` | 部分支持 | `modeled` | `add`、`remove`、`list`、`join`、`leave`、`empty`、`modify`；记录结构化队伍/成员/选项输出，不执行 gameplay 副作用。 |
 | `teammsg`、`tm` | 支持 | `modeled` | 记录为 team chat 输出事件；命中已加载的命令 chat type 时会暴露 `chat_type` JSON 元数据。 |
-| `teleport`、`tp` | 部分支持 | `modeled` | 坐标传送支持局部坐标、可选旋转、`facing` 和当前执行维度；目标实体传送会复制目标位置、维度和旋转；记录可用于 report/assertion 的结构化移动输出。 |
+| `teleport`、`tp` | 部分支持 | `modeled` | 坐标传送支持局部坐标、可选旋转、`facing` 和当前执行维度；目标实体传送会复制目标位置、维度和旋转；记录可用于 report/assertion 的结构化移动输出，命中已加载资源时会暴露 from/to dimension 元数据。 |
 | `tellraw` | 支持 | `modeled` | 解析 JSON text component 并记录输出事件。 |
 | `tick` | 部分支持 | `modeled` | `query`、`rate`、`freeze`、`unfreeze`、`step`、`sprint`、`stop`；更新沙盒 tick 状态，可推进 tick，并记录结构化状态/推进输出用于调试。 |
 | `time` | 部分支持 | `modeled` | `set`、`add`、`query daytime|gametime|day`；修改和 query 都会记录结构化 data 输出，供断言和 `execute store result` 使用。 |

@@ -105,8 +105,8 @@ smoke tasks.
 | `cow_variant` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
 | `damage_type` | `modeled` | damage type JSON metadata exposed by the damage command |
 | `dialog` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
-| `dimension` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
-| `dimension_type` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
+| `dimension` | `modeled` | dimension JSON metadata exposed by dimension-aware command outputs |
+| `dimension_type` | `modeled` | dimension type JSON metadata exposed through dimension resources |
 | `enchantment` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
 | `enchantment_provider` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
 | `equipment_asset` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
@@ -328,13 +328,13 @@ count; misses include actual snapshot diff candidates.
 
 ## Raw JSON Resources and Tags
 
-Chat types, damage types, recipes, item modifiers, and additional registry resources are loaded as raw
+Chat types, damage types, dimensions, dimension types, recipes, item modifiers, and additional registry resources are loaded as raw
 JSON resources and included in the resource index. The sandbox does not yet
 execute the full crafting system, every item modifier function, or full
 worldgen semantics, but it models sandbox structure placement, processor_list
 block_ignore/simple rule handling, template_pool single/legacy jigsaw placement,
 simple_block feature placement, chat type metadata in modeled chat commands, and
-damage type metadata in `damage` command output; the remaining resources are version-profile checked,
+damage type metadata in `damage` command output, plus dimension and dimension type metadata in dimension-aware command outputs; the remaining resources are version-profile checked,
 participate in pack overlay behavior, and can be inspected from API or REPL.
 `recipe give` and `recipe take` update player recipe state and report the
 concrete changed recipe ids in structured output. Loot tables can expand

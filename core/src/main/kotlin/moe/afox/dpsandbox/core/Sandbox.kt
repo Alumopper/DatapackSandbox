@@ -850,7 +850,10 @@ class DatapackSandbox(
                     "position",
                     listOf("${pos.x} ${pos.y} ${pos.z}"),
                     items,
-                    JsonObject().also { it.addProperty("dimension", context.dimension.toString()) },
+                    JsonObject().also {
+                        it.addProperty("dimension", context.dimension.toString())
+                        it.addDimensionMetadata("dimensionResource", context.dimension, location)
+                    },
                 )
             }
             "replace" -> executeLootReplace(tokens, location, context)
@@ -4661,6 +4664,7 @@ class DatapackSandbox(
                 payload.addProperty("uuid", entity.uuid)
                 payload.addProperty("type", entity.type.toString())
                 payload.addProperty("dimension", entity.dimension.toString())
+                payload.addDimensionMetadata("dimensionResource", entity.dimension, location)
                 payload.add("position", positionOutput(entity.position))
                 payload.add("tags", JsonArray().also { tagsArray -> entity.tags.forEach { tagsArray.add(it) } })
                 payload.add("nbt", nbt.deepCopy())
@@ -4693,6 +4697,7 @@ class DatapackSandbox(
                                     entry.addProperty("uuid", entity.uuid)
                                     entry.addProperty("type", entity.type.toString())
                                     entry.addProperty("dimension", entity.dimension.toString())
+                                    entry.addDimensionMetadata("dimensionResource", entity.dimension, location)
                                     entry.addProperty("player", entity is SandboxPlayer)
                                 },
                             )
@@ -4803,6 +4808,8 @@ class DatapackSandbox(
                                     entry.add("to", positionOutput(move.entity.position))
                                     entry.addProperty("fromDimension", move.beforeDimension.toString())
                                     entry.addProperty("toDimension", move.entity.dimension.toString())
+                                    entry.addDimensionMetadata("fromDimensionResource", move.beforeDimension, null)
+                                    entry.addDimensionMetadata("toDimensionResource", move.entity.dimension, null)
                                     entry.addProperty("beforeYaw", move.beforeYaw)
                                     entry.addProperty("beforePitch", move.beforePitch)
                                     entry.addProperty("afterYaw", move.entity.yaw)
@@ -4822,6 +4829,51 @@ class DatapackSandbox(
             pos.addProperty("y", position.y)
             pos.addProperty("z", position.z)
         }
+
+    private fun JsonObject.addDimensionMetadata(name: String, dimension: ResourceLocation, location: SourceLocation?) {
+        dimensionPayload(dimension, location)?.let { add(name, it) }
+    }
+
+    private fun spawnPointOutput(spawn: SpawnPoint, location: SourceLocation?): JsonObject =
+        spawn.toJson().also { payload ->
+            payload.addDimensionMetadata("dimensionResource", spawn.dimension, location)
+        }
+
+    private fun dimensionPayload(id: ResourceLocation, location: SourceLocation?): JsonObject? {
+        val resource = datapack.rawResources["dimension"]?.get(id) ?: return null
+        if (!resource.root.isJsonObject) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Dimension resource '$id' must be a JSON object", location)
+        }
+        val root = resource.root.asJsonObject
+        return JsonObject().also { payload ->
+            payload.addProperty("id", id.toString())
+            payload.addProperty("resource", resource.file)
+            payload.addProperty("version", resource.version ?: profile.id)
+            payload.add("definition", root.deepCopy())
+            root.get("type")?.let { typeElement ->
+                if (!typeElement.isJsonPrimitive) {
+                    throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Dimension resource '$id' field 'type' must be a primitive id", location)
+                }
+                val type = ResourceLocation.parse(typeElement.asString)
+                payload.addProperty("type", type.toString())
+                dimensionTypePayload(type, location)?.let { payload.add("dimensionType", it) }
+            }
+        }
+    }
+
+    private fun dimensionTypePayload(id: ResourceLocation, location: SourceLocation?): JsonObject? {
+        val resource = datapack.rawResources["dimension_type"]?.get(id) ?: return null
+        if (!resource.root.isJsonObject) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Dimension type resource '$id' must be a JSON object", location)
+        }
+        val root = resource.root.asJsonObject
+        return JsonObject().also { payload ->
+            payload.addProperty("id", id.toString())
+            payload.addProperty("resource", resource.file)
+            payload.addProperty("version", resource.version ?: profile.id)
+            payload.add("definition", root.deepCopy())
+        }
+    }
 
     private fun executeSetBlock(tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext) {
         requireSize(tokens, 5, "setblock <pos> <block> [destroy|keep|replace]", location)
@@ -5378,7 +5430,7 @@ class DatapackSandbox(
             "data",
             text = "${position.x} ${position.y} ${position.z}",
             payload = JsonObject().also { payload ->
-                payload.add("spawn", world.worldSpawn.toJson())
+                payload.add("spawn", spawnPointOutput(world.worldSpawn, location))
             },
         )
     }
@@ -5414,7 +5466,7 @@ class DatapackSandbox(
                                 JsonObject().also { entry ->
                                     entry.addProperty("player", player.name)
                                     entry.addProperty("uuid", player.uuid)
-                                    player.spawnPoint?.let { entry.add("spawn", it.toJson()) }
+                                    player.spawnPoint?.let { entry.add("spawn", spawnPointOutput(it, location)) }
                                 },
                             )
                         }

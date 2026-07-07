@@ -16,6 +16,8 @@ class ResourceCatalogTest {
         assertEquals(ResourceBehaviorLevel.OBSERVED_NOOP, entries.getValue("tag/<registry>").behaviorLevel)
         assertEquals(ResourceBehaviorLevel.MODELED, entries.getValue("chat_type").behaviorLevel)
         assertEquals(ResourceBehaviorLevel.MODELED, entries.getValue("damage_type").behaviorLevel)
+        assertEquals(ResourceBehaviorLevel.MODELED, entries.getValue("dimension").behaviorLevel)
+        assertEquals(ResourceBehaviorLevel.MODELED, entries.getValue("dimension_type").behaviorLevel)
         assertEquals(ResourceBehaviorLevel.MODELED, entries.getValue("worldgen/configured_feature").behaviorLevel)
         assertEquals(ResourceBehaviorLevel.MODELED, entries.getValue("worldgen/placed_feature").behaviorLevel)
         assertEquals(ResourceBehaviorLevel.MODELED, entries.getValue("worldgen/processor_list").behaviorLevel)
@@ -28,6 +30,8 @@ class ResourceCatalogTest {
         assertEquals(ResourceCatalog.additionalRawJsonTypes.sorted(), ResourceCatalog.additionalRawJsonTypes)
         assertEquals(ResourceCatalog.additionalRawJsonTypes.size, ResourceCatalog.additionalRawJsonTypes.toSet().size)
         assertTrue("damage_type" in ResourceCatalog.additionalRawJsonTypes)
+        assertTrue("dimension" in ResourceCatalog.additionalRawJsonTypes)
+        assertTrue("dimension_type" in ResourceCatalog.additionalRawJsonTypes)
         assertTrue("worldgen/placed_feature" in ResourceCatalog.additionalRawJsonTypes)
         assertTrue("worldgen/structure" in ResourceCatalog.additionalRawJsonTypes)
     }

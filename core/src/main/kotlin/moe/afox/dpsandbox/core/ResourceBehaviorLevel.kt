@@ -60,6 +60,8 @@ object ResourceCatalog {
     private val modeledRawJsonSummaries = mapOf(
         "chat_type" to "chat type JSON metadata exposed by modeled chat commands",
         "damage_type" to "damage type JSON metadata exposed by the damage command",
+        "dimension" to "dimension JSON metadata exposed by dimension-aware command outputs",
+        "dimension_type" to "dimension type JSON metadata exposed through dimension resources",
         "worldgen/configured_feature" to "simple_block feature JSON consumed by place feature",
         "worldgen/placed_feature" to "placed feature JSON resolving configured simple_block resources for place feature",
         "worldgen/processor_list" to "block_ignore and simple rule processors consumed by sandbox structure placement",
@@ -102,6 +104,8 @@ object ResourceBehaviorLevels {
         "item_modifier",
         "chat_type",
         "damage_type",
+        "dimension",
+        "dimension_type",
         "worldgen/configured_feature",
         "worldgen/placed_feature",
         "worldgen/processor_list",

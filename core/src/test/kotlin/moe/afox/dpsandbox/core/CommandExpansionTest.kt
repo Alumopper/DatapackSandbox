@@ -302,6 +302,38 @@ class CommandExpansionTest {
     }
 
     @Test
+    fun `dimension aware command outputs expose loaded dimension metadata`() {
+        val sandbox = createSandbox("26.2", listOf(writeDimensionPack(Files.createTempDirectory("dps-dimension-pack"))))
+
+        sandbox.executeCommand("""execute in demo:debug run summon minecraft:marker 1 2 3 {Tags:["dimension_debug"]}""")
+        sandbox.executeCommand("""summon minecraft:pig 0 0 0 {Tags:["traveler"]}""")
+        sandbox.executeCommand("""tp @e[tag=traveler,limit=1] @e[tag=dimension_debug,limit=1]""")
+
+        val summonPayload = sandbox.world.outputs
+            .filter { it.command == "summon" }
+            .mapNotNull { it.payload?.asJsonObject }
+            .single { it.get("dimension").asString == "demo:debug" }
+        val dimension = summonPayload.getAsJsonObject("dimensionResource")
+        assertEquals("demo:debug", dimension.get("id").asString)
+        assertEquals("demo:debug_type", dimension.get("type").asString)
+        assertEquals("minecraft:noise", dimension.getAsJsonObject("definition").getAsJsonObject("generator").get("type").asString)
+        val dimensionType = dimension.getAsJsonObject("dimensionType")
+        assertEquals("demo:debug_type", dimensionType.get("id").asString)
+        assertEquals(false, dimensionType.getAsJsonObject("definition").get("natural").asBoolean)
+        assertEquals(0.25, dimensionType.getAsJsonObject("definition").get("ambient_light").asDouble)
+
+        val teleportEntry = sandbox.world.outputs.single { it.command == "tp" }
+            .payload?.asJsonObject
+            ?.getAsJsonArray("targets")
+            ?.get(0)
+            ?.asJsonObject
+            ?: error("missing teleport target payload")
+        assertEquals("demo:debug", teleportEntry.get("toDimension").asString)
+        assertEquals("demo:debug", teleportEntry.getAsJsonObject("toDimensionResource").get("id").asString)
+        assertEquals("demo:debug_type", teleportEntry.getAsJsonObject("toDimensionResource").getAsJsonObject("dimensionType").get("id").asString)
+    }
+
+    @Test
     fun `place structure applies sandbox structure json resources`() {
         val pack = writeStructurePlacePack(Files.createTempDirectory("dps-place-structure-pack"))
         val sandbox = createSandbox("26.2", listOf(pack))
@@ -1411,6 +1443,65 @@ class CommandExpansionTest {
                 "translation_key": "chat.type.sandbox_say.narrate",
                 "parameters": ["sender", "content"]
               }
+            }
+            """.trimIndent(),
+        )
+        return root
+    }
+
+    private fun writeDimensionPack(root: Path): Path {
+        Files.writeString(
+            root.resolve("pack.mcmeta").also { Files.createDirectories(it.parent) },
+            """
+            {
+              "pack": {
+                "pack_format": 107.1,
+                "description": "dimension metadata test"
+              }
+            }
+            """.trimIndent(),
+        )
+        val dimensionRoot = root.resolve("data").resolve("demo").resolve("dimension")
+        Files.createDirectories(dimensionRoot)
+        Files.writeString(
+            dimensionRoot.resolve("debug.json"),
+            """
+            {
+              "type": "demo:debug_type",
+              "generator": {
+                "type": "minecraft:noise",
+                "settings": "minecraft:overworld",
+                "biome_source": {
+                  "type": "minecraft:fixed",
+                  "biome": "minecraft:plains"
+                }
+              }
+            }
+            """.trimIndent(),
+        )
+        val dimensionTypeRoot = root.resolve("data").resolve("demo").resolve("dimension_type")
+        Files.createDirectories(dimensionTypeRoot)
+        Files.writeString(
+            dimensionTypeRoot.resolve("debug_type.json"),
+            """
+            {
+              "ultrawarm": false,
+              "natural": false,
+              "coordinate_scale": 8.0,
+              "piglin_safe": true,
+              "respawn_anchor_works": true,
+              "bed_works": false,
+              "has_raids": false,
+              "has_skylight": false,
+              "has_ceiling": true,
+              "ambient_light": 0.25,
+              "logical_height": 256,
+              "min_y": 0,
+              "height": 256,
+              "infiniburn": "#minecraft:infiniburn_overworld",
+              "effects": "minecraft:the_nether",
+              "monster_spawn_light_level": 7,
+              "monster_spawn_block_light_limit": 0
             }
             """.trimIndent(),
         )
