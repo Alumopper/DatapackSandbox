@@ -2001,12 +2001,15 @@ class RunCommandTest {
         }
 
         assertTrue("function modeled - mcfunction execution" in output, output)
+        assertTrue("banner_pattern modeled - item component registry JSON metadata exposed by item command outputs" in output, output)
         assertTrue("painting_variant modeled - entity variant JSON metadata exposed by the summon command" in output, output)
         assertTrue("chat_type modeled - chat type JSON metadata exposed by modeled chat commands" in output, output)
         assertTrue("damage_type modeled - damage type JSON metadata exposed by the damage command" in output, output)
         assertTrue("dimension modeled - dimension JSON metadata exposed by dimension-aware command outputs" in output, output)
         assertTrue("dimension_type modeled - dimension type JSON metadata exposed through dimension resources" in output, output)
         assertTrue("enchantment modeled - enchantment JSON metadata exposed by the enchant command" in output, output)
+        assertTrue("instrument modeled - instrument JSON metadata exposed by item command outputs" in output, output)
+        assertTrue("jukebox_song modeled - jukebox song JSON metadata exposed by item command outputs" in output, output)
         assertTrue("trim_material modeled - armor trim material JSON metadata exposed by item command outputs" in output, output)
         assertTrue("trim_pattern modeled - armor trim pattern JSON metadata exposed by item command outputs" in output, output)
         assertTrue("wolf_sound_variant modeled - wolf sound variant JSON metadata exposed by the summon command" in output, output)
@@ -2025,12 +2028,15 @@ class RunCommandTest {
         }
 
         assertTrue("| Resource | Behavior | Runtime/debug surface |" in output, output)
+        assertTrue("| `banner_pattern` | `modeled` | item component registry JSON metadata exposed by item command outputs |" in output, output)
         assertTrue("| `cat_variant` | `modeled` | entity variant JSON metadata exposed by the summon command |" in output, output)
         assertTrue("| `chat_type` | `modeled` | chat type JSON metadata exposed by modeled chat commands |" in output, output)
         assertTrue("| `damage_type` | `modeled` | damage type JSON metadata exposed by the damage command |" in output, output)
         assertTrue("| `dimension` | `modeled` | dimension JSON metadata exposed by dimension-aware command outputs |" in output, output)
         assertTrue("| `dimension_type` | `modeled` | dimension type JSON metadata exposed through dimension resources |" in output, output)
         assertTrue("| `enchantment` | `modeled` | enchantment JSON metadata exposed by the enchant command |" in output, output)
+        assertTrue("| `instrument` | `modeled` | instrument JSON metadata exposed by item command outputs |" in output, output)
+        assertTrue("| `jukebox_song` | `modeled` | jukebox song JSON metadata exposed by item command outputs |" in output, output)
         assertTrue("| `painting_variant` | `modeled` | entity variant JSON metadata exposed by the summon command |" in output, output)
         assertTrue("| `trim_material` | `modeled` | armor trim material JSON metadata exposed by item command outputs |" in output, output)
         assertTrue("| `trim_pattern` | `modeled` | armor trim pattern JSON metadata exposed by item command outputs |" in output, output)
@@ -2049,12 +2055,15 @@ class RunCommandTest {
         }
 
         assertTrue("| 资源 | 行为等级 | 运行时 / debug 表面 |" in output, output)
+        assertTrue("| `banner_pattern` | `modeled` | item 输出会暴露 banner pattern JSON 元数据。" in output, output)
         assertTrue("| `cat_variant` | `modeled` | summon 命令会暴露实体 variant JSON 元数据。" in output, output)
         assertTrue("| `chat_type` | `modeled` | 聊天命令会暴露 chat type JSON 元数据。" in output, output)
         assertTrue("| `damage_type` | `modeled` | damage 命令会暴露 damage type JSON 元数据。" in output, output)
         assertTrue("| `dimension` | `modeled` | 维度感知命令输出会暴露 dimension JSON 元数据。" in output, output)
         assertTrue("| `dimension_type` | `modeled` | dimension 资源会暴露关联的 dimension type JSON 元数据。" in output, output)
         assertTrue("| `enchantment` | `modeled` | enchant 命令会暴露 enchantment JSON 元数据。" in output, output)
+        assertTrue("| `instrument` | `modeled` | item 输出会暴露 instrument JSON 元数据。" in output, output)
+        assertTrue("| `jukebox_song` | `modeled` | item 输出会暴露 jukebox song JSON 元数据。" in output, output)
         assertTrue("| `painting_variant` | `modeled` | summon 命令会暴露实体 variant JSON 元数据。" in output, output)
         assertTrue("| `trim_material` | `modeled` | item 输出会暴露 armor trim material JSON 元数据。" in output, output)
         assertTrue("| `trim_pattern` | `modeled` | item 输出会暴露 armor trim pattern JSON 元数据。" in output, output)
@@ -2130,12 +2139,15 @@ class RunCommandTest {
         val resources = json.getAsJsonArray("resources").map { it.asJsonObject }.associateBy { it.get("type").asString }
 
         assertEquals("modeled", resources.getValue("function").get("behavior").asString)
+        assertEquals("modeled", resources.getValue("banner_pattern").get("behavior").asString)
         assertEquals("modeled", resources.getValue("cat_variant").get("behavior").asString)
         assertEquals("modeled", resources.getValue("chat_type").get("behavior").asString)
         assertEquals("modeled", resources.getValue("damage_type").get("behavior").asString)
         assertEquals("modeled", resources.getValue("dimension").get("behavior").asString)
         assertEquals("modeled", resources.getValue("dimension_type").get("behavior").asString)
         assertEquals("modeled", resources.getValue("enchantment").get("behavior").asString)
+        assertEquals("modeled", resources.getValue("instrument").get("behavior").asString)
+        assertEquals("modeled", resources.getValue("jukebox_song").get("behavior").asString)
         assertEquals("modeled", resources.getValue("painting_variant").get("behavior").asString)
         assertEquals("modeled", resources.getValue("trim_material").get("behavior").asString)
         assertEquals("modeled", resources.getValue("trim_pattern").get("behavior").asString)

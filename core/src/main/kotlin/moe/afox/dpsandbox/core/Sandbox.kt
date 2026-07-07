@@ -889,7 +889,62 @@ class DatapackSandbox(
     private fun itemStackOutput(item: ItemStack): JsonObject =
         item.toJson().also { json ->
             itemTrimResourcePayloads(item)?.let { json.add("trimResources", it) }
+            itemComponentResourcePayloads(item)?.let { json.add("componentResources", it) }
         }
+
+    private fun itemComponentResourcePayloads(item: ItemStack): JsonArray? {
+        val resources = JsonArray()
+        item.components.get("minecraft:instrument")
+            ?.componentResourceId("value")
+            ?.let { itemComponentResourcePayload("minecraft:instrument", "value", "instrument", it) }
+            ?.let(resources::add)
+        item.components.get("minecraft:jukebox_playable")
+            ?.componentResourceId("song")
+            ?.let { itemComponentResourcePayload("minecraft:jukebox_playable", "song", "jukebox_song", it) }
+            ?.let(resources::add)
+        item.components.get("minecraft:banner_patterns")?.let { patterns ->
+            val entries = when {
+                patterns.isJsonArray -> patterns.asJsonArray.toList()
+                patterns.isJsonObject -> patterns.asJsonObject.getAsJsonArray("patterns")?.toList().orEmpty()
+                else -> emptyList()
+            }
+            entries.forEachIndexed { index, entry ->
+                entry.componentResourceId("pattern")?.let { id ->
+                    itemComponentResourcePayload("minecraft:banner_patterns", "pattern", "banner_pattern", id)?.let { payload ->
+                        payload.addProperty("index", index)
+                        resources.add(payload)
+                    }
+                }
+            }
+        }
+        return resources.takeIf { it.size() > 0 }
+    }
+
+    private fun JsonElement.componentResourceId(field: String): ResourceLocation? =
+        when {
+            isJsonPrimitive -> runCatching { ResourceLocation.parse(asString) }.getOrNull()
+            isJsonObject -> asJsonObject.get(field)
+                ?.takeIf { it.isJsonPrimitive }
+                ?.asString
+                ?.let { runCatching { ResourceLocation.parse(it) }.getOrNull() }
+            else -> null
+        }
+
+    private fun itemComponentResourcePayload(component: String, field: String, kind: String, id: ResourceLocation): JsonObject? {
+        val resource = datapack.rawResources[kind]?.get(id) ?: return null
+        if (!resource.root.isJsonObject) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Item component resource '$id' of type '$kind' must be a JSON object")
+        }
+        return JsonObject().also { payload ->
+            payload.addProperty("type", kind)
+            payload.addProperty("component", component)
+            payload.addProperty("field", field)
+            payload.addProperty("id", id.toString())
+            payload.addProperty("resource", resource.file)
+            payload.addProperty("version", resource.version ?: profile.id)
+            payload.add("definition", resource.root.deepCopy())
+        }
+    }
 
     private fun itemTrimResourcePayloads(item: ItemStack): JsonArray? {
         val trim = item.components.get("minecraft:trim")?.takeIf { it.isJsonObject }?.asJsonObject ?: return null

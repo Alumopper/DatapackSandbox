@@ -58,6 +58,7 @@ object ResourceCatalog {
     )
 
     private val modeledRawJsonSummaries = mapOf(
+        "banner_pattern" to "item component registry JSON metadata exposed by item command outputs",
         "cat_variant" to "entity variant JSON metadata exposed by the summon command",
         "chat_type" to "chat type JSON metadata exposed by modeled chat commands",
         "chicken_variant" to "entity variant JSON metadata exposed by the summon command",
@@ -67,6 +68,8 @@ object ResourceCatalog {
         "dimension_type" to "dimension type JSON metadata exposed through dimension resources",
         "enchantment" to "enchantment JSON metadata exposed by the enchant command",
         "frog_variant" to "entity variant JSON metadata exposed by the summon command",
+        "instrument" to "instrument JSON metadata exposed by item command outputs",
+        "jukebox_song" to "jukebox song JSON metadata exposed by item command outputs",
         "painting_variant" to "entity variant JSON metadata exposed by the summon command",
         "pig_variant" to "entity variant JSON metadata exposed by the summon command",
         "trim_material" to "armor trim material JSON metadata exposed by item command outputs",
@@ -113,6 +116,7 @@ object ResourceBehaviorLevels {
         "advancement",
         "recipe",
         "item_modifier",
+        "banner_pattern",
         "cat_variant",
         "chat_type",
         "chicken_variant",
@@ -122,6 +126,8 @@ object ResourceBehaviorLevels {
         "dimension_type",
         "enchantment",
         "frog_variant",
+        "instrument",
+        "jukebox_song",
         "painting_variant",
         "pig_variant",
         "trim_material",

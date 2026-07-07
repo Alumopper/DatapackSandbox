@@ -405,6 +405,44 @@ class CommandExpansionTest {
     }
 
     @Test
+    fun `item outputs expose loaded component registry metadata`() {
+        val sandbox = createSandbox("26.2", listOf(writeItemComponentResourcePack(Files.createTempDirectory("dps-item-component-pack"))))
+
+        sandbox.executeCommand("""give Steve minecraft:goat_horn[minecraft:instrument="demo:debug_horn"]""")
+        sandbox.executeCommand("""give Steve minecraft:music_disc_cat[minecraft:jukebox_playable={song:"demo:debug_song"}]""")
+        sandbox.executeCommand("""give Steve minecraft:white_banner[minecraft:banner_patterns=[{pattern:"demo:debug_banner",color:"red"}]]""")
+
+        val items = sandbox.world.outputs
+            .filter { it.command == "give" }
+            .map { it.payload?.asJsonObject?.getAsJsonObject("item") ?: error("missing give item") }
+            .associateBy { it.get("id").asString }
+        val instrument = items.getValue("minecraft:goat_horn")
+            .getAsJsonArray("componentResources")[0]
+            .asJsonObject
+        assertEquals("instrument", instrument.get("type").asString)
+        assertEquals("minecraft:instrument", instrument.get("component").asString)
+        assertEquals("demo:debug_horn", instrument.get("id").asString)
+        assertEquals(24.0, instrument.getAsJsonObject("definition").get("range").asDouble)
+
+        val song = items.getValue("minecraft:music_disc_cat")
+            .getAsJsonArray("componentResources")[0]
+            .asJsonObject
+        assertEquals("jukebox_song", song.get("type").asString)
+        assertEquals("minecraft:jukebox_playable", song.get("component").asString)
+        assertEquals("demo:debug_song", song.get("id").asString)
+        assertEquals(7, song.getAsJsonObject("definition").get("comparator_output").asInt)
+
+        val banner = items.getValue("minecraft:white_banner")
+            .getAsJsonArray("componentResources")[0]
+            .asJsonObject
+        assertEquals("banner_pattern", banner.get("type").asString)
+        assertEquals("minecraft:banner_patterns", banner.get("component").asString)
+        assertEquals(0, banner.get("index").asInt)
+        assertEquals("demo:debug_banner", banner.get("id").asString)
+        assertEquals("demo:debug_banner", banner.getAsJsonObject("definition").get("asset_id").asString)
+    }
+
+    @Test
     fun `place structure applies sandbox structure json resources`() {
         val pack = writeStructurePlacePack(Files.createTempDirectory("dps-place-structure-pack"))
         val sandbox = createSandbox("26.2", listOf(pack))
@@ -1702,6 +1740,58 @@ class CommandExpansionTest {
               "template_item": "minecraft:spire_armor_trim_smithing_template",
               "description": { "text": "Debug Spire" },
               "decal": false
+            }
+            """.trimIndent(),
+        )
+        return root
+    }
+
+    private fun writeItemComponentResourcePack(root: Path): Path {
+        Files.writeString(
+            root.resolve("pack.mcmeta").also { Files.createDirectories(it.parent) },
+            """
+            {
+              "pack": {
+                "pack_format": 107.1,
+                "description": "item component registry metadata test"
+              }
+            }
+            """.trimIndent(),
+        )
+        val instrumentRoot = root.resolve("data").resolve("demo").resolve("instrument")
+        Files.createDirectories(instrumentRoot)
+        Files.writeString(
+            instrumentRoot.resolve("debug_horn.json"),
+            """
+            {
+              "sound_event": "minecraft:item.goat_horn.sound.0",
+              "use_duration": 140,
+              "range": 24.0,
+              "description": { "text": "Debug Horn" }
+            }
+            """.trimIndent(),
+        )
+        val songRoot = root.resolve("data").resolve("demo").resolve("jukebox_song")
+        Files.createDirectories(songRoot)
+        Files.writeString(
+            songRoot.resolve("debug_song.json"),
+            """
+            {
+              "sound_event": "minecraft:music_disc.cat",
+              "description": { "text": "Debug Song" },
+              "length_in_seconds": 12.5,
+              "comparator_output": 7
+            }
+            """.trimIndent(),
+        )
+        val bannerRoot = root.resolve("data").resolve("demo").resolve("banner_pattern")
+        Files.createDirectories(bannerRoot)
+        Files.writeString(
+            bannerRoot.resolve("debug_banner.json"),
+            """
+            {
+              "asset_id": "demo:debug_banner",
+              "translation_key": "block.demo.banner.debug"
             }
             """.trimIndent(),
         )

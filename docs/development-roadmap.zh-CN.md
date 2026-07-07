@@ -43,6 +43,7 @@
   - `enchantment` 已从 raw inspect 推进到 `enchant` 命令调试面；命中已加载资源时，结构化输出会暴露完整 enchantment JSON definition、资源文件和版本，便于命令生成器断言自定义附魔定义和实际写入的物品组件。
   - `cat_variant`、`chicken_variant`、`cow_variant`、`frog_variant`、`painting_variant`、`pig_variant`、`wolf_variant` 和 `wolf_sound_variant` 已从 raw inspect 推进到 `summon` 命令调试面；实体 NBT 中的 `variant`/`sound_variant` 命中已加载资源时，结构化输出会暴露对应 variant JSON、资源文件和版本。
   - `trim_material` 和 `trim_pattern` 已从 raw inspect 推进到 item 输出调试面；物品 `minecraft:trim` 组件命中已加载资源时，`give`、`item replace`、`item modify`、`loot` 和 `enchant` 等结构化 item 输出会暴露 trim material/pattern JSON、资源文件和版本。
+  - `banner_pattern`、`instrument` 和 `jukebox_song` 已从 raw inspect 推进到 item 输出调试面；物品 `minecraft:banner_patterns`、`minecraft:instrument`、`minecraft:jukebox_playable` 组件命中已加载资源时，结构化 item 输出会暴露对应资源 JSON、资源文件和版本。
   - 额外 raw JSON 资源矩阵测试已直接复用 `ResourceCatalog.additionalRawJsonTypes`，确保 catalog 中列出的 P1/P2 资源都会被目录/zip loader、raw resource map 和资源索引覆盖，而不是只覆盖手写子集。
 
 验收标准：
@@ -71,7 +72,7 @@
   - 补齐 source：`mine`、`kill`、`fish`、`entity`、`block`、`equipment` 等适合测试的确定性模型；命令 source 已覆盖 `fish`、`mine`、`kill`、`entity <table> <target>`、`block <table> <pos> [tool]`、`equipment <table> <target> <slot>`，其中 block source 会把完整 sparse block 状态交给 `block_state_property` 检查 id 和 properties；loot entry 已支持 item tag 展开、嵌套 tag、optional tag value、`expand=false` 整 tag 输出和 `expand=true` 展开候选选择，并可通过 `copy_name` 从实体上下文复制名称、通过 `copy_components` 从工具复制组件、通过 deterministic enchantment function 写入附魔组件、通过 `apply_bonus` 和附魔感知的 `random_chance_with_enchanted_bonus` 按工具附魔调整数量或条件概率，也可通过 `reference` 复用 item modifier 函数链；常用 condition 已覆盖 `table_bonus`、`killed_by_player` 和带 constant/uniform/binomial/score provider 的 `value_check`，供输出断言调试。
   - 输出既能进入玩家/方块/实体，也能作为独立生成结果供 CLI 和 manifest 断言；`loot` 命令会记录结构化输出事件，`loot replace entity` 已可写入玩家背包、当前主手、`enderchest.*` 槽和非玩家实体装备槽。
 - 扩展 `item` 和 item modifier：
-  - 支持 entity/block slot 读写、modifier 应用、components/NBT 兼容差异；entity item 槽位已覆盖玩家背包、当前主手、`enderchest.*` 和非玩家实体装备；`give`、`clear` 与 `item replace ... with` 已支持 JSON/SNBT-lite NBT 和 components payload，`give`、`item replace` 与 `item modify` 会记录结构化输出便于 report/assertion 调试；物品含 `minecraft:trim` 组件且命中已加载 `trim_material`/`trim_pattern` 资源时，结构化 item 输出会附带对应 raw JSON 元数据；`item modify` 已支持 `copy_nbt` 和 `copy_components` 从当前栈或可用实体/玩家上下文复制 NBT/组件，`copy_components` 可用 `include`/`exclude` 过滤。
+  - 支持 entity/block slot 读写、modifier 应用、components/NBT 兼容差异；entity item 槽位已覆盖玩家背包、当前主手、`enderchest.*` 和非玩家实体装备；`give`、`clear` 与 `item replace ... with` 已支持 JSON/SNBT-lite NBT 和 components payload，`give`、`item replace` 与 `item modify` 会记录结构化输出便于 report/assertion 调试；物品含 `minecraft:trim`、`minecraft:banner_patterns`、`minecraft:instrument` 或 `minecraft:jukebox_playable` 组件且命中已加载注册表资源时，结构化 item 输出会附带对应 raw JSON 元数据；`item modify` 已支持 `copy_nbt` 和 `copy_components` 从当前栈或可用实体/玩家上下文复制 NBT/组件，`copy_components` 可用 `include`/`exclude` 过滤。
 - 扩展 `recipe`、`advancement`、`attribute`、`damage`、`effect`、`enchant`、`random`、`team`、`bossbar`、`worldborder` 的子命令覆盖；`recipe give/take` 已维护玩家 recipe 集合，并在结构化输出中报告 changed 数量和实际变更的 recipe id 列表，便于生成器断言 `*` 展开结果。
   - `summon` 已记录结构化创建输出，便于命令生成器、manifest assertion 和随手测试确认实体类型、位置、维度、tag 与输入 NBT；命中已加载实体 variant 资源时，还会输出 cat/chicken/cow/frog/painting/pig/wolf variant 或 wolf sound variant JSON 元数据。
   - `teleport`/`tp` 已记录结构化移动输出，便于调试传送前后坐标、维度和旋转变化。

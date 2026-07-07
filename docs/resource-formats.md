@@ -98,7 +98,7 @@ smoke tasks.
 | `recipe` | `modeled` | resource index entries plus player recipe state for commands and rewards |
 | `item_modifier` | `modeled` | common item modifier functions applied by item modify |
 | `tag/<registry>` | `observed-noop` | general tags with replace semantics and resource-index visibility |
-| `banner_pattern` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
+| `banner_pattern` | `modeled` | item component registry JSON metadata exposed by item command outputs |
 | `cat_variant` | `modeled` | entity variant JSON metadata exposed by the summon command |
 | `chat_type` | `modeled` | chat type JSON metadata exposed by modeled chat commands |
 | `chicken_variant` | `modeled` | entity variant JSON metadata exposed by the summon command |
@@ -111,8 +111,8 @@ smoke tasks.
 | `enchantment_provider` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
 | `equipment_asset` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
 | `frog_variant` | `modeled` | entity variant JSON metadata exposed by the summon command |
-| `instrument` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
-| `jukebox_song` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
+| `instrument` | `modeled` | instrument JSON metadata exposed by item command outputs |
+| `jukebox_song` | `modeled` | jukebox song JSON metadata exposed by item command outputs |
 | `painting_variant` | `modeled` | entity variant JSON metadata exposed by the summon command |
 | `pig_variant` | `modeled` | entity variant JSON metadata exposed by the summon command |
 | `test_environment` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
@@ -328,13 +328,13 @@ count; misses include actual snapshot diff candidates.
 
 ## Raw JSON Resources and Tags
 
-Chat types, damage types, dimensions, dimension types, enchantments, entity variants, armor trim resources, recipes, item modifiers, and additional registry resources are loaded as raw
+Chat types, damage types, dimensions, dimension types, enchantments, entity variants, item component registries, armor trim resources, recipes, item modifiers, and additional registry resources are loaded as raw
 JSON resources and included in the resource index. The sandbox does not yet
 execute the full crafting system, every item modifier function, or full
 worldgen semantics, but it models sandbox structure placement, processor_list
 block_ignore/simple rule handling, template_pool single/legacy jigsaw placement,
 simple_block feature placement, chat type metadata in modeled chat commands, and
-damage type metadata in `damage` command output, dimension and dimension type metadata in dimension-aware command outputs, enchantment metadata in `enchant` command output, entity variant metadata in `summon` output, plus armor trim material/pattern metadata in item command outputs; the remaining resources are version-profile checked,
+damage type metadata in `damage` command output, dimension and dimension type metadata in dimension-aware command outputs, enchantment metadata in `enchant` command output, entity variant metadata in `summon` output, plus banner pattern, instrument, jukebox song, and armor trim material/pattern metadata in item command outputs; the remaining resources are version-profile checked,
 participate in pack overlay behavior, and can be inspected from API or REPL.
 `recipe give` and `recipe take` update player recipe state and report the
 concrete changed recipe ids in structured output. Loot tables can expand
