@@ -1804,7 +1804,12 @@ class RunCommandTest {
                   "source": "<generator:inline>"
                 },
                 { "mcfunction": "generated.mcfunction" },
-                { "event": { "player": "Steve", "type": "key_input", "key": "key.jump", "action": "press" } }
+                { "event": { "player": "Steve", "type": "key_input", "key": "key.jump", "action": "press" } },
+                { "player": { "name": "Alex" } },
+                { "block": { "pos": [1, 64, 2], "id": "minecraft:stone" } },
+                { "snapshot": true },
+                { "trace": true },
+                { "reset": true }
               ]
             }
             """.trimIndent(),
@@ -1830,6 +1835,11 @@ class RunCommandTest {
         assertTrue("say generated file" in content, content)
         assertTrue("# sandbox event step:" in content, content)
         assertTrue("key.jump" in content, content)
+        assertTrue("# sandbox player fixture step:" in content, content)
+        assertTrue("# sandbox block fixture step:" in content, content)
+        assertTrue("# sandbox snapshot artifact step" in content, content)
+        assertTrue("# sandbox trace artifact step" in content, content)
+        assertTrue("# sandbox reset-world step; recreate a fresh external world before continuing" in content, content)
     }
 
     @Test
