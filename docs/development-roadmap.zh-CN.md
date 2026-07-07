@@ -129,7 +129,7 @@
 - `snapshotJson()` 输出稳定排序，不受 map/list 插入顺序影响。
 - world fixture、manifest world、quick-test world builder 三者能力一致或差异明确记录。
 - 所有新增状态都有 snapshot、assertion 和 inspect 路径。
-  - schedule 状态已进入 snapshot，并可通过 REPL `inspect schedule` 查看排程函数、dueTick 和 remaining ticks，便于调试 `schedule function` / `schedule clear` 与 tick 推进。
+  - schedule 状态已进入 snapshot，并可通过 QuickTest `assertScheduledFunction`、CLI `scheduled:<id>` 断言简写和 REPL `inspect schedule` 查看排程函数、dueTick、条目数量和 remaining ticks，便于调试 `schedule function` / `schedule clear` 与 tick 推进。
 
 ## 阶段 4：输入事件与玩家交互模拟
 
@@ -201,7 +201,7 @@
 ### 单元调试
 
 - 强化 `SandboxQuickTest` fluent API：
-  - `assertScore`、`assertStoragePath`、`assertPlayer`、`assertEntity`、`assertBlock`、`assertItem`、`assertOutput`、`assertTrace`。
+  - `assertScore`、`assertStoragePath`、`assertPlayer`、`assertEntity`、`assertBlock`、`assertItem`、`assertOutput`、`assertTrace`、`assertRandomSequence`、`assertScheduledFunction`。
   - 支持可复用 fixture：world setup、players、entities、blocks、storage、scoreboard、packs。
 - quick-test report 已暴露 `resourceSummary`，与 `run`/`check` report 和 REPL `inspect resources` 共用 core 的资源数量、overlay、missing-reference 诊断模型。
 - 增加 JUnit 辅助错误格式，失败时输出最小 snapshot diff 和 trace 摘要。

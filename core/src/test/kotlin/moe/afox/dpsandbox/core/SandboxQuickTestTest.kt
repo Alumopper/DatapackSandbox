@@ -1038,6 +1038,56 @@ class SandboxQuickTestTest {
     }
 
     @Test
+    fun `quick scheduled function assertions inspect queue and due ticks`() {
+        fun scheduledScenario(): SandboxQuickTest =
+            SandboxQuickTest.functions(
+                functionSources = listOf(
+                    FunctionSource.text(
+                        "demo:main",
+                        """
+                        scoreboard objectives add runs dummy
+                        schedule function demo:later 5t append
+                        schedule function demo:later 5t append
+                        """.trimIndent(),
+                    ),
+                    FunctionSource.text("demo:later", "scoreboard players add #later runs 1"),
+                ),
+                version = "26.2",
+                defaultFunctionId = "demo:main",
+                defaultPlayerName = null,
+            )
+
+        val scenario = scheduledScenario()
+        val pending = scenario
+            .function()
+            .assertScheduledFunction("demo:later", dueTick = 5, count = 2)
+            .report()
+
+        assertTrue(pending.passed, pending.failures.joinToString())
+        assertEquals(2, pending.snapshot.asJsonObject.getAsJsonArray("scheduled").size())
+
+        val mismatch = scheduledScenario()
+            .function()
+            .assertScheduledFunction("demo:later", dueTick = 6)
+            .report()
+
+        assertTrue(!mismatch.passed)
+        assertTrue(
+            mismatch.failures.any { it.contains("scheduled function demo:later expected dueTick 6") && it.contains("demo:later@5") },
+            mismatch.failures.joinToString(),
+        )
+
+        val finished = scenario
+            .ticks(5)
+            .assertScheduledFunction("demo:later", exists = false)
+            .assertScore("#later", "runs", 2)
+            .report()
+
+        assertTrue(finished.passed, finished.failures.joinToString())
+        assertEquals(0, finished.snapshot.asJsonObject.getAsJsonArray("scheduled").size())
+    }
+
+    @Test
     fun `runs quick tests across multiple version-specific packs`() {
         val dir = Files.createTempDirectory("dps-quick-matrix")
         val pack1204 = writeVersionPack(dir.resolve("pack-1204"), packFormat = "26", functionDir = "functions")

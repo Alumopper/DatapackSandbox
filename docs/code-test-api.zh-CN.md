@@ -159,6 +159,27 @@ SandboxQuickTest.functions(
     .requirePassed()
 ```
 
+scheduled function 队列可以直接断言，不必手写 snapshot JSON path：
+
+```kotlin
+SandboxQuickTest.functions(
+    functionSources = listOf(
+        FunctionSource.text("demo:main", "schedule function demo:later 5t append"),
+        FunctionSource.text("demo:later", "say later"),
+    ),
+    version = "26.2",
+    defaultFunctionId = "demo:main",
+)
+    .function()
+    .assertScheduledFunction("demo:later", dueTick = 5, count = 1)
+    .ticks(5)
+    .assertScheduledFunction("demo:later", exists = false)
+    .requirePassed()
+```
+
+`dueTick` 是排程函数应执行的绝对 sandbox game tick。`count` 适合检查
+`append` 模式下预期出现的重复排程条目。
+
 ## 预定义世界状态
 
 测试可以在执行任何步骤前定义初始世界。通过 API 写入的 NBT 仍会按当前版本 profile 做校验，所以未知顶层实体/方块实体字段会像 `data modify` 一样失败。
@@ -379,6 +400,7 @@ class MyDatapackTest {
 | `assertStorageMissing(id, path)` | 断言 storage 根对象或路径不存在。 |
 | `assertWorld(...)` | 断言选定的世界级状态、force-loaded chunk、biome override、世界出生点和世界边界。 |
 | `assertRandomSequence(name, expected)` | 断言确定性随机序列状态。 |
+| `assertScheduledFunction(id, dueTick, exists, count)` | 按函数 id、绝对 due tick、存在性或重复条目数量断言 scheduled function 队列。 |
 | `assertPlayer(...)` | 断言选定的玩家状态、末影箱物品数量、出生点细节和完整 NBT path。 |
 | `assertTeam(...)` | 断言选定 team 状态、成员、成员数量和选项。 |
 | `assertBossbar(...)` | 断言选定 bossbar 状态和关联玩家。 |

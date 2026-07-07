@@ -183,6 +183,28 @@ SandboxQuickTest.functions(
     .requirePassed()
 ```
 
+Scheduled functions can be asserted directly without walking snapshot JSON:
+
+```kotlin
+SandboxQuickTest.functions(
+    functionSources = listOf(
+        FunctionSource.text("demo:main", "schedule function demo:later 5t append"),
+        FunctionSource.text("demo:later", "say later"),
+    ),
+    version = "26.2",
+    defaultFunctionId = "demo:main",
+)
+    .function()
+    .assertScheduledFunction("demo:later", dueTick = 5, count = 1)
+    .ticks(5)
+    .assertScheduledFunction("demo:later", exists = false)
+    .requirePassed()
+```
+
+`dueTick` is the absolute sandbox game tick when the queued function should run.
+`count` is useful for `append` mode tests where duplicate schedule entries are
+expected.
+
 ## Predefined World State
 
 Tests can start from an explicit world fixture without issuing setup commands.
@@ -408,6 +430,7 @@ class MyDatapackTest {
 | `assertStorageMissing(id, path)` | Assert that a storage root or path is absent |
 | `assertWorld(...)` | Assert selected world-level state, forced chunks, biome overrides, world spawn, and world border |
 | `assertRandomSequence(name, expected)` | Assert deterministic random sequence state |
+| `assertScheduledFunction(id, dueTick, exists, count)` | Assert queued scheduled functions by id, absolute due tick, existence, or duplicate count |
 | `assertPlayer(...)` | Assert selected player state, ender item count, spawn point details, and full-NBT path filters |
 | `assertTeam(...)` | Assert selected team state, members, member count, and options |
 | `assertBossbar(...)` | Assert selected bossbar state and assigned players |

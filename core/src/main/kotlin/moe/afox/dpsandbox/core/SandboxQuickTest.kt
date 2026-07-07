@@ -362,6 +362,14 @@ class SandboxQuickTestMatrix private constructor(
     }
 
     /**
+     * Applies a scheduled function queue assertion to every scenario.
+     */
+    @JvmOverloads
+    fun assertScheduledFunction(id: String, dueTick: Long? = null, exists: Boolean = true, count: Int? = null): SandboxQuickTestMatrix = apply {
+        scenarios.values.forEach { it.assertScheduledFunction(id, dueTick, exists, count) }
+    }
+
+    /**
      * Applies a world-level state assertion to every scenario.
      */
     @JvmOverloads
@@ -1421,6 +1429,30 @@ class SandboxQuickTest private constructor(
         val actual = sandbox.world.randomSequences[name]
         if (actual != expected) {
             failures += "random sequence $name expected $expected but was ${actual ?: "<missing>"}"
+        }
+    }
+
+    /**
+     * Asserts the scheduled function queue.
+     *
+     * [dueTick] is the absolute sandbox game tick when the function should run.
+     * When [count] is set, it counts entries matching both [id] and [dueTick]
+     * when [dueTick] is provided.
+     */
+    @JvmOverloads
+    fun assertScheduledFunction(id: String, dueTick: Long? = null, exists: Boolean = true, count: Int? = null): SandboxQuickTest = apply {
+        val resourceId = ResourceLocation.parse(id)
+        val byId = sandbox.world.scheduledFunctions.filter { it.id == resourceId }
+        val matches = if (dueTick == null) byId else byId.filter { it.dueTick == dueTick }
+        if (exists) {
+            if (matches.isEmpty()) {
+                val actualDueTicks = if (byId.isEmpty()) "<missing>" else byId.map { it.dueTick }.sorted().joinToString()
+                failures += "scheduled function $resourceId expected ${dueTick?.let { "dueTick $it" } ?: "present"} but was $actualDueTicks; ${actualScheduledFunctions()}"
+            } else if (count != null && matches.size != count) {
+                failures += "scheduled function $resourceId expected count $count${dueTick?.let { " at dueTick $it" }.orEmpty()} but was ${matches.size}; ${actualScheduledFunctions()}"
+            }
+        } else if (matches.isNotEmpty()) {
+            failures += "scheduled function $resourceId expected missing${dueTick?.let { " at dueTick $it" }.orEmpty()} but was ${matches.map { it.dueTick }.sorted().joinToString()}; ${actualScheduledFunctions()}"
         }
     }
 
@@ -2673,6 +2705,16 @@ class SandboxQuickTest private constructor(
         val rendered = entries.take(5).joinToString("; ") { it.render().take(240) }
         val suffix = if (entries.size > 5) "; ... +${entries.size - 5} more" else ""
         return "actual snapshot diffs: $rendered$suffix"
+    }
+
+    private fun actualScheduledFunctions(): String {
+        if (sandbox.world.scheduledFunctions.isEmpty()) return "actual scheduled functions: <none>"
+        val rendered = sandbox.world.scheduledFunctions
+            .sortedWith(compareBy<ScheduledFunction> { it.dueTick }.thenBy { it.id.toString() })
+            .take(5)
+            .joinToString("; ") { "${it.id}@${it.dueTick}" }
+        val suffix = if (sandbox.world.scheduledFunctions.size > 5) "; ... +${sandbox.world.scheduledFunctions.size - 5} more" else ""
+        return "actual scheduled functions: $rendered$suffix"
     }
 
     /**
