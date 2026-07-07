@@ -121,7 +121,7 @@
   - 不执行 AI tick，但保留数据包可读写字段和明确的 no-AI 语义说明。
 - 完善玩家模型：
   - inventory、selected slot、ender items、recipes、stats、xp points/levels、health、food、gamemode、spawn、advancement progress、last input。
-  - 玩家 NBT 默认只读；可通过命令、fixture 或事件改变玩家状态；NBT 视图会投影当前非空主手 `SelectedItem`；新建玩家会使用当前 `defaultGameMode`；world fixture、manifest world 和 quick-test world builder 可声明玩家末影箱物品和 advancement progress，`item`/`loot replace entity` 可按 `selectedSlot` 读写当前主手并可读写 `enderchest.*` 槽，通过 snapshot、完整 NBT path、`assertPlayer`/manifest player assertion、`assertItem`/manifest item assertion 和 advancement assertion 检查。
+  - 玩家 NBT 默认只读；可通过命令、fixture 或事件改变玩家状态；NBT 视图会投影当前非空主手 `SelectedItem`；新建玩家会使用当前 `defaultGameMode`；world fixture、manifest world 和 quick-test world builder 可声明玩家末影箱物品和 advancement progress，`item`/`loot replace entity` 可按 `selectedSlot` 读写当前主手并可读写 `enderchest.*` 槽，通过 snapshot、完整 NBT path、`assertPlayer`/manifest player assertion、`assertItem`/manifest item assertion、REPL `inspect item` 和 advancement assertion 检查。
 - 完善 item stack：
   - 兼容旧版 NBT 和新版 components；命令 item argument 可直接输入 JSON/SNBT-lite NBT 与 components payload，并在括号 payload 内保留空格用于解析；block/entity container item stack NBT 校验已把 `count`/`Count` 和 `slot`/`Slot` 作为版本兼容别名处理。
   - 提供 matcher，支持 id、tag、count、components path、NBT path、slot、enchantment、custom data；item predicate 已支持具体 id、`#` item tag 以及 `enchantments`/`stored_enchantments` 直接匹配。
@@ -231,6 +231,7 @@
   - `inspect forced-chunks` 已可列出当前强加载 chunk，并接入 REPL 补全和命令目录，便于随手检查 `forceload` 状态。
   - `inspect world` 和 `inspect worldborder` 已可列出世界时间、天气、默认模式、出生点、tick 状态和世界边界参数，并接入 REPL/CLI 补全和命令目录，便于随手检查世界级生成命令。
   - `inspect entity` / `inspect entities` 已可列出实体关键状态，并接入 REPL/CLI 补全和命令目录，便于随手检查 summon、effect、attribute、item 和 ride 等实体类生成命令。
+  - `inspect item` / `inspect items` 已可列出玩家 inventory、selected slot 和 enderchest 槽位，并支持 hotbar/container/enderchest/selected 单槽查询和补全，便于随手检查 `give`、`clear`、`item replace/modify` 与 `loot replace entity` 结果。
   - `inspect recipes` 和 `inspect advancement-progress` 已可按玩家列出 recipe book 与 advancement criterion progress，并支持单个 recipe/advancement 查询和 REPL/CLI 补全，便于随手检查事件输入或命令生成器对玩家进度状态的影响。
   - `inspect gamerule`、`inspect scoreboard`、`inspect team` 和 `inspect bossbar` 已可列出规则值、objective 元数据、display slot、队伍成员/选项和 bossbar 参数，并接入 REPL/CLI 补全和命令目录，便于随手检查 UI/规则类生成命令。
   - `inspect resources` 已输出资源摘要、overlay 和 missing-reference，并保留按类型列出 resource index 条目的能力，便于随手小测时解释数据包实际加载结果。

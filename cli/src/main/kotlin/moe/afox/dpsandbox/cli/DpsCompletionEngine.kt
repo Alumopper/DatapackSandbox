@@ -144,6 +144,10 @@ class DpsCompletionEngine(private val sandbox: () -> DatapackSandbox) {
                 advancementProgressIds().suggest("advancements")
             words.getOrNull(1) in setOf("entity", "entities") && context.wordIndex == 2 ->
                 entityInspectTargets().suggest("entities")
+            words.getOrNull(1) in setOf("item", "items", "inventory") && context.wordIndex == 2 ->
+                playerTargets(includeSelectors = false).suggest("players", appendSpace = true)
+            words.getOrNull(1) in setOf("item", "items", "inventory") && context.wordIndex == 3 ->
+                itemInspectSlots().suggest("item slots")
             words.getOrNull(1) == "raw" && context.wordIndex == 2 -> rawResourceKinds().suggest("raw resource types", appendSpace = true)
             words.getOrNull(1) == "raw" && context.wordIndex == 3 -> rawResourceIds(words.getOrNull(2)).suggest("raw resources")
             words.getOrNull(1) in setOf("resource", "resources") && context.wordIndex == 2 -> resourceIndexTypes().suggest("resource types")
@@ -566,6 +570,9 @@ class DpsCompletionEngine(private val sandbox: () -> DatapackSandbox) {
             }
         }.distinct().sorted()
 
+    private fun itemInspectSlots(): List<String> =
+        (inventorySlots + listOf("selected", "hotbar.selected", "enderchest.0", "enderchest.1")).distinct().sorted()
+
     private fun randomSequenceNames(): List<String> =
         sandbox().world.randomSequences.keys.sorted()
 
@@ -599,6 +606,8 @@ class DpsCompletionEngine(private val sandbox: () -> DatapackSandbox) {
             "entities",
             "blocks",
             "player",
+            "item",
+            "items",
             "recipes",
             "advancement-progress",
             "loot",

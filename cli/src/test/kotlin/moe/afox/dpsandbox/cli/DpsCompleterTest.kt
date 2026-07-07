@@ -96,6 +96,7 @@ class DpsCompleterTest {
         assertSuggests(completer, "inspect ", "team")
         assertSuggests(completer, "inspect ", "bossbar")
         assertSuggests(completer, "inspect ", "entity")
+        assertSuggests(completer, "inspect ", "item")
         assertSuggests(completer, "inspect ", "recipes")
         assertSuggests(completer, "inspect ", "advancement-progress")
         assertSuggests(completer, "inspect ", "raw")
@@ -130,6 +131,9 @@ class DpsCompleterTest {
         assertSuggests(DpsCompleter { playerStateSandbox }, "inspect recipes Steve ", "demo:toast")
         assertSuggests(DpsCompleter { playerStateSandbox }, "inspect advancement-progress ", "Steve")
         assertSuggests(DpsCompleter { playerStateSandbox }, "inspect advancement-progress Steve ", "demo:root")
+        assertSuggests(DpsCompleter { playerStateSandbox }, "inspect item ", "Steve")
+        assertSuggests(DpsCompleter { playerStateSandbox }, "inspect item Steve ", "hotbar.0")
+        assertSuggests(DpsCompleter { playerStateSandbox }, "inspect item Steve ", "enderchest.0")
 
         val entitySandbox = createSandbox("26.1.2", listOf(Path.of("../core/src/test/resources/packs/counter")))
         entitySandbox.executeCommand("""summon minecraft:zombie 1 64 2 {Tags:["mob"]}""")

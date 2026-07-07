@@ -261,6 +261,30 @@ class ReplTest {
     }
 
     @Test
+    fun `inspects player item slots`() {
+        val repl = Repl(createSandbox("26.1.2", listOf(Path.of("../core/src/test/resources/packs/counter"))))
+
+        val output = captureStdout {
+            repl.handle("item replace entity Steve hotbar.0 with minecraft:apple 1")
+            repl.handle("item replace entity Steve hotbar.1 with minecraft:stick 2")
+            repl.handle("item replace entity Steve enderchest.0 with minecraft:ender_pearl 4")
+            repl.handle("inspect items Steve")
+            repl.handle("inspect item Steve hotbar.1")
+            repl.handle("inspect item Steve enderchest.0")
+            repl.handle("inspect item Steve selected")
+            repl.handle("inspect item Steve hotbar.8")
+        }
+
+        assertTrue(output.contains("items Steve selectedSlot=0 selected=minecraft:applex1"), output)
+        assertTrue(output.contains("item Steve inventory.0 minecraft:applex1"), output)
+        assertTrue(output.contains("item Steve inventory.1 minecraft:stickx2"), output)
+        assertTrue(output.contains("item Steve enderchest.0 minecraft:ender_pearlx4"), output)
+        assertTrue(output.contains("item Steve hotbar.1 minecraft:stickx2"), output)
+        assertTrue(output.contains("item Steve hotbar.selected minecraft:applex1"), output)
+        assertTrue(output.contains("item Steve hotbar.8 <empty>"), output)
+    }
+
+    @Test
     fun `inspects entity modeled state`() {
         val repl = Repl(createSandbox("26.1.2", listOf(Path.of("../core/src/test/resources/packs/counter"))))
 

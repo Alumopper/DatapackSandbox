@@ -238,7 +238,7 @@ class Repl(
         "Commands: load, load fixture <file>, reload, tick [n], function <id>, player <name>, event player <name> <type> [id] [detail/action|x y z|pos=x,y,z], trace <on|off|status>, diff last, rerun last, reset world, ${inspectUsage()}, snapshot [file], exit"
 
     private fun inspectUsage(): String =
-        "inspect <world|worldborder|score|storage|gamerule|random|schedule|forced-chunks|scoreboard|team|bossbar|entity|entities|blocks|player|recipes|advancement-progress|loot|predicate|advancement|recipe|item_modifier|raw|tags|resources|registry [group]|outputs|event-traces>"
+        "inspect <world|worldborder|score|storage|gamerule|random|schedule|forced-chunks|scoreboard|team|bossbar|entity|entities|blocks|player|item|items|recipes|advancement-progress|loot|predicate|advancement|recipe|item_modifier|raw|tags|resources|registry [group]|outputs|event-traces>"
 
     private fun reload() {
         if (packs.isEmpty()) {
@@ -407,6 +407,7 @@ class Repl(
                 val players = if (name == null) sandbox.world.players.values else listOf(sandbox.world.requirePlayer(name))
                 players.forEach { println(JsonValues.render(it.toPlayerJson(sandbox.profile))) }
             }
+            "item", "items", "inventory" -> inspectPlayerItems(args)
             "recipes", "recipe-book", "player-recipes" -> inspectPlayerRecipes(args)
             "advancement-progress", "advancements-progress", "player-advancements" -> inspectAdvancementProgress(args)
             "loot" -> sandbox.datapack.lootTables.keys.forEach { println(it) }
@@ -581,6 +582,62 @@ class Repl(
         } else {
             entity.fullNbt(sandbox.profile).get("Health")?.takeIf { it.isJsonPrimitive }?.asDouble?.toString() ?: "<unset>"
         }
+
+    private fun inspectPlayerItems(args: List<String>) {
+        val name = args.getOrNull(1)
+        val slot = args.getOrNull(2)
+        val players = if (name == null) {
+            sandbox.world.players.values.sortedBy { it.name }
+        } else {
+            listOf(sandbox.world.requirePlayer(name))
+        }
+        players.forEach { player ->
+            if (slot != null) {
+                println(renderPlayerSlot(player, slot))
+            } else {
+                val selected = player.selectedItem?.let { renderItemStack(it) } ?: "<empty>"
+                println(
+                    "items ${player.name} selectedSlot=${player.selectedSlot} selected=$selected inventoryCount=${player.inventory.size} enderItemCount=${player.enderItems.size}",
+                )
+                player.inventory.forEachIndexed { index, item ->
+                    println("item ${player.name} inventory.$index ${renderItemStack(item)}")
+                }
+                player.enderItems.forEachIndexed { index, item ->
+                    println("item ${player.name} enderchest.$index ${renderItemStack(item)}")
+                }
+            }
+        }
+    }
+
+    private fun renderPlayerSlot(player: SandboxPlayer, rawSlot: String): String {
+        val resolved = resolvePlayerSlot(player, rawSlot)
+        val canonical = resolved?.first ?: rawSlot
+        val item = resolved?.second
+        return "item ${player.name} $canonical ${item?.let { renderItemStack(it) } ?: "<empty>"}"
+    }
+
+    private fun resolvePlayerSlot(player: SandboxPlayer, rawSlot: String): Pair<String, ItemStack?>? {
+        val normalized = rawSlot.lowercase()
+        fun inventorySlot(index: Int, prefix: String = "inventory"): Pair<String, ItemStack?> =
+            "$prefix.$index" to player.inventory.getOrNull(index)
+
+        fun enderSlot(index: Int): Pair<String, ItemStack?> =
+            "enderchest.$index" to player.enderItems.getOrNull(index)
+
+        normalized.toIntOrNull()?.let { return inventorySlot(it) }
+        return when {
+            normalized == "selected" || normalized == "hotbar.selected" || normalized == "weapon.mainhand" ->
+                "hotbar.selected" to player.selectedItem
+            normalized == "weapon.offhand" ->
+                "weapon.offhand" to null
+            normalized.startsWith("inventory.") -> normalized.substringAfter('.').toIntOrNull()?.let { inventorySlot(it) }
+            normalized.startsWith("container.") -> normalized.substringAfter('.').toIntOrNull()?.let { inventorySlot(it, "container") }
+            normalized.startsWith("hotbar.") -> normalized.substringAfter('.').toIntOrNull()?.let { inventorySlot(it, "hotbar") }
+            normalized.startsWith("enderchest.") -> normalized.substringAfter('.').toIntOrNull()?.let { enderSlot(it) }
+            normalized.startsWith("ender.") -> normalized.substringAfter('.').toIntOrNull()?.let { enderSlot(it) }
+            else -> null
+        }
+    }
 
     private fun inspectPlayerRecipes(args: List<String>) {
         val name = args.getOrNull(1)
