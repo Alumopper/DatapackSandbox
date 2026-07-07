@@ -342,6 +342,25 @@ val smokeCliJarReadmeRunAssert = registerCliJarSmokeTask(
     "output:generated ok",
 )
 
+val readmeStdinFunctionText = "scoreboard objectives add runs dummy\nscoreboard players set #stdin runs 1\n"
+val smokeCliJarReadmeStdin = registerCliJarSmokeTask(
+    name = "smokeCliJarReadmeStdin",
+    descriptionText = "Runs the README stdin mcfunction example through the standalone jar.",
+    "run",
+    "--version",
+    "26.2",
+    "--stdin",
+    "--snapshot",
+    "--assert",
+    "score:#stdin:runs=1",
+)
+smokeCliJarReadmeStdin.configure {
+    inputs.property("stdinFunctionText", readmeStdinFunctionText)
+    doFirst {
+        standardInput = readmeStdinFunctionText.byteInputStream()
+    }
+}
+
 val smokeCliJarRunDiagnostics = registerCliJarSmokeTask(
     name = "smokeCliJarRunDiagnostics",
     descriptionText = "Checks standalone CLI expected command failures can be asserted diagnostically.",
@@ -393,6 +412,7 @@ tasks.register("smokeCliJar") {
         smokeCliJarReadmeLoot,
         smokeCliJarReadmeEvent,
         smokeCliJarReadmeRunAssert,
+        smokeCliJarReadmeStdin,
         smokeCliJarRunDiagnostics,
         smokeCliJarRunLimits,
     )
