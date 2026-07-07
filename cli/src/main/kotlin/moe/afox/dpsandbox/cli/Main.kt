@@ -2830,6 +2830,7 @@ class ResourcesCommand : CliktCommand(name = "resources") {
             "worldgen/placed_feature" -> "placed feature 会解析 configured simple_block 资源，供 place feature 使用。"
             "worldgen/processor_list" -> "block_ignore 和简单 rule processor 可被沙盒结构放置消费。"
             "worldgen/structure" -> "沙盒结构 JSON 的 blocks/entities 可被 place structure/template 展开。"
+            "worldgen/template_pool" -> "single/legacy pool element 可被 place jigsaw 展开。"
             else -> "经版本校验的 raw JSON 资源，进入索引供 inspect。"
         }
     }

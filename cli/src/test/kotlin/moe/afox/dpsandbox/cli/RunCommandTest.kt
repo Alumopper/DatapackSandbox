@@ -2005,6 +2005,7 @@ class RunCommandTest {
         assertTrue("worldgen/placed_feature modeled - placed feature JSON resolving configured simple_block" in output, output)
         assertTrue("worldgen/processor_list modeled - block_ignore and simple rule processors" in output, output)
         assertTrue("worldgen/structure modeled - sandbox structure JSON blocks/entities" in output, output)
+        assertTrue("worldgen/template_pool modeled - single/legacy pool elements" in output, output)
     }
 
     @Test
@@ -2018,6 +2019,7 @@ class RunCommandTest {
         assertTrue("| `worldgen/configured_feature` | `modeled` | simple_block feature JSON consumed by place feature |" in output, output)
         assertTrue("| `worldgen/processor_list` | `modeled` | block_ignore and simple rule processors consumed by sandbox structure placement |" in output, output)
         assertTrue("| `worldgen/structure` | `modeled` | sandbox structure JSON blocks/entities" in output, output)
+        assertTrue("| `worldgen/template_pool` | `modeled` | single/legacy pool elements consumed by sandbox place jigsaw |" in output, output)
     }
 
     @Test
@@ -2031,6 +2033,7 @@ class RunCommandTest {
         assertTrue("| `worldgen/placed_feature` | `modeled` | placed feature 会解析 configured simple_block 资源，供 place feature 使用。" in output, output)
         assertTrue("| `worldgen/processor_list` | `modeled` | block_ignore 和简单 rule processor 可被沙盒结构放置消费。" in output, output)
         assertTrue("| `worldgen/structure` | `modeled` | 沙盒结构 JSON 的 blocks/entities 可被 place structure/template 展开。" in output, output)
+        assertTrue("| `worldgen/template_pool` | `modeled` | single/legacy pool element 可被 place jigsaw 展开。" in output, output)
     }
 
     @Test
@@ -2102,6 +2105,7 @@ class RunCommandTest {
         assertEquals("modeled", resources.getValue("worldgen/placed_feature").get("behavior").asString)
         assertEquals("modeled", resources.getValue("worldgen/processor_list").get("behavior").asString)
         assertEquals("modeled", resources.getValue("worldgen/structure").get("behavior").asString)
+        assertEquals("modeled", resources.getValue("worldgen/template_pool").get("behavior").asString)
     }
 
     @Test

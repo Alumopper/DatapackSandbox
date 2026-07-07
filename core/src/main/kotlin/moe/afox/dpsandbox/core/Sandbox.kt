@@ -123,6 +123,9 @@ private data class SandboxStructureProcessorList(
 ) {
     val unsupportedCount: Int = processors.count { !it.supported }
 
+    fun plus(other: SandboxStructureProcessorList): SandboxStructureProcessorList =
+        SandboxStructureProcessorList(ids = ids + other.ids, processors = processors + other.processors)
+
     companion object {
         val empty = SandboxStructureProcessorList(emptyList(), emptyList())
     }
@@ -152,6 +155,13 @@ private data class SandboxStructureProcessorRule(
 private data class SandboxProcessedStructureBlock(
     val block: BlockArgument?,
     val processed: Boolean = false,
+)
+
+private data class SandboxTemplatePoolElement(
+    val type: String,
+    val structure: ResourceLocation? = null,
+    val feature: ResourceLocation? = null,
+    val processors: SandboxStructureProcessorList = SandboxStructureProcessorList.empty,
 )
 
 /**
@@ -932,6 +942,9 @@ class DatapackSandbox(
             "feature" -> {
                 placedTargets = placeSandboxFeature(placeId ?: error("missing place id"), position, payload, location)
             }
+            "jigsaw" -> {
+                placedTargets = placeSandboxJigsaw(ResourceLocation.parse(tokens[2].text), position, context, payload, location)
+            }
             "structure", "template" -> {
                 val placement = if (kind == "template") parseTemplatePlacement(extras, payload, location) else SandboxStructurePlacement()
                 placedTargets = placeSandboxStructure(placeId ?: error("missing place id"), position, context, payload, placement, location)
@@ -944,6 +957,113 @@ class DatapackSandbox(
 
         val idText = payload.get("id")?.asString ?: payload.get("pool")?.asString.orEmpty()
         world.recordOutput("place $kind", "worldgen", targets = placedTargets, text = "$kind:$idText", payload = payload)
+    }
+
+    private fun placeSandboxJigsaw(
+        pool: ResourceLocation,
+        position: Position,
+        context: ExecutionContext,
+        payload: JsonObject,
+        location: SourceLocation?,
+    ): List<String> {
+        val resource = datapack.rawResources["worldgen/template_pool"]?.get(pool)
+        if (resource == null) {
+            payload.addProperty("placed", false)
+            payload.addProperty("reason", "Sandbox records place jigsaw but no template pool resource was loaded")
+            return emptyList()
+        }
+        if (!resource.root.isJsonObject) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Template pool resource '$pool' must be a JSON object", location)
+        }
+        val element = selectTemplatePoolElement(resource.root.asJsonObject, "template pool $pool", location)
+        if (element == null) {
+            payload.addProperty("placed", false)
+            payload.addProperty("format", "raw-json-index-only")
+            payload.addProperty("reason", "Loaded template pool has no supported single/legacy structure or feature element")
+            return emptyList()
+        }
+        payload.addProperty("elementType", element.type)
+        element.structure?.let { payload.addProperty("structure", it.toString()) }
+        element.feature?.let { payload.addProperty("feature", it.toString()) }
+        val targets = when {
+            element.structure != null -> placeSandboxStructure(
+                id = element.structure,
+                position = position,
+                context = context,
+                payload = payload,
+                placement = SandboxStructurePlacement(),
+                location = location,
+                extraProcessors = element.processors,
+            )
+            element.feature != null -> placeSandboxFeature(element.feature, position, payload, location)
+            else -> emptyList()
+        }
+        payload.addProperty("format", "sandbox-template-pool")
+        return targets
+    }
+
+    private fun selectTemplatePoolElement(
+        root: JsonObject,
+        label: String,
+        location: SourceLocation?,
+    ): SandboxTemplatePoolElement? {
+        val elements = root.getAsJsonArrayOrNull("elements") ?: return parseTemplatePoolElement(root, label, location)
+        elements.forEachIndexed { index, element ->
+            parseTemplatePoolElement(element.asPlaceJsonObject("$label element $index", location), "$label element $index", location)
+                ?.let { return it }
+        }
+        return null
+    }
+
+    private fun parseTemplatePoolElement(
+        root: JsonObject,
+        label: String,
+        location: SourceLocation?,
+    ): SandboxTemplatePoolElement? {
+        val elementRoot = root.get("element")
+            ?.asPlaceJsonObject("$label element", location)
+            ?: root
+        val type = (elementRoot.placeString("element_type", location) ?: elementRoot.placeString("type", location) ?: "minecraft:single_pool_element")
+        return when (type.removePrefix("minecraft:")) {
+            "single_pool_element", "legacy_single_pool_element" -> {
+                val structure = elementRoot.placeString("location", location)
+                    ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label location is required", location)
+                SandboxTemplatePoolElement(
+                    type = type,
+                    structure = ResourceLocation.parse(structure),
+                    processors = parseTemplatePoolProcessors(elementRoot, "$label processors", location),
+                )
+            }
+            "list_pool_element" -> {
+                val children = elementRoot.getAsJsonArrayOrNull("elements") ?: return null
+                children.forEachIndexed { index, child ->
+                    parseTemplatePoolElement(child.asPlaceJsonObject("$label child $index", location), "$label child $index", location)
+                        ?.let { return it.copy(type = type) }
+                }
+                null
+            }
+            "feature_pool_element" -> {
+                val feature = elementRoot.placeString("feature", location)
+                feature?.let {
+                    SandboxTemplatePoolElement(
+                        type = type,
+                        feature = ResourceLocation.parse(it),
+                        processors = parseTemplatePoolProcessors(elementRoot, "$label processors", location),
+                    )
+                }
+            }
+            "empty_pool_element" -> null
+            else -> null
+        }
+    }
+
+    private fun parseTemplatePoolProcessors(
+        root: JsonObject,
+        label: String,
+        location: SourceLocation?,
+    ): SandboxStructureProcessorList {
+        val value = root.get("processors") ?: return SandboxStructureProcessorList.empty
+        return parseStructureProcessorSource(value, label, location)
     }
 
     private fun placeSandboxFeature(
@@ -1057,6 +1177,7 @@ class DatapackSandbox(
         payload: JsonObject,
         placement: SandboxStructurePlacement,
         location: SourceLocation?,
+        extraProcessors: SandboxStructureProcessorList = SandboxStructureProcessorList.empty,
     ): List<String> {
         val resource = datapack.rawResources["worldgen/structure"]?.get(id)
         if (resource == null) {
@@ -1070,7 +1191,7 @@ class DatapackSandbox(
         val root = resource.root.asJsonObject
         val blocks = root.getAsJsonArrayOrNull("blocks")
         val entities = root.getAsJsonArrayOrNull("entities")
-        val processors = parseStructureProcessors(root, location)
+        val processors = parseStructureProcessors(root, location).plus(extraProcessors)
         if (blocks == null && entities == null) {
             payload.addProperty("placed", false)
             payload.addProperty("format", "raw-json-index-only")

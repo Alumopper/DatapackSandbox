@@ -62,6 +62,7 @@ object ResourceCatalog {
         "worldgen/placed_feature" to "placed feature JSON resolving configured simple_block resources for place feature",
         "worldgen/processor_list" to "block_ignore and simple rule processors consumed by sandbox structure placement",
         "worldgen/structure" to "sandbox structure JSON blocks/entities consumed by place structure/template",
+        "worldgen/template_pool" to "single/legacy pool elements consumed by sandbox place jigsaw",
     )
 
     val all: List<ResourceCatalogEntry> = listOf(
@@ -101,5 +102,6 @@ object ResourceBehaviorLevels {
         "worldgen/placed_feature",
         "worldgen/processor_list",
         "worldgen/structure",
+        "worldgen/template_pool",
     )
 }

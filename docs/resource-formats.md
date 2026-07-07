@@ -133,7 +133,7 @@ smoke tasks.
 | `worldgen/processor_list` | `modeled` | block_ignore and simple rule processors consumed by sandbox structure placement |
 | `worldgen/structure` | `modeled` | sandbox structure JSON `blocks`/`entities` can be expanded by `place structure` and `place template` |
 | `worldgen/structure_set` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
-| `worldgen/template_pool` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
+| `worldgen/template_pool` | `modeled` | single/legacy pool elements consumed by sandbox place jigsaw |
 | `worldgen/world_preset` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
 
 ## `.dps.json` Manifests
@@ -332,7 +332,8 @@ Recipes, item modifiers, and additional registry resources are loaded as raw
 JSON resources and included in the resource index. The sandbox does not yet
 execute the full crafting system, every item modifier function, or full
 worldgen semantics, but it models sandbox structure placement, processor_list
-block_ignore/simple rule handling, and simple_block feature placement; the remaining resources are version-profile checked,
+block_ignore/simple rule handling, template_pool single/legacy jigsaw placement,
+and simple_block feature placement; the remaining resources are version-profile checked,
 participate in pack overlay behavior, and can be inspected from API or REPL.
 `recipe give` and `recipe take` update player recipe state and report the
 concrete changed recipe ids in structured output. Loot tables can expand

@@ -357,6 +357,30 @@ class CommandExpansionTest {
     }
 
     @Test
+    fun `place jigsaw applies template pool structure elements`() {
+        val pack = writeJigsawPlacePack(Files.createTempDirectory("dps-place-jigsaw-pack"))
+        val sandbox = createSandbox("26.2", listOf(pack))
+
+        sandbox.executeCommand("place jigsaw demo:start demo:target 1 40 70 50")
+
+        assertEquals(ResourceLocation.parse("minecraft:emerald_block"), sandbox.world.requireBlock(BlockPos(40, 70, 50)).id)
+        assertEquals(ResourceLocation.parse("minecraft:chest"), sandbox.world.requireBlock(BlockPos(41, 70, 50)).id)
+        val output = sandbox.world.outputs.single { it.command == "place jigsaw" }
+        val payload = output.payload?.asJsonObject ?: error("missing place jigsaw payload")
+        assertEquals(true, payload.get("placed").asBoolean)
+        assertEquals("sandbox-template-pool", payload.get("format").asString)
+        assertEquals("demo:start", payload.get("pool").asString)
+        assertEquals("demo:target", payload.get("target").asString)
+        assertEquals(1, payload.get("maxDepth").asInt)
+        assertEquals("minecraft:single_pool_element", payload.get("elementType").asString)
+        assertEquals("demo:jigsaw_room", payload.get("structure").asString)
+        assertEquals(2, payload.get("changedBlocks").asInt)
+        assertEquals(1, payload.get("processedBlocks").asInt)
+        assertEquals("demo:jigsaw_processors", payload.getAsJsonArray("processorLists")[0].asString)
+        assertEquals(listOf("40 70 50", "41 70 50"), output.targets)
+    }
+
+    @Test
     fun `place feature applies placed simple block feature resources`() {
         val pack = writeFeaturePlacePack(Files.createTempDirectory("dps-place-feature-pack"))
         val sandbox = createSandbox("26.2", listOf(pack))
@@ -1437,6 +1461,78 @@ class CommandExpansionTest {
                       }
                     }
                   ]
+                }
+              ]
+            }
+            """.trimIndent(),
+        )
+        return root
+    }
+
+    private fun writeJigsawPlacePack(root: Path): Path {
+        Files.writeString(
+            root.resolve("pack.mcmeta").also { Files.createDirectories(it.parent) },
+            """
+            {
+              "pack": {
+                "pack_format": 107.1,
+                "description": "place jigsaw test"
+              }
+            }
+            """.trimIndent(),
+        )
+        val structureRoot = root.resolve("data").resolve("demo").resolve("worldgen").resolve("structure")
+        Files.createDirectories(structureRoot)
+        Files.writeString(
+            structureRoot.resolve("jigsaw_room.json"),
+            """
+            {
+              "blocks": [
+                { "offset": [0, 0, 0], "id": "minecraft:stone" },
+                { "offset": [1, 0, 0], "id": "minecraft:chest" }
+              ]
+            }
+            """.trimIndent(),
+        )
+        val processorRoot = root.resolve("data").resolve("demo").resolve("worldgen").resolve("processor_list")
+        Files.createDirectories(processorRoot)
+        Files.writeString(
+            processorRoot.resolve("jigsaw_processors.json"),
+            """
+            {
+              "processors": [
+                {
+                  "type": "minecraft:rule",
+                  "rules": [
+                    {
+                      "input_predicate": {
+                        "predicate_type": "minecraft:matching_blocks",
+                        "blocks": ["minecraft:stone"]
+                      },
+                      "output_state": "minecraft:emerald_block"
+                    }
+                  ]
+                }
+              ]
+            }
+            """.trimIndent(),
+        )
+        val poolRoot = root.resolve("data").resolve("demo").resolve("worldgen").resolve("template_pool")
+        Files.createDirectories(poolRoot)
+        Files.writeString(
+            poolRoot.resolve("start.json"),
+            """
+            {
+              "fallback": "minecraft:empty",
+              "elements": [
+                {
+                  "weight": 1,
+                  "element": {
+                    "element_type": "minecraft:single_pool_element",
+                    "location": "demo:jigsaw_room",
+                    "processors": "demo:jigsaw_processors",
+                    "projection": "rigid"
+                  }
                 }
               ]
             }
