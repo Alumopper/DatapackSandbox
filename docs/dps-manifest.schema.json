@@ -605,6 +605,8 @@
         { "required": ["team"] },
         { "required": ["bossbar"] },
         { "required": ["scheduled"] },
+        { "required": ["scoreboardObjective"] },
+        { "required": ["scoreboardDisplay"] },
         { "required": ["block"] },
         { "required": ["advancement"] },
         { "required": ["predicate"] },
@@ -627,6 +629,8 @@
         "team": { "$ref": "#/$defs/teamAssertion" },
         "bossbar": { "$ref": "#/$defs/bossbarAssertion" },
         "scheduled": { "$ref": "#/$defs/scheduledAssertion" },
+        "scoreboardObjective": { "$ref": "#/$defs/scoreboardObjectiveAssertion" },
+        "scoreboardDisplay": { "$ref": "#/$defs/scoreboardDisplayAssertion" },
         "block": { "$ref": "#/$defs/blockAssertion" },
         "advancement": { "$ref": "#/$defs/advancementAssertion" },
         "predicate": { "$ref": "#/$defs/predicateAssertion" },
@@ -921,6 +925,32 @@
         "dueTick": { "type": "integer", "minimum": 0 },
         "exists": { "type": "boolean" },
         "count": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "scoreboardObjectiveAssertion": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string" },
+        "exists": { "type": "boolean" },
+        "criteria": { "type": "string" },
+        "displayName": { "type": "string" },
+        "renderType": {
+          "type": "string",
+          "enum": ["integer", "hearts"]
+        },
+        "displayAutoUpdate": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "scoreboardDisplayAssertion": {
+      "type": "object",
+      "required": ["slot"],
+      "properties": {
+        "slot": { "type": "string" },
+        "exists": { "type": "boolean" },
+        "objective": { "type": "string" }
       },
       "additionalProperties": false
     },

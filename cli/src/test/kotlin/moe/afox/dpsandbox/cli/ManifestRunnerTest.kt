@@ -377,6 +377,30 @@ class ManifestRunnerTest {
     }
 
     @Test
+    fun `manifest schema documents scoreboard UI assertions`() {
+        val schema = JsonParser.parseString(Files.readString(Path.of("../docs/dps-manifest.schema.json"))).asJsonObject
+        val defs = schema.getAsJsonObject("\$defs")
+        val assertion = defs.getAsJsonObject("assertion")
+        val assertionRequired = assertion.getAsJsonArray("oneOf").map {
+            it.asJsonObject.getAsJsonArray("required").single().asString
+        }
+        val assertionProperties = assertion.getAsJsonObject("properties")
+        val objectiveProperties = defs.getAsJsonObject("scoreboardObjectiveAssertion").getAsJsonObject("properties")
+        val displayProperties = defs.getAsJsonObject("scoreboardDisplayAssertion").getAsJsonObject("properties")
+
+        assertTrue("scoreboardObjective" in assertionRequired)
+        assertTrue("scoreboardDisplay" in assertionRequired)
+        assertEquals("#/\$defs/scoreboardObjectiveAssertion", assertionProperties.getAsJsonObject("scoreboardObjective").get("\$ref").asString)
+        assertEquals("#/\$defs/scoreboardDisplayAssertion", assertionProperties.getAsJsonObject("scoreboardDisplay").get("\$ref").asString)
+        assertEquals("string", objectiveProperties.getAsJsonObject("name").get("type").asString)
+        assertEquals("string", objectiveProperties.getAsJsonObject("criteria").get("type").asString)
+        assertEquals("string", objectiveProperties.getAsJsonObject("displayName").get("type").asString)
+        assertEquals("boolean", objectiveProperties.getAsJsonObject("displayAutoUpdate").get("type").asString)
+        assertEquals("string", displayProperties.getAsJsonObject("slot").get("type").asString)
+        assertEquals("string", displayProperties.getAsJsonObject("objective").get("type").asString)
+    }
+
+    @Test
     fun `runs a manifest check`() {
         val path = Path.of("src/test/resources/cases/counter.dps.json")
 
@@ -405,6 +429,62 @@ class ManifestRunnerTest {
         val results = manifests.map { ManifestRunner.run(it) }
         val failures = results.flatMap { result -> result.messages.map { "${result.path}: $it" } }
         assertTrue(results.all { it.passed }, failures.joinToString())
+    }
+
+    @Test
+    fun `runs manifest scoreboard UI assertions`() {
+        val dir = Files.createTempDirectory("dps-scoreboard-ui-manifest")
+        val pack = Path.of("../core/src/test/resources/packs/counter").toAbsolutePath().normalize().toString().replace("\\", "\\\\")
+        val manifest = dir.resolve("scoreboard-ui.dps.json")
+        Files.writeString(
+            manifest,
+            """
+            {
+              "version": "26.1.2",
+              "packs": ["$pack"],
+              "steps": [
+                { "command": "scoreboard objectives add health dummy" },
+                { "command": "scoreboard objectives modify health displayname Health Points" },
+                { "command": "scoreboard objectives modify health rendertype hearts" },
+                { "command": "scoreboard objectives modify health displayautoupdate false" },
+                { "command": "scoreboard objectives setdisplay sidebar.team.red health" }
+              ],
+              "assertions": [
+                {
+                  "scoreboardObjective": {
+                    "name": "health",
+                    "criteria": "dummy",
+                    "displayName": "Health Points",
+                    "renderType": "hearts",
+                    "displayAutoUpdate": false
+                  }
+                },
+                {
+                  "scoreboardObjective": {
+                    "name": "missing",
+                    "exists": false
+                  }
+                },
+                {
+                  "scoreboardDisplay": {
+                    "slot": "sidebar.team.red",
+                    "objective": "health"
+                  }
+                },
+                {
+                  "scoreboardDisplay": {
+                    "slot": "list",
+                    "exists": false
+                  }
+                }
+              ]
+            }
+            """.trimIndent(),
+        )
+
+        val result = ManifestRunner.run(manifest)
+
+        assertTrue(result.passed, result.messages.joinToString())
     }
 
     @Test

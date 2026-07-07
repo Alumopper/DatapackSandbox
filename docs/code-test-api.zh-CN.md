@@ -180,6 +180,24 @@ SandboxQuickTest.functions(
 `dueTick` 是排程函数应执行的绝对 sandbox game tick。`count` 适合检查
 `append` 模式下预期出现的重复排程条目。
 
+scoreboard UI 状态也可以直接断言，适合检查命令生成器输出：
+
+```kotlin
+SandboxQuickTest.create(listOf(pack), version = "26.2")
+    .command("scoreboard objectives add health dummy")
+    .command("scoreboard objectives modify health displayname Health Points")
+    .command("scoreboard objectives modify health rendertype hearts")
+    .command("scoreboard objectives setdisplay sidebar.team.red health")
+    .assertScoreboardObjective(
+        "health",
+        criteria = "dummy",
+        displayName = "Health Points",
+        renderType = "hearts",
+    )
+    .assertScoreboardDisplay("sidebar.team.red", "health")
+    .requirePassed()
+```
+
 ## 预定义世界状态
 
 测试可以在执行任何步骤前定义初始世界。通过 API 写入的 NBT 仍会按当前版本 profile 做校验，所以未知顶层实体/方块实体字段会像 `data modify` 一样失败。
@@ -401,6 +419,8 @@ class MyDatapackTest {
 | `assertWorld(...)` | 断言选定的世界级状态、force-loaded chunk、biome override、世界出生点和世界边界。 |
 | `assertRandomSequence(name, expected)` | 断言确定性随机序列状态。 |
 | `assertScheduledFunction(id, dueTick, exists, count)` | 按函数 id、绝对 due tick、存在性或重复条目数量断言 scheduled function 队列。 |
+| `assertScoreboardObjective(name, exists, criteria, displayName, renderType, displayAutoUpdate)` | 断言 scoreboard objective 的 criteria 和 UI 元数据。 |
+| `assertScoreboardDisplay(slot, objective, exists)` | 断言 `sidebar`、`list` 或 `sidebar.team.red` 等 scoreboard display slot。 |
 | `assertPlayer(...)` | 断言选定的玩家状态、末影箱物品数量、出生点细节和完整 NBT path。 |
 | `assertTeam(...)` | 断言选定 team 状态、成员、成员数量和选项。 |
 | `assertBossbar(...)` | 断言选定 bossbar 状态和关联玩家。 |

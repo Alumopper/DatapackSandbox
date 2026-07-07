@@ -96,6 +96,29 @@ class SandboxQuickTestTest {
     }
 
     @Test
+    fun `quick scoreboard UI assertions check objective metadata and displays`() {
+        val report = SandboxQuickTest.create(listOf(fixturePack()), version = "26.1.2")
+            .command("scoreboard objectives add health dummy")
+            .command("scoreboard objectives modify health displayname Health Points")
+            .command("scoreboard objectives modify health rendertype hearts")
+            .command("scoreboard objectives modify health displayautoupdate false")
+            .command("scoreboard objectives setdisplay sidebar.team.red health")
+            .assertScoreboardObjective(
+                "health",
+                criteria = "dummy",
+                displayName = "Health Points",
+                renderType = "hearts",
+                displayAutoUpdate = false,
+            )
+            .assertScoreboardObjective("missing", exists = false)
+            .assertScoreboardDisplay("sidebar.team.red", "health")
+            .assertScoreboardDisplay("list", exists = false)
+            .requirePassed()
+
+        assertTrue(report.passed)
+    }
+
+    @Test
     fun `quick entity count range assertions explain failures`() {
         val report = SandboxQuickTest.create(listOf(fixturePack()), version = "26.1.2")
             .world {

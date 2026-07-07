@@ -370,6 +370,31 @@ class SandboxQuickTestMatrix private constructor(
     }
 
     /**
+     * Applies a scoreboard objective metadata assertion to every scenario.
+     */
+    @JvmOverloads
+    fun assertScoreboardObjective(
+        name: String,
+        exists: Boolean = true,
+        criteria: String? = null,
+        displayName: String? = null,
+        renderType: String? = null,
+        displayAutoUpdate: Boolean? = null,
+    ): SandboxQuickTestMatrix = apply {
+        scenarios.values.forEach {
+            it.assertScoreboardObjective(name, exists, criteria, displayName, renderType, displayAutoUpdate)
+        }
+    }
+
+    /**
+     * Applies a scoreboard display slot assertion to every scenario.
+     */
+    @JvmOverloads
+    fun assertScoreboardDisplay(slot: String, objective: String? = null, exists: Boolean = true): SandboxQuickTestMatrix = apply {
+        scenarios.values.forEach { it.assertScoreboardDisplay(slot, objective, exists) }
+    }
+
+    /**
      * Applies a world-level state assertion to every scenario.
      */
     @JvmOverloads
@@ -1453,6 +1478,63 @@ class SandboxQuickTest private constructor(
             }
         } else if (matches.isNotEmpty()) {
             failures += "scheduled function $resourceId expected missing${dueTick?.let { " at dueTick $it" }.orEmpty()} but was ${matches.map { it.dueTick }.sorted().joinToString()}; ${actualScheduledFunctions()}"
+        }
+    }
+
+    /**
+     * Asserts scoreboard objective metadata visible in snapshots and UI-related commands.
+     */
+    @JvmOverloads
+    fun assertScoreboardObjective(
+        name: String,
+        exists: Boolean = true,
+        criteria: String? = null,
+        displayName: String? = null,
+        renderType: String? = null,
+        displayAutoUpdate: Boolean? = null,
+    ): SandboxQuickTest = apply {
+        val actualCriteria = sandbox.world.objectives[name]
+        val metadata = sandbox.world.scoreboardObjectiveMetadata[name] ?: ScoreboardObjectiveMetadata()
+        if (!exists) {
+            if (actualCriteria != null) failures += "scoreboard objective $name expected missing but exists; ${actualScoreboardObjectives()}"
+            return@apply
+        }
+        if (actualCriteria == null) {
+            failures += "scoreboard objective $name expected to exist; ${actualScoreboardObjectives()}"
+            return@apply
+        }
+
+        criteria?.let {
+            if (actualCriteria != it) failures += "scoreboard objective $name criteria expected $it but was $actualCriteria"
+        }
+        displayName?.let {
+            val actual = metadata.displayName ?: name
+            if (actual != it) failures += "scoreboard objective $name displayName expected $it but was $actual"
+        }
+        renderType?.let {
+            if (metadata.renderType != it) failures += "scoreboard objective $name renderType expected $it but was ${metadata.renderType}"
+        }
+        displayAutoUpdate?.let {
+            if (metadata.displayAutoUpdate != it) failures += "scoreboard objective $name displayAutoUpdate expected $it but was ${metadata.displayAutoUpdate}"
+        }
+    }
+
+    /**
+     * Asserts a scoreboard display slot such as `sidebar`, `list`, or `sidebar.team.red`.
+     */
+    @JvmOverloads
+    fun assertScoreboardDisplay(slot: String, objective: String? = null, exists: Boolean = true): SandboxQuickTest = apply {
+        val actual = sandbox.world.scoreboardDisplays[slot]
+        if (!exists) {
+            if (actual != null) failures += "scoreboard display $slot expected missing but was $actual; ${actualScoreboardDisplays()}"
+            return@apply
+        }
+        if (actual == null) {
+            failures += "scoreboard display $slot expected present but was <missing>; ${actualScoreboardDisplays()}"
+            return@apply
+        }
+        objective?.let {
+            if (actual != it) failures += "scoreboard display $slot expected $it but was $actual"
         }
     }
 
@@ -2715,6 +2797,29 @@ class SandboxQuickTest private constructor(
             .joinToString("; ") { "${it.id}@${it.dueTick}" }
         val suffix = if (sandbox.world.scheduledFunctions.size > 5) "; ... +${sandbox.world.scheduledFunctions.size - 5} more" else ""
         return "actual scheduled functions: $rendered$suffix"
+    }
+
+    private fun actualScoreboardObjectives(): String {
+        if (sandbox.world.objectives.isEmpty()) return "actual scoreboard objectives: <none>"
+        val rendered = sandbox.world.objectives.toSortedMap()
+            .entries
+            .take(5)
+            .joinToString("; ") { (name, criteria) ->
+                val metadata = sandbox.world.scoreboardObjectiveMetadata[name] ?: ScoreboardObjectiveMetadata()
+                "$name($criteria, displayName=${metadata.displayName ?: name}, renderType=${metadata.renderType}, displayAutoUpdate=${metadata.displayAutoUpdate})"
+            }
+        val suffix = if (sandbox.world.objectives.size > 5) "; ... +${sandbox.world.objectives.size - 5} more" else ""
+        return "actual scoreboard objectives: $rendered$suffix"
+    }
+
+    private fun actualScoreboardDisplays(): String {
+        if (sandbox.world.scoreboardDisplays.isEmpty()) return "actual scoreboard displays: <none>"
+        val rendered = sandbox.world.scoreboardDisplays.toSortedMap()
+            .entries
+            .take(5)
+            .joinToString("; ") { (slot, objective) -> "$slot=$objective" }
+        val suffix = if (sandbox.world.scoreboardDisplays.size > 5) "; ... +${sandbox.world.scoreboardDisplays.size - 5} more" else ""
+        return "actual scoreboard displays: $rendered$suffix"
     }
 
     /**

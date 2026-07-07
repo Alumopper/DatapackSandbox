@@ -185,6 +185,7 @@ JSON text component 支持 `text`、`score`、`selector`、`translate`、`keybin
 | Assertion shorthand `scheduled:<id>` | | 用 `scheduled:<id>=<dueTick>`、`scheduled:<id>?` 或 `scheduled:<id>!` 检查 scheduled function snapshot 状态。 |
 | Assertion shorthand `scoreboard-objective:<name>` | | 用 `scoreboard-objective:<name>?`、`scoreboard-objective:<name>!` 或 `scoreboard-objective:<name>:<field>=<value>` 检查 objective 元数据，字段支持 `criteria`、`displayName`、`renderType` 和 `displayAutoUpdate`。 |
 | Assertion shorthand `scoreboard-display:<slot>` | | 用 `scoreboard-display:<slot>=<objective>`、`scoreboard-display:<slot>?` 或 `scoreboard-display:<slot>!` 检查 objective display slot，支持 `sidebar.team.red` 这类带点 slot。 |
+| Manifest assertions `scoreboardObjective` / `scoreboardDisplay` | | 用类型化 `.dps.json` 字段检查 objective 元数据和 display slot，不必手写 snapshot path。 |
 | Assertion shorthand `forced-chunk:<x>,<z>` / `forceload:<x>,<z>` | | 用 `forced-chunk:<x>,<z>?`、`forced-chunk:<x>,<z>!` 或 `forceload:` 别名检查最终 forced chunk snapshot 状态。 |
 | CLI `diff <before.json> <after.json>` / `diff --script <manifest.dps.json>` | | 比较两份确定性 JSON snapshot 或 report，并输出字段级 JSON Pointer 差异；`--snapshot` 可从 run/check report 抽取单个 `snapshot` 字段，`--state` 可忽略 trace bookkeeping，`--json --output <file>` 写出差异 artifact，`--check` 在存在差异时返回非零退出码。`--script --output <file>` 可把 manifest 命令/函数步骤导出为外部原版或第三方差分 harness 可重放的命令脚本，并把沙盒专用步骤保留为注释。 |
 | CLI `benchmark` | | 运行内置性能 smoke 场景，覆盖 scoreboard 批量写入、大 storage merge、函数调用链和批量 manifest 执行；可选 `--pack` 测量 pack 加载，可选 `--loot-table` 抽样 loot 生成，`--json --output <file>` 可写出 benchmark artifact。 |

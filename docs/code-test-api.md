@@ -205,6 +205,24 @@ SandboxQuickTest.functions(
 `count` is useful for `append` mode tests where duplicate schedule entries are
 expected.
 
+Scoreboard UI state can be asserted directly from generated command output:
+
+```kotlin
+SandboxQuickTest.create(listOf(pack), version = "26.2")
+    .command("scoreboard objectives add health dummy")
+    .command("scoreboard objectives modify health displayname Health Points")
+    .command("scoreboard objectives modify health rendertype hearts")
+    .command("scoreboard objectives setdisplay sidebar.team.red health")
+    .assertScoreboardObjective(
+        "health",
+        criteria = "dummy",
+        displayName = "Health Points",
+        renderType = "hearts",
+    )
+    .assertScoreboardDisplay("sidebar.team.red", "health")
+    .requirePassed()
+```
+
 ## Predefined World State
 
 Tests can start from an explicit world fixture without issuing setup commands.
@@ -431,6 +449,8 @@ class MyDatapackTest {
 | `assertWorld(...)` | Assert selected world-level state, forced chunks, biome overrides, world spawn, and world border |
 | `assertRandomSequence(name, expected)` | Assert deterministic random sequence state |
 | `assertScheduledFunction(id, dueTick, exists, count)` | Assert queued scheduled functions by id, absolute due tick, existence, or duplicate count |
+| `assertScoreboardObjective(name, exists, criteria, displayName, renderType, displayAutoUpdate)` | Assert scoreboard objective criteria and UI metadata |
+| `assertScoreboardDisplay(slot, objective, exists)` | Assert scoreboard display slots such as `sidebar`, `list`, or `sidebar.team.red` |
 | `assertPlayer(...)` | Assert selected player state, ender item count, spawn point details, and full-NBT path filters |
 | `assertTeam(...)` | Assert selected team state, members, member count, and options |
 | `assertBossbar(...)` | Assert selected bossbar state and assigned players |

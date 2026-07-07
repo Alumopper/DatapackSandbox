@@ -28,6 +28,7 @@ import moe.afox.dpsandbox.core.SandboxPlayer
 import moe.afox.dpsandbox.core.SandboxLimits
 import moe.afox.dpsandbox.core.SandboxWorld
 import moe.afox.dpsandbox.core.SandboxWorldBorder
+import moe.afox.dpsandbox.core.ScoreboardObjectiveMetadata
 import moe.afox.dpsandbox.core.SnapshotDiff
 import moe.afox.dpsandbox.core.SnapshotDiffEntry
 import moe.afox.dpsandbox.core.SnapshotDiffKind
@@ -878,6 +879,12 @@ object ManifestRunner {
             assertion.has("scheduled") -> {
                 failures += evaluateScheduledAssertion(assertion.getAsJsonObject("scheduled"), sandbox)
             }
+            assertion.has("scoreboardObjective") -> {
+                failures += evaluateScoreboardObjectiveAssertion(assertion.getAsJsonObject("scoreboardObjective"), sandbox)
+            }
+            assertion.has("scoreboardDisplay") -> {
+                failures += evaluateScoreboardDisplayAssertion(assertion.getAsJsonObject("scoreboardDisplay"), sandbox)
+            }
             assertion.has("block") -> {
                 val block = assertion.getAsJsonObject("block")
                 val posArray = block.getAsJsonArray("pos")
@@ -988,6 +995,78 @@ object ManifestRunner {
             .joinToString("; ") { "${it.id}@${it.dueTick}" }
         val suffix = if (sandbox.world.scheduledFunctions.size > 5) "; ... +${sandbox.world.scheduledFunctions.size - 5} more" else ""
         return "actual scheduled functions: $rendered$suffix"
+    }
+
+    private fun evaluateScoreboardObjectiveAssertion(assertion: JsonObject, sandbox: DatapackSandbox): List<String> {
+        val name = assertion.requiredManifestString("name")
+        val actualCriteria = sandbox.world.objectives[name]
+        val metadata = sandbox.world.scoreboardObjectiveMetadata[name] ?: ScoreboardObjectiveMetadata()
+        val exists = assertion.get("exists")?.asBoolean ?: true
+        return buildList {
+            if (!exists) {
+                if (actualCriteria != null) add("scoreboard objective $name expected missing but exists; ${actualScoreboardObjectives(sandbox)}")
+                return@buildList
+            }
+            if (actualCriteria == null) {
+                add("scoreboard objective $name expected to exist; ${actualScoreboardObjectives(sandbox)}")
+                return@buildList
+            }
+            assertion.manifestString("criteria")?.let {
+                if (actualCriteria != it) add("scoreboard objective $name criteria expected $it but was $actualCriteria")
+            }
+            assertion.manifestString("displayName")?.let {
+                val actual = metadata.displayName ?: name
+                if (actual != it) add("scoreboard objective $name displayName expected $it but was $actual")
+            }
+            assertion.manifestString("renderType")?.let {
+                if (metadata.renderType != it) add("scoreboard objective $name renderType expected $it but was ${metadata.renderType}")
+            }
+            assertion.get("displayAutoUpdate")?.let {
+                if (metadata.displayAutoUpdate != it.asBoolean) add("scoreboard objective $name displayAutoUpdate expected ${it.asBoolean} but was ${metadata.displayAutoUpdate}")
+            }
+        }
+    }
+
+    private fun evaluateScoreboardDisplayAssertion(assertion: JsonObject, sandbox: DatapackSandbox): List<String> {
+        val slot = assertion.requiredManifestString("slot")
+        val actual = sandbox.world.scoreboardDisplays[slot]
+        val exists = assertion.get("exists")?.asBoolean ?: true
+        return buildList {
+            if (!exists) {
+                if (actual != null) add("scoreboard display $slot expected missing but was $actual; ${actualScoreboardDisplays(sandbox)}")
+                return@buildList
+            }
+            if (actual == null) {
+                add("scoreboard display $slot expected present but was <missing>; ${actualScoreboardDisplays(sandbox)}")
+                return@buildList
+            }
+            assertion.manifestString("objective")?.let {
+                if (actual != it) add("scoreboard display $slot expected $it but was $actual")
+            }
+        }
+    }
+
+    private fun actualScoreboardObjectives(sandbox: DatapackSandbox): String {
+        if (sandbox.world.objectives.isEmpty()) return "actual scoreboard objectives: <none>"
+        val rendered = sandbox.world.objectives.toSortedMap()
+            .entries
+            .take(5)
+            .joinToString("; ") { (name, criteria) ->
+                val metadata = sandbox.world.scoreboardObjectiveMetadata[name] ?: ScoreboardObjectiveMetadata()
+                "$name($criteria, displayName=${metadata.displayName ?: name}, renderType=${metadata.renderType}, displayAutoUpdate=${metadata.displayAutoUpdate})"
+            }
+        val suffix = if (sandbox.world.objectives.size > 5) "; ... +${sandbox.world.objectives.size - 5} more" else ""
+        return "actual scoreboard objectives: $rendered$suffix"
+    }
+
+    private fun actualScoreboardDisplays(sandbox: DatapackSandbox): String {
+        if (sandbox.world.scoreboardDisplays.isEmpty()) return "actual scoreboard displays: <none>"
+        val rendered = sandbox.world.scoreboardDisplays.toSortedMap()
+            .entries
+            .take(5)
+            .joinToString("; ") { (slot, objective) -> "$slot=$objective" }
+        val suffix = if (sandbox.world.scoreboardDisplays.size > 5) "; ... +${sandbox.world.scoreboardDisplays.size - 5} more" else ""
+        return "actual scoreboard displays: $rendered$suffix"
     }
 
     private fun evaluateSnapshotAssertion(snapshot: JsonObject, sandbox: DatapackSandbox, base: Path): List<String> {
