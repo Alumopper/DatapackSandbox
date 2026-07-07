@@ -840,6 +840,68 @@ class CommandExpansionTest {
     }
 
     @Test
+    fun `place feature applies deterministic cave and liquid feature resources`() {
+        val pack = writeFeaturePlacePack(Files.createTempDirectory("dps-place-cave-liquid-pack"))
+        val sandbox = createSandbox("26.2", listOf(pack))
+
+        sandbox.executeCommand("place feature demo:placed_basalt_columns 60 30 60")
+        sandbox.executeCommand("place feature demo:placed_delta 70 20 70")
+        sandbox.executeCommand("place feature demo:placed_lake 80 22 80")
+
+        assertEquals(ResourceLocation.parse("minecraft:basalt"), sandbox.world.requireBlock(BlockPos(60, 30, 60)).id)
+        assertEquals(ResourceLocation.parse("minecraft:basalt"), sandbox.world.requireBlock(BlockPos(60, 32, 60)).id)
+        assertEquals(ResourceLocation.parse("minecraft:basalt"), sandbox.world.requireBlock(BlockPos(59, 31, 60)).id)
+        assertEquals(ResourceLocation.parse("minecraft:basalt"), sandbox.world.requireBlock(BlockPos(61, 31, 60)).id)
+        assertEquals(ResourceLocation.parse("minecraft:lava"), sandbox.world.requireBlock(BlockPos(70, 20, 70)).id)
+        assertEquals(ResourceLocation.parse("minecraft:lava"), sandbox.world.requireBlock(BlockPos(69, 20, 70)).id)
+        assertEquals(ResourceLocation.parse("minecraft:magma_block"), sandbox.world.requireBlock(BlockPos(68, 20, 70)).id)
+        assertEquals(ResourceLocation.parse("minecraft:magma_block"), sandbox.world.requireBlock(BlockPos(69, 20, 69)).id)
+        assertEquals(ResourceLocation.parse("minecraft:water"), sandbox.world.requireBlock(BlockPos(80, 22, 80)).id)
+        assertEquals(ResourceLocation.parse("minecraft:water"), sandbox.world.requireBlock(BlockPos(79, 22, 80)).id)
+        assertEquals(ResourceLocation.parse("minecraft:clay"), sandbox.world.requireBlock(BlockPos(78, 22, 80)).id)
+        assertEquals(ResourceLocation.parse("minecraft:clay"), sandbox.world.requireBlock(BlockPos(79, 22, 79)).id)
+
+        val outputs = sandbox.world.outputs.filter { it.command == "place feature" }
+        assertEquals(3, outputs.size)
+        val basaltPayload = outputs[0].payload?.asJsonObject ?: error("missing basalt payload")
+        assertEquals(true, basaltPayload.get("placed").asBoolean)
+        assertEquals("configured-basalt_columns", basaltPayload.get("format").asString)
+        assertEquals("basalt_columns", basaltPayload.get("featureType").asString)
+        assertEquals(11, basaltPayload.get("attemptedBlocks").asInt)
+        assertEquals(11, basaltPayload.get("changedBlocks").asInt)
+        assertEquals(
+            listOf(
+                "60 30 60",
+                "60 31 60",
+                "60 32 60",
+                "59 30 60",
+                "59 31 60",
+                "60 30 59",
+                "60 31 59",
+                "60 30 61",
+                "60 31 61",
+                "61 30 60",
+                "61 31 60",
+            ),
+            outputs[0].targets,
+        )
+
+        val deltaPayload = outputs[1].payload?.asJsonObject ?: error("missing delta payload")
+        assertEquals(true, deltaPayload.get("placed").asBoolean)
+        assertEquals("configured-delta_feature", deltaPayload.get("format").asString)
+        assertEquals("delta_feature", deltaPayload.get("featureType").asString)
+        assertEquals(13, deltaPayload.get("attemptedBlocks").asInt)
+        assertEquals(13, deltaPayload.get("changedBlocks").asInt)
+
+        val lakePayload = outputs[2].payload?.asJsonObject ?: error("missing lake payload")
+        assertEquals(true, lakePayload.get("placed").asBoolean)
+        assertEquals("configured-lake", lakePayload.get("format").asString)
+        assertEquals("lake", lakePayload.get("featureType").asString)
+        assertEquals(13, lakePayload.get("attemptedBlocks").asInt)
+        assertEquals(13, lakePayload.get("changedBlocks").asInt)
+    }
+
+    @Test
     fun `place feature applies deterministic block column feature resources`() {
         val pack = writeFeaturePlacePack(Files.createTempDirectory("dps-place-column-pack"))
         val sandbox = createSandbox("26.2", listOf(pack))
@@ -2563,6 +2625,50 @@ class CommandExpansionTest {
             """.trimIndent(),
         )
         Files.writeString(
+            configuredRoot.resolve("basalt_columns.json"),
+            """
+            {
+              "type": "minecraft:basalt_columns",
+              "config": {
+                "height": { "type": "minecraft:constant", "value": 3 },
+                "reach": { "type": "minecraft:constant", "value": 1 },
+                "state_provider": {
+                  "type": "minecraft:simple_state_provider",
+                  "state": { "Name": "minecraft:basalt" }
+                }
+              }
+            }
+            """.trimIndent(),
+        )
+        Files.writeString(
+            configuredRoot.resolve("delta.json"),
+            """
+            {
+              "type": "minecraft:delta_feature",
+              "config": {
+                "contents": { "Name": "minecraft:lava" },
+                "rim": { "Name": "minecraft:magma_block" },
+                "size": { "type": "minecraft:constant", "value": 1 },
+                "rim_size": 1
+              }
+            }
+            """.trimIndent(),
+        )
+        Files.writeString(
+            configuredRoot.resolve("lake.json"),
+            """
+            {
+              "type": "minecraft:lake",
+              "config": {
+                "state": { "Name": "minecraft:water" },
+                "barrier": { "Name": "minecraft:clay" },
+                "radius": { "type": "minecraft:constant", "value": 1 },
+                "depth": 1
+              }
+            }
+            """.trimIndent(),
+        )
+        Files.writeString(
             configuredRoot.resolve("disk.json"),
             """
             {
@@ -2663,6 +2769,33 @@ class CommandExpansionTest {
             """
             {
               "feature": "demo:tree",
+              "placement": []
+            }
+            """.trimIndent(),
+        )
+        Files.writeString(
+            placedRoot.resolve("placed_basalt_columns.json"),
+            """
+            {
+              "feature": "demo:basalt_columns",
+              "placement": []
+            }
+            """.trimIndent(),
+        )
+        Files.writeString(
+            placedRoot.resolve("placed_delta.json"),
+            """
+            {
+              "feature": "demo:delta",
+              "placement": []
+            }
+            """.trimIndent(),
+        )
+        Files.writeString(
+            placedRoot.resolve("placed_lake.json"),
+            """
+            {
+              "feature": "demo:lake",
               "placement": []
             }
             """.trimIndent(),
