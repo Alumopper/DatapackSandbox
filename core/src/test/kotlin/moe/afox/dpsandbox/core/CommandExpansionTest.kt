@@ -125,6 +125,23 @@ class CommandExpansionTest {
     }
 
     @Test
+    fun `datapack list exposes missing resource diagnostics`() {
+        val sandbox = createSandbox("26.2", listOf(writeMissingFunctionTagPack(Files.createTempDirectory("dps-missing-function-pack"))))
+
+        sandbox.executeCommand("datapack list")
+
+        val payload = sandbox.world.outputs.single { it.command == "datapack list" }
+            .payload?.asJsonObject ?: error("missing datapack list payload")
+        val missing = payload.getAsJsonArray("missingReferences")
+        assertEquals(1, missing.size())
+        val reference = missing[0].asJsonObject
+        assertEquals("#minecraft:load", reference.get("source").asString)
+        assertEquals("function", reference.get("type").asString)
+        assertEquals("demo:missing_load", reference.get("id").asString)
+        assertTrue(payload.has("resourceOverrides"))
+    }
+
+    @Test
     fun `worldborder mutations record structured outputs`() {
         val sandbox = createSandbox("26.1.2", listOf(fixturePack()))
 
@@ -1535,6 +1552,24 @@ class CommandExpansionTest {
 
     private fun fixturePack(): Path =
         Path.of("src/test/resources/packs/counter")
+
+    private fun writeMissingFunctionTagPack(root: Path): Path {
+        Files.writeString(
+            root.resolve("pack.mcmeta").also { Files.createDirectories(it.parent) },
+            """
+            {
+              "pack": {
+                "pack_format": 107.1,
+                "description": "missing function diagnostics test"
+              }
+            }
+            """.trimIndent(),
+        )
+        val tagRoot = root.resolve("data").resolve("minecraft").resolve("tags").resolve("function")
+        Files.createDirectories(tagRoot)
+        Files.writeString(tagRoot.resolve("load.json"), """{"values":["demo:missing_load"]}""")
+        return root
+    }
 
     private fun writeChatTypePack(root: Path): Path {
         Files.writeString(

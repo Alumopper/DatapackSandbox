@@ -50,7 +50,7 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar commands --json --output build
 | `clone` | 部分支持 | `modeled` | 复制稀疏世界中的方块状态和方块实体 NBT，并记录结构化复制/变化位置输出；不执行更新、掉落或重叠区物理。 |
 | `damage` | 部分支持 | `modeled` | 降低实体或玩家生命值，结构化输出支持 `at`、`by`、`from` 上下文，会为自定义伤害来源暴露已加载的 `damage_type` JSON 元数据，发出沙盒 damage/death advancement 事件，并记录生命值变化；不计算盔甲、无敌帧、死亡掉落和完整战斗规则。 |
 | `data` | 部分支持 | `modeled` | 支持带可选数值 scale 的 `get`，以及 `merge`、`modify`、`remove`，目标支持 `storage`、`entity`、`block`；写入类操作会记录结构化前后输出；path 支持字段、正/负数字索引和简单对象匹配；`modify` 支持 `value`、`from` 和 `string` 来源；append/prepend/insert 会拒绝已存在的非列表目标而不是覆盖它；顶层 NBT 字段经过 schema 校验。 |
-| `datapack` | 部分支持 | `modeled` | `list` 报告已加载 typed/raw/tag/resource-index 资源数量和资源覆盖诊断；`enable`/`disable` 作为 no-op 接受，因为沙盒创建后 pack 顺序固定。 |
+| `datapack` | 部分支持 | `modeled` | `list` 报告已加载 typed/raw/tag/resource-index 资源数量、资源覆盖和缺失引用诊断；`enable`/`disable` 作为 no-op 接受，因为沙盒创建后 pack 顺序固定。 |
 | `debug`、`jfr`、`perf` | 空操作 | `observed-noop` | 接受 action/参数 token 并记录结构化 debug 输出；不模拟 profiling 和 flight recording。 |
 | `defaultgamemode` | 支持 | `modeled` | 存储世界默认游戏模式，并记录结构化前后输出。 |
 | `difficulty` | 支持 | `modeled` | 存储并报告世界难度，并记录结构化前后输出。 |

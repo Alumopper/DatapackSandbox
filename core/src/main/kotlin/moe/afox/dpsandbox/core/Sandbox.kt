@@ -1839,26 +1839,27 @@ class DatapackSandbox(
         requireSize(tokens, 2, "datapack <list|enable|disable> ...", location)
         when (tokens[1].text) {
             "list" -> {
+                val summary = datapack.resourceSummary()
                 val payload = JsonObject()
-                payload.addProperty("functions", datapack.functions.size)
-                payload.addProperty("lootTables", datapack.lootTables.size)
-                payload.addProperty("predicates", datapack.predicates.size)
-                payload.addProperty("advancements", datapack.advancements.size)
-                payload.addProperty("recipes", datapack.recipes.size)
-                payload.addProperty("itemModifiers", datapack.itemModifiers.size)
-                payload.addProperty("tags", datapack.tags.size)
-                payload.addProperty("rawResourceKinds", datapack.rawResources.size)
-                payload.addProperty("rawResources", datapack.rawResources.values.sumOf { it.size })
-                payload.addProperty("resourceIndex", datapack.resourceIndex.size)
-                payload.addProperty("activeResources", datapack.resourceIndex.count { it.active })
-                payload.addProperty("overriddenResources", datapack.resourceIndex.count { !it.active })
+                payload.addProperty("functions", summary.functions)
+                payload.addProperty("lootTables", summary.lootTables)
+                payload.addProperty("predicates", summary.predicates)
+                payload.addProperty("advancements", summary.advancements)
+                payload.addProperty("recipes", summary.recipes)
+                payload.addProperty("itemModifiers", summary.itemModifiers)
+                payload.addProperty("tags", summary.tags)
+                payload.addProperty("rawResourceKinds", summary.rawResourceKinds)
+                payload.addProperty("rawResources", summary.rawResources)
+                payload.addProperty("resourceIndex", summary.resourceIndex)
+                payload.addProperty("activeResources", summary.activeResources)
+                payload.addProperty("overriddenResources", summary.overriddenResources)
                 payload.add(
                     "resourceOverrides",
-                    JsonArray().also { overrides ->
-                        datapack.resourceIndex
-                            .filter { !it.active || it.overrides != null || it.overriddenBy != null }
-                            .forEach { overrides.add(it.toResourceIndexPayload()) }
-                    },
+                    JsonArray().also { overrides -> summary.overlays.forEach { overrides.add(it.toResourceIndexPayload()) } },
+                )
+                payload.add(
+                    "missingReferences",
+                    JsonArray().also { references -> summary.missingReferences.forEach { references.add(it.toMissingReferencePayload()) } },
                 )
                 world.recordOutput("datapack list", "data", text = "Loaded datapack resources", payload = payload)
             }
@@ -1868,7 +1869,14 @@ class DatapackSandbox(
             }
             else -> unsupportedFeature("Unsupported datapack action '${tokens[1].text}'", profile.id, location)
         }
-    }
+        }
+
+    private fun DatapackMissingResourceReference.toMissingReferencePayload(): JsonObject =
+        JsonObject().also { payload ->
+            payload.addProperty("source", source)
+            payload.addProperty("type", type)
+            payload.addProperty("id", id.toString())
+        }
 
     private fun ResourceIndexEntry.toResourceIndexPayload(): JsonObject =
         JsonObject().also { payload ->
