@@ -71,7 +71,7 @@ object DpsMultilineHints {
         "give" to "add item stacks to sandbox player inventories",
         "effect" to "give or clear stored player effects",
         "item" to "replace sandbox entity item slots",
-        "place" to "place sandbox structure JSON or record feature, jigsaw, and template worldgen intent",
+        "place" to "place modeled structure, template, jigsaw, and feature resources",
         "advancement" to "inspect, grant, or revoke per-player advancement progress",
         "attribute" to "read or edit stored sandbox entity attributes",
         "schedule" to "schedule or clear function execution by game tick",

@@ -1036,6 +1036,47 @@ class CommandExpansionTest {
     }
 
     @Test
+    fun `place feature applies deterministic spring pile and glowstone resources`() {
+        val pack = writeFeaturePlacePack(Files.createTempDirectory("dps-place-longtail-feature-pack"))
+        val sandbox = createSandbox("26.2", listOf(pack))
+
+        sandbox.executeCommand("place feature demo:placed_spring 90 30 90")
+        sandbox.executeCommand("place feature demo:placed_pile 95 40 95")
+        sandbox.executeCommand("place feature demo:placed_glowstone 100 50 100")
+
+        assertEquals(ResourceLocation.parse("minecraft:water"), sandbox.world.requireBlock(BlockPos(90, 30, 90)).id)
+        assertEquals(ResourceLocation.parse("minecraft:moss_block"), sandbox.world.requireBlock(BlockPos(95, 40, 95)).id)
+        assertEquals(ResourceLocation.parse("minecraft:moss_block"), sandbox.world.requireBlock(BlockPos(96, 40, 95)).id)
+        assertEquals(ResourceLocation.parse("minecraft:moss_block"), sandbox.world.requireBlock(BlockPos(95, 40, 96)).id)
+        assertEquals(ResourceLocation.parse("minecraft:glowstone"), sandbox.world.requireBlock(BlockPos(100, 50, 100)).id)
+        assertEquals(ResourceLocation.parse("minecraft:glowstone"), sandbox.world.requireBlock(BlockPos(101, 50, 100)).id)
+        assertEquals(ResourceLocation.parse("minecraft:glowstone"), sandbox.world.requireBlock(BlockPos(100, 51, 100)).id)
+
+        val outputs = sandbox.world.outputs.filter { it.command == "place feature" }
+        assertEquals(3, outputs.size)
+        val springPayload = outputs[0].payload?.asJsonObject ?: error("missing spring payload")
+        assertEquals(true, springPayload.get("placed").asBoolean)
+        assertEquals("configured-spring_feature", springPayload.get("format").asString)
+        assertEquals("spring_feature", springPayload.get("featureType").asString)
+        assertEquals(1, springPayload.get("attemptedBlocks").asInt)
+        assertEquals(1, springPayload.get("changedBlocks").asInt)
+
+        val pilePayload = outputs[1].payload?.asJsonObject ?: error("missing pile payload")
+        assertEquals(true, pilePayload.get("placed").asBoolean)
+        assertEquals("configured-block_pile", pilePayload.get("format").asString)
+        assertEquals("block_pile", pilePayload.get("featureType").asString)
+        assertEquals(5, pilePayload.get("attemptedBlocks").asInt)
+        assertEquals(5, pilePayload.get("changedBlocks").asInt)
+
+        val glowstonePayload = outputs[2].payload?.asJsonObject ?: error("missing glowstone payload")
+        assertEquals(true, glowstonePayload.get("placed").asBoolean)
+        assertEquals("configured-glowstone_blob", glowstonePayload.get("format").asString)
+        assertEquals("glowstone_blob", glowstonePayload.get("featureType").asString)
+        assertEquals(7, glowstonePayload.get("attemptedBlocks").asInt)
+        assertEquals(7, glowstonePayload.get("changedBlocks").asInt)
+    }
+
+    @Test
     fun `place feature applies deterministic block column feature resources`() {
         val pack = writeFeaturePlacePack(Files.createTempDirectory("dps-place-column-pack"))
         val sandbox = createSandbox("26.2", listOf(pack))
@@ -3089,6 +3130,45 @@ class CommandExpansionTest {
             """.trimIndent(),
         )
         Files.writeString(
+            configuredRoot.resolve("spring.json"),
+            """
+            {
+              "type": "minecraft:spring_feature",
+              "config": {
+                "state": { "Name": "minecraft:water" },
+                "requires_block_below": false,
+                "valid_blocks": ["minecraft:stone", "minecraft:netherrack"]
+              }
+            }
+            """.trimIndent(),
+        )
+        Files.writeString(
+            configuredRoot.resolve("pile.json"),
+            """
+            {
+              "type": "minecraft:block_pile",
+              "config": {
+                "state_provider": {
+                  "type": "minecraft:simple_state_provider",
+                  "state": { "Name": "minecraft:moss_block" }
+                },
+                "radius": 1
+              }
+            }
+            """.trimIndent(),
+        )
+        Files.writeString(
+            configuredRoot.resolve("glowstone.json"),
+            """
+            {
+              "type": "minecraft:glowstone_blob",
+              "config": {
+                "radius": 1
+              }
+            }
+            """.trimIndent(),
+        )
+        Files.writeString(
             configuredRoot.resolve("disk.json"),
             """
             {
@@ -3216,6 +3296,33 @@ class CommandExpansionTest {
             """
             {
               "feature": "demo:lake",
+              "placement": []
+            }
+            """.trimIndent(),
+        )
+        Files.writeString(
+            placedRoot.resolve("placed_spring.json"),
+            """
+            {
+              "feature": "demo:spring",
+              "placement": []
+            }
+            """.trimIndent(),
+        )
+        Files.writeString(
+            placedRoot.resolve("placed_pile.json"),
+            """
+            {
+              "feature": "demo:pile",
+              "placement": []
+            }
+            """.trimIndent(),
+        )
+        Files.writeString(
+            placedRoot.resolve("placed_glowstone.json"),
+            """
+            {
+              "feature": "demo:glowstone",
               "placement": []
             }
             """.trimIndent(),

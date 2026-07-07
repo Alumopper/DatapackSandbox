@@ -876,7 +876,7 @@ object DatapackLoader {
                             val relative = file.relativeTo(tagsRoot).toString().replace('\\', '/')
                             val registry = relative.substringBefore('/', missingDelimiterValue = "")
                             val idPath = relative.substringAfter('/', missingDelimiterValue = "").removeSuffix(".json")
-                            if (registry in profile.resourceDirectories.functionTags) {
+                            if (registry in profile.resourceDirectories.functionTags && namespace == "minecraft" && idPath in setOf("load", "tick")) {
                                 return@forEach
                             }
                             if (registry.isBlank() || idPath.isBlank()) {

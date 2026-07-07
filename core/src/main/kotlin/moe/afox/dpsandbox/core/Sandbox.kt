@@ -1253,7 +1253,7 @@ class DatapackSandbox(
         if (plan == null || plan.blocks.isEmpty()) {
             payload.addProperty("placed", false)
             payload.addProperty("format", "raw-json-index-only")
-            payload.addProperty("reason", "Loaded feature resource has no sandbox block or supported simple_block/block_column/disk/vegetation_patch/tree/basalt_columns/delta_feature/lake/replace_single_block/replace_blob/random_patch/flower/selector/ore state")
+            payload.addProperty("reason", "Loaded feature resource has no sandbox block or supported simple_block/block_column/disk/vegetation_patch/tree/basalt_columns/delta_feature/lake/spring_feature/block_pile/glowstone_blob/replace_single_block/replace_blob/random_patch/flower/selector/ore state")
             return emptyList()
         }
 
@@ -1371,6 +1371,9 @@ class DatapackSandbox(
             "basalt_columns" -> parseBasaltColumnsFeature(type, location)
             "delta_feature" -> parseDeltaFeature(type, location)
             "lake" -> parseLakeFeature(type, location)
+            "spring_feature", "spring" -> parseSpringFeature(type, location)
+            "block_pile" -> parseBlockPileFeature(type, location)
+            "glowstone_blob" -> parseGlowstoneBlobFeature(type, location)
             else -> parseFeatureBlockArgument(location)?.let { block ->
                 SandboxFeaturePlacementPlan(type, listOf(SandboxFeatureBlockPlacement(BlockPos(0, 0, 0), block)))
             }
@@ -1603,6 +1606,62 @@ class DatapackSandbox(
             }
         } ?: emptyList()
         return SandboxFeaturePlacementPlan(type, (fluidBlocks + barrierBlocks).distinctBy { it.offset })
+    }
+
+    private fun JsonObject.parseSpringFeature(type: String, location: SourceLocation?): SandboxFeaturePlacementPlan? {
+        val config = getAsJsonObjectOrNull("config", location) ?: this
+        val fluid = config.get("state")?.parseFeatureBlockValue("$type state", location)
+            ?: config.get("fluid")?.parseFeatureBlockValue("$type fluid", location)
+            ?: config.get("fluid_state")?.parseFeatureBlockValue("$type fluid_state", location)
+            ?: config.get("contents")?.parseFeatureBlockValue("$type contents", location)
+            ?: BlockArgument(ResourceLocation.parse("minecraft:water"))
+        val replaceBlocks = config.getAsJsonObjectOrNull("replaceable", location)
+            ?.featureTargetBlocks("$type replaceable", location)
+            ?: config.get("target")?.featureTargetElementBlocks("$type target", location)
+            ?: config.featureTargetListBlocks("targets", "$type target", location)
+        return SandboxFeaturePlacementPlan(type, listOf(SandboxFeatureBlockPlacement(BlockPos(0, 0, 0), fluid, replaceBlocks)))
+    }
+
+    private fun JsonObject.parseBlockPileFeature(type: String, location: SourceLocation?): SandboxFeaturePlacementPlan? {
+        val config = getAsJsonObjectOrNull("config", location) ?: this
+        val block = config.getAsJsonObjectOrNull("state_provider", location)
+            ?.parseBlockStateProviderBlock("$type state_provider", location)
+            ?: config.getAsJsonObjectOrNull("provider", location)
+                ?.parseBlockStateProviderBlock("$type provider", location)
+            ?: config.get("state")?.parseFeatureBlockValue("$type state", location)
+            ?: return null
+        val radius = (config.get("radius")?.featureIntProvider("$type radius", location) ?: 1).coerceIn(0, 4)
+        val height = (config.get("height")?.featureIntProvider("$type height", location) ?: 1).coerceIn(1, 4)
+        val replaceBlocks = config.getAsJsonObjectOrNull("replaceable", location)
+            ?.featureTargetBlocks("$type replaceable", location)
+            ?: config.get("target")?.featureTargetElementBlocks("$type target", location)
+            ?: config.featureTargetListBlocks("targets", "$type target", location)
+        val blocks = diskOffsets(radius, 0).flatMap { offset ->
+            val columnHeight = (height - abs(offset.x) - abs(offset.z)).coerceAtLeast(1)
+            (0 until columnHeight).map { y ->
+                SandboxFeatureBlockPlacement(BlockPos(offset.x, offset.y + y, offset.z), block, replaceBlocks)
+            }
+        }
+        return SandboxFeaturePlacementPlan(type, blocks.distinctBy { it.offset })
+    }
+
+    private fun JsonObject.parseGlowstoneBlobFeature(type: String, location: SourceLocation?): SandboxFeaturePlacementPlan? {
+        val config = getAsJsonObjectOrNull("config", location) ?: this
+        val block = config.getAsJsonObjectOrNull("state_provider", location)
+            ?.parseBlockStateProviderBlock("$type state_provider", location)
+            ?: config.getAsJsonObjectOrNull("provider", location)
+                ?.parseBlockStateProviderBlock("$type provider", location)
+            ?: config.get("state")?.parseFeatureBlockValue("$type state", location)
+            ?: BlockArgument(ResourceLocation.parse("minecraft:glowstone"))
+        val radius = (config.get("radius")?.featureIntProvider("$type radius", location) ?: 1).coerceIn(0, 4)
+        val replaceBlocks = config.getAsJsonObjectOrNull("replaceable", location)
+            ?.featureTargetBlocks("$type replaceable", location)
+            ?: config.get("target")?.featureTargetElementBlocks("$type target", location)
+            ?: config.featureTargetListBlocks("targets", "$type target", location)
+        return SandboxFeaturePlacementPlan(
+            type,
+            blobOffsets(radius).map { offset -> SandboxFeatureBlockPlacement(offset, block, replaceBlocks) },
+        )
     }
 
     private fun JsonObject.parseSelectorFeature(
