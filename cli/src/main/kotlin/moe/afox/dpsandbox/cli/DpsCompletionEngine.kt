@@ -545,6 +545,8 @@ class DpsCompletionEngine(private val sandbox: () -> DatapackSandbox) {
     companion object {
         private val selectors = listOf("@a", "@s", "@p", "@n", "@e")
         private val inspectTargets = listOf(
+            "world",
+            "worldborder",
             "score",
             "storage",
             "gamerule",

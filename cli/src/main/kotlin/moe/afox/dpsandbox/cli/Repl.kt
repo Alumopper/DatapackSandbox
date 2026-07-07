@@ -232,7 +232,7 @@ class Repl(
         "Commands: load, load fixture <file>, reload, tick [n], function <id>, player <name>, event player <name> <type> [id] [detail/action|x y z|pos=x,y,z], trace <on|off|status>, diff last, rerun last, reset world, ${inspectUsage()}, snapshot [file], exit"
 
     private fun inspectUsage(): String =
-        "inspect <score|storage|gamerule|random|schedule|forced-chunks|scoreboard|entities|blocks|player|loot|predicate|advancement|recipe|item_modifier|raw|tags|resources|registry [group]|outputs|event-traces>"
+        "inspect <world|worldborder|score|storage|gamerule|random|schedule|forced-chunks|scoreboard|entities|blocks|player|loot|predicate|advancement|recipe|item_modifier|raw|tags|resources|registry [group]|outputs|event-traces>"
 
     private fun reload() {
         if (packs.isEmpty()) {
@@ -331,6 +331,8 @@ class Repl(
 
     private fun inspect(args: List<String>) {
         when (args.firstOrNull()) {
+            "world" -> inspectWorld()
+            "worldborder", "world-border", "border" -> inspectWorldBorder()
             "score" -> {
                 if (args.size >= 3) {
                     println(sandbox.world.getScore(args[1], args[2]))
@@ -430,6 +432,30 @@ class Repl(
             }
             else -> println("Usage: ${inspectUsage()}")
         }
+    }
+
+    private fun inspectWorld() {
+        val world = sandbox.world
+        val spawn = world.worldSpawn
+        println(
+            "world gameTime=${world.gameTime} dayTime=${world.dayTime} weather=${world.weather} weatherDuration=${world.weatherDuration} difficulty=${world.difficulty} defaultGameMode=${world.defaultGameMode} seed=${world.seed}",
+        )
+        println(
+            "worldSpawn x=${spawn.position.x} y=${spawn.position.y} z=${spawn.position.z} dimension=${spawn.dimension} angle=${spawn.angle ?: "<unset>"} forced=${spawn.forced}",
+        )
+        println("tick rate=${world.tickRate} frozen=${world.tickFrozen}")
+        printWorldBorder()
+    }
+
+    private fun inspectWorldBorder() {
+        printWorldBorder()
+    }
+
+    private fun printWorldBorder() {
+        val border = sandbox.world.worldBorder
+        println(
+            "worldBorder center=${border.centerX},${border.centerZ} size=${border.size} targetSize=${border.targetSize} lerpTimeSeconds=${border.lerpTimeSeconds} damageBuffer=${border.damageBuffer} damageAmount=${border.damageAmount} warningDistance=${border.warningDistance} warningTime=${border.warningTime}",
+        )
     }
 
     private fun inspectScoreboard(args: List<String>) {

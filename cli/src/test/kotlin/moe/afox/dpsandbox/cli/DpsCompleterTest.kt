@@ -89,6 +89,8 @@ class DpsCompleterTest {
         assertSuggests(completer, "rerun ", "last")
         assertSuggests(completer, "reset ", "world")
         assertSuggests(completer, "load ", "fixture")
+        assertSuggests(completer, "inspect ", "world")
+        assertSuggests(completer, "inspect ", "worldborder")
         assertSuggests(completer, "inspect ", "raw")
         assertSuggests(completer, "inspect ", "gamerule")
         assertSuggests(completer, "inspect ", "random")

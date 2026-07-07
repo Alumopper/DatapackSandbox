@@ -134,6 +134,7 @@
   - schedule 状态已进入 snapshot，并可通过 QuickTest `assertScheduledFunction`、CLI `scheduled:<id>` 断言简写和 REPL `inspect schedule` 查看排程函数、dueTick、条目数量和 remaining ticks，便于调试 `schedule function` / `schedule clear` 与 tick 推进。
   - random sequence 状态已进入 snapshot，并可通过 QuickTest `assertRandomSequence`、manifest `randomSequence` assertion、CLI `random-sequence:<name>` 断言简写和 REPL `inspect random` 检查确定性序列状态或缺失状态，便于调试 `random` 命令和 `execute store` 链路。
   - forced chunk 状态已进入 snapshot，并可通过 QuickTest `assertForcedChunk`、manifest `forcedChunk` assertion、CLI `forced-chunk:<x>,<z>` / `forceload:<x>,<z>` 断言简写和 REPL `inspect forced-chunks` 检查强加载 chunk，便于调试 `forceload` 与 `execute if/unless loaded`。
+  - 世界级状态（gameTime、dayTime、weather、difficulty、defaultGameMode、seed、worldSpawn、tick rate/frozen、worldBorder）已进入 snapshot，并可通过 QuickTest/manifest world assertion、CLI `world:<field>`/snapshot assertion 和 REPL `inspect world` / `inspect worldborder` 检查，便于调试时间、天气、出生点和边界命令。
   - gamerule 状态已进入 snapshot，并可通过 QuickTest `assertGamerule`、manifest `gamerule` assertion、CLI `gamerule:<rule>` 断言简写和 REPL `inspect gamerule` 检查规则值、存在性和缺失状态，便于调试规则类生成命令。
   - scoreboard objective 元数据已进入 `objectiveDetails` snapshot，并可通过 QuickTest、manifest `scoreboardObjective` 断言、CLI `scoreboard-objective:<name>` 断言简写和 REPL `inspect scoreboard` 检查 `criteria`、`displayName`、`renderType` 和 `displayAutoUpdate`，便于调试 scoreboard UI 命令生成结果。
   - scoreboard display slot 状态已进入 snapshot，并可通过 QuickTest、manifest `scoreboardDisplay` 断言、CLI `scoreboard-display:<slot>` 断言简写和 REPL `inspect scoreboard displays` 检查 `sidebar`、`list`、`below_name` 和 `sidebar.team.<color>` 等 slot，便于调试 UI 目标命令生成结果。
@@ -227,6 +228,7 @@
 - 增强 REPL：
   - `inspect` 输出结构更稳定；`inspect event-traces` 已可直接打印玩家事件 trace JSON，并已接入 REPL/CLI 补全和命令目录，便于调试事件输入、block 坐标和 advancement 匹配。
   - `inspect forced-chunks` 已可列出当前强加载 chunk，并接入 REPL 补全和命令目录，便于随手检查 `forceload` 状态。
+  - `inspect world` 和 `inspect worldborder` 已可列出世界时间、天气、默认模式、出生点、tick 状态和世界边界参数，并接入 REPL/CLI 补全和命令目录，便于随手检查世界级生成命令。
   - `inspect gamerule` 和 `inspect scoreboard` 已可列出规则值、objective 元数据和 display slot，并接入 REPL/CLI 补全和命令目录，便于随手检查 UI/规则类生成命令。
   - `inspect resources` 已输出资源摘要、overlay 和 missing-reference，并保留按类型列出 resource index 条目的能力，便于随手小测时解释数据包实际加载结果。
   - 支持 `trace on/off`、`diff last`、`rerun last`、`reset world`、`load fixture`。

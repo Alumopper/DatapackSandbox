@@ -199,6 +199,41 @@ class ReplTest {
     }
 
     @Test
+    fun `inspects world state and world border`() {
+        val sandbox = createSandbox("26.1.2", listOf(Path.of("../core/src/test/resources/packs/counter")))
+        val repl = Repl(sandbox)
+
+        val output = captureStdout {
+            repl.handle("time set 6000")
+            repl.handle("weather thunder 120")
+            repl.handle("difficulty hard")
+            repl.handle("defaultgamemode creative")
+            repl.handle("setworldspawn 4 70 5 90")
+            sandbox.world.tickFrozen = true
+            sandbox.world.tickRate = 30.0
+            repl.handle("worldborder center 5 -6")
+            repl.handle("worldborder set 100")
+            repl.handle("worldborder damage buffer 3")
+            repl.handle("worldborder damage amount 0.5")
+            repl.handle("worldborder warning distance 8")
+            repl.handle("worldborder warning time 20")
+            repl.handle("inspect world")
+            repl.handle("inspect worldborder")
+        }
+
+        assertTrue(output.contains("world gameTime=0 dayTime=6000 weather=thunder"), output)
+        assertTrue(output.contains("weatherDuration=120"), output)
+        assertTrue(output.contains("difficulty=hard defaultGameMode=creative"), output)
+        assertTrue(
+            output.contains("worldSpawn x=4.0 y=70.0 z=5.0 dimension=minecraft:overworld angle=90.0 forced=false"),
+            output,
+        )
+        assertTrue(output.contains("tick rate=30.0 frozen=true"), output)
+        assertTrue(output.contains("worldBorder center=5.0,-6.0 size=100.0 targetSize=100.0"), output)
+        assertTrue(output.contains("damageBuffer=3.0 damageAmount=0.5 warningDistance=8 warningTime=20"), output)
+    }
+
+    @Test
     fun `inspects raw datapack resources`() {
         val pack = Files.createTempDirectory("dps-repl-raw-pack")
         Files.writeString(
