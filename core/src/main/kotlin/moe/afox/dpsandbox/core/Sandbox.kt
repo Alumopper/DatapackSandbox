@@ -209,6 +209,23 @@ private data class SandboxSelectedTemplatePoolElement(
     val fallbackFrom: ResourceLocation? = null,
 )
 
+private data class SandboxJigsawConnector(
+    val sourceStructure: ResourceLocation,
+    val sourceOffset: BlockPos,
+    val position: BlockPos,
+    val direction: BlockPos,
+    val pool: ResourceLocation,
+    val name: ResourceLocation?,
+    val target: ResourceLocation?,
+)
+
+private data class SandboxJigsawExpansionResult(
+    val targets: List<String>,
+    val connections: List<JsonObject>,
+    val childChangedBlocks: Int,
+    val pieces: Int,
+)
+
 /**
  * Execution safety limits used to stop runaway tests deterministically.
  */
@@ -1083,7 +1100,15 @@ class DatapackSandbox(
                 placedTargets = placeSandboxFeature(placeId ?: error("missing place id"), position, payload, location)
             }
             "jigsaw" -> {
-                placedTargets = placeSandboxJigsaw(ResourceLocation.parse(tokens[2].text), position, context, payload, location)
+                placedTargets = placeSandboxJigsaw(
+                    pool = ResourceLocation.parse(tokens[2].text),
+                    target = ResourceLocation.parse(tokens[3].text),
+                    maxDepth = parseInt(tokens[4].text, "jigsaw max depth", location),
+                    position = position,
+                    context = context,
+                    payload = payload,
+                    location = location,
+                )
             }
             "structure", "template" -> {
                 val placement = if (kind == "template") parseTemplatePlacement(extras, payload, location) else SandboxStructurePlacement()
@@ -1101,6 +1126,8 @@ class DatapackSandbox(
 
     private fun placeSandboxJigsaw(
         pool: ResourceLocation,
+        target: ResourceLocation,
+        maxDepth: Int,
         position: Position,
         context: ExecutionContext,
         payload: JsonObject,
@@ -1145,8 +1172,194 @@ class DatapackSandbox(
             element.feature != null -> placeSandboxFeature(element.feature, position, payload, location)
             else -> emptyList()
         }
+        if (element.structure != null && maxDepth > 1) {
+            val origin = BlockPos(floor(position.x).toInt(), floor(position.y).toInt(), floor(position.z).toInt())
+            val expansion = expandJigsawConnections(
+                structure = element.structure,
+                origin = origin,
+                commandTarget = target,
+                currentDepth = 1,
+                maxDepth = maxDepth.coerceAtMost(16),
+                context = context,
+                location = location,
+            )
+            if (expansion.connections.isNotEmpty()) {
+                payload.add(
+                    "jigsawConnections",
+                    JsonArray().also { array -> expansion.connections.forEach(array::add) },
+                )
+            }
+            payload.addProperty("jigsawPieces", expansion.pieces + 1)
+            payload.addProperty("jigsawChildChangedBlocks", expansion.childChangedBlocks)
+            payload.addProperty("totalChangedBlocks", payload.get("changedBlocks")?.asInt?.plus(expansion.childChangedBlocks) ?: expansion.childChangedBlocks)
+            payload.addProperty("effectiveMaxDepth", maxDepth.coerceAtMost(16))
+            payload.addProperty("requestedMaxDepth", maxDepth)
+            payload.addProperty("connectedTargets", expansion.targets.size)
+            payload.add(
+                "connectionTargets",
+                JsonArray().also { array -> expansion.targets.forEach(array::add) },
+            )
+            payload.addProperty("format", "sandbox-template-pool")
+            return targets + expansion.targets
+        }
         payload.addProperty("format", "sandbox-template-pool")
         return targets
+    }
+
+    private fun expandJigsawConnections(
+        structure: ResourceLocation,
+        origin: BlockPos,
+        commandTarget: ResourceLocation,
+        currentDepth: Int,
+        maxDepth: Int,
+        context: ExecutionContext,
+        location: SourceLocation?,
+    ): SandboxJigsawExpansionResult {
+        if (currentDepth >= maxDepth) return SandboxJigsawExpansionResult(emptyList(), emptyList(), 0, 0)
+        val connectors = structureJigsawConnectors(structure, origin, location)
+        if (connectors.isEmpty()) return SandboxJigsawExpansionResult(emptyList(), emptyList(), 0, 0)
+        val matching = connectors.filter { it.target == commandTarget || it.name == commandTarget }
+        val selectedConnectors = matching.ifEmpty { connectors }
+
+        val targets = mutableListOf<String>()
+        val connections = mutableListOf<JsonObject>()
+        var childChangedBlocks = 0
+        var pieces = 0
+        selectedConnectors.take(16).forEach { connector ->
+            val resource = datapack.rawResources["worldgen/template_pool"]?.get(connector.pool) ?: return@forEach
+            if (!resource.root.isJsonObject) {
+                throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Template pool resource '${connector.pool}' must be a JSON object", location)
+            }
+            val selected = selectTemplatePoolElement(connector.pool, resource.root.asJsonObject, "template pool ${connector.pool}", location)
+                ?: return@forEach
+            val childPayload = JsonObject()
+            val childOrigin = connector.position
+            val childTargets = when {
+                selected.element.structure != null -> placeSandboxStructure(
+                    id = selected.element.structure,
+                    position = Position(childOrigin.x.toDouble(), childOrigin.y.toDouble(), childOrigin.z.toDouble()),
+                    context = context,
+                    payload = childPayload,
+                    placement = SandboxStructurePlacement(),
+                    location = location,
+                    extraProcessors = selected.element.processors,
+                )
+                selected.element.feature != null -> placeSandboxFeature(
+                    selected.element.feature,
+                    Position(childOrigin.x.toDouble(), childOrigin.y.toDouble(), childOrigin.z.toDouble()),
+                    childPayload,
+                    location,
+                )
+                else -> emptyList()
+            }
+            val changed = childPayload.get("changedBlocks")?.asInt ?: 0
+            childChangedBlocks += changed
+            targets += childTargets
+            pieces++
+
+            val connection = JsonObject().also { root ->
+                root.addProperty("depth", currentDepth + 1)
+                root.addProperty("sourceStructure", connector.sourceStructure.toString())
+                root.add("sourceOffset", blockPosOutput(connector.sourceOffset))
+                root.add("position", blockPosOutput(connector.position))
+                root.add("direction", blockPosOutput(connector.direction))
+                root.addProperty("pool", connector.pool.toString())
+                connector.name?.let { root.addProperty("name", it.toString()) }
+                connector.target?.let { root.addProperty("target", it.toString()) }
+                root.addProperty("selectedPool", selected.pool.toString())
+                selected.fallbackFrom?.let {
+                    root.addProperty("usedFallback", true)
+                    root.addProperty("fallbackFrom", it.toString())
+                    root.addProperty("fallbackPool", selected.pool.toString())
+                } ?: root.addProperty("usedFallback", false)
+                root.addProperty("elementType", selected.element.type)
+                selected.element.structure?.let { root.addProperty("structure", it.toString()) }
+                selected.element.feature?.let { root.addProperty("feature", it.toString()) }
+                childPayload.get("featureType")?.let { root.add("featureType", it.deepCopy()) }
+                root.addProperty("changedBlocks", changed)
+                root.addProperty("targets", childTargets.size)
+            }
+            connections += connection
+
+            selected.element.structure?.let { childStructure ->
+                val nested = expandJigsawConnections(
+                    structure = childStructure,
+                    origin = childOrigin,
+                    commandTarget = commandTarget,
+                    currentDepth = currentDepth + 1,
+                    maxDepth = maxDepth,
+                    context = context,
+                    location = location,
+                )
+                targets += nested.targets
+                connections += nested.connections
+                childChangedBlocks += nested.childChangedBlocks
+                pieces += nested.pieces
+            }
+        }
+        return SandboxJigsawExpansionResult(targets, connections, childChangedBlocks, pieces)
+    }
+
+    private fun structureJigsawConnectors(
+        structure: ResourceLocation,
+        origin: BlockPos,
+        location: SourceLocation?,
+    ): List<SandboxJigsawConnector> {
+        val resource = datapack.rawResources["worldgen/structure"]?.get(structure) ?: return emptyList()
+        if (!resource.root.isJsonObject) return emptyList()
+        val plan = resource.root.asJsonObject.parseStructureBlockPlan(location) ?: return emptyList()
+        return plan.blocks.mapNotNull { placement ->
+            val block = placement.block
+            if (block.id != ResourceLocation("minecraft", "jigsaw")) return@mapNotNull null
+            val pool = block.nbt.jigsawResource("pool", "Pool") ?: return@mapNotNull null
+            if (pool == ResourceLocation("minecraft", "empty")) return@mapNotNull null
+            val offset = placement.offset
+            val direction = block.jigsawDirection()
+            SandboxJigsawConnector(
+                sourceStructure = structure,
+                sourceOffset = offset,
+                position = BlockPos(origin.x + offset.x + direction.x, origin.y + offset.y + direction.y, origin.z + offset.z + direction.z),
+                direction = direction,
+                pool = pool,
+                name = block.nbt.jigsawResource("name", "Name"),
+                target = block.nbt.jigsawResource("target", "Target"),
+            )
+        }
+    }
+
+    private fun JsonObject.jigsawResource(vararg names: String): ResourceLocation? {
+        names.forEach { name ->
+            val value = get(name)
+            if (value != null && value.isJsonPrimitive && value.asJsonPrimitive.isString) {
+                return ResourceLocation.parse(value.asString)
+            }
+        }
+        return null
+    }
+
+    private fun BlockArgument.jigsawDirection(): BlockPos {
+        val raw = properties["orientation"]
+            ?: properties["facing"]
+            ?: nbt.jigsawString("orientation", "facing")
+            ?: "east"
+        val direction = raw.removePrefix("minecraft:").substringBefore('_')
+        return when (direction) {
+            "north" -> BlockPos(0, 0, -1)
+            "south" -> BlockPos(0, 0, 1)
+            "east" -> BlockPos(1, 0, 0)
+            "west" -> BlockPos(-1, 0, 0)
+            "up" -> BlockPos(0, 1, 0)
+            "down" -> BlockPos(0, -1, 0)
+            else -> BlockPos(1, 0, 0)
+        }
+    }
+
+    private fun JsonObject.jigsawString(vararg names: String): String? {
+        names.forEach { name ->
+            val value = get(name)
+            if (value != null && value.isJsonPrimitive && value.asJsonPrimitive.isString) return value.asString
+        }
+        return null
     }
 
     private fun selectTemplatePoolElement(

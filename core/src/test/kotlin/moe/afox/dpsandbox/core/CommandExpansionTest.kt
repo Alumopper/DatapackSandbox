@@ -748,6 +748,52 @@ class CommandExpansionTest {
     }
 
     @Test
+    fun `place jigsaw follows deterministic jigsaw connector pools`() {
+        val pack = writeJigsawPlacePack(Files.createTempDirectory("dps-place-jigsaw-connected-pack"))
+        val sandbox = createSandbox("26.2", listOf(pack))
+
+        sandbox.executeCommand("place jigsaw demo:linked_start demo:target 3 60 70 60")
+
+        assertEquals(ResourceLocation.parse("minecraft:stone"), sandbox.world.requireBlock(BlockPos(60, 70, 60)).id)
+        assertEquals(ResourceLocation.parse("minecraft:jigsaw"), sandbox.world.requireBlock(BlockPos(61, 70, 60)).id)
+        assertEquals(ResourceLocation.parse("minecraft:gold_block"), sandbox.world.requireBlock(BlockPos(62, 70, 60)).id)
+        assertEquals(ResourceLocation.parse("minecraft:jigsaw"), sandbox.world.requireBlock(BlockPos(63, 70, 60)).id)
+        assertEquals(ResourceLocation.parse("minecraft:diamond_block"), sandbox.world.requireBlock(BlockPos(64, 70, 60)).id)
+
+        val output = sandbox.world.outputs.single { it.command == "place jigsaw" }
+        val payload = output.payload?.asJsonObject ?: error("missing place jigsaw payload")
+        assertEquals(true, payload.get("placed").asBoolean)
+        assertEquals("sandbox-template-pool", payload.get("format").asString)
+        assertEquals("demo:linked_start", payload.get("selectedPool").asString)
+        assertEquals("demo:linked_root", payload.get("structure").asString)
+        assertEquals(2, payload.get("changedBlocks").asInt)
+        assertEquals(3, payload.get("jigsawPieces").asInt)
+        assertEquals(3, payload.get("jigsawChildChangedBlocks").asInt)
+        assertEquals(5, payload.get("totalChangedBlocks").asInt)
+        assertEquals(3, payload.get("effectiveMaxDepth").asInt)
+        assertEquals(3, payload.get("connectedTargets").asInt)
+
+        val connections = payload.getAsJsonArray("jigsawConnections")
+        assertEquals(2, connections.size())
+        val first = connections[0].asJsonObject
+        assertEquals(2, first.get("depth").asInt)
+        assertEquals("demo:linked_root", first.get("sourceStructure").asString)
+        assertEquals("demo:linked_child_pool", first.get("pool").asString)
+        assertEquals("demo:linked_child", first.get("structure").asString)
+        assertEquals(2, first.get("changedBlocks").asInt)
+        val second = connections[1].asJsonObject
+        assertEquals(3, second.get("depth").asInt)
+        assertEquals("demo:linked_child", second.get("sourceStructure").asString)
+        assertEquals("demo:linked_grandchild_pool", second.get("pool").asString)
+        assertEquals("demo:linked_grandchild", second.get("structure").asString)
+        assertEquals(1, second.get("changedBlocks").asInt)
+        assertEquals(
+            listOf("60 70 60", "61 70 60", "62 70 60", "63 70 60", "64 70 60"),
+            output.targets,
+        )
+    }
+
+    @Test
     fun `place feature applies placed simple block feature resources`() {
         val pack = writeFeaturePlacePack(Files.createTempDirectory("dps-place-feature-pack"))
         val sandbox = createSandbox("26.2", listOf(pack))
@@ -2705,6 +2751,58 @@ class CommandExpansionTest {
             }
             """.trimIndent(),
         )
+        Files.writeString(
+            structureRoot.resolve("linked_root.json"),
+            """
+            {
+              "blocks": [
+                { "offset": [0, 0, 0], "id": "minecraft:stone" },
+                {
+                  "offset": [1, 0, 0],
+                  "id": "minecraft:jigsaw",
+                  "properties": { "orientation": "east_up" },
+                  "nbt": {
+                    "pool": "demo:linked_child_pool",
+                    "name": "demo:target",
+                    "target": "demo:target",
+                    "final_state": "minecraft:air"
+                  }
+                }
+              ]
+            }
+            """.trimIndent(),
+        )
+        Files.writeString(
+            structureRoot.resolve("linked_child.json"),
+            """
+            {
+              "blocks": [
+                { "offset": [0, 0, 0], "id": "minecraft:gold_block" },
+                {
+                  "offset": [1, 0, 0],
+                  "id": "minecraft:jigsaw",
+                  "properties": { "orientation": "east_up" },
+                  "nbt": {
+                    "pool": "demo:linked_grandchild_pool",
+                    "name": "demo:target",
+                    "target": "demo:target",
+                    "final_state": "minecraft:air"
+                  }
+                }
+              ]
+            }
+            """.trimIndent(),
+        )
+        Files.writeString(
+            structureRoot.resolve("linked_grandchild.json"),
+            """
+            {
+              "blocks": [
+                { "offset": [0, 0, 0], "id": "minecraft:diamond_block" }
+              ]
+            }
+            """.trimIndent(),
+        )
         val processorRoot = root.resolve("data").resolve("demo").resolve("worldgen").resolve("processor_list")
         Files.createDirectories(processorRoot)
         Files.writeString(
@@ -2777,6 +2875,60 @@ class CommandExpansionTest {
                     "element_type": "minecraft:single_pool_element",
                     "location": "demo:jigsaw_room",
                     "processors": "demo:jigsaw_processors",
+                    "projection": "rigid"
+                  }
+                }
+              ]
+            }
+            """.trimIndent(),
+        )
+        Files.writeString(
+            poolRoot.resolve("linked_start.json"),
+            """
+            {
+              "fallback": "minecraft:empty",
+              "elements": [
+                {
+                  "weight": 1,
+                  "element": {
+                    "element_type": "minecraft:single_pool_element",
+                    "location": "demo:linked_root",
+                    "projection": "rigid"
+                  }
+                }
+              ]
+            }
+            """.trimIndent(),
+        )
+        Files.writeString(
+            poolRoot.resolve("linked_child_pool.json"),
+            """
+            {
+              "fallback": "minecraft:empty",
+              "elements": [
+                {
+                  "weight": 1,
+                  "element": {
+                    "element_type": "minecraft:single_pool_element",
+                    "location": "demo:linked_child",
+                    "projection": "rigid"
+                  }
+                }
+              ]
+            }
+            """.trimIndent(),
+        )
+        Files.writeString(
+            poolRoot.resolve("linked_grandchild_pool.json"),
+            """
+            {
+              "fallback": "minecraft:empty",
+              "elements": [
+                {
+                  "weight": 1,
+                  "element": {
+                    "element_type": "minecraft:single_pool_element",
+                    "location": "demo:linked_grandchild",
                     "projection": "rigid"
                   }
                 }
