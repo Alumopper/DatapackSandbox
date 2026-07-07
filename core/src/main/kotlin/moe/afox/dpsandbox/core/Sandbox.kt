@@ -1298,10 +1298,37 @@ class DatapackSandbox(
             "random_patch", "flower" -> parseRandomPatchFeature(type, location, depth)
             "random_selector", "simple_random_selector", "random_boolean_selector" -> parseSelectorFeature(type, location, depth)
             "ore" -> parseOreFeature(location)
+            "block_column" -> parseBlockColumnFeature(location)
             else -> parseFeatureBlockArgument(location)?.let { block ->
                 SandboxFeaturePlacementPlan(type, listOf(SandboxFeatureBlockPlacement(BlockPos(0, 0, 0), block)))
             }
         }
+    }
+
+    private fun JsonObject.parseBlockColumnFeature(location: SourceLocation?): SandboxFeaturePlacementPlan? {
+        val config = getAsJsonObjectOrNull("config", location) ?: this
+        val layers = config.getAsJsonArrayOrNull("layers") ?: return null
+        val direction = (config.placeString("direction", location) ?: "up").removePrefix("minecraft:")
+        val yStep = when (direction) {
+            "up" -> 1
+            "down" -> -1
+            else -> throw SandboxException(DiagnosticCode.INPUT_FORMAT, "block_column direction must be up or down", location)
+        }
+        val blocks = mutableListOf<SandboxFeatureBlockPlacement>()
+        var y = 0
+        layers.forEachIndexed { index, element ->
+            val layer = element.asPlaceJsonObject("block_column layer $index", location)
+            val height = layer.get("height")?.featureIntProvider("block_column layer $index height", location)
+                ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "block_column layer $index height is required", location)
+            val provider = layer.getAsJsonObjectOrNull("provider", location)
+                ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "block_column layer $index provider is required", location)
+            val block = provider.parseBlockStateProviderBlock("block_column layer $index provider", location)
+            repeat(height.coerceIn(0, 64 - blocks.size)) {
+                blocks += SandboxFeatureBlockPlacement(BlockPos(0, y, 0), block)
+                y += yStep
+            }
+        }
+        return SandboxFeaturePlacementPlan("block_column", blocks)
     }
 
     private fun JsonObject.parseSelectorFeature(
@@ -1492,14 +1519,33 @@ class DatapackSandbox(
         if (type == null || type == "minecraft:simple_block" || type == "simple_block") {
             val config = getAsJsonObjectOrNull("config", location)
             val provider = config?.getAsJsonObjectOrNull("to_place", location) ?: getAsJsonObjectOrNull("to_place", location)
-            val weighted = provider?.getAsJsonArrayOrNull("entries")?.firstOrNull()?.asPlaceJsonObject("weighted state provider entry", location)
-            val weightedState = weighted?.getAsJsonObjectOrNull("data", location) ?: weighted?.getAsJsonObjectOrNull("state", location)
-            if (weightedState != null) return weightedState.parseBlockStateObject("weighted simple_block state", location)
-            val state = provider?.getAsJsonObjectOrNull("state", location) ?: provider?.takeIf { it.has("Name") || it.has("id") }
-            if (state != null) return state.parseBlockStateObject("simple_block state", location)
+            provider?.parseBlockStateProviderBlock("simple_block state provider", location)?.let { return it }
         }
         return null
     }
+
+    private fun JsonObject.parseBlockStateProviderBlock(label: String, location: SourceLocation?): BlockArgument {
+        val weighted = getAsJsonArrayOrNull("entries")?.firstOrNull()?.asPlaceJsonObject("$label weighted entry", location)
+        val weightedState = weighted?.getAsJsonObjectOrNull("data", location) ?: weighted?.getAsJsonObjectOrNull("state", location)
+        if (weightedState != null) return weightedState.parseBlockStateObject("$label weighted state", location)
+        val state = getAsJsonObjectOrNull("state", location) ?: takeIf { has("Name") || has("id") }
+        if (state != null) return state.parseBlockStateObject(label, location)
+        throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label requires state, entries[0].data, Name, or id", location)
+    }
+
+    private fun JsonElement.featureIntProvider(label: String, location: SourceLocation?): Int =
+        when {
+            isJsonPrimitive -> placeInt(label, location)
+            isJsonObject -> {
+                val root = asJsonObject
+                root.get("value")?.placeInt("$label value", location)
+                    ?: root.get("min_inclusive")?.placeInt("$label min_inclusive", location)
+                    ?: root.get("min")?.placeInt("$label min", location)
+                    ?: root.get("base")?.placeInt("$label base", location)
+                    ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label int provider requires value or min", location)
+            }
+            else -> throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label must be an integer provider", location)
+        }
 
     private fun JsonObject.parseBlockStateObject(label: String, location: SourceLocation?): BlockArgument {
         val rawId = placeString("id", location) ?: placeString("Name", location)

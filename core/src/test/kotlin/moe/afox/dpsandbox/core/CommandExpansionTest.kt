@@ -701,6 +701,26 @@ class CommandExpansionTest {
     }
 
     @Test
+    fun `place feature applies deterministic block column feature resources`() {
+        val pack = writeFeaturePlacePack(Files.createTempDirectory("dps-place-column-pack"))
+        val sandbox = createSandbox("26.2", listOf(pack))
+
+        sandbox.executeCommand("place feature demo:placed_column 30 50 30")
+
+        assertEquals(ResourceLocation.parse("minecraft:oak_log"), sandbox.world.requireBlock(BlockPos(30, 50, 30)).id)
+        assertEquals(ResourceLocation.parse("minecraft:oak_log"), sandbox.world.requireBlock(BlockPos(30, 51, 30)).id)
+        assertEquals(ResourceLocation.parse("minecraft:oak_leaves"), sandbox.world.requireBlock(BlockPos(30, 52, 30)).id)
+        val output = sandbox.world.outputs.single { it.command == "place feature" }
+        val payload = output.payload?.asJsonObject ?: error("missing place feature payload")
+        assertEquals(true, payload.get("placed").asBoolean)
+        assertEquals("configured-block_column", payload.get("format").asString)
+        assertEquals("block_column", payload.get("featureType").asString)
+        assertEquals(3, payload.get("attemptedBlocks").asInt)
+        assertEquals(3, payload.get("changedBlocks").asInt)
+        assertEquals(listOf("30 50 30", "30 51 30", "30 52 30"), output.targets)
+    }
+
+    @Test
     fun `attribute and loot commands expose sandbox-visible state`() {
         val pack = writeLootPack(Files.createTempDirectory("dps-command-expansion-pack"))
         val sandbox = createSandbox("26.2", listOf(pack))
@@ -2251,6 +2271,36 @@ class CommandExpansionTest {
             }
             """.trimIndent(),
         )
+        Files.writeString(
+            configuredRoot.resolve("column.json"),
+            """
+            {
+              "type": "minecraft:block_column",
+              "config": {
+                "direction": "up",
+                "layers": [
+                  {
+                    "height": 2,
+                    "provider": {
+                      "type": "minecraft:simple_state_provider",
+                      "state": {
+                        "Name": "minecraft:oak_log",
+                        "Properties": { "axis": "y" }
+                      }
+                    }
+                  },
+                  {
+                    "height": { "type": "minecraft:constant", "value": 1 },
+                    "provider": {
+                      "type": "minecraft:simple_state_provider",
+                      "state": { "Name": "minecraft:oak_leaves" }
+                    }
+                  }
+                ]
+              }
+            }
+            """.trimIndent(),
+        )
         val placedRoot = root.resolve("data").resolve("demo").resolve("worldgen").resolve("placed_feature")
         Files.createDirectories(placedRoot)
         Files.writeString(
@@ -2285,6 +2335,15 @@ class CommandExpansionTest {
             """
             {
               "feature": "demo:ore_cluster",
+              "placement": []
+            }
+            """.trimIndent(),
+        )
+        Files.writeString(
+            placedRoot.resolve("placed_column.json"),
+            """
+            {
+              "feature": "demo:column",
               "placement": []
             }
             """.trimIndent(),
