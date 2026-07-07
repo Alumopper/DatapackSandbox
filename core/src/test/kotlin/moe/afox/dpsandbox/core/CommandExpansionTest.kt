@@ -543,6 +543,30 @@ class CommandExpansionTest {
     }
 
     @Test
+    fun `place structure applies palette style structure json resources`() {
+        val pack = writeStructurePlacePack(Files.createTempDirectory("dps-place-palette-structure-pack"))
+        val sandbox = createSandbox("26.2", listOf(pack))
+
+        sandbox.executeCommand("place structure demo:palette_room 15 66 25")
+
+        assertEquals(ResourceLocation.parse("minecraft:polished_deepslate"), sandbox.world.requireBlock(BlockPos(15, 66, 25)).id)
+        val barrel = sandbox.world.requireBlock(BlockPos(16, 66, 25))
+        assertEquals(ResourceLocation.parse("minecraft:barrel"), barrel.id)
+        assertEquals("east", barrel.properties["facing"])
+        assertEquals("palette", barrel.nbt.get("CustomName").asString)
+        val marker = sandbox.world.entities.single { it.type == ResourceLocation.parse("minecraft:armor_stand") && "palette_structure" in it.tags }
+        assertEquals(Position(15.5, 67.0, 25.5), marker.position)
+
+        val output = sandbox.world.outputs.single { it.command == "place structure" }
+        val payload = output.payload?.asJsonObject ?: error("missing place structure payload")
+        assertEquals(true, payload.get("placed").asBoolean)
+        assertEquals("palette-structure-json", payload.get("format").asString)
+        assertEquals(2, payload.get("changedBlocks").asInt)
+        assertEquals(1, payload.get("entities").asInt)
+        assertEquals(listOf("15 66 25", "16 66 25", marker.uuid), output.targets)
+    }
+
+    @Test
     fun `place template applies sandbox structure json with transforms`() {
         val pack = writeStructurePlacePack(Files.createTempDirectory("dps-place-template-pack"))
         val sandbox = createSandbox("26.2", listOf(pack))
@@ -2251,6 +2275,37 @@ class CommandExpansionTest {
                   "tags": ["placed_structure"],
                   "dimension": "minecraft:the_nether",
                   "health": 6.0
+                }
+              ]
+            }
+            """.trimIndent(),
+        )
+        Files.writeString(
+            structureRoot.resolve("palette_room.json"),
+            """
+            {
+              "palette": [
+                { "Name": "minecraft:polished_deepslate" },
+                {
+                  "Name": "minecraft:barrel",
+                  "Properties": { "facing": "east" }
+                }
+              ],
+              "blocks": [
+                { "pos": [0, 0, 0], "state": 0 },
+                {
+                  "pos": [1, 0, 0],
+                  "state": 1,
+                  "nbt": { "CustomName": "palette" }
+                }
+              ],
+              "entities": [
+                {
+                  "pos": [0.5, 1.0, 0.5],
+                  "nbt": {
+                    "id": "minecraft:armor_stand",
+                    "Tags": ["palette_structure"]
+                  }
                 }
               ]
             }

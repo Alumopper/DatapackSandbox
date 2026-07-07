@@ -131,7 +131,7 @@ smoke tasks.
 | `worldgen/noise_settings` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
 | `worldgen/placed_feature` | `modeled` | placed feature JSON resolving configured simple_block/block_column/disk/vegetation_patch/tree/basalt_columns/delta_feature/lake/replace_single_block/replace_blob/selector/random_patch/flower/ore resources for place feature |
 | `worldgen/processor_list` | `modeled` | block_ignore, protected_blocks, jigsaw_replacement, capped, nop, and rule processors with block/tag predicates consumed by sandbox structure placement |
-| `worldgen/structure` | `modeled` | sandbox structure JSON `blocks`/`entities` can be expanded by `place structure` and `place template` |
+| `worldgen/structure` | `modeled` | sandbox structure JSON `blocks`/`entities` and palette-style blocks can be expanded by `place structure` and `place template` |
 | `worldgen/structure_set` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
 | `worldgen/template_pool` | `modeled` | single/legacy pool elements consumed by sandbox place jigsaw |
 | `worldgen/world_preset` | `observed-noop` | version-checked raw JSON resource indexed for inspection |

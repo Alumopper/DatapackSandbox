@@ -129,6 +129,16 @@ private data class SandboxFeatureBlockPlacement(
     val replaceBlocks: Set<ResourceLocation>? = null,
 )
 
+private data class SandboxStructureBlockPlan(
+    val format: String,
+    val blocks: List<SandboxStructureBlockPlacement>,
+)
+
+private data class SandboxStructureBlockPlacement(
+    val offset: BlockPos,
+    val block: BlockArgument,
+)
+
 private data class SandboxStructureProcessorList(
     val ids: List<ResourceLocation>,
     val processors: List<SandboxStructureProcessor>,
@@ -1919,7 +1929,8 @@ class DatapackSandbox(
             throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Structure resource '$id' must be a JSON object", location)
         }
         val root = resource.root.asJsonObject
-        val blocks = root.getAsJsonArrayOrNull("blocks")
+        val blockPlan = root.parseStructureBlockPlan(location)
+        val blocks = blockPlan?.blocks
         val entities = root.getAsJsonArrayOrNull("entities")
         val processors = parseStructureProcessors(root, location).plus(extraProcessors)
         if (blocks == null && entities == null) {
@@ -1928,8 +1939,8 @@ class DatapackSandbox(
             payload.addProperty("reason", "Loaded structure resource has no sandbox blocks or entities")
             return emptyList()
         }
-        if ((blocks?.size() ?: 0) > 32768) {
-            throw SandboxException(DiagnosticCode.COMMAND_ERROR, "Structure resource '$id' has ${blocks?.size()} blocks; limit is 32768", location)
+        if ((blocks?.size ?: 0) > 32768) {
+            throw SandboxException(DiagnosticCode.COMMAND_ERROR, "Structure resource '$id' has ${blocks?.size} blocks; limit is 32768", location)
         }
 
         val origin = BlockPos(floor(position.x).toInt(), floor(position.y).toInt(), floor(position.z).toInt())
@@ -1937,21 +1948,14 @@ class DatapackSandbox(
         var skippedBlocks = 0
         var processedBlocks = 0
         blocks?.forEachIndexed { index, element ->
-            val block = element.asPlaceJsonObject("structure block $index", location)
-            val offset = block.placeBlockPos("offset", "pos", "structure block $index offset", location)
+            val offset = element.offset
             if (!placement.shouldPlace(id, origin, index)) {
                 skippedBlocks++
                 return@forEachIndexed
             }
             val transformedOffset = placement.transform(offset)
             val pos = BlockPos(origin.x + transformedOffset.x, origin.y + transformedOffset.y, origin.z + transformedOffset.z)
-            val properties = block.placeProperties(location)
-            val blockNbt = block.placeJsonObject("nbt", "structure block $index nbt", location)
-            val blockArgument = BlockArgument(
-                id = ResourceLocation.parse(block.requiredPlaceString("id", "structure block $index id", location)),
-                properties = properties,
-                nbt = blockNbt ?: JsonObject(),
-            )
+            val blockArgument = element.block
             val before = world.block(pos)?.copyForClone()
             val processed = applyStructureProcessors(blockArgument, before?.id, processors.processors, location)
             if (processed.processed) processedBlocks++
@@ -1975,8 +1979,12 @@ class DatapackSandbox(
             val entityNbt = entityRoot.placeJsonObject("nbt", "structure entity $index nbt", location)
             val tags = entityRoot.placeStringArray("tags", "structure entity $index tags", location).toMutableSet()
             if (entityNbt != null) tags += extractTags(entityNbt)
+            val entityType = entityRoot.placeString("type", location)
+                ?: entityRoot.placeString("id", location)
+                ?: entityNbt?.placeString("id", location)
+                ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "structure entity $index type or nbt.id is required", location)
             val entity = SandboxEntity(
-                type = ResourceLocation.parse(entityRoot.requiredPlaceString("type", "structure entity $index type", location)),
+                type = ResourceLocation.parse(entityType),
                 position = positionAtOffset,
                 tags = tags,
                 yaw = entityRoot.placeDouble("yaw", 0.0, "structure entity $index yaw", location),
@@ -1992,7 +2000,7 @@ class DatapackSandbox(
         }
 
         payload.addProperty("placed", true)
-        payload.addProperty("format", "sandbox-structure-json")
+        payload.addProperty("format", blockPlan?.format ?: "sandbox-structure-json")
         payload.addProperty("changedBlocks", changedBlocks.size)
         payload.addProperty("skippedBlocks", skippedBlocks)
         payload.addProperty("processedBlocks", processedBlocks)
@@ -2011,6 +2019,71 @@ class DatapackSandbox(
             JsonArray().also { targets -> createdEntities.map { it.scoreHolder }.sorted().forEach { targets.add(it) } },
         )
         return changedBlocks.map { it.toString() } + createdEntities.map { it.scoreHolder }
+    }
+
+    private fun JsonObject.parseStructureBlockPlan(location: SourceLocation?): SandboxStructureBlockPlan? {
+        val blockArray = getAsJsonArrayOrNull("blocks") ?: return null
+        val palette = parseStructurePalette(location)
+        val usePalette = palette != null && blockArray.any { element ->
+            element.isJsonObject && element.asJsonObject.has("state") && !element.asJsonObject.has("id")
+        }
+        val blocks = blockArray.mapIndexed { index, element ->
+            val root = element.asPlaceJsonObject("structure block $index", location)
+            val offset = root.placeBlockPos("offset", "pos", "structure block $index offset", location)
+            val block = if (usePalette && root.has("state") && !root.has("id")) {
+                root.parsePaletteStructureBlock(index, requireNotNull(palette), location)
+            } else {
+                root.parseSandboxStructureBlock(index, location)
+            }
+            SandboxStructureBlockPlacement(offset = offset, block = block)
+        }
+        return SandboxStructureBlockPlan(
+            format = if (usePalette) "palette-structure-json" else "sandbox-structure-json",
+            blocks = blocks,
+        )
+    }
+
+    private fun JsonObject.parseStructurePalette(location: SourceLocation?): List<BlockArgument>? {
+        val value = get("palette") ?: getAsJsonArrayOrNull("palettes")?.firstOrNull() ?: return null
+        val paletteArray = when {
+            value.isJsonArray -> value.asJsonArray
+            value.isJsonObject -> value.asJsonObject.getAsJsonArrayOrNull("palette")
+                ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Structure palette object must contain palette array", location)
+            else -> throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Structure palette must be an array", location)
+        }
+        return paletteArray.mapIndexed { index, element ->
+            element.parseStructureProcessorBlockArgument("structure palette entry $index", location)
+        }
+    }
+
+    private fun JsonObject.parsePaletteStructureBlock(
+        index: Int,
+        palette: List<BlockArgument>,
+        location: SourceLocation?,
+    ): BlockArgument {
+        val stateIndex = get("state")?.placeInt("structure block $index state", location)
+            ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "structure block $index state is required", location)
+        val base = palette.getOrNull(stateIndex)
+            ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "structure block $index state index $stateIndex is outside palette size ${palette.size}", location)
+        return base.withStructureBlockNbt(getAsJsonObjectOrNull("nbt", location))
+    }
+
+    private fun JsonObject.parseSandboxStructureBlock(index: Int, location: SourceLocation?): BlockArgument {
+        val state = get("state")?.takeUnless { it.isJsonPrimitive && it.asJsonPrimitive.isNumber }
+        val base = state?.parseStructureProcessorBlockArgument("structure block $index state", location)
+            ?: BlockArgument(
+                id = ResourceLocation.parse(requiredPlaceString("id", "structure block $index id", location)),
+                properties = placeProperties(location),
+                nbt = JsonObject(),
+            )
+        return base.withStructureBlockNbt(placeJsonObject("nbt", "structure block $index nbt", location))
+    }
+
+    private fun BlockArgument.withStructureBlockNbt(extra: JsonObject?): BlockArgument {
+        if (extra == null) return this
+        val merged = nbt.deepCopy()
+        JsonPaths.merge(merged, null, extra.deepCopy())
+        return copy(nbt = merged)
     }
 
     private fun parseStructureProcessors(root: JsonObject, location: SourceLocation?): SandboxStructureProcessorList {
