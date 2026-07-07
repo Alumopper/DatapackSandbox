@@ -2059,7 +2059,7 @@ class RunCommandTest {
         assertTrue("worldgen/placed_feature modeled - placed feature JSON resolving configured simple_block/block_column/disk/vegetation_patch/tree/basalt_columns/delta_feature/lake/replace_single_block/replace_blob/selector/random_patch/flower/ore" in output, output)
         assertTrue("worldgen/processor_list modeled - block_ignore, protected_blocks, jigsaw_replacement, capped, nop, and rule processors with block/tag predicates" in output, output)
         assertTrue("worldgen/structure modeled - sandbox structure JSON blocks/entities and palette-style blocks" in output, output)
-        assertTrue("worldgen/template_pool modeled - single/legacy pool elements" in output, output)
+        assertTrue("worldgen/template_pool modeled - single/legacy/list/feature pool elements and fallback pools" in output, output)
     }
 
     @Test
@@ -2087,7 +2087,7 @@ class RunCommandTest {
         assertTrue("| `worldgen/configured_feature` | `modeled` | simple_block, block_column, disk, vegetation_patch, tree, basalt_columns, delta_feature, lake, replace_single_block, replace_blob, selector, random_patch, flower, and ore feature JSON consumed by place feature |" in output, output)
         assertTrue("| `worldgen/processor_list` | `modeled` | block_ignore, protected_blocks, jigsaw_replacement, capped, nop, and rule processors with block/tag predicates consumed by sandbox structure placement |" in output, output)
         assertTrue("| `worldgen/structure` | `modeled` | sandbox structure JSON blocks/entities and palette-style blocks" in output, output)
-        assertTrue("| `worldgen/template_pool` | `modeled` | single/legacy pool elements consumed by sandbox place jigsaw |" in output, output)
+        assertTrue("| `worldgen/template_pool` | `modeled` | single/legacy/list/feature pool elements and fallback pools consumed by sandbox place jigsaw |" in output, output)
     }
 
     @Test
@@ -2115,7 +2115,7 @@ class RunCommandTest {
         assertTrue("| `worldgen/placed_feature` | `modeled` | placed feature 会解析 configured simple_block/block_column/disk/vegetation_patch/tree/basalt_columns/delta_feature/lake/replace_single_block/replace_blob/selector/random_patch/flower/ore 资源，供 place feature 使用。" in output, output)
         assertTrue("| `worldgen/processor_list` | `modeled` | block_ignore、protected_blocks、jigsaw_replacement、capped、nop 和带 block/tag 谓词的 rule processor 可被沙盒结构放置消费。" in output, output)
         assertTrue("| `worldgen/structure` | `modeled` | 沙盒结构 JSON 的 blocks/entities 与 palette-style blocks 可被 place structure/template 展开。" in output, output)
-        assertTrue("| `worldgen/template_pool` | `modeled` | single/legacy pool element 可被 place jigsaw 展开。" in output, output)
+        assertTrue("| `worldgen/template_pool` | `modeled` | single/legacy/list/feature pool element 和 fallback pool 可被 place jigsaw 展开。" in output, output)
     }
 
     @Test

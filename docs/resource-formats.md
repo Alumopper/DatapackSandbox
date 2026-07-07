@@ -133,7 +133,7 @@ smoke tasks.
 | `worldgen/processor_list` | `modeled` | block_ignore, protected_blocks, jigsaw_replacement, capped, nop, and rule processors with block/tag predicates consumed by sandbox structure placement |
 | `worldgen/structure` | `modeled` | sandbox structure JSON `blocks`/`entities` and palette-style blocks can be expanded by `place structure` and `place template` |
 | `worldgen/structure_set` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
-| `worldgen/template_pool` | `modeled` | single/legacy pool elements consumed by sandbox place jigsaw |
+| `worldgen/template_pool` | `modeled` | single/legacy/list/feature pool elements and fallback pools consumed by sandbox place jigsaw |
 | `worldgen/world_preset` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
 
 ## `.dps.json` Manifests
@@ -332,7 +332,7 @@ Chat types, damage types, dimensions, dimension types, enchantments, entity vari
 JSON resources and included in the resource index. The sandbox does not yet
 execute the full crafting system, every item modifier function, or full
 worldgen semantics, but it models sandbox structure placement, processor_list
-block_ignore/protected_blocks/jigsaw_replacement/capped/nop/rule block/tag predicate handling, template_pool single/legacy jigsaw placement,
+block_ignore/protected_blocks/jigsaw_replacement/capped/nop/rule block/tag predicate handling, template_pool single/legacy/list/feature/fallback jigsaw placement,
 simple_block, block_column, deterministic disk/vegetation_patch/tree/basalt_columns/delta_feature/lake/replacement/selector/random_patch/flower and sparse-world ore feature placement, chat type metadata in modeled chat commands, and
 damage type metadata in `damage` command output, dimension and dimension type metadata in dimension-aware command outputs, enchantment metadata in `enchant` command output, entity variant metadata in `summon` output, plus equipment asset, banner pattern, instrument, jukebox song, and armor trim material/pattern metadata in item command outputs; the remaining resources are version-profile checked,
 participate in pack overlay behavior, and can be inspected from API or REPL.

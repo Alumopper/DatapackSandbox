@@ -203,6 +203,12 @@ private data class SandboxTemplatePoolElement(
     val processors: SandboxStructureProcessorList = SandboxStructureProcessorList.empty,
 )
 
+private data class SandboxSelectedTemplatePoolElement(
+    val pool: ResourceLocation,
+    val element: SandboxTemplatePoolElement,
+    val fallbackFrom: ResourceLocation? = null,
+)
+
 /**
  * Execution safety limits used to stop runaway tests deterministically.
  */
@@ -1109,13 +1115,20 @@ class DatapackSandbox(
         if (!resource.root.isJsonObject) {
             throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Template pool resource '$pool' must be a JSON object", location)
         }
-        val element = selectTemplatePoolElement(resource.root.asJsonObject, "template pool $pool", location)
-        if (element == null) {
+        val selected = selectTemplatePoolElement(pool, resource.root.asJsonObject, "template pool $pool", location)
+        if (selected == null) {
             payload.addProperty("placed", false)
             payload.addProperty("format", "raw-json-index-only")
             payload.addProperty("reason", "Loaded template pool has no supported single/legacy structure or feature element")
             return emptyList()
         }
+        val element = selected.element
+        payload.addProperty("selectedPool", selected.pool.toString())
+        selected.fallbackFrom?.let {
+            payload.addProperty("fallbackPool", selected.pool.toString())
+            payload.addProperty("usedFallback", true)
+            payload.addProperty("fallbackFrom", it.toString())
+        } ?: payload.addProperty("usedFallback", false)
         payload.addProperty("elementType", element.type)
         element.structure?.let { payload.addProperty("structure", it.toString()) }
         element.feature?.let { payload.addProperty("feature", it.toString()) }
@@ -1137,14 +1150,38 @@ class DatapackSandbox(
     }
 
     private fun selectTemplatePoolElement(
+        pool: ResourceLocation,
         root: JsonObject,
         label: String,
         location: SourceLocation?,
-    ): SandboxTemplatePoolElement? {
-        val elements = root.getAsJsonArrayOrNull("elements") ?: return parseTemplatePoolElement(root, label, location)
+        visited: Set<ResourceLocation> = emptySet(),
+    ): SandboxSelectedTemplatePoolElement? {
+        val selected = root.selectTemplatePoolElementInCurrentPool(pool, label, location)
+        if (selected != null) return selected
+        val fallbackText = root.placeString("fallback", location)
+        if (fallbackText.isNullOrBlank() || fallbackText == "minecraft:empty") return null
+        val fallback = ResourceLocation.parse(fallbackText)
+        if (fallback in visited + pool) {
+            throw SandboxException(DiagnosticCode.COMMAND_ERROR, "Template pool fallback cycle at '$fallback'", location)
+        }
+        val resource = datapack.rawResources["worldgen/template_pool"]?.get(fallback) ?: return null
+        if (!resource.root.isJsonObject) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Template pool fallback '$fallback' must be a JSON object", location)
+        }
+        return selectTemplatePoolElement(fallback, resource.root.asJsonObject, "template pool $fallback", location, visited + pool)
+            ?.let { it.copy(fallbackFrom = it.fallbackFrom ?: pool) }
+    }
+
+    private fun JsonObject.selectTemplatePoolElementInCurrentPool(
+        pool: ResourceLocation,
+        label: String,
+        location: SourceLocation?,
+    ): SandboxSelectedTemplatePoolElement? {
+        val elements = getAsJsonArrayOrNull("elements")
+            ?: return parseTemplatePoolElement(this, label, location)?.let { SandboxSelectedTemplatePoolElement(pool, it) }
         elements.forEachIndexed { index, element ->
             parseTemplatePoolElement(element.asPlaceJsonObject("$label element $index", location), "$label element $index", location)
-                ?.let { return it }
+                ?.let { return SandboxSelectedTemplatePoolElement(pool, it) }
         }
         return null
     }

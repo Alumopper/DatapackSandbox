@@ -664,6 +664,28 @@ class CommandExpansionTest {
     }
 
     @Test
+    fun `place jigsaw uses template pool fallback when primary has no supported element`() {
+        val pack = writeJigsawPlacePack(Files.createTempDirectory("dps-place-jigsaw-fallback-pack"))
+        val sandbox = createSandbox("26.2", listOf(pack))
+
+        sandbox.executeCommand("place jigsaw demo:fallback_start demo:target 1 45 70 55")
+
+        assertEquals(ResourceLocation.parse("minecraft:emerald_block"), sandbox.world.requireBlock(BlockPos(45, 70, 55)).id)
+        assertEquals(ResourceLocation.parse("minecraft:chest"), sandbox.world.requireBlock(BlockPos(46, 70, 55)).id)
+        val output = sandbox.world.outputs.single { it.command == "place jigsaw" }
+        val payload = output.payload?.asJsonObject ?: error("missing place jigsaw payload")
+        assertEquals(true, payload.get("placed").asBoolean)
+        assertEquals("sandbox-template-pool", payload.get("format").asString)
+        assertEquals("demo:fallback_start", payload.get("pool").asString)
+        assertEquals("demo:fallback_pool", payload.get("selectedPool").asString)
+        assertEquals("demo:fallback_pool", payload.get("fallbackPool").asString)
+        assertEquals("demo:fallback_start", payload.get("fallbackFrom").asString)
+        assertEquals(true, payload.get("usedFallback").asBoolean)
+        assertEquals("demo:jigsaw_room", payload.get("structure").asString)
+        assertEquals(listOf("45 70 55", "46 70 55"), output.targets)
+    }
+
+    @Test
     fun `place feature applies placed simple block feature resources`() {
         val pack = writeFeaturePlacePack(Files.createTempDirectory("dps-place-feature-pack"))
         val sandbox = createSandbox("26.2", listOf(pack))
@@ -2523,6 +2545,41 @@ class CommandExpansionTest {
         Files.createDirectories(poolRoot)
         Files.writeString(
             poolRoot.resolve("start.json"),
+            """
+            {
+              "fallback": "minecraft:empty",
+              "elements": [
+                {
+                  "weight": 1,
+                  "element": {
+                    "element_type": "minecraft:single_pool_element",
+                    "location": "demo:jigsaw_room",
+                    "processors": "demo:jigsaw_processors",
+                    "projection": "rigid"
+                  }
+                }
+              ]
+            }
+            """.trimIndent(),
+        )
+        Files.writeString(
+            poolRoot.resolve("fallback_start.json"),
+            """
+            {
+              "fallback": "demo:fallback_pool",
+              "elements": [
+                {
+                  "weight": 1,
+                  "element": {
+                    "element_type": "minecraft:empty_pool_element"
+                  }
+                }
+              ]
+            }
+            """.trimIndent(),
+        )
+        Files.writeString(
+            poolRoot.resolve("fallback_pool.json"),
             """
             {
               "fallback": "minecraft:empty",
