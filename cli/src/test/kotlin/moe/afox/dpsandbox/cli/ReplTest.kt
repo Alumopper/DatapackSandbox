@@ -261,6 +261,29 @@ class ReplTest {
     }
 
     @Test
+    fun `inspects entity modeled state`() {
+        val repl = Repl(createSandbox("26.1.2", listOf(Path.of("../core/src/test/resources/packs/counter"))))
+
+        val output = captureStdout {
+            repl.handle("""summon minecraft:zombie 1 64 2 {Tags:["mob"],Health:18f}""")
+            repl.handle("item replace entity @e[type=minecraft:zombie,limit=1] weapon.mainhand with minecraft:stick 2")
+            repl.handle("effect give @e[type=minecraft:zombie,limit=1] minecraft:speed 7 2 true")
+            repl.handle("attribute @e[type=minecraft:zombie,limit=1] minecraft:max_health base set 40")
+            repl.handle("inspect entities")
+            repl.handle("inspect entity mob")
+            repl.handle("inspect entity minecraft:zombie")
+            repl.handle("inspect entity missing")
+        }
+
+        assertTrue(output.contains("type=minecraft:zombie pos=1.0,64.0,2.0"), output)
+        assertTrue(output.contains("health=18.0 tags=[mob]"), output)
+        assertTrue(output.contains("equipment=[weapon.mainhand=minecraft:stickx2]"), output)
+        assertTrue(output.contains("effects=[minecraft:speed:amplifier=2,duration=140,hideParticles=true]"), output)
+        assertTrue(output.contains("attributes=[minecraft:max_health=40.0]"), output)
+        assertTrue(output.lines().any { it.trim() == "<missing>" }, output)
+    }
+
+    @Test
     fun `inspects world state and world border`() {
         val sandbox = createSandbox("26.1.2", listOf(Path.of("../core/src/test/resources/packs/counter")))
         val repl = Repl(sandbox)

@@ -142,6 +142,8 @@ class DpsCompletionEngine(private val sandbox: () -> DatapackSandbox) {
                 playerTargets(includeSelectors = false).suggest("players", appendSpace = true)
             words.getOrNull(1) in setOf("advancement-progress", "advancements-progress", "player-advancements") && context.wordIndex == 3 ->
                 advancementProgressIds().suggest("advancements")
+            words.getOrNull(1) in setOf("entity", "entities") && context.wordIndex == 2 ->
+                entityInspectTargets().suggest("entities")
             words.getOrNull(1) == "raw" && context.wordIndex == 2 -> rawResourceKinds().suggest("raw resource types", appendSpace = true)
             words.getOrNull(1) == "raw" && context.wordIndex == 3 -> rawResourceIds(words.getOrNull(2)).suggest("raw resources")
             words.getOrNull(1) in setOf("resource", "resources") && context.wordIndex == 2 -> resourceIndexTypes().suggest("resource types")
@@ -554,6 +556,16 @@ class DpsCompletionEngine(private val sandbox: () -> DatapackSandbox) {
             ).distinct().sorted()
     }
 
+    private fun entityInspectTargets(): List<String> =
+        sandbox().world.entities.flatMap { entity ->
+            buildList {
+                add(entity.uuid)
+                add(entity.scoreHolder)
+                add(entity.type.toString())
+                addAll(entity.tags)
+            }
+        }.distinct().sorted()
+
     private fun randomSequenceNames(): List<String> =
         sandbox().world.randomSequences.keys.sorted()
 
@@ -583,6 +595,7 @@ class DpsCompletionEngine(private val sandbox: () -> DatapackSandbox) {
             "scoreboard",
             "team",
             "bossbar",
+            "entity",
             "entities",
             "blocks",
             "player",

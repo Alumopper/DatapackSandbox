@@ -4,11 +4,15 @@ import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import moe.afox.dpsandbox.core.DatapackSandbox
 import moe.afox.dpsandbox.core.ExecutionResult
+import moe.afox.dpsandbox.core.ItemStack
 import moe.afox.dpsandbox.core.JsonPaths
 import moe.afox.dpsandbox.core.JsonValues
+import moe.afox.dpsandbox.core.PlayerEffect
 import moe.afox.dpsandbox.core.ResourceLocation
 import moe.afox.dpsandbox.core.SandboxBossbar
+import moe.afox.dpsandbox.core.SandboxEntity
 import moe.afox.dpsandbox.core.SandboxException
+import moe.afox.dpsandbox.core.SandboxPlayer
 import moe.afox.dpsandbox.core.SandboxTeam
 import moe.afox.dpsandbox.core.SandboxWorld
 import moe.afox.dpsandbox.core.SnapshotDiff
@@ -234,7 +238,7 @@ class Repl(
         "Commands: load, load fixture <file>, reload, tick [n], function <id>, player <name>, event player <name> <type> [id] [detail/action|x y z|pos=x,y,z], trace <on|off|status>, diff last, rerun last, reset world, ${inspectUsage()}, snapshot [file], exit"
 
     private fun inspectUsage(): String =
-        "inspect <world|worldborder|score|storage|gamerule|random|schedule|forced-chunks|scoreboard|team|bossbar|entities|blocks|player|recipes|advancement-progress|loot|predicate|advancement|recipe|item_modifier|raw|tags|resources|registry [group]|outputs|event-traces>"
+        "inspect <world|worldborder|score|storage|gamerule|random|schedule|forced-chunks|scoreboard|team|bossbar|entity|entities|blocks|player|recipes|advancement-progress|loot|predicate|advancement|recipe|item_modifier|raw|tags|resources|registry [group]|outputs|event-traces>"
 
     private fun reload() {
         if (packs.isEmpty()) {
@@ -391,11 +395,7 @@ class Repl(
             "scoreboard" -> inspectScoreboard(args)
             "team", "teams" -> inspectTeams(args)
             "bossbar", "bossbars" -> inspectBossbars(args)
-            "entities" -> {
-                sandbox.world.entities.forEach { entity ->
-                    println("${entity.uuid} ${entity.type} tags=${entity.tags.sorted().joinToString(prefix = "[", postfix = "]")}")
-                }
-            }
+            "entity", "entities" -> inspectEntities(args)
             "blocks" -> {
                 sandbox.world.blocks.toSortedMap().forEach { (pos, block) ->
                     val properties = block.properties.toSortedMap().entries.joinToString(prefix = "[", postfix = "]") { "${it.key}=${it.value}" }
@@ -518,6 +518,69 @@ class Repl(
         val players = bossbar.players.sorted().joinToString(prefix = "[", postfix = "]")
         return "bossbar ${bossbar.id} name=${bossbar.name} value=${bossbar.value} max=${bossbar.max} color=${bossbar.color} style=${bossbar.style} visible=${bossbar.visible} players=$players"
     }
+
+    private fun inspectEntities(args: List<String>) {
+        val selector = args.getOrNull(1)
+        val entities = if (selector == null) {
+            sandbox.world.entities.sortedWith(compareBy<SandboxEntity> { it.type.toString() }.thenBy { it.uuid })
+        } else {
+            sandbox.world.entities.filter { matchesEntityInspectSelector(it, selector) }
+                .sortedWith(compareBy<SandboxEntity> { it.type.toString() }.thenBy { it.uuid })
+        }
+        if (selector != null && entities.isEmpty()) {
+            println("<missing>")
+            return
+        }
+        entities.forEach { println(renderEntity(it)) }
+    }
+
+    private fun matchesEntityInspectSelector(entity: SandboxEntity, selector: String): Boolean =
+        entity.uuid == selector ||
+            entity.scoreHolder == selector ||
+            entity.type.toString() == selector ||
+            entity.tags.contains(selector) ||
+            (entity is SandboxPlayer && entity.name == selector)
+
+    private fun renderEntity(entity: SandboxEntity): String {
+        val position = "${entity.position.x},${entity.position.y},${entity.position.z}"
+        val tags = entity.tags.sorted().joinToString(prefix = "[", postfix = "]")
+        val equipment = entity.equipment.toSortedMap().entries.joinToString(prefix = "[", postfix = "]") { (slot, item) ->
+            "$slot=${renderItemStack(item)}"
+        }
+        val effects = entityEffects(entity).joinToString(prefix = "[", postfix = "]") { renderEffect(it) }
+        val attributes = entity.attributes.toSortedMap().entries.joinToString(prefix = "[", postfix = "]") { (id, value) ->
+            "$id=$value"
+        }
+        val modifiers = entity.attributeModifiers.toSortedMap().flatMap { (attribute, values) ->
+            values.toSortedMap().values.map { modifier -> "$attribute/${modifier.id}=${modifier.amount}:${modifier.operation}" }
+        }.joinToString(prefix = "[", postfix = "]")
+        val passengers = entity.passengers.sorted().joinToString(prefix = "[", postfix = "]")
+        val vehicle = entity.vehicle ?: "<none>"
+        return "entity ${entity.scoreHolder} uuid=${entity.uuid} type=${entity.type} pos=$position dimension=${entity.dimension} yaw=${entity.yaw} pitch=${entity.pitch} health=${entityHealth(entity)} tags=$tags equipment=$equipment effects=$effects attributes=$attributes modifiers=$modifiers vehicle=$vehicle passengers=$passengers"
+    }
+
+    private fun renderItemStack(item: ItemStack): String {
+        val nbt = if (item.nbt.entrySet().isEmpty()) "" else " nbt=${JsonValues.render(item.nbt)}"
+        val components = if (item.components.entrySet().isEmpty()) "" else " components=${JsonValues.render(item.components)}"
+        return "${item.id}x${item.count}$components$nbt"
+    }
+
+    private fun entityEffects(entity: SandboxEntity): List<PlayerEffect> =
+        if (entity is SandboxPlayer) {
+            entity.effects.sorted().map { effect -> entity.effectDetails[effect] ?: PlayerEffect(effect) }
+        } else {
+            entity.activeEffects.toSortedMap().values.toList()
+        }
+
+    private fun renderEffect(effect: PlayerEffect): String =
+        "${effect.id}:amplifier=${effect.amplifier},duration=${effect.durationTicks},hideParticles=${effect.hideParticles}"
+
+    private fun entityHealth(entity: SandboxEntity): String =
+        if (entity is SandboxPlayer) {
+            entity.health.toString()
+        } else {
+            entity.fullNbt(sandbox.profile).get("Health")?.takeIf { it.isJsonPrimitive }?.asDouble?.toString() ?: "<unset>"
+        }
 
     private fun inspectPlayerRecipes(args: List<String>) {
         val name = args.getOrNull(1)
