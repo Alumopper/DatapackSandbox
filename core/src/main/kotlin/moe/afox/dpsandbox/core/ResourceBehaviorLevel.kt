@@ -58,6 +58,7 @@ object ResourceCatalog {
     )
 
     private val modeledRawJsonSummaries = mapOf(
+        "chat_type" to "chat type JSON metadata exposed by modeled chat commands",
         "damage_type" to "damage type JSON metadata exposed by the damage command",
         "worldgen/configured_feature" to "simple_block feature JSON consumed by place feature",
         "worldgen/placed_feature" to "placed feature JSON resolving configured simple_block resources for place feature",
@@ -99,6 +100,7 @@ object ResourceBehaviorLevels {
         "advancement",
         "recipe",
         "item_modifier",
+        "chat_type",
         "damage_type",
         "worldgen/configured_feature",
         "worldgen/placed_feature",

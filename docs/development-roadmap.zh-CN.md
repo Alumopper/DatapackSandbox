@@ -37,6 +37,7 @@
 - P0：function tags、普通 tags、loot table、predicate、advancement、recipe、item modifier。
 - P1：damage type、chat type、dimension、dimension_type、worldgen configured/placed feature、structure、processor list。
   - `damage_type` 已从 raw inspect 推进到 `damage` 命令调试面；自定义 damage source 命中已加载资源时，结构化输出会暴露 `message_id`、`scaling`、`exhaustion`、`effects`、`death_message_type`、资源文件和版本，便于命令生成器和单元测试验证自定义伤害来源。
+  - `chat_type` 已从 raw inspect 推进到聊天命令调试面；`say`、`me`、`msg`/`tell`/`w`、`teammsg`/`tm` 在命中已加载的命令 chat type 时，会把 `chat`/`narration` 装饰 JSON、资源文件和版本写入结构化输出。
 - P2：enchantment、jukebox song、trim material/pattern、banner pattern、wolf variant、painting variant 等版本相关注册表资源。
   - 额外 raw JSON 资源矩阵测试已直接复用 `ResourceCatalog.additionalRawJsonTypes`，确保 catalog 中列出的 P1/P2 资源都会被目录/zip loader、raw resource map 和资源索引覆盖，而不是只覆盖手写子集。
 
@@ -98,6 +99,7 @@
   - `debug`、`jfr`、`perf` 已作为 profiling observed-noop 记录 action 和参数，便于调试生成出来的 profiling 命令而不依赖宿主采样器。
   - `ban`、`ban-ip`、`banlist`、`pardon`、`pardon-ip`、`op`、`deop`、`kick`、`whitelist`、`save-all`、`save-off`、`save-on` 和 `setidletimeout` 已作为服务器管理/权限/存档生命周期 observed-noop 记录结构化 debug 输出，便于调试管理类命令生成结果而不改变宿主状态。
   - `damage` 已记录结构化生命值变化输出，并保留 `at` 位置、直接 `by` 实体和最终 `from` 实体上下文；命中已加载 `damage_type` 资源时还会输出 damage type 元数据，便于 report/assertion 调试生成出来的战斗命令和自定义伤害来源。
+  - `say`、`me`、`msg`/`tell`/`w` 和 `teammsg`/`tm` 的 chat 输出已在 payload 中暴露命令 chat type id；命中已加载 `chat_type` 资源时会附带 `chat`/`narration` 装饰 JSON、资源文件和版本，便于调试消息命令生成结果。
   - `kill` 已记录结构化目标输出，便于确认选择器命中、实体移除和 advancement 触发结果。
   - `enchant` 已覆盖玩家选中物品和非玩家实体主手装备的附魔组件写入，并记录结构化输出；`effect give/clear` 已记录结构化输出，便于 report/assertion 调试。
 - 为不适合完整模拟的命令保留结构化 no-op 或 unsupported warning，例如 `debug`、`jfr`、`publish`、`stop`、网络和权限相关命令。

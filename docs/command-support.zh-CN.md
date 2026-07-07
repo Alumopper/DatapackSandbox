@@ -73,8 +73,8 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar commands --json --output build
 | `list` | 支持 | `modeled` | 报告沙盒玩家及 UUID。 |
 | `locate` | 部分支持 | `modeled` | 接受 `biome`、`structure`、`poi`；虚空世界中报告没有结果。 |
 | `loot` | 部分支持 | `modeled` | 支持 `give`、`insert`、`spawn`、`replace entity`、`replace block`，并记录可用于 report/assertion 的结构化 loot 输出；`spawn` 会在当前执行维度创建 item 实体；`replace entity` 可写入玩家背包、当前主手、`enderchest.*` 槽和非玩家实体装备槽；source 支持 `loot <table>`、`fish <table> <pos> [tool]`、`mine <pos> [tool]`，以及实体声明 `DeathLootTable` 时的 `kill <target>`；还支持沙盒上下文 source：`entity <table> <target>`、`block <table> <pos> [tool]`、`equipment <table> <target> <slot>`；entry 覆盖 item、嵌套 loot table、group、alternatives、sequence，以及带嵌套/optional 值的 item tag，其中 `expand=false` 会输出整个 tag，`expand=true` 会把 tag 内物品作为展开候选参与选择；常用函数覆盖 count、item id、discard、components/custom data、工具组件复制、实体名称复制、确定性附魔组件、工具附魔数量奖励、damage、name 和 lore。 |
-| `me` | 支持 | `modeled` | 记录为 chat 输出事件。 |
-| `msg`、`tell`、`w` | 支持 | `modeled` | 记录为私聊输出事件。 |
+| `me` | 支持 | `modeled` | 记录为 chat 输出事件；命中已加载的命令 chat type 时会暴露 `chat_type` JSON 元数据。 |
+| `msg`、`tell`、`w` | 支持 | `modeled` | 记录为私聊输出事件；命中已加载的命令 chat type 时会暴露 `chat_type` JSON 元数据。 |
 | `pardon`、`pardon-ip` | 空操作 | `observed-noop` | 记录请求的 pardon 目标/IP 为结构化 debug 输出；不存储封禁列表状态。 |
 | `particle` | 部分支持 | `observed-noop` | 记录为 visual 输出事件；不模拟客户端粒子。 |
 | `place` | 部分支持 | `modeled` | `place structure <id> [pos]` 和 `place template <id> [pos] [rotation] [mirror] [integrity] [seed]` 会把已加载的沙盒结构 JSON 资源（`worldgen/structure` 中带 `blocks`/`entities`）展开到 sparse world，并记录实际变化的方块和实体；结构 JSON 可引用 `worldgen/processor_list` 资源执行 `block_ignore` 和简单 rule 替换 processor；template placement 支持确定性的 `none`/90 度旋转、`front_back`/`left_right` 镜像和 integrity 过滤。`place jigsaw <pool> <target> <maxDepth> [pos]` 会解析已加载的 `worldgen/template_pool` single/legacy 结构元素，应用元素 processor，并放置选中的结构。`place feature <id> [pos]` 会解析已加载的 `worldgen/placed_feature`/`worldgen/configured_feature` simple_block JSON，并把对应方块放到命令位置。缺失或不支持的资源仍记录结构化 worldgen intent，`placed=false`。 |
@@ -87,7 +87,7 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar commands --json --output build
 | `ride` | 部分支持 | `modeled` | 记录载具和乘客关系，并记录结构化 mount/dismount 输出；不模拟控制或物理。 |
 | `rotate` | 部分支持 | `modeled` | 更新 yaw/pitch，并记录结构化前后旋转输出。 |
 | `save-all`、`save-off`、`save-on` | 空操作 | `observed-noop` | 记录请求的存档生命周期动作，包括 `save-all flush`，为结构化 debug 输出；不修改真实文件保存模式。 |
-| `say` | 支持 | `modeled` | 记录为 chat 输出事件。 |
+| `say` | 支持 | `modeled` | 记录为 chat 输出事件；命中已加载的命令 chat type 时会暴露 `chat_type` JSON 元数据。 |
 | `schedule` | 部分支持 | `modeled` | `schedule function <id> <time> [append|replace]`、`schedule clear <id>`；记录结构化调度和清除输出。 |
 | `scoreboard` | 部分支持 | `modeled` | objectives 支持 `add`、`remove`、`list`、`modify`、`setdisplay`；`modify` 会记录 display name、render type 和 display-auto-update 元数据，display slot 会进入 snapshot，修改会记录结构化输出；players 支持 `set`、`add`、`remove`、`get`、`reset`、`list`、`enable`、`operation`；`players get` 会记录结构化 data 输出，供断言和 `execute store result` 使用。 |
 | `seed` | 支持 | `modeled` | 报告确定性的沙盒 seed。 |
@@ -102,7 +102,7 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar commands --json --output build
 | `summon` | 部分支持 | `modeled` | 在当前执行维度创建带位置、tag 和 schema 校验 NBT 的实体，并记录可用于 report/assertion 的结构化创建输出；实体 AI 不 tick。 |
 | `tag` | 支持 | `modeled` | `add`、`remove`、`list`。 |
 | `team` | 部分支持 | `modeled` | `add`、`remove`、`list`、`join`、`leave`、`empty`、`modify`；记录结构化队伍/成员/选项输出，不执行 gameplay 副作用。 |
-| `teammsg`、`tm` | 支持 | `modeled` | 记录为 team chat 输出事件。 |
+| `teammsg`、`tm` | 支持 | `modeled` | 记录为 team chat 输出事件；命中已加载的命令 chat type 时会暴露 `chat_type` JSON 元数据。 |
 | `teleport`、`tp` | 部分支持 | `modeled` | 坐标传送支持局部坐标、可选旋转、`facing` 和当前执行维度；目标实体传送会复制目标位置、维度和旋转；记录可用于 report/assertion 的结构化移动输出。 |
 | `tellraw` | 支持 | `modeled` | 解析 JSON text component 并记录输出事件。 |
 | `tick` | 部分支持 | `modeled` | `query`、`rate`、`freeze`、`unfreeze`、`step`、`sprint`、`stop`；更新沙盒 tick 状态，可推进 tick，并记录结构化状态/推进输出用于调试。 |

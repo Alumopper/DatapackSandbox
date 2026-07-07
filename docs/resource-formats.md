@@ -100,7 +100,7 @@ smoke tasks.
 | `tag/<registry>` | `observed-noop` | general tags with replace semantics and resource-index visibility |
 | `banner_pattern` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
 | `cat_variant` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
-| `chat_type` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
+| `chat_type` | `modeled` | chat type JSON metadata exposed by modeled chat commands |
 | `chicken_variant` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
 | `cow_variant` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
 | `damage_type` | `modeled` | damage type JSON metadata exposed by the damage command |
@@ -328,13 +328,13 @@ count; misses include actual snapshot diff candidates.
 
 ## Raw JSON Resources and Tags
 
-Damage types, recipes, item modifiers, and additional registry resources are loaded as raw
+Chat types, damage types, recipes, item modifiers, and additional registry resources are loaded as raw
 JSON resources and included in the resource index. The sandbox does not yet
 execute the full crafting system, every item modifier function, or full
 worldgen semantics, but it models sandbox structure placement, processor_list
 block_ignore/simple rule handling, template_pool single/legacy jigsaw placement,
-simple_block feature placement, and damage type metadata in `damage` command
-output; the remaining resources are version-profile checked,
+simple_block feature placement, chat type metadata in modeled chat commands, and
+damage type metadata in `damage` command output; the remaining resources are version-profile checked,
 participate in pack overlay behavior, and can be inspected from API or REPL.
 `recipe give` and `recipe take` update player recipe state and report the
 concrete changed recipe ids in structured output. Loot tables can expand

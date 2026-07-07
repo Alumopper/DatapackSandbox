@@ -5063,20 +5063,14 @@ class DatapackSandbox(
         requireSize(tokens, 2, "say <message>", location)
         val sender = outputSender(context)
         val text = CommandTokenizer.tailFrom(command, tokens[1])
-        world.recordOutput("say", "chat", world.players.keys.toList(), "<$sender> $text", JsonObject().also {
-            it.addProperty("sender", sender)
-            it.addProperty("message", text)
-        })
+        world.recordOutput("say", "chat", world.players.keys.toList(), "<$sender> $text", chatCommandPayload(ResourceLocation("minecraft", "say_command"), sender, text, location))
     }
 
     private fun executeMe(command: String, tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext) {
         requireSize(tokens, 2, "me <action>", location)
         val sender = outputSender(context)
         val text = CommandTokenizer.tailFrom(command, tokens[1])
-        world.recordOutput("me", "chat", world.players.keys.toList(), "* $sender $text", JsonObject().also {
-            it.addProperty("sender", sender)
-            it.addProperty("message", text)
-        })
+        world.recordOutput("me", "chat", world.players.keys.toList(), "* $sender $text", chatCommandPayload(ResourceLocation("minecraft", "emote_command"), sender, text, location))
     }
 
     private fun executePrivateMessage(command: String, tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext) {
@@ -5084,20 +5078,37 @@ class DatapackSandbox(
         val targets = resolvePlayers(tokens[1].text, location, context).map { it.name }
         val sender = outputSender(context)
         val text = CommandTokenizer.tailFrom(command, tokens[2])
-        world.recordOutput(tokens[0].text, "chat", targets, "[$sender -> ${targets.joinToString()}] $text", JsonObject().also {
-            it.addProperty("sender", sender)
-            it.addProperty("message", text)
-        })
+        world.recordOutput(tokens[0].text, "chat", targets, "[$sender -> ${targets.joinToString()}] $text", chatCommandPayload(ResourceLocation("minecraft", "msg_command_incoming"), sender, text, location))
     }
 
     private fun executeTeamMessage(command: String, tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext) {
         requireSize(tokens, 2, "${tokens[0].text} <message>", location)
         val sender = outputSender(context)
         val text = CommandTokenizer.tailFrom(command, tokens[1])
-        world.recordOutput(tokens[0].text, "chat", world.players.keys.toList(), "[team] <$sender> $text", JsonObject().also {
-            it.addProperty("sender", sender)
-            it.addProperty("message", text)
-        })
+        world.recordOutput(tokens[0].text, "chat", world.players.keys.toList(), "[team] <$sender> $text", chatCommandPayload(ResourceLocation("minecraft", "team_msg_command_incoming"), sender, text, location))
+    }
+
+    private fun chatCommandPayload(chatType: ResourceLocation, sender: String, message: String, location: SourceLocation?): JsonObject =
+        JsonObject().also { payload ->
+            payload.addProperty("sender", sender)
+            payload.addProperty("message", message)
+            payload.addProperty("chatType", chatType.toString())
+            chatTypePayload(chatType, location)?.let { payload.add("chatTypeResource", it) }
+        }
+
+    private fun chatTypePayload(id: ResourceLocation, location: SourceLocation?): JsonObject? {
+        val resource = datapack.rawResources["chat_type"]?.get(id) ?: return null
+        if (!resource.root.isJsonObject) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Chat type resource '$id' must be a JSON object", location)
+        }
+        val root = resource.root.asJsonObject
+        return JsonObject().also { payload ->
+            payload.addProperty("id", id.toString())
+            payload.addProperty("resource", resource.file)
+            payload.addProperty("version", resource.version ?: profile.id)
+            root.get("chat")?.let { payload.add("chat", it.deepCopy()) }
+            root.get("narration")?.let { payload.add("narration", it.deepCopy()) }
+        }
     }
 
     private fun executePlaySound(tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext) {

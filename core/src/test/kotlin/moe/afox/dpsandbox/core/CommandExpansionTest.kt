@@ -285,6 +285,23 @@ class CommandExpansionTest {
     }
 
     @Test
+    fun `chat commands expose loaded chat type metadata`() {
+        val sandbox = createSandbox("26.2", listOf(writeChatTypePack(Files.createTempDirectory("dps-chat-type-pack"))))
+
+        sandbox.executeCommand("say generated chat")
+
+        val payload = sandbox.world.outputs.single { it.command == "say" }.payload?.asJsonObject ?: error("missing say payload")
+        assertEquals("minecraft:say_command", payload.get("chatType").asString)
+        val chatType = payload.getAsJsonObject("chatTypeResource")
+        assertEquals("minecraft:say_command", chatType.get("id").asString)
+        assertEquals("26.2", chatType.get("version").asString)
+        assertEquals("chat.type.sandbox_say", chatType.getAsJsonObject("chat").get("translation_key").asString)
+        assertEquals("sender", chatType.getAsJsonObject("chat").getAsJsonArray("parameters")[0].asString)
+        assertEquals("content", chatType.getAsJsonObject("chat").getAsJsonArray("parameters")[1].asString)
+        assertEquals("chat.type.sandbox_say.narrate", chatType.getAsJsonObject("narration").get("translation_key").asString)
+    }
+
+    @Test
     fun `place structure applies sandbox structure json resources`() {
         val pack = writeStructurePlacePack(Files.createTempDirectory("dps-place-structure-pack"))
         val sandbox = createSandbox("26.2", listOf(pack))
@@ -1367,6 +1384,38 @@ class CommandExpansionTest {
 
     private fun fixturePack(): Path =
         Path.of("src/test/resources/packs/counter")
+
+    private fun writeChatTypePack(root: Path): Path {
+        Files.writeString(
+            root.resolve("pack.mcmeta").also { Files.createDirectories(it.parent) },
+            """
+            {
+              "pack": {
+                "pack_format": 107.1,
+                "description": "chat type test"
+              }
+            }
+            """.trimIndent(),
+        )
+        val chatTypeRoot = root.resolve("data").resolve("minecraft").resolve("chat_type")
+        Files.createDirectories(chatTypeRoot)
+        Files.writeString(
+            chatTypeRoot.resolve("say_command.json"),
+            """
+            {
+              "chat": {
+                "translation_key": "chat.type.sandbox_say",
+                "parameters": ["sender", "content"]
+              },
+              "narration": {
+                "translation_key": "chat.type.sandbox_say.narrate",
+                "parameters": ["sender", "content"]
+              }
+            }
+            """.trimIndent(),
+        )
+        return root
+    }
 
     private fun writeStructurePlacePack(root: Path): Path {
         Files.writeString(
