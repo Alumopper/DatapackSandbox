@@ -77,7 +77,7 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar commands --json --output build
 | `msg`、`tell`、`w` | 支持 | `modeled` | 记录为私聊输出事件。 |
 | `pardon`、`pardon-ip` | 空操作 | `observed-noop` | 记录请求的 pardon 目标/IP 为结构化 debug 输出；不存储封禁列表状态。 |
 | `particle` | 部分支持 | `observed-noop` | 记录为 visual 输出事件；不模拟客户端粒子。 |
-| `place` | 部分支持 | `observed-noop` | 接受 `feature`、`jigsaw`、`structure` 和 `template`；把类型、资源 id、位置和额外放置参数记录为结构化 worldgen 输出，但不修改世界。 |
+| `place` | 部分支持 | `modeled` | `place structure <id> [pos]` 会把已加载的沙盒结构 JSON 资源（`worldgen/structure` 中带 `blocks`/`entities`）展开到 sparse world，并记录实际变化的方块和实体；缺失或非沙盒结构资源，以及 `feature`、`jigsaw`、`template` 仍记录结构化 worldgen intent，`placed=false`。 |
 | `playsound` | 部分支持 | `observed-noop` | 记录为 sound 输出事件。 |
 | `publish` | 空操作 | `observed-noop` | 接受 `allowCommands`、`gamemode` 和 `port`，把请求的 LAN publish 设置记录为结构化 debug 输出；不执行真实网络发布。 |
 | `random` | 部分支持 | `modeled` | `value`、`roll`、`reset`；使用确定性的沙盒随机序列状态，默认混入 world seed，显式 reset seed 时优先使用 reset 值；value/roll/reset 会记录结构化序列状态输出，供断言和 `execute store result` 使用。 |

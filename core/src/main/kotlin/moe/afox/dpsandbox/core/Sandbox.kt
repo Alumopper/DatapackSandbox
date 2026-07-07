@@ -785,12 +785,13 @@ class DatapackSandbox(
         val kind = tokens[1].text
         val payload = JsonObject()
         payload.addProperty("kind", kind)
-        payload.addProperty("placed", false)
-        payload.addProperty("reason", "Sandbox records place commands but does not simulate world generation")
+        var placedTargets = emptyList<String>()
 
+        var placeId: ResourceLocation? = null
         val positionIndex = when (kind) {
             "feature", "structure", "template" -> {
-                payload.addProperty("id", ResourceLocation.parse(tokens[2].text).toString())
+                placeId = ResourceLocation.parse(tokens[2].text)
+                payload.addProperty("id", placeId.toString())
                 3
             }
             "jigsaw" -> {
@@ -803,12 +804,14 @@ class DatapackSandbox(
             else -> unsupportedFeature("Unsupported place kind '$kind'", profile.id, location)
         }
 
+        val position: Position
         val extraStart = if (isCoordinateTriple(tokens, positionIndex)) {
-            val position = parsePosition(tokens, positionIndex, context, location)
+            position = parsePosition(tokens, positionIndex, context, location)
             payload.add("position", positionOutput(position))
             positionIndex + 3
         } else {
-            payload.add("position", positionOutput(context.position))
+            position = context.position
+            payload.add("position", positionOutput(position))
             positionIndex
         }
         if (tokens.size > extraStart) {
@@ -819,10 +822,180 @@ class DatapackSandbox(
                 },
             )
         }
+        if (kind == "structure") {
+            placedTargets = placeSandboxStructure(placeId ?: error("missing place id"), position, context, payload, location)
+        } else {
+            payload.addProperty("placed", false)
+            payload.addProperty("reason", "Sandbox records place commands but does not simulate this worldgen kind")
+        }
 
         val idText = payload.get("id")?.asString ?: payload.get("pool")?.asString.orEmpty()
-        world.recordOutput("place $kind", "worldgen", text = "$kind:$idText", payload = payload)
+        world.recordOutput("place $kind", "worldgen", targets = placedTargets, text = "$kind:$idText", payload = payload)
     }
+
+    private fun placeSandboxStructure(
+        id: ResourceLocation,
+        position: Position,
+        context: ExecutionContext,
+        payload: JsonObject,
+        location: SourceLocation?,
+    ): List<String> {
+        val resource = datapack.rawResources["worldgen/structure"]?.get(id)
+        if (resource == null) {
+            payload.addProperty("placed", false)
+            payload.addProperty("reason", "Sandbox records place commands but no sandbox structure JSON resource was loaded")
+            return emptyList()
+        }
+        if (!resource.root.isJsonObject) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Structure resource '$id' must be a JSON object", location)
+        }
+        val root = resource.root.asJsonObject
+        val blocks = root.getAsJsonArrayOrNull("blocks")
+        val entities = root.getAsJsonArrayOrNull("entities")
+        if (blocks == null && entities == null) {
+            payload.addProperty("placed", false)
+            payload.addProperty("format", "raw-json-index-only")
+            payload.addProperty("reason", "Loaded structure resource has no sandbox blocks or entities")
+            return emptyList()
+        }
+        if ((blocks?.size() ?: 0) > 32768) {
+            throw SandboxException(DiagnosticCode.COMMAND_ERROR, "Structure resource '$id' has ${blocks?.size()} blocks; limit is 32768", location)
+        }
+
+        val origin = BlockPos(floor(position.x).toInt(), floor(position.y).toInt(), floor(position.z).toInt())
+        val changedBlocks = mutableListOf<BlockPos>()
+        blocks?.forEachIndexed { index, element ->
+            val block = element.asPlaceJsonObject("structure block $index", location)
+            val offset = block.placeBlockPos("offset", "pos", "structure block $index offset", location)
+            val pos = BlockPos(origin.x + offset.x, origin.y + offset.y, origin.z + offset.z)
+            val properties = block.placeProperties(location)
+            val blockNbt = block.placeJsonObject("nbt", "structure block $index nbt", location)
+            val placedBlock = BlockArgument(
+                id = ResourceLocation.parse(block.requiredPlaceString("id", "structure block $index id", location)),
+                properties = properties,
+                nbt = blockNbt ?: JsonObject(),
+            ).toBlock(pos, profile, location)
+            val before = world.block(pos)?.copyForClone()
+            world.setBlock(pos, placedBlock)
+            val after = world.block(pos)?.copyForClone()
+            if (!sameBlock(before, after)) changedBlocks += pos
+        }
+
+        val createdEntities = mutableListOf<SandboxEntity>()
+        entities?.forEachIndexed { index, element ->
+            val entityRoot = element.asPlaceJsonObject("structure entity $index", location)
+            val offset = entityRoot.optionalPlacePosition("offset", "pos", "structure entity $index offset", location)
+            val positionAtOffset = Position(origin.x + offset.x, origin.y + offset.y, origin.z + offset.z)
+            val entityNbt = entityRoot.placeJsonObject("nbt", "structure entity $index nbt", location)
+            val tags = entityRoot.placeStringArray("tags", "structure entity $index tags", location).toMutableSet()
+            if (entityNbt != null) tags += extractTags(entityNbt)
+            val entity = SandboxEntity(
+                type = ResourceLocation.parse(entityRoot.requiredPlaceString("type", "structure entity $index type", location)),
+                position = positionAtOffset,
+                tags = tags,
+                yaw = entityRoot.placeDouble("yaw", 0.0, "structure entity $index yaw", location),
+                pitch = entityRoot.placeDouble("pitch", 0.0, "structure entity $index pitch", location),
+                dimension = entityRoot.placeString("dimension", location)?.let(ResourceLocation::parse) ?: context.dimension,
+            )
+            val fullNbt = entity.fullNbt(profile, location)
+            if (entityNbt != null) JsonPaths.merge(fullNbt, null, entityNbt.deepCopy())
+            entityRoot.get("health")?.let { fullNbt.addProperty("Health", it.placeDouble("structure entity $index health", location)) }
+            entity.writeFullNbt(profile, fullNbt, location)
+            world.entities += entity
+            createdEntities += entity
+        }
+
+        payload.addProperty("placed", true)
+        payload.addProperty("format", "sandbox-structure-json")
+        payload.addProperty("changedBlocks", changedBlocks.size)
+        payload.addProperty("entities", createdEntities.size)
+        payload.add("origin", blockPosOutput(origin))
+        payload.add("positions", blockPosArrayOutput(changedBlocks))
+        payload.add(
+            "entityTargets",
+            JsonArray().also { targets -> createdEntities.map { it.scoreHolder }.sorted().forEach { targets.add(it) } },
+        )
+        return changedBlocks.map { it.toString() } + createdEntities.map { it.scoreHolder }
+    }
+
+    private fun JsonObject.getAsJsonArrayOrNull(name: String): JsonArray? {
+        val value = get(name) ?: return null
+        if (!value.isJsonArray) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Structure field '$name' must be an array")
+        }
+        return value.asJsonArray
+    }
+
+    private fun JsonElement.asPlaceJsonObject(label: String, location: SourceLocation?): JsonObject {
+        if (!isJsonObject) throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label must be an object", location)
+        return asJsonObject
+    }
+
+    private fun JsonObject.requiredPlaceString(name: String, label: String, location: SourceLocation?): String =
+        placeString(name, location) ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label is required", location)
+
+    private fun JsonObject.placeString(name: String, location: SourceLocation?): String? {
+        val value = get(name) ?: return null
+        if (!value.isJsonPrimitive) throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Structure field '$name' must be a primitive", location)
+        return value.asJsonPrimitive.asString
+    }
+
+    private fun JsonObject.placeProperties(location: SourceLocation?): Map<String, String> {
+        val value = get("properties") ?: return emptyMap()
+        if (!value.isJsonObject) throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Structure block properties must be an object", location)
+        return value.asJsonObject.entrySet().associate { (key, property) ->
+            if (!property.isJsonPrimitive) throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Structure block property '$key' must be a primitive", location)
+            key to property.asJsonPrimitive.asString
+        }
+    }
+
+    private fun JsonObject.placeJsonObject(name: String, label: String, location: SourceLocation?): JsonObject? {
+        val value = get(name) ?: return null
+        if (!value.isJsonObject) throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label must be an object", location)
+        return value.asJsonObject
+    }
+
+    private fun JsonObject.placeBlockPos(primary: String, secondary: String, label: String, location: SourceLocation?): BlockPos {
+        val value = get(primary) ?: get(secondary) ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label is required", location)
+        if (!value.isJsonArray) throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label must be [x,y,z]", location)
+        val array = value.asJsonArray
+        if (array.size() != 3) throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label must have exactly 3 entries", location)
+        return BlockPos(array[0].placeInt("$label x", location), array[1].placeInt("$label y", location), array[2].placeInt("$label z", location))
+    }
+
+    private fun JsonObject.optionalPlacePosition(primary: String, secondary: String, label: String, location: SourceLocation?): Position {
+        val value = get(primary) ?: get(secondary) ?: return Position.zero
+        if (!value.isJsonArray) throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label must be [x,y,z]", location)
+        val array = value.asJsonArray
+        if (array.size() != 3) throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label must have exactly 3 entries", location)
+        return Position(array[0].placeDouble("$label x", location), array[1].placeDouble("$label y", location), array[2].placeDouble("$label z", location))
+    }
+
+    private fun JsonObject.placeStringArray(name: String, label: String, location: SourceLocation?): List<String> {
+        val value = get(name) ?: return emptyList()
+        if (!value.isJsonArray) throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label must be an array", location)
+        return value.asJsonArray.mapIndexed { index, element ->
+            if (!element.isJsonPrimitive) throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label entry $index must be a primitive", location)
+            element.asJsonPrimitive.asString
+        }
+    }
+
+    private fun JsonObject.placeDouble(name: String, default: Double, label: String, location: SourceLocation?): Double =
+        get(name)?.placeDouble(label, location) ?: default
+
+    private fun JsonElement.placeInt(label: String, location: SourceLocation?): Int =
+        try {
+            asInt
+        } catch (error: Exception) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label must be an integer", location, cause = error)
+        }
+
+    private fun JsonElement.placeDouble(label: String, location: SourceLocation?): Double =
+        try {
+            asDouble
+        } catch (error: Exception) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label must be a number", location, cause = error)
+        }
 
     private fun executeSpectate(tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext) {
         val spectator = tokens.getOrNull(2)?.text?.let { resolvePlayers(it, location, context).firstOrNull() }

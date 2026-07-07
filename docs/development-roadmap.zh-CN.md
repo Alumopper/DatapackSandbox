@@ -91,7 +91,7 @@
   - `scoreboard objectives modify` 已记录 objective displayName、renderType 和 displayAutoUpdate 元数据，进入 `objectiveDetails` snapshot，并提供结构化输出，便于调试 UI/显示类生成命令。
   - `scoreboard objectives setdisplay` 已记录 objective display slot 状态和结构化输出，便于调试侧边栏、列表、队伍侧边栏等 UI 目标生成命令，并可通过 snapshot/断言检查。
   - `team add/remove/list/join/leave/empty/modify` 已记录结构化队伍状态输出，便于调试成员变化、显示名和选项输入。
-  - `place feature|jigsaw|structure|template` 已作为 observed-noop 接受并记录结构化 worldgen 输出，便于命令生成器验证放置目标、位置和额外参数。
+  - `place structure` 已可把加载到 `worldgen/structure` 的沙盒结构 JSON（`blocks`/`entities`）按命令坐标展开到 sparse world，并记录 `placed`、`changedBlocks`、`entities`、变化坐标和实体目标；缺失或非沙盒结构资源，以及 `place feature|jigsaw|template` 仍保留结构化 worldgen intent 输出，便于命令生成器验证放置目标、位置和额外参数。
   - `transfer` 已作为 observed-noop 接受并记录 host、port、目标玩家和语法顺序，便于调试网络跳转类生成结果而不触发真实网络行为。
   - `publish` 和 `stop` 已作为 observed-noop 记录结构化 debug 输出，便于调试 LAN 发布和生命周期类生成结果而不影响宿主进程。
   - `debug`、`jfr`、`perf` 已作为 profiling observed-noop 记录 action 和参数，便于调试生成出来的 profiling 命令而不依赖宿主采样器。
@@ -378,7 +378,7 @@ P1 紧随其后：
 
 P2 按需求推进：
 
-- worldgen/structure 更深入模拟。
+- worldgen/structure 更深入模拟；`place structure` 已覆盖沙盒结构 JSON 的方块/实体落地，后续可继续扩展原版结构 NBT、processor、feature/jigsaw 语义。
 - 可选外部差分验证。
 - 高级性能缓存。
 - Maven 发布和更完整的平台测试。

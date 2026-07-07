@@ -1729,7 +1729,7 @@ class RunCommandTest {
         }
 
         assertTrue("advancement modeled - grant, revoke, or test advancement progress" in output, output)
-        assertTrue("place observed-noop - record a worldgen placement intent" in output, output)
+        assertTrue("place modeled - place sandbox structure JSON or record worldgen intent" in output, output)
         assertTrue("ban observed-noop - record a server ban request" in output, output)
         assertTrue("list modeled - report sandbox players" in output, output)
         assertTrue("locate modeled - report deterministic void-world locate results" in output, output)
@@ -1744,7 +1744,7 @@ class RunCommandTest {
 
         assertTrue("| Command | Behavior | Description |" in output, output)
         assertTrue("| `advancement` | `modeled` | grant, revoke, or test advancement progress |" in output, output)
-        assertTrue("| `place` | `observed-noop` | record a worldgen placement intent |" in output, output)
+        assertTrue("| `place` | `modeled` | place sandbox structure JSON or record worldgen intent |" in output, output)
     }
 
     @Test
@@ -1784,7 +1784,7 @@ class RunCommandTest {
 
         assertTrue("commands output written: $reportFile" in output, output)
         assertTrue("| Command | Behavior | Description |" in report, report)
-        assertTrue("| `place` | `observed-noop` | record a worldgen placement intent |" in report, report)
+        assertTrue("| `place` | `modeled` | place sandbox structure JSON or record worldgen intent |" in report, report)
     }
 
     @Test
@@ -1797,7 +1797,7 @@ class RunCommandTest {
 
         assertEquals("26.2", json.get("version").asString)
         assertEquals("modeled", commands.getValue("advancement").get("behavior").asString)
-        assertEquals("observed-noop", commands.getValue("place").get("behavior").asString)
+        assertEquals("modeled", commands.getValue("place").get("behavior").asString)
         assertEquals("observed-noop", commands.getValue("ban").get("behavior").asString)
         assertEquals("modeled", commands.getValue("list").get("behavior").asString)
         assertEquals("modeled", commands.getValue("locate").get("behavior").asString)
@@ -1815,7 +1815,7 @@ class RunCommandTest {
 
         assertTrue("commands output written: $reportFile" in output, output)
         assertEquals("26.2", json.get("version").asString)
-        assertEquals("observed-noop", commands.getValue("place").get("behavior").asString)
+        assertEquals("modeled", commands.getValue("place").get("behavior").asString)
         assertEquals("observed-noop", commands.getValue("ban").get("behavior").asString)
     }
 

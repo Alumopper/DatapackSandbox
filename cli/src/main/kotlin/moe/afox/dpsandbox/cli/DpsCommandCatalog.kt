@@ -97,7 +97,7 @@ object DpsCommandCatalog {
         command("playsound", "record a sound output", CommandBehaviorLevel.OBSERVED_NOOP),
         command("stopsound", "record a stop-sound output", CommandBehaviorLevel.OBSERVED_NOOP),
         command("particle", "record a visual output", CommandBehaviorLevel.OBSERVED_NOOP),
-        command("place", "record a worldgen placement intent", CommandBehaviorLevel.OBSERVED_NOOP),
+        command("place", "place sandbox structure JSON or record worldgen intent"),
         command("datapack", "inspect loaded datapack resources"),
         command("perf", "record a profiling request", CommandBehaviorLevel.OBSERVED_NOOP),
     ).distinctBy { it.value }.sortedBy { it.value }

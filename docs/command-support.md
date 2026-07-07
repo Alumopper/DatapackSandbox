@@ -89,7 +89,7 @@ runs both English and localized docs checks through standalone jar smoke tasks.
 | `msg`, `tell`, `w` | Supported | `modeled` | Recorded as private chat output. |
 | `pardon`, `pardon-ip` | No-op | `observed-noop` | Records requested pardon target/IP as structured debug output; no ban list state is stored. |
 | `particle` | Partial | `observed-noop` | Recorded as visual output event; no client particles. |
-| `place` | Partial | `observed-noop` | Accepts `feature`, `jigsaw`, `structure`, and `template`; records kind, resource id, position, and extra placement arguments as structured worldgen output, but does not mutate the world. |
+| `place` | Partial | `modeled` | `place structure <id> [pos]` applies loaded sandbox structure JSON resources (`worldgen/structure` with `blocks`/`entities`) to the sparse world and records changed blocks/entities; missing or non-sandbox structure resources, plus `feature`, `jigsaw`, and `template`, still record structured worldgen intent with `placed=false`. |
 | `playsound` | Partial | `observed-noop` | Recorded as sound output event. |
 | `publish` | No-op | `observed-noop` | Accepts `allowCommands`, `gamemode`, and `port`, records the requested LAN publish settings as structured debug output, and performs no network publishing. |
 | `random` | Partial | `modeled` | `value`, `roll`, `reset`; deterministic sandbox sequence state seeded from the world seed unless explicitly reset; value/roll/reset record structured sequence-state output for assertions and `execute store result`. |

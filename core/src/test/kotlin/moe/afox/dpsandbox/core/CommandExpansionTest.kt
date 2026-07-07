@@ -284,6 +284,33 @@ class CommandExpansionTest {
     }
 
     @Test
+    fun `place structure applies sandbox structure json resources`() {
+        val pack = writeStructurePlacePack(Files.createTempDirectory("dps-place-structure-pack"))
+        val sandbox = createSandbox("26.2", listOf(pack))
+
+        sandbox.executeCommand("place structure demo:room 10 64 20")
+
+        val base = sandbox.world.requireBlock(BlockPos(10, 64, 20))
+        val chest = sandbox.world.requireBlock(BlockPos(11, 64, 20))
+        assertEquals(ResourceLocation.parse("minecraft:stone"), base.id)
+        assertEquals(ResourceLocation.parse("minecraft:chest"), chest.id)
+        assertEquals("north", chest.properties["facing"])
+        assertEquals("marker", chest.nbt.get("CustomName").asString)
+        val marker = sandbox.world.entities.single { it.type == ResourceLocation.parse("minecraft:pig") && "placed_structure" in it.tags }
+        assertEquals(Position(10.5, 65.0, 20.5), marker.position)
+        assertEquals(ResourceLocation.parse("minecraft:the_nether"), marker.dimension)
+
+        val output = sandbox.world.outputs.single { it.command == "place structure" }
+        val payload = output.payload?.asJsonObject ?: error("missing place structure payload")
+        assertEquals("worldgen", output.channel)
+        assertEquals(true, payload.get("placed").asBoolean)
+        assertEquals("sandbox-structure-json", payload.get("format").asString)
+        assertEquals(2, payload.get("changedBlocks").asInt)
+        assertEquals(1, payload.get("entities").asInt)
+        assertEquals(listOf("10 64 20", "11 64 20", marker.uuid), output.targets)
+    }
+
+    @Test
     fun `attribute and loot commands expose sandbox-visible state`() {
         val pack = writeLootPack(Files.createTempDirectory("dps-command-expansion-pack"))
         val sandbox = createSandbox("26.2", listOf(pack))
@@ -1249,6 +1276,48 @@ class CommandExpansionTest {
 
     private fun fixturePack(): Path =
         Path.of("src/test/resources/packs/counter")
+
+    private fun writeStructurePlacePack(root: Path): Path {
+        Files.writeString(
+            root.resolve("pack.mcmeta").also { Files.createDirectories(it.parent) },
+            """
+            {
+              "pack": {
+                "pack_format": 107.1,
+                "description": "place structure test"
+              }
+            }
+            """.trimIndent(),
+        )
+        val structureRoot = root.resolve("data").resolve("demo").resolve("worldgen").resolve("structure")
+        Files.createDirectories(structureRoot)
+        Files.writeString(
+            structureRoot.resolve("room.json"),
+            """
+            {
+              "blocks": [
+                { "offset": [0, 0, 0], "id": "minecraft:stone" },
+                {
+                  "offset": [1, 0, 0],
+                  "id": "minecraft:chest",
+                  "properties": { "facing": "north" },
+                  "nbt": { "CustomName": "marker" }
+                }
+              ],
+              "entities": [
+                {
+                  "offset": [0.5, 1.0, 0.5],
+                  "type": "minecraft:pig",
+                  "tags": ["placed_structure"],
+                  "dimension": "minecraft:the_nether",
+                  "health": 6.0
+                }
+              ]
+            }
+            """.trimIndent(),
+        )
+        return root
+    }
 
     private fun writeLootPack(root: Path): Path {
         Files.writeString(
