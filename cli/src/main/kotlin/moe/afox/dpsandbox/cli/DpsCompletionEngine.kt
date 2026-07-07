@@ -144,6 +144,10 @@ class DpsCompletionEngine(private val sandbox: () -> DatapackSandbox) {
                 advancementProgressIds().suggest("advancements")
             words.getOrNull(1) in setOf("entity", "entities") && context.wordIndex == 2 ->
                 entityInspectTargets().suggest("entities")
+            words.getOrNull(1) in setOf("block", "blocks") && context.wordIndex == 2 ->
+                blockInspectTargets().suggest("blocks")
+            words.getOrNull(1) in setOf("biome", "biomes") && context.wordIndex == 2 ->
+                biomeInspectTargets().suggest("biomes")
             words.getOrNull(1) in setOf("item", "items", "inventory") && context.wordIndex == 2 ->
                 playerTargets(includeSelectors = false).suggest("players", appendSpace = true)
             words.getOrNull(1) in setOf("item", "items", "inventory") && context.wordIndex == 3 ->
@@ -573,6 +577,12 @@ class DpsCompletionEngine(private val sandbox: () -> DatapackSandbox) {
     private fun itemInspectSlots(): List<String> =
         (inventorySlots + listOf("selected", "hotbar.selected", "enderchest.0", "enderchest.1")).distinct().sorted()
 
+    private fun blockInspectTargets(): List<String> =
+        sandbox().world.blocks.keys.map { "${it.x},${it.y},${it.z}" }.sorted()
+
+    private fun biomeInspectTargets(): List<String> =
+        sandbox().world.biomes.keys.map { "${it.x},${it.y},${it.z}" }.sorted()
+
     private fun randomSequenceNames(): List<String> =
         sandbox().world.randomSequences.keys.sorted()
 
@@ -604,7 +614,10 @@ class DpsCompletionEngine(private val sandbox: () -> DatapackSandbox) {
             "bossbar",
             "entity",
             "entities",
+            "block",
             "blocks",
+            "biome",
+            "biomes",
             "player",
             "item",
             "items",

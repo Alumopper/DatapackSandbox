@@ -125,7 +125,7 @@ object DpsCommandCatalog {
             "diff" -> " last"
             "rerun" -> " last"
             "reset" -> " world"
-            "inspect" -> " <world|worldborder|score|storage|gamerule|random|schedule|forced-chunks|scoreboard|team|bossbar|entity|entities|blocks|player|item|items|recipes|advancement-progress|loot|predicate|advancement|recipe|item_modifier|raw|tags|resources|registry [group]|outputs|event-traces>"
+            "inspect" -> " <world|worldborder|score|storage|gamerule|random|schedule|forced-chunks|scoreboard|team|bossbar|entity|entities|block|blocks|biome|biomes|player|item|items|recipes|advancement-progress|loot|predicate|advancement|recipe|item_modifier|raw|tags|resources|registry [group]|outputs|event-traces>"
             "event" -> " player <name> <type> [id] [action]"
             "attribute" -> " <target> <attribute> <get|base|modifier> ..."
             "ban", "ban-ip", "kick" -> " <target> [reason]"

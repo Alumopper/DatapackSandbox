@@ -2,6 +2,7 @@
 
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
+import moe.afox.dpsandbox.core.BlockPos
 import moe.afox.dpsandbox.core.DatapackSandbox
 import moe.afox.dpsandbox.core.ExecutionResult
 import moe.afox.dpsandbox.core.ItemStack
@@ -9,6 +10,7 @@ import moe.afox.dpsandbox.core.JsonPaths
 import moe.afox.dpsandbox.core.JsonValues
 import moe.afox.dpsandbox.core.PlayerEffect
 import moe.afox.dpsandbox.core.ResourceLocation
+import moe.afox.dpsandbox.core.SandboxBlock
 import moe.afox.dpsandbox.core.SandboxBossbar
 import moe.afox.dpsandbox.core.SandboxEntity
 import moe.afox.dpsandbox.core.SandboxException
@@ -238,7 +240,7 @@ class Repl(
         "Commands: load, load fixture <file>, reload, tick [n], function <id>, player <name>, event player <name> <type> [id] [detail/action|x y z|pos=x,y,z], trace <on|off|status>, diff last, rerun last, reset world, ${inspectUsage()}, snapshot [file], exit"
 
     private fun inspectUsage(): String =
-        "inspect <world|worldborder|score|storage|gamerule|random|schedule|forced-chunks|scoreboard|team|bossbar|entity|entities|blocks|player|item|items|recipes|advancement-progress|loot|predicate|advancement|recipe|item_modifier|raw|tags|resources|registry [group]|outputs|event-traces>"
+        "inspect <world|worldborder|score|storage|gamerule|random|schedule|forced-chunks|scoreboard|team|bossbar|entity|entities|block|blocks|biome|biomes|player|item|items|recipes|advancement-progress|loot|predicate|advancement|recipe|item_modifier|raw|tags|resources|registry [group]|outputs|event-traces>"
 
     private fun reload() {
         if (packs.isEmpty()) {
@@ -396,12 +398,8 @@ class Repl(
             "team", "teams" -> inspectTeams(args)
             "bossbar", "bossbars" -> inspectBossbars(args)
             "entity", "entities" -> inspectEntities(args)
-            "blocks" -> {
-                sandbox.world.blocks.toSortedMap().forEach { (pos, block) ->
-                    val properties = block.properties.toSortedMap().entries.joinToString(prefix = "[", postfix = "]") { "${it.key}=${it.value}" }
-                    println("$pos ${block.id}$properties nbt=${JsonValues.render(block.nbt)}")
-                }
-            }
+            "block", "blocks" -> inspectBlocks(args)
+            "biome", "biomes" -> inspectBiomes(args)
             "player" -> {
                 val name = args.getOrNull(1)
                 val players = if (name == null) sandbox.world.players.values else listOf(sandbox.world.requirePlayer(name))
@@ -519,6 +517,62 @@ class Repl(
         val players = bossbar.players.sorted().joinToString(prefix = "[", postfix = "]")
         return "bossbar ${bossbar.id} name=${bossbar.name} value=${bossbar.value} max=${bossbar.max} color=${bossbar.color} style=${bossbar.style} visible=${bossbar.visible} players=$players"
     }
+
+    private fun inspectBlocks(args: List<String>) {
+        val pos = parseInspectBlockPos(args, startIndex = 1)
+        if (pos != null) {
+            val block = sandbox.world.block(pos)
+            println(block?.let { renderBlock(pos, it) } ?: "block ${renderBlockPos(pos)} <missing>")
+            return
+        }
+        if (args.firstOrNull() == "block") {
+            println("Usage: inspect block <x> <y> <z>")
+            return
+        }
+        sandbox.world.blocks.toSortedMap().forEach { (blockPos, block) -> println(renderBlock(blockPos, block)) }
+    }
+
+    private fun renderBlock(pos: BlockPos, block: SandboxBlock): String {
+        val properties = block.properties.toSortedMap().entries.joinToString(prefix = "[", postfix = "]") { "${it.key}=${it.value}" }
+        val biome = sandbox.world.biomes[pos]?.let { " biome=$it" }.orEmpty()
+        return "block ${renderBlockPos(pos)} id=${block.id} properties=$properties nbt=${JsonValues.render(block.nbt)}$biome"
+    }
+
+    private fun inspectBiomes(args: List<String>) {
+        val pos = parseInspectBlockPos(args, startIndex = 1)
+        if (pos != null) {
+            val biome = sandbox.world.biomes[pos]
+            println("biome ${renderBlockPos(pos)} ${biome?.let { "= $it" } ?: "<missing>"}")
+            return
+        }
+        if (args.firstOrNull() == "biome") {
+            println("Usage: inspect biome <x> <y> <z>")
+            return
+        }
+        sandbox.world.biomes.toSortedMap().forEach { (blockPos, biome) ->
+            println("biome ${renderBlockPos(blockPos)} = $biome")
+        }
+    }
+
+    private fun parseInspectBlockPos(args: List<String>, startIndex: Int): BlockPos? {
+        val first = args.getOrNull(startIndex) ?: return null
+        if ("," in first) {
+            val parts = first.split(',')
+            if (parts.size == 3) {
+                return BlockPos(
+                    parts[0].toIntOrNull() ?: return null,
+                    parts[1].toIntOrNull() ?: return null,
+                    parts[2].toIntOrNull() ?: return null,
+                )
+            }
+        }
+        val x = args.getOrNull(startIndex)?.toIntOrNull() ?: return null
+        val y = args.getOrNull(startIndex + 1)?.toIntOrNull() ?: return null
+        val z = args.getOrNull(startIndex + 2)?.toIntOrNull() ?: return null
+        return BlockPos(x, y, z)
+    }
+
+    private fun renderBlockPos(pos: BlockPos): String = "${pos.x},${pos.y},${pos.z}"
 
     private fun inspectEntities(args: List<String>) {
         val selector = args.getOrNull(1)

@@ -285,6 +285,29 @@ class ReplTest {
     }
 
     @Test
+    fun `inspects block and biome state`() {
+        val repl = Repl(createSandbox("26.1.2", listOf(Path.of("../core/src/test/resources/packs/counter"))))
+
+        val output = captureStdout {
+            repl.handle("""setblock 0 64 0 minecraft:chest[facing=north]{Items:[{Slot:0b,id:"minecraft:apple",count:1b}]}""")
+            repl.handle("fillbiome 0 64 0 0 64 0 minecraft:forest")
+            repl.handle("inspect blocks")
+            repl.handle("inspect block 0 64 0")
+            repl.handle("inspect block 0,64,1")
+            repl.handle("inspect biomes")
+            repl.handle("inspect biome 0 64 0")
+            repl.handle("inspect biome 0,64,1")
+        }
+
+        assertTrue(output.contains("block 0,64,0 id=minecraft:chest properties=[facing=north]"), output)
+        assertTrue(output.contains("biome=minecraft:forest"), output)
+        assertTrue(output.contains("minecraft:apple"), output)
+        assertTrue(output.contains("block 0,64,1 <missing>"), output)
+        assertTrue(output.contains("biome 0,64,0 = minecraft:forest"), output)
+        assertTrue(output.contains("biome 0,64,1 <missing>"), output)
+    }
+
+    @Test
     fun `inspects entity modeled state`() {
         val repl = Repl(createSandbox("26.1.2", listOf(Path.of("../core/src/test/resources/packs/counter"))))
 

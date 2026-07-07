@@ -96,6 +96,8 @@ class DpsCompleterTest {
         assertSuggests(completer, "inspect ", "team")
         assertSuggests(completer, "inspect ", "bossbar")
         assertSuggests(completer, "inspect ", "entity")
+        assertSuggests(completer, "inspect ", "block")
+        assertSuggests(completer, "inspect ", "biome")
         assertSuggests(completer, "inspect ", "item")
         assertSuggests(completer, "inspect ", "recipes")
         assertSuggests(completer, "inspect ", "advancement-progress")
@@ -137,8 +139,12 @@ class DpsCompleterTest {
 
         val entitySandbox = createSandbox("26.1.2", listOf(Path.of("../core/src/test/resources/packs/counter")))
         entitySandbox.executeCommand("""summon minecraft:zombie 1 64 2 {Tags:["mob"]}""")
+        entitySandbox.executeCommand("setblock 0 64 0 minecraft:stone")
+        entitySandbox.executeCommand("fillbiome 0 64 0 0 64 0 minecraft:forest")
         assertSuggests(DpsCompleter { entitySandbox }, "inspect entity ", "minecraft:zombie")
         assertSuggests(DpsCompleter { entitySandbox }, "inspect entity ", "mob")
+        assertSuggests(DpsCompleter { entitySandbox }, "inspect block ", "0,64,0")
+        assertSuggests(DpsCompleter { entitySandbox }, "inspect biome ", "0,64,0")
     }
 
     @Test

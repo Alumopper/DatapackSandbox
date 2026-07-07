@@ -114,7 +114,7 @@
 主要任务：
 
 - 完善 sparse world：
-  - 方块状态、方块实体 NBT、biome override、强加载 chunk、世界边界、时间、天气、难度、gamerule、spawn、deterministic random sequence；predicate `location_check` 的 block 条件已可读取显式 sparse block 的 id、block tag、state/property 和方块实体 NBT，random sequence state 已进入 snapshot，并可通过 world fixture、manifest assertion、QuickTest assertion 和 REPL `inspect random` 声明/检查。
+  - 方块状态、方块实体 NBT、biome override、强加载 chunk、世界边界、时间、天气、难度、gamerule、spawn、deterministic random sequence；predicate `location_check` 的 block 条件已可读取显式 sparse block 的 id、block tag、state/property 和方块实体 NBT，方块/biome override 可通过 world fixture、manifest assertion、QuickTest assertion 和 REPL `inspect block` / `inspect biome` 定点检查，random sequence state 已进入 snapshot，并可通过 world fixture、manifest assertion、QuickTest assertion 和 REPL `inspect random` 声明/检查。
   - 支持区域 fixture、结构 fixture、从 Java Anvil 存档按 chunk 或坐标范围导入；区域 fixture 已在 QuickTest world builder、manifest `world.regions` 和 JSON Schema 中接入，可用 `from`/`to` 闭区间批量铺设 sparse blocks，并允许单点 `blocks` 覆盖区域局部；结构 fixture 已在 QuickTest world builder、manifest `world.structures` 和 JSON Schema 中接入，可用 origin 加相对 block/entity offset 声明小型结构，展开后复用普通 block/entity snapshot 与断言；Java Anvil save import 已在 QuickTest world builder、manifest `world.save`/`world.saves` 和 JSON Schema 中接入，可按单 chunk、chunk 列表或 `from`/`to` block 范围导入 blocks、block entities 和 entities。
 - 完善实体模型：
   - 类型、UUID、位置、旋转、维度、tag、score holder、attributes、attribute modifiers、effects、passengers/vehicle、equipment、health、custom NBT；`item replace/modify entity` 已覆盖非玩家实体 `weapon.*`/`armor.*` 装备槽读写、复制、snapshot 与 NBT 投影，`attribute modifier` 已进入 snapshot 与 `Attributes[].modifiers` NBT 投影，`effect give/clear` 已覆盖非玩家实体 active effects，entity predicate 的 `equipment`、`effects`、`distance` 和 `nbt` 条件也复用该模型，其中 `distance` 覆盖 `absolute`、`horizontal` 与 `x/y/z` 轴向范围；world fixture、manifest world 和 quick-test world builder 均可直接声明非玩家实体装备、active effects、attributes、dimension、health 与 passengers/vehicle，并通过 entity assertion/quick-test assertion 验证完整 NBT path；REPL `inspect entity` / `inspect entities` 已可按 UUID、score holder、玩家名、实体类型或 tag 输出实体位置、维度、旋转、health、装备、效果、属性、修饰器、载具和乘客状态。
@@ -230,6 +230,7 @@
   - `inspect` 输出结构更稳定；`inspect event-traces` 已可直接打印玩家事件 trace JSON，并已接入 REPL/CLI 补全和命令目录，便于调试事件输入、block 坐标和 advancement 匹配。
   - `inspect forced-chunks` 已可列出当前强加载 chunk，并接入 REPL 补全和命令目录，便于随手检查 `forceload` 状态。
   - `inspect world` 和 `inspect worldborder` 已可列出世界时间、天气、默认模式、出生点、tick 状态和世界边界参数，并接入 REPL/CLI 补全和命令目录，便于随手检查世界级生成命令。
+  - `inspect block` / `inspect blocks` 和 `inspect biome` / `inspect biomes` 已可按坐标列出 sparse block、方块实体 NBT 和 biome override，并接入 REPL/CLI 补全和命令目录，便于随手检查 `setblock`、`fill`、`fillbiome`、`execute if block/biome` 与 predicate `location_check`。
   - `inspect entity` / `inspect entities` 已可列出实体关键状态，并接入 REPL/CLI 补全和命令目录，便于随手检查 summon、effect、attribute、item 和 ride 等实体类生成命令。
   - `inspect item` / `inspect items` 已可列出玩家 inventory、selected slot 和 enderchest 槽位，并支持 hotbar/container/enderchest/selected 单槽查询和补全，便于随手检查 `give`、`clear`、`item replace/modify` 与 `loot replace entity` 结果。
   - `inspect recipes` 和 `inspect advancement-progress` 已可按玩家列出 recipe book 与 advancement criterion progress，并支持单个 recipe/advancement 查询和 REPL/CLI 补全，便于随手检查事件输入或命令生成器对玩家进度状态的影响。
