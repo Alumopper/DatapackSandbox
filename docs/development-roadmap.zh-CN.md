@@ -40,6 +40,7 @@
   - `chat_type` 已从 raw inspect 推进到聊天命令调试面；`say`、`me`、`msg`/`tell`/`w`、`teammsg`/`tm` 在命中已加载的命令 chat type 时，会把 `chat`/`narration` 装饰 JSON、资源文件和版本写入结构化输出。
   - `dimension` 和 `dimension_type` 已从 raw inspect 推进到维度感知命令调试面；`summon`、`kill`、`loot spawn`、`teleport`/`tp`、`setworldspawn` 和 `spawnpoint` 在命中已加载维度资源时，会把 dimension JSON、关联 dimension type JSON、资源文件和版本写入结构化输出。
 - P2：enchantment、jukebox song、trim material/pattern、banner pattern、wolf variant、painting variant 等版本相关注册表资源。
+  - `enchantment` 已从 raw inspect 推进到 `enchant` 命令调试面；命中已加载资源时，结构化输出会暴露完整 enchantment JSON definition、资源文件和版本，便于命令生成器断言自定义附魔定义和实际写入的物品组件。
   - 额外 raw JSON 资源矩阵测试已直接复用 `ResourceCatalog.additionalRawJsonTypes`，确保 catalog 中列出的 P1/P2 资源都会被目录/zip loader、raw resource map 和资源索引覆盖，而不是只覆盖手写子集。
 
 验收标准：
@@ -103,7 +104,7 @@
   - `say`、`me`、`msg`/`tell`/`w` 和 `teammsg`/`tm` 的 chat 输出已在 payload 中暴露命令 chat type id；命中已加载 `chat_type` 资源时会附带 `chat`/`narration` 装饰 JSON、资源文件和版本，便于调试消息命令生成结果。
   - 维度感知输出已暴露已加载 `dimension` 资源和其引用的 `dimension_type` 资源；`summon`、`kill`、`loot spawn`、`teleport`/`tp`、`setworldspawn` 和 `spawnpoint` 的 payload 可直接断言自定义维度 JSON、generator/type 配置和资源版本。
   - `kill` 已记录结构化目标输出，便于确认选择器命中、实体移除和 advancement 触发结果。
-  - `enchant` 已覆盖玩家选中物品和非玩家实体主手装备的附魔组件写入，并记录结构化输出；`effect give/clear` 已记录结构化输出，便于 report/assertion 调试。
+  - `enchant` 已覆盖玩家选中物品和非玩家实体主手装备的附魔组件写入，并记录结构化输出；命中已加载 `enchantment` 资源时还会输出完整 enchantment definition、资源文件和版本；`effect give/clear` 已记录结构化输出，便于 report/assertion 调试。
 - 为不适合完整模拟的命令保留结构化 no-op 或 unsupported warning，例如 `debug`、`jfr`、`publish`、`stop`、网络和权限相关命令。
 
 验收标准：

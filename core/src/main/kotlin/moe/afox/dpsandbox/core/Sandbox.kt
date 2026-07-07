@@ -3299,7 +3299,7 @@ class DatapackSandbox(
             enchantItem(item, enchantment, level)
             enchanted += entity.scoreHolder to item.copyStack()
         }
-        recordEnchantOutput(enchantment, level, enchanted)
+        recordEnchantOutput(enchantment, level, enchanted, location)
     }
 
     private fun playerSelectedItemForEnchant(player: SandboxPlayer): ItemStack {
@@ -3316,7 +3316,7 @@ class DatapackSandbox(
         enchantments.addProperty(enchantment.toString(), level)
     }
 
-    private fun recordEnchantOutput(enchantment: ResourceLocation, level: Int, enchanted: List<Pair<String, ItemStack>>) {
+    private fun recordEnchantOutput(enchantment: ResourceLocation, level: Int, enchanted: List<Pair<String, ItemStack>>, location: SourceLocation?) {
         world.recordOutput(
             "enchant",
             "data",
@@ -3324,6 +3324,7 @@ class DatapackSandbox(
             text = enchanted.size.toString(),
             payload = JsonObject().also { payload ->
                 payload.addProperty("enchantment", enchantment.toString())
+                enchantmentPayload(enchantment, location)?.let { payload.add("enchantmentResource", it) }
                 payload.addProperty("level", level)
                 payload.addProperty("modified", enchanted.size)
                 payload.add("items", JsonArray().also { items ->
@@ -3336,6 +3337,19 @@ class DatapackSandbox(
                 })
             },
         )
+    }
+
+    private fun enchantmentPayload(id: ResourceLocation, location: SourceLocation?): JsonObject? {
+        val resource = datapack.rawResources["enchantment"]?.get(id) ?: return null
+        if (!resource.root.isJsonObject) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Enchantment resource '$id' must be a JSON object", location)
+        }
+        return JsonObject().also { payload ->
+            payload.addProperty("id", id.toString())
+            payload.addProperty("resource", resource.file)
+            payload.addProperty("version", resource.version ?: profile.id)
+            payload.add("definition", resource.root.deepCopy())
+        }
     }
 
     private fun executeExperience(tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext) {

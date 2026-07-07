@@ -18,6 +18,7 @@ class ResourceCatalogTest {
         assertEquals(ResourceBehaviorLevel.MODELED, entries.getValue("damage_type").behaviorLevel)
         assertEquals(ResourceBehaviorLevel.MODELED, entries.getValue("dimension").behaviorLevel)
         assertEquals(ResourceBehaviorLevel.MODELED, entries.getValue("dimension_type").behaviorLevel)
+        assertEquals(ResourceBehaviorLevel.MODELED, entries.getValue("enchantment").behaviorLevel)
         assertEquals(ResourceBehaviorLevel.MODELED, entries.getValue("worldgen/configured_feature").behaviorLevel)
         assertEquals(ResourceBehaviorLevel.MODELED, entries.getValue("worldgen/placed_feature").behaviorLevel)
         assertEquals(ResourceBehaviorLevel.MODELED, entries.getValue("worldgen/processor_list").behaviorLevel)
@@ -32,6 +33,7 @@ class ResourceCatalogTest {
         assertTrue("damage_type" in ResourceCatalog.additionalRawJsonTypes)
         assertTrue("dimension" in ResourceCatalog.additionalRawJsonTypes)
         assertTrue("dimension_type" in ResourceCatalog.additionalRawJsonTypes)
+        assertTrue("enchantment" in ResourceCatalog.additionalRawJsonTypes)
         assertTrue("worldgen/placed_feature" in ResourceCatalog.additionalRawJsonTypes)
         assertTrue("worldgen/structure" in ResourceCatalog.additionalRawJsonTypes)
     }

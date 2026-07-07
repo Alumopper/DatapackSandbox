@@ -334,6 +334,27 @@ class CommandExpansionTest {
     }
 
     @Test
+    fun `enchant command exposes loaded enchantment metadata`() {
+        val sandbox = createSandbox("26.2", listOf(writeEnchantmentPack(Files.createTempDirectory("dps-enchantment-pack"))))
+
+        sandbox.executeCommand("give Steve minecraft:diamond_sword")
+        sandbox.executeCommand("enchant Steve demo:debug_edge 4")
+
+        val payload = sandbox.world.outputs.single { it.command == "enchant" }.payload?.asJsonObject ?: error("missing enchant payload")
+        assertEquals("demo:debug_edge", payload.get("enchantment").asString)
+        assertEquals(4, payload.get("level").asInt)
+        val enchantment = payload.getAsJsonObject("enchantmentResource")
+        assertEquals("demo:debug_edge", enchantment.get("id").asString)
+        assertEquals("26.2", enchantment.get("version").asString)
+        val definition = enchantment.getAsJsonObject("definition")
+        assertEquals("Debug Edge", definition.getAsJsonObject("description").get("text").asString)
+        assertEquals(4, definition.get("max_level").asInt)
+        assertEquals("mainhand", definition.getAsJsonArray("slots")[0].asString)
+        val outputItem = payload.getAsJsonArray("items")[0].asJsonObject.getAsJsonObject("item")
+        assertEquals(4, outputItem.getAsJsonObject("components").getAsJsonObject("minecraft:enchantments").get("demo:debug_edge").asInt)
+    }
+
+    @Test
     fun `place structure applies sandbox structure json resources`() {
         val pack = writeStructurePlacePack(Files.createTempDirectory("dps-place-structure-pack"))
         val sandbox = createSandbox("26.2", listOf(pack))
@@ -1502,6 +1523,40 @@ class CommandExpansionTest {
               "effects": "minecraft:the_nether",
               "monster_spawn_light_level": 7,
               "monster_spawn_block_light_limit": 0
+            }
+            """.trimIndent(),
+        )
+        return root
+    }
+
+    private fun writeEnchantmentPack(root: Path): Path {
+        Files.writeString(
+            root.resolve("pack.mcmeta").also { Files.createDirectories(it.parent) },
+            """
+            {
+              "pack": {
+                "pack_format": 107.1,
+                "description": "enchantment metadata test"
+              }
+            }
+            """.trimIndent(),
+        )
+        val enchantmentRoot = root.resolve("data").resolve("demo").resolve("enchantment")
+        Files.createDirectories(enchantmentRoot)
+        Files.writeString(
+            enchantmentRoot.resolve("debug_edge.json"),
+            """
+            {
+              "description": { "text": "Debug Edge" },
+              "supported_items": "#minecraft:enchantable/weapon",
+              "primary_items": "#minecraft:enchantable/sword",
+              "weight": 2,
+              "max_level": 4,
+              "min_cost": { "base": 1, "per_level_above_first": 10 },
+              "max_cost": { "base": 20, "per_level_above_first": 10 },
+              "anvil_cost": 4,
+              "slots": ["mainhand"],
+              "effects": {}
             }
             """.trimIndent(),
         )
