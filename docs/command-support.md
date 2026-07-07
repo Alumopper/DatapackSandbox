@@ -41,13 +41,14 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar commands
 java -jar cli/build/libs/datapack-sandbox-cli.jar commands --docs
 java -jar cli/build/libs/datapack-sandbox-cli.jar commands --docs --output docs/command-catalog.md
 java -jar cli/build/libs/datapack-sandbox-cli.jar commands --check docs/command-support.md
+java -jar cli/build/libs/datapack-sandbox-cli.jar commands --check docs/command-support.zh-CN.md
 java -jar cli/build/libs/datapack-sandbox-cli.jar commands --json --version 26.2
 java -jar cli/build/libs/datapack-sandbox-cli.jar commands --json --output build/command-catalog.json --version 26.2
 ```
 
 `commands --check` verifies that each version-scoped root command appears in
 the document with the matching behavior level. The Gradle `check` lifecycle
-runs this through the standalone jar smoke task.
+runs both English and localized docs checks through standalone jar smoke tasks.
 
 ## Vanilla Command Matrix
 

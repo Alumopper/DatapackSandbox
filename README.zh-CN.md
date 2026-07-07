@@ -58,6 +58,14 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar version --docs --locale zh-CN 
 java -jar cli/build/libs/datapack-sandbox-cli.jar version 1.20.4 26.2
 ```
 
+查看内置命令支持目录：
+
+```bash
+java -jar cli/build/libs/datapack-sandbox-cli.jar commands
+java -jar cli/build/libs/datapack-sandbox-cli.jar commands --check docs/command-support.zh-CN.md
+java -jar cli/build/libs/datapack-sandbox-cli.jar commands --json --version 26.2
+```
+
 REPL 支持 TAB 补全、输入过程中的多行候选提示、历史输入提示、彩色输出、Ctrl+C 退出、运行时重载数据包文件、trace/diff helper、rerun-last、reset-world 和 fixture 加载：
 
 ```bash

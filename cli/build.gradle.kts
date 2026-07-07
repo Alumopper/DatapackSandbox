@@ -119,6 +119,18 @@ smokeCliJarCommandDocs.configure {
     inputs.file(commandSupportDoc)
 }
 
+val commandSupportZhDoc = rootProject.layout.projectDirectory.file("docs/command-support.zh-CN.md")
+val smokeCliJarCommandDocsZh = registerCliJarSmokeTask(
+    name = "smokeCliJarCommandDocsZh",
+    descriptionText = "Checks that localized command support docs cover the command behavior catalog.",
+    "commands",
+    "--check",
+    commandSupportZhDoc.asFile.absolutePath,
+)
+smokeCliJarCommandDocsZh.configure {
+    inputs.file(commandSupportZhDoc)
+}
+
 val resourceFormatsDoc = rootProject.layout.projectDirectory.file("docs/resource-formats.md")
 val smokeCliJarResourceDocs = registerCliJarSmokeTask(
     name = "smokeCliJarResourceDocs",
@@ -357,6 +369,7 @@ tasks.register("smokeCliJar") {
         smokeCliJarVersionDocs,
         smokeCliJarVersionDocsZh,
         smokeCliJarCommandDocs,
+        smokeCliJarCommandDocsZh,
         smokeCliJarResourceDocs,
         smokeCliJarResourceDocsZh,
         smokeCliJarResourcesLoaded,

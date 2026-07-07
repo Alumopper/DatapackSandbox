@@ -299,7 +299,7 @@
   - `modeled`：沙盒内确定性模型，覆盖数据包测试所需行为。
   - `observed-noop`：接受命令并记录输出/诊断，不改变真实副作用。
   - `unsupported`：按策略 warn/error/ignore。
-  - `commands` CLI 已可按版本导出命令目录、行为等级和描述，支持 plain、Markdown、JSON、`--output <file>` artifact 输出和 `--check <file>` 文档覆盖检查；standalone jar smoke task 已接入 Gradle `check`，便于文档生成和 CI 复核。
+  - `commands` CLI 已可按版本导出命令目录、行为等级和描述，支持 plain、Markdown、JSON、`--output <file>` artifact 输出和英文/中文 `--check <file>` 文档覆盖检查；英文/中文 standalone jar smoke task 已接入 Gradle `check`，便于文档生成和 CI 复核。
   - `ResourceCatalog` 已集中维护资源类型与行为等级，`DatapackLoader` 的额外 raw JSON 资源读取复用该目录，`resources` CLI 已可导出 plain、Markdown、JSON、`--output <file>` artifact，以及英文/中文 `--check <file>` 文档覆盖检查；同一命令带 `--pack` 时可导出已加载资源索引、来源文件、覆盖状态、加载顺序和按 type/id/namespace/source-pack/order/state 过滤后的 JSON artifact；英文/中文 standalone jar smoke task 已接入 Gradle `check`，避免 loader、文档和后续检查工具分叉。
 
 验收标准：
@@ -326,7 +326,7 @@
   - CLI `run` 和 `check` 已暴露 `--max-commands`、`--max-function-depth`、`--max-ticks-per-run`、`--max-output-events` 和 `--max-snapshot-bytes`，可在随手小测、命令生成器验证和批量 manifest CI 中直接收紧执行边界。
 - 发布质量：
   - fat jar smoke test、Windows/Linux/macOS 命令测试、README 示例测试。
-  - standalone jar smoke 已覆盖 schema 导出、示例 manifest、资源索引、diff、benchmark、README 示例、run 断言简写、执行边界和预期失败命令的 diagnostic 断言。
+  - standalone jar smoke 已覆盖 schema 导出、示例 manifest、命令/资源/版本文档中英检查、资源索引、diff、benchmark、README 示例、run 断言简写、执行边界和预期失败命令的 diagnostic 断言。
   - Maven 发布准备：坐标、版本号、源码包、文档包。
 
 验收标准：
