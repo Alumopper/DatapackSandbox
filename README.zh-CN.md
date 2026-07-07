@@ -202,6 +202,7 @@ manifest 可以用 `{"snapshot":{"equalsFile":"expected.json"}}` 将最终 snaps
 
 ```bash
 java -jar cli/build/libs/datapack-sandbox-cli.jar schema --output dps-manifest.schema.json
+java -jar cli/build/libs/datapack-sandbox-cli.jar schema --check docs/dps-manifest.schema.json
 ```
 
 断言失败时可以同时输出最终 snapshot 或最小 snapshot diff：

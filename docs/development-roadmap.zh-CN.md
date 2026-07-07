@@ -239,7 +239,7 @@
 
 主要任务：
 
-- 增加 manifest schema 文档和 JSON Schema。
+- 增加 manifest schema 文档和 JSON Schema；`schema --check docs/dps-manifest.schema.json` 已可校验仓库 schema 与 standalone jar 内置 schema 一致，并已接入 Gradle smoke。
 - 扩展 `world`：
   - 支持 fixture 引用、模板继承、局部覆盖、save import 范围、多个玩家和多个维度；`world.save`/`world.saves` 已通过 schema 和 manifest 回归测试覆盖 `from`/`to` 范围导入。
 - 扩展 `steps`：
@@ -326,7 +326,7 @@
   - CLI `run` 和 `check` 已暴露 `--max-commands`、`--max-function-depth`、`--max-ticks-per-run`、`--max-output-events` 和 `--max-snapshot-bytes`，可在随手小测、命令生成器验证和批量 manifest CI 中直接收紧执行边界。
 - 发布质量：
   - fat jar smoke test、Windows/Linux/macOS 命令测试、README 示例测试。
-  - standalone jar smoke 已覆盖 schema 导出、示例 manifest、命令/资源/版本文档中英检查、资源索引、diff、benchmark、README 示例、run 断言简写、执行边界和预期失败命令的 diagnostic 断言。
+  - standalone jar smoke 已覆盖 schema 导出与防漂移检查、示例 manifest、命令/资源/版本文档中英检查、资源索引、diff、benchmark、README 示例、run 断言简写、执行边界和预期失败命令的 diagnostic 断言。
   - Maven 发布准备：坐标、版本号、源码包、文档包。
 
 验收标准：

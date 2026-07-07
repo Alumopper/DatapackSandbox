@@ -1750,10 +1750,19 @@ class EventCommand : CliktCommand(name = "event") {
 
 class ManifestSchemaCommand : CliktCommand(name = "schema") {
     private val output by option("--output", "-o").path()
+    private val check by option("--check").path()
 
     override fun run() {
         try {
+            if (output != null && check != null) {
+                throw SandboxException(DiagnosticCode.INPUT_FORMAT, "schema accepts only one file mode: --output or --check")
+            }
             val schema = ManifestSchema.readText()
+            val checkPath = check
+            if (checkPath != null) {
+                checkSchemaFile(checkPath, schema)
+                return
+            }
             val outputPath = output
             if (outputPath == null) {
                 print(schema)
@@ -1767,6 +1776,24 @@ class ManifestSchemaCommand : CliktCommand(name = "schema") {
             exitProcess(ExitCodes.forException(error))
         }
     }
+
+    private fun checkSchemaFile(path: Path, schema: String) {
+        if (!Files.exists(path)) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "schema check file does not exist: $path")
+        }
+        val actual = normalizeNewlines(Files.readString(path, StandardCharsets.UTF_8)).trimEnd()
+        val expected = normalizeNewlines(schema).trimEnd()
+        if (actual != expected) {
+            throw SandboxException(
+                DiagnosticCode.INPUT_FORMAT,
+                "schema is out of date: $path; regenerate with schema --output <file>",
+            )
+        }
+        println(ConsoleStyle.green("schema up to date: $path"))
+    }
+
+    private fun normalizeNewlines(value: String): String =
+        value.replace("\r\n", "\n").replace('\r', '\n')
 }
 
 class DiffCommand : CliktCommand(name = "diff") {

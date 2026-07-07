@@ -205,6 +205,18 @@ smokeCliJarSchema.configure {
     }
 }
 
+val manifestSchemaDoc = rootProject.layout.projectDirectory.file("docs/dps-manifest.schema.json")
+val smokeCliJarSchemaDocs = registerCliJarSmokeTask(
+    name = "smokeCliJarSchemaDocs",
+    descriptionText = "Checks that the checked-in manifest JSON Schema matches the standalone CLI jar.",
+    "schema",
+    "--check",
+    manifestSchemaDoc.asFile.absolutePath,
+)
+smokeCliJarSchemaDocs.configure {
+    inputs.file(manifestSchemaDoc)
+}
+
 val smokeDiffBefore = layout.buildDirectory.file("smoke/diff-before-report.json")
 val smokeDiffAfter = layout.buildDirectory.file("smoke/diff-after-report.json")
 val smokeCliJarDiff = registerCliJarSmokeTask(
@@ -374,6 +386,7 @@ tasks.register("smokeCliJar") {
         smokeCliJarResourceDocsZh,
         smokeCliJarResourcesLoaded,
         smokeCliJarSchema,
+        smokeCliJarSchemaDocs,
         smokeCliJarDiff,
         smokeCliJarBenchmark,
         smokeCliJarExamples,

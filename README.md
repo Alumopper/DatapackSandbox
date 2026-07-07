@@ -254,6 +254,7 @@ Export the bundled manifest JSON Schema for editors or CI tooling:
 
 ```bash
 java -jar cli/build/libs/datapack-sandbox-cli.jar schema --output dps-manifest.schema.json
+java -jar cli/build/libs/datapack-sandbox-cli.jar schema --check docs/dps-manifest.schema.json
 ```
 
 Use `--verbose` to include deterministic resource summaries, pack overlay

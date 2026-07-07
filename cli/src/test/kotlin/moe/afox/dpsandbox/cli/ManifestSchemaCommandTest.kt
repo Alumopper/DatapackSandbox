@@ -36,6 +36,21 @@ class ManifestSchemaCommandTest {
         assertEquals("Datapack Sandbox manifest", schema.get("title").asString)
     }
 
+    @Test
+    fun `schema command checks bundled manifest schema file`() {
+        val dir = Files.createTempDirectory("dps-schema-check")
+        val outputFile = dir.resolve("dps-manifest.schema.json")
+        captureStdout {
+            main(arrayOf("schema", "--output", outputFile.toString()))
+        }
+
+        val output = captureStdout {
+            main(arrayOf("schema", "--check", outputFile.toString()))
+        }
+
+        assertTrue("schema up to date: $outputFile" in output, output)
+    }
+
     private fun captureStdout(block: () -> Unit): String {
         val original = System.out
         val bytes = ByteArrayOutputStream()
