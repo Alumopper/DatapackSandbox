@@ -1193,7 +1193,7 @@ class DatapackSandbox(
         if (plan == null || plan.blocks.isEmpty()) {
             payload.addProperty("placed", false)
             payload.addProperty("format", "raw-json-index-only")
-            payload.addProperty("reason", "Loaded feature resource has no sandbox block or supported simple_block/block_column/disk/vegetation_patch/random_patch/flower/selector/ore state")
+            payload.addProperty("reason", "Loaded feature resource has no sandbox block or supported simple_block/block_column/disk/vegetation_patch/replace_single_block/replace_blob/random_patch/flower/selector/ore state")
             return emptyList()
         }
 
@@ -1305,6 +1305,8 @@ class DatapackSandbox(
             "block_column" -> parseBlockColumnFeature(location)
             "disk", "disk_replace" -> parseDiskFeature(type, location)
             "vegetation_patch", "waterlogged_vegetation_patch" -> parseVegetationPatchFeature(type, location, depth)
+            "replace_single_block" -> parseReplaceSingleBlockFeature(location)
+            "replace_blob" -> parseReplaceBlobFeature(type, location)
             else -> parseFeatureBlockArgument(location)?.let { block ->
                 SandboxFeaturePlacementPlan(type, listOf(SandboxFeatureBlockPlacement(BlockPos(0, 0, 0), block)))
             }
@@ -1395,6 +1397,43 @@ class DatapackSandbox(
         return SandboxFeaturePlacementPlan(type, groundBlocks + vegetationBlocks)
     }
 
+    private fun JsonObject.parseReplaceSingleBlockFeature(location: SourceLocation?): SandboxFeaturePlacementPlan? {
+        val target = firstReplacementTarget("replace_single_block", location) ?: return null
+        return SandboxFeaturePlacementPlan(
+            "replace_single_block",
+            listOf(SandboxFeatureBlockPlacement(BlockPos(0, 0, 0), target.first, target.second)),
+        )
+    }
+
+    private fun JsonObject.parseReplaceBlobFeature(type: String, location: SourceLocation?): SandboxFeaturePlacementPlan? {
+        val config = getAsJsonObjectOrNull("config", location) ?: this
+        val target = firstReplacementTarget(type, location) ?: return null
+        val radius = (config.get("radius")?.featureIntProvider("$type radius", location) ?: 2).coerceIn(0, 6)
+        val blocks = blobOffsets(radius).map { offset ->
+            SandboxFeatureBlockPlacement(offset = offset, block = target.first, replaceBlocks = target.second)
+        }
+        return SandboxFeaturePlacementPlan(type, blocks)
+    }
+
+    private fun JsonObject.firstReplacementTarget(
+        label: String,
+        location: SourceLocation?,
+    ): Pair<BlockArgument, Set<ResourceLocation>?>? {
+        val config = getAsJsonObjectOrNull("config", location) ?: this
+        val targets = config.getAsJsonArrayOrNull("targets")
+        if (targets != null) {
+            return targets.mapIndexed { index, element ->
+                element.asPlaceJsonObject("$label target $index", location)
+                    .parseOreTarget("$label target $index", location)
+            }.firstOrNull()
+        }
+        val state = config.get("state")?.parseStructureProcessorBlockArgument("$label state", location)
+            ?: config.get("output_state")?.parseStructureProcessorBlockArgument("$label output_state", location)
+            ?: return null
+        val replaceBlocks = config.get("target")?.featureTargetElementBlocks("$label target", location)
+        return state to replaceBlocks
+    }
+
     private fun JsonObject.parseSelectorFeature(
         type: String,
         location: SourceLocation?,
@@ -1449,6 +1488,13 @@ class DatapackSandbox(
             else -> emptySet()
         }
     }
+
+    private fun JsonElement.featureTargetElementBlocks(label: String, location: SourceLocation?): Set<ResourceLocation>? =
+        when {
+            isJsonPrimitive -> setOf(ResourceLocation.parse(asJsonPrimitive.asString))
+            isJsonObject -> asJsonObject.featureTargetBlocks(label, location)
+            else -> throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label must be a block id string or predicate object", location)
+        }
 
     private fun JsonObject.featureTargetListBlocks(
         name: String,
@@ -1584,6 +1630,23 @@ class DatapackSandbox(
             }
         }
         return candidates.take(cappedSize)
+    }
+
+    private fun blobOffsets(radius: Int): List<BlockPos> {
+        if (radius <= 0) return listOf(BlockPos(0, 0, 0))
+        val candidates = mutableListOf(BlockPos(0, 0, 0))
+        for (r in 1..radius) {
+            for (x in -r..r) {
+                for (y in -r..r) {
+                    for (z in -r..r) {
+                        if (x * x + y * y + z * z > r * r) continue
+                        val pos = BlockPos(x, y, z)
+                        if (pos !in candidates) candidates += pos
+                    }
+                }
+            }
+        }
+        return candidates.take(256)
     }
 
     private fun diskOffsets(radius: Int, halfHeight: Int): List<BlockPos> {

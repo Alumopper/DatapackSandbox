@@ -702,6 +702,50 @@ class CommandExpansionTest {
     }
 
     @Test
+    fun `place feature applies replace single block feature resources`() {
+        val pack = writeFeaturePlacePack(Files.createTempDirectory("dps-place-replace-single-pack"))
+        val sandbox = createSandbox("26.2", listOf(pack))
+        sandbox.executeCommand("setblock 28 50 28 minecraft:stone")
+
+        sandbox.executeCommand("place feature demo:placed_replace_single 28 50 28")
+
+        assertEquals(ResourceLocation.parse("minecraft:gold_block"), sandbox.world.requireBlock(BlockPos(28, 50, 28)).id)
+        val output = sandbox.world.outputs.single { it.command == "place feature" }
+        val payload = output.payload?.asJsonObject ?: error("missing place feature payload")
+        assertEquals(true, payload.get("placed").asBoolean)
+        assertEquals("configured-replace_single_block", payload.get("format").asString)
+        assertEquals("replace_single_block", payload.get("featureType").asString)
+        assertEquals(1, payload.get("attemptedBlocks").asInt)
+        assertEquals(1, payload.get("changedBlocks").asInt)
+        assertEquals(0, payload.get("skippedBlocks").asInt)
+        assertEquals(listOf("28 50 28"), output.targets)
+    }
+
+    @Test
+    fun `place feature applies deterministic replace blob feature resources`() {
+        val pack = writeFeaturePlacePack(Files.createTempDirectory("dps-place-replace-blob-pack"))
+        val sandbox = createSandbox("26.2", listOf(pack))
+        sandbox.executeCommand("setblock 45 55 45 minecraft:stone")
+        sandbox.executeCommand("setblock 44 55 45 minecraft:stone")
+        sandbox.executeCommand("setblock 46 55 45 minecraft:dirt")
+
+        sandbox.executeCommand("place feature demo:placed_replace_blob 45 55 45")
+
+        assertEquals(ResourceLocation.parse("minecraft:moss_block"), sandbox.world.requireBlock(BlockPos(45, 55, 45)).id)
+        assertEquals(ResourceLocation.parse("minecraft:moss_block"), sandbox.world.requireBlock(BlockPos(44, 55, 45)).id)
+        assertEquals(ResourceLocation.parse("minecraft:dirt"), sandbox.world.requireBlock(BlockPos(46, 55, 45)).id)
+        val output = sandbox.world.outputs.single { it.command == "place feature" }
+        val payload = output.payload?.asJsonObject ?: error("missing place feature payload")
+        assertEquals(true, payload.get("placed").asBoolean)
+        assertEquals("configured-replace_blob", payload.get("format").asString)
+        assertEquals("replace_blob", payload.get("featureType").asString)
+        assertEquals(7, payload.get("attemptedBlocks").asInt)
+        assertEquals(2, payload.get("changedBlocks").asInt)
+        assertEquals(5, payload.get("skippedBlocks").asInt)
+        assertEquals(listOf("45 55 45", "44 55 45"), output.targets)
+    }
+
+    @Test
     fun `place feature applies deterministic disk replacement feature resources`() {
         val pack = writeFeaturePlacePack(Files.createTempDirectory("dps-place-disk-pack"))
         val sandbox = createSandbox("26.2", listOf(pack))
@@ -2381,6 +2425,38 @@ class CommandExpansionTest {
             """.trimIndent(),
         )
         Files.writeString(
+            configuredRoot.resolve("replace_single.json"),
+            """
+            {
+              "type": "minecraft:replace_single_block",
+              "config": {
+                "targets": [
+                  {
+                    "target": {
+                      "predicate_type": "minecraft:matching_blocks",
+                      "blocks": ["minecraft:stone"]
+                    },
+                    "state": { "Name": "minecraft:gold_block" }
+                  }
+                ]
+              }
+            }
+            """.trimIndent(),
+        )
+        Files.writeString(
+            configuredRoot.resolve("replace_blob.json"),
+            """
+            {
+              "type": "minecraft:replace_blob",
+              "config": {
+                "target": "minecraft:stone",
+                "state": { "Name": "minecraft:moss_block" },
+                "radius": { "type": "minecraft:constant", "value": 1 }
+              }
+            }
+            """.trimIndent(),
+        )
+        Files.writeString(
             configuredRoot.resolve("grass_patch.json"),
             """
             {
@@ -2474,6 +2550,24 @@ class CommandExpansionTest {
             """
             {
               "feature": "demo:column",
+              "placement": []
+            }
+            """.trimIndent(),
+        )
+        Files.writeString(
+            placedRoot.resolve("placed_replace_single.json"),
+            """
+            {
+              "feature": "demo:replace_single",
+              "placement": []
+            }
+            """.trimIndent(),
+        )
+        Files.writeString(
+            placedRoot.resolve("placed_replace_blob.json"),
+            """
+            {
+              "feature": "demo:replace_blob",
               "placement": []
             }
             """.trimIndent(),
