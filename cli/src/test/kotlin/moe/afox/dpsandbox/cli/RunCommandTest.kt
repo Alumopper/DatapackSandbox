@@ -328,6 +328,26 @@ class RunCommandTest {
     }
 
     @Test
+    fun `run accepts predicate and loot shorthand inline assertions`() {
+        val result = runCliProcess(
+            "run",
+            "--version",
+            "26.2",
+            "--pack",
+            "../examples/full-stack/pack",
+            "--command",
+            "item replace entity Steve weapon.mainhand with minecraft:carrot_on_a_stick",
+            "--assert",
+            "predicate:demo:has_carrot:player=Steve",
+            "--assert",
+            "loot:demo:gift:context=minecraft:advancement_reward:player=Steve:seed=42:count=1:item=minecraft:diamond",
+        )
+
+        assertEquals(0, result.exitCode, result.output)
+        assertTrue("OK version=26.2" in result.output, result.output)
+    }
+
+    @Test
     fun `run accepts storage shorthand inline assertions`() {
         val output = captureStdout {
             main(

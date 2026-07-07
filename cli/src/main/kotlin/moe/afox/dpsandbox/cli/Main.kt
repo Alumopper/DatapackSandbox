@@ -650,6 +650,8 @@ class RunCommand : CliktCommand(name = "run") {
             trimmed.startsWith("score:") -> parseScoreAssertion(trimmed.removePrefix("score:"), label)
             trimmed.startsWith("storage:") -> parseStorageAssertion(trimmed.removePrefix("storage:"), label)
             trimmed.startsWith("advancement:") -> parseAdvancementAssertion(trimmed.removePrefix("advancement:"), label)
+            trimmed.startsWith("predicate:") -> parsePredicateAssertion(trimmed.removePrefix("predicate:"), label)
+            trimmed.startsWith("loot:") -> parseLootAssertion(trimmed.removePrefix("loot:"), label)
             trimmed.startsWith("entity:") -> parseEntityCountAssertion(trimmed.removePrefix("entity:"), label)
             trimmed.startsWith("block:") -> parseBlockAssertion(trimmed.removePrefix("block:"), label)
             trimmed.startsWith("biome:") -> parseBiomeAssertion(trimmed.removePrefix("biome:"), label)
@@ -693,7 +695,7 @@ class RunCommand : CliktCommand(name = "run") {
             trimmed.startsWith("output:") -> parseOutputAssertion(trimmed.removePrefix("output:"), label)
             else -> throw SandboxException(
                 DiagnosticCode.INPUT_FORMAT,
-                "$label must be a JSON object or shorthand score:<target>:<objective>=N, storage:<id>[:<path>]=<json>, advancement:<player>:<id>[=<true|false>], entity:<type|*>[@tag]=N, block:<x>,<y>,<z>=<id>, block:<x>,<y>,<z>?, block:<x>,<y>,<z>!, biome:<x>,<y>,<z>=<id>, team:<name>[?|!|=N|@member], bossbar:<id>[?|!|:<field>=<value>], item:<player>:<id>[@slot]=N, player:<name>[:<field>=<value>], world:<field>=<value>, gamerule:<rule>=<value>, gamerule:<rule>?, gamerule:<rule>!, random-sequence:<name>=N, scheduled:<id>=<dueTick>, scheduled:<id>?, scheduled:<id>!, scoreboard-objective:<name>:<field>=<value>, scoreboard-objective:<name>?, scoreboard-objective:<name>!, scoreboard-display:<slot>=<objective>, scoreboard-display:<slot>?, scoreboard-display:<slot>!, forced-chunk:<x>,<z>?, forced-chunk:<x>,<z>!, snapshot:<path>=<json>, snapshot:<path>?, snapshot:<path>!, diff:<json-pointer>[=<kind>], event-trace:<player>:<type>[=N], trace:<root>=N, trace:<text>, trace-output:<text>[@target], diagnostic=N, diagnostic:<code>[=N], diagnostic:<code>:<text>[=N], warning=N, warning:<text>, unsupported=N, unsupported:<text>, output:<text>, output-count:<text>=N, output-order:<N>:<text>, output-exact:<text>, output-matches:<regex>, output-command:<command>[=N|?|!], output-channel:<channel>[=N|?|!], output-target:<target>[=N|?|!], output-normalized:<text>, output-normalized-exact:<text>, output-normalized-matches:<regex>, output-segment:<text>[|color=<color>|bold=<true|false>][@target], output-segment-exact:<text>[...], output-segment-matches:<regex>[...], or output-payload:<command>:<path>[=<json>]",
+                "$label must be a JSON object or shorthand score:<target>:<objective>=N, storage:<id>[:<path>]=<json>, advancement:<player>:<id>[=<true|false>], predicate:<id>[=<true|false>], loot:<table>[:context=<id>][:player=<name>][:seed=N][:count=N][:item=<id>], entity:<type|*>[@tag]=N, block:<x>,<y>,<z>=<id>, block:<x>,<y>,<z>?, block:<x>,<y>,<z>!, biome:<x>,<y>,<z>=<id>, team:<name>[?|!|=N|@member], bossbar:<id>[?|!|:<field>=<value>], item:<player>:<id>[@slot]=N, player:<name>[:<field>=<value>], world:<field>=<value>, gamerule:<rule>=<value>, gamerule:<rule>?, gamerule:<rule>!, random-sequence:<name>=N, scheduled:<id>=<dueTick>, scheduled:<id>?, scheduled:<id>!, scoreboard-objective:<name>:<field>=<value>, scoreboard-objective:<name>?, scoreboard-objective:<name>!, scoreboard-display:<slot>=<objective>, scoreboard-display:<slot>?, scoreboard-display:<slot>!, forced-chunk:<x>,<z>?, forced-chunk:<x>,<z>!, snapshot:<path>=<json>, snapshot:<path>?, snapshot:<path>!, diff:<json-pointer>[=<kind>], event-trace:<player>:<type>[=N], trace:<root>=N, trace:<text>, trace-output:<text>[@target], diagnostic=N, diagnostic:<code>[=N], diagnostic:<code>:<text>[=N], warning=N, warning:<text>, unsupported=N, unsupported:<text>, output:<text>, output-count:<text>=N, output-order:<N>:<text>, output-exact:<text>, output-matches:<regex>, output-command:<command>[=N|?|!], output-channel:<channel>[=N|?|!], output-target:<target>[=N|?|!], output-normalized:<text>, output-normalized-exact:<text>, output-normalized-matches:<regex>, output-segment:<text>[|color=<color>|bold=<true|false>][@target], output-segment-exact:<text>[...], output-segment-matches:<regex>[...], or output-payload:<command>:<path>[=<json>]",
             )
         }
     }
@@ -776,6 +778,95 @@ class RunCommand : CliktCommand(name = "run") {
             json.addProperty("done", done)
         }
         return JsonObject().also { it.add("advancement", advancement) }
+    }
+
+    private fun parsePredicateAssertion(spec: String, label: String): JsonObject {
+        val trimmed = spec.trim()
+        if (trimmed.isEmpty()) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label predicate shorthand must be predicate:<id>[=<true|false>][:player=<name>][:equals=<true|false>]")
+        }
+        val optionPattern = Regex(":(player|equals)=")
+        val optionMatches = optionPattern.findAll(trimmed).toList()
+        val idAndExpected = if (optionMatches.isEmpty()) trimmed else trimmed.substring(0, optionMatches.first().range.first).trim()
+        val splitAt = idAndExpected.indexOf('=')
+        val id = if (splitAt < 0) idAndExpected else idAndExpected.substring(0, splitAt).trim()
+        if (id.isEmpty()) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label predicate shorthand must include a predicate id")
+        }
+        var expected = splitAt.takeIf { it >= 0 }?.let {
+            parseBooleanShorthand(idAndExpected.substring(it + 1).trim(), "$label predicate shorthand")
+        } ?: true
+        var player: String? = null
+        optionMatches.forEachIndexed { index, match ->
+            val key = match.groupValues[1]
+            val valueStart = match.range.last + 1
+            val valueEnd = optionMatches.getOrNull(index + 1)?.range?.first ?: trimmed.length
+            val value = trimmed.substring(valueStart, valueEnd).trim()
+            if (value.isEmpty()) {
+                throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label predicate option '$key' must not be empty")
+            }
+            when (key) {
+                "player" -> player = value
+                "equals" -> expected = parseBooleanShorthand(value, "$label predicate equals")
+            }
+        }
+        val predicate = JsonObject().also { json ->
+            json.addProperty("id", id)
+            json.addProperty("equals", expected)
+            player?.let { json.addProperty("player", it) }
+        }
+        return JsonObject().also { it.add("predicate", predicate) }
+    }
+
+    private fun parseBooleanShorthand(value: String, label: String): Boolean =
+        when (value.lowercase()) {
+            "true" -> true
+            "false" -> false
+            else -> throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label expected true or false but got '$value'")
+        }
+
+    private fun parseLootAssertion(spec: String, label: String): JsonObject {
+        val trimmed = spec.trim()
+        if (trimmed.isEmpty()) {
+            throw SandboxException(
+                DiagnosticCode.INPUT_FORMAT,
+                "$label loot shorthand must be loot:<table>[:context=<id>][:player=<name>][:seed=N][:count=N][:item=<id>]",
+            )
+        }
+        val optionPattern = Regex(":(context|player|seed|count|item)=")
+        val optionMatches = optionPattern.findAll(trimmed).toList()
+        val table = if (optionMatches.isEmpty()) trimmed else trimmed.substring(0, optionMatches.first().range.first).trim()
+        if (table.isEmpty()) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label loot shorthand must include a loot table id")
+        }
+        val loot = JsonObject().also { it.addProperty("table", table) }
+        optionMatches.forEachIndexed { index, match ->
+            val key = match.groupValues[1]
+            val valueStart = match.range.last + 1
+            val valueEnd = optionMatches.getOrNull(index + 1)?.range?.first ?: trimmed.length
+            val value = trimmed.substring(valueStart, valueEnd).trim()
+            if (value.isEmpty()) {
+                throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label loot option '$key' must not be empty")
+            }
+            when (key) {
+                "context", "player", "item" -> loot.addProperty(key, value)
+                "seed" -> loot.addProperty(
+                    key,
+                    value.toLongOrNull()
+                        ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label loot seed must be an integer"),
+                )
+                "count" -> loot.addProperty(
+                    key,
+                    value.toIntOrNull()
+                        ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label loot count must be an integer"),
+                )
+                else -> throw SandboxException(
+                    DiagnosticCode.INPUT_FORMAT,
+                    "$label loot option '$key' is not supported",
+                )
+            }
+        }
+        return JsonObject().also { it.add("loot", loot) }
     }
 
     private fun parseEntityCountAssertion(spec: String, label: String): JsonObject {

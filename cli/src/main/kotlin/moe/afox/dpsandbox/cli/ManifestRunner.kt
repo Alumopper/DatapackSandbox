@@ -933,7 +933,18 @@ object ManifestRunner {
             }
             assertion.has("predicate") -> {
                 val predicate = assertion.getAsJsonObject("predicate")
-                val result = sandbox.predicates.test(ResourceLocation.parse(predicate.requiredManifestString("id")), PredicateContext(world = sandbox.world, player = predicate.manifestString("player")?.let { sandbox.world.requirePlayer(it) }))
+                val player = predicate.manifestString("player")?.let { sandbox.world.requirePlayer(it) }
+                val result = sandbox.predicates.test(
+                    ResourceLocation.parse(predicate.requiredManifestString("id")),
+                    PredicateContext(
+                        world = sandbox.world,
+                        player = player,
+                        thisEntity = player,
+                        origin = player?.position,
+                        dimension = player?.dimension,
+                        tool = player?.selectedItem,
+                    ),
+                )
                 val expected = predicate.get("equals")?.asBoolean ?: true
                 if (result != expected) failures += "predicate ${predicate.requiredManifestString("id")} expected $expected but was $result"
             }

@@ -246,6 +246,8 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar run --version 26.2 \
   --assert "score:#fixture:runs=1" \
   --assert "storage:demo:env:ready=true" \
   --assert "player:Steve?" \
+  --assert "predicate:demo:has_carrot:player=Steve" \
+  --assert "loot:demo:gift:context=minecraft:advancement_reward:player=Steve:seed=42:count=1:item=minecraft:diamond" \
   --assert "item:Steve:minecraft:stick=3" \
   --assert "entity:minecraft:pig@fixture=1" \
   --assert "trace-output:generated ok@Steve" \
