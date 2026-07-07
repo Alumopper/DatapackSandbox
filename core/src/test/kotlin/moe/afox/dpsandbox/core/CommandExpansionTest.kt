@@ -633,6 +633,28 @@ class CommandExpansionTest {
     }
 
     @Test
+    fun `place feature applies deterministic random patch feature resources`() {
+        val pack = writeFeaturePlacePack(Files.createTempDirectory("dps-place-random-patch-pack"))
+        val sandbox = createSandbox("26.2", listOf(pack))
+
+        sandbox.executeCommand("place feature demo:placed_flowers 10 70 10")
+
+        assertEquals(ResourceLocation.parse("minecraft:poppy"), sandbox.world.requireBlock(BlockPos(10, 70, 10)).id)
+        assertEquals(ResourceLocation.parse("minecraft:poppy"), sandbox.world.requireBlock(BlockPos(9, 70, 9)).id)
+        assertEquals(ResourceLocation.parse("minecraft:poppy"), sandbox.world.requireBlock(BlockPos(9, 70, 10)).id)
+        val output = sandbox.world.outputs.single { it.command == "place feature" }
+        val payload = output.payload?.asJsonObject ?: error("missing place feature payload")
+        assertEquals(true, payload.get("placed").asBoolean)
+        assertEquals("configured-random_patch", payload.get("format").asString)
+        assertEquals("random_patch", payload.get("featureType").asString)
+        assertEquals("demo:flower_patch", payload.get("configuredFeature").asString)
+        assertEquals(3, payload.get("attemptedBlocks").asInt)
+        assertEquals(3, payload.get("changedBlocks").asInt)
+        assertEquals("minecraft:poppy", payload.getAsJsonObject("block").get("id").asString)
+        assertEquals(listOf("10 70 10", "9 70 9", "9 70 10"), output.targets)
+    }
+
+    @Test
     fun `attribute and loot commands expose sandbox-visible state`() {
         val pack = writeLootPack(Files.createTempDirectory("dps-command-expansion-pack"))
         val sandbox = createSandbox("26.2", listOf(pack))
@@ -2106,6 +2128,31 @@ class CommandExpansionTest {
             }
             """.trimIndent(),
         )
+        Files.writeString(
+            configuredRoot.resolve("flower_patch.json"),
+            """
+            {
+              "type": "minecraft:random_patch",
+              "config": {
+                "tries": 3,
+                "xz_spread": 1,
+                "y_spread": 0,
+                "feature": {
+                  "feature": {
+                    "type": "minecraft:simple_block",
+                    "config": {
+                      "to_place": {
+                        "type": "minecraft:simple_state_provider",
+                        "state": { "Name": "minecraft:poppy" }
+                      }
+                    }
+                  },
+                  "placement": []
+                }
+              }
+            }
+            """.trimIndent(),
+        )
         val placedRoot = root.resolve("data").resolve("demo").resolve("worldgen").resolve("placed_feature")
         Files.createDirectories(placedRoot)
         Files.writeString(
@@ -2113,6 +2160,15 @@ class CommandExpansionTest {
             """
             {
               "feature": "demo:simple_log",
+              "placement": []
+            }
+            """.trimIndent(),
+        )
+        Files.writeString(
+            placedRoot.resolve("placed_flowers.json"),
+            """
+            {
+              "feature": "demo:flower_patch",
               "placement": []
             }
             """.trimIndent(),

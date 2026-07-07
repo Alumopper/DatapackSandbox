@@ -117,6 +117,16 @@ private data class SandboxFeaturePlacement(
     val format: String,
 )
 
+private data class SandboxFeaturePlacementPlan(
+    val type: String,
+    val blocks: List<SandboxFeatureBlockPlacement>,
+)
+
+private data class SandboxFeatureBlockPlacement(
+    val offset: BlockPos,
+    val block: BlockArgument,
+)
+
 private data class SandboxStructureProcessorList(
     val ids: List<ResourceLocation>,
     val processors: List<SandboxStructureProcessor>,
@@ -1173,28 +1183,58 @@ class DatapackSandbox(
             payload.addProperty("reason", "Sandbox records place commands but no placed/configured feature resource was loaded")
             return emptyList()
         }
-        val block = feature.root.parseFeatureBlockArgument(location)
-        if (block == null) {
+        val plan = feature.root.parseFeaturePlacementPlan(location)
+        if (plan == null || plan.blocks.isEmpty()) {
             payload.addProperty("placed", false)
             payload.addProperty("format", "raw-json-index-only")
-            payload.addProperty("reason", "Loaded feature resource has no sandbox block or supported simple_block state")
+            payload.addProperty("reason", "Loaded feature resource has no sandbox block or supported simple_block/random_patch/flower state")
             return emptyList()
         }
 
-        val pos = BlockPos(floor(position.x).toInt(), floor(position.y).toInt(), floor(position.z).toInt())
-        val before = world.block(pos)?.copyForClone()
-        world.setBlock(pos, block.toBlock(pos, profile, location))
-        val after = world.block(pos)?.copyForClone()
-        val changed = !sameBlock(before, after)
+        val origin = BlockPos(floor(position.x).toInt(), floor(position.y).toInt(), floor(position.z).toInt())
+        val changedPositions = mutableListOf<BlockPos>()
+        plan.blocks.forEach { placement ->
+            val pos = BlockPos(
+                origin.x + placement.offset.x,
+                origin.y + placement.offset.y,
+                origin.z + placement.offset.z,
+            )
+            val before = world.block(pos)?.copyForClone()
+            world.setBlock(pos, placement.block.toBlock(pos, profile, location))
+            val after = world.block(pos)?.copyForClone()
+            if (!sameBlock(before, after)) changedPositions += pos
+        }
+
         payload.addProperty("placed", true)
-        payload.addProperty("format", feature.format)
+        payload.addProperty("format", feature.formatFor(plan))
+        payload.addProperty("featureType", plan.type)
         payload.addProperty("resourceKind", feature.kind)
-        payload.addProperty("changedBlocks", if (changed) 1 else 0)
-        payload.add("origin", blockPosOutput(pos))
-        payload.add("positions", blockPosArrayOutput(if (changed) listOf(pos) else emptyList()))
-        payload.add("block", blockArgumentOutput(block))
-        return if (changed) listOf(pos.toString()) else emptyList()
+        payload.addProperty("attemptedBlocks", plan.blocks.size)
+        payload.addProperty("changedBlocks", changedPositions.size)
+        payload.add("origin", blockPosOutput(origin))
+        payload.add("positions", blockPosArrayOutput(changedPositions))
+        payload.add("block", blockArgumentOutput(plan.blocks.first().block))
+        payload.add(
+            "blocks",
+            JsonArray().also { blocks ->
+                plan.blocks.forEach { placement ->
+                    blocks.add(
+                        JsonObject().also { entry ->
+                            entry.add("offset", blockPosOutput(placement.offset))
+                            entry.add("block", blockArgumentOutput(placement.block))
+                        },
+                    )
+                }
+            },
+        )
+        return changedPositions.map { it.toString() }
     }
+
+    private fun SandboxFeaturePlacement.formatFor(plan: SandboxFeaturePlacementPlan): String =
+        when (plan.type) {
+            "simple_block", "sandbox_block" -> format
+            else -> "configured-${plan.type}"
+        }
 
     private fun resolvePlaceFeature(id: ResourceLocation, payload: JsonObject, location: SourceLocation?): SandboxFeaturePlacement? {
         datapack.rawResources["worldgen/placed_feature"]?.get(id)?.let { placed ->
@@ -1232,6 +1272,102 @@ class DatapackSandbox(
         return null
     }
 
+    private fun JsonObject.parseFeaturePlacementPlan(location: SourceLocation?, depth: Int = 0): SandboxFeaturePlacementPlan? {
+        if (depth > 8) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Feature nesting depth exceeds sandbox limit 8", location)
+        }
+        val type = placeString("type", location)?.removePrefix("minecraft:") ?: "sandbox_block"
+        return when (type) {
+            "random_patch", "flower" -> parseRandomPatchFeature(type, location, depth)
+            else -> parseFeatureBlockArgument(location)?.let { block ->
+                SandboxFeaturePlacementPlan(type, listOf(SandboxFeatureBlockPlacement(BlockPos(0, 0, 0), block)))
+            }
+        }
+    }
+
+    private fun JsonObject.parseRandomPatchFeature(
+        type: String,
+        location: SourceLocation?,
+        depth: Int,
+    ): SandboxFeaturePlacementPlan? {
+        val config = getAsJsonObjectOrNull("config", location) ?: this
+        val nested = config.get("feature") ?: get("feature") ?: return null
+        val nestedPlan = parseNestedFeaturePlan(nested, "$type feature", location, depth + 1) ?: return null
+        val tries = config.placeInt("tries", nestedPlan.blocks.size.coerceAtLeast(1), "$type tries", location)
+        val xzSpread = config.placeInt("xz_spread", 0, "$type xz_spread", location).coerceAtLeast(0)
+        val ySpread = config.placeInt("y_spread", 0, "$type y_spread", location).coerceAtLeast(0)
+        val offsets = randomPatchOffsets(tries, xzSpread, ySpread)
+        val blocks = offsets.flatMap { patchOffset ->
+            nestedPlan.blocks.map { nestedBlock ->
+                SandboxFeatureBlockPlacement(
+                    offset = BlockPos(
+                        patchOffset.x + nestedBlock.offset.x,
+                        patchOffset.y + nestedBlock.offset.y,
+                        patchOffset.z + nestedBlock.offset.z,
+                    ),
+                    block = nestedBlock.block,
+                )
+            }
+        }.distinctBy { it.offset }
+        return SandboxFeaturePlacementPlan(type, blocks)
+    }
+
+    private fun parseNestedFeaturePlan(
+        value: JsonElement,
+        label: String,
+        location: SourceLocation?,
+        depth: Int,
+    ): SandboxFeaturePlacementPlan? =
+        when {
+            value.isJsonPrimitive -> {
+                val id = ResourceLocation.parse(value.asJsonPrimitive.asString)
+                val root = resolveReferencedFeature(id, label, location)
+                root.parseFeaturePlacementPlan(location, depth)
+            }
+            value.isJsonObject -> {
+                val root = value.asJsonObject
+                val nested = root.get("feature")
+                if (nested != null && (root.has("placement") || root.placeString("type", location) == null)) {
+                    parseNestedFeaturePlan(nested, "$label nested", location, depth)
+                } else {
+                    root.parseFeaturePlacementPlan(location, depth)
+                }
+            }
+            else -> throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label must be a feature id or object", location)
+        }
+
+    private fun resolveReferencedFeature(id: ResourceLocation, label: String, location: SourceLocation?): JsonObject {
+        val resource = datapack.rawResources["worldgen/configured_feature"]?.get(id)
+            ?: datapack.rawResources["worldgen/placed_feature"]?.get(id)
+            ?: throw SandboxException(DiagnosticCode.RESOURCE_NOT_FOUND, "Feature '$id' referenced by $label was not found", location)
+        if (!resource.root.isJsonObject) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Feature resource '$id' referenced by $label must be a JSON object", location)
+        }
+        return resource.root.asJsonObject
+    }
+
+    private fun randomPatchOffsets(tries: Int, xzSpread: Int, ySpread: Int): List<BlockPos> {
+        val cappedTries = tries.coerceIn(0, 64)
+        if (cappedTries == 0) return emptyList()
+        val yOrder = buildList {
+            add(0)
+            for (delta in 1..ySpread) {
+                add(delta)
+                add(-delta)
+            }
+        }
+        val candidates = mutableListOf(BlockPos(0, 0, 0))
+        yOrder.forEach { y ->
+            for (x in -xzSpread..xzSpread) {
+                for (z in -xzSpread..xzSpread) {
+                    if (x == 0 && y == 0 && z == 0) continue
+                    candidates += BlockPos(x, y, z)
+                }
+            }
+        }
+        return candidates.take(cappedTries)
+    }
+
     private fun JsonObject.parseFeatureBlockArgument(location: SourceLocation?): BlockArgument? {
         get("block")?.let { block ->
             return when {
@@ -1245,6 +1381,9 @@ class DatapackSandbox(
         if (type == null || type == "minecraft:simple_block" || type == "simple_block") {
             val config = getAsJsonObjectOrNull("config", location)
             val provider = config?.getAsJsonObjectOrNull("to_place", location) ?: getAsJsonObjectOrNull("to_place", location)
+            val weighted = provider?.getAsJsonArrayOrNull("entries")?.firstOrNull()?.asPlaceJsonObject("weighted state provider entry", location)
+            val weightedState = weighted?.getAsJsonObjectOrNull("data", location) ?: weighted?.getAsJsonObjectOrNull("state", location)
+            if (weightedState != null) return weightedState.parseBlockStateObject("weighted simple_block state", location)
             val state = provider?.getAsJsonObjectOrNull("state", location) ?: provider?.takeIf { it.has("Name") || it.has("id") }
             if (state != null) return state.parseBlockStateObject("simple_block state", location)
         }
@@ -1601,6 +1740,9 @@ class DatapackSandbox(
 
     private fun JsonObject.placeDouble(name: String, default: Double, label: String, location: SourceLocation?): Double =
         get(name)?.placeDouble(label, location) ?: default
+
+    private fun JsonObject.placeInt(name: String, default: Int, label: String, location: SourceLocation?): Int =
+        get(name)?.placeInt(label, location) ?: default
 
     private fun JsonElement.placeInt(label: String, location: SourceLocation?): Int =
         try {
