@@ -4682,9 +4682,50 @@ class DatapackSandbox(
                 payload.add("position", positionOutput(entity.position))
                 payload.add("tags", JsonArray().also { tagsArray -> entity.tags.forEach { tagsArray.add(it) } })
                 payload.add("nbt", nbt.deepCopy())
+                entityVariantPayloads(entity.type, fullNbt, location)?.let { payload.add("variantResources", it) }
             },
         )
     }
+
+    private fun entityVariantPayloads(entityType: ResourceLocation, nbt: JsonObject, location: SourceLocation?): JsonArray? {
+        val variants = JsonArray()
+        entityVariantResourceFields(entityType).forEach { (field, kind) ->
+            val value = nbt.get(field)?.takeIf { it.isJsonPrimitive } ?: return@forEach
+            val id = runCatching { ResourceLocation.parse(value.asString) }.getOrNull() ?: return@forEach
+            val resource = datapack.rawResources[kind]?.get(id) ?: return@forEach
+            if (!resource.root.isJsonObject) {
+                throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Entity variant resource '$id' of type '$kind' must be a JSON object", location)
+            }
+            variants.add(
+                JsonObject().also { payload ->
+                    payload.addProperty("type", kind)
+                    payload.addProperty("field", field)
+                    payload.addProperty("id", id.toString())
+                    payload.addProperty("resource", resource.file)
+                    payload.addProperty("version", resource.version ?: profile.id)
+                    payload.add("definition", resource.root.deepCopy())
+                },
+            )
+        }
+        return variants.takeIf { it.size() > 0 }
+    }
+
+    private fun entityVariantResourceFields(entityType: ResourceLocation): List<Pair<String, String>> =
+        when (entityType.toString()) {
+            "minecraft:cat" -> listOf("variant" to "cat_variant", "Variant" to "cat_variant")
+            "minecraft:chicken" -> listOf("variant" to "chicken_variant", "Variant" to "chicken_variant")
+            "minecraft:cow" -> listOf("variant" to "cow_variant", "Variant" to "cow_variant")
+            "minecraft:frog" -> listOf("variant" to "frog_variant", "Variant" to "frog_variant")
+            "minecraft:painting" -> listOf("variant" to "painting_variant", "Variant" to "painting_variant")
+            "minecraft:pig" -> listOf("variant" to "pig_variant", "Variant" to "pig_variant")
+            "minecraft:wolf" -> listOf(
+                "variant" to "wolf_variant",
+                "Variant" to "wolf_variant",
+                "sound_variant" to "wolf_sound_variant",
+                "SoundVariant" to "wolf_sound_variant",
+            )
+            else -> emptyList()
+        }
 
     private fun executeKill(tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext) {
         val targetToken = tokens.getOrNull(1)?.text ?: "@s"

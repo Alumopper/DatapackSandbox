@@ -99,7 +99,7 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar commands --json --output build
 | `spreadplayers` | 部分支持 | `modeled` | 确定性地把选中实体分布到中心附近；不实现原版碰撞/队伍算法。 |
 | `stop` | 空操作 | `observed-noop` | 记录结构化 debug 生命周期请求；宿主进程仍然控制运行时，不会被沙盒命令停止。 |
 | `stopsound` | 部分支持 | `observed-noop` | 记录为 sound 输出事件。 |
-| `summon` | 部分支持 | `modeled` | 在当前执行维度创建带位置、tag 和 schema 校验 NBT 的实体，并记录可用于 report/assertion 的结构化创建输出；命中已加载资源时会暴露 dimension/dimension_type 元数据；实体 AI 不 tick。 |
+| `summon` | 部分支持 | `modeled` | 在当前执行维度创建带位置、tag 和 schema 校验 NBT 的实体，并记录可用于 report/assertion 的结构化创建输出；命中已加载资源时会暴露 dimension/dimension_type 元数据，以及 cat/chicken/cow/frog/painting/pig/wolf 等实体 variant 元数据；实体 AI 不 tick。 |
 | `tag` | 支持 | `modeled` | `add`、`remove`、`list`。 |
 | `team` | 部分支持 | `modeled` | `add`、`remove`、`list`、`join`、`leave`、`empty`、`modify`；记录结构化队伍/成员/选项输出，不执行 gameplay 副作用。 |
 | `teammsg`、`tm` | 支持 | `modeled` | 记录为 team chat 输出事件；命中已加载的命令 chat type 时会暴露 `chat_type` JSON 元数据。 |

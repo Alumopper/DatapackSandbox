@@ -2825,6 +2825,9 @@ class ResourcesCommand : CliktCommand(name = "resources") {
             "advancement" -> "玩家 progress、criteria 匹配、rewards、output 和事件 trace。"
             "recipe" -> "进入资源索引和玩家 recipe 状态，供命令与 rewards 使用。"
             "item_modifier" -> "`item modify` 会应用常用 item modifier 函数。"
+            "cat_variant", "chicken_variant", "cow_variant", "frog_variant", "painting_variant", "pig_variant", "wolf_variant" ->
+                "summon 命令会暴露实体 variant JSON 元数据。"
+            "wolf_sound_variant" -> "summon wolf 会暴露 wolf sound variant JSON 元数据。"
             "chat_type" -> "聊天命令会暴露 chat type JSON 元数据。"
             "damage_type" -> "damage 命令会暴露 damage type JSON 元数据。"
             "dimension" -> "维度感知命令输出会暴露 dimension JSON 元数据。"

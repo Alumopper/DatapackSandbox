@@ -111,7 +111,7 @@ runs both English and localized docs checks through standalone jar smoke tasks.
 | `spreadplayers` | Partial | `modeled` | Deterministically distributes selected entities around a center; no collision/team algorithm. |
 | `stop` | No-op | `observed-noop` | Records a structured debug lifecycle request; the host process remains in control and is not stopped by sandbox commands. |
 | `stopsound` | Partial | `observed-noop` | Recorded as sound output event. |
-| `summon` | Partial | `modeled` | Creates entities in the current execution dimension with position, tags, schema-checked NBT, structured creation output, and loaded dimension/dimension_type metadata when present; AI does not tick. |
+| `summon` | Partial | `modeled` | Creates entities in the current execution dimension with position, tags, schema-checked NBT, structured creation output, loaded dimension/dimension_type metadata, and loaded entity variant metadata for cat/chicken/cow/frog/painting/pig/wolf variants when present; AI does not tick. |
 | `tag` | Supported | `modeled` | `add`, `remove`, `list`. |
 | `team` | Partial | `modeled` | `add`, `remove`, `list`, `join`, `leave`, `empty`, `modify`; records structured team/member/option output and has no gameplay effects. |
 | `teammsg`, `tm` | Supported | `modeled` | Recorded as team chat output; loaded `chat_type` JSON metadata is exposed when the modeled command chat type is present. |

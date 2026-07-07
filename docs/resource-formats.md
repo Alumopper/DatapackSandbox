@@ -99,10 +99,10 @@ smoke tasks.
 | `item_modifier` | `modeled` | common item modifier functions applied by item modify |
 | `tag/<registry>` | `observed-noop` | general tags with replace semantics and resource-index visibility |
 | `banner_pattern` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
-| `cat_variant` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
+| `cat_variant` | `modeled` | entity variant JSON metadata exposed by the summon command |
 | `chat_type` | `modeled` | chat type JSON metadata exposed by modeled chat commands |
-| `chicken_variant` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
-| `cow_variant` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
+| `chicken_variant` | `modeled` | entity variant JSON metadata exposed by the summon command |
+| `cow_variant` | `modeled` | entity variant JSON metadata exposed by the summon command |
 | `damage_type` | `modeled` | damage type JSON metadata exposed by the damage command |
 | `dialog` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
 | `dimension` | `modeled` | dimension JSON metadata exposed by dimension-aware command outputs |
@@ -110,17 +110,17 @@ smoke tasks.
 | `enchantment` | `modeled` | enchantment JSON metadata exposed by the enchant command |
 | `enchantment_provider` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
 | `equipment_asset` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
-| `frog_variant` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
+| `frog_variant` | `modeled` | entity variant JSON metadata exposed by the summon command |
 | `instrument` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
 | `jukebox_song` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
-| `painting_variant` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
-| `pig_variant` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
+| `painting_variant` | `modeled` | entity variant JSON metadata exposed by the summon command |
+| `pig_variant` | `modeled` | entity variant JSON metadata exposed by the summon command |
 | `test_environment` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
 | `test_instance` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
 | `trim_material` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
 | `trim_pattern` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
-| `wolf_sound_variant` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
-| `wolf_variant` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
+| `wolf_sound_variant` | `modeled` | wolf sound variant JSON metadata exposed by the summon command |
+| `wolf_variant` | `modeled` | entity variant JSON metadata exposed by the summon command |
 | `worldgen/biome` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
 | `worldgen/configured_carver` | `observed-noop` | version-checked raw JSON resource indexed for inspection |
 | `worldgen/configured_feature` | `modeled` | simple_block feature JSON consumed by place feature |
@@ -328,13 +328,13 @@ count; misses include actual snapshot diff candidates.
 
 ## Raw JSON Resources and Tags
 
-Chat types, damage types, dimensions, dimension types, enchantments, recipes, item modifiers, and additional registry resources are loaded as raw
+Chat types, damage types, dimensions, dimension types, enchantments, entity variants, recipes, item modifiers, and additional registry resources are loaded as raw
 JSON resources and included in the resource index. The sandbox does not yet
 execute the full crafting system, every item modifier function, or full
 worldgen semantics, but it models sandbox structure placement, processor_list
 block_ignore/simple rule handling, template_pool single/legacy jigsaw placement,
 simple_block feature placement, chat type metadata in modeled chat commands, and
-damage type metadata in `damage` command output, dimension and dimension type metadata in dimension-aware command outputs, plus enchantment metadata in `enchant` command output; the remaining resources are version-profile checked,
+damage type metadata in `damage` command output, dimension and dimension type metadata in dimension-aware command outputs, enchantment metadata in `enchant` command output, plus entity variant metadata in `summon` output; the remaining resources are version-profile checked,
 participate in pack overlay behavior, and can be inspected from API or REPL.
 `recipe give` and `recipe take` update player recipe state and report the
 concrete changed recipe ids in structured output. Loot tables can expand

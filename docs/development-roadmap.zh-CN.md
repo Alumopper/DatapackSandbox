@@ -41,6 +41,7 @@
   - `dimension` 和 `dimension_type` 已从 raw inspect 推进到维度感知命令调试面；`summon`、`kill`、`loot spawn`、`teleport`/`tp`、`setworldspawn` 和 `spawnpoint` 在命中已加载维度资源时，会把 dimension JSON、关联 dimension type JSON、资源文件和版本写入结构化输出。
 - P2：enchantment、jukebox song、trim material/pattern、banner pattern、wolf variant、painting variant 等版本相关注册表资源。
   - `enchantment` 已从 raw inspect 推进到 `enchant` 命令调试面；命中已加载资源时，结构化输出会暴露完整 enchantment JSON definition、资源文件和版本，便于命令生成器断言自定义附魔定义和实际写入的物品组件。
+  - `cat_variant`、`chicken_variant`、`cow_variant`、`frog_variant`、`painting_variant`、`pig_variant`、`wolf_variant` 和 `wolf_sound_variant` 已从 raw inspect 推进到 `summon` 命令调试面；实体 NBT 中的 `variant`/`sound_variant` 命中已加载资源时，结构化输出会暴露对应 variant JSON、资源文件和版本。
   - 额外 raw JSON 资源矩阵测试已直接复用 `ResourceCatalog.additionalRawJsonTypes`，确保 catalog 中列出的 P1/P2 资源都会被目录/zip loader、raw resource map 和资源索引覆盖，而不是只覆盖手写子集。
 
 验收标准：
@@ -71,7 +72,7 @@
 - 扩展 `item` 和 item modifier：
   - 支持 entity/block slot 读写、modifier 应用、components/NBT 兼容差异；entity item 槽位已覆盖玩家背包、当前主手、`enderchest.*` 和非玩家实体装备；`give`、`clear` 与 `item replace ... with` 已支持 JSON/SNBT-lite NBT 和 components payload，`give`、`item replace` 与 `item modify` 会记录结构化输出便于 report/assertion 调试；`item modify` 已支持 `copy_nbt` 和 `copy_components` 从当前栈或可用实体/玩家上下文复制 NBT/组件，`copy_components` 可用 `include`/`exclude` 过滤。
 - 扩展 `recipe`、`advancement`、`attribute`、`damage`、`effect`、`enchant`、`random`、`team`、`bossbar`、`worldborder` 的子命令覆盖；`recipe give/take` 已维护玩家 recipe 集合，并在结构化输出中报告 changed 数量和实际变更的 recipe id 列表，便于生成器断言 `*` 展开结果。
-  - `summon` 已记录结构化创建输出，便于命令生成器、manifest assertion 和随手测试确认实体类型、位置、维度、tag 与输入 NBT。
+  - `summon` 已记录结构化创建输出，便于命令生成器、manifest assertion 和随手测试确认实体类型、位置、维度、tag 与输入 NBT；命中已加载实体 variant 资源时，还会输出 cat/chicken/cow/frog/painting/pig/wolf variant 或 wolf sound variant JSON 元数据。
   - `teleport`/`tp` 已记录结构化移动输出，便于调试传送前后坐标、维度和旋转变化。
   - `rotate` 已记录结构化前后旋转输出，便于调试 `execute rotated/facing`、局部坐标和传送旋转链路。
   - `ride` 已记录结构化 mount/dismount 输出，便于调试乘客、载具和实体关系变化。

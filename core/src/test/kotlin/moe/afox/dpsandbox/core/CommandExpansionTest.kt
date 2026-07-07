@@ -355,6 +355,36 @@ class CommandExpansionTest {
     }
 
     @Test
+    fun `summon exposes loaded entity variant metadata`() {
+        val sandbox = createSandbox("26.2", listOf(writeEntityVariantPack(Files.createTempDirectory("dps-entity-variant-pack"))))
+
+        sandbox.executeCommand("""summon minecraft:painting 0 64 0 {variant:"demo:small_canvas",Tags:["custom_painting"]}""")
+        sandbox.executeCommand("""summon minecraft:wolf 1 64 0 {variant:"demo:ashen",sound_variant:"demo:quiet",Tags:["custom_wolf"]}""")
+
+        val paintingPayload = sandbox.world.outputs
+            .filter { it.command == "summon" }
+            .mapNotNull { it.payload?.asJsonObject }
+            .single { it.get("type").asString == "minecraft:painting" }
+        val paintingVariant = paintingPayload.getAsJsonArray("variantResources")[0].asJsonObject
+        assertEquals("painting_variant", paintingVariant.get("type").asString)
+        assertEquals("variant", paintingVariant.get("field").asString)
+        assertEquals("demo:small_canvas", paintingVariant.get("id").asString)
+        assertEquals(2, paintingVariant.getAsJsonObject("definition").get("width").asInt)
+
+        val wolfPayload = sandbox.world.outputs
+            .filter { it.command == "summon" }
+            .mapNotNull { it.payload?.asJsonObject }
+            .single { it.get("type").asString == "minecraft:wolf" }
+        val wolfVariants = wolfPayload.getAsJsonArray("variantResources")
+            .map { it.asJsonObject }
+            .associateBy { it.get("type").asString }
+        assertEquals("demo:ashen", wolfVariants.getValue("wolf_variant").get("id").asString)
+        assertEquals("demo:entity/wolf/ashen", wolfVariants.getValue("wolf_variant").getAsJsonObject("definition").get("wild_texture").asString)
+        assertEquals("demo:quiet", wolfVariants.getValue("wolf_sound_variant").get("id").asString)
+        assertEquals("minecraft:entity.wolf.ambient", wolfVariants.getValue("wolf_sound_variant").getAsJsonObject("definition").get("ambient_sound").asString)
+    }
+
+    @Test
     fun `place structure applies sandbox structure json resources`() {
         val pack = writeStructurePlacePack(Files.createTempDirectory("dps-place-structure-pack"))
         val sandbox = createSandbox("26.2", listOf(pack))
@@ -1557,6 +1587,60 @@ class CommandExpansionTest {
               "anvil_cost": 4,
               "slots": ["mainhand"],
               "effects": {}
+            }
+            """.trimIndent(),
+        )
+        return root
+    }
+
+    private fun writeEntityVariantPack(root: Path): Path {
+        Files.writeString(
+            root.resolve("pack.mcmeta").also { Files.createDirectories(it.parent) },
+            """
+            {
+              "pack": {
+                "pack_format": 107.1,
+                "description": "entity variant metadata test"
+              }
+            }
+            """.trimIndent(),
+        )
+        val paintingRoot = root.resolve("data").resolve("demo").resolve("painting_variant")
+        Files.createDirectories(paintingRoot)
+        Files.writeString(
+            paintingRoot.resolve("small_canvas.json"),
+            """
+            {
+              "asset_id": "demo:small_canvas",
+              "width": 2,
+              "height": 1
+            }
+            """.trimIndent(),
+        )
+        val wolfRoot = root.resolve("data").resolve("demo").resolve("wolf_variant")
+        Files.createDirectories(wolfRoot)
+        Files.writeString(
+            wolfRoot.resolve("ashen.json"),
+            """
+            {
+              "wild_texture": "demo:entity/wolf/ashen",
+              "tame_texture": "demo:entity/wolf/ashen_tame",
+              "angry_texture": "demo:entity/wolf/ashen_angry"
+            }
+            """.trimIndent(),
+        )
+        val wolfSoundRoot = root.resolve("data").resolve("demo").resolve("wolf_sound_variant")
+        Files.createDirectories(wolfSoundRoot)
+        Files.writeString(
+            wolfSoundRoot.resolve("quiet.json"),
+            """
+            {
+              "ambient_sound": "minecraft:entity.wolf.ambient",
+              "death_sound": "minecraft:entity.wolf.death",
+              "growl_sound": "minecraft:entity.wolf.growl",
+              "hurt_sound": "minecraft:entity.wolf.hurt",
+              "pant_sound": "minecraft:entity.wolf.pant",
+              "whine_sound": "minecraft:entity.wolf.whine"
             }
             """.trimIndent(),
         )

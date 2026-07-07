@@ -59,6 +59,10 @@ object NbtSchemas {
         "PickupDelay",
         "Owner",
         "Thrower",
+        "variant",
+        "Variant",
+        "sound_variant",
+        "SoundVariant",
         "AgeLocked",
     )
 
