@@ -73,6 +73,24 @@ data class ScoreKey(val target: String, val objective: String) : Comparable<Scor
 }
 
 /**
+ * Scoreboard objective UI metadata exposed for generator/debug assertions.
+ */
+data class ScoreboardObjectiveMetadata(
+    var displayName: String? = null,
+    var renderType: String = "integer",
+    var displayAutoUpdate: Boolean = true,
+) {
+    fun toJson(name: String, criteria: String): JsonObject =
+        JsonObject().also { json ->
+            json.addProperty("name", name)
+            json.addProperty("criteria", criteria)
+            json.addProperty("displayName", displayName ?: name)
+            json.addProperty("renderType", renderType)
+            json.addProperty("displayAutoUpdate", displayAutoUpdate)
+        }
+}
+
+/**
  * Floating-point entity or command position.
  */
 data class Position(val x: Double, val y: Double, val z: Double) {
@@ -799,6 +817,7 @@ class SandboxWorld {
     var tickFrozen: Boolean = false
 
     val objectives: MutableMap<String, String> = linkedMapOf()
+    val scoreboardObjectiveMetadata: MutableMap<String, ScoreboardObjectiveMetadata> = linkedMapOf()
     val scoreboardDisplays: MutableMap<String, String> = linkedMapOf()
     val scores: MutableMap<ScoreKey, Int> = linkedMapOf()
     val storages: MutableMap<ResourceLocation, JsonObject> = linkedMapOf()
@@ -853,6 +872,7 @@ class SandboxWorld {
      */
     fun addObjective(name: String, criteria: String) {
         objectives[name] = criteria
+        scoreboardObjectiveMetadata[name] = ScoreboardObjectiveMetadata()
     }
 
     /**
@@ -860,6 +880,7 @@ class SandboxWorld {
      */
     fun removeObjective(name: String) {
         objectives.remove(name)
+        scoreboardObjectiveMetadata.remove(name)
         scoreboardDisplays.keys.filter { scoreboardDisplays[it] == name }.forEach { scoreboardDisplays.remove(it) }
         scores.keys.filter { it.objective == name }.forEach { scores.remove(it) }
     }
@@ -986,6 +1007,12 @@ class SandboxWorld {
             objectivesJson.addProperty(name, criteria)
         }
         root.add("objectives", objectivesJson)
+
+        val objectiveDetailsJson = JsonArray()
+        objectives.toSortedMap().forEach { (name, criteria) ->
+            objectiveDetailsJson.add((scoreboardObjectiveMetadata[name] ?: ScoreboardObjectiveMetadata()).toJson(name, criteria))
+        }
+        root.add("objectiveDetails", objectiveDetailsJson)
 
         val scoreboardDisplaysJson = JsonArray()
         scoreboardDisplays.toSortedMap().forEach { (slot, objective) ->

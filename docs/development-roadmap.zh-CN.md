@@ -88,6 +88,7 @@
   - `advancement grant/revoke` 已展开 `from`、`through`、`until` 的 parent/child 树，并记录结构化 criterion 更新输出，便于调试进度树批量修改和 `execute store` 结果。
   - `random value/roll/reset` 已记录结构化序列状态输出，随机序列 state 会进入 snapshot，便于调试 deterministic random、reset seed 和 `execute store` 链路。
   - `gamerule <rule> <value>` 已记录结构化修改输出，便于调试规则值输入、前值和 query 链路。
+  - `scoreboard objectives modify` 已记录 objective displayName、renderType 和 displayAutoUpdate 元数据，进入 `objectiveDetails` snapshot，并提供结构化输出，便于调试 UI/显示类生成命令。
   - `scoreboard objectives setdisplay` 已记录 objective display slot 状态和结构化输出，便于调试侧边栏、列表、队伍侧边栏等 UI 目标生成命令，并可通过 snapshot/断言检查。
   - `team add/remove/list/join/leave/empty/modify` 已记录结构化队伍状态输出，便于调试成员变化、显示名和选项输入。
   - `place feature|jigsaw|structure|template` 已作为 observed-noop 接受并记录结构化 worldgen 输出，便于命令生成器验证放置目标、位置和额外参数。
@@ -132,6 +133,7 @@
 - 所有新增状态都有 snapshot、assertion 和 inspect 路径。
   - schedule 状态已进入 snapshot，并可通过 QuickTest `assertScheduledFunction`、CLI `scheduled:<id>` 断言简写和 REPL `inspect schedule` 查看排程函数、dueTick、条目数量和 remaining ticks，便于调试 `schedule function` / `schedule clear` 与 tick 推进。
   - forced chunk 状态已进入 snapshot，并可通过 QuickTest/manifest world assertion、CLI `forced-chunk:<x>,<z>` / `forceload:<x>,<z>` 断言简写和 REPL `inspect forced-chunks` 检查强加载 chunk，便于调试 `forceload` 与 `execute if/unless loaded`。
+  - scoreboard objective 元数据已进入 `objectiveDetails` snapshot，并可通过 CLI `scoreboard-objective:<name>` 断言简写检查 `criteria`、`displayName`、`renderType` 和 `displayAutoUpdate`，便于调试 scoreboard UI 命令生成结果。
   - scoreboard display slot 状态已进入 snapshot，并可通过 CLI `scoreboard-display:<slot>` 断言简写检查 `sidebar`、`list`、`below_name` 和 `sidebar.team.<color>` 等 slot，便于调试 UI 目标命令生成结果。
 
 ## 阶段 4：输入事件与玩家交互模拟
@@ -218,6 +220,7 @@
   - `--allow-command-failure` 已可让直接命令输入在预期失败后继续执行，配合 diagnostic/trace/output 断言检查错误码、错误消息和后续状态。
   - `--assert`/`--assert-file` 已支持 score、storage、advancement、player、world、gamerule、random sequence、scheduled function、snapshot、block、biome、team、bossbar、item、entity、diff、event-trace、trace、trace-output、diagnostic、warning、unsupported、output、output-count、output-order、output-exact、output-matches、output-command、output-channel、output-target、output-normalized、output-normalized-exact、output-normalized-matches、output-segment、output-segment-exact、output-segment-matches 和 output-payload 简写；`world:<field>=<value>` 可直接检查时间、天气、难度、seed 和默认游戏模式，`gamerule:<rule>=<value>`、`gamerule:<rule>?`、`gamerule:<rule>!` 可直接检查 gamerule snapshot 状态，`scheduled:<id>=<dueTick>`、`scheduled:<id>?`、`scheduled:<id>!` 可直接检查排程函数状态，`snapshot:<path>=<json>`、`snapshot:<path>?`、`snapshot:<path>!` 可直接检查最终 snapshot 路径，`block:<x>,<y>,<z>=<id>`、`block:<x>,<y>,<z>?`、`block:<x>,<y>,<z>!` 可直接检查 sparse world 方块，`biome:<x>,<y>,<z>=<id>` 可直接检查显式 biome 覆盖，`team:<name>?`、`team:<name>@<member>`、`team:<name>=N` 和 `bossbar:<id>:<field>=<value>` 可直接检查队伍/UI 状态，`event-trace:<player>:<type>@x,y,z[=N]` 可直接按 block event 坐标过滤，`diagnostic:<code>:<text>[=N]` 可直接检查预期 diagnostic 编码和消息片段，`output-command:<command>=N`、`output-channel:<channel>=N`、`output-target:<target>?` 这类简写可直接按命令、channel 或目标检查输出数量、存在或缺失，`output-count` 和 `output-order` 可直接检查匹配输出数量与全局输出顺序，`output-exact`、`output-matches`、`output-normalized-*` 和 `output-segment-*` 可覆盖精确、contains、normalized 与正则文本匹配，`output-payload` 支持 path 存在性和等值检查，`examples/generator-output` 已覆盖结构化输出 payload 断言，适合命令生成器结果的快速回归。
   - `forced-chunk:<x>,<z>?`、`forced-chunk:<x>,<z>!` 和 `forceload:<x>,<z>?` 已可直接检查最终 snapshot 中的强加载 chunk 存在或缺失，适合快速验证 `forceload add/remove`、world fixture 和 `execute loaded` 条件。
+  - `scoreboard-objective:<name>:displayName=<text>`、`scoreboard-objective:<name>:renderType=<type>`、`scoreboard-objective:<name>:displayAutoUpdate=<bool>` 和 `scoreboard-objective:<name>?/!` 已可直接检查 objective 元数据。
   - `scoreboard-display:<slot>=<objective>`、`scoreboard-display:<slot>?` 和 `scoreboard-display:<slot>!` 已可直接检查 objective display slot，适合验证侧边栏/list/below_name 以及队伍侧边栏生成命令。
 - 增强 REPL：
   - `inspect` 输出结构更稳定；`inspect event-traces` 已可直接打印玩家事件 trace JSON，并已接入 REPL/CLI 补全和命令目录，便于调试事件输入、block 坐标和 advancement 匹配。

@@ -154,7 +154,15 @@ class DpsCompletionEngine(private val sandbox: () -> DatapackSandbox) {
         when {
             context.wordIndex == 1 -> listOf("objectives", "players").suggest("scoreboard groups", appendSpace = true)
             words.getOrNull(1) == "objectives" && context.wordIndex == 2 ->
-                listOf("add", "remove", "list", "setdisplay").suggest("objective actions", appendSpace = true)
+                listOf("add", "remove", "list", "modify", "setdisplay").suggest("objective actions", appendSpace = true)
+            words.getOrNull(1) == "objectives" && words.getOrNull(2) == "modify" && context.wordIndex == 3 ->
+                scoreboardObjectives().suggest("objectives", appendSpace = true)
+            words.getOrNull(1) == "objectives" && words.getOrNull(2) == "modify" && context.wordIndex == 4 ->
+                scoreboardObjectiveFields.suggest("objective fields", appendSpace = true)
+            words.getOrNull(1) == "objectives" && words.getOrNull(2) == "modify" && words.getOrNull(4) == "rendertype" && context.wordIndex == 5 ->
+                listOf("integer", "hearts").suggest("render types")
+            words.getOrNull(1) == "objectives" && words.getOrNull(2) == "modify" && words.getOrNull(4) == "displayautoupdate" && context.wordIndex == 5 ->
+                booleans.suggest("booleans")
             words.getOrNull(1) == "objectives" && words.getOrNull(2) == "setdisplay" && context.wordIndex == 3 ->
                 scoreboardDisplaySlots.suggest("display slots", appendSpace = true)
             words.getOrNull(1) == "objectives" && words.getOrNull(2) == "setdisplay" && context.wordIndex == 4 ->
@@ -588,6 +596,7 @@ class DpsCompletionEngine(private val sandbox: () -> DatapackSandbox) {
         private val mouseButtons = listOf("left", "right", "middle", "scroll")
         private val booleans = listOf("true", "false")
         private val gameModes = listOf("survival", "creative", "adventure", "spectator")
+        private val scoreboardObjectiveFields = listOf("displayname", "rendertype", "displayautoupdate")
         private val scoreboardDisplaySlots = listOf("list", "sidebar", "below_name", "sidebar.team.red", "sidebar.team.blue")
         private val difficulties = listOf("peaceful", "easy", "normal", "hard")
         private val attributes = listOf(

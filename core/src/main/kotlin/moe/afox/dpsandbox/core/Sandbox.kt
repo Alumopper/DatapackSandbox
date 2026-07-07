@@ -485,7 +485,7 @@ class DatapackSandbox(
                 "function" -> return executeFunction(tokens, location, context).success
                 "return" -> executeReturn(command, tokens, location, context)
                 "attribute" -> executeAttribute(tokens, location, context)
-                "scoreboard" -> executeScoreboard(tokens, location)
+                "scoreboard" -> executeScoreboard(command, tokens, location)
                 "bossbar" -> executeBossbar(command, tokens, location, context)
                 "clear" -> executeClear(tokens, location, context)
                 "clone" -> executeClone(tokens, location, context)
@@ -1333,16 +1333,16 @@ class DatapackSandbox(
             )
         }
 
-    private fun executeScoreboard(tokens: List<CommandToken>, location: SourceLocation?) {
+    private fun executeScoreboard(command: String, tokens: List<CommandToken>, location: SourceLocation?) {
         requireSize(tokens, 3, "scoreboard <objectives|players> ...", location)
         when (tokens[1].text) {
-            "objectives" -> executeObjectives(tokens, location)
+            "objectives" -> executeObjectives(command, tokens, location)
             "players" -> executePlayers(tokens, location)
             else -> unsupportedFeature("Unsupported scoreboard subcommand '${tokens[1].text}'", profile.id, location)
         }
     }
 
-    private fun executeObjectives(tokens: List<CommandToken>, location: SourceLocation?) {
+    private fun executeObjectives(command: String, tokens: List<CommandToken>, location: SourceLocation?) {
         when (tokens[2].text) {
             "add" -> {
                 requireSize(tokens, 5, "scoreboard objectives add <objective> <criteria>", location)
@@ -1365,9 +1365,61 @@ class DatapackSandbox(
                 }
                 recordScoreboardDisplay(slot, objective, before)
             }
+            "modify" -> executeObjectiveModify(command, tokens, location)
             "list" -> recordObjectiveList()
             else -> unsupportedFeature("Unsupported scoreboard objectives action '${tokens[2].text}'", profile.id, location)
         }
+    }
+
+    private fun executeObjectiveModify(command: String, tokens: List<CommandToken>, location: SourceLocation?) {
+        requireSize(tokens, 6, "scoreboard objectives modify <objective> <displayname|rendertype|displayautoupdate> <value>", location)
+        val objective = tokens[3].text
+        world.ensureObjective(objective)
+        val metadata = world.scoreboardObjectiveMetadata.getOrPut(objective) { ScoreboardObjectiveMetadata() }
+        val field = when (tokens[4].text.lowercase()) {
+            "displayname" -> "displayName"
+            "rendertype" -> "renderType"
+            "displayautoupdate" -> "displayAutoUpdate"
+            else -> unsupportedFeature("Unsupported scoreboard objective field '${tokens[4].text}'", profile.id, location)
+        }
+        val before = when (field) {
+            "displayName" -> JsonPrimitive(metadata.displayName ?: objective)
+            "renderType" -> JsonPrimitive(metadata.renderType)
+            "displayAutoUpdate" -> JsonPrimitive(metadata.displayAutoUpdate)
+            else -> JsonPrimitive("")
+        }
+        val value = when (field) {
+            "displayName" -> JsonPrimitive(CommandTokenizer.tailFrom(command, tokens[5]))
+            "renderType" -> {
+                val renderType = tokens[5].text
+                if (renderType !in setOf("integer", "hearts")) {
+                    throw SandboxException(DiagnosticCode.INPUT_FORMAT, "scoreboard objective render type must be integer or hearts", location)
+                }
+                JsonPrimitive(renderType)
+            }
+            "displayAutoUpdate" -> JsonPrimitive(parseBoolean(tokens[5].text, "scoreboard objective displayAutoUpdate", location))
+            else -> JsonPrimitive("")
+        }
+        when (field) {
+            "displayName" -> metadata.displayName = value.asString
+            "renderType" -> metadata.renderType = value.asString
+            "displayAutoUpdate" -> metadata.displayAutoUpdate = value.asBoolean
+        }
+        recordScoreboardObjectiveModify(objective, field, value, before)
+    }
+
+    private fun recordScoreboardObjectiveModify(objective: String, field: String, value: JsonElement, before: JsonElement) {
+        world.recordOutput(
+            "scoreboard objectives modify",
+            "data",
+            text = "$objective $field=${JsonValues.render(value).trim()}",
+            payload = JsonObject().also { payload ->
+                payload.addProperty("objective", objective)
+                payload.addProperty("field", field)
+                payload.add("value", value)
+                payload.add("previous", before)
+            },
+        )
     }
 
     private fun recordScoreboardDisplay(slot: String, objective: String?, before: String?) {

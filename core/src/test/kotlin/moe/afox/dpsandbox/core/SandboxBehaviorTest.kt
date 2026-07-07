@@ -742,6 +742,35 @@ class SandboxBehaviorTest {
     }
 
     @Test
+    fun `scoreboard objective metadata is modeled and snapshotted`() {
+        val sandbox = createSandbox("26.1.2", listOf(fixturePack()))
+
+        sandbox.executeCommand("scoreboard objectives add health dummy")
+        sandbox.executeCommand("scoreboard objectives modify health displayname Health Points")
+        sandbox.executeCommand("scoreboard objectives modify health rendertype hearts")
+        sandbox.executeCommand("scoreboard objectives modify health displayautoupdate false")
+
+        val metadata = sandbox.world.scoreboardObjectiveMetadata.getValue("health")
+        assertEquals("Health Points", metadata.displayName)
+        assertEquals("hearts", metadata.renderType)
+        assertEquals(false, metadata.displayAutoUpdate)
+
+        val detail = sandbox.snapshotJson().getAsJsonArray("objectiveDetails")
+            .single { it.asJsonObject.get("name").asString == "health" }
+            .asJsonObject
+        assertEquals("dummy", detail.get("criteria").asString)
+        assertEquals("Health Points", detail.get("displayName").asString)
+        assertEquals("hearts", detail.get("renderType").asString)
+        assertEquals(false, detail.get("displayAutoUpdate").asBoolean)
+
+        val displayNameOutput = sandbox.world.outputs.first { it.command == "scoreboard objectives modify" }
+        assertEquals("health", displayNameOutput.payload?.asJsonObject?.get("objective")?.asString)
+        assertEquals("displayName", displayNameOutput.payload?.asJsonObject?.get("field")?.asString)
+        assertEquals("Health Points", displayNameOutput.payload?.asJsonObject?.get("value")?.asString)
+        assertEquals("health", displayNameOutput.payload?.asJsonObject?.get("previous")?.asString)
+    }
+
+    @Test
     fun `creates a default player with readable vanilla style nbt`() {
         val sandbox = createSandbox("26.1.2", listOf(fixturePack()))
 

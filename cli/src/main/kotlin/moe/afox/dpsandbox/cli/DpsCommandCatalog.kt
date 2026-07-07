@@ -133,7 +133,7 @@ object DpsCommandCatalog {
             "op", "deop", "pardon", "pardon-ip" -> " <target>"
             "whitelist" -> " <add|remove|list|on|off|reload> [target]"
             "debug", "jfr", "perf" -> " <action> [...]"
-            "scoreboard" -> " objectives <add|remove|list|setdisplay>|players ..."
+            "scoreboard" -> " objectives <add|remove|list|modify|setdisplay>|players ..."
             "execute" -> " as|at|if|unless|store ... run <command>"
             "data" -> " <get|modify|merge|remove> <storage|entity|block> ..."
             "bossbar" -> " <add|remove|list|get|set> ..."

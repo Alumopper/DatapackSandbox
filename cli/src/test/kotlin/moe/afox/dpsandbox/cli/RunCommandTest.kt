@@ -778,6 +778,43 @@ class RunCommandTest {
     }
 
     @Test
+    fun `run accepts scoreboard objective shorthand inline assertions`() {
+        val output = captureStdout {
+            main(
+                arrayOf(
+                    "run",
+                    "--version",
+                    "26.2",
+                    "--command",
+                    "scoreboard objectives add health dummy",
+                    "--command",
+                    "scoreboard objectives modify health displayname Health Points",
+                    "--command",
+                    "scoreboard objectives modify health rendertype hearts",
+                    "--command",
+                    "scoreboard objectives modify health displayautoupdate false",
+                    "--assert",
+                    "scoreboard-objective:health?",
+                    "--assert",
+                    "scoreboard-objective:health:displayName=Health Points",
+                    "--assert",
+                    "scoreboard-objective:health:renderType=hearts",
+                    "--assert",
+                    "scoreboard-objective:health:displayAutoUpdate=false",
+                    "--assert",
+                    "scoreboard-objective:missing!",
+                    "--snapshot",
+                ),
+            )
+        }
+
+        assertTrue("OK version=26.2" in output, output)
+        assertTrue("\"objectiveDetails\"" in output, output)
+        assertTrue("\"displayName\": \"Health Points\"" in output, output)
+        assertTrue("\"renderType\": \"hearts\"" in output, output)
+    }
+
+    @Test
     fun `run accepts biome shorthand inline assertions`() {
         val output = captureStdout {
             main(
