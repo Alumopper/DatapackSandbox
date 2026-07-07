@@ -91,6 +91,8 @@ class DpsCompleterTest {
         assertSuggests(completer, "load ", "fixture")
         assertSuggests(completer, "inspect ", "world")
         assertSuggests(completer, "inspect ", "worldborder")
+        assertSuggests(completer, "inspect ", "team")
+        assertSuggests(completer, "inspect ", "bossbar")
         assertSuggests(completer, "inspect ", "raw")
         assertSuggests(completer, "inspect ", "gamerule")
         assertSuggests(completer, "inspect ", "random")
@@ -107,6 +109,12 @@ class DpsCompleterTest {
         assertSuggests(DpsCompleter { randomSandbox }, "inspect random ", "demo:seq")
         randomSandbox.world.gamerules["doDaylightCycle"] = "false"
         assertSuggests(DpsCompleter { randomSandbox }, "inspect gamerule ", "doDaylightCycle")
+
+        val uiSandbox = createSandbox("26.1.2", listOf(Path.of("../core/src/test/resources/packs/counter")))
+        uiSandbox.executeCommand("team add red Red Team")
+        uiSandbox.executeCommand("bossbar add demo:timer Timer")
+        assertSuggests(DpsCompleter { uiSandbox }, "inspect team ", "red")
+        assertSuggests(DpsCompleter { uiSandbox }, "inspect bossbar ", "demo:timer")
     }
 
     @Test

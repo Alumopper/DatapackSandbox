@@ -199,6 +199,41 @@ class ReplTest {
     }
 
     @Test
+    fun `inspects team and bossbar UI state`() {
+        val repl = Repl(createSandbox("26.1.2", listOf(Path.of("../core/src/test/resources/packs/counter"))))
+
+        val output = captureStdout {
+            repl.handle("team add red Red Team")
+            repl.handle("team join red Steve Alex")
+            repl.handle("team modify red color blue")
+            repl.handle("team modify red friendlyFire false")
+            repl.handle("bossbar add demo:timer Timer")
+            repl.handle("bossbar set demo:timer value 5")
+            repl.handle("bossbar set demo:timer max 20")
+            repl.handle("bossbar set demo:timer color red")
+            repl.handle("bossbar set demo:timer style notched_10")
+            repl.handle("bossbar set demo:timer visible false")
+            repl.handle("bossbar set demo:timer players Steve")
+            repl.handle("inspect team")
+            repl.handle("inspect team red")
+            repl.handle("inspect team missing")
+            repl.handle("inspect bossbar")
+            repl.handle("inspect bossbar demo:timer")
+            repl.handle("inspect bossbar demo:missing")
+        }
+
+        assertTrue(
+            output.contains("team red displayName=Red Team members=[Alex, Steve] options=[color=blue, friendlyFire=false]"),
+            output,
+        )
+        assertTrue(
+            output.contains("bossbar demo:timer name=Timer value=5 max=20 color=red style=notched_10 visible=false players=[Steve]"),
+            output,
+        )
+        assertTrue(output.lines().count { it.trim() == "<missing>" } >= 2, output)
+    }
+
+    @Test
     fun `inspects world state and world border`() {
         val sandbox = createSandbox("26.1.2", listOf(Path.of("../core/src/test/resources/packs/counter")))
         val repl = Repl(sandbox)

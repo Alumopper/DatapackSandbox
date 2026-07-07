@@ -7,7 +7,9 @@ import moe.afox.dpsandbox.core.ExecutionResult
 import moe.afox.dpsandbox.core.JsonPaths
 import moe.afox.dpsandbox.core.JsonValues
 import moe.afox.dpsandbox.core.ResourceLocation
+import moe.afox.dpsandbox.core.SandboxBossbar
 import moe.afox.dpsandbox.core.SandboxException
+import moe.afox.dpsandbox.core.SandboxTeam
 import moe.afox.dpsandbox.core.SandboxWorld
 import moe.afox.dpsandbox.core.SnapshotDiff
 import moe.afox.dpsandbox.core.UnsupportedFeatureMode
@@ -232,7 +234,7 @@ class Repl(
         "Commands: load, load fixture <file>, reload, tick [n], function <id>, player <name>, event player <name> <type> [id] [detail/action|x y z|pos=x,y,z], trace <on|off|status>, diff last, rerun last, reset world, ${inspectUsage()}, snapshot [file], exit"
 
     private fun inspectUsage(): String =
-        "inspect <world|worldborder|score|storage|gamerule|random|schedule|forced-chunks|scoreboard|entities|blocks|player|loot|predicate|advancement|recipe|item_modifier|raw|tags|resources|registry [group]|outputs|event-traces>"
+        "inspect <world|worldborder|score|storage|gamerule|random|schedule|forced-chunks|scoreboard|team|bossbar|entities|blocks|player|loot|predicate|advancement|recipe|item_modifier|raw|tags|resources|registry [group]|outputs|event-traces>"
 
     private fun reload() {
         if (packs.isEmpty()) {
@@ -387,6 +389,8 @@ class Repl(
                 }
             }
             "scoreboard" -> inspectScoreboard(args)
+            "team", "teams" -> inspectTeams(args)
+            "bossbar", "bossbars" -> inspectBossbars(args)
             "entities" -> {
                 sandbox.world.entities.forEach { entity ->
                     println("${entity.uuid} ${entity.type} tags=${entity.tags.sorted().joinToString(prefix = "[", postfix = "]")}")
@@ -480,6 +484,37 @@ class Repl(
             }
             else -> println("Usage: inspect scoreboard [objectives|displays]")
         }
+    }
+
+    private fun inspectTeams(args: List<String>) {
+        val name = args.getOrNull(1)
+        if (name != null) {
+            val team = sandbox.world.teams[name]
+            println(team?.let { renderTeam(it) } ?: "<missing>")
+            return
+        }
+        sandbox.world.teams.toSortedMap().values.forEach { println(renderTeam(it)) }
+    }
+
+    private fun renderTeam(team: SandboxTeam): String {
+        val members = team.members.sorted().joinToString(prefix = "[", postfix = "]")
+        val options = team.options.toSortedMap().entries.joinToString(prefix = "[", postfix = "]") { "${it.key}=${it.value}" }
+        return "team ${team.name} displayName=${team.displayName} members=$members options=$options"
+    }
+
+    private fun inspectBossbars(args: List<String>) {
+        val id = args.getOrNull(1)?.let { ResourceLocation.parse(it) }
+        if (id != null) {
+            val bossbar = sandbox.world.bossbars[id]
+            println(bossbar?.let { renderBossbar(it) } ?: "<missing>")
+            return
+        }
+        sandbox.world.bossbars.toSortedMap().values.forEach { println(renderBossbar(it)) }
+    }
+
+    private fun renderBossbar(bossbar: SandboxBossbar): String {
+        val players = bossbar.players.sorted().joinToString(prefix = "[", postfix = "]")
+        return "bossbar ${bossbar.id} name=${bossbar.name} value=${bossbar.value} max=${bossbar.max} color=${bossbar.color} style=${bossbar.style} visible=${bossbar.visible} players=$players"
     }
 
     private fun inspectResourceIndex(typeFilter: String?) {

@@ -138,6 +138,7 @@
   - gamerule 状态已进入 snapshot，并可通过 QuickTest `assertGamerule`、manifest `gamerule` assertion、CLI `gamerule:<rule>` 断言简写和 REPL `inspect gamerule` 检查规则值、存在性和缺失状态，便于调试规则类生成命令。
   - scoreboard objective 元数据已进入 `objectiveDetails` snapshot，并可通过 QuickTest、manifest `scoreboardObjective` 断言、CLI `scoreboard-objective:<name>` 断言简写和 REPL `inspect scoreboard` 检查 `criteria`、`displayName`、`renderType` 和 `displayAutoUpdate`，便于调试 scoreboard UI 命令生成结果。
   - scoreboard display slot 状态已进入 snapshot，并可通过 QuickTest、manifest `scoreboardDisplay` 断言、CLI `scoreboard-display:<slot>` 断言简写和 REPL `inspect scoreboard displays` 检查 `sidebar`、`list`、`below_name` 和 `sidebar.team.<color>` 等 slot，便于调试 UI 目标命令生成结果。
+  - team 与 bossbar UI 状态已进入 snapshot，并可通过 QuickTest `assertTeam` / `assertBossbar`、manifest `team` / `bossbar` assertion、CLI `team:<name>` / `bossbar:<id>` 断言简写和 REPL `inspect team` / `inspect bossbar` 检查成员、选项、可见性、数值和玩家目标，便于调试 UI/队伍类生成命令。
 
 ## 阶段 4：输入事件与玩家交互模拟
 
@@ -209,7 +210,7 @@
 ### 单元调试
 
 - 强化 `SandboxQuickTest` fluent API：
-  - `assertScore`、`assertStoragePath`、`assertPlayer`、`assertEntity`、`assertBlock`、`assertItem`、`assertOutput`、`assertTrace`、`assertRandomSequence`、`assertForcedChunk`、`assertGamerule`、`assertScheduledFunction`、`assertScoreboardObjective` 和 `assertScoreboardDisplay`。
+  - `assertScore`、`assertStoragePath`、`assertPlayer`、`assertEntity`、`assertBlock`、`assertItem`、`assertOutput`、`assertTrace`、`assertRandomSequence`、`assertForcedChunk`、`assertGamerule`、`assertScheduledFunction`、`assertScoreboardObjective`、`assertScoreboardDisplay`、`assertTeam` 和 `assertBossbar`。
   - 支持可复用 fixture：world setup、players、entities、blocks、storage、scoreboard、packs。
 - quick-test report 已暴露 `resourceSummary`，与 `run`/`check` report 和 REPL `inspect resources` 共用 core 的资源数量、overlay、missing-reference 诊断模型。
 - 增加 JUnit 辅助错误格式，失败时输出最小 snapshot diff 和 trace 摘要。
@@ -229,7 +230,7 @@
   - `inspect` 输出结构更稳定；`inspect event-traces` 已可直接打印玩家事件 trace JSON，并已接入 REPL/CLI 补全和命令目录，便于调试事件输入、block 坐标和 advancement 匹配。
   - `inspect forced-chunks` 已可列出当前强加载 chunk，并接入 REPL 补全和命令目录，便于随手检查 `forceload` 状态。
   - `inspect world` 和 `inspect worldborder` 已可列出世界时间、天气、默认模式、出生点、tick 状态和世界边界参数，并接入 REPL/CLI 补全和命令目录，便于随手检查世界级生成命令。
-  - `inspect gamerule` 和 `inspect scoreboard` 已可列出规则值、objective 元数据和 display slot，并接入 REPL/CLI 补全和命令目录，便于随手检查 UI/规则类生成命令。
+  - `inspect gamerule`、`inspect scoreboard`、`inspect team` 和 `inspect bossbar` 已可列出规则值、objective 元数据、display slot、队伍成员/选项和 bossbar 参数，并接入 REPL/CLI 补全和命令目录，便于随手检查 UI/规则类生成命令。
   - `inspect resources` 已输出资源摘要、overlay 和 missing-reference，并保留按类型列出 resource index 条目的能力，便于随手小测时解释数据包实际加载结果。
   - 支持 `trace on/off`、`diff last`、`rerun last`、`reset world`、`load fixture`。
 

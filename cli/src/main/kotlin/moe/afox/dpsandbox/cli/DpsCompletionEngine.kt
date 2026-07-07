@@ -132,6 +132,8 @@ class DpsCompletionEngine(private val sandbox: () -> DatapackSandbox) {
                 randomSequenceNames().suggest("random sequences")
             words.getOrNull(1) == "scoreboard" && context.wordIndex == 2 ->
                 listOf("objectives", "displays").suggest("scoreboard sections")
+            words.getOrNull(1) in setOf("team", "teams") && context.wordIndex == 2 -> teamNames().suggest("teams")
+            words.getOrNull(1) in setOf("bossbar", "bossbars") && context.wordIndex == 2 -> bossbarIds().suggest("bossbars")
             words.getOrNull(1) == "raw" && context.wordIndex == 2 -> rawResourceKinds().suggest("raw resource types", appendSpace = true)
             words.getOrNull(1) == "raw" && context.wordIndex == 3 -> rawResourceIds(words.getOrNull(2)).suggest("raw resources")
             words.getOrNull(1) in setOf("resource", "resources") && context.wordIndex == 2 -> resourceIndexTypes().suggest("resource types")
@@ -522,10 +524,10 @@ class DpsCompletionEngine(private val sandbox: () -> DatapackSandbox) {
         sandbox().world.entities.flatMap { it.tags }.distinct()
 
     private fun bossbarIds(): List<String> =
-        sandbox().world.bossbars.keys.map { it.toString() }
+        sandbox().world.bossbars.keys.map { it.toString() }.sorted()
 
     private fun teamNames(): List<String> =
-        sandbox().world.teams.keys.toList()
+        sandbox().world.teams.keys.sorted()
 
     private fun randomSequenceNames(): List<String> =
         sandbox().world.randomSequences.keys.sorted()
@@ -554,6 +556,8 @@ class DpsCompletionEngine(private val sandbox: () -> DatapackSandbox) {
             "schedule",
             "forced-chunks",
             "scoreboard",
+            "team",
+            "bossbar",
             "entities",
             "blocks",
             "player",
