@@ -1865,11 +1865,29 @@ class DatapackSandbox(
             }
             "enable", "disable" -> {
                 requireSize(tokens, 3, "datapack ${tokens[1].text} <name>", location)
-                world.recordOutput("datapack ${tokens[1].text}", "warning", text = "Datapack order is fixed at sandbox creation; '${tokens[1].text}' is accepted as a no-op")
+                val action = tokens[1].text
+                val name = tokens[2].text
+                world.recordOutput(
+                    "datapack $action",
+                    "warning",
+                    text = "Datapack order is fixed at sandbox creation; '$action' is accepted as a no-op",
+                    payload = JsonObject().also { payload ->
+                        payload.addProperty("action", action)
+                        payload.addProperty("name", name)
+                        payload.addProperty("noOp", true)
+                        payload.addProperty("noOpReason", "Datapack order is fixed at sandbox creation")
+                        payload.add(
+                            "arguments",
+                            JsonArray().also { arguments ->
+                                tokens.drop(3).forEach { arguments.add(it.text) }
+                            },
+                        )
+                    },
+                )
             }
             else -> unsupportedFeature("Unsupported datapack action '${tokens[1].text}'", profile.id, location)
         }
-        }
+    }
 
     private fun DatapackMissingResourceReference.toMissingReferencePayload(): JsonObject =
         JsonObject().also { payload ->
@@ -1892,7 +1910,16 @@ class DatapackSandbox(
 
     private fun executeReload(tokens: List<CommandToken>, location: SourceLocation?) {
         requireSize(tokens, 1, "reload", location)
-        world.recordOutput("reload", "data", text = "Reload is a no-op inside this immutable sandbox instance")
+        world.recordOutput(
+            "reload",
+            "data",
+            text = "Reload is a no-op inside this immutable sandbox instance",
+            payload = JsonObject().also { payload ->
+                payload.addProperty("action", "reload")
+                payload.addProperty("noOp", true)
+                payload.addProperty("noOpReason", "Datapack resources are immutable for this sandbox instance; use REPL reload or recreate the sandbox")
+            },
+        )
     }
 
     private fun executeSeed(tokens: List<CommandToken>, location: SourceLocation?) {

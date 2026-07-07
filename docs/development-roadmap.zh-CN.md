@@ -99,6 +99,7 @@
   - `scoreboard objectives setdisplay` 已记录 objective display slot 状态和结构化输出，便于调试侧边栏、列表、队伍侧边栏等 UI 目标生成命令，并可通过 snapshot/断言检查。
   - `team add/remove/list/join/leave/empty/modify` 已记录结构化队伍状态输出，便于调试成员变化、显示名和选项输入。
   - `place structure` 和 `place template` 已可把加载到 `worldgen/structure` 的沙盒结构 JSON（`blocks`/`entities`）按命令坐标展开到 sparse world，并记录 `placed`、`changedBlocks`、`skippedBlocks`、`processedBlocks`、`unsupportedProcessors`、`entities`、变化坐标和实体目标；结构 JSON 可引用 `worldgen/processor_list`，已覆盖 `block_ignore` 和简单 rule 替换 processor；`place template` 支持确定性 rotation、mirror、integrity 和 seed 参数；`place jigsaw` 已可解析 `worldgen/template_pool` 的 single/legacy 结构元素、应用元素 processor 并落地选中结构；`place feature` 已可解析 `worldgen/placed_feature`/`worldgen/configured_feature` 的 simple_block JSON 并把对应方块放到命令位置；缺失或不支持的资源仍保留结构化 worldgen intent 输出，便于命令生成器验证放置目标、位置和额外参数。
+  - `datapack enable/disable` 和原版 `reload` 已作为 observed-noop/固定 pack 顺序调试面记录结构化 payload，便于断言生成器输出的 pack 名称、顺序参数和 no-op 原因。
   - `transfer` 已作为 observed-noop 接受并记录 host、port、目标玩家和语法顺序，便于调试网络跳转类生成结果而不触发真实网络行为。
   - `publish` 和 `stop` 已作为 observed-noop 记录结构化 debug 输出，便于调试 LAN 发布和生命周期类生成结果而不影响宿主进程。
   - `debug`、`jfr`、`perf` 已作为 profiling observed-noop 记录 action 和参数，便于调试生成出来的 profiling 命令而不依赖宿主采样器。

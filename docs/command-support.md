@@ -62,7 +62,7 @@ runs both English and localized docs checks through standalone jar smoke tasks.
 | `clone` | Partial | `modeled` | Copies sparse sandbox block state/NBT and records structured copied/changed-position output; no updates, drops, or overlap physics. |
 | `damage` | Partial | `modeled` | Reduces entity/player health, supports `at`, `by`, and `from` context in structured output, exposes loaded `damage_type` JSON metadata for custom damage sources, emits sandbox damage/death advancement events, and records health changes; no armor, invulnerability, death loot, or combat rules. |
 | `data` | Partial | `modeled` | `get` with optional numeric scale, `merge`, `modify`, `remove` for `storage`, `entity`, and `block`; write operations record structured before/after output; paths support fields, positive/negative numeric indexes, and simple object matchers; `modify` supports `value`, `from`, and `string` sources; append/prepend/insert reject existing non-list targets instead of overwriting them; top-level NBT is schema-checked. |
-| `datapack` | Partial | `modeled` | `list` reports loaded typed/raw/tag/resource-index counts plus resource overlay and missing-reference diagnostics; `enable`/`disable` are accepted as no-op because pack order is fixed at sandbox creation. |
+| `datapack` | Partial | `modeled` | `list` reports loaded typed/raw/tag/resource-index counts plus resource overlay and missing-reference diagnostics; `enable`/`disable` are accepted as no-op because pack order is fixed at sandbox creation and record the requested pack name/order arguments for assertions. |
 | `debug`, `jfr`, `perf` | No-op | `observed-noop` | Accept action/argument tokens and record structured debug output; profiling and flight recording are not simulated. |
 | `defaultgamemode` | Supported | `modeled` | Stores world default game mode and records structured before/after output. |
 | `difficulty` | Supported | `modeled` | Stores and reports world difficulty with structured before/after output. |
@@ -94,7 +94,7 @@ runs both English and localized docs checks through standalone jar smoke tasks.
 | `publish` | No-op | `observed-noop` | Accepts `allowCommands`, `gamemode`, and `port`, records the requested LAN publish settings as structured debug output, and performs no network publishing. |
 | `random` | Partial | `modeled` | `value`, `roll`, `reset`; deterministic sandbox sequence state seeded from the world seed unless explicitly reset; value/roll/reset record structured sequence-state output for assertions and `execute store result`. |
 | `recipe` | Partial | `modeled` | `give`, `take`; supports `*` for loaded datapack recipes, updates per-player recipe sets, and records changed counts. |
-| `reload` | No-op | `observed-noop` | Accepted and recorded; REPL `reload` performs real datapack reload, vanilla command does not mutate this immutable sandbox instance. |
+| `reload` | No-op | `observed-noop` | Accepted and recorded with structured no-op payload; REPL `reload` performs real datapack reload, vanilla command does not mutate this immutable sandbox instance. |
 | `return` | Supported | `modeled` | Stops the current function; supports `return <value>`, `return fail`, and `return run <command>` for function conditions and store result tests. |
 | `ride` | Partial | `modeled` | Tracks vehicle/passenger relationships and records structured mount/dismount output; no physics/control. |
 | `rotate` | Partial | `modeled` | Updates yaw/pitch and records structured before/after rotation output. |

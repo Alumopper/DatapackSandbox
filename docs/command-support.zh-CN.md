@@ -50,7 +50,7 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar commands --json --output build
 | `clone` | 部分支持 | `modeled` | 复制稀疏世界中的方块状态和方块实体 NBT，并记录结构化复制/变化位置输出；不执行更新、掉落或重叠区物理。 |
 | `damage` | 部分支持 | `modeled` | 降低实体或玩家生命值，结构化输出支持 `at`、`by`、`from` 上下文，会为自定义伤害来源暴露已加载的 `damage_type` JSON 元数据，发出沙盒 damage/death advancement 事件，并记录生命值变化；不计算盔甲、无敌帧、死亡掉落和完整战斗规则。 |
 | `data` | 部分支持 | `modeled` | 支持带可选数值 scale 的 `get`，以及 `merge`、`modify`、`remove`，目标支持 `storage`、`entity`、`block`；写入类操作会记录结构化前后输出；path 支持字段、正/负数字索引和简单对象匹配；`modify` 支持 `value`、`from` 和 `string` 来源；append/prepend/insert 会拒绝已存在的非列表目标而不是覆盖它；顶层 NBT 字段经过 schema 校验。 |
-| `datapack` | 部分支持 | `modeled` | `list` 报告已加载 typed/raw/tag/resource-index 资源数量、资源覆盖和缺失引用诊断；`enable`/`disable` 作为 no-op 接受，因为沙盒创建后 pack 顺序固定。 |
+| `datapack` | 部分支持 | `modeled` | `list` 报告已加载 typed/raw/tag/resource-index 资源数量、资源覆盖和缺失引用诊断；`enable`/`disable` 作为 no-op 接受，因为沙盒创建后 pack 顺序固定，并会记录请求的 pack 名称和顺序参数供断言。 |
 | `debug`、`jfr`、`perf` | 空操作 | `observed-noop` | 接受 action/参数 token 并记录结构化 debug 输出；不模拟 profiling 和 flight recording。 |
 | `defaultgamemode` | 支持 | `modeled` | 存储世界默认游戏模式，并记录结构化前后输出。 |
 | `difficulty` | 支持 | `modeled` | 存储并报告世界难度，并记录结构化前后输出。 |
@@ -82,7 +82,7 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar commands --json --output build
 | `publish` | 空操作 | `observed-noop` | 接受 `allowCommands`、`gamemode` 和 `port`，把请求的 LAN publish 设置记录为结构化 debug 输出；不执行真实网络发布。 |
 | `random` | 部分支持 | `modeled` | `value`、`roll`、`reset`；使用确定性的沙盒随机序列状态，默认混入 world seed，显式 reset seed 时优先使用 reset 值；value/roll/reset 会记录结构化序列状态输出，供断言和 `execute store result` 使用。 |
 | `recipe` | 部分支持 | `modeled` | `give`、`take`；支持对已加载数据包 recipe 使用 `*`，更新玩家 recipe 集合并记录 changed 数量和实际变更的 recipe id 列表。 |
-| `reload` | 空操作 | `observed-noop` | 原版命令作为 no-op 记录；REPL 工具命令 `reload` 会真正重载数据包并保留世界状态。 |
+| `reload` | 空操作 | `observed-noop` | 原版命令会记录结构化 no-op payload；REPL 工具命令 `reload` 会真正重载数据包并保留世界状态。 |
 | `return` | 支持 | `modeled` | 结束当前 function；支持 `return <value>`、`return fail` 和 `return run <command>`，用于 function 条件和 store result 测试。 |
 | `ride` | 部分支持 | `modeled` | 记录载具和乘客关系，并记录结构化 mount/dismount 输出；不模拟控制或物理。 |
 | `rotate` | 部分支持 | `modeled` | 更新 yaw/pitch，并记录结构化前后旋转输出。 |

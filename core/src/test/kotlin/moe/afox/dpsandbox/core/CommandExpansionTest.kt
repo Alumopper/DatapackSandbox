@@ -215,6 +215,8 @@ class CommandExpansionTest {
         sandbox.executeCommand("place structure demo:ruin 1 64 2")
         sandbox.executeCommand("place template demo:room ~ ~1 ~ clockwise_90 front_back 0.5 123")
         sandbox.executeCommand("datapack list")
+        sandbox.executeCommand("datapack enable file/demo first")
+        sandbox.executeCommand("datapack disable file/demo")
         sandbox.executeCommand("ban Steve generated reason")
         sandbox.executeCommand("ban-ip 127.0.0.1 generated ip reason")
         sandbox.executeCommand("banlist ips")
@@ -256,6 +258,18 @@ class CommandExpansionTest {
         assertEquals(1.0, placeTemplatePayload.getAsJsonObject("position").get("y").asDouble)
         assertEquals(listOf("clockwise_90", "front_back", "0.5", "123"), placeTemplatePayload.getAsJsonArray("extra").map { it.asString })
         assertTrue(sandbox.world.outputs.any { it.command == "datapack list" })
+        val datapackEnable = sandbox.world.outputs.single { it.command == "datapack enable" }
+        val datapackEnablePayload = datapackEnable.payload?.asJsonObject ?: error("missing datapack enable payload")
+        assertEquals("warning", datapackEnable.channel)
+        assertEquals("enable", datapackEnablePayload.get("action").asString)
+        assertEquals("file/demo", datapackEnablePayload.get("name").asString)
+        assertEquals(true, datapackEnablePayload.get("noOp").asBoolean)
+        assertEquals(listOf("first"), datapackEnablePayload.getAsJsonArray("arguments").map { it.asString })
+        val datapackDisablePayload = sandbox.world.outputs.single { it.command == "datapack disable" }
+            .payload?.asJsonObject ?: error("missing datapack disable payload")
+        assertEquals("disable", datapackDisablePayload.get("action").asString)
+        assertEquals("file/demo", datapackDisablePayload.get("name").asString)
+        assertEquals(true, datapackDisablePayload.get("noOp").asBoolean)
         listOf("ban", "ban-ip", "banlist", "deop", "kick", "op", "pardon", "pardon-ip", "whitelist add", "whitelist list")
             .forEach { command ->
                 val output = sandbox.world.outputs.single { it.command == command }
@@ -280,7 +294,10 @@ class CommandExpansionTest {
         assertEquals("creative", publishPayload.get("gamemode").asString)
         assertEquals(25566, publishPayload.get("port").asInt)
         assertEquals(true, publishPayload.get("noOp").asBoolean)
-        assertTrue(sandbox.world.outputs.any { it.command == "reload" })
+        val reloadPayload = sandbox.world.outputs.single { it.command == "reload" }.payload?.asJsonObject
+            ?: error("missing reload payload")
+        assertEquals(true, reloadPayload.get("noOp").asBoolean)
+        assertEquals("reload", reloadPayload.get("action").asString)
         assertEquals(true, sandbox.world.outputs.single { it.command == "save-all" }.payload?.asJsonObject?.get("flush")?.asBoolean)
         assertEquals(true, sandbox.world.outputs.single { it.command == "save-off" }.payload?.asJsonObject?.get("noOp")?.asBoolean)
         assertEquals(true, sandbox.world.outputs.single { it.command == "save-on" }.payload?.asJsonObject?.get("noOp")?.asBoolean)
