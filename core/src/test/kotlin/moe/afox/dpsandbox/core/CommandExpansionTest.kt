@@ -590,6 +590,32 @@ class CommandExpansionTest {
     }
 
     @Test
+    fun `place structure applies capped and predicate processor resources`() {
+        val pack = writeProcessedStructurePlacePack(Files.createTempDirectory("dps-place-advanced-processor-pack"))
+        val sandbox = createSandbox("26.2", listOf(pack))
+
+        sandbox.executeCommand("place structure demo:advanced_processors 30 75 30")
+
+        assertEquals(ResourceLocation.parse("minecraft:gold_block"), sandbox.world.requireBlock(BlockPos(30, 75, 30)).id)
+        assertEquals(ResourceLocation.parse("minecraft:stone"), sandbox.world.requireBlock(BlockPos(31, 75, 30)).id)
+        assertEquals(ResourceLocation.parse("minecraft:stripped_oak_log"), sandbox.world.requireBlock(BlockPos(32, 75, 30)).id)
+        assertEquals(ResourceLocation.parse("minecraft:waxed_copper_block"), sandbox.world.requireBlock(BlockPos(33, 75, 30)).id)
+        assertEquals(ResourceLocation.parse("minecraft:diamond_block"), sandbox.world.requireBlock(BlockPos(34, 75, 30)).id)
+        val output = sandbox.world.outputs.single { it.command == "place structure" }
+        val payload = output.payload?.asJsonObject ?: error("missing place structure payload")
+        assertEquals(true, payload.get("placed").asBoolean)
+        assertEquals(5, payload.get("changedBlocks").asInt)
+        assertEquals(0, payload.get("skippedBlocks").asInt)
+        assertEquals(3, payload.get("processedBlocks").asInt)
+        assertEquals(0, payload.get("unsupportedProcessors").asInt)
+        assertEquals("demo:advanced", payload.getAsJsonArray("processorLists")[0].asString)
+        assertEquals(
+            listOf("30 75 30", "31 75 30", "32 75 30", "33 75 30", "34 75 30"),
+            output.targets,
+        )
+    }
+
+    @Test
     fun `place jigsaw applies template pool structure elements`() {
         val pack = writeJigsawPlacePack(Files.createTempDirectory("dps-place-jigsaw-pack"))
         val sandbox = createSandbox("26.2", listOf(pack))
@@ -2265,6 +2291,21 @@ class CommandExpansionTest {
             }
             """.trimIndent(),
         )
+        Files.writeString(
+            structureRoot.resolve("advanced_processors.json"),
+            """
+            {
+              "processors": "demo:advanced",
+              "blocks": [
+                { "offset": [0, 0, 0], "id": "minecraft:stone" },
+                { "offset": [1, 0, 0], "id": "minecraft:stone" },
+                { "offset": [2, 0, 0], "id": "minecraft:oak_planks" },
+                { "offset": [3, 0, 0], "id": "minecraft:copper_block" },
+                { "offset": [4, 0, 0], "id": "minecraft:diamond_block" }
+              ]
+            }
+            """.trimIndent(),
+        )
         val tagRoot = root.resolve("data").resolve("demo").resolve("tags").resolve("block")
         Files.createDirectories(tagRoot)
         Files.writeString(
@@ -2272,6 +2313,14 @@ class CommandExpansionTest {
             """
             {
               "values": ["minecraft:obsidian"]
+            }
+            """.trimIndent(),
+        )
+        Files.writeString(
+            tagRoot.resolve("wooden.json"),
+            """
+            {
+              "values": ["minecraft:oak_planks"]
             }
             """.trimIndent(),
         )
@@ -2304,6 +2353,59 @@ class CommandExpansionTest {
                       "output_state": {
                         "Name": "minecraft:gold_block"
                       }
+                    }
+                  ]
+                }
+              ]
+            }
+            """.trimIndent(),
+        )
+        Files.writeString(
+            processorRoot.resolve("advanced.json"),
+            """
+            {
+              "processors": [
+                {
+                  "type": "minecraft:capped",
+                  "limit": { "type": "minecraft:constant", "value": 1 },
+                  "delegate": {
+                    "type": "minecraft:rule",
+                    "rules": [
+                      {
+                        "input_predicate": {
+                          "predicate_type": "minecraft:block_match",
+                          "block": "minecraft:stone"
+                        },
+                        "output_state": { "Name": "minecraft:gold_block" }
+                      }
+                    ]
+                  }
+                },
+                { "type": "minecraft:nop" },
+                {
+                  "type": "minecraft:rule",
+                  "rules": [
+                    {
+                      "input_predicate": {
+                        "predicate_type": "minecraft:tag_match",
+                        "tag": "demo:wooden"
+                      },
+                      "output_state": { "Name": "minecraft:stripped_oak_log" }
+                    },
+                    {
+                      "input_predicate": {
+                        "predicate_type": "minecraft:blockstate_match",
+                        "block_state": { "Name": "minecraft:copper_block" }
+                      },
+                      "output_state": { "Name": "minecraft:waxed_copper_block" }
+                    },
+                    {
+                      "input_predicate": {
+                        "predicate_type": "minecraft:random_block_match",
+                        "block": "minecraft:diamond_block",
+                        "probability": 0.0
+                      },
+                      "output_state": { "Name": "minecraft:emerald_block" }
                     }
                   ]
                 }

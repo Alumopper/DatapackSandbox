@@ -2057,7 +2057,7 @@ class RunCommandTest {
         assertTrue("wolf_variant modeled - entity variant JSON metadata exposed by the summon command" in output, output)
         assertTrue("tag/<registry> observed-noop - general tags" in output, output)
         assertTrue("worldgen/placed_feature modeled - placed feature JSON resolving configured simple_block/block_column/disk/vegetation_patch/tree/basalt_columns/delta_feature/lake/replace_single_block/replace_blob/selector/random_patch/flower/ore" in output, output)
-        assertTrue("worldgen/processor_list modeled - block_ignore, protected_blocks, jigsaw_replacement, and simple rule processors" in output, output)
+        assertTrue("worldgen/processor_list modeled - block_ignore, protected_blocks, jigsaw_replacement, capped, nop, and rule processors with block/tag predicates" in output, output)
         assertTrue("worldgen/structure modeled - sandbox structure JSON blocks/entities" in output, output)
         assertTrue("worldgen/template_pool modeled - single/legacy pool elements" in output, output)
     }
@@ -2085,7 +2085,7 @@ class RunCommandTest {
         assertTrue("| `wolf_sound_variant` | `modeled` | wolf sound variant JSON metadata exposed by the summon command |" in output, output)
         assertTrue("| `function` | `modeled` | mcfunction execution" in output, output)
         assertTrue("| `worldgen/configured_feature` | `modeled` | simple_block, block_column, disk, vegetation_patch, tree, basalt_columns, delta_feature, lake, replace_single_block, replace_blob, selector, random_patch, flower, and ore feature JSON consumed by place feature |" in output, output)
-        assertTrue("| `worldgen/processor_list` | `modeled` | block_ignore, protected_blocks, jigsaw_replacement, and simple rule processors consumed by sandbox structure placement |" in output, output)
+        assertTrue("| `worldgen/processor_list` | `modeled` | block_ignore, protected_blocks, jigsaw_replacement, capped, nop, and rule processors with block/tag predicates consumed by sandbox structure placement |" in output, output)
         assertTrue("| `worldgen/structure` | `modeled` | sandbox structure JSON blocks/entities" in output, output)
         assertTrue("| `worldgen/template_pool` | `modeled` | single/legacy pool elements consumed by sandbox place jigsaw |" in output, output)
     }
@@ -2113,7 +2113,7 @@ class RunCommandTest {
         assertTrue("| `wolf_sound_variant` | `modeled` | summon wolf 会暴露 wolf sound variant JSON 元数据。" in output, output)
         assertTrue("| `function` | `modeled` | mcfunction 执行、trace source location 和缺失引用检查。" in output, output)
         assertTrue("| `worldgen/placed_feature` | `modeled` | placed feature 会解析 configured simple_block/block_column/disk/vegetation_patch/tree/basalt_columns/delta_feature/lake/replace_single_block/replace_blob/selector/random_patch/flower/ore 资源，供 place feature 使用。" in output, output)
-        assertTrue("| `worldgen/processor_list` | `modeled` | block_ignore、protected_blocks、jigsaw_replacement 和简单 rule processor 可被沙盒结构放置消费。" in output, output)
+        assertTrue("| `worldgen/processor_list` | `modeled` | block_ignore、protected_blocks、jigsaw_replacement、capped、nop 和带 block/tag 谓词的 rule processor 可被沙盒结构放置消费。" in output, output)
         assertTrue("| `worldgen/structure` | `modeled` | 沙盒结构 JSON 的 blocks/entities 可被 place structure/template 展开。" in output, output)
         assertTrue("| `worldgen/template_pool` | `modeled` | single/legacy pool element 可被 place jigsaw 展开。" in output, output)
     }

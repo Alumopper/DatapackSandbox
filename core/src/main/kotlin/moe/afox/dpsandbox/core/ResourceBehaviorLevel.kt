@@ -79,7 +79,7 @@ object ResourceCatalog {
         "wolf_variant" to "entity variant JSON metadata exposed by the summon command",
         "worldgen/configured_feature" to "simple_block, block_column, disk, vegetation_patch, tree, basalt_columns, delta_feature, lake, replace_single_block, replace_blob, selector, random_patch, flower, and ore feature JSON consumed by place feature",
         "worldgen/placed_feature" to "placed feature JSON resolving configured simple_block/block_column/disk/vegetation_patch/tree/basalt_columns/delta_feature/lake/replace_single_block/replace_blob/selector/random_patch/flower/ore resources for place feature",
-        "worldgen/processor_list" to "block_ignore, protected_blocks, jigsaw_replacement, and simple rule processors consumed by sandbox structure placement",
+        "worldgen/processor_list" to "block_ignore, protected_blocks, jigsaw_replacement, capped, nop, and rule processors with block/tag predicates consumed by sandbox structure placement",
         "worldgen/structure" to "sandbox structure JSON blocks/entities consumed by place structure/template",
         "worldgen/template_pool" to "single/legacy pool elements consumed by sandbox place jigsaw",
     )

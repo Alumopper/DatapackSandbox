@@ -149,9 +149,21 @@ private data class SandboxStructureProcessor(
     val protectedBlocks: Set<ResourceLocation> = emptySet(),
     val rules: List<SandboxStructureProcessorRule> = emptyList(),
     val jigsawReplacement: Boolean = false,
+    val cappedDelegate: SandboxStructureProcessor? = null,
+    val cappedLimit: Int? = null,
     val supported: Boolean = true,
 ) {
+    private var cappedProcessed: Int = 0
+
     fun apply(block: BlockArgument, destinationId: ResourceLocation?): SandboxProcessedStructureBlock {
+        val delegate = cappedDelegate
+        val limit = cappedLimit
+        if (delegate != null && limit != null) {
+            if (cappedProcessed >= limit) return SandboxProcessedStructureBlock(block)
+            val result = delegate.apply(block, destinationId)
+            if (result.processed) cappedProcessed++
+            return result
+        }
         if (destinationId != null && destinationId in protectedBlocks) {
             return SandboxProcessedStructureBlock(block = null, processed = true)
         }
@@ -2071,13 +2083,26 @@ class DatapackSandbox(
                 },
             )
             "jigsaw_replacement" -> SandboxStructureProcessor(type = type, jigsawReplacement = true)
+            "nop" -> SandboxStructureProcessor(type = type)
+            "capped" -> {
+                val delegate = getAsJsonObjectOrNull("delegate", location)
+                    ?: getAsJsonObjectOrNull("processor", location)
+                    ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label capped delegate is required", location)
+                val limit = get("limit")?.featureIntProvider("$label capped limit", location)
+                    ?: get("max")?.featureIntProvider("$label capped max", location)
+                    ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label capped limit is required", location)
+                SandboxStructureProcessor(
+                    type = type,
+                    cappedDelegate = delegate.parseStructureProcessor("$label capped delegate", location),
+                    cappedLimit = limit.coerceIn(0, 32768),
+                )
+            }
             else -> SandboxStructureProcessor(type = type, supported = false)
         }
     }
 
     private fun JsonObject.parseStructureProcessorRule(label: String, location: SourceLocation?): SandboxStructureProcessorRule {
-        val input = placeJsonObject("input_predicate", "$label input_predicate", location)
-            ?: placeJsonObject("input", "$label input", location)
+        val input = get("input_predicate") ?: get("input")
         val output = get("output_state") ?: get("output") ?: get("block")
             ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label output_state is required", location)
         return SandboxStructureProcessorRule(
@@ -2086,11 +2111,39 @@ class DatapackSandbox(
         )
     }
 
+    private fun JsonElement.structureProcessorPredicateBlocks(label: String, location: SourceLocation?): Set<ResourceLocation>? =
+        when {
+            isJsonPrimitive -> setOf(ResourceLocation.parse(asJsonPrimitive.asString))
+            isJsonObject -> asJsonObject.structureProcessorPredicateBlocks(label, location)
+            else -> throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label must be a block id string or object", location)
+        }
+
     private fun JsonObject.structureProcessorPredicateBlocks(label: String, location: SourceLocation?): Set<ResourceLocation>? {
         val type = placeString("predicate_type", location) ?: placeString("type", location) ?: "minecraft:always_true"
         return when (type.removePrefix("minecraft:")) {
             "always_true" -> null
-            "matching_blocks" -> processorBlockIds("blocks", "block", "$label blocks", location)
+            "matching_blocks", "block_match" -> processorBlockIds("blocks", "block", "$label blocks", location)
+            "blockstate_match" -> {
+                val state = get("block_state") ?: get("state") ?: get("block")
+                    ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label blockstate_match requires block_state", location)
+                setOf(state.parseStructureProcessorBlockArgument("$label block_state", location).id)
+            }
+            "matching_block_tag", "tag_match" -> {
+                val tag = placeString("tag", location) ?: placeString("value", location)
+                    ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label tag_match tag is required", location)
+                blockTagBlocks(ResourceLocation.parse(tag))
+            }
+            "random_block_match" -> {
+                if (placeDouble("probability", 1.0, "$label probability", location) <= 0.0) emptySet()
+                else processorBlockIds("blocks", "block", "$label blocks", location)
+            }
+            "random_blockstate_match" -> {
+                if (placeDouble("probability", 1.0, "$label probability", location) <= 0.0) emptySet() else {
+                    val state = get("block_state") ?: get("state") ?: get("block")
+                        ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label random_blockstate_match requires block_state", location)
+                    setOf(state.parseStructureProcessorBlockArgument("$label block_state", location).id)
+                }
+            }
             else -> emptySet()
         }
     }
