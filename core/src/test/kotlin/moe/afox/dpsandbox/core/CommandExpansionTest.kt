@@ -701,6 +701,32 @@ class CommandExpansionTest {
     }
 
     @Test
+    fun `place feature applies deterministic disk replacement feature resources`() {
+        val pack = writeFeaturePlacePack(Files.createTempDirectory("dps-place-disk-pack"))
+        val sandbox = createSandbox("26.2", listOf(pack))
+        sandbox.executeCommand("setblock 25 60 25 minecraft:dirt")
+        sandbox.executeCommand("setblock 24 60 25 minecraft:dirt")
+        sandbox.executeCommand("setblock 25 60 24 minecraft:dirt")
+        sandbox.executeCommand("setblock 26 60 25 minecraft:stone")
+
+        sandbox.executeCommand("place feature demo:placed_disk 25 60 25")
+
+        assertEquals(ResourceLocation.parse("minecraft:clay"), sandbox.world.requireBlock(BlockPos(25, 60, 25)).id)
+        assertEquals(ResourceLocation.parse("minecraft:clay"), sandbox.world.requireBlock(BlockPos(24, 60, 25)).id)
+        assertEquals(ResourceLocation.parse("minecraft:clay"), sandbox.world.requireBlock(BlockPos(25, 60, 24)).id)
+        assertEquals(ResourceLocation.parse("minecraft:stone"), sandbox.world.requireBlock(BlockPos(26, 60, 25)).id)
+        val output = sandbox.world.outputs.single { it.command == "place feature" }
+        val payload = output.payload?.asJsonObject ?: error("missing place feature payload")
+        assertEquals(true, payload.get("placed").asBoolean)
+        assertEquals("configured-disk", payload.get("format").asString)
+        assertEquals("disk", payload.get("featureType").asString)
+        assertEquals(5, payload.get("attemptedBlocks").asInt)
+        assertEquals(3, payload.get("changedBlocks").asInt)
+        assertEquals(2, payload.get("skippedBlocks").asInt)
+        assertEquals(listOf("25 60 25", "24 60 25", "25 60 24"), output.targets)
+    }
+
+    @Test
     fun `place feature applies deterministic block column feature resources`() {
         val pack = writeFeaturePlacePack(Files.createTempDirectory("dps-place-column-pack"))
         val sandbox = createSandbox("26.2", listOf(pack))
@@ -2301,6 +2327,28 @@ class CommandExpansionTest {
             }
             """.trimIndent(),
         )
+        Files.writeString(
+            configuredRoot.resolve("disk.json"),
+            """
+            {
+              "type": "minecraft:disk",
+              "config": {
+                "radius": { "type": "minecraft:constant", "value": 1 },
+                "half_height": 0,
+                "state_provider": {
+                  "type": "minecraft:simple_state_provider",
+                  "state": { "Name": "minecraft:clay" }
+                },
+                "targets": [
+                  {
+                    "predicate_type": "minecraft:matching_blocks",
+                    "blocks": ["minecraft:dirt"]
+                  }
+                ]
+              }
+            }
+            """.trimIndent(),
+        )
         val placedRoot = root.resolve("data").resolve("demo").resolve("worldgen").resolve("placed_feature")
         Files.createDirectories(placedRoot)
         Files.writeString(
@@ -2344,6 +2392,15 @@ class CommandExpansionTest {
             """
             {
               "feature": "demo:column",
+              "placement": []
+            }
+            """.trimIndent(),
+        )
+        Files.writeString(
+            placedRoot.resolve("placed_disk.json"),
+            """
+            {
+              "feature": "demo:disk",
               "placement": []
             }
             """.trimIndent(),
