@@ -90,9 +90,12 @@ class DpsCompleterTest {
         assertSuggests(completer, "reset ", "world")
         assertSuggests(completer, "load ", "fixture")
         assertSuggests(completer, "inspect ", "raw")
+        assertSuggests(completer, "inspect ", "gamerule")
         assertSuggests(completer, "inspect ", "random")
         assertSuggests(completer, "inspect ", "schedule")
         assertSuggests(completer, "inspect ", "forced-chunks")
+        assertSuggests(completer, "inspect ", "scoreboard")
+        assertSuggests(completer, "inspect scoreboard ", "displays")
         assertSuggests(completer, "inspect ", "event-traces")
         assertSuggests(completer, "inspect resources ", "function")
         assertSuggests(completer, "inspect registry ", "damage_types")
@@ -100,6 +103,8 @@ class DpsCompleterTest {
         val randomSandbox = createSandbox("26.1.2", listOf(Path.of("../core/src/test/resources/packs/counter")))
         randomSandbox.world.randomSequences["demo:seq"] = 42
         assertSuggests(DpsCompleter { randomSandbox }, "inspect random ", "demo:seq")
+        randomSandbox.world.gamerules["doDaylightCycle"] = "false"
+        assertSuggests(DpsCompleter { randomSandbox }, "inspect gamerule ", "doDaylightCycle")
     }
 
     @Test

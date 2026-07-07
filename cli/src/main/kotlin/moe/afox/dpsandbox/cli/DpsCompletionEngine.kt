@@ -126,8 +126,12 @@ class DpsCompletionEngine(private val sandbox: () -> DatapackSandbox) {
             context.wordIndex == 1 -> inspectTargets.suggest("inspect targets", appendSpace = true)
             words.getOrNull(1) == "player" -> playerTargets(includeSelectors = false).suggest("players")
             words.getOrNull(1) == "storage" -> storageTargets().suggest("storages")
+            words.getOrNull(1) in setOf("gamerule", "gamerules") && context.wordIndex == 2 ->
+                gameruleNames().suggest("gamerules")
             words.getOrNull(1) in setOf("random", "random-sequence", "random-sequences") && context.wordIndex == 2 ->
                 randomSequenceNames().suggest("random sequences")
+            words.getOrNull(1) == "scoreboard" && context.wordIndex == 2 ->
+                listOf("objectives", "displays").suggest("scoreboard sections")
             words.getOrNull(1) == "raw" && context.wordIndex == 2 -> rawResourceKinds().suggest("raw resource types", appendSpace = true)
             words.getOrNull(1) == "raw" && context.wordIndex == 3 -> rawResourceIds(words.getOrNull(2)).suggest("raw resources")
             words.getOrNull(1) in setOf("resource", "resources") && context.wordIndex == 2 -> resourceIndexTypes().suggest("resource types")
@@ -526,6 +530,9 @@ class DpsCompletionEngine(private val sandbox: () -> DatapackSandbox) {
     private fun randomSequenceNames(): List<String> =
         sandbox().world.randomSequences.keys.sorted()
 
+    private fun gameruleNames(): List<String> =
+        (sandbox().world.gamerules.keys + commonGamerules).distinct().sorted()
+
     private fun soundsOrFallback(): List<String> =
         listOf("minecraft:entity.player.levelup", "minecraft:block.note_block.pling", "minecraft:ui.button.click")
 
@@ -540,9 +547,11 @@ class DpsCompletionEngine(private val sandbox: () -> DatapackSandbox) {
         private val inspectTargets = listOf(
             "score",
             "storage",
+            "gamerule",
             "random",
             "schedule",
             "forced-chunks",
+            "scoreboard",
             "entities",
             "blocks",
             "player",

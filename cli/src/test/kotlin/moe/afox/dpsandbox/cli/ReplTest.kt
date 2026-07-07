@@ -135,6 +135,24 @@ class ReplTest {
     }
 
     @Test
+    fun `inspects gamerule state`() {
+        val repl = Repl(createSandbox("26.1.2", listOf(Path.of("../core/src/test/resources/packs/counter"))))
+
+        val output = captureStdout {
+            repl.handle("gamerule doDaylightCycle false")
+            repl.handle("gamerule maxEntityCramming 0")
+            repl.handle("inspect gamerule")
+            repl.handle("inspect gamerule doDaylightCycle")
+            repl.handle("inspect gamerule missingRule")
+        }
+
+        assertTrue(output.contains("gamerule doDaylightCycle = false"), output)
+        assertTrue(output.contains("gamerule maxEntityCramming = 0"), output)
+        assertTrue(output.lines().any { it.trim() == "false" }, output)
+        assertTrue(output.contains("<missing>"), output)
+    }
+
+    @Test
     fun `inspects scheduled function state`() {
         val repl = Repl(createSandbox("26.1.2", listOf(Path.of("../core/src/test/resources/packs/counter"))))
 
@@ -160,6 +178,24 @@ class ReplTest {
         assertTrue(output.contains("forcedChunks count=2"), output)
         assertTrue(output.contains("forcedChunk 0,0"), output)
         assertTrue(output.contains("forcedChunk 1,1"), output)
+    }
+
+    @Test
+    fun `inspects scoreboard UI state`() {
+        val repl = Repl(createSandbox("26.1.2", listOf(Path.of("../core/src/test/resources/packs/counter"))))
+
+        val output = captureStdout {
+            repl.handle("scoreboard objectives add health dummy")
+            repl.handle("scoreboard objectives modify health displayname Health Points")
+            repl.handle("scoreboard objectives modify health rendertype hearts")
+            repl.handle("scoreboard objectives modify health displayautoupdate false")
+            repl.handle("scoreboard objectives setdisplay sidebar.team.red health")
+            repl.handle("inspect scoreboard")
+            repl.handle("inspect scoreboard displays")
+        }
+
+        assertTrue(output.contains("objective health criteria=dummy displayName=Health Points renderType=hearts displayAutoUpdate=false"), output)
+        assertTrue(output.contains("display sidebar.team.red = health"), output)
     }
 
     @Test

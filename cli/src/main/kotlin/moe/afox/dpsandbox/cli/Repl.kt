@@ -232,7 +232,7 @@ class Repl(
         "Commands: load, load fixture <file>, reload, tick [n], function <id>, player <name>, event player <name> <type> [id] [detail/action|x y z|pos=x,y,z], trace <on|off|status>, diff last, rerun last, reset world, ${inspectUsage()}, snapshot [file], exit"
 
     private fun inspectUsage(): String =
-        "inspect <score|storage|random|schedule|forced-chunks|entities|blocks|player|loot|predicate|advancement|recipe|item_modifier|raw|tags|resources|registry [group]|outputs|event-traces>"
+        "inspect <score|storage|gamerule|random|schedule|forced-chunks|scoreboard|entities|blocks|player|loot|predicate|advancement|recipe|item_modifier|raw|tags|resources|registry [group]|outputs|event-traces>"
 
     private fun reload() {
         if (packs.isEmpty()) {
@@ -350,6 +350,16 @@ class Repl(
                     }
                 }
             }
+            "gamerule", "gamerules" -> {
+                val name = args.getOrNull(1)
+                if (name == null) {
+                    sandbox.world.gamerules.toSortedMap().forEach { (rule, value) ->
+                        println("gamerule $rule = $value")
+                    }
+                } else {
+                    println(sandbox.world.gamerules[name] ?: "<missing>")
+                }
+            }
             "random", "random-sequence", "random-sequences" -> {
                 val name = args.getOrNull(1)
                 if (name == null) {
@@ -374,6 +384,7 @@ class Repl(
                     println("forcedChunk ${chunk.x},${chunk.z}")
                 }
             }
+            "scoreboard" -> inspectScoreboard(args)
             "entities" -> {
                 sandbox.world.entities.forEach { entity ->
                     println("${entity.uuid} ${entity.type} tags=${entity.tags.sorted().joinToString(prefix = "[", postfix = "]")}")
@@ -418,6 +429,30 @@ class Repl(
                 sandbox.world.playerEventTraces.forEach { println(JsonValues.render(it.toJson())) }
             }
             else -> println("Usage: ${inspectUsage()}")
+        }
+    }
+
+    private fun inspectScoreboard(args: List<String>) {
+        when (args.getOrNull(1)) {
+            null, "objectives" -> {
+                sandbox.world.objectives.toSortedMap().forEach { (name, criteria) ->
+                    val metadata = sandbox.world.scoreboardObjectiveMetadata[name]
+                    println(
+                        "objective $name criteria=$criteria displayName=${metadata?.displayName ?: name} renderType=${metadata?.renderType ?: "integer"} displayAutoUpdate=${metadata?.displayAutoUpdate ?: true}",
+                    )
+                }
+                if (args.getOrNull(1) == null && sandbox.world.scoreboardDisplays.isNotEmpty()) {
+                    sandbox.world.scoreboardDisplays.toSortedMap().forEach { (slot, objective) ->
+                        println("display $slot = $objective")
+                    }
+                }
+            }
+            "displays", "display" -> {
+                sandbox.world.scoreboardDisplays.toSortedMap().forEach { (slot, objective) ->
+                    println("display $slot = $objective")
+                }
+            }
+            else -> println("Usage: inspect scoreboard [objectives|displays]")
         }
     }
 
