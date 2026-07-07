@@ -1193,7 +1193,7 @@ class DatapackSandbox(
         if (plan == null || plan.blocks.isEmpty()) {
             payload.addProperty("placed", false)
             payload.addProperty("format", "raw-json-index-only")
-            payload.addProperty("reason", "Loaded feature resource has no sandbox block or supported simple_block/block_column/disk/vegetation_patch/replace_single_block/replace_blob/random_patch/flower/selector/ore state")
+            payload.addProperty("reason", "Loaded feature resource has no sandbox block or supported simple_block/block_column/disk/vegetation_patch/tree/replace_single_block/replace_blob/random_patch/flower/selector/ore state")
             return emptyList()
         }
 
@@ -1307,6 +1307,7 @@ class DatapackSandbox(
             "vegetation_patch", "waterlogged_vegetation_patch" -> parseVegetationPatchFeature(type, location, depth)
             "replace_single_block" -> parseReplaceSingleBlockFeature(location)
             "replace_blob" -> parseReplaceBlobFeature(type, location)
+            "tree", "fancy_tree", "mega_jungle_tree", "dark_oak", "jungle_tree" -> parseTreeFeature(type, location)
             else -> parseFeatureBlockArgument(location)?.let { block ->
                 SandboxFeaturePlacementPlan(type, listOf(SandboxFeatureBlockPlacement(BlockPos(0, 0, 0), block)))
             }
@@ -1432,6 +1433,39 @@ class DatapackSandbox(
             ?: return null
         val replaceBlocks = config.get("target")?.featureTargetElementBlocks("$label target", location)
         return state to replaceBlocks
+    }
+
+    private fun JsonObject.parseTreeFeature(type: String, location: SourceLocation?): SandboxFeaturePlacementPlan? {
+        val config = getAsJsonObjectOrNull("config", location) ?: this
+        val trunk = config.getAsJsonObjectOrNull("trunk_provider", location)
+            ?.parseBlockStateProviderBlock("$type trunk_provider", location)
+            ?: config.get("trunk")?.parseStructureProcessorBlockArgument("$type trunk", location)
+            ?: return null
+        val foliage = config.getAsJsonObjectOrNull("foliage_provider", location)
+            ?.parseBlockStateProviderBlock("$type foliage_provider", location)
+            ?: config.get("foliage")?.parseStructureProcessorBlockArgument("$type foliage", location)
+            ?: return null
+        val dirt = config.getAsJsonObjectOrNull("dirt_provider", location)
+            ?.parseBlockStateProviderBlock("$type dirt_provider", location)
+        val trunkPlacer = config.getAsJsonObjectOrNull("trunk_placer", location)
+        val height = (
+            trunkPlacer?.get("base_height")?.featureIntProvider("$type trunk_placer base_height", location)
+                ?: config.get("height")?.featureIntProvider("$type height", location)
+                ?: 4
+            ).coerceIn(1, 16)
+        val foliagePlacer = config.getAsJsonObjectOrNull("foliage_placer", location)
+        val radius = (
+            foliagePlacer?.get("radius")?.featureIntProvider("$type foliage_placer radius", location)
+                ?: config.get("foliage_radius")?.featureIntProvider("$type foliage_radius", location)
+                ?: 2
+            ).coerceIn(0, 4)
+        val blocks = mutableListOf<SandboxFeatureBlockPlacement>()
+        if (dirt != null) blocks += SandboxFeatureBlockPlacement(BlockPos(0, -1, 0), dirt)
+        repeat(height) { y -> blocks += SandboxFeatureBlockPlacement(BlockPos(0, y, 0), trunk) }
+        treeFoliageOffsets(height, radius).forEach { offset ->
+            blocks += SandboxFeatureBlockPlacement(offset = offset, block = foliage)
+        }
+        return SandboxFeaturePlacementPlan(type, blocks.distinctBy { it.offset })
     }
 
     private fun JsonObject.parseSelectorFeature(
@@ -1647,6 +1681,19 @@ class DatapackSandbox(
             }
         }
         return candidates.take(256)
+    }
+
+    private fun treeFoliageOffsets(height: Int, radius: Int): List<BlockPos> {
+        val y = height
+        val offsets = mutableListOf(BlockPos(0, y, 0))
+        for (x in -radius..radius) {
+            for (z in -radius..radius) {
+                if (x == 0 && z == 0) continue
+                if (x * x + z * z <= radius * radius) offsets += BlockPos(x, y, z)
+            }
+        }
+        if (radius > 1) offsets += BlockPos(0, y + 1, 0)
+        return offsets.distinct()
     }
 
     private fun diskOffsets(radius: Int, halfHeight: Int): List<BlockPos> {

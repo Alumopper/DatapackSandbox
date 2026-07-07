@@ -800,6 +800,46 @@ class CommandExpansionTest {
     }
 
     @Test
+    fun `place feature applies deterministic tree feature resources`() {
+        val pack = writeFeaturePlacePack(Files.createTempDirectory("dps-place-tree-pack"))
+        val sandbox = createSandbox("26.2", listOf(pack))
+
+        sandbox.executeCommand("place feature demo:placed_tree 55 64 55")
+
+        assertEquals(ResourceLocation.parse("minecraft:dirt"), sandbox.world.requireBlock(BlockPos(55, 63, 55)).id)
+        assertEquals(ResourceLocation.parse("minecraft:oak_log"), sandbox.world.requireBlock(BlockPos(55, 64, 55)).id)
+        assertEquals(ResourceLocation.parse("minecraft:oak_log"), sandbox.world.requireBlock(BlockPos(55, 65, 55)).id)
+        assertEquals(ResourceLocation.parse("minecraft:oak_log"), sandbox.world.requireBlock(BlockPos(55, 66, 55)).id)
+        assertEquals(ResourceLocation.parse("minecraft:oak_leaves"), sandbox.world.requireBlock(BlockPos(55, 67, 55)).id)
+        assertEquals(ResourceLocation.parse("minecraft:oak_leaves"), sandbox.world.requireBlock(BlockPos(54, 67, 55)).id)
+        assertEquals(ResourceLocation.parse("minecraft:oak_leaves"), sandbox.world.requireBlock(BlockPos(55, 67, 54)).id)
+        assertEquals(ResourceLocation.parse("minecraft:oak_leaves"), sandbox.world.requireBlock(BlockPos(55, 67, 56)).id)
+        assertEquals(ResourceLocation.parse("minecraft:oak_leaves"), sandbox.world.requireBlock(BlockPos(56, 67, 55)).id)
+        val output = sandbox.world.outputs.single { it.command == "place feature" }
+        val payload = output.payload?.asJsonObject ?: error("missing place feature payload")
+        assertEquals(true, payload.get("placed").asBoolean)
+        assertEquals("configured-tree", payload.get("format").asString)
+        assertEquals("tree", payload.get("featureType").asString)
+        assertEquals(9, payload.get("attemptedBlocks").asInt)
+        assertEquals(9, payload.get("changedBlocks").asInt)
+        assertEquals(0, payload.get("skippedBlocks").asInt)
+        assertEquals(
+            listOf(
+                "55 63 55",
+                "55 64 55",
+                "55 65 55",
+                "55 66 55",
+                "55 67 55",
+                "54 67 55",
+                "55 67 54",
+                "55 67 56",
+                "56 67 55",
+            ),
+            output.targets,
+        )
+    }
+
+    @Test
     fun `place feature applies deterministic block column feature resources`() {
         val pack = writeFeaturePlacePack(Files.createTempDirectory("dps-place-column-pack"))
         val sandbox = createSandbox("26.2", listOf(pack))
@@ -2486,6 +2526,43 @@ class CommandExpansionTest {
             """.trimIndent(),
         )
         Files.writeString(
+            configuredRoot.resolve("tree.json"),
+            """
+            {
+              "type": "minecraft:tree",
+              "config": {
+                "dirt_provider": {
+                  "type": "minecraft:simple_state_provider",
+                  "state": { "Name": "minecraft:dirt" }
+                },
+                "trunk_provider": {
+                  "type": "minecraft:simple_state_provider",
+                  "state": {
+                    "Name": "minecraft:oak_log",
+                    "Properties": { "axis": "y" }
+                  }
+                },
+                "foliage_provider": {
+                  "type": "minecraft:simple_state_provider",
+                  "state": { "Name": "minecraft:oak_leaves" }
+                },
+                "trunk_placer": {
+                  "type": "minecraft:straight_trunk_placer",
+                  "base_height": 3,
+                  "height_rand_a": 0,
+                  "height_rand_b": 0
+                },
+                "foliage_placer": {
+                  "type": "minecraft:blob_foliage_placer",
+                  "radius": { "type": "minecraft:constant", "value": 1 },
+                  "offset": 0,
+                  "height": 1
+                }
+              }
+            }
+            """.trimIndent(),
+        )
+        Files.writeString(
             configuredRoot.resolve("disk.json"),
             """
             {
@@ -2577,6 +2654,15 @@ class CommandExpansionTest {
             """
             {
               "feature": "demo:grass_patch",
+              "placement": []
+            }
+            """.trimIndent(),
+        )
+        Files.writeString(
+            placedRoot.resolve("placed_tree.json"),
+            """
+            {
+              "feature": "demo:tree",
               "placement": []
             }
             """.trimIndent(),
