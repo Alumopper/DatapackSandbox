@@ -64,7 +64,7 @@ class DatapackResourceIndexTest {
             datapack.resourceIndex.single { it.type == "recipe" && it.id == ResourceLocation.parse("demo:marker") }.behaviorLevel,
         )
         assertEquals(
-            ResourceBehaviorLevel.OBSERVED_NOOP,
+            ResourceBehaviorLevel.MODELED,
             datapack.resourceIndex.single { it.type == "damage_type" && it.id == ResourceLocation.parse("demo:debug_damage") }.behaviorLevel,
         )
         assertEquals(
@@ -85,6 +85,8 @@ class DatapackResourceIndexTest {
         assertEquals(datapack.resourceIndex.count { it.active }, payload.get("activeResources").asInt)
         assertEquals(0, payload.get("overriddenResources").asInt)
         assertEquals(0, payload.getAsJsonArray("resourceOverrides").size())
+        assertEquals(1, payload.get("packCount").asInt)
+        assertEquals(listOf(pack.toAbsolutePath().normalize().toString()), payload.getAsJsonArray("packs").map { it.asString })
     }
 
     @Test

@@ -1839,8 +1839,22 @@ class DatapackSandbox(
         requireSize(tokens, 2, "datapack <list|enable|disable> ...", location)
         when (tokens[1].text) {
             "list" -> {
+                if (tokens.size > 3) {
+                    throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Expected: datapack list [available|enabled]", location)
+                }
+                val filter = tokens.getOrNull(2)?.text ?: "all"
+                if (filter != "all" && filter != "available" && filter != "enabled") {
+                    throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Expected: datapack list [available|enabled]", location)
+                }
                 val summary = datapack.resourceSummary()
+                val packs = datapack.resourceIndex.map { it.pack }.distinct().sorted()
                 val payload = JsonObject()
+                payload.addProperty("filter", filter)
+                payload.addProperty("packCount", packs.size)
+                payload.add(
+                    "packs",
+                    JsonArray().also { packArray -> packs.forEach { packArray.add(it) } },
+                )
                 payload.addProperty("functions", summary.functions)
                 payload.addProperty("lootTables", summary.lootTables)
                 payload.addProperty("predicates", summary.predicates)

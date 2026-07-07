@@ -126,12 +126,16 @@ class CommandExpansionTest {
 
     @Test
     fun `datapack list exposes missing resource diagnostics`() {
-        val sandbox = createSandbox("26.2", listOf(writeMissingFunctionTagPack(Files.createTempDirectory("dps-missing-function-pack"))))
+        val pack = writeMissingFunctionTagPack(Files.createTempDirectory("dps-missing-function-pack"))
+        val sandbox = createSandbox("26.2", listOf(pack))
 
         sandbox.executeCommand("datapack list")
 
         val payload = sandbox.world.outputs.single { it.command == "datapack list" }
             .payload?.asJsonObject ?: error("missing datapack list payload")
+        assertEquals("all", payload.get("filter").asString)
+        assertEquals(1, payload.get("packCount").asInt)
+        assertEquals(listOf(pack.toAbsolutePath().normalize().toString()), payload.getAsJsonArray("packs").map { it.asString })
         val missing = payload.getAsJsonArray("missingReferences")
         assertEquals(1, missing.size())
         val reference = missing[0].asJsonObject
@@ -139,6 +143,31 @@ class CommandExpansionTest {
         assertEquals("function", reference.get("type").asString)
         assertEquals("demo:missing_load", reference.get("id").asString)
         assertTrue(payload.has("resourceOverrides"))
+    }
+
+    @Test
+    fun `datapack list accepts vanilla filters and rejects invalid filters`() {
+        val pack = writeMissingFunctionTagPack(Files.createTempDirectory("dps-filtered-pack"))
+        val sandbox = createSandbox("26.2", listOf(pack))
+
+        sandbox.executeCommand("datapack list enabled")
+        sandbox.executeCommand("datapack list available")
+
+        val payloads = sandbox.world.outputs
+            .filter { it.command == "datapack list" }
+            .map { it.payload?.asJsonObject ?: error("missing datapack list payload") }
+        assertEquals(listOf("enabled", "available"), payloads.map { it.get("filter").asString })
+        payloads.forEach { payload ->
+            assertEquals(1, payload.get("packCount").asInt)
+            assertEquals(listOf(pack.toAbsolutePath().normalize().toString()), payload.getAsJsonArray("packs").map { it.asString })
+            assertEquals(1, payload.getAsJsonArray("missingReferences").size())
+        }
+
+        val error = assertFailsWith<SandboxException> {
+            sandbox.executeCommand("datapack list disabled")
+        }
+        assertEquals(DiagnosticCode.INPUT_FORMAT, error.code)
+        assertTrue(error.message.contains("datapack list [available|enabled]"), error.message)
     }
 
     @Test
