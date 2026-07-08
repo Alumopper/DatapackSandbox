@@ -98,6 +98,31 @@ class VersionProfileTest {
     }
 
     @Test
+    fun `loads datapacks that declare tuple pack format values`() {
+        val exactPack = writePack("26.2-tuple-exact", "[107, 1]", ResourceDirectoryProfile.currentWithLegacyAliases)
+        val exactSandbox = createSandbox("26.2", listOf(exactPack))
+        exactSandbox.runLoad()
+
+        assertEquals(4, exactSandbox.world.getScore("#legacy", "runs"))
+        assertTrue(exactSandbox.datapack.warnings.isEmpty())
+
+        val rangePack = writePackWithPackFields(
+            name = "26.2-tuple-range",
+            packFields = """
+                "min_format": [94],
+                "max_format": [107, 1]
+            """.trimIndent(),
+            directories = ResourceDirectoryProfile.currentWithLegacyAliases,
+        )
+
+        val rangeSandbox = createSandbox("26.2", listOf(rangePack))
+        rangeSandbox.runLoad()
+
+        assertEquals(4, rangeSandbox.world.getScore("#legacy", "runs"))
+        assertTrue(rangeSandbox.datapack.warnings.isEmpty())
+    }
+
+    @Test
     fun `1_20_4 command execution uses profile aware block nbt schema`() {
         val pack = writePack("1.20.4-nbt", "26", ResourceDirectoryProfile.legacyPlural)
         val sandbox = createSandbox("1.20.4", listOf(pack))
@@ -142,15 +167,18 @@ class VersionProfileTest {
     }
 
     @Test
-    fun `rejects datapacks with a pack format from another version profile`() {
+    fun `warns for datapacks with a pack format from another version profile`() {
         val pack = writePack("wrong", "101.1", ResourceDirectoryProfile.legacyPlural)
 
-        val error = assertFailsWith<SandboxException> {
-            createSandbox("1.20.4", listOf(pack))
-        }
+        val sandbox = createSandbox("1.20.4", listOf(pack))
+        sandbox.runLoad()
 
-        assertEquals(DiagnosticCode.VERSION_MISMATCH, error.code)
-        assertTrue(error.message.contains("expected 26"), error.message)
+        assertEquals(4, sandbox.world.getScore("#legacy", "runs"))
+        assertEquals(1, sandbox.datapack.warnings.size)
+        val warning = sandbox.world.outputs.single()
+        assertEquals("warning", warning.channel)
+        assertTrue(warning.text.contains("expected 26"), warning.text)
+        assertEquals(DiagnosticCode.VERSION_MISMATCH.name, warning.payload?.asJsonObject?.get("code")?.asString)
     }
 
     private fun writePack(name: String, packFormat: String, directories: ResourceDirectoryProfile): Path =

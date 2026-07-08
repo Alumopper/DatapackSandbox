@@ -159,6 +159,43 @@ paths or `SnapshotDiff.render(...)` for readable failure logs.
 `unsupportedFeatureMode` can be `WARN` (default), `IGNORE`, or `ERROR`. Use
 `ERROR` when you want unsupported vanilla commands to fail the test immediately.
 
+## Version and Pack Metadata
+
+`SandboxQuickTest.create(...)` defaults to the latest built-in profile
+(`26.2` in this build). Pass `version = "..."` explicitly when your datapack is
+for another Minecraft version; the API does not infer the runtime profile from
+`pack.mcmeta`.
+
+`pack.mcmeta` format mismatches are load warnings, not exceptions. They are
+available both as `sandbox.datapack.warnings` on the low-level API and as
+`warning` output events in quick-test reports:
+
+```kotlin
+val report = SandboxQuickTest.create(
+    packs = listOf(Path.of("packs/demo")),
+    version = "26.2",
+)
+    .load()
+    .report()
+
+val formatWarnings = report.outputs.filter {
+    it.channel == "warning" && it.command == "datapack load"
+}
+```
+
+Modern pack format values can be written as integer tuples. The loader treats
+`[107, 1]` as `107.1` and `[94]` as `94`, so this metadata is valid:
+
+```json
+{
+  "pack": {
+    "min_format": [94],
+    "max_format": [107, 1],
+    "description": "Example 26.2 datapack"
+  }
+}
+```
+
 Low-level sandbox factories also accept `SandboxLimits` to stop runaway tests
 deterministically. The limits currently cover total command lines executed by a
 sandbox instance, nested function call depth, the maximum tick count allowed in
@@ -296,11 +333,11 @@ SandboxQuickTest.create(listOf(pack), version = "26.2")
     .command("scoreboard objectives setdisplay sidebar.team.red health")
     .assertScoreboardObjective(
         "health",
+        renderType = ScoreboardRenderType.HEARTS,
         criteria = "dummy",
         displayName = "Health Points",
-        renderType = "hearts",
     )
-    .assertScoreboardDisplay("sidebar.team.red", "health")
+    .assertScoreboardDisplay(ScoreboardDisplaySlot.SIDEBAR_TEAM_RED, "health")
     .requirePassed()
 ```
 
@@ -375,8 +412,8 @@ SandboxQuickTest.create(
         gamerule("doDaylightCycle", "false")
     }
     .assertWorld(
-        difficulty = "hard",
-        defaultGameMode = "creative",
+        difficulty = SandboxDifficulty.HARD,
+        defaultGameMode = SandboxGameMode.CREATIVE,
         seed = 123,
         forcedChunkX = 0,
         forcedChunkZ = 0,
@@ -409,13 +446,14 @@ SandboxQuickTest.create(
         passenger = "00000000-0000-0000-0000-000000000101",
         passengerCount = 1,
     )
-    .assertEntityEquipment("weapon.mainhand", type = "minecraft:pig", tag = "fixture", id = "minecraft:iron_sword", dimension = "minecraft:the_nether")
+    .assertEntityEquipment(EntityEquipmentSlot.MAINHAND, type = "minecraft:pig", tag = "fixture", id = "minecraft:iron_sword", dimension = "minecraft:the_nether")
     .assertEntityEffect("minecraft:strength", type = "minecraft:pig", tag = "fixture", durationTicks = 80, amplifier = 2, dimension = "minecraft:the_nether")
     .assertEntityAttribute("minecraft:max_health", type = "minecraft:pig", tag = "fixture", value = 12.0, dimension = "minecraft:the_nether")
     .assertEntityCount(expected = 1, type = "minecraft:pig", tag = "fixture", dimension = "minecraft:the_nether")
     .assertEntityCountRange(min = 1, max = 3, type = "minecraft:pig", tag = "fixture", dimension = "minecraft:the_nether")
     .assertPlayer(
         "Alex",
+        gameMode = SandboxGameMode.SURVIVAL,
         xp = 5,
         xpLevels = 4,
         recipe = "minecraft:bread",
@@ -427,9 +465,9 @@ SandboxQuickTest.create(
         nbtPath = "Health",
         nbtEquals = "20.0",
     )
-    .assertTeam("red", member = "Alex", memberCount = 1, optionName = "color", optionEquals = "red")
+    .assertTeam("red", TeamOption.COLOR, "red", member = "Alex", memberCount = 1)
     .assertBossbar("demo:bar", name = "Demo", value = 3, max = 10, player = "Alex")
-    .assertItem("Alex", "minecraft:stick", 2, minCount = 1, maxCount = 3)
+    .assertItem("Alex", ItemContainer.INVENTORY, "minecraft:stick", 2, minCount = 1, maxCount = 3)
     .assertScore("#fixture", "ready", 1)
     .assertScoreRange("#fixture", "ready", min = 1, max = 3)
     .assertStorageExists("demo:env", "ready")
@@ -568,9 +606,9 @@ class MyDatapackTest {
 | `assertPlayerLastInput(player, device, code, action)` | Assert the latest player input |
 | `assertAdvancementDone(player, id, expected)` | Assert advancement completion |
 | `assertOutputContains(text)` | Assert output event text |
-| `assertOutput(...)` | Assert command/channel/target/text/regex/normalized text/payload path/count/order for output events |
+| `assertOutput(...)` | Assert command/channel/target/rendered text/rawText/regex/normalized text/payload path/segment/count/order for output events |
 | `assertTrace(...)` | Assert command/root/source/success/output count/output text/output target/diff path/diff kind/count for trace events |
-| `assertPlayerEventTrace(...)` | Assert player event trace player/type/success/context/block position/advancement/failed advancement/count |
+| `assertPlayerEventTrace(...)` | Assert player event trace player/type/success/context/block position/input metadata/advancement/failed advancement/count |
 | `assertSnapshotDiff(...)` | Assert before/after snapshot path/kind/rendered text/count; failures list actual diff candidates |
 | `outputs()` | Return recorded output events |
 | `traces()` | Return recorded structured command trace events |
@@ -586,12 +624,72 @@ class MyDatapackTest {
 manifest assertions. `nbtEquals` and `componentsEquals` accept JSON/SNBT-lite
 text.
 
+## Assertion Semantics
+
+All fluent `assert...` methods record a failure on the scenario or matrix and
+return the same object for chaining. Call `report()` to inspect failures without
+throwing, or `requirePassed()` to throw `SandboxQuickTestAssertionError` when
+any recorded assertion failed.
+
+Most optional assertion parameters are filters: `null` means "do not check this
+field". For event-list assertions such as `assertOutput(...)`,
+`assertTrace(...)`, and `assertPlayerEventTrace(...)`, omitting `count` requires
+at least one match; setting `count` requires exactly that many matches. Output
+`order` is one-based and checks the global output event position.
+
+String overloads remain available for custom ids, future vanilla values, and
+advanced tests. Fixed-choice parameters also have enum overloads so Kotlin and
+Java callers get autocomplete:
+
+| Enum | Used by |
+| --- | --- |
+| `OutputChannel` | `assertOutput(...)`, `matchingOutputs(...)` channel filters such as `CHAT`, `TITLE`, `WORLDGEN`, `WARNING` |
+| `CommandRoot` | `assertTrace(...)`, `matchingTraces(...)` root filters such as `SAY`, `SCOREBOARD`, `FUNCTION`, `EXECUTE` |
+| `SandboxWeather`, `SandboxDifficulty`, `SandboxGameMode` | `assertWorld(...)` and `assertPlayer(...)` weather, difficulty, default game mode, and player game mode |
+| `PlayerInputDevice`, `PlayerInputAction`, `PlayerEventType` | `keyInput(...)`, `mouseInput(...)`, `assertPlayerLastInput(...)`, `assertPlayerEventTrace(...)`, `matchingPlayerEventTraces(...)` |
+| `ScoreboardRenderType`, `ScoreboardDisplaySlot` | `assertScoreboardObjective(...)` render type and `assertScoreboardDisplay(...)` slot |
+| `EntityEquipmentSlot`, `ItemContainer`, `LootContextId` | `assertEntityEquipment(...)`, `assertItem(...)`, `assertLoot(...)` |
+| `BossbarColor`, `BossbarStyle`, `TeamOption` | `assertBossbar(...)` and `assertTeam(...)` fixed options |
+
+### Assertion Reference
+
+| Assertion | Main checks |
+| --- | --- |
+| `assertScore`, `assertScoreAtLeast`, `assertScoreAtMost`, `assertScoreRange` | Scoreboard value equality and optional numeric bounds. |
+| `assertStorageEquals`, `assertStorageExists`, `assertStorageMissing` | Storage root/path existence or exact JSON/SNBT-lite value. |
+| `assertWorld` | `gameTime`, `dayTime`, `weather`, `difficulty`, `defaultGameMode`, `seed`, forced chunks, biome overrides, world spawn, and world border fields. |
+| `assertRandomSequence`, `assertForcedChunk`, `assertGamerule`, `assertScheduledFunction` | World runtime bookkeeping that otherwise requires reading snapshot JSON. |
+| `assertScoreboardObjective`, `assertScoreboardDisplay` | Objective criteria, display name, render type, display auto-update, and display slot binding. |
+| `assertPlayer`, `assertPlayerXp`, `assertPlayerXpLevels`, `assertPlayerLastInput` | Player existence, position, dimension, game mode, XP, health, food, inventory/ender counts, recipe/effect/stat presence, spawn point, NBT path, and last input. |
+| `assertTeam`, `assertBossbar` | Team existence, display name, members, options, bossbar value/max/color/style/visibility/players. |
+| `assertPredicate`, `assertLoot`, `assertAdvancementDone` | Predicate result, deterministic loot table output with context/player/seed, and advancement completion. |
+| `assertBlock` | Sparse-world block id, existence, and block NBT path. |
+| `assertEntity`, `assertEntityCount*` | Entity existence/count by type, tag, UUID, position, dimension, health, vehicle/passenger, passenger count, and NBT path. |
+| `assertEntityEquipment`, `assertEntityEffect`, `assertEntityAttribute` | Entity equipment item filters, active effect fields, and attribute values/ranges. |
+| `assertItem` | Player inventory or `enderItems` item id/count/slot/min/max plus component and NBT paths. |
+| `assertOutputContains`, `assertOutput` | Output event command, channel, target(s), rendered `text`, command-visible `rawText`, regex/normalized matching, payload paths, text segments, count, and order. |
+| `assertTrace` | Command trace command/root/source file/function, success flag, output count/text/target, and snapshot diff path/kind/rendered text. |
+| `assertPlayerEventTrace` | Player event dispatch player/type/success, advancement matches/failures, item/entity/block/recipe/dimension/damage metadata, and input device/code/action. |
+| `assertSnapshotDiff` | Initial-to-current snapshot diff path, kind, rendered text, and count. |
+
+For `say`, `me`, `msg`/`tell`/`w`, and `teammsg`/`tm`, `OutputEvent.text`
+contains the rendered chat line, for example `<Server> hello`. `rawText`
+contains only the message supplied to the command, for example `hello`. Use
+`rawText`, `rawContains`, or `normalizedRawText` when you want to assert the
+developer-facing command output content instead of the decorated chat line.
+
 ## Output Tests
 
 ```kotlin
 val report = SandboxQuickTest.singleFunction(Path.of("scratch/output.mcfunction"), "26.2")
     .function()
-    .assertOutput(command = "say", channel = "chat", target = "Steve", contains = "hello")
+    .assertOutput(
+        channel = OutputChannel.CHAT,
+        command = "say",
+        target = "Steve",
+        text = "<Server> hello",
+        rawText = "hello",
+    )
     .assertOutput(command = "tellraw", normalizedText = "generated output")
     .assertOutput(
         OutputExpectation(
@@ -653,9 +751,9 @@ SandboxQuickTest.singleFunctionText("scoreboard players set #gen runs 1", "26.2"
 
 ```kotlin
 SandboxQuickTest.create(listOf(Path.of("packs/demo")))
-    .keyInput("Steve", "key.jump")
-    .mouseInput("Steve", "left", "click", 12.0, 8.0)
-    .assertPlayerLastInput("Steve", "mouse", "left", "click")
+    .keyInput("Steve", "key.jump", PlayerInputAction.PRESS)
+    .mouseInput("Steve", "left", PlayerInputAction.CLICK, 12.0, 8.0)
+    .assertPlayerLastInput("Steve", PlayerInputDevice.MOUSE, "left", PlayerInputAction.CLICK)
     .requirePassed()
 ```
 

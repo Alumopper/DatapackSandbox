@@ -46,9 +46,21 @@ Minecraft Java `26.2` 使用 data pack format `107.1`，当前资源目录是单
 
 兼容 profile 会保留自己的 data pack format。例如 `26.1`、`26.1.1`、`26.1.2` 使用 `101.1`，`1.21.11` 使用 `94.1`，`1.20.5` 到 `1.20.6` 使用 `41`。
 
-旧目录别名只会在当前 `VersionProfile` 允许时接受。格式不匹配会以 `VERSION_MISMATCH` 失败。JSON 解析失败会包含文件路径、resource id 和版本 profile。
+旧目录别名只会在当前 `VersionProfile` 允许时接受。格式不匹配会记录非致命的 `VERSION_MISMATCH` 加载 warning，测试会继续执行，适合临近版本或刻意放宽的 pack。JSON 解析失败和结构错误仍会失败，并包含文件路径、resource id 和版本 profile。
 
 新版 pack 如果不用单个 `pack_format`，也可以声明范围。加载器支持 `min_format`/`max_format` 和 `supported_formats`，只要当前 profile 的 data pack format 落在范围内即可。
+
+format 值既可以写成 JSON 数字，也可以写成一到两个整数组成的数组。例如 `[107, 1]` 会按 `107.1` 处理，`[94]` 会按 `94` 处理：
+
+```json
+{
+  "pack": {
+    "min_format": [94],
+    "max_format": [107, 1],
+    "description": "Example range pack"
+  }
+}
+```
 
 ## 资源行为等级
 

@@ -81,6 +81,18 @@ data class OutputExpectation(
     val normalizedContains: String? = null,
     /** Regex that must match the normalized event plain text. */
     val normalizedMatches: String? = null,
+    /** Exact raw command-visible message text to match. */
+    val rawText: String? = null,
+    /** Substring that must appear in the raw command-visible message text. */
+    val rawContains: String? = null,
+    /** Regex that must match somewhere in the raw command-visible message text. */
+    val rawTextMatches: String? = null,
+    /** Exact raw text after whitespace is collapsed and trimmed. */
+    val normalizedRawText: String? = null,
+    /** Substring that must appear after raw values have whitespace collapsed and trimmed. */
+    val normalizedRawContains: String? = null,
+    /** Regex that must match the normalized raw text. */
+    val normalizedRawMatches: String? = null,
     /** Optional JSON path inside the event payload. */
     val payloadPath: String? = null,
     /** Expected JSON value at [payloadPath], or any value when null and [payloadPath] is set. */
@@ -106,6 +118,12 @@ data class OutputExpectation(
             (normalizedText == null || normalizeOutputText(event.text) == normalizeOutputText(normalizedText)) &&
             (normalizedContains == null || normalizeOutputText(normalizedContains) in normalizeOutputText(event.text)) &&
             (normalizedMatches == null || Regex(normalizedMatches).containsMatchIn(normalizeOutputText(event.text))) &&
+            (rawText == null || event.rawText == rawText) &&
+            (rawContains == null || rawContains in event.rawText) &&
+            (rawTextMatches == null || Regex(rawTextMatches).containsMatchIn(event.rawText)) &&
+            (normalizedRawText == null || normalizeOutputText(event.rawText) == normalizeOutputText(normalizedRawText)) &&
+            (normalizedRawContains == null || normalizeOutputText(normalizedRawContains) in normalizeOutputText(event.rawText)) &&
+            (normalizedRawMatches == null || Regex(normalizedRawMatches).containsMatchIn(normalizeOutputText(event.rawText))) &&
             payloadMatches(event) &&
             (segment == null || event.segments.any(segment::matches))
 
@@ -148,6 +166,12 @@ data class OutputExpectation(
             normalizedText?.let { "normalizedText=${quote(it)}" },
             normalizedContains?.let { "normalizedContains=${quote(it)}" },
             normalizedMatches?.let { "normalizedMatches=${quote(it)}" },
+            rawText?.let { "rawText=${quote(it)}" },
+            rawContains?.let { "rawContains=${quote(it)}" },
+            rawTextMatches?.let { "rawMatches=${quote(it)}" },
+            normalizedRawText?.let { "normalizedRawText=${quote(it)}" },
+            normalizedRawContains?.let { "normalizedRawContains=${quote(it)}" },
+            normalizedRawMatches?.let { "normalizedRawMatches=${quote(it)}" },
             payloadPath?.let { "payload.$it=${payloadEquals?.let(JsonValues::render) ?: "<exists>"}" },
             segment?.let { "segment=$it" },
             order?.let { "order=$it" },
@@ -166,7 +190,8 @@ data class OutputExpectation(
     private fun actualOutputs(outputs: List<OutputEvent>): String {
         if (outputs.isEmpty()) return "actual outputs: <none>"
         val rendered = outputs.take(5).mapIndexed { index, output ->
-            "#${index + 1} command=${output.command} channel=${output.channel} targets=${output.targets.sorted()} text=${quote(output.text.truncateForAssertion())}${payloadSummary(output)}${segmentSummary(output)}"
+            val raw = if (output.rawText == output.text) "" else " rawText=${quote(output.rawText.truncateForAssertion())}"
+            "#${index + 1} command=${output.command} channel=${output.channel} targets=${output.targets.sorted()} text=${quote(output.text.truncateForAssertion())}$raw${payloadSummary(output)}${segmentSummary(output)}"
         }
         val suffix = if (outputs.size > rendered.size) "; ... +${outputs.size - rendered.size} more" else ""
         return "actual outputs: ${rendered.joinToString("; ")}$suffix"

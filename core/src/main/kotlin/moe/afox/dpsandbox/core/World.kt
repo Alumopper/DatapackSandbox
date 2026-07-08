@@ -769,6 +769,7 @@ data class OutputEvent(
     val payload: JsonElement? = null,
     val segments: List<OutputTextSegment> = emptyList(),
     val source: CommandSource? = null,
+    val rawText: String = text,
 ) {
     /**
      * Serializes this output event into deterministic snapshot JSON.
@@ -779,6 +780,7 @@ data class OutputEvent(
         json.addProperty("command", command)
         json.addProperty("channel", channel)
         json.addProperty("text", text)
+        json.addProperty("rawText", rawText)
 
         val targetJson = JsonArray()
         targets.sorted().forEach { targetJson.add(it) }
@@ -973,6 +975,7 @@ class SandboxWorld {
         payload: JsonElement? = null,
         segments: List<OutputTextSegment> = emptyList(),
         source: CommandSource? = currentCommandSource,
+        rawText: String = text,
     ) {
         outputs += OutputEvent(
             tick = gameTime,
@@ -983,6 +986,7 @@ class SandboxWorld {
             payload = payload,
             segments = segments,
             source = source,
+            rawText = rawText,
         )
     }
 

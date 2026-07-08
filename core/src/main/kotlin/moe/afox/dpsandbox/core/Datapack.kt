@@ -167,6 +167,16 @@ data class DatapackMissingResourceReference(
 )
 
 /**
+ * Non-fatal datapack load diagnostic.
+ */
+data class DatapackWarning(
+    val message: String,
+    val code: DiagnosticCode? = null,
+    val file: String? = null,
+    val version: String? = null,
+)
+
+/**
  * Stable resource diagnostics shared by CLI reports, REPL inspect, and quick-test reports.
  */
 data class DatapackResourceSummary(
@@ -269,6 +279,7 @@ data class Datapack(
     val rawResources: Map<String, Map<ResourceLocation, RawJsonResource>> = emptyMap(),
     val tags: Map<TagKey, TagDefinition> = emptyMap(),
     val resourceIndex: List<ResourceIndexEntry> = emptyList(),
+    val warnings: List<DatapackWarning> = emptyList(),
 ) {
     /**
      * Builds a deterministic summary of loaded resources, overlays, and direct missing references.

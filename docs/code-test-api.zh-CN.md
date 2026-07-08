@@ -129,6 +129,37 @@ println(report.traces.single().command)
 - `IGNORE`：静默跳过未支持命令。
 - `ERROR`：严格模式，遇到未支持命令立即失败。
 
+## 版本与 pack 元数据
+
+`SandboxQuickTest.create(...)` 默认使用当前内置的最新 profile（此版本是 `26.2`）。如果数据包面向其他 Minecraft 版本，应显式传入 `version = "..."`；API 不会根据 `pack.mcmeta` 自动推断运行时 profile。
+
+`pack.mcmeta` 的 format 不匹配现在是加载 warning，不是异常。底层 API 可以从 `sandbox.datapack.warnings` 读取，quick-test 报告里也会作为 `warning` output event 出现：
+
+```kotlin
+val report = SandboxQuickTest.create(
+    packs = listOf(Path.of("packs/demo")),
+    version = "26.2",
+)
+    .load()
+    .report()
+
+val formatWarnings = report.outputs.filter {
+    it.channel == "warning" && it.command == "datapack load"
+}
+```
+
+现代 pack format 值可以写成整数数组。加载器会把 `[107, 1]` 按 `107.1` 处理，把 `[94]` 按 `94` 处理，因此下面的 `pack.mcmeta` 是有效的：
+
+```json
+{
+  "pack": {
+    "min_format": [94],
+    "max_format": [107, 1],
+    "description": "Example 26.2 datapack"
+  }
+}
+```
+
 底层 sandbox factory 还可以传入 `SandboxLimits`，用于在单元测试或 CI 中确定性阻止
 runaway 执行。目前限制覆盖一个 sandbox 实例累计执行的命令行数、嵌套 function 调用深度，
 单次 `runTicks` 允许推进的最大 tick 数、保留的输出事件数，以及渲染后的 snapshot 大小：
@@ -261,11 +292,11 @@ SandboxQuickTest.create(listOf(pack), version = "26.2")
     .command("scoreboard objectives setdisplay sidebar.team.red health")
     .assertScoreboardObjective(
         "health",
+        renderType = ScoreboardRenderType.HEARTS,
         criteria = "dummy",
         displayName = "Health Points",
-        renderType = "hearts",
     )
-    .assertScoreboardDisplay("sidebar.team.red", "health")
+    .assertScoreboardDisplay(ScoreboardDisplaySlot.SIDEBAR_TEAM_RED, "health")
     .requirePassed()
 ```
 
@@ -337,8 +368,8 @@ SandboxQuickTest.create(
         gamerule("doDaylightCycle", "false")
     }
     .assertWorld(
-        difficulty = "hard",
-        defaultGameMode = "creative",
+        difficulty = SandboxDifficulty.HARD,
+        defaultGameMode = SandboxGameMode.CREATIVE,
         seed = 123,
         forcedChunkX = 0,
         forcedChunkZ = 0,
@@ -371,13 +402,14 @@ SandboxQuickTest.create(
         passenger = "00000000-0000-0000-0000-000000000101",
         passengerCount = 1,
     )
-    .assertEntityEquipment("weapon.mainhand", type = "minecraft:pig", tag = "fixture", id = "minecraft:iron_sword", dimension = "minecraft:the_nether")
+    .assertEntityEquipment(EntityEquipmentSlot.MAINHAND, type = "minecraft:pig", tag = "fixture", id = "minecraft:iron_sword", dimension = "minecraft:the_nether")
     .assertEntityEffect("minecraft:strength", type = "minecraft:pig", tag = "fixture", durationTicks = 80, amplifier = 2, dimension = "minecraft:the_nether")
     .assertEntityAttribute("minecraft:max_health", type = "minecraft:pig", tag = "fixture", value = 12.0, dimension = "minecraft:the_nether")
     .assertEntityCount(expected = 1, type = "minecraft:pig", tag = "fixture", dimension = "minecraft:the_nether")
     .assertEntityCountRange(min = 1, max = 3, type = "minecraft:pig", tag = "fixture", dimension = "minecraft:the_nether")
     .assertPlayer(
         "Alex",
+        gameMode = SandboxGameMode.SURVIVAL,
         xp = 5,
         xpLevels = 4,
         recipe = "minecraft:bread",
@@ -389,9 +421,9 @@ SandboxQuickTest.create(
         nbtPath = "Health",
         nbtEquals = "20.0",
     )
-    .assertTeam("red", member = "Alex", memberCount = 1, optionName = "color", optionEquals = "red")
+    .assertTeam("red", TeamOption.COLOR, "red", member = "Alex", memberCount = 1)
     .assertBossbar("demo:bar", name = "Demo", value = 3, max = 10, player = "Alex")
-    .assertItem("Alex", "minecraft:stick", 2, minCount = 1, maxCount = 3)
+    .assertItem("Alex", ItemContainer.INVENTORY, "minecraft:stick", 2, minCount = 1, maxCount = 3)
     .assertScore("#fixture", "ready", 1)
     .assertScoreRange("#fixture", "ready", min = 1, max = 3)
     .assertStorageExists("demo:env", "ready")
@@ -528,9 +560,9 @@ class MyDatapackTest {
 | `assertPlayerLastInput(player, device, code, action)` | 断言玩家最后一次输入。 |
 | `assertAdvancementDone(player, id, expected)` | 断言 advancement 是否完成。 |
 | `assertOutputContains(text)` | 断言输出事件包含文本。 |
-| `assertOutput(...)` | 按 command/channel/target/text/正则/规范化文本/payload path/count/order 断言输出事件。 |
+| `assertOutput(...)` | 按 command/channel/target/渲染后 text/rawText/正则/规范化文本/payload path/segment/count/order 断言输出事件。 |
 | `assertTrace(...)` | 按 command/root/source/success/输出数量/输出文本/输出目标/diff path/diff kind/count 断言 trace 事件。 |
-| `assertPlayerEventTrace(...)` | 按 player/type/success/上下文/方块坐标/advancement/失败 advancement/count 断言玩家事件 trace。 |
+| `assertPlayerEventTrace(...)` | 按 player/type/success/上下文/方块坐标/input 元数据/advancement/失败 advancement/count 断言玩家事件 trace。 |
 | `assertSnapshotDiff(...)` | 按 before/after snapshot 的 path/kind/渲染文本/count 断言状态变化；失败时列出实际 diff 候选。 |
 | `outputs()` | 返回记录的输出事件。 |
 | `traces()` | 返回记录的结构化命令 trace。 |
@@ -545,6 +577,56 @@ class MyDatapackTest {
 `assertBlock` 和 `assertItem` 的 path 检查使用和 manifest 断言相同的
 `JsonPaths` 语义。`nbtEquals` 和 `componentsEquals` 接受 JSON/SNBT-lite 文本。
 
+## 断言语义
+
+所有 fluent `assert...` 方法都会把失败记录到当前 scenario 或 matrix，并返回同一个对象继续链式调用。用
+`report()` 可以查看失败而不抛异常；用 `requirePassed()` 会在存在失败时抛出
+`SandboxQuickTestAssertionError`。
+
+大多数可选断言参数都是过滤条件：`null` 表示不检查该字段。`assertOutput(...)`、
+`assertTrace(...)`、`assertPlayerEventTrace(...)` 这类事件列表断言在没有设置 `count`
+时要求至少一个匹配；设置 `count` 后要求匹配数量严格相等。输出断言的 `order`
+是从 1 开始的全局输出事件序号。
+
+字符串重载仍然保留，用于自定义 id、未来 vanilla 值或高级测试。固定取值参数同时提供枚举重载，Kotlin/Java
+调用者可以通过 IDE 自动补全：
+
+| 枚举 | 使用位置 |
+| --- | --- |
+| `OutputChannel` | `assertOutput(...)`、`matchingOutputs(...)` 的 channel，例如 `CHAT`、`TITLE`、`WORLDGEN`、`WARNING` |
+| `CommandRoot` | `assertTrace(...)`、`matchingTraces(...)` 的 root，例如 `SAY`、`SCOREBOARD`、`FUNCTION`、`EXECUTE` |
+| `SandboxWeather`、`SandboxDifficulty`、`SandboxGameMode` | `assertWorld(...)` 和 `assertPlayer(...)` 的天气、难度、默认游戏模式和玩家游戏模式 |
+| `PlayerInputDevice`、`PlayerInputAction`、`PlayerEventType` | `keyInput(...)`、`mouseInput(...)`、`assertPlayerLastInput(...)`、`assertPlayerEventTrace(...)`、`matchingPlayerEventTraces(...)` |
+| `ScoreboardRenderType`、`ScoreboardDisplaySlot` | `assertScoreboardObjective(...)` 的 render type 和 `assertScoreboardDisplay(...)` 的 slot |
+| `EntityEquipmentSlot`、`ItemContainer`、`LootContextId` | `assertEntityEquipment(...)`、`assertItem(...)`、`assertLoot(...)` |
+| `BossbarColor`、`BossbarStyle`、`TeamOption` | `assertBossbar(...)` 和 `assertTeam(...)` 的固定选项 |
+
+### 断言参数速查
+
+| 断言 | 主要检查内容 |
+| --- | --- |
+| `assertScore`、`assertScoreAtLeast`、`assertScoreAtMost`、`assertScoreRange` | scoreboard 值相等和可选数值上下界。 |
+| `assertStorageEquals`、`assertStorageExists`、`assertStorageMissing` | storage 根/路径存在性或精确 JSON/SNBT-lite 值。 |
+| `assertWorld` | `gameTime`、`dayTime`、`weather`、`difficulty`、`defaultGameMode`、`seed`、强加载 chunk、biome override、世界出生点和世界边界。 |
+| `assertRandomSequence`、`assertForcedChunk`、`assertGamerule`、`assertScheduledFunction` | 不需要手动读 snapshot JSON 的世界运行时状态。 |
+| `assertScoreboardObjective`、`assertScoreboardDisplay` | objective criteria、显示名、render type、display auto-update 和 display slot 绑定。 |
+| `assertPlayer`、`assertPlayerXp`、`assertPlayerXpLevels`、`assertPlayerLastInput` | 玩家存在性、位置、维度、游戏模式、XP、生命、饥饿、背包/末影箱数量、recipe/effect/stat、出生点、NBT path 和最后一次输入。 |
+| `assertTeam`、`assertBossbar` | team 存在性、显示名、成员、选项，以及 bossbar 的 value/max/color/style/visible/players。 |
+| `assertPredicate`、`assertLoot`、`assertAdvancementDone` | predicate 结果、带 context/player/seed 的确定性 loot 输出，以及 advancement 完成状态。 |
+| `assertBlock` | sparse world 方块 id、存在性和方块 NBT path。 |
+| `assertEntity`、`assertEntityCount*` | 按 type、tag、UUID、位置、维度、生命、载具/乘客、乘客数量和 NBT path 检查实体存在性/数量。 |
+| `assertEntityEquipment`、`assertEntityEffect`、`assertEntityAttribute` | 实体装备物品过滤、active effect 字段和 attribute 值/范围。 |
+| `assertItem` | 玩家 `inventory` 或 `enderItems` 中物品 id/count/slot/min/max，以及 component 和 NBT path。 |
+| `assertOutputContains`、`assertOutput` | 输出事件的 command、channel、target(s)、渲染后 `text`、命令可见 `rawText`、正则/规范化匹配、payload path、文本 segment、count 和 order。 |
+| `assertTrace` | 命令 trace 的 command/root/source file/function、success、输出数量/文本/目标，以及 snapshot diff path/kind/渲染文本。 |
+| `assertPlayerEventTrace` | 玩家事件 dispatch 的 player/type/success、advancement 命中/失败、item/entity/block/recipe/dimension/damage 元数据和 input device/code/action。 |
+| `assertSnapshotDiff` | 从初始状态到当前状态的 snapshot diff path、kind、渲染文本和数量。 |
+
+对于 `say`、`me`、`msg`/`tell`/`w`、`teammsg`/`tm`，`OutputEvent.text`
+是渲染后的聊天行，例如 `<Server> hello`；`rawText` 只保留命令传入的消息内容，例如
+`hello`。如果你关心开发者通常理解的“命令输出内容”，优先用 `rawText`、`rawContains`
+或 `normalizedRawText`，而不是匹配带装饰前缀的聊天文本。
+
 ## 输出断言
 
 输出命令会进入 `OutputEvent`。可用于测试 `tellraw`、`title`、`say`、`msg`、`playsound`、`particle`、warning 等可观测行为。
@@ -552,7 +634,13 @@ class MyDatapackTest {
 ```kotlin
 val report = SandboxQuickTest.singleFunction(Path.of("scratch/output.mcfunction"), "26.2")
     .function()
-    .assertOutput(command = "say", channel = "chat", target = "Steve", contains = "hello")
+    .assertOutput(
+        channel = OutputChannel.CHAT,
+        command = "say",
+        target = "Steve",
+        text = "<Server> hello",
+        rawText = "hello",
+    )
     .assertOutput(command = "tellraw", normalizedText = "generated output")
     .assertOutput(
         OutputExpectation(
@@ -613,9 +701,9 @@ SandboxQuickTest.singleFunctionText("scoreboard players set #gen runs 1", "26.2"
 
 ```kotlin
 SandboxQuickTest.create(listOf(Path.of("packs/demo")))
-    .keyInput("Steve", "key.jump")
-    .mouseInput("Steve", "left", "click", 12.0, 8.0)
-    .assertPlayerLastInput("Steve", "mouse", "left", "click")
+    .keyInput("Steve", "key.jump", PlayerInputAction.PRESS)
+    .mouseInput("Steve", "left", PlayerInputAction.CLICK, 12.0, 8.0)
+    .assertPlayerLastInput("Steve", PlayerInputDevice.MOUSE, "left", PlayerInputAction.CLICK)
     .requirePassed()
 ```
 

@@ -1,6 +1,8 @@
 .gradle/
 build/
 **/build/
+docs/.vitepress/cache/
+docs/.vitepress/dist/
 
 *.class
 *.log

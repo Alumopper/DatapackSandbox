@@ -295,6 +295,27 @@ class DatapackSandbox(
     private var lastFunctionReturnValue: Int? = null
     private val functionStack = mutableListOf<FunctionTraceFrame>()
 
+    init {
+        recordDatapackLoadWarnings()
+    }
+
+    private fun recordDatapackLoadWarnings() {
+        datapack.warnings.forEach { warning ->
+            val payload = JsonObject().also { json ->
+                warning.code?.let { json.addProperty("code", it.name) }
+                warning.file?.let { json.addProperty("file", it) }
+                warning.version?.let { json.addProperty("version", it) }
+            }
+            world.recordOutput(
+                command = "datapack load",
+                channel = "warning",
+                text = warning.message,
+                payload = payload,
+                source = null,
+            )
+        }
+    }
+
     /**
      * Runs every function referenced by `#minecraft:load`.
      *
@@ -6460,14 +6481,28 @@ class DatapackSandbox(
         requireSize(tokens, 2, "say <message>", location)
         val sender = outputSender(context)
         val text = CommandTokenizer.tailFrom(command, tokens[1])
-        world.recordOutput("say", "chat", world.players.keys.toList(), "<$sender> $text", chatCommandPayload(ResourceLocation("minecraft", "say_command"), sender, text, location))
+        world.recordOutput(
+            "say",
+            "chat",
+            world.players.keys.toList(),
+            "<$sender> $text",
+            chatCommandPayload(ResourceLocation("minecraft", "say_command"), sender, text, location),
+            rawText = text,
+        )
     }
 
     private fun executeMe(command: String, tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext) {
         requireSize(tokens, 2, "me <action>", location)
         val sender = outputSender(context)
         val text = CommandTokenizer.tailFrom(command, tokens[1])
-        world.recordOutput("me", "chat", world.players.keys.toList(), "* $sender $text", chatCommandPayload(ResourceLocation("minecraft", "emote_command"), sender, text, location))
+        world.recordOutput(
+            "me",
+            "chat",
+            world.players.keys.toList(),
+            "* $sender $text",
+            chatCommandPayload(ResourceLocation("minecraft", "emote_command"), sender, text, location),
+            rawText = text,
+        )
     }
 
     private fun executePrivateMessage(command: String, tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext) {
@@ -6475,14 +6510,28 @@ class DatapackSandbox(
         val targets = resolvePlayers(tokens[1].text, location, context).map { it.name }
         val sender = outputSender(context)
         val text = CommandTokenizer.tailFrom(command, tokens[2])
-        world.recordOutput(tokens[0].text, "chat", targets, "[$sender -> ${targets.joinToString()}] $text", chatCommandPayload(ResourceLocation("minecraft", "msg_command_incoming"), sender, text, location))
+        world.recordOutput(
+            tokens[0].text,
+            "chat",
+            targets,
+            "[$sender -> ${targets.joinToString()}] $text",
+            chatCommandPayload(ResourceLocation("minecraft", "msg_command_incoming"), sender, text, location),
+            rawText = text,
+        )
     }
 
     private fun executeTeamMessage(command: String, tokens: List<CommandToken>, location: SourceLocation?, context: ExecutionContext) {
         requireSize(tokens, 2, "${tokens[0].text} <message>", location)
         val sender = outputSender(context)
         val text = CommandTokenizer.tailFrom(command, tokens[1])
-        world.recordOutput(tokens[0].text, "chat", world.players.keys.toList(), "[team] <$sender> $text", chatCommandPayload(ResourceLocation("minecraft", "team_msg_command_incoming"), sender, text, location))
+        world.recordOutput(
+            tokens[0].text,
+            "chat",
+            world.players.keys.toList(),
+            "[team] <$sender> $text",
+            chatCommandPayload(ResourceLocation("minecraft", "team_msg_command_incoming"), sender, text, location),
+            rawText = text,
+        )
     }
 
     private fun chatCommandPayload(chatType: ResourceLocation, sender: String, message: String, location: SourceLocation?): JsonObject =

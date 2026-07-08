@@ -30,15 +30,48 @@ data class DataPackFormat(val value: BigDecimal) : Comparable<DataPackFormat> {
         fun of(value: String): DataPackFormat = DataPackFormat(BigDecimal(value))
 
         /**
-         * Parses a JSON numeric `pack_format` value.
+         * Parses a JSON `pack_format` value.
          *
-         * @throws SandboxException when [element] is not a number.
+         * Modern pack metadata may write dotted values as an integer tuple:
+         * `[107, 1]` is equivalent to `107.1`, and `[94]` is equivalent to
+         * `94`.
+         *
+         * @throws SandboxException when [element] is not a number or integer tuple.
          */
         fun parse(element: JsonElement): DataPackFormat {
-            if (!element.isJsonPrimitive || !element.asJsonPrimitive.isNumber) {
-                throw SandboxException(DiagnosticCode.INPUT_FORMAT, "pack_format must be a number")
+            if (element.isJsonPrimitive && element.asJsonPrimitive.isNumber) {
+                return DataPackFormat(element.asBigDecimal)
             }
-            return DataPackFormat(element.asBigDecimal)
+            if (element.isJsonArray) {
+                val values = element.asJsonArray
+                if (values.size() !in 1..2) {
+                    throw SandboxException(DiagnosticCode.INPUT_FORMAT, "pack_format array must contain one or two integers")
+                }
+                val major = parseIntegerPart(values[0], "major")
+                if (values.size() == 1) return DataPackFormat(BigDecimal(major))
+                val minor = parseIntegerPart(values[1], "minor")
+                return DataPackFormat(BigDecimal("$major.$minor"))
+            }
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "pack_format must be a number or an array of one or two integers")
+        }
+
+        private fun parseIntegerPart(element: JsonElement, label: String): Int {
+            if (!element.isJsonPrimitive || !element.asJsonPrimitive.isNumber) {
+                throw SandboxException(DiagnosticCode.INPUT_FORMAT, "pack_format $label part must be an integer")
+            }
+            val value = try {
+                element.asBigDecimal.intValueExact()
+            } catch (error: ArithmeticException) {
+                throw SandboxException(
+                    code = DiagnosticCode.INPUT_FORMAT,
+                    message = "pack_format $label part must be an integer",
+                    cause = error,
+                )
+            }
+            if (value < 0) {
+                throw SandboxException(DiagnosticCode.INPUT_FORMAT, "pack_format $label part must be non-negative")
+            }
+            return value
         }
     }
 }

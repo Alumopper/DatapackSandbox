@@ -288,6 +288,9 @@ class SandboxQuickTestMatrix private constructor(
         eachScenario("key input $playerName $key") { it.keyInput(playerName, key, action) }
     }
 
+    fun keyInput(playerName: String, key: String, action: PlayerInputAction): SandboxQuickTestMatrix =
+        keyInput(playerName, key, action.id)
+
     /**
      * Injects a mouse input event for [playerName] in every scenario.
      *
@@ -299,6 +302,15 @@ class SandboxQuickTestMatrix private constructor(
     fun mouseInput(playerName: String, button: String, action: String = "click", x: Double? = null, y: Double? = null): SandboxQuickTestMatrix = apply {
         eachScenario("mouse input $playerName $button") { it.mouseInput(playerName, button, action, x, y) }
     }
+
+    fun mouseInput(
+        playerName: String,
+        button: String,
+        action: PlayerInputAction,
+        x: Double? = null,
+        y: Double? = null,
+    ): SandboxQuickTestMatrix =
+        mouseInput(playerName, button, action.id, x, y)
 
     /**
      * Adds a scoreboard assertion to every scenario.
@@ -403,6 +415,23 @@ class SandboxQuickTestMatrix private constructor(
         }
     }
 
+    fun assertScoreboardObjective(
+        name: String,
+        renderType: ScoreboardRenderType,
+        exists: Boolean = true,
+        criteria: String? = null,
+        displayName: String? = null,
+        displayAutoUpdate: Boolean? = null,
+    ): SandboxQuickTestMatrix =
+        assertScoreboardObjective(
+            name = name,
+            exists = exists,
+            criteria = criteria,
+            displayName = displayName,
+            renderType = renderType.id,
+            displayAutoUpdate = displayAutoUpdate,
+        )
+
     /**
      * Applies a scoreboard display slot assertion to every scenario.
      */
@@ -410,6 +439,9 @@ class SandboxQuickTestMatrix private constructor(
     fun assertScoreboardDisplay(slot: String, objective: String? = null, exists: Boolean = true): SandboxQuickTestMatrix = apply {
         scenarios.values.forEach { it.assertScoreboardDisplay(slot, objective, exists) }
     }
+
+    fun assertScoreboardDisplay(slot: ScoreboardDisplaySlot, objective: String? = null, exists: Boolean = true): SandboxQuickTestMatrix =
+        assertScoreboardDisplay(slot.id, objective, exists)
 
     /**
      * Applies a world-level state assertion to every scenario.
@@ -473,6 +505,165 @@ class SandboxQuickTestMatrix private constructor(
         }
     }
 
+    fun assertWorld(
+        weather: SandboxWeather,
+        gameTime: Long? = null,
+        dayTime: Long? = null,
+        difficulty: SandboxDifficulty? = null,
+        defaultGameMode: SandboxGameMode? = null,
+        seed: Long? = null,
+        forcedChunkX: Int? = null,
+        forcedChunkZ: Int? = null,
+        biomeX: Int? = null,
+        biomeY: Int? = null,
+        biomeZ: Int? = null,
+        biome: String? = null,
+        worldSpawn: Position? = null,
+        worldSpawnDimension: String? = null,
+        worldSpawnAngle: Double? = null,
+        worldSpawnForced: Boolean? = null,
+        worldBorderCenterX: Double? = null,
+        worldBorderCenterZ: Double? = null,
+        worldBorderSize: Double? = null,
+        worldBorderTargetSize: Double? = null,
+        worldBorderLerpTimeSeconds: Long? = null,
+        worldBorderDamageBuffer: Double? = null,
+        worldBorderDamageAmount: Double? = null,
+        worldBorderWarningDistance: Int? = null,
+        worldBorderWarningTime: Int? = null,
+    ): SandboxQuickTestMatrix =
+        assertWorld(
+            gameTime = gameTime,
+            dayTime = dayTime,
+            weather = weather.id,
+            difficulty = difficulty?.id,
+            defaultGameMode = defaultGameMode?.id,
+            seed = seed,
+            forcedChunkX = forcedChunkX,
+            forcedChunkZ = forcedChunkZ,
+            biomeX = biomeX,
+            biomeY = biomeY,
+            biomeZ = biomeZ,
+            biome = biome,
+            worldSpawn = worldSpawn,
+            worldSpawnDimension = worldSpawnDimension,
+            worldSpawnAngle = worldSpawnAngle,
+            worldSpawnForced = worldSpawnForced,
+            worldBorderCenterX = worldBorderCenterX,
+            worldBorderCenterZ = worldBorderCenterZ,
+            worldBorderSize = worldBorderSize,
+            worldBorderTargetSize = worldBorderTargetSize,
+            worldBorderLerpTimeSeconds = worldBorderLerpTimeSeconds,
+            worldBorderDamageBuffer = worldBorderDamageBuffer,
+            worldBorderDamageAmount = worldBorderDamageAmount,
+            worldBorderWarningDistance = worldBorderWarningDistance,
+            worldBorderWarningTime = worldBorderWarningTime,
+        )
+
+    fun assertWorld(
+        difficulty: SandboxDifficulty,
+        gameTime: Long? = null,
+        dayTime: Long? = null,
+        defaultGameMode: SandboxGameMode? = null,
+        seed: Long? = null,
+        forcedChunkX: Int? = null,
+        forcedChunkZ: Int? = null,
+        biomeX: Int? = null,
+        biomeY: Int? = null,
+        biomeZ: Int? = null,
+        biome: String? = null,
+        worldSpawn: Position? = null,
+        worldSpawnDimension: String? = null,
+        worldSpawnAngle: Double? = null,
+        worldSpawnForced: Boolean? = null,
+        worldBorderCenterX: Double? = null,
+        worldBorderCenterZ: Double? = null,
+        worldBorderSize: Double? = null,
+        worldBorderTargetSize: Double? = null,
+        worldBorderLerpTimeSeconds: Long? = null,
+        worldBorderDamageBuffer: Double? = null,
+        worldBorderDamageAmount: Double? = null,
+        worldBorderWarningDistance: Int? = null,
+        worldBorderWarningTime: Int? = null,
+    ): SandboxQuickTestMatrix =
+        assertWorld(
+            gameTime = gameTime,
+            dayTime = dayTime,
+            difficulty = difficulty.id,
+            defaultGameMode = defaultGameMode?.id,
+            seed = seed,
+            forcedChunkX = forcedChunkX,
+            forcedChunkZ = forcedChunkZ,
+            biomeX = biomeX,
+            biomeY = biomeY,
+            biomeZ = biomeZ,
+            biome = biome,
+            worldSpawn = worldSpawn,
+            worldSpawnDimension = worldSpawnDimension,
+            worldSpawnAngle = worldSpawnAngle,
+            worldSpawnForced = worldSpawnForced,
+            worldBorderCenterX = worldBorderCenterX,
+            worldBorderCenterZ = worldBorderCenterZ,
+            worldBorderSize = worldBorderSize,
+            worldBorderTargetSize = worldBorderTargetSize,
+            worldBorderLerpTimeSeconds = worldBorderLerpTimeSeconds,
+            worldBorderDamageBuffer = worldBorderDamageBuffer,
+            worldBorderDamageAmount = worldBorderDamageAmount,
+            worldBorderWarningDistance = worldBorderWarningDistance,
+            worldBorderWarningTime = worldBorderWarningTime,
+        )
+
+    fun assertWorld(
+        defaultGameMode: SandboxGameMode,
+        gameTime: Long? = null,
+        dayTime: Long? = null,
+        seed: Long? = null,
+        forcedChunkX: Int? = null,
+        forcedChunkZ: Int? = null,
+        biomeX: Int? = null,
+        biomeY: Int? = null,
+        biomeZ: Int? = null,
+        biome: String? = null,
+        worldSpawn: Position? = null,
+        worldSpawnDimension: String? = null,
+        worldSpawnAngle: Double? = null,
+        worldSpawnForced: Boolean? = null,
+        worldBorderCenterX: Double? = null,
+        worldBorderCenterZ: Double? = null,
+        worldBorderSize: Double? = null,
+        worldBorderTargetSize: Double? = null,
+        worldBorderLerpTimeSeconds: Long? = null,
+        worldBorderDamageBuffer: Double? = null,
+        worldBorderDamageAmount: Double? = null,
+        worldBorderWarningDistance: Int? = null,
+        worldBorderWarningTime: Int? = null,
+    ): SandboxQuickTestMatrix =
+        assertWorld(
+            gameTime = gameTime,
+            dayTime = dayTime,
+            defaultGameMode = defaultGameMode.id,
+            seed = seed,
+            forcedChunkX = forcedChunkX,
+            forcedChunkZ = forcedChunkZ,
+            biomeX = biomeX,
+            biomeY = biomeY,
+            biomeZ = biomeZ,
+            biome = biome,
+            worldSpawn = worldSpawn,
+            worldSpawnDimension = worldSpawnDimension,
+            worldSpawnAngle = worldSpawnAngle,
+            worldSpawnForced = worldSpawnForced,
+            worldBorderCenterX = worldBorderCenterX,
+            worldBorderCenterZ = worldBorderCenterZ,
+            worldBorderSize = worldBorderSize,
+            worldBorderTargetSize = worldBorderTargetSize,
+            worldBorderLerpTimeSeconds = worldBorderLerpTimeSeconds,
+            worldBorderDamageBuffer = worldBorderDamageBuffer,
+            worldBorderDamageAmount = worldBorderDamageAmount,
+            worldBorderWarningDistance = worldBorderWarningDistance,
+            worldBorderWarningTime = worldBorderWarningTime,
+        )
+
     /**
      * Applies a player state assertion to every scenario.
      */
@@ -530,6 +721,57 @@ class SandboxQuickTestMatrix private constructor(
         }
     }
 
+    fun assertPlayer(
+        name: String,
+        gameMode: SandboxGameMode,
+        exists: Boolean = true,
+        position: Position? = null,
+        dimension: String? = null,
+        xp: Int? = null,
+        xpLevels: Int? = null,
+        health: Double? = null,
+        food: Int? = null,
+        selectedSlot: Int? = null,
+        inventoryCount: Int? = null,
+        enderItemCount: Int? = null,
+        recipe: String? = null,
+        effect: String? = null,
+        stat: String? = null,
+        statValue: Int? = null,
+        spawn: Position? = null,
+        spawnDimension: String? = null,
+        spawnAngle: Double? = null,
+        spawnForced: Boolean? = null,
+        nbtPath: String? = null,
+        nbtEquals: String? = null,
+        nbtExists: Boolean? = null,
+    ): SandboxQuickTestMatrix =
+        assertPlayer(
+            name = name,
+            exists = exists,
+            position = position,
+            dimension = dimension,
+            gameMode = gameMode.id,
+            xp = xp,
+            xpLevels = xpLevels,
+            health = health,
+            food = food,
+            selectedSlot = selectedSlot,
+            inventoryCount = inventoryCount,
+            enderItemCount = enderItemCount,
+            recipe = recipe,
+            effect = effect,
+            stat = stat,
+            statValue = statValue,
+            spawn = spawn,
+            spawnDimension = spawnDimension,
+            spawnAngle = spawnAngle,
+            spawnForced = spawnForced,
+            nbtPath = nbtPath,
+            nbtEquals = nbtEquals,
+            nbtExists = nbtExists,
+        )
+
     /**
      * Applies a player XP assertion to every scenario.
      */
@@ -548,6 +790,10 @@ class SandboxQuickTestMatrix private constructor(
      * Applies a latest player input assertion to every scenario.
      */
     fun assertPlayerLastInput(playerName: String, device: String, code: String, action: String): SandboxQuickTestMatrix = apply {
+        scenarios.values.forEach { it.assertPlayerLastInput(playerName, device, code, action) }
+    }
+
+    fun assertPlayerLastInput(playerName: String, device: PlayerInputDevice, code: String, action: PlayerInputAction): SandboxQuickTestMatrix = apply {
         scenarios.values.forEach { it.assertPlayerLastInput(playerName, device, code, action) }
     }
 
@@ -652,6 +898,45 @@ class SandboxQuickTestMatrix private constructor(
             )
         }
     }
+
+    fun assertEntityEquipment(
+        slot: EntityEquipmentSlot,
+        type: String? = null,
+        tag: String? = null,
+        uuid: String? = null,
+        position: Position? = null,
+        id: String? = null,
+        count: Int? = null,
+        exists: Boolean = true,
+        minCount: Int? = null,
+        maxCount: Int? = null,
+        componentsPath: String? = null,
+        componentsEquals: String? = null,
+        componentsExists: Boolean? = null,
+        nbtPath: String? = null,
+        nbtEquals: String? = null,
+        nbtExists: Boolean? = null,
+        dimension: String? = null,
+    ): SandboxQuickTestMatrix =
+        assertEntityEquipment(
+            slot = slot.id,
+            type = type,
+            tag = tag,
+            uuid = uuid,
+            position = position,
+            dimension = dimension,
+            id = id,
+            count = count,
+            exists = exists,
+            minCount = minCount,
+            maxCount = maxCount,
+            componentsPath = componentsPath,
+            componentsEquals = componentsEquals,
+            componentsExists = componentsExists,
+            nbtPath = nbtPath,
+            nbtEquals = nbtEquals,
+            nbtExists = nbtExists,
+        )
 
     /**
      * Applies an entity active-effect assertion to every scenario.
@@ -796,6 +1081,25 @@ class SandboxQuickTestMatrix private constructor(
         }
     }
 
+    fun assertTeam(
+        name: String,
+        optionName: TeamOption,
+        optionEquals: String,
+        exists: Boolean = true,
+        displayName: String? = null,
+        member: String? = null,
+        memberCount: Int? = null,
+    ): SandboxQuickTestMatrix =
+        assertTeam(
+            name = name,
+            exists = exists,
+            displayName = displayName,
+            member = member,
+            memberCount = memberCount,
+            optionName = optionName.id,
+            optionEquals = optionEquals,
+        )
+
     /**
      * Applies a bossbar state assertion to every scenario.
      */
@@ -825,6 +1129,50 @@ class SandboxQuickTestMatrix private constructor(
             )
         }
     }
+
+    fun assertBossbar(
+        id: String,
+        color: BossbarColor,
+        exists: Boolean = true,
+        name: String? = null,
+        value: Int? = null,
+        max: Int? = null,
+        style: BossbarStyle? = null,
+        visible: Boolean? = null,
+        player: String? = null,
+    ): SandboxQuickTestMatrix =
+        assertBossbar(
+            id = id,
+            exists = exists,
+            name = name,
+            value = value,
+            max = max,
+            color = color.id,
+            style = style?.id,
+            visible = visible,
+            player = player,
+        )
+
+    fun assertBossbar(
+        id: String,
+        style: BossbarStyle,
+        exists: Boolean = true,
+        name: String? = null,
+        value: Int? = null,
+        max: Int? = null,
+        visible: Boolean? = null,
+        player: String? = null,
+    ): SandboxQuickTestMatrix =
+        assertBossbar(
+            id = id,
+            exists = exists,
+            name = name,
+            value = value,
+            max = max,
+            style = style.id,
+            visible = visible,
+            player = player,
+        )
 
     /**
      * Applies an inventory item assertion to every scenario.
@@ -866,6 +1214,39 @@ class SandboxQuickTestMatrix private constructor(
         }
     }
 
+    fun assertItem(
+        playerName: String,
+        container: ItemContainer,
+        id: String? = null,
+        count: Int? = null,
+        slot: Int? = null,
+        exists: Boolean = true,
+        minCount: Int? = null,
+        maxCount: Int? = null,
+        componentsPath: String? = null,
+        componentsEquals: String? = null,
+        componentsExists: Boolean? = null,
+        nbtPath: String? = null,
+        nbtEquals: String? = null,
+        nbtExists: Boolean? = null,
+    ): SandboxQuickTestMatrix =
+        assertItem(
+            playerName = playerName,
+            id = id,
+            count = count,
+            slot = slot,
+            exists = exists,
+            minCount = minCount,
+            maxCount = maxCount,
+            componentsPath = componentsPath,
+            componentsEquals = componentsEquals,
+            componentsExists = componentsExists,
+            nbtPath = nbtPath,
+            nbtEquals = nbtEquals,
+            nbtExists = nbtExists,
+            container = container.id,
+        )
+
     /**
      * Applies a predicate assertion to every scenario.
      */
@@ -888,6 +1269,16 @@ class SandboxQuickTestMatrix private constructor(
     ): SandboxQuickTestMatrix = apply {
         scenarios.values.forEach { it.assertLoot(table, context, playerName, seed, count, item) }
     }
+
+    fun assertLoot(
+        table: String,
+        context: LootContextId,
+        playerName: String? = null,
+        seed: Long = 0,
+        count: Int? = null,
+        item: String? = null,
+    ): SandboxQuickTestMatrix =
+        assertLoot(table, context.id, playerName, seed, count, item)
 
     /**
      * Applies an advancement completion assertion to every scenario.
@@ -931,6 +1322,12 @@ class SandboxQuickTestMatrix private constructor(
         normalizedText: String? = null,
         normalizedContains: String? = null,
         normalizedMatches: String? = null,
+        rawText: String? = null,
+        rawContains: String? = null,
+        rawTextMatches: String? = null,
+        normalizedRawText: String? = null,
+        normalizedRawContains: String? = null,
+        normalizedRawMatches: String? = null,
         payloadPath: String? = null,
         payloadEquals: JsonElement? = null,
     ): SandboxQuickTestMatrix =
@@ -947,9 +1344,58 @@ class SandboxQuickTestMatrix private constructor(
                 normalizedText = normalizedText,
                 normalizedContains = normalizedContains,
                 normalizedMatches = normalizedMatches,
+                rawText = rawText,
+                rawContains = rawContains,
+                rawTextMatches = rawTextMatches,
+                normalizedRawText = normalizedRawText,
+                normalizedRawContains = normalizedRawContains,
+                normalizedRawMatches = normalizedRawMatches,
                 payloadPath = payloadPath,
                 payloadEquals = payloadEquals,
             ),
+        )
+
+    fun assertOutput(
+        channel: OutputChannel,
+        command: String? = null,
+        target: String? = null,
+        text: String? = null,
+        contains: String? = null,
+        textMatches: String? = null,
+        count: Int? = null,
+        order: Int? = null,
+        normalizedText: String? = null,
+        normalizedContains: String? = null,
+        normalizedMatches: String? = null,
+        rawText: String? = null,
+        rawContains: String? = null,
+        rawTextMatches: String? = null,
+        normalizedRawText: String? = null,
+        normalizedRawContains: String? = null,
+        normalizedRawMatches: String? = null,
+        payloadPath: String? = null,
+        payloadEquals: JsonElement? = null,
+    ): SandboxQuickTestMatrix =
+        assertOutput(
+            command = command,
+            channel = channel.id,
+            target = target,
+            text = text,
+            contains = contains,
+            textMatches = textMatches,
+            count = count,
+            order = order,
+            normalizedText = normalizedText,
+            normalizedContains = normalizedContains,
+            normalizedMatches = normalizedMatches,
+            rawText = rawText,
+            rawContains = rawContains,
+            rawTextMatches = rawTextMatches,
+            normalizedRawText = normalizedRawText,
+            normalizedRawContains = normalizedRawContains,
+            normalizedRawMatches = normalizedRawMatches,
+            payloadPath = payloadPath,
+            payloadEquals = payloadEquals,
         )
 
     /**
@@ -996,6 +1442,39 @@ class SandboxQuickTestMatrix private constructor(
                 diffKind = diffKind,
                 diffContains = diffContains,
             ),
+        )
+
+    fun assertTrace(
+        root: CommandRoot,
+        command: String? = null,
+        contains: String? = null,
+        success: Boolean? = null,
+        fileContains: String? = null,
+        function: String? = null,
+        count: Int? = null,
+        outputs: Int? = null,
+        outputContains: String? = null,
+        outputTarget: String? = null,
+        hasDiff: Boolean? = null,
+        diffPath: String? = null,
+        diffKind: SnapshotDiffKind? = null,
+        diffContains: String? = null,
+    ): SandboxQuickTestMatrix =
+        assertTrace(
+            command = command,
+            root = root.id,
+            contains = contains,
+            success = success,
+            fileContains = fileContains,
+            function = function,
+            count = count,
+            outputs = outputs,
+            outputContains = outputContains,
+            outputTarget = outputTarget,
+            hasDiff = hasDiff,
+            diffPath = diffPath,
+            diffKind = diffKind,
+            diffContains = diffContains,
         )
 
     /**
@@ -1060,6 +1539,57 @@ class SandboxQuickTestMatrix private constructor(
                 inputCode = inputCode,
                 inputAction = inputAction,
             ),
+        )
+
+    fun assertPlayerEventTrace(
+        type: PlayerEventType,
+        player: String? = null,
+        success: Boolean? = null,
+        advancement: String? = null,
+        criterion: String? = null,
+        count: Int? = null,
+        failedAdvancement: String? = null,
+        failedCriterion: String? = null,
+        failureContains: String? = null,
+        item: String? = null,
+        entity: String? = null,
+        block: String? = null,
+        blockX: Int? = null,
+        blockY: Int? = null,
+        blockZ: Int? = null,
+        recipe: String? = null,
+        fromDimension: String? = null,
+        toDimension: String? = null,
+        damageSource: String? = null,
+        damageAmount: Double? = null,
+        inputDevice: PlayerInputDevice? = null,
+        inputCode: String? = null,
+        inputAction: PlayerInputAction? = null,
+    ): SandboxQuickTestMatrix =
+        assertPlayerEventTrace(
+            player = player,
+            type = type.id,
+            success = success,
+            advancement = advancement,
+            criterion = criterion,
+            count = count,
+            failedAdvancement = failedAdvancement,
+            failedCriterion = failedCriterion,
+            failureContains = failureContains,
+            item = item,
+            entity = entity,
+            block = block,
+            blockX = blockX,
+            blockY = blockY,
+            blockZ = blockZ,
+            recipe = recipe,
+            fromDimension = fromDimension,
+            toDimension = toDimension,
+            damageSource = damageSource,
+            damageAmount = damageAmount,
+            inputDevice = inputDevice?.id,
+            inputCode = inputCode,
+            inputAction = inputAction?.id,
         )
 
     /**
@@ -1334,6 +1864,9 @@ class SandboxQuickTest private constructor(
         sandbox.handlePlayerEvent(PlayerEvents.keyInput(playerName, key, action))
     }
 
+    fun keyInput(playerName: String, key: String, action: PlayerInputAction): SandboxQuickTest =
+        keyInput(playerName, key, action.id)
+
     /**
      * Records a mouse input event for [playerName].
      *
@@ -1344,6 +1877,15 @@ class SandboxQuickTest private constructor(
         sandbox.createPlayer(playerName)
         sandbox.handlePlayerEvent(PlayerEvents.mouseInput(playerName, button, action, x, y))
     }
+
+    fun mouseInput(
+        playerName: String,
+        button: String,
+        action: PlayerInputAction,
+        x: Double? = null,
+        y: Double? = null,
+    ): SandboxQuickTest =
+        mouseInput(playerName, button, action.id, x, y)
 
     /**
      * Asserts the current scoreboard value for [target] and [objective].
@@ -1576,6 +2118,23 @@ class SandboxQuickTest private constructor(
         }
     }
 
+    fun assertScoreboardObjective(
+        name: String,
+        renderType: ScoreboardRenderType,
+        exists: Boolean = true,
+        criteria: String? = null,
+        displayName: String? = null,
+        displayAutoUpdate: Boolean? = null,
+    ): SandboxQuickTest =
+        assertScoreboardObjective(
+            name = name,
+            exists = exists,
+            criteria = criteria,
+            displayName = displayName,
+            renderType = renderType.id,
+            displayAutoUpdate = displayAutoUpdate,
+        )
+
     /**
      * Asserts a scoreboard display slot such as `sidebar`, `list`, or `sidebar.team.red`.
      */
@@ -1595,6 +2154,9 @@ class SandboxQuickTest private constructor(
         }
     }
 
+    fun assertScoreboardDisplay(slot: ScoreboardDisplaySlot, objective: String? = null, exists: Boolean = true): SandboxQuickTest =
+        assertScoreboardDisplay(slot.id, objective, exists)
+
     /**
      * Asserts the latest recorded keyboard or mouse input for a player.
      */
@@ -1606,6 +2168,9 @@ class SandboxQuickTest private constructor(
             failures += "player $playerName last input expected $device:$code/$action but was ${actual.device}:${actual.code}/${actual.action}"
         }
     }
+
+    fun assertPlayerLastInput(playerName: String, device: PlayerInputDevice, code: String, action: PlayerInputAction): SandboxQuickTest =
+        assertPlayerLastInput(playerName, device.id, code, action.id)
 
     /**
      * Asserts selected player state.
@@ -1698,6 +2263,57 @@ class SandboxQuickTest private constructor(
         }
         pathExpectationFailure("player $name nbt", player.fullNbt(sandbox.profile), nbtPath, nbtEquals, nbtExists)?.let { failures += it }
     }
+
+    fun assertPlayer(
+        name: String,
+        gameMode: SandboxGameMode,
+        exists: Boolean = true,
+        position: Position? = null,
+        dimension: String? = null,
+        xp: Int? = null,
+        xpLevels: Int? = null,
+        health: Double? = null,
+        food: Int? = null,
+        selectedSlot: Int? = null,
+        inventoryCount: Int? = null,
+        enderItemCount: Int? = null,
+        recipe: String? = null,
+        effect: String? = null,
+        stat: String? = null,
+        statValue: Int? = null,
+        spawn: Position? = null,
+        spawnDimension: String? = null,
+        spawnAngle: Double? = null,
+        spawnForced: Boolean? = null,
+        nbtPath: String? = null,
+        nbtEquals: String? = null,
+        nbtExists: Boolean? = null,
+    ): SandboxQuickTest =
+        assertPlayer(
+            name = name,
+            exists = exists,
+            position = position,
+            dimension = dimension,
+            gameMode = gameMode.id,
+            xp = xp,
+            xpLevels = xpLevels,
+            health = health,
+            food = food,
+            selectedSlot = selectedSlot,
+            inventoryCount = inventoryCount,
+            enderItemCount = enderItemCount,
+            recipe = recipe,
+            effect = effect,
+            stat = stat,
+            statValue = statValue,
+            spawn = spawn,
+            spawnDimension = spawnDimension,
+            spawnAngle = spawnAngle,
+            spawnForced = spawnForced,
+            nbtPath = nbtPath,
+            nbtEquals = nbtEquals,
+            nbtExists = nbtExists,
+        )
 
     /**
      * Asserts selected world-level state.
@@ -1792,6 +2408,165 @@ class SandboxQuickTest private constructor(
         worldBorderWarningTime?.let { if (sandbox.world.worldBorder.warningTime != it) failures += "world border warningTime expected $it but was ${sandbox.world.worldBorder.warningTime}" }
     }
 
+    fun assertWorld(
+        weather: SandboxWeather,
+        gameTime: Long? = null,
+        dayTime: Long? = null,
+        difficulty: SandboxDifficulty? = null,
+        defaultGameMode: SandboxGameMode? = null,
+        seed: Long? = null,
+        forcedChunkX: Int? = null,
+        forcedChunkZ: Int? = null,
+        biomeX: Int? = null,
+        biomeY: Int? = null,
+        biomeZ: Int? = null,
+        biome: String? = null,
+        worldSpawn: Position? = null,
+        worldSpawnDimension: String? = null,
+        worldSpawnAngle: Double? = null,
+        worldSpawnForced: Boolean? = null,
+        worldBorderCenterX: Double? = null,
+        worldBorderCenterZ: Double? = null,
+        worldBorderSize: Double? = null,
+        worldBorderTargetSize: Double? = null,
+        worldBorderLerpTimeSeconds: Long? = null,
+        worldBorderDamageBuffer: Double? = null,
+        worldBorderDamageAmount: Double? = null,
+        worldBorderWarningDistance: Int? = null,
+        worldBorderWarningTime: Int? = null,
+    ): SandboxQuickTest =
+        assertWorld(
+            gameTime = gameTime,
+            dayTime = dayTime,
+            weather = weather.id,
+            difficulty = difficulty?.id,
+            defaultGameMode = defaultGameMode?.id,
+            seed = seed,
+            forcedChunkX = forcedChunkX,
+            forcedChunkZ = forcedChunkZ,
+            biomeX = biomeX,
+            biomeY = biomeY,
+            biomeZ = biomeZ,
+            biome = biome,
+            worldSpawn = worldSpawn,
+            worldSpawnDimension = worldSpawnDimension,
+            worldSpawnAngle = worldSpawnAngle,
+            worldSpawnForced = worldSpawnForced,
+            worldBorderCenterX = worldBorderCenterX,
+            worldBorderCenterZ = worldBorderCenterZ,
+            worldBorderSize = worldBorderSize,
+            worldBorderTargetSize = worldBorderTargetSize,
+            worldBorderLerpTimeSeconds = worldBorderLerpTimeSeconds,
+            worldBorderDamageBuffer = worldBorderDamageBuffer,
+            worldBorderDamageAmount = worldBorderDamageAmount,
+            worldBorderWarningDistance = worldBorderWarningDistance,
+            worldBorderWarningTime = worldBorderWarningTime,
+        )
+
+    fun assertWorld(
+        difficulty: SandboxDifficulty,
+        gameTime: Long? = null,
+        dayTime: Long? = null,
+        defaultGameMode: SandboxGameMode? = null,
+        seed: Long? = null,
+        forcedChunkX: Int? = null,
+        forcedChunkZ: Int? = null,
+        biomeX: Int? = null,
+        biomeY: Int? = null,
+        biomeZ: Int? = null,
+        biome: String? = null,
+        worldSpawn: Position? = null,
+        worldSpawnDimension: String? = null,
+        worldSpawnAngle: Double? = null,
+        worldSpawnForced: Boolean? = null,
+        worldBorderCenterX: Double? = null,
+        worldBorderCenterZ: Double? = null,
+        worldBorderSize: Double? = null,
+        worldBorderTargetSize: Double? = null,
+        worldBorderLerpTimeSeconds: Long? = null,
+        worldBorderDamageBuffer: Double? = null,
+        worldBorderDamageAmount: Double? = null,
+        worldBorderWarningDistance: Int? = null,
+        worldBorderWarningTime: Int? = null,
+    ): SandboxQuickTest =
+        assertWorld(
+            gameTime = gameTime,
+            dayTime = dayTime,
+            difficulty = difficulty.id,
+            defaultGameMode = defaultGameMode?.id,
+            seed = seed,
+            forcedChunkX = forcedChunkX,
+            forcedChunkZ = forcedChunkZ,
+            biomeX = biomeX,
+            biomeY = biomeY,
+            biomeZ = biomeZ,
+            biome = biome,
+            worldSpawn = worldSpawn,
+            worldSpawnDimension = worldSpawnDimension,
+            worldSpawnAngle = worldSpawnAngle,
+            worldSpawnForced = worldSpawnForced,
+            worldBorderCenterX = worldBorderCenterX,
+            worldBorderCenterZ = worldBorderCenterZ,
+            worldBorderSize = worldBorderSize,
+            worldBorderTargetSize = worldBorderTargetSize,
+            worldBorderLerpTimeSeconds = worldBorderLerpTimeSeconds,
+            worldBorderDamageBuffer = worldBorderDamageBuffer,
+            worldBorderDamageAmount = worldBorderDamageAmount,
+            worldBorderWarningDistance = worldBorderWarningDistance,
+            worldBorderWarningTime = worldBorderWarningTime,
+        )
+
+    fun assertWorld(
+        defaultGameMode: SandboxGameMode,
+        gameTime: Long? = null,
+        dayTime: Long? = null,
+        seed: Long? = null,
+        forcedChunkX: Int? = null,
+        forcedChunkZ: Int? = null,
+        biomeX: Int? = null,
+        biomeY: Int? = null,
+        biomeZ: Int? = null,
+        biome: String? = null,
+        worldSpawn: Position? = null,
+        worldSpawnDimension: String? = null,
+        worldSpawnAngle: Double? = null,
+        worldSpawnForced: Boolean? = null,
+        worldBorderCenterX: Double? = null,
+        worldBorderCenterZ: Double? = null,
+        worldBorderSize: Double? = null,
+        worldBorderTargetSize: Double? = null,
+        worldBorderLerpTimeSeconds: Long? = null,
+        worldBorderDamageBuffer: Double? = null,
+        worldBorderDamageAmount: Double? = null,
+        worldBorderWarningDistance: Int? = null,
+        worldBorderWarningTime: Int? = null,
+    ): SandboxQuickTest =
+        assertWorld(
+            gameTime = gameTime,
+            dayTime = dayTime,
+            defaultGameMode = defaultGameMode.id,
+            seed = seed,
+            forcedChunkX = forcedChunkX,
+            forcedChunkZ = forcedChunkZ,
+            biomeX = biomeX,
+            biomeY = biomeY,
+            biomeZ = biomeZ,
+            biome = biome,
+            worldSpawn = worldSpawn,
+            worldSpawnDimension = worldSpawnDimension,
+            worldSpawnAngle = worldSpawnAngle,
+            worldSpawnForced = worldSpawnForced,
+            worldBorderCenterX = worldBorderCenterX,
+            worldBorderCenterZ = worldBorderCenterZ,
+            worldBorderSize = worldBorderSize,
+            worldBorderTargetSize = worldBorderTargetSize,
+            worldBorderLerpTimeSeconds = worldBorderLerpTimeSeconds,
+            worldBorderDamageBuffer = worldBorderDamageBuffer,
+            worldBorderDamageAmount = worldBorderDamageAmount,
+            worldBorderWarningDistance = worldBorderWarningDistance,
+            worldBorderWarningTime = worldBorderWarningTime,
+        )
+
     /**
      * Asserts selected team state.
      */
@@ -1830,6 +2605,25 @@ class SandboxQuickTest private constructor(
         }
     }
 
+    fun assertTeam(
+        name: String,
+        optionName: TeamOption,
+        optionEquals: String,
+        exists: Boolean = true,
+        displayName: String? = null,
+        member: String? = null,
+        memberCount: Int? = null,
+    ): SandboxQuickTest =
+        assertTeam(
+            name = name,
+            exists = exists,
+            displayName = displayName,
+            member = member,
+            memberCount = memberCount,
+            optionName = optionName.id,
+            optionEquals = optionEquals,
+        )
+
     /**
      * Asserts selected bossbar state.
      */
@@ -1864,6 +2658,50 @@ class SandboxQuickTest private constructor(
         visible?.let { if (actual.visible != it) failures += "bossbar $parsedId visible expected $it but was ${actual.visible}" }
         player?.let { if (it !in actual.players) failures += "bossbar $parsedId expected player $it" }
     }
+
+    fun assertBossbar(
+        id: String,
+        color: BossbarColor,
+        exists: Boolean = true,
+        name: String? = null,
+        value: Int? = null,
+        max: Int? = null,
+        style: BossbarStyle? = null,
+        visible: Boolean? = null,
+        player: String? = null,
+    ): SandboxQuickTest =
+        assertBossbar(
+            id = id,
+            exists = exists,
+            name = name,
+            value = value,
+            max = max,
+            color = color.id,
+            style = style?.id,
+            visible = visible,
+            player = player,
+        )
+
+    fun assertBossbar(
+        id: String,
+        style: BossbarStyle,
+        exists: Boolean = true,
+        name: String? = null,
+        value: Int? = null,
+        max: Int? = null,
+        visible: Boolean? = null,
+        player: String? = null,
+    ): SandboxQuickTest =
+        assertBossbar(
+            id = id,
+            exists = exists,
+            name = name,
+            value = value,
+            max = max,
+            style = style.id,
+            visible = visible,
+            player = player,
+        )
 
     /**
      * Asserts an explicit sparse-world block.
@@ -2024,6 +2862,45 @@ class SandboxQuickTest private constructor(
             failures += "entity equipment $entityDescription slot=$canonicalSlot expected missing $itemDescription but found ${matches.map { "${it.second.id}x${it.second.count}" }}"
         }
     }
+
+    fun assertEntityEquipment(
+        slot: EntityEquipmentSlot,
+        type: String? = null,
+        tag: String? = null,
+        uuid: String? = null,
+        position: Position? = null,
+        id: String? = null,
+        count: Int? = null,
+        exists: Boolean = true,
+        minCount: Int? = null,
+        maxCount: Int? = null,
+        componentsPath: String? = null,
+        componentsEquals: String? = null,
+        componentsExists: Boolean? = null,
+        nbtPath: String? = null,
+        nbtEquals: String? = null,
+        nbtExists: Boolean? = null,
+        dimension: String? = null,
+    ): SandboxQuickTest =
+        assertEntityEquipment(
+            slot = slot.id,
+            type = type,
+            tag = tag,
+            uuid = uuid,
+            position = position,
+            dimension = dimension,
+            id = id,
+            count = count,
+            exists = exists,
+            minCount = minCount,
+            maxCount = maxCount,
+            componentsPath = componentsPath,
+            componentsEquals = componentsEquals,
+            componentsExists = componentsExists,
+            nbtPath = nbtPath,
+            nbtEquals = nbtEquals,
+            nbtExists = nbtExists,
+        )
 
     /**
      * Asserts that a matching entity has, or does not have, an active effect.
@@ -2263,6 +3140,39 @@ class SandboxQuickTest private constructor(
         }
     }
 
+    fun assertItem(
+        playerName: String,
+        container: ItemContainer,
+        id: String? = null,
+        count: Int? = null,
+        slot: Int? = null,
+        exists: Boolean = true,
+        minCount: Int? = null,
+        maxCount: Int? = null,
+        componentsPath: String? = null,
+        componentsEquals: String? = null,
+        componentsExists: Boolean? = null,
+        nbtPath: String? = null,
+        nbtEquals: String? = null,
+        nbtExists: Boolean? = null,
+    ): SandboxQuickTest =
+        assertItem(
+            playerName = playerName,
+            id = id,
+            count = count,
+            slot = slot,
+            exists = exists,
+            minCount = minCount,
+            maxCount = maxCount,
+            componentsPath = componentsPath,
+            componentsEquals = componentsEquals,
+            componentsExists = componentsExists,
+            nbtPath = nbtPath,
+            nbtEquals = nbtEquals,
+            nbtExists = nbtExists,
+            container = container.id,
+        )
+
     private fun normalizeItemContainer(raw: String): String? =
         when (raw) {
             "inventory" -> "inventory"
@@ -2405,6 +3315,16 @@ class SandboxQuickTest private constructor(
         }
     }
 
+    fun assertLoot(
+        table: String,
+        context: LootContextId,
+        playerName: String? = null,
+        seed: Long = 0,
+        count: Int? = null,
+        item: String? = null,
+    ): SandboxQuickTest =
+        assertLoot(table, context.id, playerName, seed, count, item)
+
     private fun predicateContextFor(playerName: String?): PredicateContext {
         val player = playerName?.let { sandbox.world.requirePlayer(it) }
         return PredicateContext(
@@ -2468,6 +3388,12 @@ class SandboxQuickTest private constructor(
         normalizedText: String? = null,
         normalizedContains: String? = null,
         normalizedMatches: String? = null,
+        rawText: String? = null,
+        rawContains: String? = null,
+        rawTextMatches: String? = null,
+        normalizedRawText: String? = null,
+        normalizedRawContains: String? = null,
+        normalizedRawMatches: String? = null,
         payloadPath: String? = null,
         payloadEquals: JsonElement? = null,
     ): SandboxQuickTest =
@@ -2484,9 +3410,58 @@ class SandboxQuickTest private constructor(
                 normalizedText = normalizedText,
                 normalizedContains = normalizedContains,
                 normalizedMatches = normalizedMatches,
+                rawText = rawText,
+                rawContains = rawContains,
+                rawTextMatches = rawTextMatches,
+                normalizedRawText = normalizedRawText,
+                normalizedRawContains = normalizedRawContains,
+                normalizedRawMatches = normalizedRawMatches,
                 payloadPath = payloadPath,
                 payloadEquals = payloadEquals,
             ),
+        )
+
+    fun assertOutput(
+        channel: OutputChannel,
+        command: String? = null,
+        target: String? = null,
+        text: String? = null,
+        contains: String? = null,
+        textMatches: String? = null,
+        count: Int? = null,
+        order: Int? = null,
+        normalizedText: String? = null,
+        normalizedContains: String? = null,
+        normalizedMatches: String? = null,
+        rawText: String? = null,
+        rawContains: String? = null,
+        rawTextMatches: String? = null,
+        normalizedRawText: String? = null,
+        normalizedRawContains: String? = null,
+        normalizedRawMatches: String? = null,
+        payloadPath: String? = null,
+        payloadEquals: JsonElement? = null,
+    ): SandboxQuickTest =
+        assertOutput(
+            command = command,
+            channel = channel.id,
+            target = target,
+            text = text,
+            contains = contains,
+            textMatches = textMatches,
+            count = count,
+            order = order,
+            normalizedText = normalizedText,
+            normalizedContains = normalizedContains,
+            normalizedMatches = normalizedMatches,
+            rawText = rawText,
+            rawContains = rawContains,
+            rawTextMatches = rawTextMatches,
+            normalizedRawText = normalizedRawText,
+            normalizedRawContains = normalizedRawContains,
+            normalizedRawMatches = normalizedRawMatches,
+            payloadPath = payloadPath,
+            payloadEquals = payloadEquals,
         )
 
     /**
@@ -2536,6 +3511,39 @@ class SandboxQuickTest private constructor(
                 diffKind = diffKind,
                 diffContains = diffContains,
             ),
+        )
+
+    fun assertTrace(
+        root: CommandRoot,
+        command: String? = null,
+        contains: String? = null,
+        success: Boolean? = null,
+        fileContains: String? = null,
+        function: String? = null,
+        count: Int? = null,
+        outputs: Int? = null,
+        outputContains: String? = null,
+        outputTarget: String? = null,
+        hasDiff: Boolean? = null,
+        diffPath: String? = null,
+        diffKind: SnapshotDiffKind? = null,
+        diffContains: String? = null,
+    ): SandboxQuickTest =
+        assertTrace(
+            command = command,
+            root = root.id,
+            contains = contains,
+            success = success,
+            fileContains = fileContains,
+            function = function,
+            count = count,
+            outputs = outputs,
+            outputContains = outputContains,
+            outputTarget = outputTarget,
+            hasDiff = hasDiff,
+            diffPath = diffPath,
+            diffKind = diffKind,
+            diffContains = diffContains,
         )
 
     /**
@@ -2603,6 +3611,57 @@ class SandboxQuickTest private constructor(
                 inputCode = inputCode,
                 inputAction = inputAction,
             ),
+        )
+
+    fun assertPlayerEventTrace(
+        type: PlayerEventType,
+        player: String? = null,
+        success: Boolean? = null,
+        advancement: String? = null,
+        criterion: String? = null,
+        count: Int? = null,
+        failedAdvancement: String? = null,
+        failedCriterion: String? = null,
+        failureContains: String? = null,
+        item: String? = null,
+        entity: String? = null,
+        block: String? = null,
+        blockX: Int? = null,
+        blockY: Int? = null,
+        blockZ: Int? = null,
+        recipe: String? = null,
+        fromDimension: String? = null,
+        toDimension: String? = null,
+        damageSource: String? = null,
+        damageAmount: Double? = null,
+        inputDevice: PlayerInputDevice? = null,
+        inputCode: String? = null,
+        inputAction: PlayerInputAction? = null,
+    ): SandboxQuickTest =
+        assertPlayerEventTrace(
+            player = player,
+            type = type.id,
+            success = success,
+            advancement = advancement,
+            criterion = criterion,
+            count = count,
+            failedAdvancement = failedAdvancement,
+            failedCriterion = failedCriterion,
+            failureContains = failureContains,
+            item = item,
+            entity = entity,
+            block = block,
+            blockX = blockX,
+            blockY = blockY,
+            blockZ = blockZ,
+            recipe = recipe,
+            fromDimension = fromDimension,
+            toDimension = toDimension,
+            damageSource = damageSource,
+            damageAmount = damageAmount,
+            inputDevice = inputDevice?.id,
+            inputCode = inputCode,
+            inputAction = inputAction?.id,
         )
 
     /**
@@ -2686,6 +3745,57 @@ class SandboxQuickTest private constructor(
             ),
         )
 
+    fun matchingPlayerEventTraces(
+        type: PlayerEventType,
+        player: String? = null,
+        success: Boolean? = null,
+        advancement: String? = null,
+        criterion: String? = null,
+        count: Int? = null,
+        failedAdvancement: String? = null,
+        failedCriterion: String? = null,
+        failureContains: String? = null,
+        item: String? = null,
+        entity: String? = null,
+        block: String? = null,
+        blockX: Int? = null,
+        blockY: Int? = null,
+        blockZ: Int? = null,
+        recipe: String? = null,
+        fromDimension: String? = null,
+        toDimension: String? = null,
+        damageSource: String? = null,
+        damageAmount: Double? = null,
+        inputDevice: PlayerInputDevice? = null,
+        inputCode: String? = null,
+        inputAction: PlayerInputAction? = null,
+    ): List<PlayerEventTraceEvent> =
+        matchingPlayerEventTraces(
+            player = player,
+            type = type.id,
+            success = success,
+            advancement = advancement,
+            criterion = criterion,
+            count = count,
+            failedAdvancement = failedAdvancement,
+            failedCriterion = failedCriterion,
+            failureContains = failureContains,
+            item = item,
+            entity = entity,
+            block = block,
+            blockX = blockX,
+            blockY = blockY,
+            blockZ = blockZ,
+            recipe = recipe,
+            fromDimension = fromDimension,
+            toDimension = toDimension,
+            damageSource = damageSource,
+            damageAmount = damageAmount,
+            inputDevice = inputDevice?.id,
+            inputCode = inputCode,
+            inputAction = inputAction?.id,
+        )
+
     /**
      * Returns command trace events matching [expectation] without registering a failure.
      */
@@ -2727,6 +3837,37 @@ class SandboxQuickTest private constructor(
                 diffKind = diffKind,
                 diffContains = diffContains,
             ),
+        )
+
+    fun matchingTraces(
+        root: CommandRoot,
+        command: String? = null,
+        contains: String? = null,
+        success: Boolean? = null,
+        fileContains: String? = null,
+        function: String? = null,
+        outputs: Int? = null,
+        outputContains: String? = null,
+        outputTarget: String? = null,
+        hasDiff: Boolean? = null,
+        diffPath: String? = null,
+        diffKind: SnapshotDiffKind? = null,
+        diffContains: String? = null,
+    ): List<CommandTraceEvent> =
+        matchingTraces(
+            command = command,
+            root = root.id,
+            contains = contains,
+            success = success,
+            fileContains = fileContains,
+            function = function,
+            outputs = outputs,
+            outputContains = outputContains,
+            outputTarget = outputTarget,
+            hasDiff = hasDiff,
+            diffPath = diffPath,
+            diffKind = diffKind,
+            diffContains = diffContains,
         )
 
     /**
@@ -2778,6 +3919,12 @@ class SandboxQuickTest private constructor(
         normalizedText: String? = null,
         normalizedContains: String? = null,
         normalizedMatches: String? = null,
+        rawText: String? = null,
+        rawContains: String? = null,
+        rawTextMatches: String? = null,
+        normalizedRawText: String? = null,
+        normalizedRawContains: String? = null,
+        normalizedRawMatches: String? = null,
         payloadPath: String? = null,
         payloadEquals: JsonElement? = null,
     ): List<OutputEvent> =
@@ -2792,9 +3939,54 @@ class SandboxQuickTest private constructor(
                 normalizedText = normalizedText,
                 normalizedContains = normalizedContains,
                 normalizedMatches = normalizedMatches,
+                rawText = rawText,
+                rawContains = rawContains,
+                rawTextMatches = rawTextMatches,
+                normalizedRawText = normalizedRawText,
+                normalizedRawContains = normalizedRawContains,
+                normalizedRawMatches = normalizedRawMatches,
                 payloadPath = payloadPath,
                 payloadEquals = payloadEquals,
             ),
+        )
+
+    fun matchingOutputs(
+        channel: OutputChannel,
+        command: String? = null,
+        target: String? = null,
+        text: String? = null,
+        contains: String? = null,
+        textMatches: String? = null,
+        normalizedText: String? = null,
+        normalizedContains: String? = null,
+        normalizedMatches: String? = null,
+        rawText: String? = null,
+        rawContains: String? = null,
+        rawTextMatches: String? = null,
+        normalizedRawText: String? = null,
+        normalizedRawContains: String? = null,
+        normalizedRawMatches: String? = null,
+        payloadPath: String? = null,
+        payloadEquals: JsonElement? = null,
+    ): List<OutputEvent> =
+        matchingOutputs(
+            command = command,
+            channel = channel.id,
+            target = target,
+            text = text,
+            contains = contains,
+            textMatches = textMatches,
+            normalizedText = normalizedText,
+            normalizedContains = normalizedContains,
+            normalizedMatches = normalizedMatches,
+            rawText = rawText,
+            rawContains = rawContains,
+            rawTextMatches = rawTextMatches,
+            normalizedRawText = normalizedRawText,
+            normalizedRawContains = normalizedRawContains,
+            normalizedRawMatches = normalizedRawMatches,
+            payloadPath = payloadPath,
+            payloadEquals = payloadEquals,
         )
 
     private fun entityHealth(entity: SandboxEntity): Double? =

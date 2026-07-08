@@ -142,7 +142,9 @@ REPL output, `run`, `check --verbose`, and the code test API:
 
 JSON text components support `text`, `score`, `selector`, `translate`,
 `keybind`, basic `nbt`, `extra`, and common formatting flags. The sandbox stores
-both plain text and segment metadata.
+rendered plain text, raw command message text, and segment metadata. For
+example, `say hello` records `text = "<Server> hello"` and
+`rawText = "hello"`.
 
 ## Selectors
 

@@ -94,7 +94,8 @@ object DatapackLoader {
      *
      * @param paths Datapack directories or zip files.
      * @throws SandboxException for missing paths, invalid `pack.mcmeta`,
-     * version mismatch, malformed JSON, or invalid resource ids.
+     * malformed JSON, or invalid resource ids. Pack format mismatches are
+     * returned as [Datapack.warnings].
      */
     fun load(paths: List<Path>, profile: VersionProfile): Datapack {
         if (paths.isEmpty()) {
@@ -123,6 +124,7 @@ object DatapackLoader {
         val rawResources = linkedMapOf<String, MutableMap<ResourceLocation, RawJsonResource>>()
         val tags = linkedMapOf<TagKey, TagDefinition>()
         val resourceIndex = ResourceIndexBuilder()
+        val warnings = mutableListOf<DatapackWarning>()
 
         fun mergeRawResources(kind: String, resources: Map<ResourceLocation, RawJsonResource>) {
             if (resources.isEmpty()) return
@@ -132,7 +134,7 @@ object DatapackLoader {
         paths.forEach { input ->
             val packLabel = input.toAbsolutePath().normalize().toString()
             withPackRoot(input) { root ->
-                validatePackMetadata(root, input, profile)
+                validatePackMetadata(root, input, profile, warnings)
                 val packFunctions = readFunctions(root, profile)
                 resourceIndex.recordAll("function", packFunctions, packLabel)
                 functions.putAll(packFunctions)
@@ -207,6 +209,7 @@ object DatapackLoader {
             rawResources = rawResources.toSortedRawResourceMap(),
             tags = tags.toSortedMap(),
             resourceIndex = resourceIndex.entries(),
+            warnings = warnings.toList(),
         )
     }
 
@@ -404,6 +407,7 @@ object DatapackLoader {
                 .toSortedMap(),
             tags = tags.mapValues { (_, tag) -> tag.copy(values = tag.values.toList()) }.toSortedMap(),
             resourceIndex = resourceIndex.toList(),
+            warnings = warnings.toList(),
         )
 
     private fun RawJsonResource.cacheCopy(): RawJsonResource =
@@ -444,7 +448,12 @@ object DatapackLoader {
         throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Datapack path must be a directory or .zip file: $normalized")
     }
 
-    private fun validatePackMetadata(root: Path, originalInput: Path, profile: VersionProfile) {
+    private fun validatePackMetadata(
+        root: Path,
+        originalInput: Path,
+        profile: VersionProfile,
+        warnings: MutableList<DatapackWarning>,
+    ) {
         val meta = root.resolve("pack.mcmeta")
         if (!meta.exists()) {
             throw SandboxException(
@@ -462,10 +471,10 @@ object DatapackLoader {
                 ?: throw IllegalArgumentException("pack.mcmeta must contain a top-level 'pack' object")
             val declaration = parsePackFormatDeclaration(pack)
             if (!declaration.matches(profile.dataPackFormat)) {
-                throw SandboxException(
+                warnings += DatapackWarning(
                     code = DiagnosticCode.VERSION_MISMATCH,
                     message = "Datapack format ${declaration.describe()} is not compatible with version ${profile.id}; expected ${profile.dataPackFormat}",
-                    location = SourceLocation(file = meta.toString()),
+                    file = meta.toString(),
                     version = profile.id,
                 )
             }

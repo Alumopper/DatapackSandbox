@@ -134,13 +134,13 @@ class SandboxQuickTestTest {
             .command("scoreboard objectives setdisplay sidebar.team.red health")
             .assertScoreboardObjective(
                 "health",
+                renderType = ScoreboardRenderType.HEARTS,
                 criteria = "dummy",
                 displayName = "Health Points",
-                renderType = "hearts",
                 displayAutoUpdate = false,
             )
             .assertScoreboardObjective("missing", exists = false)
-            .assertScoreboardDisplay("sidebar.team.red", "health")
+            .assertScoreboardDisplay(ScoreboardDisplaySlot.SIDEBAR_TEAM_RED, "health")
             .assertScoreboardDisplay("list", exists = false)
             .requirePassed()
 
@@ -171,7 +171,7 @@ class SandboxQuickTestTest {
             .world {
                 player("Alex", inventory = listOf(item("minecraft:stick", 2)))
             }
-            .assertItem("Alex", "minecraft:stick", minCount = 3)
+            .assertItem("Alex", ItemContainer.INVENTORY, "minecraft:stick", minCount = 3)
             .report()
 
         assertTrue(!report.passed)
@@ -359,7 +359,7 @@ class SandboxQuickTestTest {
             .assertPredicate("demo:has_carrot", playerName = "Steve")
             .assertLoot(
                 table = "demo:gift",
-                context = "minecraft:advancement_reward",
+                context = LootContextId.ADVANCEMENT_REWARD,
                 playerName = "Steve",
                 seed = 42,
                 count = 1,
@@ -430,32 +430,32 @@ class SandboxQuickTestTest {
     fun `records keyboard and mouse player input events`() {
         val scenario = SandboxQuickTest.create(listOf(fixturePack()), version = "26.1.2")
             .keyInput("Steve", "key.jump")
-            .mouseInput("Steve", "left", "click", 12.0, 8.0)
-            .assertPlayerLastInput("Steve", "mouse", "left", "click")
+            .mouseInput("Steve", "left", PlayerInputAction.CLICK, 12.0, 8.0)
+            .assertPlayerLastInput("Steve", PlayerInputDevice.MOUSE, "left", PlayerInputAction.CLICK)
             .assertPlayerEventTrace(
                 player = "Steve",
-                type = "key-input",
+                type = PlayerEventType.KEY_INPUT,
                 success = true,
-                inputDevice = "keyboard",
+                inputDevice = PlayerInputDevice.KEYBOARD,
                 inputCode = "key.jump",
-                inputAction = "press",
+                inputAction = PlayerInputAction.PRESS,
                 count = 1,
             )
             .assertPlayerEventTrace(
                 player = "Steve",
-                type = "mouse_input",
+                type = PlayerEventType.MOUSE_INPUT,
                 success = true,
-                inputDevice = "mouse",
+                inputDevice = PlayerInputDevice.MOUSE,
                 inputCode = "left",
-                inputAction = "click",
+                inputAction = PlayerInputAction.CLICK,
                 count = 1,
             )
         val traces = scenario.playerEventTraces()
         val mouseTraces = scenario.matchingPlayerEventTraces(
+            type = PlayerEventType.MOUSE_INPUT,
             player = "Steve",
-            type = "mouse-input",
             inputCode = "left",
-            inputAction = "click",
+            inputAction = PlayerInputAction.CLICK,
         )
         val report = scenario.requirePassed()
 
@@ -621,7 +621,14 @@ class SandboxQuickTestTest {
 
         val scenario = SandboxQuickTest.singleFunction(functionFile, "26.2")
             .function()
-            .assertOutput(command = "say", channel = "chat", target = "Steve", contains = "hello from test", order = 1)
+            .assertOutput(
+                channel = OutputChannel.CHAT,
+                command = "say",
+                target = "Steve",
+                text = "<Server> hello from test",
+                rawText = "hello from test",
+                order = 1,
+            )
             .assertOutput(
                 OutputExpectation(
                     command = "tellraw",
@@ -635,9 +642,14 @@ class SandboxQuickTestTest {
 
         val outputs = scenario.outputs()
         val tellraw = scenario.matchingOutputs(command = "tellraw", text = "gold")
+        val say = scenario.matchingOutputs(channel = OutputChannel.CHAT, command = "say", rawText = "hello from test")
 
         assertEquals(2, outputs.size)
         assertEquals(1, tellraw.size)
+        assertEquals(1, say.size)
+        assertEquals("<Server> hello from test", outputs[0].text)
+        assertEquals("hello from test", outputs[0].rawText)
+        assertEquals("hello from test", outputs[0].toJson().get("rawText").asString)
         scenario.requirePassed()
     }
 
@@ -750,7 +762,7 @@ class SandboxQuickTestTest {
         )
             .function()
             .assertTrace(
-                root = "say",
+                root = CommandRoot.SAY,
                 contains = "quick test",
                 success = true,
                 outputs = 1,
@@ -772,7 +784,7 @@ class SandboxQuickTestTest {
             )
 
         val traces = scenario.traces()
-        val scoreboardTraces = scenario.matchingTraces(root = "scoreboard")
+        val scoreboardTraces = scenario.matchingTraces(root = CommandRoot.SCOREBOARD)
         val scoreWriteTraces = scenario.matchingTraces(diffPath = "/scores/traced", hasDiff = true)
         val outputTraces = scenario.matchingTraces(outputContains = "quick test", outputTarget = "Steve")
 
@@ -935,14 +947,14 @@ class SandboxQuickTestTest {
                 playerStat("Alex", "minecraft:jump", 3)
                 playerSpawn("Alex", 2.0, 66.0, 3.0, angle = 90.0, forced = true)
                 team("red", members = listOf("Alex"), options = mapOf("color" to "red"))
-                bossbar("demo:bar", "Demo", value = 3, max = 10, players = listOf("Alex"))
+                bossbar("demo:bar", "Demo", value = 3, max = 10, color = "blue", style = "notched_10", players = listOf("Alex"))
                 score("#fixture", "ready", 1)
                 storage("demo:env", "{ready:true}")
                 gamerule("doDaylightCycle", "false")
             }
             .assertWorld(
-                difficulty = "hard",
-                defaultGameMode = "creative",
+                difficulty = SandboxDifficulty.HARD,
+                defaultGameMode = SandboxGameMode.CREATIVE,
                 seed = 123,
                 forcedChunkX = 0,
                 forcedChunkZ = 0,
@@ -977,7 +989,7 @@ class SandboxQuickTestTest {
             )
             .assertEntity(type = "minecraft:cow", tag = "fixture_vehicle", uuid = vehicleUuid, passenger = riderUuid, passengerCount = 1)
             .assertEntityEquipment(
-                "weapon.mainhand",
+                EntityEquipmentSlot.MAINHAND,
                 type = "minecraft:pig",
                 tag = "fixture",
                 id = "minecraft:iron_sword",
@@ -1009,9 +1021,9 @@ class SandboxQuickTestTest {
             .assertEntityCountRange(min = 1, max = 1, type = "minecraft:pig", tag = "fixture", dimension = "minecraft:the_nether")
             .assertPlayer(
                 name = "Alex",
+                gameMode = SandboxGameMode.SURVIVAL,
                 position = Position(2.0, 65.0, 3.0),
                 dimension = "minecraft:overworld",
-                gameMode = "survival",
                 xp = 5,
                 xpLevels = 4,
                 inventoryCount = 1,
@@ -1027,8 +1039,8 @@ class SandboxQuickTestTest {
                 nbtPath = "EnderItems[0].id",
                 nbtEquals = "minecraft:ender_pearl",
             )
-            .assertTeam("red", member = "Alex", memberCount = 1, optionName = "color", optionEquals = "red")
-            .assertBossbar("demo:bar", name = "Demo", value = 3, max = 10, player = "Alex")
+            .assertTeam("red", TeamOption.COLOR, "red", member = "Alex", memberCount = 1)
+            .assertBossbar("demo:bar", BossbarColor.BLUE, name = "Demo", value = 3, max = 10, style = BossbarStyle.NOTCHED_10, player = "Alex")
             .assertItem(
                 "Alex",
                 "minecraft:stick",
@@ -1042,9 +1054,9 @@ class SandboxQuickTestTest {
             )
             .assertItem(
                 "Alex",
-                "minecraft:ender_pearl",
-                4,
-                container = "enderItems",
+                container = ItemContainer.ENDER_ITEMS,
+                id = "minecraft:ender_pearl",
+                count = 4,
             )
             .assertScore("#fixture", "ready", 1)
             .assertScoreAtLeast("#fixture", "ready", 1)
@@ -1155,11 +1167,11 @@ class SandboxQuickTestTest {
         )
             .load()
             .world { player("Alex", xp = 5, xpLevels = 2) }
-            .keyInput("Alex", "jump")
+            .keyInput("Alex", "jump", PlayerInputAction.PRESS)
             .assertScore("#matrix", "runs", 6)
             .assertPlayerXp("Alex", 5)
             .assertPlayerXpLevels("Alex", 2)
-            .assertPlayerLastInput("Alex", "keyboard", "jump", "press")
+            .assertPlayerLastInput("Alex", PlayerInputDevice.KEYBOARD, "jump", PlayerInputAction.PRESS)
             .requirePassed()
 
         assertTrue(report.passed)

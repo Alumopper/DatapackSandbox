@@ -50,13 +50,29 @@ Compatibility profiles keep their own data pack formats. For example,
 through `1.20.6` use `41`.
 
 Legacy aliases are accepted only where the active `VersionProfile` allows them.
-Format mismatches fail with `VERSION_MISMATCH`. JSON parse failures include the
-file path, resource id, and version.
+Format mismatches are reported as non-fatal `VERSION_MISMATCH` load warnings so
+tests can continue against packs that intentionally use a nearby format. JSON
+parse failures and malformed metadata still fail and include the file path,
+resource id, and version.
 
 For newer packs that declare a supported range instead of a single
 `pack_format`, the loader accepts `min_format`/`max_format` and
 `supported_formats` when the active profile's data pack format is inside the
 range.
+
+Format values may be written either as JSON numbers or as one/two-integer
+tuples. For example, `[107, 1]` is treated as `107.1`, and `[94]` is treated as
+`94`:
+
+```json
+{
+  "pack": {
+    "min_format": [94],
+    "max_format": [107, 1],
+    "description": "Example range pack"
+  }
+}
+```
 
 ## Resource Behavior Levels
 
