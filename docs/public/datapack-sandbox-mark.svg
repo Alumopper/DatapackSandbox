@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-labelledby="title desc">
+  <title id="title">Datapack Sandbox</title>
+  <desc id="desc">A stylized cube and command prompt mark.</desc>
+  <rect width="96" height="96" rx="18" fill="#101611"/>
+  <path d="M20 29 48 13l28 16v32L48 77 20 61Z" fill="#178f5a"/>
+  <path d="M48 13v32l28-16Z" fill="#31c481"/>
+  <path d="M20 29 48 45v32L20 61Z" fill="#126c45"/>
+  <path d="M76 29 48 45v32l28-16Z" fill="#0f5939"/>
+  <path d="m30 47 11 8-11 8" fill="none" stroke="#f8faf7" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M48 64h18" stroke="#f8faf7" stroke-width="5" stroke-linecap="round"/>
+  <path d="M20 29 48 45l28-16M48 45v32" fill="none" stroke="#d7f6dd" stroke-width="2.5" stroke-linejoin="round" opacity=".8"/>
+</svg>
