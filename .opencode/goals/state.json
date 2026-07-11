@@ -1,0 +1,119 @@
+{
+  "version": 1,
+  "goals": [
+    {
+      "goalId": "8fb2abbf-7b66-4765-9297-a0ee6a94aa4f",
+      "condition": "implement the plan in docs/vscode-extension-plan.md",
+      "successCriteria": "",
+      "constraints": "",
+      "mode": "normal",
+      "sessionID": "ses_0b8562950ffedCk8kt14EdAJIF",
+      "turnCount": 2,
+      "startedAt": 1783614254928,
+      "totalTokens": 124586,
+      "options": {
+        "maxTurns": 10,
+        "maxDurationMs": 900000,
+        "maxTokens": 200000,
+        "minDelayMs": 1500,
+        "maxRecentMessages": 50,
+        "noProgressTokenThreshold": 50,
+        "noProgressTurnsBeforePause": 2,
+        "noToolCallTurnsBeforePause": 2,
+        "budgetWrapupRatio": 0.8,
+        "warnTurnsRemaining": 3,
+        "warnDurationMsRemaining": 60000,
+        "warnTokensRemaining": 25000,
+        "maxPromptFailures": 3,
+        "resultRetentionMs": 604800000,
+        "maxStoredResults": 200
+      },
+      "lastStatus": "Continuing after assistant turn 2.",
+      "lastAssistantText": "The VS Code package metadata is in place. I’m adding the TypeScript implementation modules next.",
+      "lastAssistantMessageID": "msg_f47bcce730018CMmmATHgxFn8y",
+      "lastContinueAt": 1783615013276,
+      "lastProgressAt": 1783614982121,
+      "noProgressTurns": 0,
+      "noToolCallTurns": 0,
+      "blockedReason": "",
+      "budgetWrapupSent": false,
+      "stopped": false,
+      "stopReason": "",
+      "promptFailures": 0,
+      "formatFailures": 0,
+      "messageIDs": [
+        "msg_f47b1af75001WLZxy9yjYM367q",
+        "msg_f47b1f78c001pa5JYHDPZrLlDM",
+        "msg_f47b23744001cjFH28HZHHDlJK",
+        "msg_f47b276cc001jqisywnWdS6ipM",
+        "msg_f47b2cb220014n9scsPH5qP8I2",
+        "msg_f47b2ef670016RPdAlVSknMCDQ",
+        "msg_f47b314c2001cePc1agosfC3e3",
+        "msg_f47b33e70001wS93sCoe0KESdx",
+        "msg_f47b366dd001GJJZrskSRts4xo",
+        "msg_f47b38a200014ABCGsOJcsUiqT",
+        "msg_f47b3be0b001vzm2o2twSx63mh",
+        "msg_f47b3e08e001ENqshkC4a3ZOuo",
+        "msg_f47b41e01001xzZPVygp2Ax0LI",
+        "msg_f47b43d4a001f3s1B1xv8EwNtw",
+        "msg_f47b4b2c8001dgbxfAyPCvT75d",
+        "msg_f47b4e688001nWIXfDH2TfEXN8",
+        "msg_f47b541d0001oedviacuaQObYX",
+        "msg_f47b56ace0012WhSWiEBasLl0B",
+        "msg_f47b5a1160019kWkr1ErR1EciY",
+        "msg_f47b7c0e7001thieqEEXeMJKJe",
+        "msg_f47b7f45c0014xxkINmV3HmiO4",
+        "msg_f47b8621a001ccPRmmcnC1i2AP",
+        "msg_f47b89765001dx7MJsKr8hNJDR",
+        "msg_f47b8b9ba001j4Bldub2lXfMPv",
+        "msg_f47b8dfbe0013lXCTcOdLmZ42z",
+        "msg_f47b91677001UHeohiincy2pFq",
+        "msg_f47b97aa300160rccqN4KbhYz3",
+        "msg_f47ba035c001Tte1TY2i8po5Gb",
+        "msg_f47ba62c3001EV5SWW4vVOgfdH",
+        "msg_f47babcee001hmVfG2qggG6K5v",
+        "msg_f47baf3b0001HecaF6x3Uss9zB",
+        "msg_f47bb19c2001tQxikN6ZsXJ37A",
+        "msg_f47bb3d0f001dy7VhnQUmMLgu1",
+        "msg_f47bb7487001oaSqCn8LU7Gpjw",
+        "msg_f47bbb9e6001f1IViNDWtV8e5o",
+        "msg_f47bc1a8a001SXaaye72oAFS3w"
+      ],
+      "history": [
+        {
+          "type": "set",
+          "detail": "Goal created with limits: 10 auto-continues, 900s, 200,000 context tokens.",
+          "timestamp": 1783614254928
+        },
+        {
+          "type": "auto-continue",
+          "detail": "Sent auto-continue prompt 1/10.",
+          "timestamp": 1783614499495
+        },
+        {
+          "type": "auto-continue",
+          "detail": "Sent auto-continue prompt 2/10.",
+          "timestamp": 1783615013284
+        }
+      ],
+      "checkpoints": [
+        {
+          "summary": "Current status: - Plan saved at `docs/vscode-extension-plan.md`. - Implementation started. - Completed exploration of existing CLI/core APIs. - Confirmed no VS Code extension exists yet. - Identified reusable backend pieces: - `createSandbox` - `createFunctionSandbox` - `Manifes…",
+          "timestamp": 1783614499484
+        },
+        {
+          "summary": "The VS Code package metadata is in place. I’m adding the TypeScript implementation modules next.",
+          "timestamp": 1783615013275
+        }
+      ],
+      "lastCheckpoint": {
+        "summary": "The VS Code package metadata is in place. I’m adding the TypeScript implementation modules next.",
+        "timestamp": 1783615013275
+      },
+      "focused": true
+    }
+  ],
+  "results": [],
+  "archives": [],
+  "orderedSessions": []
+}

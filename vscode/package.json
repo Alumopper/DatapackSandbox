@@ -1,0 +1,196 @@
+{
+  "name": "datapack-sandbox-vscode",
+  "displayName": "Datapack Sandbox",
+  "description": "Run, test, debug, and inspect Datapack Sandbox scenarios from VS Code.",
+  "version": "0.3.1",
+  "publisher": "Alumopper",
+  "author": {
+    "name": "Alumopper",
+    "url": "https://github.com/Alumopper"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Alumopper/DatapackSandbox.git"
+  },
+  "homepage": "https://github.com/Alumopper/DatapackSandbox#readme",
+  "bugs": {
+    "url": "https://github.com/Alumopper/DatapackSandbox/issues"
+  },
+  "engines": {
+    "vscode": "^1.95.0"
+  },
+  "categories": ["Testing", "Debuggers", "Other"],
+  "activationEvents": [
+    "onLanguage:mcfunction",
+    "onLanguage:json",
+    "onDebugResolve:datapack-sandbox",
+    "onCommand:datapackSandbox.runCurrentMcfunction",
+    "onCommand:datapackSandbox.debugCurrentMcfunction",
+    "onCommand:datapackSandbox.runManifest",
+    "onCommand:datapackSandbox.runManifestStrict",
+    "onCommand:datapackSandbox.debugManifestTrace",
+    "onCommand:datapackSandbox.openSandboxPanel"
+  ],
+  "main": "./out/extension.js",
+  "scripts": {
+    "prepare-schema": "node ./scripts/copy-schema.js",
+    "bundle-cli": "node ./scripts/copy-cli.js",
+    "compile": "npm run prepare-schema && tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "test": "npm run compile && node ./out/test/run-tests.js",
+    "package": "vsce package --out ../build/datapack-sandbox-vscode.vsix",
+    "vscode:prepublish": "npm run bundle-cli && npm run compile"
+  },
+  "contributes": {
+    "commands": [
+      { "command": "datapackSandbox.runCurrentMcfunction", "title": "Datapack Sandbox: Run Current Mcfunction" },
+      { "command": "datapackSandbox.debugCurrentMcfunction", "title": "Datapack Sandbox: Debug Current Mcfunction" },
+      { "command": "datapackSandbox.runManifest", "title": "Datapack Sandbox: Run Manifest" },
+      { "command": "datapackSandbox.runManifestStrict", "title": "Datapack Sandbox: Run Manifest Strict" },
+      { "command": "datapackSandbox.debugManifestTrace", "title": "Datapack Sandbox: Debug Manifest Trace" },
+      { "command": "datapackSandbox.runCurrentWithPack", "title": "Datapack Sandbox: Run Current Mcfunction With Pack" },
+      { "command": "datapackSandbox.runCurrentInActiveSandbox", "title": "Datapack Sandbox: Run Current Mcfunction in Active Sandbox" },
+      { "command": "datapackSandbox.debugCurrentInActiveSandbox", "title": "Datapack Sandbox: Debug Current File in Active Sandbox" },
+      { "command": "datapackSandbox.runManifestInActiveSandbox", "title": "Datapack Sandbox: Run Manifest in Active Sandbox" },
+      { "command": "datapackSandbox.startSandbox", "title": "Datapack Sandbox: Start Sandbox" },
+      { "command": "datapackSandbox.stopSandbox", "title": "Datapack Sandbox: Stop Sandbox" },
+      { "command": "datapackSandbox.openSandboxPanel", "title": "Datapack Sandbox: Open Sandbox Panel" },
+      { "command": "datapackSandbox.reloadTests", "title": "Datapack Sandbox: Reload Manifest Tests" },
+      { "command": "datapackSandbox.generateManifest", "title": "Datapack Sandbox: Generate Manifest For Current Function" },
+      { "command": "datapackSandbox.refreshResources", "title": "Datapack Sandbox: Refresh Resources" }
+    ],
+    "configuration": {
+      "title": "Datapack Sandbox",
+      "properties": {
+        "datapackSandbox.javaPath": {
+          "type": "string",
+          "default": "java",
+          "description": "Java executable used to run the Datapack Sandbox CLI jar."
+        },
+        "datapackSandbox.cliJarPath": {
+          "type": "string",
+          "default": "",
+          "description": "Optional path to a custom datapack-sandbox-cli.jar. The extension uses its bundled CLI when this is empty."
+        },
+        "datapackSandbox.autoBuildCliJar": {
+          "type": "boolean",
+          "default": true,
+          "description": "Build :cli:fatJar automatically in a Datapack Sandbox source workspace when no bundled or configured CLI jar is available."
+        },
+        "datapackSandbox.defaultVersion": {
+          "type": "string",
+          "default": "26.2",
+          "description": "Default Minecraft version profile."
+        },
+        "datapackSandbox.packPaths": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": [],
+          "description": "Extra datapack folder or zip paths passed to run/debug/sandbox operations."
+        },
+        "datapackSandbox.strict": {
+          "type": "boolean",
+          "default": false,
+          "description": "Use strict validation for manifest checks and quick runs."
+        },
+        "datapackSandbox.traceFilter": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": [],
+          "description": "Trace filters passed to CLI run/check operations."
+        },
+        "datapackSandbox.reportDirectory": {
+          "type": "string",
+          "default": "",
+          "description": "Directory for temporary run/check reports. Defaults to the OS temp directory."
+        },
+        "datapackSandbox.defaultExecutionTarget": {
+          "type": "string",
+          "enum": ["temporary", "active"],
+          "default": "temporary",
+          "enumDescriptions": ["Create an isolated sandbox for each run or debug session.", "Use the currently active persistent sandbox."],
+          "description": "Default target used by Run and Debug commands. Temporary preserves the original isolated behavior."
+        }
+      }
+    },
+    "menus": {
+      "editor/title": [
+        { "command": "datapackSandbox.runCurrentMcfunction", "when": "resourceExtname == .mcfunction", "group": "navigation" },
+        { "command": "datapackSandbox.runCurrentInActiveSandbox", "when": "resourceExtname == .mcfunction", "group": "datapackSandbox" },
+        { "command": "datapackSandbox.runManifest", "when": "resourceFilename =~ /.*\\.dps\\.json$/", "group": "navigation" }
+      ],
+      "explorer/context": [
+        { "command": "datapackSandbox.runManifest", "when": "resourceFilename =~ /.*\\.dps\\.json$/", "group": "datapackSandbox" },
+        { "command": "datapackSandbox.runManifestStrict", "when": "resourceFilename =~ /.*\\.dps\\.json$/", "group": "datapackSandbox" }
+      ]
+    },
+    "languages": [
+      {
+        "id": "mcfunction",
+        "aliases": ["Minecraft Function", "mcfunction"],
+        "extensions": [".mcfunction"]
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "datapackSandbox",
+          "title": "Datapack Sandbox",
+          "icon": "resources/sandbox.svg"
+        }
+      ]
+    },
+    "views": {
+      "datapackSandbox": [
+        { "id": "datapackSandbox.resources", "name": "Resources" }
+      ]
+    },
+    "breakpoints": [
+      { "language": "mcfunction" },
+      { "language": "json" }
+    ],
+    "debuggers": [
+      {
+        "type": "datapack-sandbox",
+        "label": "Datapack Sandbox Trace Debug",
+        "configurationAttributes": {
+          "launch": {
+            "required": ["program"],
+            "properties": {
+              "program": { "type": "string", "description": "Path to .mcfunction or .dps.json file." },
+              "version": { "type": "string", "default": "26.2" },
+              "packs": { "type": "array", "items": { "type": "string" }, "default": [] },
+              "strict": { "type": "boolean", "default": false },
+              "sandbox": { "type": "string", "enum": ["temporary", "active"], "default": "temporary", "description": "Run in a new temporary sandbox or the active persistent sandbox." },
+              "stopOnEntry": { "type": "boolean", "default": false, "description": "Pause on the first trace event instead of running to the first breakpoint." }
+            }
+          }
+        },
+        "initialConfigurations": [
+          {
+            "name": "Debug Current Datapack Sandbox File",
+            "type": "datapack-sandbox",
+            "request": "launch",
+            "program": "${file}",
+            "version": "26.2",
+            "sandbox": "temporary",
+            "stopOnEntry": false
+          }
+        ]
+      }
+    ],
+    "jsonValidation": [
+      {
+        "fileMatch": ["*.dps.json"],
+        "url": "./schemas/dps-manifest.schema.json"
+      }
+    ]
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/vscode": "^1.95.0",
+    "@vscode/vsce": "^3.6.2",
+    "typescript": "^5.9.0"
+  }
+}
