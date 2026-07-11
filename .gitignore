@@ -12,3 +12,6 @@ docs/.vitepress/dist/
 *.iml
 
 node_modules/
+vscode/out/
+vscode/schemas/
+vscode/bin/

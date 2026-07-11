@@ -12,6 +12,21 @@ import kotlin.test.assertTrue
 
 class ReplTest {
     @Test
+    fun `prints dashboard and categorized help`() {
+        val repl = Repl(createSandbox("26.2", listOf(Path.of("../core/src/test/resources/packs/counter"))))
+
+        val output = captureStdout {
+            repl.handle("status")
+            repl.handle("help")
+        }
+
+        assertTrue(output.contains("Datapack Sandbox"), output)
+        assertTrue(output.contains("profile"), output)
+        assertTrue(output.contains("RUN"), output)
+        assertTrue(output.contains("WORKFLOW"), output)
+    }
+
+    @Test
     fun `prints clear feedback for manually entered commands`() {
         val repl = Repl(createSandbox("26.1.2", listOf(Path.of("../core/src/test/resources/packs/counter"))))
 

@@ -78,13 +78,12 @@ class Repl(
 
         runCatching { DpsInlineHints.install(reader, completer) }
 
-        terminal.writer().println(ConsoleStyle.bold("Datapack Sandbox REPL ${sandbox.profile.id}"))
-        terminal.writer().println(helpText())
+        terminal.writer().println(dashboard())
         terminal.writer().flush()
 
         while (true) {
             val line = try {
-                reader.readLine(ConsoleStyle.cyan("dps> "))
+                reader.readLine(ReplPresentation.prompt(sandbox.profile.id, watch, traceEnabled))
             } catch (_: UserInterruptException) {
                 terminal.writer().println()
                 terminal.writer().flush()
@@ -98,10 +97,9 @@ class Repl(
     }
 
     private fun runDumb() {
-        println(ConsoleStyle.bold("Datapack Sandbox REPL ${sandbox.profile.id}"))
-        println(helpText())
+        println(dashboard())
         while (true) {
-            print("dps> ")
+            print(ReplPresentation.prompt(sandbox.profile.id, watch, traceEnabled))
             val line = readlnOrNull() ?: break
             val keepGoing = handle(line.trim())
             if (!keepGoing) break
@@ -121,6 +119,7 @@ class Repl(
             when (parts[0]) {
                 "exit", "quit" -> keepGoing = false
                 "help" -> printHelp(parts.getOrNull(1))
+                "status" -> println(dashboard())
                 "reload" -> reload()
                 "load" -> {
                     if (parts.getOrNull(1) == "fixture") {
@@ -192,15 +191,11 @@ class Repl(
     private fun printCommandResult(label: String, result: ExecutionResult, outputBefore: Int) {
         val newOutputs = sandbox.world.outputs.size - outputBefore
         val outputText = if (newOutputs > 0) ", outputs=+$newOutputs" else ""
-        println(
-            ConsoleStyle.green("OK") +
-                " ${ConsoleStyle.bold(label)} " +
-                ConsoleStyle.dim("(commands=${result.commandsExecuted}, gameTime=${sandbox.world.gameTime}$outputText)"),
-        )
+        println(ReplPresentation.success(label, "commands=${result.commandsExecuted}, gameTime=${sandbox.world.gameTime}$outputText"))
     }
 
     private fun printManualResult(label: String, detail: String) {
-        println(ConsoleStyle.green("OK") + " ${ConsoleStyle.bold(label)} ${ConsoleStyle.dim("($detail)")}")
+        println(ReplPresentation.success(label, detail))
     }
 
     private fun printHelp(command: String?) {
@@ -218,7 +213,7 @@ class Repl(
             "inspect" -> inspectUsage()
             else -> "No detailed help for '$command'. Try TAB for available forms."
         }
-        println(text)
+        println(if (command == null) text else ReplPresentation.detailHelp(command, text))
     }
 
     private fun eventHelp(): String =
@@ -236,15 +231,25 @@ class Repl(
         Use inspect player Steve, inspect advancement-progress Steve, inspect recipes Steve, and inspect outputs after dispatching events.
         """.trimIndent()
 
-    private fun helpText(): String =
-        "Commands: load, load fixture <file>, reload, tick [n], function <id>, player <name>, event player <name> <type> [id] [detail/action|x y z|pos=x,y,z], trace <on|off|status>, diff last, rerun last, reset world, ${inspectUsage()}, snapshot [file], exit"
+    private fun helpText(): String = ReplPresentation.help()
+
+    private fun dashboard(): String =
+        ReplPresentation.dashboard(
+            version = sandbox.profile.id,
+            packs = packs.size,
+            watch = watch,
+            trace = traceEnabled,
+            gameTime = sandbox.world.gameTime,
+            players = sandbox.world.players.size,
+            entities = sandbox.world.entities.size,
+        )
 
     private fun inspectUsage(): String =
         "inspect <world|worldborder|score|storage|gamerule|random|schedule|forced-chunks|scoreboard|team|bossbar|entity|entities|block|blocks|biome|biomes|player|item|items|recipes|advancement-progress|loot|predicate|advancement|recipe|item_modifier|raw|tags|resources|registry [group]|outputs|event-traces>"
 
     private fun reload() {
         if (packs.isEmpty()) {
-            println(ConsoleStyle.yellow("reload is unavailable because this REPL was created from an existing sandbox instance"))
+            println(ReplPresentation.warning("reload is unavailable because this REPL was created from an existing sandbox instance"))
             return
         }
         sandbox = createSandbox(version, packs, sandbox.world, unsupportedFeatureMode = unsupportedFeatureMode, limits = sandbox.limits)
@@ -262,7 +267,7 @@ class Repl(
             try {
                 sandbox = createSandbox(version, packs, sandbox.world, unsupportedFeatureMode = unsupportedFeatureMode, limits = sandbox.limits)
                 packStamp = current
-                println(ConsoleStyle.yellow("packs changed; reloaded"))
+                println(ReplPresentation.warning("packs changed; reloaded"))
             } catch (error: SandboxException) {
                 println(ConsoleStyle.diagnostic(error.render()))
             }

@@ -1,38 +1,41 @@
 ---
 layout: home
-title: Datapack Sandbox Docs
+title: Datapack Sandbox
 titleTemplate: false
 
 hero:
   name: Datapack Sandbox
-  text: Datapack Sandbox Docs
-  tagline: A documentation hub for local CLI checks, manifest regression tests, and JVM-level quick tests for Minecraft Java datapacks.
-  icon: ⚡
+  text: Verify datapack behavior without starting a server
+  tagline: A clean-room local runtime for Minecraft Java datapacks. Run functions, inspect resources, inject player events, and lock world state down with repeatable assertions.
   image:
     src: /datapack-sandbox-mark.svg
-    alt: Datapack Sandbox
+    alt: Datapack Sandbox cube and command prompt mark
   actions:
     - theme: brand
-      text: Getting Started
+      text: Start in 5 minutes
       link: /en/guide/getting-started
     - theme: alt
-      text: Testing Patterns
+      text: Explore testing patterns
       link: /en/guide/testing-patterns
     - theme: alt
-      text: 中文文档
-      link: /
+      text: View on GitHub
+      link: https://github.com/Alumopper/DatapackSandbox
 
 features:
-  - title: Getting Started
-    details: Choose an entry point, add the minimal dependency, write the first QuickTest, and scale to a full datapack.
+  - title: Start with one command
+    details: Run a `.mcfunction`, direct command, or complete datapack without waiting for a vanilla server to boot.
     link: /en/guide/getting-started
-    linkText: Start integration
-  - title: Testing Patterns
-    details: Cookbook-style guidance for single functions, fixtures, player events, version matrices, and generated datapacks.
+    linkText: Choose an entry point
+  - title: Turn world state into assertions
+    details: Check scores, storage, entities, players, output events, traces, and snapshot diffs.
     link: /en/guide/testing-patterns
-    linkText: View cookbook
-  - title: Commands and Runtime Model
-    details: Check command support, behavior levels, output events, selector capability, and runtime world boundaries.
+    linkText: Design regression tests
+  - title: Know the simulation boundary
+    details: Commands and resources are labeled modeled, partial, or unsupported so approximations never masquerade as vanilla behavior.
     link: /en/runtime/command-support
-    linkText: View runtime capabilities
+    linkText: Read the support matrix
+  - title: Fit into JVM test suites
+    details: Write Kotlin or Java QuickTests, or connect the CLI and manifest runner to CI.
+    link: /en/guide/code-test-api
+    linkText: Open the code test API
 ---

@@ -12,7 +12,7 @@ moe.afox.dpsandbox:core:1.0.0
 
 `cli` 模块和 `datapack-sandbox-cli.jar` 面向命令行使用。JVM 项目集成时应依赖 `core`，不要把 standalone CLI jar 当作库依赖。
 
-发布 artifact 使用项目的 Java 25 toolchain 构建，因此消费方编译和测试执行需要 Java 25 或更新版本。运行时依赖会通过 Maven 传递解析，但外部构建需要包含 Maven Central 和 Mojang library 仓库，因为 core runtime 依赖 Gson、Brigadier 和 LZ4。
+发布 artifact 使用项目的 Java 25 toolchain 构建，因此编译和测试执行需要 Java 25 或更新版本。运行时依赖会通过 Maven 传递解析，但外部构建需要包含 Maven Central 和 Mojang library 仓库，因为 core runtime 依赖 Gson、Brigadier 和 LZ4。
 
 ## Gradle 依赖
 
@@ -30,7 +30,7 @@ dependencies {
 }
 ```
 
-如果要把沙盒嵌入自己的工具、插件或服务，而不是只在测试中使用，把 `testImplementation(...)` 改成 `implementation(...)`。如果使用 snapshot 版本，坐标版本使用 `-SNAPSHOT`，仓库改为 `https://nexus.mcfpp.top/repository/maven-snapshots/`。
+如果想要把沙盒嵌入自己的工具、插件或服务，而不是只在测试中使用，把 `testImplementation(...)` 改成 `implementation(...)`。如果使用 snapshot 版本，坐标版本使用 `-SNAPSHOT`，仓库改为 `https://nexus.mcfpp.top/repository/maven-snapshots/`。
 
 在同一个 multi-project build 中：
 

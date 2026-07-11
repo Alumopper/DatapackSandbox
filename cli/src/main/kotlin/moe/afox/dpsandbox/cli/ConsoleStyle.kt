@@ -13,8 +13,13 @@ object ConsoleStyle {
     fun blue(text: String): String = color("34", text)
     fun magenta(text: String): String = color("35", text)
     fun cyan(text: String): String = color("36", text)
+    fun brightCyan(text: String): String = color("96", text)
+    fun gray(text: String): String = color("90", text)
     fun dim(text: String): String = color("2", text)
     fun bold(text: String): String = color("1", text)
+
+    fun success(text: String): String = green("+ $text")
+    fun failure(text: String): String = red("- $text")
 
     fun diagnostic(text: String): String = red(text)
 

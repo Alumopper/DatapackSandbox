@@ -15,8 +15,8 @@ const zhSidebar = [
     collapsed: false,
     items: [
       { text: '文档首页', link: '/' },
-      { text: '开发者入门', link: '/guide/getting-started' },
-      { text: '测试模式', link: '/guide/testing-patterns' },
+      { text: '快速开始', link: '/guide/getting-started' },
+      { text: '测试方案', link: '/guide/testing-patterns' },
       { text: '代码测试 API', link: '/guide/code-test-api' },
       { text: '排障手册', link: '/guide/troubleshooting' },
     ],
@@ -52,7 +52,7 @@ const enSidebar = [
     text: 'Start',
     collapsed: false,
     items: [
-      { text: 'Documentation Home', link: '/en/' },
+      { text: 'Overview', link: '/en/' },
       { text: 'Getting Started', link: '/en/guide/getting-started' },
       { text: 'Testing Patterns', link: '/en/guide/testing-patterns' },
       { text: 'Code Test API', link: '/en/guide/code-test-api' },
@@ -88,7 +88,7 @@ const enSidebar = [
 const zhNav = [
   { text: '首页', link: '/' },
   {
-    text: '快速上手',
+    text: '使用指南',
     items: [
       { text: '开发者入门', link: '/guide/getting-started' },
       { text: '测试模式', link: '/guide/testing-patterns' },
@@ -99,7 +99,7 @@ const zhNav = [
     ],
   },
   {
-    text: '参考',
+    text: '技术参考',
     items: [
       { text: '命令支持状态', link: '/runtime/command-support' },
       { text: '资源格式', link: '/resources/resource-formats' },
@@ -140,14 +140,14 @@ const commonThemeConfig = {
     { icon: 'github', link: repository },
   ],
   externalLinkIcon: true,
-  footer: {
-    message: 'Clean-room datapack runtime for deterministic local tests.',
-    copyright: 'Released under the project repository license.',
-  },
 } satisfies ThemeConfig
 
 const zhThemeConfig = {
   ...commonThemeConfig,
+  footer: {
+    message: '在本地复现数据包行为，在提交前发现问题。',
+    copyright: 'Datapack Sandbox · Clean-room runtime · Open source.',
+  },
   nav: zhNav,
   sidebar: zhSidebar,
   search: {
@@ -207,6 +207,10 @@ const zhThemeConfig = {
 
 const enThemeConfig = {
   ...commonThemeConfig,
+  footer: {
+    message: 'Reproduce datapack behavior locally. Find failures before you ship.',
+    copyright: 'Datapack Sandbox · Clean-room runtime · Open source.',
+  },
   nav: enNav,
   sidebar: enSidebar,
   search: {
@@ -301,7 +305,11 @@ export default defineConfigWithTheme<ThemeConfig>({
   },
   head: [
     ['link', { rel: 'icon', href: `${docsBase}datapack-sandbox-mark.svg`, type: 'image/svg+xml' }],
-    ['meta', { name: 'theme-color', content: '#178f5a' }],
+    ['meta', { name: 'theme-color', content: '#07120f' }],
+    ['meta', { property: 'og:type', content: 'website' }],
+    ['meta', { property: 'og:title', content: 'Datapack Sandbox' }],
+    ['meta', { property: 'og:description', content: 'Test Minecraft Java datapacks without starting a server.' }],
+    ['meta', { property: 'og:image', content: `${docsBase}datapack-sandbox-og.svg` }],
   ],
   locales: {
     root: {

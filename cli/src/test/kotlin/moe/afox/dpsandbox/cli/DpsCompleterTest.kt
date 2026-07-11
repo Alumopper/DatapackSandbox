@@ -13,6 +13,24 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class DpsCompleterTest {
+    @Test
+    fun `hint cache suppresses unchanged terminal status updates`() {
+        val cache = DpsHintCache<String>()
+
+        assertTrue(cache.update("first"))
+        assertFalse(cache.update("first"))
+        assertTrue(cache.update("second"))
+        assertFalse(cache.update("second"))
+    }
+
+    @Test
+    fun `multiline status hints default off on Windows terminals`() {
+        assertFalse(DpsInlineHintPolicy.multilineDescriptionsEnabled("Windows 11", override = null))
+        assertTrue(DpsInlineHintPolicy.multilineDescriptionsEnabled("Linux", override = null))
+        assertTrue(DpsInlineHintPolicy.multilineDescriptionsEnabled("Windows 11", override = "true"))
+        assertFalse(DpsInlineHintPolicy.multilineDescriptionsEnabled("Linux", override = "off"))
+    }
+
     private fun completer(): DpsCompleter =
         DpsCompleter { createSandbox("26.1.2", listOf(Path.of("../core/src/test/resources/packs/counter"))) }
 

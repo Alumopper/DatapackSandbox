@@ -73,6 +73,11 @@ data class ManifestAttemptResult(
     val resourceSummary: ManifestResourceSummary? = null,
 )
 
+data class ExistingSandboxManifestResult(
+    val result: ManifestResult,
+    val sandbox: DatapackSandbox,
+)
+
 data class ManifestOptions(
     val seed: Long = 0,
     val verbose: Boolean = false,
@@ -166,6 +171,82 @@ object ManifestRunner {
             traces = attempts.flatMap { it.traces },
             eventTraces = attempts.flatMap { it.eventTraces },
             attempts = attempts,
+        )
+    }
+
+    fun runInExistingSandbox(path: Path, initialSandbox: DatapackSandbox, options: ManifestOptions = ManifestOptions()): ExistingSandboxManifestResult {
+        val json = try {
+            JsonParser.parseString(Files.readString(path, StandardCharsets.UTF_8)).asJsonObject
+        } catch (error: Exception) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Invalid manifest JSON: ${path.toAbsolutePath().normalize()}", cause = error)
+        }
+        val document = resolveManifest(path, json)
+        val effectiveOptions = options.copy(
+            seed = document.root.get("seed")?.asLong ?: initialSandbox.world.seed,
+            failOnMissingResources = document.root.get("failOnMissingResources")?.asBoolean ?: options.failOnMissingResources,
+        )
+        var sandbox = initialSandbox
+        sandbox.world.seed = effectiveOptions.seed
+        val failures = mutableListOf<String>()
+        val diagnostics = mutableListOf<ManifestDiagnostic>()
+
+        document.worlds.forEach { world ->
+            if (!world.element.isJsonObject) throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Manifest world must be an object: ${document.path}")
+            ManifestWorldSetup.apply(world.element.asJsonObject, sandbox, world.base)
+        }
+        val initialWorld = sandbox.world
+        val outputCursor = initialWorld.outputs.size
+        val traceCursor = initialWorld.traces.size
+        val eventTraceCursor = initialWorld.playerEventTraces.size
+        val beforeSnapshot = sandbox.snapshotJson()
+        document.steps.forEachIndexed { index, step ->
+            if (!step.element.isJsonObject) throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Manifest steps must be objects: ${document.path}")
+            val stepObject = step.element.asJsonObject
+            try {
+                sandbox = runStep(stepObject, sandbox, effectiveOptions, step.base)
+            } catch (error: SandboxException) {
+                if (stepObject.get("allowFailure")?.asBoolean == true) {
+                    diagnostics += manifestDiagnostic(index + 1, sandbox.profile.id, error, sandbox)
+                } else {
+                    throw SandboxException(error.code, "Step ${index + 1} failed in active sandbox: ${error.message}", error.location, error.version, error.command, error)
+                }
+            }
+        }
+        val outputs = if (sandbox.world === initialWorld) sandbox.world.outputs.drop(outputCursor) else sandbox.world.outputs.toList()
+        val traces = if (sandbox.world === initialWorld) sandbox.world.traces.drop(traceCursor) else sandbox.world.traces.toList()
+        val eventTraces = if (sandbox.world === initialWorld) sandbox.world.playerEventTraces.drop(eventTraceCursor) else sandbox.world.playerEventTraces.toList()
+        document.assertions.forEachIndexed { index, assertion ->
+            if (!assertion.element.isJsonObject) throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Manifest assertions must be objects: ${document.path}")
+            val assertionObject = assertion.element.asJsonObject
+            failures += evaluateAssertion(assertionObject, sandbox, diagnostics, beforeSnapshot, effectiveOptions.seed, assertion.base)
+                .map { "${assertionLabel(index, assertion, assertionObject, document.path)}: $it" }
+        }
+        val resourceSummary = summarizeResources(sandbox)
+        if (effectiveOptions.failOnMissingResources) failures += missingResourceFailures(resourceSummary)
+        val finalSnapshot = sandbox.snapshotJson()
+        val attempt = ManifestAttemptResult(
+            version = sandbox.profile.id,
+            packs = emptyList(),
+            passed = failures.isEmpty(),
+            messages = failures,
+            outputs = outputs,
+            traces = traces,
+            eventTraces = eventTraces,
+            snapshot = finalSnapshot,
+            snapshotDiffs = SnapshotDiff.stateDiff(beforeSnapshot, finalSnapshot),
+            resourceSummary = resourceSummary,
+        )
+        return ExistingSandboxManifestResult(
+            result = ManifestResult(
+                path = path,
+                passed = attempt.passed,
+                messages = failures,
+                outputs = attempt.outputs,
+                traces = attempt.traces,
+                eventTraces = attempt.eventTraces,
+                attempts = listOf(attempt),
+            ),
+            sandbox = sandbox,
         )
     }
 

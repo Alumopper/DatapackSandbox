@@ -52,6 +52,7 @@ import kotlin.system.exitProcess
 fun main(args: Array<String>) = DatapackSandboxCli()
     .subcommands(
         ReplCommand(),
+        ServeCommand(),
         CheckCommand(),
         RunCommand(),
         DiffCommand(),

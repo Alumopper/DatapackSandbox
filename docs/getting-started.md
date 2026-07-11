@@ -1,6 +1,6 @@
-# Developer Getting Started
+# Getting Started
 
-This page is for developers adding Datapack Sandbox to a project for the first time. It focuses on which entry point to choose, what files are required, and where to look first when a test fails.
+This guide gets you to the first useful run: choose the right entry point, execute a minimal test, and know where to look when it fails. Detailed parameters and runtime boundaries live in the reference pages.
 
 ## Choose an Entry Point
 
@@ -12,7 +12,14 @@ This page is for developers adding Datapack Sandbox to a project for the first t
 | Verify player interaction triggers advancements, predicates, or function chains | player event | [Player Events](/en/runtime/player-events) |
 | Debug pack format, version profile, or command support differences | version profile + warning | [Version Profiles](/en/resources/version-profile) |
 
-Start with `SandboxQuickTest.singleFunctionText(...)` when possible. It does not require a full datapack directory and quickly confirms that your test runtime, version profile, and assertion style are working.
+If you already have a JVM test suite, start with `SandboxQuickTest.singleFunctionText(...)`. It needs no complete datapack directory and confirms the runtime, version profile, and assertion chain in a few lines.
+
+To try the CLI immediately, build the fat jar and open the interactive REPL:
+
+```powershell
+.\gradlew.bat :cli:fatJar
+java -jar .\cli\build\libs\datapack-sandbox-cli.jar repl --version 26.2 --pack .\my-pack
+```
 
 ## Minimal Dependency
 

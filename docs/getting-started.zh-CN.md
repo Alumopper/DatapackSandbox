@@ -1,6 +1,6 @@
-# 开发者入门
+# 快速开始
 
-这页面向第一次把 Datapack Sandbox 接入项目的开发者。目标不是枚举所有 API，而是帮你判断该从哪个入口开始、要准备哪些文件、失败时先看哪里。
+这一页帮你完成第一次有效运行：先选最合适的入口，再执行一段最小测试，最后知道失败时应该检查哪里。完整参数和边界说明留给后续参考页。
 
 ## 先选入口
 
@@ -12,7 +12,14 @@
 | 验证某个玩家交互是否触发 advancement、predicate 或函数链 | player event | [玩家事件](/runtime/player-events) |
 | 排查 pack format、版本 profile 或命令支持差异 | version profile + warning | [版本 Profile](/resources/version-profile) |
 
-一般建议从 `SandboxQuickTest.singleFunctionText(...)` 开始。它不要求你先创建完整数据包，适合确认测试框架、版本 profile 和断言风格都能工作。
+如果你已经在 JVM 项目中写测试，优先从 `SandboxQuickTest.singleFunctionText(...)` 开始。它不要求完整数据包目录，几行代码就能确认运行时、版本 profile 和断言链是否配置正确。
+
+如果你只是想立即体验 CLI，可先构建 fat jar，然后打开交互式 REPL：
+
+```powershell
+.\gradlew.bat :cli:fatJar
+java -jar .\cli\build\libs\datapack-sandbox-cli.jar repl --version 26.2 --pack .\my-pack
+```
 
 ## 最小依赖
 

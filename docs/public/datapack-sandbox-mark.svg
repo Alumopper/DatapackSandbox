@@ -1,12 +1,31 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title desc">
   <title id="title">Datapack Sandbox</title>
-  <desc id="desc">A stylized cube and command prompt mark.</desc>
-  <rect width="96" height="96" rx="18" fill="#101611"/>
-  <path d="M20 29 48 13l28 16v32L48 77 20 61Z" fill="#178f5a"/>
-  <path d="M48 13v32l28-16Z" fill="#31c481"/>
-  <path d="M20 29 48 45v32L20 61Z" fill="#126c45"/>
-  <path d="M76 29 48 45v32l28-16Z" fill="#0f5939"/>
-  <path d="m30 47 11 8-11 8" fill="none" stroke="#f8faf7" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M48 64h18" stroke="#f8faf7" stroke-width="5" stroke-linecap="round"/>
-  <path d="M20 29 48 45l28-16M48 45v32" fill="none" stroke="#d7f6dd" stroke-width="2.5" stroke-linejoin="round" opacity=".8"/>
+  <desc id="desc">An isometric sandbox cube containing a command prompt.</desc>
+  <defs>
+    <linearGradient id="top" x1="18" y1="20" x2="104" y2="63" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#8CFFB1"/>
+      <stop offset="1" stop-color="#2EE6A6"/>
+    </linearGradient>
+    <linearGradient id="left" x1="18" y1="45" x2="64" y2="111" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1FBF83"/>
+      <stop offset="1" stop-color="#0B7656"/>
+    </linearGradient>
+    <linearGradient id="right" x1="64" y1="62" x2="111" y2="106" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#12966C"/>
+      <stop offset="1" stop-color="#07533F"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="8" stdDeviation="8" flood-color="#031A14" flood-opacity=".42"/>
+    </filter>
+  </defs>
+  <rect x="4" y="4" width="120" height="120" rx="28" fill="#07120F"/>
+  <path d="M16 36 64 10l48 26v56l-48 26-48-26Z" fill="#0B211A" opacity=".72" filter="url(#shadow)"/>
+  <path d="M18 38 64 13l46 25-46 26Z" fill="url(#top)"/>
+  <path d="M18 38 64 64v51L18 90Z" fill="url(#left)"/>
+  <path d="M110 38 64 64v51l46-25Z" fill="url(#right)"/>
+  <path d="M18 38 64 64l46-26M64 64v51" fill="none" stroke="#C9FFE0" stroke-width="2" stroke-linejoin="round" opacity=".48"/>
+  <path d="m32 64 13 10-13 10" fill="none" stroke="#F3FFF8" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M52 86h22" fill="none" stroke="#F3FFF8" stroke-width="7" stroke-linecap="round"/>
+  <path d="m82 61 11 6v13l-11 6-11-6V67Z" fill="#07120F" opacity=".82"/>
+  <path d="M82 66v15M75.5 70l13 7.5M88.5 70l-13 7.5" stroke="#64F5C2" stroke-width="2" stroke-linecap="round"/>
 </svg>
