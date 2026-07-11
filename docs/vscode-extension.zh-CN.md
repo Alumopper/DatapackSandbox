@@ -1,6 +1,6 @@
 # VS Code 插件
 
-Datapack Sandbox for VS Code 将运行、测试、断点调试和沙盒检查直接带进编辑器。插件由 **Alumopper** 发布，扩展 ID 为 `Alumopper.datapack-sandbox-vscode`。
+Datapack Sandbox for VS Code 将运行、测试、断点调试和沙盒检查直接带进编辑器。
 
 ## 安装
 

@@ -1,6 +1,6 @@
 # VS Code Extension
 
-Datapack Sandbox for VS Code brings running, testing, trace debugging, and sandbox inspection into the editor. It is published by **Alumopper** under the extension ID `Alumopper.datapack-sandbox-vscode`.
+Datapack Sandbox for VS Code brings running, testing, trace debugging, and sandbox inspection into the editor.
 
 ## Install
 
