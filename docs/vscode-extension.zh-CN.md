@@ -30,6 +30,8 @@ code --install-extension .\datapack-sandbox-vscode.vsix
 
 命令补全支持鼠标选择，也支持 `↑`、`↓` 切换，按 `Tab` 或 `Enter` 接受建议。Inspector 中的 JSON 可以逐层展开；带源码位置的 trace 可以直接跳回 `.mcfunction` 文件。
 
+Profile 下拉框由当前插件内置 CLI 动态提供，支持从 `1.20.4` 到 `26.2` 的全部内置版本。通过命令面板启动沙盒时也会先显示同一份版本选择列表。
+
 ## 临时沙盒与活动沙盒
 
 插件提供两种执行目标：
@@ -110,6 +112,8 @@ Test Explorer 会发现工作区中的 `**/*.dps.json`，并提供四个 Profile
 ### Java 启动失败
 
 运行 `java -version` 确认当前 Java 为 25，或把 `datapackSandbox.javaPath` 指向正确的可执行文件。插件输出面板中的 **Datapack Sandbox** 通道会记录 CLI 启动错误。
+
+新版错误面板会区分 Java 不存在、CLI JAR 缺失、启动超时、版本不匹配、资源缺失和命令错误，并给出错误代码、相关版本或命令以及建议操作。
 
 ### 调试没有停在断点
 

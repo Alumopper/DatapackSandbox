@@ -1,6 +1,7 @@
 package moe.afox.dpsandbox.cli
 
 import com.google.gson.JsonParser
+import moe.afox.dpsandbox.core.VersionProfiles
 import java.io.StringReader
 import java.io.StringWriter
 import java.nio.file.Files
@@ -10,6 +11,20 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class ServeCommandTest {
+    @Test
+    fun `serve starts every built in version profile`() {
+        val requests = VersionProfiles.all.joinToString("\n") { profile ->
+            """{"id":"${profile.id}","method":"createSandbox","params":{"version":"${profile.id}"}}"""
+        }
+        val responses = runServe(requests)
+
+        VersionProfiles.all.forEach { profile ->
+            val response = responses.byId(profile.id)
+            assertTrue(response.get("ok").asBoolean, response.toString())
+            assertEquals(profile.id, response.getAsJsonObject("result").get("version").asString)
+        }
+    }
+
     @Test
     fun `serve creates sandbox and runs command`() {
         val responses = runServe(

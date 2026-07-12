@@ -9,7 +9,7 @@ import { DiagnosticPublisher } from "./diagnostics";
 import { inferFunctionContext, isManifest } from "./functionContext";
 import { showManifest, showRun } from "./presentation";
 import { ResourceTreeProvider } from "./resources";
-import { SandboxClient } from "./sandboxClient";
+import { SandboxClient, describeSandboxError } from "./sandboxClient";
 import { SandboxPanel } from "./sandboxPanel";
 import { ManifestTestController } from "./testController";
 import { ActiveSandboxService } from "./activeSandbox";
@@ -68,7 +68,19 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand("datapackSandbox.runManifestInActiveSandbox", (uri?: vscode.Uri) => safe(() => runManifest(uri, false, "active"))),
     vscode.commands.registerCommand("datapackSandbox.debugManifestTrace", (uri?: vscode.Uri) => safe(() => debug(uri))),
     vscode.commands.registerCommand("datapackSandbox.openSandboxPanel", () => panel.show()),
-    vscode.commands.registerCommand("datapackSandbox.startSandbox", (uri?: vscode.Uri) => safe(async () => { const state = await activeSandbox.start(uri ?? vscode.window.activeTextEditor?.document.uri); updateStatusBar(status, state); void vscode.window.showInformationMessage(`Datapack Sandbox ${state.version} started.`); })),
+    vscode.commands.registerCommand("datapackSandbox.startSandbox", (uri?: vscode.Uri) => safe(async () => {
+      const config = vscode.workspace.getConfiguration("datapackSandbox");
+      const configured = config.get<string>("defaultVersion", "26.2");
+      const profiles = await activeSandbox.versions();
+      const selected = await vscode.window.showQuickPick(
+        profiles.map((profile) => ({ label: profile.id, description: `pack ${profile.packFormat} · data ${profile.dataVersion}`, detail: `Modeled Minecraft ${profile.id} profile`, picked: profile.id === configured })),
+        { title: "Start Datapack Sandbox", placeHolder: `Choose a Minecraft profile (configured default: ${configured})` },
+      );
+      if (!selected) return;
+      const state = await activeSandbox.start(uri ?? vscode.window.activeTextEditor?.document.uri, selected.label);
+      updateStatusBar(status, state);
+      void vscode.window.showInformationMessage(`Datapack Sandbox started with Minecraft ${state.version}.`);
+    })),
     vscode.commands.registerCommand("datapackSandbox.stopSandbox", () => { activeSandbox.stop(); void vscode.window.showInformationMessage("Datapack Sandbox stopped."); }),
     vscode.commands.registerCommand("datapackSandbox.reloadTests", () => tests.discover()),
     vscode.commands.registerCommand("datapackSandbox.refreshResources", () => safe(() => resources.refresh())),
@@ -105,5 +117,17 @@ function resolveUri(uri?: vscode.Uri, suffix?: string): vscode.Uri | undefined {
   return target;
 }
 
-async function safe(action: () => Promise<unknown>): Promise<void> { try { await action(); } catch (error) { void vscode.window.showErrorMessage(error instanceof Error ? error.message : String(error)); } }
+async function safe(action: () => Promise<unknown>): Promise<void> {
+  try {
+    await action();
+  } catch (error) {
+    const details = describeSandboxError(error);
+    const choice = await vscode.window.showErrorMessage(`${details.title}: ${details.message}`, "Show Details", "Open Settings");
+    if (choice === "Show Details") {
+      void vscode.window.showErrorMessage([details.code ? `Code: ${details.code}` : "", details.detail ?? "", details.hint ?? ""].filter(Boolean).join("\n\n"), { modal: true });
+    } else if (choice === "Open Settings") {
+      void vscode.commands.executeCommand("workbench.action.openSettings", "@ext:Alumopper.datapack-sandbox-vscode");
+    }
+  }
+}
 function updateStatusBar(item: vscode.StatusBarItem, state?: Record<string, unknown>): void { item.text = state ? `$(beaker) DPS ${state.version} • Ready` : `$(beaker) DPS • Stopped`; item.tooltip = "Open Datapack Sandbox control panel"; }

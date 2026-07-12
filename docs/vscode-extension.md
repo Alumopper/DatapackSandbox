@@ -30,6 +30,8 @@ Set `datapackSandbox.javaPath` when Java 25 is not available on `PATH`.
 
 Use `↑` and `↓` to move through suggestions and `Tab` or `Enter` to accept one. Inspector JSON is expandable, and traces with source locations can open the corresponding `.mcfunction` line.
 
+The profile selector is populated by the bundled CLI and includes every built-in profile from `1.20.4` through `26.2`. Starting a sandbox from the Command Palette presents the same profile picker.
+
 ## Temporary and Active Sandboxes
 
 | Mode | Best for | State lifetime |
@@ -103,6 +105,8 @@ Panel and `.mcfunction` state-aware completions require an active sandbox. Start
 ### Java fails to start
 
 Run `java -version` and confirm Java 25, or point `datapackSandbox.javaPath` to the correct executable. Startup errors are written to the **Datapack Sandbox** output channel.
+
+The error panel distinguishes a missing Java executable, missing CLI JAR, startup timeout, version mismatch, missing resource, and command failure. It includes the error code, related profile or command, and an actionable suggestion when available.
 
 ### Debugging does not stop at a breakpoint
 

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Datapack Sandbox Author"
+  short_description: "Build and verify complex Minecraft datapacks"
+  default_prompt: "Use $datapack-sandbox-author to design, implement, and validate a complex Minecraft datapack feature."

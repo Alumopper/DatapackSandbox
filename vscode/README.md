@@ -9,6 +9,7 @@ Published by **Alumopper** as `Alumopper.datapack-sandbox-vscode`.
 - Run the current `.mcfunction` file in the sandbox.
 - Run `.dps.json` manifests from commands, code lenses, and Test Explorer.
 - Start and stop a persistent sandbox directly from the Command Palette.
+- Choose any built-in profile from `1.20.4` through `26.2` in the panel or startup picker.
 - Choose temporary or active sandbox profiles in Test Explorer; regular Run and Debug remain temporary by default.
 - Trace-debug `.mcfunction` and manifest runs, stopping at the first breakpoint instead of the first command.
 - Expand nested trace, diagnostic, output, and snapshot JSON directly in the Debug sidebar.
@@ -16,6 +17,7 @@ Published by **Alumopper** as `Alumopper.datapack-sandbox-vscode`.
 - Get sandbox-aware completions and non-mutating command checks in the panel command input.
 - Browse loaded resources, request command completions, and generate starter manifests.
 - Inspect outputs, traces, snapshot diffs, diagnostics, and final state.
+- Get structured startup and operation errors with actionable hints, plus readable execution summaries.
 
 ## Requirements
 

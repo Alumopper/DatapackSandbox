@@ -17,7 +17,12 @@ export class ActiveSandboxService {
 
   get active(): boolean { return this.client.hasActiveSandbox; }
 
-  async start(uri?: vscode.Uri): Promise<Record<string, unknown>> {
+  async versions(): Promise<Array<{ id: string; javaMajor: number; dataVersion: number; packFormat: string }>> {
+    const result = await this.client.request<{ versions: Array<{ id: string; javaMajor: number; dataVersion: number; packFormat: string }> }>("versions");
+    return result.versions;
+  }
+
+  async start(uri?: vscode.Uri, version?: string): Promise<Record<string, unknown>> {
     const config = vscode.workspace.getConfiguration("datapackSandbox");
     const root = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? process.cwd();
     const packs = config.get<string[]>("packPaths", []).map((pack) => path.resolve(root, pack));
@@ -25,7 +30,7 @@ export class ActiveSandboxService {
       const inferred = inferFunctionContext(uri.fsPath).packRoot;
       if (inferred) packs.unshift(inferred);
     }
-    return this.client.create(config.get("defaultVersion", "26.2"), [...new Set(packs)]);
+    return this.client.create(version ?? config.get("defaultVersion", "26.2"), [...new Set(packs)]);
   }
 
   stop(): void { this.client.close(); }
