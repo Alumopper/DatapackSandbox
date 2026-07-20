@@ -1,0 +1,385 @@
+# Public JVM API for moe.afox.dpsandbox:cli:1.0.1
+public final class moe.afox.dpsandbox.cli.AdvancementCommand extends com.github.ajalt.clikt.core.CliktCommand {
+  public moe.afox.dpsandbox.cli.AdvancementCommand();
+  public void run();
+}
+public final class moe.afox.dpsandbox.cli.BenchmarkCommand extends com.github.ajalt.clikt.core.CliktCommand {
+  public moe.afox.dpsandbox.cli.BenchmarkCommand();
+  public void run();
+}
+final class moe.afox.dpsandbox.cli.BenchmarkCommand$BenchmarkScenario {
+  public moe.afox.dpsandbox.cli.BenchmarkCommand$BenchmarkScenario(java.lang.String, long, java.util.Map<java.lang.String, ? extends java.lang.Object>);
+  public final java.lang.String getName();
+  public final long getElapsedNanos();
+  public final java.util.Map<java.lang.String, java.lang.Object> getMetrics();
+  public final java.lang.String elapsedMillisString();
+  public final com.google.gson.JsonObject toJson();
+  public final java.lang.String component1();
+  public final long component2();
+  public final java.util.Map<java.lang.String, java.lang.Object> component3();
+  public final moe.afox.dpsandbox.cli.BenchmarkCommand$BenchmarkScenario copy(java.lang.String, long, java.util.Map<java.lang.String, ? extends java.lang.Object>);
+  public static moe.afox.dpsandbox.cli.BenchmarkCommand$BenchmarkScenario copy$default(moe.afox.dpsandbox.cli.BenchmarkCommand$BenchmarkScenario, java.lang.String, long, java.util.Map, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+}
+public final class moe.afox.dpsandbox.cli.CheckCommand extends com.github.ajalt.clikt.core.CliktCommand {
+  public moe.afox.dpsandbox.cli.CheckCommand();
+  public void run();
+}
+public final class moe.afox.dpsandbox.cli.CommandBehaviorLevel extends java.lang.Enum<moe.afox.dpsandbox.cli.CommandBehaviorLevel> {
+  public static final moe.afox.dpsandbox.cli.CommandBehaviorLevel EXACT;
+  public static final moe.afox.dpsandbox.cli.CommandBehaviorLevel MODELED;
+  public static final moe.afox.dpsandbox.cli.CommandBehaviorLevel OBSERVED_NOOP;
+  public static final moe.afox.dpsandbox.cli.CommandBehaviorLevel UNSUPPORTED;
+  public final java.lang.String getId();
+  public final java.lang.String getSummary();
+  public static moe.afox.dpsandbox.cli.CommandBehaviorLevel[] values();
+  public static moe.afox.dpsandbox.cli.CommandBehaviorLevel valueOf(java.lang.String);
+  public static kotlin.enums.EnumEntries<moe.afox.dpsandbox.cli.CommandBehaviorLevel> getEntries();
+}
+public final class moe.afox.dpsandbox.cli.CommandsCommand extends com.github.ajalt.clikt.core.CliktCommand {
+  public moe.afox.dpsandbox.cli.CommandsCommand();
+  public void run();
+}
+public final class moe.afox.dpsandbox.cli.CompletionContext {
+  public static final moe.afox.dpsandbox.cli.CompletionContext$Companion Companion;
+  public moe.afox.dpsandbox.cli.CompletionContext(java.util.List<java.lang.String>, int, java.lang.String, boolean);
+  public final java.util.List<java.lang.String> getWords();
+  public final int getWordIndex();
+  public final java.lang.String getPrefix();
+  public final boolean getEndsWithWhitespace();
+  public final java.lang.String getFirst();
+  public final java.util.List<moe.afox.dpsandbox.cli.CompletionSuggestion> filter(java.util.List<moe.afox.dpsandbox.cli.CompletionSuggestion>);
+  public final java.util.List<java.lang.String> component1();
+  public final int component2();
+  public final java.lang.String component3();
+  public final boolean component4();
+  public final moe.afox.dpsandbox.cli.CompletionContext copy(java.util.List<java.lang.String>, int, java.lang.String, boolean);
+  public static moe.afox.dpsandbox.cli.CompletionContext copy$default(moe.afox.dpsandbox.cli.CompletionContext, java.util.List, int, java.lang.String, boolean, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+  public static final kotlin.text.Regex access$getTokenPattern$cp();
+}
+public final class moe.afox.dpsandbox.cli.CompletionContext$Companion {
+  public final moe.afox.dpsandbox.cli.CompletionContext parse(java.lang.String, int);
+  public static moe.afox.dpsandbox.cli.CompletionContext parse$default(moe.afox.dpsandbox.cli.CompletionContext$Companion, java.lang.String, int, int, java.lang.Object);
+  public moe.afox.dpsandbox.cli.CompletionContext$Companion(kotlin.jvm.internal.DefaultConstructorMarker);
+}
+public final class moe.afox.dpsandbox.cli.CompletionContext$filter$$inlined$compareBy$1<T> implements java.util.Comparator {
+  public moe.afox.dpsandbox.cli.CompletionContext$filter$$inlined$compareBy$1(java.lang.String);
+  public final int compare(T, T);
+}
+public final class moe.afox.dpsandbox.cli.CompletionContext$filter$$inlined$thenBy$1<T> implements java.util.Comparator {
+  public moe.afox.dpsandbox.cli.CompletionContext$filter$$inlined$thenBy$1(java.util.Comparator);
+  public final int compare(T, T);
+}
+public final class moe.afox.dpsandbox.cli.CompletionSuggestion {
+  public moe.afox.dpsandbox.cli.CompletionSuggestion(java.lang.String, java.lang.String, java.lang.String, boolean, moe.afox.dpsandbox.cli.CommandBehaviorLevel);
+  public moe.afox.dpsandbox.cli.CompletionSuggestion(java.lang.String, java.lang.String, java.lang.String, boolean, moe.afox.dpsandbox.cli.CommandBehaviorLevel, int, kotlin.jvm.internal.DefaultConstructorMarker);
+  public final java.lang.String getValue();
+  public final java.lang.String getDescription();
+  public final java.lang.String getGroup();
+  public final boolean getAppendSpace();
+  public final moe.afox.dpsandbox.cli.CommandBehaviorLevel getBehaviorLevel();
+  public final java.lang.String component1();
+  public final java.lang.String component2();
+  public final java.lang.String component3();
+  public final boolean component4();
+  public final moe.afox.dpsandbox.cli.CommandBehaviorLevel component5();
+  public final moe.afox.dpsandbox.cli.CompletionSuggestion copy(java.lang.String, java.lang.String, java.lang.String, boolean, moe.afox.dpsandbox.cli.CommandBehaviorLevel);
+  public static moe.afox.dpsandbox.cli.CompletionSuggestion copy$default(moe.afox.dpsandbox.cli.CompletionSuggestion, java.lang.String, java.lang.String, java.lang.String, boolean, moe.afox.dpsandbox.cli.CommandBehaviorLevel, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+}
+public final class moe.afox.dpsandbox.cli.ConsoleStyle {
+  public static final moe.afox.dpsandbox.cli.ConsoleStyle INSTANCE;
+  public final java.lang.String green(java.lang.String);
+  public final java.lang.String red(java.lang.String);
+  public final java.lang.String yellow(java.lang.String);
+  public final java.lang.String blue(java.lang.String);
+  public final java.lang.String magenta(java.lang.String);
+  public final java.lang.String cyan(java.lang.String);
+  public final java.lang.String brightCyan(java.lang.String);
+  public final java.lang.String gray(java.lang.String);
+  public final java.lang.String dim(java.lang.String);
+  public final java.lang.String bold(java.lang.String);
+  public final java.lang.String success(java.lang.String);
+  public final java.lang.String failure(java.lang.String);
+  public final java.lang.String diagnostic(java.lang.String);
+  public final java.lang.String minecraft(java.util.List<moe.afox.dpsandbox.core.OutputTextSegment>);
+}
+public final class moe.afox.dpsandbox.cli.DatapackSandboxCli extends com.github.ajalt.clikt.core.CliktCommand {
+  public moe.afox.dpsandbox.cli.DatapackSandboxCli();
+  public void run();
+}
+public final class moe.afox.dpsandbox.cli.DiffCommand extends com.github.ajalt.clikt.core.CliktCommand {
+  public moe.afox.dpsandbox.cli.DiffCommand();
+  public void run();
+}
+public final class moe.afox.dpsandbox.cli.DpsCommandCatalog {
+  public static final moe.afox.dpsandbox.cli.DpsCommandCatalog INSTANCE;
+  public final java.util.List<moe.afox.dpsandbox.cli.CompletionSuggestion> rootCommands(moe.afox.dpsandbox.core.VersionProfile);
+  public static java.util.List rootCommands$default(moe.afox.dpsandbox.cli.DpsCommandCatalog, moe.afox.dpsandbox.core.VersionProfile, int, java.lang.Object);
+  public final java.util.Set<java.lang.String> rootNames(moe.afox.dpsandbox.core.VersionProfile);
+  public static java.util.Set rootNames$default(moe.afox.dpsandbox.cli.DpsCommandCatalog, moe.afox.dpsandbox.core.VersionProfile, int, java.lang.Object);
+  public final java.lang.String usageSuffix(java.lang.String);
+}
+public final class moe.afox.dpsandbox.cli.DpsCommandCatalog$rootCommands$$inlined$sortedBy$1<T> implements java.util.Comparator {
+  public moe.afox.dpsandbox.cli.DpsCommandCatalog$rootCommands$$inlined$sortedBy$1();
+  public final int compare(T, T);
+}
+public final class moe.afox.dpsandbox.cli.DpsCommandCatalog$special$$inlined$sortedBy$1<T> implements java.util.Comparator {
+  public moe.afox.dpsandbox.cli.DpsCommandCatalog$special$$inlined$sortedBy$1();
+  public final int compare(T, T);
+}
+public final class moe.afox.dpsandbox.cli.DpsCompleter implements org.jline.reader.Completer {
+  public moe.afox.dpsandbox.cli.DpsCompleter(kotlin.jvm.functions.Function0<moe.afox.dpsandbox.core.DatapackSandbox>);
+  public void complete(org.jline.reader.LineReader, org.jline.reader.ParsedLine, java.util.List<org.jline.reader.Candidate>);
+  public final java.util.List<moe.afox.dpsandbox.cli.CompletionSuggestion> suggestions(java.lang.String, int);
+  public static java.util.List suggestions$default(moe.afox.dpsandbox.cli.DpsCompleter, java.lang.String, int, int, java.lang.Object);
+  public final java.lang.String inlineHint(java.lang.String, int);
+  public static java.lang.String inlineHint$default(moe.afox.dpsandbox.cli.DpsCompleter, java.lang.String, int, int, java.lang.Object);
+  public final java.util.List<org.jline.utils.AttributedString> multilineHints(java.lang.String, int);
+  public static java.util.List multilineHints$default(moe.afox.dpsandbox.cli.DpsCompleter, java.lang.String, int, int, java.lang.Object);
+}
+public final class moe.afox.dpsandbox.cli.DpsCompletionEngine {
+  public static final moe.afox.dpsandbox.cli.DpsCompletionEngine$Companion Companion;
+  public moe.afox.dpsandbox.cli.DpsCompletionEngine(kotlin.jvm.functions.Function0<moe.afox.dpsandbox.core.DatapackSandbox>);
+  public final java.util.List<moe.afox.dpsandbox.cli.CompletionSuggestion> suggestions(java.lang.String, int);
+  public static java.util.List suggestions$default(moe.afox.dpsandbox.cli.DpsCompletionEngine, java.lang.String, int, int, java.lang.Object);
+  public final java.lang.String inlineHint(java.lang.String, int);
+  public static java.lang.String inlineHint$default(moe.afox.dpsandbox.cli.DpsCompletionEngine, java.lang.String, int, int, java.lang.Object);
+  public final java.util.List<org.jline.utils.AttributedString> multilineHints(java.lang.String, int);
+  public static java.util.List multilineHints$default(moe.afox.dpsandbox.cli.DpsCompletionEngine, java.lang.String, int, int, java.lang.Object);
+}
+public final class moe.afox.dpsandbox.cli.DpsCompletionEngine$Companion {
+  public moe.afox.dpsandbox.cli.DpsCompletionEngine$Companion(kotlin.jvm.internal.DefaultConstructorMarker);
+}
+public final class moe.afox.dpsandbox.cli.DpsHighlighter implements org.jline.reader.Highlighter {
+  public static final moe.afox.dpsandbox.cli.DpsHighlighter$Companion Companion;
+  public moe.afox.dpsandbox.cli.DpsHighlighter(kotlin.jvm.functions.Function0<moe.afox.dpsandbox.core.VersionProfile>);
+  public moe.afox.dpsandbox.cli.DpsHighlighter(kotlin.jvm.functions.Function0, int, kotlin.jvm.internal.DefaultConstructorMarker);
+  public org.jline.utils.AttributedString highlight(org.jline.reader.LineReader, java.lang.String);
+  public final org.jline.utils.AttributedString highlightLine(java.lang.String);
+  public moe.afox.dpsandbox.cli.DpsHighlighter();
+}
+public final class moe.afox.dpsandbox.cli.DpsHighlighter$Companion {
+  public moe.afox.dpsandbox.cli.DpsHighlighter$Companion(kotlin.jvm.internal.DefaultConstructorMarker);
+}
+public final class moe.afox.dpsandbox.cli.DpsHintCache<T> {
+  public moe.afox.dpsandbox.cli.DpsHintCache();
+  public final boolean update(T);
+}
+public final class moe.afox.dpsandbox.cli.DpsInlineHintPolicy {
+  public static final moe.afox.dpsandbox.cli.DpsInlineHintPolicy INSTANCE;
+  public final boolean multilineDescriptionsEnabled(java.lang.String, java.lang.String);
+}
+public final class moe.afox.dpsandbox.cli.DpsInlineHints extends org.jline.widget.Widgets {
+  public static final moe.afox.dpsandbox.cli.DpsInlineHints$Companion Companion;
+  public final void enable();
+  public moe.afox.dpsandbox.cli.DpsInlineHints(org.jline.reader.LineReader, moe.afox.dpsandbox.cli.DpsCompleter, boolean, kotlin.jvm.internal.DefaultConstructorMarker);
+}
+public final class moe.afox.dpsandbox.cli.DpsInlineHints$Companion {
+  public final void install(org.jline.reader.LineReader, moe.afox.dpsandbox.cli.DpsCompleter);
+  public moe.afox.dpsandbox.cli.DpsInlineHints$Companion(kotlin.jvm.internal.DefaultConstructorMarker);
+}
+public final class moe.afox.dpsandbox.cli.DpsMultilineHints {
+  public static final moe.afox.dpsandbox.cli.DpsMultilineHints INSTANCE;
+  public final java.util.List<org.jline.utils.AttributedString> describe(java.lang.String, int, moe.afox.dpsandbox.core.VersionProfile);
+  public static java.util.List describe$default(moe.afox.dpsandbox.cli.DpsMultilineHints, java.lang.String, int, moe.afox.dpsandbox.core.VersionProfile, int, java.lang.Object);
+}
+public final class moe.afox.dpsandbox.cli.EventCommand extends com.github.ajalt.clikt.core.CliktCommand {
+  public moe.afox.dpsandbox.cli.EventCommand();
+  public void run();
+}
+public final class moe.afox.dpsandbox.cli.ExitCodes {
+  public static final moe.afox.dpsandbox.cli.ExitCodes INSTANCE;
+  public static final int OK;
+  public static final int ASSERTION_FAILED;
+  public static final int INPUT_FORMAT;
+  public static final int UNSUPPORTED_OR_VERSION;
+  public final int forException(moe.afox.dpsandbox.core.SandboxException);
+}
+public final class moe.afox.dpsandbox.cli.ExitCodes$WhenMappings {
+  public static final int[] $EnumSwitchMapping$0;
+}
+public final class moe.afox.dpsandbox.cli.LootCommand extends com.github.ajalt.clikt.core.CliktCommand {
+  public moe.afox.dpsandbox.cli.LootCommand();
+  public void run();
+}
+public final class moe.afox.dpsandbox.cli.MainKt {
+  public static final void main(java.lang.String[]);
+  public static final void writeOutputsFile(java.nio.file.Path, java.util.List<moe.afox.dpsandbox.core.OutputEvent>);
+  public static final void writeEventTraceFile(java.nio.file.Path, java.util.List<moe.afox.dpsandbox.core.PlayerEventTraceEvent>);
+  public static final void writeRunReportFile(java.nio.file.Path, moe.afox.dpsandbox.core.DatapackSandbox, int, java.util.List<java.lang.String>, java.util.List<moe.afox.dpsandbox.core.CommandTraceEvent>, com.google.gson.JsonObject, moe.afox.dpsandbox.core.DatapackResourceSummary);
+  public static final void writeManifestReportFile(java.nio.file.Path, java.util.List<moe.afox.dpsandbox.cli.ManifestResult>);
+  public static final com.google.gson.JsonObject toReportJson(moe.afox.dpsandbox.cli.ManifestResult);
+  public static final com.google.gson.JsonObject toReportJson(moe.afox.dpsandbox.cli.ManifestAttemptResult);
+  public static final com.google.gson.JsonArray diagnosticsFromTraces(java.util.List<moe.afox.dpsandbox.core.CommandTraceEvent>, java.lang.String);
+  public static final com.google.gson.JsonObject toReportJson(moe.afox.dpsandbox.core.DatapackResourceSummary);
+  public static final com.google.gson.JsonArray stringArray(java.util.List<java.lang.String>);
+  public static final moe.afox.dpsandbox.core.SandboxLimits sandboxLimits(java.lang.Integer, java.lang.Integer, java.lang.Integer, java.lang.Integer, java.lang.Integer);
+}
+public final class moe.afox.dpsandbox.cli.ManifestSchemaCommand extends com.github.ajalt.clikt.core.CliktCommand {
+  public moe.afox.dpsandbox.cli.ManifestSchemaCommand();
+  public void run();
+}
+public final class moe.afox.dpsandbox.cli.OutputRenderer {
+  public static final moe.afox.dpsandbox.cli.OutputRenderer INSTANCE;
+  public final java.lang.String render(moe.afox.dpsandbox.core.OutputEvent);
+  public final void print(java.util.List<moe.afox.dpsandbox.core.OutputEvent>);
+}
+public final class moe.afox.dpsandbox.cli.PlayerEventTextParserKt {
+  public static final moe.afox.dpsandbox.core.PlayerEvent parsePlayerEventText(java.lang.String, java.lang.String);
+  public static final moe.afox.dpsandbox.core.PlayerEvent parsePlayerEventArgs(java.util.List<java.lang.String>, java.lang.String);
+}
+public final class moe.afox.dpsandbox.cli.RegistryInspection {
+  public static final moe.afox.dpsandbox.cli.RegistryInspection INSTANCE;
+  public final java.util.List<java.lang.String> getGroupNames();
+  public final java.util.List<moe.afox.dpsandbox.cli.RegistryInspectionGroup> groups(moe.afox.dpsandbox.core.VersionProfile);
+  public final java.util.List<moe.afox.dpsandbox.cli.RegistryInspectionGroup> select(moe.afox.dpsandbox.core.VersionProfile, java.lang.String);
+  public final java.util.Set<java.lang.String> aliases(java.lang.String);
+}
+public final class moe.afox.dpsandbox.cli.RegistryInspectionGroup {
+  public moe.afox.dpsandbox.cli.RegistryInspectionGroup(java.lang.String, java.util.Set<moe.afox.dpsandbox.core.ResourceLocation>);
+  public final java.lang.String getName();
+  public final java.util.Set<moe.afox.dpsandbox.core.ResourceLocation> getEntries();
+  public final java.lang.String component1();
+  public final java.util.Set<moe.afox.dpsandbox.core.ResourceLocation> component2();
+  public final moe.afox.dpsandbox.cli.RegistryInspectionGroup copy(java.lang.String, java.util.Set<moe.afox.dpsandbox.core.ResourceLocation>);
+  public static moe.afox.dpsandbox.cli.RegistryInspectionGroup copy$default(moe.afox.dpsandbox.cli.RegistryInspectionGroup, java.lang.String, java.util.Set, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+}
+public final class moe.afox.dpsandbox.cli.Repl {
+  public moe.afox.dpsandbox.cli.Repl(java.lang.String, java.util.List<? extends java.nio.file.Path>, boolean, moe.afox.dpsandbox.core.UnsupportedFeatureMode, moe.afox.dpsandbox.core.DatapackSandbox);
+  public moe.afox.dpsandbox.cli.Repl(java.lang.String, java.util.List, boolean, moe.afox.dpsandbox.core.UnsupportedFeatureMode, moe.afox.dpsandbox.core.DatapackSandbox, int, kotlin.jvm.internal.DefaultConstructorMarker);
+  public moe.afox.dpsandbox.cli.Repl(moe.afox.dpsandbox.core.DatapackSandbox);
+  public final void run();
+  public final boolean handle(java.lang.String);
+}
+public final class moe.afox.dpsandbox.cli.Repl$inspectAdvancementProgress$$inlined$sortedBy$1<T> implements java.util.Comparator {
+  public moe.afox.dpsandbox.cli.Repl$inspectAdvancementProgress$$inlined$sortedBy$1();
+  public final int compare(T, T);
+}
+public final class moe.afox.dpsandbox.cli.Repl$inspectEntities$$inlined$compareBy$1<T> implements java.util.Comparator {
+  public moe.afox.dpsandbox.cli.Repl$inspectEntities$$inlined$compareBy$1();
+  public final int compare(T, T);
+}
+public final class moe.afox.dpsandbox.cli.Repl$inspectEntities$$inlined$compareBy$2<T> implements java.util.Comparator {
+  public moe.afox.dpsandbox.cli.Repl$inspectEntities$$inlined$compareBy$2();
+  public final int compare(T, T);
+}
+public final class moe.afox.dpsandbox.cli.Repl$inspectEntities$$inlined$thenBy$1<T> implements java.util.Comparator {
+  public moe.afox.dpsandbox.cli.Repl$inspectEntities$$inlined$thenBy$1(java.util.Comparator);
+  public final int compare(T, T);
+}
+public final class moe.afox.dpsandbox.cli.Repl$inspectEntities$$inlined$thenBy$2<T> implements java.util.Comparator {
+  public moe.afox.dpsandbox.cli.Repl$inspectEntities$$inlined$thenBy$2(java.util.Comparator);
+  public final int compare(T, T);
+}
+public final class moe.afox.dpsandbox.cli.Repl$inspectPlayerItems$$inlined$sortedBy$1<T> implements java.util.Comparator {
+  public moe.afox.dpsandbox.cli.Repl$inspectPlayerItems$$inlined$sortedBy$1();
+  public final int compare(T, T);
+}
+public final class moe.afox.dpsandbox.cli.Repl$inspectPlayerRecipes$$inlined$sortedBy$1<T> implements java.util.Comparator {
+  public moe.afox.dpsandbox.cli.Repl$inspectPlayerRecipes$$inlined$sortedBy$1();
+  public final int compare(T, T);
+}
+public final class moe.afox.dpsandbox.cli.ReplCommand extends com.github.ajalt.clikt.core.CliktCommand {
+  public moe.afox.dpsandbox.cli.ReplCommand();
+  public void run();
+}
+public final class moe.afox.dpsandbox.cli.ReplPresentation {
+  public static final moe.afox.dpsandbox.cli.ReplPresentation INSTANCE;
+  public final java.lang.String dashboard(java.lang.String, int, boolean, boolean, long, int, int);
+  public final java.lang.String prompt(java.lang.String, boolean, boolean);
+  public final java.lang.String help();
+  public final java.lang.String detailHelp(java.lang.String, java.lang.String);
+  public final java.lang.String success(java.lang.String, java.lang.String);
+  public final java.lang.String warning(java.lang.String);
+}
+public final class moe.afox.dpsandbox.cli.ResourceSummaryRenderer {
+  public static final moe.afox.dpsandbox.cli.ResourceSummaryRenderer INSTANCE;
+  public final java.util.List<java.lang.String> render(java.lang.String, moe.afox.dpsandbox.core.DatapackResourceSummary);
+  public final void print(java.lang.String, moe.afox.dpsandbox.core.DatapackResourceSummary);
+}
+public final class moe.afox.dpsandbox.cli.ResourcesCommand extends com.github.ajalt.clikt.core.CliktCommand {
+  public moe.afox.dpsandbox.cli.ResourcesCommand();
+  public void run();
+}
+public final class moe.afox.dpsandbox.cli.RunCommand extends com.github.ajalt.clikt.core.CliktCommand {
+  public moe.afox.dpsandbox.cli.RunCommand();
+  public void run();
+}
+public final class moe.afox.dpsandbox.cli.ServeCommand extends com.github.ajalt.clikt.core.CliktCommand {
+  public moe.afox.dpsandbox.cli.ServeCommand();
+  public void run();
+}
+public final class moe.afox.dpsandbox.cli.ServeSession {
+  public static final moe.afox.dpsandbox.cli.ServeSession$Companion Companion;
+  public moe.afox.dpsandbox.cli.ServeSession();
+  public final void run(java.io.BufferedReader, java.io.BufferedWriter);
+}
+public final class moe.afox.dpsandbox.cli.ServeSession$Companion {
+  public moe.afox.dpsandbox.cli.ServeSession$Companion(kotlin.jvm.internal.DefaultConstructorMarker);
+}
+final class moe.afox.dpsandbox.cli.ServeSession$FunctionSpec {
+  public moe.afox.dpsandbox.cli.ServeSession$FunctionSpec(java.lang.String, java.lang.String, java.nio.file.Path, java.lang.String);
+  public moe.afox.dpsandbox.cli.ServeSession$FunctionSpec(java.lang.String, java.lang.String, java.nio.file.Path, java.lang.String, int, kotlin.jvm.internal.DefaultConstructorMarker);
+  public final java.lang.String getId();
+  public final java.lang.String getText();
+  public final java.nio.file.Path getPath();
+  public final java.lang.String getSourceName();
+  public final java.lang.String component1();
+  public final java.lang.String component2();
+  public final java.nio.file.Path component3();
+  public final java.lang.String component4();
+  public final moe.afox.dpsandbox.cli.ServeSession$FunctionSpec copy(java.lang.String, java.lang.String, java.nio.file.Path, java.lang.String);
+  public static moe.afox.dpsandbox.cli.ServeSession$FunctionSpec copy$default(moe.afox.dpsandbox.cli.ServeSession$FunctionSpec, java.lang.String, java.lang.String, java.nio.file.Path, java.lang.String, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+}
+final class moe.afox.dpsandbox.cli.ServeSession$SessionConfig {
+  public moe.afox.dpsandbox.cli.ServeSession$SessionConfig(java.lang.String, java.util.List<? extends java.nio.file.Path>, java.util.List<moe.afox.dpsandbox.cli.ServeSession$FunctionSpec>, java.lang.String, moe.afox.dpsandbox.core.UnsupportedFeatureMode, moe.afox.dpsandbox.core.SandboxLimits);
+  public moe.afox.dpsandbox.cli.ServeSession$SessionConfig(java.lang.String, java.util.List, java.util.List, java.lang.String, moe.afox.dpsandbox.core.UnsupportedFeatureMode, moe.afox.dpsandbox.core.SandboxLimits, int, kotlin.jvm.internal.DefaultConstructorMarker);
+  public final java.lang.String getVersion();
+  public final java.util.List<java.nio.file.Path> getPacks();
+  public final java.util.List<moe.afox.dpsandbox.cli.ServeSession$FunctionSpec> getFunctionSpecs();
+  public final java.lang.String getDefaultPlayerName();
+  public final moe.afox.dpsandbox.core.UnsupportedFeatureMode getUnsupportedFeatureMode();
+  public final moe.afox.dpsandbox.core.SandboxLimits getLimits();
+  public final java.lang.String component1();
+  public final java.util.List<java.nio.file.Path> component2();
+  public final java.util.List<moe.afox.dpsandbox.cli.ServeSession$FunctionSpec> component3();
+  public final java.lang.String component4();
+  public final moe.afox.dpsandbox.core.UnsupportedFeatureMode component5();
+  public final moe.afox.dpsandbox.core.SandboxLimits component6();
+  public final moe.afox.dpsandbox.cli.ServeSession$SessionConfig copy(java.lang.String, java.util.List<? extends java.nio.file.Path>, java.util.List<moe.afox.dpsandbox.cli.ServeSession$FunctionSpec>, java.lang.String, moe.afox.dpsandbox.core.UnsupportedFeatureMode, moe.afox.dpsandbox.core.SandboxLimits);
+  public static moe.afox.dpsandbox.cli.ServeSession$SessionConfig copy$default(moe.afox.dpsandbox.cli.ServeSession$SessionConfig, java.lang.String, java.util.List, java.util.List, java.lang.String, moe.afox.dpsandbox.core.UnsupportedFeatureMode, moe.afox.dpsandbox.core.SandboxLimits, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+}
+final class moe.afox.dpsandbox.cli.ServeSession$TrackedExecutionException extends moe.afox.dpsandbox.core.SandboxException {
+  public moe.afox.dpsandbox.cli.ServeSession$TrackedExecutionException(moe.afox.dpsandbox.core.SandboxException, com.google.gson.JsonObject);
+  public final com.google.gson.JsonObject getPartial();
+}
+public final class moe.afox.dpsandbox.cli.TraceFilters {
+  public static final moe.afox.dpsandbox.cli.TraceFilters INSTANCE;
+  public final java.util.List<moe.afox.dpsandbox.core.CommandTraceEvent> apply(java.util.List<moe.afox.dpsandbox.core.CommandTraceEvent>, java.util.List<java.lang.String>);
+}
+public final class moe.afox.dpsandbox.cli.TraceRenderer {
+  public static final moe.afox.dpsandbox.cli.TraceRenderer INSTANCE;
+  public final java.lang.String render(moe.afox.dpsandbox.core.CommandTraceEvent);
+  public final void print(java.util.List<moe.afox.dpsandbox.core.CommandTraceEvent>);
+}
+public final class moe.afox.dpsandbox.cli.VersionCommand extends com.github.ajalt.clikt.core.CliktCommand {
+  public moe.afox.dpsandbox.cli.VersionCommand();
+  public void run();
+}

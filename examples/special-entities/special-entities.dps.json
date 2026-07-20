@@ -1,0 +1,78 @@
+{
+  "version": "26.2",
+  "unsupported": "error",
+  "packs": ["pack"],
+  "steps": [
+    {
+      "command": "summon minecraft:text_display 0 64 0 {Tags:[display],text:'{\"text\":\"Sandbox\"}',interpolation_duration:4,transformation:{translation:[0f,0f,0f],left_rotation:[0f,0f,0f,1f],scale:[1f,1f,1f],right_rotation:[0f,0f,0f,1f]}}"
+    },
+    {
+      "command": "data merge entity @e[tag=display,limit=1] {start_interpolation:0,transformation:{translation:[4f,0f,0f],left_rotation:[0f,0f,0f,1f],scale:[2f,2f,2f],right_rotation:[0f,0f,0f,1f]}}"
+    },
+    { "ticks": 2 },
+    {
+      "commands": [
+        "summon minecraft:armor_stand 1 64 0 {Tags:[posed],Small:true,ShowArms:true,Pose:{Head:[0f,45f,0f]}}",
+        "summon minecraft:marker 2 64 0 {Tags:[anchor],data:{role:checkpoint,stage:2}}",
+        "summon minecraft:interaction 3 64 0 {Tags:[button],width:2f,height:1f,response:true}"
+      ]
+    },
+    {
+      "event": {
+        "player": "Steve",
+        "type": "entity_interacted",
+        "target": "@e[tag=button,limit=1]"
+      }
+    },
+    {
+      "command": "execute as @e[tag=button,limit=1] on target run tag @s add clicked_special_entity"
+    }
+  ],
+  "assertions": [
+    {
+      "entity": {
+        "type": "minecraft:text_display",
+        "tag": "display",
+        "nbt": { "path": "transformation.translation[0]", "equals": 4.0 }
+      }
+    },
+    {
+      "entity": {
+        "type": "minecraft:armor_stand",
+        "tag": "posed",
+        "nbt": { "path": "Pose.Head[1]", "equals": 45.0 }
+      }
+    },
+    {
+      "entity": {
+        "type": "minecraft:marker",
+        "tag": "anchor",
+        "nbt": { "path": "data.role", "equals": "checkpoint" }
+      }
+    },
+    {
+      "entity": {
+        "type": "minecraft:interaction",
+        "tag": "button",
+        "nbt": { "path": "interaction.timestamp", "equals": 2 }
+      }
+    },
+    {
+      "entity": {
+        "type": "minecraft:player",
+        "tag": "clicked_special_entity",
+        "count": 1
+      }
+    },
+    {
+      "eventTrace": {
+        "player": "Steve",
+        "type": "entity_interacted",
+        "entity": "minecraft:interaction",
+        "target": "@e[tag=button,limit=1]",
+        "response": true,
+        "count": 1
+      }
+    }
+  ]
+}

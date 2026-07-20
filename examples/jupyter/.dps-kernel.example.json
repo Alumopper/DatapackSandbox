@@ -1,0 +1,16 @@
+{
+  "version": "26.2",
+  "packs": [],
+  "minecraftAssets": null,
+  "resourcePacks": [],
+  "defaultPlayer": "Steve",
+  "cameraPlayer": "Steve",
+  "autoRender": true,
+  "strict": false,
+  "render": {
+    "width": 960,
+    "height": 540,
+    "fov": 70,
+    "renderDistance": 128
+  }
+}

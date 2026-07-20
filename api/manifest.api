@@ -1,0 +1,300 @@
+# Public JVM API for moe.afox.dpsandbox:manifest:1.0.1
+public final class moe.afox.dpsandbox.cli.ExistingSandboxManifestResult {
+  public moe.afox.dpsandbox.cli.ExistingSandboxManifestResult(moe.afox.dpsandbox.cli.ManifestResult, moe.afox.dpsandbox.core.DatapackSandbox);
+  public final moe.afox.dpsandbox.cli.ManifestResult getResult();
+  public final moe.afox.dpsandbox.core.DatapackSandbox getSandbox();
+  public final moe.afox.dpsandbox.cli.ManifestResult component1();
+  public final moe.afox.dpsandbox.core.DatapackSandbox component2();
+  public final moe.afox.dpsandbox.cli.ExistingSandboxManifestResult copy(moe.afox.dpsandbox.cli.ManifestResult, moe.afox.dpsandbox.core.DatapackSandbox);
+  public static moe.afox.dpsandbox.cli.ExistingSandboxManifestResult copy$default(moe.afox.dpsandbox.cli.ExistingSandboxManifestResult, moe.afox.dpsandbox.cli.ManifestResult, moe.afox.dpsandbox.core.DatapackSandbox, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+}
+public final class moe.afox.dpsandbox.cli.ManifestAssertionEvaluator {
+  public static final moe.afox.dpsandbox.cli.ManifestAssertionEvaluator INSTANCE;
+  public final java.util.List<java.lang.String> evaluate(com.google.gson.JsonObject, moe.afox.dpsandbox.core.DatapackSandbox, java.util.List<moe.afox.dpsandbox.cli.ManifestDiagnostic>, com.google.gson.JsonObject, long, java.nio.file.Path);
+  public static java.util.List evaluate$default(moe.afox.dpsandbox.cli.ManifestAssertionEvaluator, com.google.gson.JsonObject, moe.afox.dpsandbox.core.DatapackSandbox, java.util.List, com.google.gson.JsonObject, long, java.nio.file.Path, int, java.lang.Object);
+}
+final class moe.afox.dpsandbox.cli.ManifestAssertionEvaluator$ManifestEffectExpectation {
+  public moe.afox.dpsandbox.cli.ManifestAssertionEvaluator$ManifestEffectExpectation(moe.afox.dpsandbox.core.ResourceLocation, java.lang.Integer, java.lang.Integer, java.lang.Boolean, boolean);
+  public moe.afox.dpsandbox.cli.ManifestAssertionEvaluator$ManifestEffectExpectation(moe.afox.dpsandbox.core.ResourceLocation, java.lang.Integer, java.lang.Integer, java.lang.Boolean, boolean, int, kotlin.jvm.internal.DefaultConstructorMarker);
+  public final moe.afox.dpsandbox.core.ResourceLocation getId();
+  public final java.lang.Integer getDurationTicks();
+  public final java.lang.Integer getAmplifier();
+  public final java.lang.Boolean getHideParticles();
+  public final boolean getExists();
+  public final moe.afox.dpsandbox.core.ResourceLocation component1();
+  public final java.lang.Integer component2();
+  public final java.lang.Integer component3();
+  public final java.lang.Boolean component4();
+  public final boolean component5();
+  public final moe.afox.dpsandbox.cli.ManifestAssertionEvaluator$ManifestEffectExpectation copy(moe.afox.dpsandbox.core.ResourceLocation, java.lang.Integer, java.lang.Integer, java.lang.Boolean, boolean);
+  public static moe.afox.dpsandbox.cli.ManifestAssertionEvaluator$ManifestEffectExpectation copy$default(moe.afox.dpsandbox.cli.ManifestAssertionEvaluator$ManifestEffectExpectation, moe.afox.dpsandbox.core.ResourceLocation, java.lang.Integer, java.lang.Integer, java.lang.Boolean, boolean, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+}
+public final class moe.afox.dpsandbox.cli.ManifestAttemptResult {
+  public moe.afox.dpsandbox.cli.ManifestAttemptResult(java.lang.String, java.util.List<? extends java.nio.file.Path>, boolean, java.util.List<java.lang.String>, java.util.List<moe.afox.dpsandbox.core.OutputEvent>, java.util.List<moe.afox.dpsandbox.core.CommandTraceEvent>, java.util.List<moe.afox.dpsandbox.core.PlayerEventTraceEvent>, com.google.gson.JsonObject, java.util.List<moe.afox.dpsandbox.core.SnapshotDiffEntry>, moe.afox.dpsandbox.core.DatapackResourceSummary);
+  public moe.afox.dpsandbox.cli.ManifestAttemptResult(java.lang.String, java.util.List, boolean, java.util.List, java.util.List, java.util.List, java.util.List, com.google.gson.JsonObject, java.util.List, moe.afox.dpsandbox.core.DatapackResourceSummary, int, kotlin.jvm.internal.DefaultConstructorMarker);
+  public final java.lang.String getVersion();
+  public final java.util.List<java.nio.file.Path> getPacks();
+  public final boolean getPassed();
+  public final java.util.List<java.lang.String> getMessages();
+  public final java.util.List<moe.afox.dpsandbox.core.OutputEvent> getOutputs();
+  public final java.util.List<moe.afox.dpsandbox.core.CommandTraceEvent> getTraces();
+  public final java.util.List<moe.afox.dpsandbox.core.PlayerEventTraceEvent> getEventTraces();
+  public final com.google.gson.JsonObject getSnapshot();
+  public final java.util.List<moe.afox.dpsandbox.core.SnapshotDiffEntry> getSnapshotDiffs();
+  public final moe.afox.dpsandbox.core.DatapackResourceSummary getResourceSummary();
+  public final java.lang.String component1();
+  public final java.util.List<java.nio.file.Path> component2();
+  public final boolean component3();
+  public final java.util.List<java.lang.String> component4();
+  public final java.util.List<moe.afox.dpsandbox.core.OutputEvent> component5();
+  public final java.util.List<moe.afox.dpsandbox.core.CommandTraceEvent> component6();
+  public final java.util.List<moe.afox.dpsandbox.core.PlayerEventTraceEvent> component7();
+  public final com.google.gson.JsonObject component8();
+  public final java.util.List<moe.afox.dpsandbox.core.SnapshotDiffEntry> component9();
+  public final moe.afox.dpsandbox.core.DatapackResourceSummary component10();
+  public final moe.afox.dpsandbox.cli.ManifestAttemptResult copy(java.lang.String, java.util.List<? extends java.nio.file.Path>, boolean, java.util.List<java.lang.String>, java.util.List<moe.afox.dpsandbox.core.OutputEvent>, java.util.List<moe.afox.dpsandbox.core.CommandTraceEvent>, java.util.List<moe.afox.dpsandbox.core.PlayerEventTraceEvent>, com.google.gson.JsonObject, java.util.List<moe.afox.dpsandbox.core.SnapshotDiffEntry>, moe.afox.dpsandbox.core.DatapackResourceSummary);
+  public static moe.afox.dpsandbox.cli.ManifestAttemptResult copy$default(moe.afox.dpsandbox.cli.ManifestAttemptResult, java.lang.String, java.util.List, boolean, java.util.List, java.util.List, java.util.List, java.util.List, com.google.gson.JsonObject, java.util.List, moe.afox.dpsandbox.core.DatapackResourceSummary, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+}
+public final class moe.afox.dpsandbox.cli.ManifestDiagnostic {
+  public moe.afox.dpsandbox.cli.ManifestDiagnostic(java.lang.Integer, java.lang.String, moe.afox.dpsandbox.core.DiagnosticCode, java.lang.String, java.lang.String, java.lang.String);
+  public final java.lang.Integer getStep();
+  public final java.lang.String getVersion();
+  public final moe.afox.dpsandbox.core.DiagnosticCode getCode();
+  public final java.lang.String getMessage();
+  public final java.lang.String getCommand();
+  public final java.lang.String getRoot();
+  public final java.lang.Integer component1();
+  public final java.lang.String component2();
+  public final moe.afox.dpsandbox.core.DiagnosticCode component3();
+  public final java.lang.String component4();
+  public final java.lang.String component5();
+  public final java.lang.String component6();
+  public final moe.afox.dpsandbox.cli.ManifestDiagnostic copy(java.lang.Integer, java.lang.String, moe.afox.dpsandbox.core.DiagnosticCode, java.lang.String, java.lang.String, java.lang.String);
+  public static moe.afox.dpsandbox.cli.ManifestDiagnostic copy$default(moe.afox.dpsandbox.cli.ManifestDiagnostic, java.lang.Integer, java.lang.String, moe.afox.dpsandbox.core.DiagnosticCode, java.lang.String, java.lang.String, java.lang.String, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+}
+public final class moe.afox.dpsandbox.cli.ManifestJsonKt {
+  public static final java.util.List<com.google.gson.JsonElement> manifestArray(com.google.gson.JsonObject, java.lang.String, java.lang.String);
+  public static java.util.List manifestArray$default(com.google.gson.JsonObject, java.lang.String, java.lang.String, int, java.lang.Object);
+  public static final java.util.List<java.lang.String> manifestStringArray(com.google.gson.JsonObject, java.lang.String, java.lang.String);
+  public static java.util.List manifestStringArray$default(com.google.gson.JsonObject, java.lang.String, java.lang.String, int, java.lang.Object);
+  public static final java.lang.String manifestString(com.google.gson.JsonObject, java.lang.String);
+  public static final java.lang.String requiredManifestString(com.google.gson.JsonObject, java.lang.String);
+  public static final int requiredManifestInt(com.google.gson.JsonObject, java.lang.String);
+  public static final moe.afox.dpsandbox.core.BlockPos parseManifestBlockPos(com.google.gson.JsonArray, java.lang.String);
+  public static moe.afox.dpsandbox.core.BlockPos parseManifestBlockPos$default(com.google.gson.JsonArray, java.lang.String, int, java.lang.Object);
+  public static final moe.afox.dpsandbox.core.Position parseManifestPosition(com.google.gson.JsonArray, java.lang.String);
+  public static moe.afox.dpsandbox.core.Position parseManifestPosition$default(com.google.gson.JsonArray, java.lang.String, int, java.lang.Object);
+  public static final moe.afox.dpsandbox.core.ChunkPos parseManifestChunk(com.google.gson.JsonArray, java.lang.String);
+  public static moe.afox.dpsandbox.core.ChunkPos parseManifestChunk$default(com.google.gson.JsonArray, java.lang.String, int, java.lang.Object);
+  public static final java.util.List<moe.afox.dpsandbox.core.ChunkPos> parseManifestChunks(com.google.gson.JsonArray, java.lang.String);
+  public static java.util.List parseManifestChunks$default(com.google.gson.JsonArray, java.lang.String, int, java.lang.Object);
+  public static final com.google.gson.JsonObject parseManifestNbtObject(com.google.gson.JsonElement, java.lang.String);
+  public static com.google.gson.JsonObject parseManifestNbtObject$default(com.google.gson.JsonElement, java.lang.String, int, java.lang.Object);
+  public static final moe.afox.dpsandbox.core.ItemStack parseManifestItem(com.google.gson.JsonObject);
+  public static final java.lang.String manifestPrimitiveString(com.google.gson.JsonElement);
+}
+public final class moe.afox.dpsandbox.cli.ManifestOptions {
+  public moe.afox.dpsandbox.cli.ManifestOptions(long, boolean, boolean, boolean, boolean, moe.afox.dpsandbox.core.UnsupportedFeatureMode, moe.afox.dpsandbox.core.SandboxLimits);
+  public moe.afox.dpsandbox.cli.ManifestOptions(long, boolean, boolean, boolean, boolean, moe.afox.dpsandbox.core.UnsupportedFeatureMode, moe.afox.dpsandbox.core.SandboxLimits, int, kotlin.jvm.internal.DefaultConstructorMarker);
+  public final long getSeed();
+  public final boolean getVerbose();
+  public final boolean getSnapshotOnFail();
+  public final boolean getSnapshotDiffOnFail();
+  public final boolean getFailOnMissingResources();
+  public final moe.afox.dpsandbox.core.UnsupportedFeatureMode getUnsupportedFeatureMode();
+  public final moe.afox.dpsandbox.core.SandboxLimits getLimits();
+  public final long component1();
+  public final boolean component2();
+  public final boolean component3();
+  public final boolean component4();
+  public final boolean component5();
+  public final moe.afox.dpsandbox.core.UnsupportedFeatureMode component6();
+  public final moe.afox.dpsandbox.core.SandboxLimits component7();
+  public final moe.afox.dpsandbox.cli.ManifestOptions copy(long, boolean, boolean, boolean, boolean, moe.afox.dpsandbox.core.UnsupportedFeatureMode, moe.afox.dpsandbox.core.SandboxLimits);
+  public static moe.afox.dpsandbox.cli.ManifestOptions copy$default(moe.afox.dpsandbox.cli.ManifestOptions, long, boolean, boolean, boolean, boolean, moe.afox.dpsandbox.core.UnsupportedFeatureMode, moe.afox.dpsandbox.core.SandboxLimits, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+  public moe.afox.dpsandbox.cli.ManifestOptions();
+}
+public final class moe.afox.dpsandbox.cli.ManifestOutputAssertions {
+  public static final moe.afox.dpsandbox.cli.ManifestOutputAssertions INSTANCE;
+  public final java.util.List<java.lang.String> evaluate(com.google.gson.JsonObject, moe.afox.dpsandbox.core.DatapackSandbox);
+  public final moe.afox.dpsandbox.core.OutputExpectation parse(com.google.gson.JsonObject);
+}
+public final class moe.afox.dpsandbox.cli.ManifestResult {
+  public moe.afox.dpsandbox.cli.ManifestResult(java.nio.file.Path, boolean, java.util.List<java.lang.String>, java.util.List<moe.afox.dpsandbox.core.OutputEvent>, java.util.List<moe.afox.dpsandbox.core.CommandTraceEvent>, java.util.List<moe.afox.dpsandbox.core.PlayerEventTraceEvent>, java.util.List<moe.afox.dpsandbox.cli.ManifestAttemptResult>);
+  public moe.afox.dpsandbox.cli.ManifestResult(java.nio.file.Path, boolean, java.util.List, java.util.List, java.util.List, java.util.List, java.util.List, int, kotlin.jvm.internal.DefaultConstructorMarker);
+  public final java.nio.file.Path getPath();
+  public final boolean getPassed();
+  public final java.util.List<java.lang.String> getMessages();
+  public final java.util.List<moe.afox.dpsandbox.core.OutputEvent> getOutputs();
+  public final java.util.List<moe.afox.dpsandbox.core.CommandTraceEvent> getTraces();
+  public final java.util.List<moe.afox.dpsandbox.core.PlayerEventTraceEvent> getEventTraces();
+  public final java.util.List<moe.afox.dpsandbox.cli.ManifestAttemptResult> getAttempts();
+  public final java.nio.file.Path component1();
+  public final boolean component2();
+  public final java.util.List<java.lang.String> component3();
+  public final java.util.List<moe.afox.dpsandbox.core.OutputEvent> component4();
+  public final java.util.List<moe.afox.dpsandbox.core.CommandTraceEvent> component5();
+  public final java.util.List<moe.afox.dpsandbox.core.PlayerEventTraceEvent> component6();
+  public final java.util.List<moe.afox.dpsandbox.cli.ManifestAttemptResult> component7();
+  public final moe.afox.dpsandbox.cli.ManifestResult copy(java.nio.file.Path, boolean, java.util.List<java.lang.String>, java.util.List<moe.afox.dpsandbox.core.OutputEvent>, java.util.List<moe.afox.dpsandbox.core.CommandTraceEvent>, java.util.List<moe.afox.dpsandbox.core.PlayerEventTraceEvent>, java.util.List<moe.afox.dpsandbox.cli.ManifestAttemptResult>);
+  public static moe.afox.dpsandbox.cli.ManifestResult copy$default(moe.afox.dpsandbox.cli.ManifestResult, java.nio.file.Path, boolean, java.util.List, java.util.List, java.util.List, java.util.List, java.util.List, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+}
+public final class moe.afox.dpsandbox.cli.ManifestRunner {
+  public static final moe.afox.dpsandbox.cli.ManifestRunner INSTANCE;
+  public final java.util.List<java.nio.file.Path> discover(java.util.List<? extends java.nio.file.Path>);
+  public final moe.afox.dpsandbox.cli.ManifestResult run(java.nio.file.Path, moe.afox.dpsandbox.cli.ManifestOptions);
+  public static moe.afox.dpsandbox.cli.ManifestResult run$default(moe.afox.dpsandbox.cli.ManifestRunner, java.nio.file.Path, moe.afox.dpsandbox.cli.ManifestOptions, int, java.lang.Object);
+  public final moe.afox.dpsandbox.cli.ExistingSandboxManifestResult runInExistingSandbox(java.nio.file.Path, moe.afox.dpsandbox.core.DatapackSandbox, moe.afox.dpsandbox.cli.ManifestOptions);
+  public static moe.afox.dpsandbox.cli.ExistingSandboxManifestResult runInExistingSandbox$default(moe.afox.dpsandbox.cli.ManifestRunner, java.nio.file.Path, moe.afox.dpsandbox.core.DatapackSandbox, moe.afox.dpsandbox.cli.ManifestOptions, int, java.lang.Object);
+  public final java.lang.String exportExternalDiffScript(java.nio.file.Path);
+  public final java.util.List<java.lang.String> evaluateAssertions(java.util.List<com.google.gson.JsonObject>, moe.afox.dpsandbox.core.DatapackSandbox);
+  public final java.util.List<java.lang.String> evaluateAssertions(java.util.List<com.google.gson.JsonObject>, moe.afox.dpsandbox.core.DatapackSandbox, com.google.gson.JsonObject);
+  public final java.util.List<java.lang.String> missingResourceFailures(moe.afox.dpsandbox.core.DatapackResourceSummary);
+  public final moe.afox.dpsandbox.core.DatapackResourceSummary summarizeResources(moe.afox.dpsandbox.core.DatapackSandbox);
+}
+final class moe.afox.dpsandbox.cli.ManifestRunner$ManifestRunConfig {
+  public moe.afox.dpsandbox.cli.ManifestRunner$ManifestRunConfig(java.lang.String, java.util.List<? extends java.nio.file.Path>);
+  public final java.lang.String getVersion();
+  public final java.util.List<java.nio.file.Path> getPacks();
+  public final java.lang.String component1();
+  public final java.util.List<java.nio.file.Path> component2();
+  public final moe.afox.dpsandbox.cli.ManifestRunner$ManifestRunConfig copy(java.lang.String, java.util.List<? extends java.nio.file.Path>);
+  public static moe.afox.dpsandbox.cli.ManifestRunner$ManifestRunConfig copy$default(moe.afox.dpsandbox.cli.ManifestRunner$ManifestRunConfig, java.lang.String, java.util.List, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+}
+final class moe.afox.dpsandbox.cli.ManifestRunner$ManifestSection {
+  public moe.afox.dpsandbox.cli.ManifestRunner$ManifestSection(com.google.gson.JsonElement, java.nio.file.Path, java.nio.file.Path, java.lang.String);
+  public final com.google.gson.JsonElement getElement();
+  public final java.nio.file.Path getBase();
+  public final java.nio.file.Path getSource();
+  public final java.lang.String getPointer();
+  public final com.google.gson.JsonElement component1();
+  public final java.nio.file.Path component2();
+  public final java.nio.file.Path component3();
+  public final java.lang.String component4();
+  public final moe.afox.dpsandbox.cli.ManifestRunner$ManifestSection copy(com.google.gson.JsonElement, java.nio.file.Path, java.nio.file.Path, java.lang.String);
+  public static moe.afox.dpsandbox.cli.ManifestRunner$ManifestSection copy$default(moe.afox.dpsandbox.cli.ManifestRunner$ManifestSection, com.google.gson.JsonElement, java.nio.file.Path, java.nio.file.Path, java.lang.String, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+}
+final class moe.afox.dpsandbox.cli.ManifestRunner$ResolvedManifest {
+  public moe.afox.dpsandbox.cli.ManifestRunner$ResolvedManifest(java.nio.file.Path, java.nio.file.Path, com.google.gson.JsonObject, java.util.List<moe.afox.dpsandbox.cli.ManifestRunner$ManifestSection>, java.util.List<moe.afox.dpsandbox.cli.ManifestRunner$ManifestSection>, java.util.List<moe.afox.dpsandbox.cli.ManifestRunner$ManifestSection>);
+  public final java.nio.file.Path getPath();
+  public final java.nio.file.Path getBase();
+  public final com.google.gson.JsonObject getRoot();
+  public final java.util.List<moe.afox.dpsandbox.cli.ManifestRunner$ManifestSection> getWorlds();
+  public final java.util.List<moe.afox.dpsandbox.cli.ManifestRunner$ManifestSection> getSteps();
+  public final java.util.List<moe.afox.dpsandbox.cli.ManifestRunner$ManifestSection> getAssertions();
+  public final java.nio.file.Path component1();
+  public final java.nio.file.Path component2();
+  public final com.google.gson.JsonObject component3();
+  public final java.util.List<moe.afox.dpsandbox.cli.ManifestRunner$ManifestSection> component4();
+  public final java.util.List<moe.afox.dpsandbox.cli.ManifestRunner$ManifestSection> component5();
+  public final java.util.List<moe.afox.dpsandbox.cli.ManifestRunner$ManifestSection> component6();
+  public final moe.afox.dpsandbox.cli.ManifestRunner$ResolvedManifest copy(java.nio.file.Path, java.nio.file.Path, com.google.gson.JsonObject, java.util.List<moe.afox.dpsandbox.cli.ManifestRunner$ManifestSection>, java.util.List<moe.afox.dpsandbox.cli.ManifestRunner$ManifestSection>, java.util.List<moe.afox.dpsandbox.cli.ManifestRunner$ManifestSection>);
+  public static moe.afox.dpsandbox.cli.ManifestRunner$ResolvedManifest copy$default(moe.afox.dpsandbox.cli.ManifestRunner$ResolvedManifest, java.nio.file.Path, java.nio.file.Path, com.google.gson.JsonObject, java.util.List, java.util.List, java.util.List, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+}
+final class moe.afox.dpsandbox.cli.ManifestRunner$StepOutputTarget {
+  public moe.afox.dpsandbox.cli.ManifestRunner$StepOutputTarget(java.lang.String, boolean);
+  public final java.lang.String getFile();
+  public final boolean getOutput();
+  public final java.lang.String component1();
+  public final boolean component2();
+  public final moe.afox.dpsandbox.cli.ManifestRunner$StepOutputTarget copy(java.lang.String, boolean);
+  public static moe.afox.dpsandbox.cli.ManifestRunner$StepOutputTarget copy$default(moe.afox.dpsandbox.cli.ManifestRunner$StepOutputTarget, java.lang.String, boolean, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+}
+public final class moe.afox.dpsandbox.cli.ManifestRunnerKt {
+}
+public final class moe.afox.dpsandbox.cli.ManifestSchema {
+  public static final moe.afox.dpsandbox.cli.ManifestSchema INSTANCE;
+  public static final java.lang.String RESOURCE_NAME;
+  public final java.lang.String readText();
+}
+public final class moe.afox.dpsandbox.cli.ManifestSchemaValidator {
+  public static final moe.afox.dpsandbox.cli.ManifestSchemaValidator INSTANCE;
+  public final java.util.List<java.lang.String> validateFile(java.nio.file.Path);
+  public final java.util.List<java.lang.String> validateFileTree(java.nio.file.Path);
+  public final java.util.List<java.lang.String> validate(com.google.gson.JsonElement);
+}
+public final class moe.afox.dpsandbox.cli.ManifestWorldSetup {
+  public static final moe.afox.dpsandbox.cli.ManifestWorldSetup INSTANCE;
+  public final void apply(com.google.gson.JsonObject, moe.afox.dpsandbox.core.DatapackSandbox, java.nio.file.Path);
+}
+final class moe.afox.dpsandbox.cli.ManifestWorldSetup$ManifestSaveImport {
+  public moe.afox.dpsandbox.cli.ManifestWorldSetup$ManifestSaveImport(java.nio.file.Path, java.lang.String, java.util.List<moe.afox.dpsandbox.core.ChunkPos>, boolean, boolean, boolean);
+  public final java.nio.file.Path getPath();
+  public final java.lang.String getDimension();
+  public final java.util.List<moe.afox.dpsandbox.core.ChunkPos> getChunks();
+  public final boolean getIncludeBlocks();
+  public final boolean getIncludeBlockEntities();
+  public final boolean getIncludeEntities();
+  public final java.nio.file.Path component1();
+  public final java.lang.String component2();
+  public final java.util.List<moe.afox.dpsandbox.core.ChunkPos> component3();
+  public final boolean component4();
+  public final boolean component5();
+  public final boolean component6();
+  public final moe.afox.dpsandbox.cli.ManifestWorldSetup$ManifestSaveImport copy(java.nio.file.Path, java.lang.String, java.util.List<moe.afox.dpsandbox.core.ChunkPos>, boolean, boolean, boolean);
+  public static moe.afox.dpsandbox.cli.ManifestWorldSetup$ManifestSaveImport copy$default(moe.afox.dpsandbox.cli.ManifestWorldSetup$ManifestSaveImport, java.nio.file.Path, java.lang.String, java.util.List, boolean, boolean, boolean, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+}
+final class moe.afox.dpsandbox.cli.ManifestWorldSetup$ManifestScoreSetup {
+  public moe.afox.dpsandbox.cli.ManifestWorldSetup$ManifestScoreSetup(java.lang.String, java.lang.String, int, java.lang.String);
+  public final java.lang.String getTarget();
+  public final java.lang.String getObjective();
+  public final int getValue();
+  public final java.lang.String getCriteria();
+  public final java.lang.String component1();
+  public final java.lang.String component2();
+  public final int component3();
+  public final java.lang.String component4();
+  public final moe.afox.dpsandbox.cli.ManifestWorldSetup$ManifestScoreSetup copy(java.lang.String, java.lang.String, int, java.lang.String);
+  public static moe.afox.dpsandbox.cli.ManifestWorldSetup$ManifestScoreSetup copy$default(moe.afox.dpsandbox.cli.ManifestWorldSetup$ManifestScoreSetup, java.lang.String, java.lang.String, int, java.lang.String, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+}
+final class moe.afox.dpsandbox.cli.ManifestWorldSetup$ManifestStorageSetup {
+  public moe.afox.dpsandbox.cli.ManifestWorldSetup$ManifestStorageSetup(moe.afox.dpsandbox.core.ResourceLocation, com.google.gson.JsonElement);
+  public final moe.afox.dpsandbox.core.ResourceLocation getId();
+  public final com.google.gson.JsonElement getValue();
+  public final moe.afox.dpsandbox.core.ResourceLocation component1();
+  public final com.google.gson.JsonElement component2();
+  public final moe.afox.dpsandbox.cli.ManifestWorldSetup$ManifestStorageSetup copy(moe.afox.dpsandbox.core.ResourceLocation, com.google.gson.JsonElement);
+  public static moe.afox.dpsandbox.cli.ManifestWorldSetup$ManifestStorageSetup copy$default(moe.afox.dpsandbox.cli.ManifestWorldSetup$ManifestStorageSetup, moe.afox.dpsandbox.core.ResourceLocation, com.google.gson.JsonElement, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+}
+public final class moe.afox.dpsandbox.cli.UnsupportedFeatureModeParserKt {
+  public static final moe.afox.dpsandbox.core.UnsupportedFeatureMode unsupportedFeatureMode(java.lang.String);
+}

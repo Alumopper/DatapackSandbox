@@ -1,0 +1,643 @@
+# Public JVM API for moe.afox.dpsandbox:renderer:1.0.1
+public final class moe.afox.dpsandbox.render.AssetResolver {
+  public moe.afox.dpsandbox.render.AssetResolver(moe.afox.dpsandbox.render.RenderAssets, java.util.List<moe.afox.dpsandbox.render.RenderDiagnostic>, boolean, long, java.util.Map<java.lang.String, byte[]>);
+  public moe.afox.dpsandbox.render.AssetResolver(moe.afox.dpsandbox.render.RenderAssets, java.util.List, boolean, long, java.util.Map, int, kotlin.jvm.internal.DefaultConstructorMarker);
+  public final long getAssetResolveNanos();
+  public final java.util.List<java.lang.String> getSourceDescriptions();
+  public final com.google.gson.JsonObject json(java.lang.String);
+  public final moe.afox.dpsandbox.render.TextureData texture(java.lang.String);
+  public final moe.afox.dpsandbox.render.TextureData playerTexture(java.lang.String);
+  public final moe.afox.dpsandbox.render.TextureData proceduralTexture(java.lang.String, int, int);
+  public final byte[] bytes(java.lang.String);
+  public final void missing(java.lang.String, java.lang.String, java.lang.String);
+  public final void invalid(java.lang.String, java.lang.String, java.lang.String);
+}
+final class moe.afox.dpsandbox.render.AssetResolver$AnimatedFrame {
+  public moe.afox.dpsandbox.render.AssetResolver$AnimatedFrame(int, int);
+  public final int getIndex();
+  public final int getDuration();
+  public final int component1();
+  public final int component2();
+  public final moe.afox.dpsandbox.render.AssetResolver$AnimatedFrame copy(int, int);
+  public static moe.afox.dpsandbox.render.AssetResolver$AnimatedFrame copy$default(moe.afox.dpsandbox.render.AssetResolver$AnimatedFrame, int, int, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+}
+final class moe.afox.dpsandbox.render.AssetResolver$AssetSource {
+  public static final moe.afox.dpsandbox.render.AssetResolver$AssetSource$Companion Companion;
+  public moe.afox.dpsandbox.render.AssetResolver$AssetSource(java.nio.file.Path, java.lang.String);
+  public final java.nio.file.Path getPath();
+  public final java.lang.String getKind();
+  public final byte[] read(java.lang.String);
+  public final java.nio.file.Path component1();
+  public final java.lang.String component2();
+  public final moe.afox.dpsandbox.render.AssetResolver$AssetSource copy(java.nio.file.Path, java.lang.String);
+  public static moe.afox.dpsandbox.render.AssetResolver$AssetSource copy$default(moe.afox.dpsandbox.render.AssetResolver$AssetSource, java.nio.file.Path, java.lang.String, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+}
+public final class moe.afox.dpsandbox.render.AssetResolver$AssetSource$Companion {
+  public moe.afox.dpsandbox.render.AssetResolver$AssetSource$Companion(kotlin.jvm.internal.DefaultConstructorMarker);
+}
+public final class moe.afox.dpsandbox.render.AssetResolverKt {
+  public static final kotlin.Pair<java.lang.String, java.lang.String> splitResourceId(java.lang.String);
+  public static final java.lang.String normalizeResourceId(java.lang.String);
+  public static final java.lang.String access$normalizeAssetKey(java.lang.String);
+}
+public final class moe.afox.dpsandbox.render.MaterialPass extends java.lang.Enum<moe.afox.dpsandbox.render.MaterialPass> {
+  public static final moe.afox.dpsandbox.render.MaterialPass OPAQUE;
+  public static final moe.afox.dpsandbox.render.MaterialPass CUTOUT;
+  public static final moe.afox.dpsandbox.render.MaterialPass TRANSLUCENT;
+  public static moe.afox.dpsandbox.render.MaterialPass[] values();
+  public static moe.afox.dpsandbox.render.MaterialPass valueOf(java.lang.String);
+  public static kotlin.enums.EnumEntries<moe.afox.dpsandbox.render.MaterialPass> getEntries();
+}
+public final class moe.afox.dpsandbox.render.ModelBaker {
+  public static final moe.afox.dpsandbox.render.ModelBaker$Companion Companion;
+  public moe.afox.dpsandbox.render.ModelBaker(moe.afox.dpsandbox.render.AssetResolver, java.util.List<moe.afox.dpsandbox.render.RenderDiagnostic>, java.util.Set<moe.afox.dpsandbox.core.BlockPos>, long, java.util.Map<moe.afox.dpsandbox.core.BlockPos, java.lang.String>);
+  public final java.util.List<moe.afox.dpsandbox.render.SceneTriangle> bake(moe.afox.dpsandbox.render.RenderBlock);
+}
+public final class moe.afox.dpsandbox.render.ModelBaker$Companion {
+  public moe.afox.dpsandbox.render.ModelBaker$Companion(kotlin.jvm.internal.DefaultConstructorMarker);
+}
+final class moe.afox.dpsandbox.render.ModelBaker$ElementRotation {
+  public moe.afox.dpsandbox.render.ModelBaker$ElementRotation(moe.afox.dpsandbox.render.Vec3, char, double);
+  public final moe.afox.dpsandbox.render.Vec3 getOrigin();
+  public final char getAxis();
+  public final double getAngle();
+  public final moe.afox.dpsandbox.render.Vec3 component1();
+  public final char component2();
+  public final double component3();
+  public final moe.afox.dpsandbox.render.ModelBaker$ElementRotation copy(moe.afox.dpsandbox.render.Vec3, char, double);
+  public static moe.afox.dpsandbox.render.ModelBaker$ElementRotation copy$default(moe.afox.dpsandbox.render.ModelBaker$ElementRotation, moe.afox.dpsandbox.render.Vec3, char, double, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+}
+final class moe.afox.dpsandbox.render.ModelBaker$ModelElement {
+  public moe.afox.dpsandbox.render.ModelBaker$ModelElement(moe.afox.dpsandbox.render.Vec3, moe.afox.dpsandbox.render.Vec3, moe.afox.dpsandbox.render.ModelBaker$ElementRotation, java.util.Map<java.lang.String, moe.afox.dpsandbox.render.ModelBaker$ModelFace>, boolean);
+  public final moe.afox.dpsandbox.render.Vec3 getFrom();
+  public final moe.afox.dpsandbox.render.Vec3 getTo();
+  public final moe.afox.dpsandbox.render.ModelBaker$ElementRotation getRotation();
+  public final java.util.Map<java.lang.String, moe.afox.dpsandbox.render.ModelBaker$ModelFace> getFaces();
+  public final boolean getShade();
+  public final moe.afox.dpsandbox.render.Vec3 component1();
+  public final moe.afox.dpsandbox.render.Vec3 component2();
+  public final moe.afox.dpsandbox.render.ModelBaker$ElementRotation component3();
+  public final java.util.Map<java.lang.String, moe.afox.dpsandbox.render.ModelBaker$ModelFace> component4();
+  public final boolean component5();
+  public final moe.afox.dpsandbox.render.ModelBaker$ModelElement copy(moe.afox.dpsandbox.render.Vec3, moe.afox.dpsandbox.render.Vec3, moe.afox.dpsandbox.render.ModelBaker$ElementRotation, java.util.Map<java.lang.String, moe.afox.dpsandbox.render.ModelBaker$ModelFace>, boolean);
+  public static moe.afox.dpsandbox.render.ModelBaker$ModelElement copy$default(moe.afox.dpsandbox.render.ModelBaker$ModelElement, moe.afox.dpsandbox.render.Vec3, moe.afox.dpsandbox.render.Vec3, moe.afox.dpsandbox.render.ModelBaker$ElementRotation, java.util.Map, boolean, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+}
+final class moe.afox.dpsandbox.render.ModelBaker$ModelFace {
+  public moe.afox.dpsandbox.render.ModelBaker$ModelFace(java.lang.String, int, java.lang.Integer, java.util.List<java.lang.Double>, java.lang.String);
+  public final java.lang.String getTexture();
+  public final int getRotation();
+  public final java.lang.Integer getTintIndex();
+  public final java.util.List<java.lang.Double> getUv();
+  public final java.lang.String getCullFace();
+  public final java.lang.String component1();
+  public final int component2();
+  public final java.lang.Integer component3();
+  public final java.util.List<java.lang.Double> component4();
+  public final java.lang.String component5();
+  public final moe.afox.dpsandbox.render.ModelBaker$ModelFace copy(java.lang.String, int, java.lang.Integer, java.util.List<java.lang.Double>, java.lang.String);
+  public static moe.afox.dpsandbox.render.ModelBaker$ModelFace copy$default(moe.afox.dpsandbox.render.ModelBaker$ModelFace, java.lang.String, int, java.lang.Integer, java.util.List, java.lang.String, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+}
+final class moe.afox.dpsandbox.render.ModelBaker$ModelRef {
+  public moe.afox.dpsandbox.render.ModelBaker$ModelRef(java.lang.String, int, int, boolean, int);
+  public moe.afox.dpsandbox.render.ModelBaker$ModelRef(java.lang.String, int, int, boolean, int, int, kotlin.jvm.internal.DefaultConstructorMarker);
+  public final java.lang.String getId();
+  public final int getXRotation();
+  public final int getYRotation();
+  public final boolean getUvLock();
+  public final int getWeight();
+  public final java.lang.String component1();
+  public final int component2();
+  public final int component3();
+  public final boolean component4();
+  public final int component5();
+  public final moe.afox.dpsandbox.render.ModelBaker$ModelRef copy(java.lang.String, int, int, boolean, int);
+  public static moe.afox.dpsandbox.render.ModelBaker$ModelRef copy$default(moe.afox.dpsandbox.render.ModelBaker$ModelRef, java.lang.String, int, int, boolean, int, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+}
+final class moe.afox.dpsandbox.render.ModelBaker$ResolvedModel {
+  public moe.afox.dpsandbox.render.ModelBaker$ResolvedModel(java.util.Map<java.lang.String, java.lang.String>, java.util.List<moe.afox.dpsandbox.render.ModelBaker$ModelElement>);
+  public final java.util.Map<java.lang.String, java.lang.String> getTextures();
+  public final java.util.List<moe.afox.dpsandbox.render.ModelBaker$ModelElement> getElements();
+  public final java.util.Map<java.lang.String, java.lang.String> component1();
+  public final java.util.List<moe.afox.dpsandbox.render.ModelBaker$ModelElement> component2();
+  public final moe.afox.dpsandbox.render.ModelBaker$ResolvedModel copy(java.util.Map<java.lang.String, java.lang.String>, java.util.List<moe.afox.dpsandbox.render.ModelBaker$ModelElement>);
+  public static moe.afox.dpsandbox.render.ModelBaker$ResolvedModel copy$default(moe.afox.dpsandbox.render.ModelBaker$ResolvedModel, java.util.Map, java.util.List, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+}
+public final class moe.afox.dpsandbox.render.ModelBaker$resolveBlockState$lambda$0$$inlined$sortedByDescending$1<T> implements java.util.Comparator {
+  public moe.afox.dpsandbox.render.ModelBaker$resolveBlockState$lambda$0$$inlined$sortedByDescending$1();
+  public final int compare(T, T);
+}
+public final class moe.afox.dpsandbox.render.ModelBakerKt {
+  public static final com.google.gson.JsonObject access$getAsJsonObjectOrNull(com.google.gson.JsonObject, java.lang.String);
+  public static final com.google.gson.JsonArray access$getAsJsonArrayOrNull(com.google.gson.JsonObject, java.lang.String);
+  public static final java.lang.String access$string(com.google.gson.JsonObject, java.lang.String);
+  public static final java.lang.Integer access$int(com.google.gson.JsonObject, java.lang.String);
+  public static final java.lang.Boolean access$boolean(com.google.gson.JsonObject, java.lang.String);
+  public static final moe.afox.dpsandbox.render.Vec3 access$vector(com.google.gson.JsonObject, java.lang.String);
+  public static final java.lang.Double access$double(com.google.gson.JsonObject, java.lang.String);
+  public static final java.util.List access$numberArray(com.google.gson.JsonObject, java.lang.String, int);
+}
+public final class moe.afox.dpsandbox.render.PngWriter {
+  public static final moe.afox.dpsandbox.render.PngWriter INSTANCE;
+  public final byte[] encode(int[], int, int);
+}
+public final class moe.afox.dpsandbox.render.RenderAssets {
+  public static final moe.afox.dpsandbox.render.RenderAssets$Companion Companion;
+  public static final moe.afox.dpsandbox.render.RenderAssets EMPTY;
+  public moe.afox.dpsandbox.render.RenderAssets(java.nio.file.Path, java.util.List<? extends java.nio.file.Path>, java.util.Map<java.lang.String, ? extends java.nio.file.Path>);
+  public moe.afox.dpsandbox.render.RenderAssets(java.nio.file.Path, java.util.List, java.util.Map, int, kotlin.jvm.internal.DefaultConstructorMarker);
+  public final java.nio.file.Path getMinecraftAssets();
+  public final java.util.List<java.nio.file.Path> getResourcePacks();
+  public final java.util.Map<java.lang.String, java.nio.file.Path> getPlayerSkins();
+  public final java.nio.file.Path component1();
+  public final java.util.List<java.nio.file.Path> component2();
+  public final java.util.Map<java.lang.String, java.nio.file.Path> component3();
+  public final moe.afox.dpsandbox.render.RenderAssets copy(java.nio.file.Path, java.util.List<? extends java.nio.file.Path>, java.util.Map<java.lang.String, ? extends java.nio.file.Path>);
+  public static moe.afox.dpsandbox.render.RenderAssets copy$default(moe.afox.dpsandbox.render.RenderAssets, java.nio.file.Path, java.util.List, java.util.Map, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+  public moe.afox.dpsandbox.render.RenderAssets();
+}
+public final class moe.afox.dpsandbox.render.RenderAssets$Companion {
+  public moe.afox.dpsandbox.render.RenderAssets$Companion(kotlin.jvm.internal.DefaultConstructorMarker);
+}
+public final class moe.afox.dpsandbox.render.RenderBlock {
+  public moe.afox.dpsandbox.render.RenderBlock(moe.afox.dpsandbox.core.BlockPos, java.lang.String, java.util.Map<java.lang.String, java.lang.String>, com.google.gson.JsonObject);
+  public moe.afox.dpsandbox.render.RenderBlock(moe.afox.dpsandbox.core.BlockPos, java.lang.String, java.util.Map, com.google.gson.JsonObject, int, kotlin.jvm.internal.DefaultConstructorMarker);
+  public final moe.afox.dpsandbox.core.BlockPos getPosition();
+  public final java.lang.String getId();
+  public final java.util.Map<java.lang.String, java.lang.String> getProperties();
+  public final com.google.gson.JsonObject getNbt();
+  public final moe.afox.dpsandbox.core.BlockPos component1();
+  public final java.lang.String component2();
+  public final java.util.Map<java.lang.String, java.lang.String> component3();
+  public final com.google.gson.JsonObject component4();
+  public final moe.afox.dpsandbox.render.RenderBlock copy(moe.afox.dpsandbox.core.BlockPos, java.lang.String, java.util.Map<java.lang.String, java.lang.String>, com.google.gson.JsonObject);
+  public static moe.afox.dpsandbox.render.RenderBlock copy$default(moe.afox.dpsandbox.render.RenderBlock, moe.afox.dpsandbox.core.BlockPos, java.lang.String, java.util.Map, com.google.gson.JsonObject, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+}
+public interface moe.afox.dpsandbox.render.RenderCamera {
+}
+public final class moe.afox.dpsandbox.render.RenderCamera$Auto implements moe.afox.dpsandbox.render.RenderCamera {
+  public static final moe.afox.dpsandbox.render.RenderCamera$Auto INSTANCE;
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+}
+public final class moe.afox.dpsandbox.render.RenderCamera$Entity implements moe.afox.dpsandbox.render.RenderCamera {
+  public moe.afox.dpsandbox.render.RenderCamera$Entity(java.lang.String);
+  public final java.lang.String getUuid();
+  public final java.lang.String component1();
+  public final moe.afox.dpsandbox.render.RenderCamera$Entity copy(java.lang.String);
+  public static moe.afox.dpsandbox.render.RenderCamera$Entity copy$default(moe.afox.dpsandbox.render.RenderCamera$Entity, java.lang.String, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+}
+public final class moe.afox.dpsandbox.render.RenderCamera$Fixed implements moe.afox.dpsandbox.render.RenderCamera {
+  public moe.afox.dpsandbox.render.RenderCamera$Fixed(moe.afox.dpsandbox.core.Position, double, double, java.lang.String);
+  public moe.afox.dpsandbox.render.RenderCamera$Fixed(moe.afox.dpsandbox.core.Position, double, double, java.lang.String, int, kotlin.jvm.internal.DefaultConstructorMarker);
+  public final moe.afox.dpsandbox.core.Position getPosition();
+  public final double getYaw();
+  public final double getPitch();
+  public final java.lang.String getDimension();
+  public final moe.afox.dpsandbox.core.Position component1();
+  public final double component2();
+  public final double component3();
+  public final java.lang.String component4();
+  public final moe.afox.dpsandbox.render.RenderCamera$Fixed copy(moe.afox.dpsandbox.core.Position, double, double, java.lang.String);
+  public static moe.afox.dpsandbox.render.RenderCamera$Fixed copy$default(moe.afox.dpsandbox.render.RenderCamera$Fixed, moe.afox.dpsandbox.core.Position, double, double, java.lang.String, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+}
+public final class moe.afox.dpsandbox.render.RenderCamera$Player implements moe.afox.dpsandbox.render.RenderCamera {
+  public moe.afox.dpsandbox.render.RenderCamera$Player(java.lang.String);
+  public final java.lang.String getName();
+  public final java.lang.String component1();
+  public final moe.afox.dpsandbox.render.RenderCamera$Player copy(java.lang.String);
+  public static moe.afox.dpsandbox.render.RenderCamera$Player copy$default(moe.afox.dpsandbox.render.RenderCamera$Player, java.lang.String, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+}
+public final class moe.afox.dpsandbox.render.RenderDiagnostic {
+  public moe.afox.dpsandbox.render.RenderDiagnostic(moe.afox.dpsandbox.render.RenderDiagnosticSeverity, java.lang.String, java.lang.String, java.lang.String);
+  public moe.afox.dpsandbox.render.RenderDiagnostic(moe.afox.dpsandbox.render.RenderDiagnosticSeverity, java.lang.String, java.lang.String, java.lang.String, int, kotlin.jvm.internal.DefaultConstructorMarker);
+  public final moe.afox.dpsandbox.render.RenderDiagnosticSeverity getSeverity();
+  public final java.lang.String getCode();
+  public final java.lang.String getMessage();
+  public final java.lang.String getResource();
+  public final moe.afox.dpsandbox.render.RenderDiagnosticSeverity component1();
+  public final java.lang.String component2();
+  public final java.lang.String component3();
+  public final java.lang.String component4();
+  public final moe.afox.dpsandbox.render.RenderDiagnostic copy(moe.afox.dpsandbox.render.RenderDiagnosticSeverity, java.lang.String, java.lang.String, java.lang.String);
+  public static moe.afox.dpsandbox.render.RenderDiagnostic copy$default(moe.afox.dpsandbox.render.RenderDiagnostic, moe.afox.dpsandbox.render.RenderDiagnosticSeverity, java.lang.String, java.lang.String, java.lang.String, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+}
+public final class moe.afox.dpsandbox.render.RenderDiagnosticSeverity extends java.lang.Enum<moe.afox.dpsandbox.render.RenderDiagnosticSeverity> {
+  public static final moe.afox.dpsandbox.render.RenderDiagnosticSeverity INFO;
+  public static final moe.afox.dpsandbox.render.RenderDiagnosticSeverity WARNING;
+  public static final moe.afox.dpsandbox.render.RenderDiagnosticSeverity ERROR;
+  public static moe.afox.dpsandbox.render.RenderDiagnosticSeverity[] values();
+  public static moe.afox.dpsandbox.render.RenderDiagnosticSeverity valueOf(java.lang.String);
+  public static kotlin.enums.EnumEntries<moe.afox.dpsandbox.render.RenderDiagnosticSeverity> getEntries();
+}
+public final class moe.afox.dpsandbox.render.RenderEntity {
+  public moe.afox.dpsandbox.render.RenderEntity(java.lang.String, java.lang.String, java.lang.String, moe.afox.dpsandbox.core.Position, double, double, java.lang.String, com.google.gson.JsonObject, com.google.gson.JsonObject, java.util.Map<java.lang.String, java.lang.String>);
+  public moe.afox.dpsandbox.render.RenderEntity(java.lang.String, java.lang.String, java.lang.String, moe.afox.dpsandbox.core.Position, double, double, java.lang.String, com.google.gson.JsonObject, com.google.gson.JsonObject, java.util.Map, int, kotlin.jvm.internal.DefaultConstructorMarker);
+  public final java.lang.String getUuid();
+  public final java.lang.String getType();
+  public final java.lang.String getName();
+  public final moe.afox.dpsandbox.core.Position getPosition();
+  public final double getYaw();
+  public final double getPitch();
+  public final java.lang.String getDimension();
+  public final com.google.gson.JsonObject getSpecial();
+  public final com.google.gson.JsonObject getNbt();
+  public final java.util.Map<java.lang.String, java.lang.String> getEquipment();
+  public final java.lang.String component1();
+  public final java.lang.String component2();
+  public final java.lang.String component3();
+  public final moe.afox.dpsandbox.core.Position component4();
+  public final double component5();
+  public final double component6();
+  public final java.lang.String component7();
+  public final com.google.gson.JsonObject component8();
+  public final com.google.gson.JsonObject component9();
+  public final java.util.Map<java.lang.String, java.lang.String> component10();
+  public final moe.afox.dpsandbox.render.RenderEntity copy(java.lang.String, java.lang.String, java.lang.String, moe.afox.dpsandbox.core.Position, double, double, java.lang.String, com.google.gson.JsonObject, com.google.gson.JsonObject, java.util.Map<java.lang.String, java.lang.String>);
+  public static moe.afox.dpsandbox.render.RenderEntity copy$default(moe.afox.dpsandbox.render.RenderEntity, java.lang.String, java.lang.String, java.lang.String, moe.afox.dpsandbox.core.Position, double, double, java.lang.String, com.google.gson.JsonObject, com.google.gson.JsonObject, java.util.Map, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+}
+public final class moe.afox.dpsandbox.render.RenderMetadata {
+  public moe.afox.dpsandbox.render.RenderMetadata(int, int, java.lang.String, java.lang.String, int, int, int, java.util.List<java.lang.String>, java.util.List<moe.afox.dpsandbox.render.RenderDiagnostic>, long, long, long, long, long, long, java.lang.String, boolean);
+  public moe.afox.dpsandbox.render.RenderMetadata(int, int, java.lang.String, java.lang.String, int, int, int, java.util.List, java.util.List, long, long, long, long, long, long, java.lang.String, boolean, int, kotlin.jvm.internal.DefaultConstructorMarker);
+  public final int getWidth();
+  public final int getHeight();
+  public final java.lang.String getCameraDescription();
+  public final java.lang.String getDimension();
+  public final int getVisibleBlocks();
+  public final int getVisibleEntities();
+  public final int getTriangles();
+  public final java.util.List<java.lang.String> getAssetSources();
+  public final java.util.List<moe.afox.dpsandbox.render.RenderDiagnostic> getDiagnostics();
+  public final long getWorldCaptureNanos();
+  public final long getAssetResolveNanos();
+  public final long getSceneBuildNanos();
+  public final long getRasterizeNanos();
+  public final long getPngEncodeNanos();
+  public final long getRenderNanos();
+  public final java.lang.String getLightingModel();
+  public final boolean getVisualParity();
+  public final int component1();
+  public final int component2();
+  public final java.lang.String component3();
+  public final java.lang.String component4();
+  public final int component5();
+  public final int component6();
+  public final int component7();
+  public final java.util.List<java.lang.String> component8();
+  public final java.util.List<moe.afox.dpsandbox.render.RenderDiagnostic> component9();
+  public final long component10();
+  public final long component11();
+  public final long component12();
+  public final long component13();
+  public final long component14();
+  public final long component15();
+  public final java.lang.String component16();
+  public final boolean component17();
+  public final moe.afox.dpsandbox.render.RenderMetadata copy(int, int, java.lang.String, java.lang.String, int, int, int, java.util.List<java.lang.String>, java.util.List<moe.afox.dpsandbox.render.RenderDiagnostic>, long, long, long, long, long, long, java.lang.String, boolean);
+  public static moe.afox.dpsandbox.render.RenderMetadata copy$default(moe.afox.dpsandbox.render.RenderMetadata, int, int, java.lang.String, java.lang.String, int, int, int, java.util.List, java.util.List, long, long, long, long, long, long, java.lang.String, boolean, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+}
+public final class moe.afox.dpsandbox.render.RenderRequest {
+  public static final moe.afox.dpsandbox.render.RenderRequest$Companion Companion;
+  public static final int MIN_IMAGE_SIZE;
+  public static final int MAX_IMAGE_SIZE;
+  public moe.afox.dpsandbox.render.RenderRequest(int, int, moe.afox.dpsandbox.render.RenderCamera, double, double, double, boolean, boolean, boolean, boolean);
+  public moe.afox.dpsandbox.render.RenderRequest(int, int, moe.afox.dpsandbox.render.RenderCamera, double, double, double, boolean, boolean, boolean, boolean, int, kotlin.jvm.internal.DefaultConstructorMarker);
+  public final int getWidth();
+  public final int getHeight();
+  public final moe.afox.dpsandbox.render.RenderCamera getCamera();
+  public final double getFieldOfViewDegrees();
+  public final double getNearPlane();
+  public final double getRenderDistance();
+  public final boolean getTransparentBackground();
+  public final boolean getShowHud();
+  public final boolean getShowDebugOverlay();
+  public final boolean getStrictAssets();
+  public final int component1();
+  public final int component2();
+  public final moe.afox.dpsandbox.render.RenderCamera component3();
+  public final double component4();
+  public final double component5();
+  public final double component6();
+  public final boolean component7();
+  public final boolean component8();
+  public final boolean component9();
+  public final boolean component10();
+  public final moe.afox.dpsandbox.render.RenderRequest copy(int, int, moe.afox.dpsandbox.render.RenderCamera, double, double, double, boolean, boolean, boolean, boolean);
+  public static moe.afox.dpsandbox.render.RenderRequest copy$default(moe.afox.dpsandbox.render.RenderRequest, int, int, moe.afox.dpsandbox.render.RenderCamera, double, double, double, boolean, boolean, boolean, boolean, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+  public moe.afox.dpsandbox.render.RenderRequest(int, int, moe.afox.dpsandbox.render.RenderCamera, double, double, double, boolean, boolean, boolean);
+  public moe.afox.dpsandbox.render.RenderRequest(int, int, moe.afox.dpsandbox.render.RenderCamera, double, double, double, boolean, boolean);
+  public moe.afox.dpsandbox.render.RenderRequest(int, int, moe.afox.dpsandbox.render.RenderCamera, double, double, double, boolean);
+  public moe.afox.dpsandbox.render.RenderRequest(int, int, moe.afox.dpsandbox.render.RenderCamera, double, double, double);
+  public moe.afox.dpsandbox.render.RenderRequest(int, int, moe.afox.dpsandbox.render.RenderCamera, double, double);
+  public moe.afox.dpsandbox.render.RenderRequest(int, int, moe.afox.dpsandbox.render.RenderCamera, double);
+  public moe.afox.dpsandbox.render.RenderRequest(int, int, moe.afox.dpsandbox.render.RenderCamera);
+  public moe.afox.dpsandbox.render.RenderRequest(int, int);
+  public moe.afox.dpsandbox.render.RenderRequest(int);
+  public moe.afox.dpsandbox.render.RenderRequest();
+}
+public final class moe.afox.dpsandbox.render.RenderRequest$Companion {
+  public moe.afox.dpsandbox.render.RenderRequest$Companion(kotlin.jvm.internal.DefaultConstructorMarker);
+}
+public final class moe.afox.dpsandbox.render.RenderScene {
+  public moe.afox.dpsandbox.render.RenderScene(moe.afox.dpsandbox.render.ResolvedCamera, java.util.List<moe.afox.dpsandbox.render.SceneTriangle>, int, int);
+  public final moe.afox.dpsandbox.render.ResolvedCamera getCamera();
+  public final java.util.List<moe.afox.dpsandbox.render.SceneTriangle> getTriangles();
+  public final int getVisibleBlocks();
+  public final int getVisibleEntities();
+  public final moe.afox.dpsandbox.render.ResolvedCamera component1();
+  public final java.util.List<moe.afox.dpsandbox.render.SceneTriangle> component2();
+  public final int component3();
+  public final int component4();
+  public final moe.afox.dpsandbox.render.RenderScene copy(moe.afox.dpsandbox.render.ResolvedCamera, java.util.List<moe.afox.dpsandbox.render.SceneTriangle>, int, int);
+  public static moe.afox.dpsandbox.render.RenderScene copy$default(moe.afox.dpsandbox.render.RenderScene, moe.afox.dpsandbox.render.ResolvedCamera, java.util.List, int, int, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+}
+public final class moe.afox.dpsandbox.render.RenderedFrame {
+  public moe.afox.dpsandbox.render.RenderedFrame(byte[], moe.afox.dpsandbox.render.RenderMetadata);
+  public final moe.afox.dpsandbox.render.RenderMetadata getMetadata();
+  public final byte[] pngBytes();
+  public final void writePng(java.nio.file.Path);
+}
+public final class moe.afox.dpsandbox.render.ResolvedCamera {
+  public moe.afox.dpsandbox.render.ResolvedCamera(moe.afox.dpsandbox.render.Vec3, double, double, java.lang.String, java.lang.String);
+  public final moe.afox.dpsandbox.render.Vec3 getPosition();
+  public final double getYaw();
+  public final double getPitch();
+  public final java.lang.String getDimension();
+  public final java.lang.String getDescription();
+  public final moe.afox.dpsandbox.render.Vec3 component1();
+  public final double component2();
+  public final double component3();
+  public final java.lang.String component4();
+  public final java.lang.String component5();
+  public final moe.afox.dpsandbox.render.ResolvedCamera copy(moe.afox.dpsandbox.render.Vec3, double, double, java.lang.String, java.lang.String);
+  public static moe.afox.dpsandbox.render.ResolvedCamera copy$default(moe.afox.dpsandbox.render.ResolvedCamera, moe.afox.dpsandbox.render.Vec3, double, double, java.lang.String, java.lang.String, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+}
+public final class moe.afox.dpsandbox.render.SandboxRenderer {
+  public moe.afox.dpsandbox.render.SandboxRenderer(moe.afox.dpsandbox.render.RenderAssets);
+  public moe.afox.dpsandbox.render.SandboxRenderer(moe.afox.dpsandbox.render.RenderAssets, int, kotlin.jvm.internal.DefaultConstructorMarker);
+  public final moe.afox.dpsandbox.render.RenderAssets getAssets();
+  public final moe.afox.dpsandbox.render.RenderedFrame render(moe.afox.dpsandbox.core.DatapackSandbox, moe.afox.dpsandbox.render.RenderRequest);
+  public static moe.afox.dpsandbox.render.RenderedFrame render$default(moe.afox.dpsandbox.render.SandboxRenderer, moe.afox.dpsandbox.core.DatapackSandbox, moe.afox.dpsandbox.render.RenderRequest, int, java.lang.Object);
+  public moe.afox.dpsandbox.render.SandboxRenderer();
+  public final moe.afox.dpsandbox.render.RenderedFrame render(moe.afox.dpsandbox.core.DatapackSandbox);
+}
+public final class moe.afox.dpsandbox.render.SceneBuilder {
+  public static final moe.afox.dpsandbox.render.SceneBuilder$Companion Companion;
+  public moe.afox.dpsandbox.render.SceneBuilder(moe.afox.dpsandbox.render.AssetResolver, java.util.List<moe.afox.dpsandbox.render.RenderDiagnostic>);
+  public final moe.afox.dpsandbox.render.RenderScene build(moe.afox.dpsandbox.render.WorldView, moe.afox.dpsandbox.render.RenderRequest);
+}
+public final class moe.afox.dpsandbox.render.SceneBuilder$Companion {
+  public moe.afox.dpsandbox.render.SceneBuilder$Companion(kotlin.jvm.internal.DefaultConstructorMarker);
+}
+public final class moe.afox.dpsandbox.render.SceneTriangle {
+  public moe.afox.dpsandbox.render.SceneTriangle(moe.afox.dpsandbox.render.SceneVertex, moe.afox.dpsandbox.render.SceneVertex, moe.afox.dpsandbox.render.SceneVertex, moe.afox.dpsandbox.render.TextureData, int, boolean);
+  public moe.afox.dpsandbox.render.SceneTriangle(moe.afox.dpsandbox.render.SceneVertex, moe.afox.dpsandbox.render.SceneVertex, moe.afox.dpsandbox.render.SceneVertex, moe.afox.dpsandbox.render.TextureData, int, boolean, int, kotlin.jvm.internal.DefaultConstructorMarker);
+  public final moe.afox.dpsandbox.render.SceneVertex getA();
+  public final moe.afox.dpsandbox.render.SceneVertex getB();
+  public final moe.afox.dpsandbox.render.SceneVertex getC();
+  public final moe.afox.dpsandbox.render.TextureData getTexture();
+  public final int getTint();
+  public final boolean getEmissive();
+  public final moe.afox.dpsandbox.render.Vec3 getNormal();
+  public final moe.afox.dpsandbox.render.SceneVertex component1();
+  public final moe.afox.dpsandbox.render.SceneVertex component2();
+  public final moe.afox.dpsandbox.render.SceneVertex component3();
+  public final moe.afox.dpsandbox.render.TextureData component4();
+  public final int component5();
+  public final boolean component6();
+  public final moe.afox.dpsandbox.render.SceneTriangle copy(moe.afox.dpsandbox.render.SceneVertex, moe.afox.dpsandbox.render.SceneVertex, moe.afox.dpsandbox.render.SceneVertex, moe.afox.dpsandbox.render.TextureData, int, boolean);
+  public static moe.afox.dpsandbox.render.SceneTriangle copy$default(moe.afox.dpsandbox.render.SceneTriangle, moe.afox.dpsandbox.render.SceneVertex, moe.afox.dpsandbox.render.SceneVertex, moe.afox.dpsandbox.render.SceneVertex, moe.afox.dpsandbox.render.TextureData, int, boolean, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+}
+public final class moe.afox.dpsandbox.render.SceneVertex {
+  public moe.afox.dpsandbox.render.SceneVertex(moe.afox.dpsandbox.render.Vec3, moe.afox.dpsandbox.render.Vec2);
+  public final moe.afox.dpsandbox.render.Vec3 getPosition();
+  public final moe.afox.dpsandbox.render.Vec2 getUv();
+  public final moe.afox.dpsandbox.render.Vec3 component1();
+  public final moe.afox.dpsandbox.render.Vec2 component2();
+  public final moe.afox.dpsandbox.render.SceneVertex copy(moe.afox.dpsandbox.render.Vec3, moe.afox.dpsandbox.render.Vec2);
+  public static moe.afox.dpsandbox.render.SceneVertex copy$default(moe.afox.dpsandbox.render.SceneVertex, moe.afox.dpsandbox.render.Vec3, moe.afox.dpsandbox.render.Vec2, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+}
+public final class moe.afox.dpsandbox.render.SoftwareRasterizer {
+  public moe.afox.dpsandbox.render.SoftwareRasterizer();
+  public final int[] render(moe.afox.dpsandbox.render.WorldView, moe.afox.dpsandbox.render.RenderScene, moe.afox.dpsandbox.render.RenderRequest);
+}
+final class moe.afox.dpsandbox.render.SoftwareRasterizer$CameraVertex {
+  public moe.afox.dpsandbox.render.SoftwareRasterizer$CameraVertex(double, double, double, double, double);
+  public final double getX();
+  public final double getY();
+  public final double getZ();
+  public final double getU();
+  public final double getV();
+  public final moe.afox.dpsandbox.render.SoftwareRasterizer$CameraVertex interpolate(moe.afox.dpsandbox.render.SoftwareRasterizer$CameraVertex, double);
+  public final double component1();
+  public final double component2();
+  public final double component3();
+  public final double component4();
+  public final double component5();
+  public final moe.afox.dpsandbox.render.SoftwareRasterizer$CameraVertex copy(double, double, double, double, double);
+  public static moe.afox.dpsandbox.render.SoftwareRasterizer$CameraVertex copy$default(moe.afox.dpsandbox.render.SoftwareRasterizer$CameraVertex, double, double, double, double, double, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+}
+final class moe.afox.dpsandbox.render.SoftwareRasterizer$ProjectedTriangle {
+  public moe.afox.dpsandbox.render.SoftwareRasterizer$ProjectedTriangle(moe.afox.dpsandbox.render.SoftwareRasterizer$ProjectedVertex, moe.afox.dpsandbox.render.SoftwareRasterizer$ProjectedVertex, moe.afox.dpsandbox.render.SoftwareRasterizer$ProjectedVertex, moe.afox.dpsandbox.render.SceneTriangle);
+  public final moe.afox.dpsandbox.render.SoftwareRasterizer$ProjectedVertex getA();
+  public final moe.afox.dpsandbox.render.SoftwareRasterizer$ProjectedVertex getB();
+  public final moe.afox.dpsandbox.render.SoftwareRasterizer$ProjectedVertex getC();
+  public final moe.afox.dpsandbox.render.SceneTriangle getSource();
+  public final double getAverageDepth();
+  public final moe.afox.dpsandbox.render.SoftwareRasterizer$ProjectedVertex component1();
+  public final moe.afox.dpsandbox.render.SoftwareRasterizer$ProjectedVertex component2();
+  public final moe.afox.dpsandbox.render.SoftwareRasterizer$ProjectedVertex component3();
+  public final moe.afox.dpsandbox.render.SceneTriangle component4();
+  public final moe.afox.dpsandbox.render.SoftwareRasterizer$ProjectedTriangle copy(moe.afox.dpsandbox.render.SoftwareRasterizer$ProjectedVertex, moe.afox.dpsandbox.render.SoftwareRasterizer$ProjectedVertex, moe.afox.dpsandbox.render.SoftwareRasterizer$ProjectedVertex, moe.afox.dpsandbox.render.SceneTriangle);
+  public static moe.afox.dpsandbox.render.SoftwareRasterizer$ProjectedTriangle copy$default(moe.afox.dpsandbox.render.SoftwareRasterizer$ProjectedTriangle, moe.afox.dpsandbox.render.SoftwareRasterizer$ProjectedVertex, moe.afox.dpsandbox.render.SoftwareRasterizer$ProjectedVertex, moe.afox.dpsandbox.render.SoftwareRasterizer$ProjectedVertex, moe.afox.dpsandbox.render.SceneTriangle, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+}
+final class moe.afox.dpsandbox.render.SoftwareRasterizer$ProjectedVertex {
+  public moe.afox.dpsandbox.render.SoftwareRasterizer$ProjectedVertex(double, double, double, double, double);
+  public final double getX();
+  public final double getY();
+  public final double getZ();
+  public final double getU();
+  public final double getV();
+  public final boolean isFinite();
+  public final double component1();
+  public final double component2();
+  public final double component3();
+  public final double component4();
+  public final double component5();
+  public final moe.afox.dpsandbox.render.SoftwareRasterizer$ProjectedVertex copy(double, double, double, double, double);
+  public static moe.afox.dpsandbox.render.SoftwareRasterizer$ProjectedVertex copy$default(moe.afox.dpsandbox.render.SoftwareRasterizer$ProjectedVertex, double, double, double, double, double, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+}
+public final class moe.afox.dpsandbox.render.SoftwareRasterizer$render$$inlined$sortedByDescending$1<T> implements java.util.Comparator {
+  public moe.afox.dpsandbox.render.SoftwareRasterizer$render$$inlined$sortedByDescending$1();
+  public final int compare(T, T);
+}
+public final class moe.afox.dpsandbox.render.TextureData {
+  public static final moe.afox.dpsandbox.render.TextureData$Companion Companion;
+  public moe.afox.dpsandbox.render.TextureData(java.lang.String, int, int, int[], moe.afox.dpsandbox.render.MaterialPass);
+  public final java.lang.String getId();
+  public final int getWidth();
+  public final int getHeight();
+  public final int[] getPixels();
+  public final moe.afox.dpsandbox.render.MaterialPass getMaterialPass();
+  public final int sample(double, double);
+  public final java.lang.String component1();
+  public final int component2();
+  public final int component3();
+  public final int[] component4();
+  public final moe.afox.dpsandbox.render.MaterialPass component5();
+  public final moe.afox.dpsandbox.render.TextureData copy(java.lang.String, int, int, int[], moe.afox.dpsandbox.render.MaterialPass);
+  public static moe.afox.dpsandbox.render.TextureData copy$default(moe.afox.dpsandbox.render.TextureData, java.lang.String, int, int, int[], moe.afox.dpsandbox.render.MaterialPass, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+}
+public final class moe.afox.dpsandbox.render.TextureData$Companion {
+  public final moe.afox.dpsandbox.render.TextureData fromImage(java.lang.String, java.awt.image.BufferedImage);
+  public moe.afox.dpsandbox.render.TextureData$Companion(kotlin.jvm.internal.DefaultConstructorMarker);
+}
+public final class moe.afox.dpsandbox.render.Vec2 {
+  public moe.afox.dpsandbox.render.Vec2(double, double);
+  public final double getX();
+  public final double getY();
+  public final double component1();
+  public final double component2();
+  public final moe.afox.dpsandbox.render.Vec2 copy(double, double);
+  public static moe.afox.dpsandbox.render.Vec2 copy$default(moe.afox.dpsandbox.render.Vec2, double, double, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+}
+public final class moe.afox.dpsandbox.render.Vec3 {
+  public static final moe.afox.dpsandbox.render.Vec3$Companion Companion;
+  public moe.afox.dpsandbox.render.Vec3(double, double, double);
+  public final double getX();
+  public final double getY();
+  public final double getZ();
+  public final moe.afox.dpsandbox.render.Vec3 plus(moe.afox.dpsandbox.render.Vec3);
+  public final moe.afox.dpsandbox.render.Vec3 minus(moe.afox.dpsandbox.render.Vec3);
+  public final moe.afox.dpsandbox.render.Vec3 times(double);
+  public final double dot(moe.afox.dpsandbox.render.Vec3);
+  public final moe.afox.dpsandbox.render.Vec3 cross(moe.afox.dpsandbox.render.Vec3);
+  public final moe.afox.dpsandbox.render.Vec3 normalized();
+  public final moe.afox.dpsandbox.render.Vec3 rotateAround(moe.afox.dpsandbox.render.Vec3, char, double);
+  public final double component1();
+  public final double component2();
+  public final double component3();
+  public final moe.afox.dpsandbox.render.Vec3 copy(double, double, double);
+  public static moe.afox.dpsandbox.render.Vec3 copy$default(moe.afox.dpsandbox.render.Vec3, double, double, double, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+  public static final moe.afox.dpsandbox.render.Vec3 access$getZERO$cp();
+  public static final moe.afox.dpsandbox.render.Vec3 access$getUP$cp();
+}
+public final class moe.afox.dpsandbox.render.Vec3$Companion {
+  public final moe.afox.dpsandbox.render.Vec3 getZERO();
+  public final moe.afox.dpsandbox.render.Vec3 getUP();
+  public moe.afox.dpsandbox.render.Vec3$Companion(kotlin.jvm.internal.DefaultConstructorMarker);
+}
+public final class moe.afox.dpsandbox.render.WorldView {
+  public static final moe.afox.dpsandbox.render.WorldView$Companion Companion;
+  public moe.afox.dpsandbox.render.WorldView(java.lang.String, long, long, java.lang.String, long, java.util.List<moe.afox.dpsandbox.render.RenderBlock>, java.util.List<moe.afox.dpsandbox.render.RenderEntity>, java.util.Map<moe.afox.dpsandbox.core.BlockPos, java.lang.String>, moe.afox.dpsandbox.core.Position);
+  public final java.lang.String getProfile();
+  public final long getGameTime();
+  public final long getDayTime();
+  public final java.lang.String getWeather();
+  public final long getSeed();
+  public final java.util.List<moe.afox.dpsandbox.render.RenderBlock> getBlocks();
+  public final java.util.List<moe.afox.dpsandbox.render.RenderEntity> getEntities();
+  public final java.util.Map<moe.afox.dpsandbox.core.BlockPos, java.lang.String> getBiomes();
+  public final moe.afox.dpsandbox.core.Position getWorldSpawn();
+  public final java.lang.String component1();
+  public final long component2();
+  public final long component3();
+  public final java.lang.String component4();
+  public final long component5();
+  public final java.util.List<moe.afox.dpsandbox.render.RenderBlock> component6();
+  public final java.util.List<moe.afox.dpsandbox.render.RenderEntity> component7();
+  public final java.util.Map<moe.afox.dpsandbox.core.BlockPos, java.lang.String> component8();
+  public final moe.afox.dpsandbox.core.Position component9();
+  public final moe.afox.dpsandbox.render.WorldView copy(java.lang.String, long, long, java.lang.String, long, java.util.List<moe.afox.dpsandbox.render.RenderBlock>, java.util.List<moe.afox.dpsandbox.render.RenderEntity>, java.util.Map<moe.afox.dpsandbox.core.BlockPos, java.lang.String>, moe.afox.dpsandbox.core.Position);
+  public static moe.afox.dpsandbox.render.WorldView copy$default(moe.afox.dpsandbox.render.WorldView, java.lang.String, long, long, java.lang.String, long, java.util.List, java.util.List, java.util.Map, moe.afox.dpsandbox.core.Position, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+  public static final moe.afox.dpsandbox.render.WorldView capture(moe.afox.dpsandbox.core.DatapackSandbox);
+}
+public final class moe.afox.dpsandbox.render.WorldView$Companion {
+  public final moe.afox.dpsandbox.render.WorldView capture(moe.afox.dpsandbox.core.DatapackSandbox);
+  public moe.afox.dpsandbox.render.WorldView$Companion(kotlin.jvm.internal.DefaultConstructorMarker);
+}
+public final class moe.afox.dpsandbox.render.WorldView$Companion$capture$$inlined$sortedBy$1<T> implements java.util.Comparator {
+  public moe.afox.dpsandbox.render.WorldView$Companion$capture$$inlined$sortedBy$1();
+  public final int compare(T, T);
+}

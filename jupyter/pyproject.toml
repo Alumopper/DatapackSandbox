@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "datapack-sandbox-kernel"
+version = "1.0.1"
+description = "Jupyter Kernel for executing Minecraft mcfunction cells in Datapack Sandbox"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Alumopper" }]
+dependencies = [
+  "ipykernel>=6.29,<8",
+  "jupyter_client>=8.6,<9",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=8", "build>=1.2", "twine>=6"]
+
+[project.scripts]
+datapack-sandbox-kernel = "datapack_sandbox_kernel.install:main"
+
+[project.urls]
+Homepage = "https://github.com/Alumopper/DatapackSandbox"
+Repository = "https://github.com/Alumopper/DatapackSandbox.git"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+datapack_sandbox_kernel = ["resources/*", "resources/**/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

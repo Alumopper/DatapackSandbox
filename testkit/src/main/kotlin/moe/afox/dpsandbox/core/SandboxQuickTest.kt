@@ -1,0 +1,2998 @@
+package moe.afox.dpsandbox.core
+
+import com.google.gson.JsonElement
+import com.google.gson.JsonObject
+import java.nio.file.Path
+
+/**
+ * Fluent API for a single datapack sandbox test.
+ *
+ * Methods mutate the underlying [sandbox] immediately and return `this` for
+ * chaining. Assertion methods collect failures instead of throwing; call
+ * [requirePassed] to integrate with unit-test frameworks.
+ */
+class SandboxQuickTest private constructor(
+    /** Mutable runtime used by this quick-test scenario. */
+    val sandbox: DatapackSandbox,
+    private val defaultFunctionId: ResourceLocation? = null,
+) {
+    private val failures = mutableListOf<String>()
+    private val initialSnapshot: JsonElement = sandbox.snapshotJson()
+
+    /**
+     * Runs all functions referenced by `#minecraft:load`.
+     *
+     * @return this scenario for fluent chaining.
+     */
+    fun load(): SandboxQuickTest =
+        apply {
+            sandbox.runLoad()
+        }
+
+    /**
+     * Advances the runtime by [count] ticks.
+     *
+     * @throws SandboxException when [count] is negative.
+     * @return this scenario for fluent chaining.
+     */
+    fun ticks(count: Int): SandboxQuickTest =
+        apply {
+            sandbox.runTicks(count)
+        }
+
+    /**
+     * Runs a loaded function by resource location.
+     *
+     * @param id Function id such as `demo:main`.
+     * @return this scenario for fluent chaining.
+     */
+    fun function(id: String): SandboxQuickTest =
+        apply {
+            sandbox.runFunction(id)
+        }
+
+    /**
+     * Runs the default single-file function configured by [singleFunction].
+     *
+     * @throws SandboxException when this scenario was not created from a single
+     * `.mcfunction` file.
+     * @return this scenario for fluent chaining.
+     */
+    fun function(): SandboxQuickTest =
+        apply {
+            val id =
+                defaultFunctionId
+                    ?: throw SandboxException(
+                        code = DiagnosticCode.INPUT_FORMAT,
+                        message = "No default function is configured; call function(id) or create the scenario with singleFunction(...)",
+                        version = sandbox.profile.id,
+                    )
+            sandbox.runFunction(id)
+        }
+
+    /**
+     * Executes one raw Minecraft command.
+     *
+     * The command may include a leading slash. Unsupported vanilla commands
+     * follow the scenario's [UnsupportedFeatureMode].
+     *
+     * @return this scenario for fluent chaining.
+     */
+    fun command(command: String): SandboxQuickTest =
+        apply {
+            sandbox.executeCommand(command)
+        }
+
+    /**
+     * Applies an inline world fixture before or between behavior steps.
+     *
+     * NBT in the fixture is validated against the active [VersionProfile].
+     *
+     * @return this scenario for fluent chaining.
+     */
+    fun world(configure: SandboxWorldSetup.() -> Unit): SandboxQuickTest =
+        apply {
+            setupWorld(SandboxWorldSetup().apply(configure))
+        }
+
+    /**
+     * Applies a reusable world setup object to this scenario.
+     *
+     * @return this scenario for fluent chaining.
+     */
+    fun setupWorld(setup: SandboxWorldSetup): SandboxQuickTest =
+        apply {
+            sandbox.world.applySetup(setup, sandbox.profile)
+        }
+
+    /**
+     * Imports selected chunks from an existing Java Edition save into this scenario.
+     *
+     * The import is intentionally scoped to explicit chunks and optional content
+     * groups. It is suitable for deterministic fixtures, not for loading a full
+     * vanilla world.
+     *
+     * @return this scenario for fluent chaining.
+     */
+    @JvmOverloads
+    fun importSave(
+        path: Path,
+        chunks: Iterable<ChunkPos>,
+        dimension: String = "minecraft:overworld",
+        includeBlocks: Boolean = true,
+        includeBlockEntities: Boolean = true,
+        includeEntities: Boolean = true,
+    ): SandboxQuickTest =
+        setupWorld(
+            SandboxWorldSetup().importSave(
+                path = path,
+                chunks = chunks,
+                dimension = dimension,
+                includeBlocks = includeBlocks,
+                includeBlockEntities = includeBlockEntities,
+                includeEntities = includeEntities,
+            ),
+        )
+
+    /**
+     * Creates or reuses a sandbox player.
+     *
+     * @return this scenario for fluent chaining.
+     */
+    @JvmOverloads
+    fun player(name: String = "Steve"): SandboxQuickTest =
+        apply {
+            sandbox.createPlayer(name)
+        }
+
+    /**
+     * Dispatches a fully constructed player event.
+     *
+     * Events are visible to advancement triggers, predicates, and snapshots.
+     *
+     * @return this scenario for fluent chaining.
+     */
+    fun event(event: PlayerEvent): SandboxQuickTest =
+        apply {
+            sandbox.handlePlayerEvent(event)
+        }
+
+    /**
+     * Creates and dispatches a shorthand player event.
+     *
+     * @param type Event type, accepting either hyphen or underscore naming.
+     * @param id Optional resource id interpreted by event type, such as an item
+     * id for `item_used`, an entity id for `killed_entity`/`entity_killed`, a
+     * block id for `placed_block`/`block_placed`/`block_broken`, or a damage
+     * source id for `damage`/`death`.
+     * @param action Optional input action for keyboard/mouse events.
+     * @return this scenario for fluent chaining.
+     */
+    @JvmOverloads
+    fun event(
+        playerName: String,
+        type: String,
+        id: String? = null,
+        action: String? = null,
+    ): SandboxQuickTest =
+        apply {
+            sandbox.createPlayer(playerName)
+            sandbox.handlePlayerEvent(PlayerEvents.shorthand(playerName, type, id, action))
+        }
+
+    /**
+     * Creates and dispatches a block place/break style player event with a concrete sparse-world position.
+     *
+     * Placed block events write the block id into the sparse world, and break
+     * events remove the target position. The same event still feeds advancement
+     * criteria and event trace assertions.
+     *
+     * @return this scenario for fluent chaining.
+     */
+    fun blockEvent(
+        playerName: String,
+        type: String,
+        id: String,
+        x: Int,
+        y: Int,
+        z: Int,
+    ): SandboxQuickTest =
+        apply {
+            sandbox.createPlayer(playerName)
+            val event = PlayerEvents.shorthand(playerName, type, id).copy(blockPos = BlockPos(x, y, z))
+            sandbox.handlePlayerEvent(event)
+        }
+
+    /**
+     * Records a keyboard input event for [playerName].
+     *
+     * @return this scenario for fluent chaining.
+     */
+    @JvmOverloads
+    fun keyInput(
+        playerName: String,
+        key: String,
+        action: String = "press",
+    ): SandboxQuickTest =
+        apply {
+            sandbox.createPlayer(playerName)
+            sandbox.handlePlayerEvent(PlayerEvents.keyInput(playerName, key, action))
+        }
+
+    fun keyInput(
+        playerName: String,
+        key: String,
+        action: PlayerInputAction,
+    ): SandboxQuickTest = keyInput(playerName, key, action.id)
+
+    /**
+     * Records a mouse input event for [playerName].
+     *
+     * @return this scenario for fluent chaining.
+     */
+    @JvmOverloads
+    fun mouseInput(
+        playerName: String,
+        button: String,
+        action: String = "click",
+        x: Double? = null,
+        y: Double? = null,
+    ): SandboxQuickTest =
+        apply {
+            sandbox.createPlayer(playerName)
+            sandbox.handlePlayerEvent(PlayerEvents.mouseInput(playerName, button, action, x, y))
+        }
+
+    fun mouseInput(
+        playerName: String,
+        button: String,
+        action: PlayerInputAction,
+        x: Double? = null,
+        y: Double? = null,
+    ): SandboxQuickTest = mouseInput(playerName, button, action.id, x, y)
+
+    /**
+     * Asserts the current scoreboard value for [target] and [objective].
+     *
+     * The failure is collected and reported later by [report] or [requirePassed].
+     */
+    fun assertScore(
+        target: String,
+        objective: String,
+        expected: Int,
+    ): SandboxQuickTest =
+        apply {
+            val actual = sandbox.world.getScore(target, objective)
+            if (actual != expected) {
+                failures += "score $target $objective expected $expected but was $actual"
+            }
+        }
+
+    /**
+     * Asserts that the current scoreboard value is at least [minimum].
+     */
+    fun assertScoreAtLeast(
+        target: String,
+        objective: String,
+        minimum: Int,
+    ): SandboxQuickTest =
+        apply {
+            assertScoreBounds(target, objective, min = minimum, max = null)
+        }
+
+    /**
+     * Asserts that the current scoreboard value is at most [maximum].
+     */
+    fun assertScoreAtMost(
+        target: String,
+        objective: String,
+        maximum: Int,
+    ): SandboxQuickTest =
+        apply {
+            assertScoreBounds(target, objective, min = null, max = maximum)
+        }
+
+    /**
+     * Asserts optional lower and upper bounds for a scoreboard value.
+     */
+    @JvmOverloads
+    fun assertScoreRange(
+        target: String,
+        objective: String,
+        min: Int? = null,
+        max: Int? = null,
+    ): SandboxQuickTest =
+        apply {
+            assertScoreBounds(target, objective, min, max)
+        }
+
+    private fun assertScoreBounds(
+        target: String,
+        objective: String,
+        min: Int?,
+        max: Int?,
+    ) {
+        val actual = sandbox.world.getScore(target, objective)
+        var checked = false
+        min?.let {
+            checked = true
+            if (actual < it) {
+                failures += "score $target $objective expected >= $it but was $actual"
+            }
+        }
+        max?.let {
+            checked = true
+            if (actual > it) {
+                failures += "score $target $objective expected <= $it but was $actual"
+            }
+        }
+        if (!checked) {
+            failures += "score $target $objective range assertion requires min or max"
+        }
+    }
+
+    /**
+     * Asserts that a storage root or path equals [expectedJson].
+     *
+     * @param id Storage id such as `demo:state`.
+     * @param path Optional data path. Use `null` to compare the whole storage object.
+     * @param expectedJson JSON/SNBT-lite value rendered in the syntax accepted by [JsonValues.parse].
+     */
+    fun assertStorageEquals(
+        id: String,
+        path: String?,
+        expectedJson: String,
+    ): SandboxQuickTest =
+        apply {
+            val storageId = ResourceLocation.parse(id)
+            val expected = JsonValues.parse(expectedJson)
+            val actual = storageValue(storageId, path)
+            if (actual != expected) {
+                failures +=
+                    "${storageLabel(
+                        storageId,
+                        path,
+                    )} expected ${JsonValues.render(expected)} but was ${actual?.let(JsonValues::render) ?: "<missing>"}"
+            }
+        }
+
+    /**
+     * Asserts that a storage root or path exists.
+     */
+    @JvmOverloads
+    fun assertStorageExists(
+        id: String,
+        path: String? = null,
+    ): SandboxQuickTest =
+        apply {
+            val storageId = ResourceLocation.parse(id)
+            if (storageValue(storageId, path) == null) {
+                failures += "${storageLabel(storageId, path)} expected present but was <missing>"
+            }
+        }
+
+    /**
+     * Asserts that a storage root or path is absent.
+     */
+    @JvmOverloads
+    fun assertStorageMissing(
+        id: String,
+        path: String? = null,
+    ): SandboxQuickTest =
+        apply {
+            val storageId = ResourceLocation.parse(id)
+            val actual = storageValue(storageId, path)
+            if (actual != null) {
+                failures += "${storageLabel(storageId, path)} expected missing but was ${JsonValues.render(actual)}"
+            }
+        }
+
+    private fun storageValue(
+        id: ResourceLocation,
+        path: String?,
+    ): JsonElement? = sandbox.world.storages[id]?.let { JsonPaths.get(it, path) }
+
+    private fun storageLabel(
+        id: ResourceLocation,
+        path: String?,
+    ): String = "storage $id ${path ?: "<root>"}"
+
+    /**
+     * Asserts the current XP integer stored on a player.
+     */
+    fun assertPlayerXp(
+        playerName: String,
+        expected: Int,
+    ): SandboxQuickTest =
+        apply {
+            val actual = sandbox.world.requirePlayer(playerName).xp
+            if (actual != expected) {
+                failures += "player $playerName xp expected $expected but was $actual"
+            }
+        }
+
+    /**
+     * Asserts the current XP level integer stored on a player.
+     */
+    fun assertPlayerXpLevels(
+        playerName: String,
+        expected: Int,
+    ): SandboxQuickTest =
+        apply {
+            val actual = sandbox.world.requirePlayer(playerName).xpLevels
+            if (actual != expected) {
+                failures += "player $playerName xpLevels expected $expected but was $actual"
+            }
+        }
+
+    /**
+     * Asserts a deterministic random sequence state.
+     */
+    @JvmOverloads
+    fun assertRandomSequence(
+        name: String,
+        expected: Long? = null,
+        exists: Boolean = true,
+    ): SandboxQuickTest =
+        apply {
+            val actual = sandbox.world.randomSequences[name]
+            if (!exists) {
+                if (actual != null) failures += "random sequence $name expected missing but was $actual; ${actualRandomSequences()}"
+                return@apply
+            }
+            if (actual == null) {
+                failures += "random sequence $name expected present but was <missing>; ${actualRandomSequences()}"
+                return@apply
+            }
+            expected?.let {
+                if (actual != it) failures += "random sequence $name expected $it but was $actual"
+            }
+        }
+
+    /**
+     * Asserts forced chunk state by chunk coordinates.
+     */
+    @JvmOverloads
+    fun assertForcedChunk(
+        x: Int,
+        z: Int,
+        exists: Boolean = true,
+    ): SandboxQuickTest =
+        apply {
+            val chunk = ChunkPos(x, z)
+            val actual = chunk in sandbox.world.forcedChunks
+            if (actual != exists) {
+                failures += "forced chunk $x,$z exists expected $exists but was $actual; ${actualForcedChunks()}"
+            }
+        }
+
+    /**
+     * Asserts stored gamerule state. The sandbox stores gamerule values as strings.
+     */
+    @JvmOverloads
+    fun assertGamerule(
+        name: String,
+        value: String? = null,
+        exists: Boolean = true,
+    ): SandboxQuickTest =
+        apply {
+            val actual = sandbox.world.gamerules[name]
+            if (!exists) {
+                if (actual != null) failures += "gamerule $name expected missing but was $actual; ${actualGamerules()}"
+                return@apply
+            }
+            if (actual == null) {
+                failures += "gamerule $name expected present but was <missing>; ${actualGamerules()}"
+                return@apply
+            }
+            value?.let {
+                if (actual != it) failures += "gamerule $name expected $it but was $actual"
+            }
+        }
+
+    /**
+     * Asserts the scheduled function queue.
+     *
+     * [dueTick] is the absolute sandbox game tick when the function should run.
+     * When [count] is set, it counts entries matching both [id] and [dueTick]
+     * when [dueTick] is provided.
+     */
+    @JvmOverloads
+    fun assertScheduledFunction(
+        id: String,
+        dueTick: Long? = null,
+        exists: Boolean = true,
+        count: Int? = null,
+    ): SandboxQuickTest =
+        apply {
+            val resourceId = ResourceLocation.parse(id)
+            val byId = sandbox.world.scheduledFunctions.filter { it.id == resourceId }
+            val matches = if (dueTick == null) byId else byId.filter { it.dueTick == dueTick }
+            if (exists) {
+                if (matches.isEmpty()) {
+                    val actualDueTicks = if (byId.isEmpty()) "<missing>" else byId.map { it.dueTick }.sorted().joinToString()
+                    failures +=
+                        "scheduled function $resourceId expected ${dueTick?.let {
+                            "dueTick $it"
+                        } ?: "present"} but was $actualDueTicks; ${actualScheduledFunctions()}"
+                } else if (count != null && matches.size != count) {
+                    failures +=
+                        "scheduled function $resourceId expected count $count${dueTick?.let {
+                            " at dueTick $it"
+                        }.orEmpty()} but was ${matches.size}; ${actualScheduledFunctions()}"
+                }
+            } else if (matches.isNotEmpty()) {
+                failures +=
+                    "scheduled function $resourceId expected missing${dueTick?.let {
+                        " at dueTick $it"
+                    }.orEmpty()} but was ${matches.map { it.dueTick }.sorted().joinToString()}; ${actualScheduledFunctions()}"
+            }
+        }
+
+    /**
+     * Asserts scoreboard objective metadata visible in snapshots and UI-related commands.
+     */
+    @JvmOverloads
+    fun assertScoreboardObjective(
+        name: String,
+        exists: Boolean = true,
+        criteria: String? = null,
+        displayName: String? = null,
+        renderType: String? = null,
+        displayAutoUpdate: Boolean? = null,
+    ): SandboxQuickTest =
+        apply {
+            val actualCriteria = sandbox.world.objectives[name]
+            val metadata = sandbox.world.scoreboardObjectiveMetadata[name] ?: ScoreboardObjectiveMetadata()
+            if (!exists) {
+                if (actualCriteria !=
+                    null
+                ) {
+                    failures += "scoreboard objective $name expected missing but exists; ${actualScoreboardObjectives()}"
+                }
+                return@apply
+            }
+            if (actualCriteria == null) {
+                failures += "scoreboard objective $name expected to exist; ${actualScoreboardObjectives()}"
+                return@apply
+            }
+
+            criteria?.let {
+                if (actualCriteria != it) failures += "scoreboard objective $name criteria expected $it but was $actualCriteria"
+            }
+            displayName?.let {
+                val actual = metadata.displayName ?: name
+                if (actual != it) failures += "scoreboard objective $name displayName expected $it but was $actual"
+            }
+            renderType?.let {
+                if (metadata.renderType !=
+                    it
+                ) {
+                    failures += "scoreboard objective $name renderType expected $it but was ${metadata.renderType}"
+                }
+            }
+            displayAutoUpdate?.let {
+                if (metadata.displayAutoUpdate !=
+                    it
+                ) {
+                    failures += "scoreboard objective $name displayAutoUpdate expected $it but was ${metadata.displayAutoUpdate}"
+                }
+            }
+        }
+
+    fun assertScoreboardObjective(
+        name: String,
+        renderType: ScoreboardRenderType,
+        exists: Boolean = true,
+        criteria: String? = null,
+        displayName: String? = null,
+        displayAutoUpdate: Boolean? = null,
+    ): SandboxQuickTest =
+        assertScoreboardObjective(
+            name = name,
+            exists = exists,
+            criteria = criteria,
+            displayName = displayName,
+            renderType = renderType.id,
+            displayAutoUpdate = displayAutoUpdate,
+        )
+
+    /**
+     * Asserts a scoreboard display slot such as `sidebar`, `list`, or `sidebar.team.red`.
+     */
+    @JvmOverloads
+    fun assertScoreboardDisplay(
+        slot: String,
+        objective: String? = null,
+        exists: Boolean = true,
+    ): SandboxQuickTest =
+        apply {
+            val actual = sandbox.world.scoreboardDisplays[slot]
+            if (!exists) {
+                if (actual != null) failures += "scoreboard display $slot expected missing but was $actual; ${actualScoreboardDisplays()}"
+                return@apply
+            }
+            if (actual == null) {
+                failures += "scoreboard display $slot expected present but was <missing>; ${actualScoreboardDisplays()}"
+                return@apply
+            }
+            objective?.let {
+                if (actual != it) failures += "scoreboard display $slot expected $it but was $actual"
+            }
+        }
+
+    fun assertScoreboardDisplay(
+        slot: ScoreboardDisplaySlot,
+        objective: String? = null,
+        exists: Boolean = true,
+    ): SandboxQuickTest = assertScoreboardDisplay(slot.id, objective, exists)
+
+    /**
+     * Asserts the latest recorded keyboard or mouse input for a player.
+     */
+    fun assertPlayerLastInput(
+        playerName: String,
+        device: String,
+        code: String,
+        action: String,
+    ): SandboxQuickTest =
+        apply {
+            val actual = sandbox.world.requirePlayer(playerName).lastInput
+            if (actual == null) {
+                failures += "player $playerName last input expected $device:$code/$action but was <none>"
+            } else if (actual.device != device || actual.code != code || actual.action != action) {
+                failures +=
+                    "player $playerName last input expected $device:$code/$action but was ${actual.device}:${actual.code}/${actual.action}"
+            }
+        }
+
+    fun assertPlayerLastInput(
+        playerName: String,
+        device: PlayerInputDevice,
+        code: String,
+        action: PlayerInputAction,
+    ): SandboxQuickTest = assertPlayerLastInput(playerName, device.id, code, action.id)
+
+    /**
+     * Asserts selected player state.
+     *
+     * Null parameters are ignored. When [stat] is set without [statValue], the
+     * assertion only requires that the stat exists.
+     */
+    fun assertPlayer(
+        name: String,
+        exists: Boolean = true,
+        position: Position? = null,
+        dimension: String? = null,
+        gameMode: String? = null,
+        xp: Int? = null,
+        xpLevels: Int? = null,
+        health: Double? = null,
+        food: Int? = null,
+        selectedSlot: Int? = null,
+        inventoryCount: Int? = null,
+        enderItemCount: Int? = null,
+        recipe: String? = null,
+        effect: String? = null,
+        stat: String? = null,
+        statValue: Int? = null,
+        spawn: Position? = null,
+        spawnDimension: String? = null,
+        spawnAngle: Double? = null,
+        spawnForced: Boolean? = null,
+        nbtPath: String? = null,
+        nbtEquals: String? = null,
+        nbtExists: Boolean? = null,
+    ): SandboxQuickTest =
+        apply {
+            val player = sandbox.world.players[name]
+            if (!exists) {
+                if (player != null) failures += "player $name expected missing but exists"
+                return@apply
+            }
+            if (player == null) {
+                failures += "player $name expected to exist"
+                return@apply
+            }
+
+            position?.let { if (player.position != it) failures += "player $name position expected $it but was ${player.position}" }
+            dimension?.let {
+                if (player.dimension !=
+                    ResourceLocation.parse(it)
+                ) {
+                    failures += "player $name dimension expected $it but was ${player.dimension}"
+                }
+            }
+            gameMode?.let { if (player.gameMode != it) failures += "player $name gameMode expected $it but was ${player.gameMode}" }
+            xp?.let { if (player.xp != it) failures += "player $name xp expected $it but was ${player.xp}" }
+            xpLevels?.let { if (player.xpLevels != it) failures += "player $name xpLevels expected $it but was ${player.xpLevels}" }
+            health?.let { if (player.health != it) failures += "player $name health expected $it but was ${player.health}" }
+            food?.let { if (player.food != it) failures += "player $name food expected $it but was ${player.food}" }
+            selectedSlot?.let {
+                if (player.selectedSlot !=
+                    it
+                ) {
+                    failures += "player $name selectedSlot expected $it but was ${player.selectedSlot}"
+                }
+            }
+            inventoryCount?.let {
+                if (player.inventory.size !=
+                    it
+                ) {
+                    failures += "player $name inventoryCount expected $it but was ${player.inventory.size}"
+                }
+            }
+            enderItemCount?.let {
+                if (player.enderItems.size !=
+                    it
+                ) {
+                    failures += "player $name enderItemCount expected $it but was ${player.enderItems.size}"
+                }
+            }
+            recipe?.let {
+                val id = ResourceLocation.parse(it)
+                if (id !in player.recipes) failures += "player $name expected recipe $id"
+            }
+            effect?.let {
+                val id = ResourceLocation.parse(it)
+                if (id !in player.effects) failures += "player $name expected effect $id"
+            }
+            stat?.let {
+                val id = ResourceLocation.parse(it)
+                val actualValue = player.stats[id]
+                if (statValue == null) {
+                    if (actualValue == null) failures += "player $name expected stat $id"
+                } else if ((actualValue ?: 0) != statValue) {
+                    failures += "player $name stat $id expected $statValue but was ${actualValue ?: 0}"
+                }
+            }
+            spawn?.let {
+                if (player.spawnPoint?.position != it) {
+                    failures += "player $name spawn position expected $it but was ${player.spawnPoint?.position ?: "<missing>"}"
+                }
+            }
+            spawnDimension?.let {
+                val expected = ResourceLocation.parse(it)
+                if (player.spawnPoint?.dimension != expected) {
+                    failures += "player $name spawn dimension expected $expected but was ${player.spawnPoint?.dimension ?: "<missing>"}"
+                }
+            }
+            spawnAngle?.let {
+                if (player.spawnPoint?.angle != it) {
+                    failures += "player $name spawn angle expected $it but was ${player.spawnPoint?.angle ?: "<missing>"}"
+                }
+            }
+            spawnForced?.let {
+                if (player.spawnPoint?.forced != it) {
+                    failures += "player $name spawn forced expected $it but was ${player.spawnPoint?.forced ?: "<missing>"}"
+                }
+            }
+            pathExpectationFailure(
+                "player $name nbt",
+                player.fullNbt(sandbox.profile),
+                nbtPath,
+                nbtEquals,
+                nbtExists,
+            )?.let { failures += it }
+        }
+
+    fun assertPlayer(
+        name: String,
+        gameMode: SandboxGameMode,
+        exists: Boolean = true,
+        position: Position? = null,
+        dimension: String? = null,
+        xp: Int? = null,
+        xpLevels: Int? = null,
+        health: Double? = null,
+        food: Int? = null,
+        selectedSlot: Int? = null,
+        inventoryCount: Int? = null,
+        enderItemCount: Int? = null,
+        recipe: String? = null,
+        effect: String? = null,
+        stat: String? = null,
+        statValue: Int? = null,
+        spawn: Position? = null,
+        spawnDimension: String? = null,
+        spawnAngle: Double? = null,
+        spawnForced: Boolean? = null,
+        nbtPath: String? = null,
+        nbtEquals: String? = null,
+        nbtExists: Boolean? = null,
+    ): SandboxQuickTest =
+        assertPlayer(
+            name = name,
+            exists = exists,
+            position = position,
+            dimension = dimension,
+            gameMode = gameMode.id,
+            xp = xp,
+            xpLevels = xpLevels,
+            health = health,
+            food = food,
+            selectedSlot = selectedSlot,
+            inventoryCount = inventoryCount,
+            enderItemCount = enderItemCount,
+            recipe = recipe,
+            effect = effect,
+            stat = stat,
+            statValue = statValue,
+            spawn = spawn,
+            spawnDimension = spawnDimension,
+            spawnAngle = spawnAngle,
+            spawnForced = spawnForced,
+            nbtPath = nbtPath,
+            nbtEquals = nbtEquals,
+            nbtExists = nbtExists,
+        )
+
+    /**
+     * Asserts selected world-level state.
+     *
+     * Null parameters are ignored.
+     */
+    @JvmOverloads
+    fun assertWorld(
+        gameTime: Long? = null,
+        dayTime: Long? = null,
+        weather: String? = null,
+        difficulty: String? = null,
+        defaultGameMode: String? = null,
+        seed: Long? = null,
+        forcedChunkX: Int? = null,
+        forcedChunkZ: Int? = null,
+        biomeX: Int? = null,
+        biomeY: Int? = null,
+        biomeZ: Int? = null,
+        biome: String? = null,
+        worldSpawn: Position? = null,
+        worldSpawnDimension: String? = null,
+        worldSpawnAngle: Double? = null,
+        worldSpawnForced: Boolean? = null,
+        worldBorderCenterX: Double? = null,
+        worldBorderCenterZ: Double? = null,
+        worldBorderSize: Double? = null,
+        worldBorderTargetSize: Double? = null,
+        worldBorderLerpTimeSeconds: Long? = null,
+        worldBorderDamageBuffer: Double? = null,
+        worldBorderDamageAmount: Double? = null,
+        worldBorderWarningDistance: Int? = null,
+        worldBorderWarningTime: Int? = null,
+    ): SandboxQuickTest =
+        apply {
+            gameTime?.let { if (sandbox.world.gameTime != it) failures += "world gameTime expected $it but was ${sandbox.world.gameTime}" }
+            dayTime?.let { if (sandbox.world.dayTime != it) failures += "world dayTime expected $it but was ${sandbox.world.dayTime}" }
+            weather?.let { if (sandbox.world.weather != it) failures += "world weather expected $it but was ${sandbox.world.weather}" }
+            difficulty?.let {
+                if (sandbox.world.difficulty !=
+                    it
+                ) {
+                    failures += "world difficulty expected $it but was ${sandbox.world.difficulty}"
+                }
+            }
+            defaultGameMode?.let {
+                if (sandbox.world.defaultGameMode !=
+                    it
+                ) {
+                    failures += "world defaultGameMode expected $it but was ${sandbox.world.defaultGameMode}"
+                }
+            }
+            seed?.let { if (sandbox.world.seed != it) failures += "world seed expected $it but was ${sandbox.world.seed}" }
+            if (forcedChunkX != null || forcedChunkZ != null) {
+                if (forcedChunkX == null || forcedChunkZ == null) {
+                    failures += "world forcedChunk assertion requires forcedChunkX and forcedChunkZ"
+                } else {
+                    val chunk = ChunkPos(forcedChunkX, forcedChunkZ)
+                    if (chunk !in sandbox.world.forcedChunks) {
+                        failures += "world expected forced chunk ${chunk.x},${chunk.z}"
+                    }
+                }
+            }
+            if (biomeX != null || biomeY != null || biomeZ != null || biome != null) {
+                if (biomeX == null || biomeY == null || biomeZ == null || biome == null) {
+                    failures += "world biome assertion requires biomeX, biomeY, biomeZ, and biome"
+                } else {
+                    val pos = BlockPos(biomeX, biomeY, biomeZ)
+                    val expected = ResourceLocation.parse(biome)
+                    val actual = sandbox.world.biomes[pos]
+                    if (actual != expected) {
+                        failures += "world biome $pos expected $expected but was ${actual ?: "<missing>"}"
+                    }
+                }
+            }
+            worldSpawn?.let {
+                if (sandbox.world.worldSpawn.position != it) {
+                    failures += "world spawn position expected $it but was ${sandbox.world.worldSpawn.position}"
+                }
+            }
+            worldSpawnDimension?.let {
+                val expected = ResourceLocation.parse(it)
+                if (sandbox.world.worldSpawn.dimension != expected) {
+                    failures += "world spawn dimension expected $expected but was ${sandbox.world.worldSpawn.dimension}"
+                }
+            }
+            worldSpawnAngle?.let {
+                if (sandbox.world.worldSpawn.angle != it) {
+                    failures += "world spawn angle expected $it but was ${sandbox.world.worldSpawn.angle}"
+                }
+            }
+            worldSpawnForced?.let {
+                if (sandbox.world.worldSpawn.forced != it) {
+                    failures += "world spawn forced expected $it but was ${sandbox.world.worldSpawn.forced}"
+                }
+            }
+            worldBorderCenterX?.let {
+                if (sandbox.world.worldBorder.centerX !=
+                    it
+                ) {
+                    failures += "world border centerX expected $it but was ${sandbox.world.worldBorder.centerX}"
+                }
+            }
+            worldBorderCenterZ?.let {
+                if (sandbox.world.worldBorder.centerZ !=
+                    it
+                ) {
+                    failures += "world border centerZ expected $it but was ${sandbox.world.worldBorder.centerZ}"
+                }
+            }
+            worldBorderSize?.let {
+                if (sandbox.world.worldBorder.size !=
+                    it
+                ) {
+                    failures += "world border size expected $it but was ${sandbox.world.worldBorder.size}"
+                }
+            }
+            worldBorderTargetSize?.let {
+                if (sandbox.world.worldBorder.targetSize !=
+                    it
+                ) {
+                    failures += "world border targetSize expected $it but was ${sandbox.world.worldBorder.targetSize}"
+                }
+            }
+            worldBorderLerpTimeSeconds?.let {
+                if (sandbox.world.worldBorder.lerpTimeSeconds !=
+                    it
+                ) {
+                    failures += "world border lerpTimeSeconds expected $it but was ${sandbox.world.worldBorder.lerpTimeSeconds}"
+                }
+            }
+            worldBorderDamageBuffer?.let {
+                if (sandbox.world.worldBorder.damageBuffer !=
+                    it
+                ) {
+                    failures += "world border damageBuffer expected $it but was ${sandbox.world.worldBorder.damageBuffer}"
+                }
+            }
+            worldBorderDamageAmount?.let {
+                if (sandbox.world.worldBorder.damageAmount !=
+                    it
+                ) {
+                    failures += "world border damageAmount expected $it but was ${sandbox.world.worldBorder.damageAmount}"
+                }
+            }
+            worldBorderWarningDistance?.let {
+                if (sandbox.world.worldBorder.warningDistance !=
+                    it
+                ) {
+                    failures += "world border warningDistance expected $it but was ${sandbox.world.worldBorder.warningDistance}"
+                }
+            }
+            worldBorderWarningTime?.let {
+                if (sandbox.world.worldBorder.warningTime !=
+                    it
+                ) {
+                    failures += "world border warningTime expected $it but was ${sandbox.world.worldBorder.warningTime}"
+                }
+            }
+        }
+
+    fun assertWorld(
+        weather: SandboxWeather,
+        gameTime: Long? = null,
+        dayTime: Long? = null,
+        difficulty: SandboxDifficulty? = null,
+        defaultGameMode: SandboxGameMode? = null,
+        seed: Long? = null,
+        forcedChunkX: Int? = null,
+        forcedChunkZ: Int? = null,
+        biomeX: Int? = null,
+        biomeY: Int? = null,
+        biomeZ: Int? = null,
+        biome: String? = null,
+        worldSpawn: Position? = null,
+        worldSpawnDimension: String? = null,
+        worldSpawnAngle: Double? = null,
+        worldSpawnForced: Boolean? = null,
+        worldBorderCenterX: Double? = null,
+        worldBorderCenterZ: Double? = null,
+        worldBorderSize: Double? = null,
+        worldBorderTargetSize: Double? = null,
+        worldBorderLerpTimeSeconds: Long? = null,
+        worldBorderDamageBuffer: Double? = null,
+        worldBorderDamageAmount: Double? = null,
+        worldBorderWarningDistance: Int? = null,
+        worldBorderWarningTime: Int? = null,
+    ): SandboxQuickTest =
+        assertWorld(
+            gameTime = gameTime,
+            dayTime = dayTime,
+            weather = weather.id,
+            difficulty = difficulty?.id,
+            defaultGameMode = defaultGameMode?.id,
+            seed = seed,
+            forcedChunkX = forcedChunkX,
+            forcedChunkZ = forcedChunkZ,
+            biomeX = biomeX,
+            biomeY = biomeY,
+            biomeZ = biomeZ,
+            biome = biome,
+            worldSpawn = worldSpawn,
+            worldSpawnDimension = worldSpawnDimension,
+            worldSpawnAngle = worldSpawnAngle,
+            worldSpawnForced = worldSpawnForced,
+            worldBorderCenterX = worldBorderCenterX,
+            worldBorderCenterZ = worldBorderCenterZ,
+            worldBorderSize = worldBorderSize,
+            worldBorderTargetSize = worldBorderTargetSize,
+            worldBorderLerpTimeSeconds = worldBorderLerpTimeSeconds,
+            worldBorderDamageBuffer = worldBorderDamageBuffer,
+            worldBorderDamageAmount = worldBorderDamageAmount,
+            worldBorderWarningDistance = worldBorderWarningDistance,
+            worldBorderWarningTime = worldBorderWarningTime,
+        )
+
+    fun assertWorld(
+        difficulty: SandboxDifficulty,
+        gameTime: Long? = null,
+        dayTime: Long? = null,
+        defaultGameMode: SandboxGameMode? = null,
+        seed: Long? = null,
+        forcedChunkX: Int? = null,
+        forcedChunkZ: Int? = null,
+        biomeX: Int? = null,
+        biomeY: Int? = null,
+        biomeZ: Int? = null,
+        biome: String? = null,
+        worldSpawn: Position? = null,
+        worldSpawnDimension: String? = null,
+        worldSpawnAngle: Double? = null,
+        worldSpawnForced: Boolean? = null,
+        worldBorderCenterX: Double? = null,
+        worldBorderCenterZ: Double? = null,
+        worldBorderSize: Double? = null,
+        worldBorderTargetSize: Double? = null,
+        worldBorderLerpTimeSeconds: Long? = null,
+        worldBorderDamageBuffer: Double? = null,
+        worldBorderDamageAmount: Double? = null,
+        worldBorderWarningDistance: Int? = null,
+        worldBorderWarningTime: Int? = null,
+    ): SandboxQuickTest =
+        assertWorld(
+            gameTime = gameTime,
+            dayTime = dayTime,
+            difficulty = difficulty.id,
+            defaultGameMode = defaultGameMode?.id,
+            seed = seed,
+            forcedChunkX = forcedChunkX,
+            forcedChunkZ = forcedChunkZ,
+            biomeX = biomeX,
+            biomeY = biomeY,
+            biomeZ = biomeZ,
+            biome = biome,
+            worldSpawn = worldSpawn,
+            worldSpawnDimension = worldSpawnDimension,
+            worldSpawnAngle = worldSpawnAngle,
+            worldSpawnForced = worldSpawnForced,
+            worldBorderCenterX = worldBorderCenterX,
+            worldBorderCenterZ = worldBorderCenterZ,
+            worldBorderSize = worldBorderSize,
+            worldBorderTargetSize = worldBorderTargetSize,
+            worldBorderLerpTimeSeconds = worldBorderLerpTimeSeconds,
+            worldBorderDamageBuffer = worldBorderDamageBuffer,
+            worldBorderDamageAmount = worldBorderDamageAmount,
+            worldBorderWarningDistance = worldBorderWarningDistance,
+            worldBorderWarningTime = worldBorderWarningTime,
+        )
+
+    fun assertWorld(
+        defaultGameMode: SandboxGameMode,
+        gameTime: Long? = null,
+        dayTime: Long? = null,
+        seed: Long? = null,
+        forcedChunkX: Int? = null,
+        forcedChunkZ: Int? = null,
+        biomeX: Int? = null,
+        biomeY: Int? = null,
+        biomeZ: Int? = null,
+        biome: String? = null,
+        worldSpawn: Position? = null,
+        worldSpawnDimension: String? = null,
+        worldSpawnAngle: Double? = null,
+        worldSpawnForced: Boolean? = null,
+        worldBorderCenterX: Double? = null,
+        worldBorderCenterZ: Double? = null,
+        worldBorderSize: Double? = null,
+        worldBorderTargetSize: Double? = null,
+        worldBorderLerpTimeSeconds: Long? = null,
+        worldBorderDamageBuffer: Double? = null,
+        worldBorderDamageAmount: Double? = null,
+        worldBorderWarningDistance: Int? = null,
+        worldBorderWarningTime: Int? = null,
+    ): SandboxQuickTest =
+        assertWorld(
+            gameTime = gameTime,
+            dayTime = dayTime,
+            defaultGameMode = defaultGameMode.id,
+            seed = seed,
+            forcedChunkX = forcedChunkX,
+            forcedChunkZ = forcedChunkZ,
+            biomeX = biomeX,
+            biomeY = biomeY,
+            biomeZ = biomeZ,
+            biome = biome,
+            worldSpawn = worldSpawn,
+            worldSpawnDimension = worldSpawnDimension,
+            worldSpawnAngle = worldSpawnAngle,
+            worldSpawnForced = worldSpawnForced,
+            worldBorderCenterX = worldBorderCenterX,
+            worldBorderCenterZ = worldBorderCenterZ,
+            worldBorderSize = worldBorderSize,
+            worldBorderTargetSize = worldBorderTargetSize,
+            worldBorderLerpTimeSeconds = worldBorderLerpTimeSeconds,
+            worldBorderDamageBuffer = worldBorderDamageBuffer,
+            worldBorderDamageAmount = worldBorderDamageAmount,
+            worldBorderWarningDistance = worldBorderWarningDistance,
+            worldBorderWarningTime = worldBorderWarningTime,
+        )
+
+    /**
+     * Asserts selected team state.
+     */
+    @JvmOverloads
+    fun assertTeam(
+        name: String,
+        exists: Boolean = true,
+        displayName: String? = null,
+        member: String? = null,
+        memberCount: Int? = null,
+        optionName: String? = null,
+        optionEquals: String? = null,
+    ): SandboxQuickTest =
+        apply {
+            val actual = sandbox.world.teams[name]
+            if (!exists) {
+                if (actual != null) failures += "team $name expected missing but exists"
+                return@apply
+            }
+            if (actual == null) {
+                failures += "team $name expected to exist"
+                return@apply
+            }
+
+            displayName?.let {
+                if (actual.displayName !=
+                    it
+                ) {
+                    failures += "team $name displayName expected $it but was ${actual.displayName}"
+                }
+            }
+            member?.let { if (it !in actual.members) failures += "team $name expected member $it" }
+            memberCount?.let {
+                if (actual.members.size !=
+                    it
+                ) {
+                    failures += "team $name memberCount expected $it but was ${actual.members.size}"
+                }
+            }
+            if (optionName != null || optionEquals != null) {
+                if (optionName == null || optionEquals == null) {
+                    failures += "team $name option assertion requires optionName and optionEquals"
+                } else {
+                    val actualValue = actual.options[optionName]
+                    if (actualValue != optionEquals) {
+                        failures += "team $name option $optionName expected $optionEquals but was ${actualValue ?: "<missing>"}"
+                    }
+                }
+            }
+        }
+
+    fun assertTeam(
+        name: String,
+        optionName: TeamOption,
+        optionEquals: String,
+        exists: Boolean = true,
+        displayName: String? = null,
+        member: String? = null,
+        memberCount: Int? = null,
+    ): SandboxQuickTest =
+        assertTeam(
+            name = name,
+            exists = exists,
+            displayName = displayName,
+            member = member,
+            memberCount = memberCount,
+            optionName = optionName.id,
+            optionEquals = optionEquals,
+        )
+
+    /**
+     * Asserts selected bossbar state.
+     */
+    @JvmOverloads
+    fun assertBossbar(
+        id: String,
+        exists: Boolean = true,
+        name: String? = null,
+        value: Int? = null,
+        max: Int? = null,
+        color: String? = null,
+        style: String? = null,
+        visible: Boolean? = null,
+        player: String? = null,
+    ): SandboxQuickTest =
+        apply {
+            val parsedId = ResourceLocation.parse(id)
+            val actual = sandbox.world.bossbars[parsedId]
+            if (!exists) {
+                if (actual != null) failures += "bossbar $parsedId expected missing but exists"
+                return@apply
+            }
+            if (actual == null) {
+                failures += "bossbar $parsedId expected to exist"
+                return@apply
+            }
+
+            name?.let { if (actual.name != it) failures += "bossbar $parsedId name expected $it but was ${actual.name}" }
+            value?.let { if (actual.value != it) failures += "bossbar $parsedId value expected $it but was ${actual.value}" }
+            max?.let { if (actual.max != it) failures += "bossbar $parsedId max expected $it but was ${actual.max}" }
+            color?.let { if (actual.color != it) failures += "bossbar $parsedId color expected $it but was ${actual.color}" }
+            style?.let { if (actual.style != it) failures += "bossbar $parsedId style expected $it but was ${actual.style}" }
+            visible?.let { if (actual.visible != it) failures += "bossbar $parsedId visible expected $it but was ${actual.visible}" }
+            player?.let { if (it !in actual.players) failures += "bossbar $parsedId expected player $it" }
+        }
+
+    fun assertBossbar(
+        id: String,
+        color: BossbarColor,
+        exists: Boolean = true,
+        name: String? = null,
+        value: Int? = null,
+        max: Int? = null,
+        style: BossbarStyle? = null,
+        visible: Boolean? = null,
+        player: String? = null,
+    ): SandboxQuickTest =
+        assertBossbar(
+            id = id,
+            exists = exists,
+            name = name,
+            value = value,
+            max = max,
+            color = color.id,
+            style = style?.id,
+            visible = visible,
+            player = player,
+        )
+
+    fun assertBossbar(
+        id: String,
+        style: BossbarStyle,
+        exists: Boolean = true,
+        name: String? = null,
+        value: Int? = null,
+        max: Int? = null,
+        visible: Boolean? = null,
+        player: String? = null,
+    ): SandboxQuickTest =
+        assertBossbar(
+            id = id,
+            exists = exists,
+            name = name,
+            value = value,
+            max = max,
+            style = style.id,
+            visible = visible,
+            player = player,
+        )
+
+    /**
+     * Asserts an explicit sparse-world block.
+     */
+    @JvmOverloads
+    fun assertBlock(
+        x: Int,
+        y: Int,
+        z: Int,
+        id: String? = null,
+        exists: Boolean = true,
+        nbtPath: String? = null,
+        nbtEquals: String? = null,
+        nbtExists: Boolean? = null,
+    ): SandboxQuickTest =
+        apply {
+            val pos = BlockPos(x, y, z)
+            val actual = sandbox.world.block(pos)
+            if ((actual != null) != exists) {
+                failures += "block $pos exists expected $exists but was ${actual != null}"
+            }
+            id?.let {
+                val expected = ResourceLocation.parse(it)
+                if (actual?.id != expected) failures += "block $pos id expected $expected but was ${actual?.id ?: "void"}"
+            }
+            if (nbtPath != null || nbtEquals != null || nbtExists != null) {
+                pathExpectationFailure(
+                    label = "block $pos nbt",
+                    root = actual?.fullNbt(pos, sandbox.profile),
+                    path = nbtPath,
+                    equalsJson = nbtEquals,
+                    exists = nbtExists,
+                )?.let { failures += it }
+            }
+        }
+
+    /**
+     * Asserts that at least one entity, no entity, or exactly [count] entities
+     * match the optional filters.
+     */
+    fun assertEntity(
+        type: String? = null,
+        tag: String? = null,
+        uuid: String? = null,
+        position: Position? = null,
+        exists: Boolean = true,
+        count: Int? = null,
+        dimension: String? = null,
+        health: Double? = null,
+        vehicle: String? = null,
+        passenger: String? = null,
+        passengerCount: Int? = null,
+        nbtPath: String? = null,
+        nbtEquals: String? = null,
+        nbtExists: Boolean? = null,
+    ): SandboxQuickTest =
+        apply {
+            val expectedType = type?.let(ResourceLocation::parse)
+            val expectedDimension = dimension?.let(ResourceLocation::parse)
+            val matches =
+                sandbox.world.entities.filter { entity ->
+                    (expectedType == null || entity.type == expectedType) &&
+                        (tag == null || tag in entity.tags) &&
+                        (uuid == null || entity.uuid == uuid) &&
+                        (position == null || entity.position == position) &&
+                        (expectedDimension == null || entity.dimension == expectedDimension) &&
+                        (health == null || entityHealth(entity) == health) &&
+                        (vehicle == null || entity.vehicle == vehicle) &&
+                        (passenger == null || passenger in entity.passengers) &&
+                        (passengerCount == null || entity.passengers.size == passengerCount) &&
+                        entityNbtMatches(entity, nbtPath, nbtEquals, nbtExists)
+                }
+            val description =
+                describeEntityExpectation(
+                    type = type,
+                    tag = tag,
+                    uuid = uuid,
+                    position = position,
+                    dimension = dimension,
+                    health = health,
+                    vehicle = vehicle,
+                    passenger = passenger,
+                    passengerCount = passengerCount,
+                    nbtPath = nbtPath,
+                    nbtEquals = nbtEquals,
+                    nbtExists = nbtExists,
+                )
+            if (count != null) {
+                if (matches.size != count) failures += "entity expected $count match(es) but found ${matches.size}: $description"
+                return@apply
+            }
+            if (exists && matches.isEmpty()) {
+                failures += "entity expected at least one match: $description"
+            }
+            if (!exists && matches.isNotEmpty()) {
+                failures += "entity expected missing but found ${matches.size} match(es): $description"
+            }
+        }
+
+    /**
+     * Asserts that a matching entity has, or does not have, a matching item in an equipment slot.
+     */
+    @JvmOverloads
+    fun assertEntityEquipment(
+        slot: String,
+        type: String? = null,
+        tag: String? = null,
+        uuid: String? = null,
+        position: Position? = null,
+        id: String? = null,
+        count: Int? = null,
+        exists: Boolean = true,
+        minCount: Int? = null,
+        maxCount: Int? = null,
+        componentsPath: String? = null,
+        componentsEquals: String? = null,
+        componentsExists: Boolean? = null,
+        nbtPath: String? = null,
+        nbtEquals: String? = null,
+        nbtExists: Boolean? = null,
+        dimension: String? = null,
+    ): SandboxQuickTest =
+        apply {
+            val canonicalSlot =
+                canonicalEquipmentSlot(slot)
+                    ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Entity equipment slot '$slot' is not supported")
+            val expectedType = type?.let(ResourceLocation::parse)
+            val expectedDimension = dimension?.let(ResourceLocation::parse)
+            val expectedId = id?.let(ResourceLocation::parse)
+            val entities =
+                sandbox.world.entities.filter { entity ->
+                    (expectedType == null || entity.type == expectedType) &&
+                        (tag == null || tag in entity.tags) &&
+                        (uuid == null || entity.uuid == uuid) &&
+                        (position == null || entity.position == position) &&
+                        (expectedDimension == null || entity.dimension == expectedDimension)
+                }
+            val equipped = entities.mapNotNull { entity -> entity.equipment[canonicalSlot]?.let { item -> entity to item } }
+            val matches =
+                equipped.filter { (_, item) ->
+                    (expectedId == null || item.id == expectedId) &&
+                        (count == null || item.count == count) &&
+                        (minCount == null || item.count >= minCount) &&
+                        (maxCount == null || item.count <= maxCount) &&
+                        jsonPathMatches(item.components, componentsPath, componentsEquals, componentsExists) &&
+                        jsonPathMatches(item.nbt, nbtPath, nbtEquals, nbtExists)
+                }
+            val entityDescription = describeEntityExpectation(type, tag, uuid, position, dimension)
+            val itemDescription =
+                describeItemExpectation(
+                    id = id,
+                    count = count,
+                    slot = null,
+                    minCount = minCount,
+                    maxCount = maxCount,
+                    componentsPath = componentsPath,
+                    componentsEquals = componentsEquals,
+                    componentsExists = componentsExists,
+                    nbtPath = nbtPath,
+                    nbtEquals = nbtEquals,
+                    nbtExists = nbtExists,
+                )
+            if (exists && matches.isEmpty()) {
+                failures +=
+                    "entity equipment $entityDescription slot=$canonicalSlot expected $itemDescription but found ${equipped.map {
+                        "${it.second.id}x${it.second.count}"
+                    }}"
+            }
+            if (!exists && matches.isNotEmpty()) {
+                failures +=
+                    "entity equipment $entityDescription slot=$canonicalSlot expected missing $itemDescription but found ${matches.map {
+                        "${it.second.id}x${it.second.count}"
+                    }}"
+            }
+        }
+
+    fun assertEntityEquipment(
+        slot: EntityEquipmentSlot,
+        type: String? = null,
+        tag: String? = null,
+        uuid: String? = null,
+        position: Position? = null,
+        id: String? = null,
+        count: Int? = null,
+        exists: Boolean = true,
+        minCount: Int? = null,
+        maxCount: Int? = null,
+        componentsPath: String? = null,
+        componentsEquals: String? = null,
+        componentsExists: Boolean? = null,
+        nbtPath: String? = null,
+        nbtEquals: String? = null,
+        nbtExists: Boolean? = null,
+        dimension: String? = null,
+    ): SandboxQuickTest =
+        assertEntityEquipment(
+            slot = slot.id,
+            type = type,
+            tag = tag,
+            uuid = uuid,
+            position = position,
+            dimension = dimension,
+            id = id,
+            count = count,
+            exists = exists,
+            minCount = minCount,
+            maxCount = maxCount,
+            componentsPath = componentsPath,
+            componentsEquals = componentsEquals,
+            componentsExists = componentsExists,
+            nbtPath = nbtPath,
+            nbtEquals = nbtEquals,
+            nbtExists = nbtExists,
+        )
+
+    /**
+     * Asserts that a matching entity has, or does not have, an active effect.
+     */
+    @JvmOverloads
+    fun assertEntityEffect(
+        effect: String,
+        type: String? = null,
+        tag: String? = null,
+        uuid: String? = null,
+        position: Position? = null,
+        exists: Boolean = true,
+        durationTicks: Int? = null,
+        amplifier: Int? = null,
+        hideParticles: Boolean? = null,
+        dimension: String? = null,
+    ): SandboxQuickTest =
+        apply {
+            val expectedType = type?.let(ResourceLocation::parse)
+            val expectedDimension = dimension?.let(ResourceLocation::parse)
+            val id = ResourceLocation.parse(effect)
+            val entities =
+                sandbox.world.entities.filter { entity ->
+                    (expectedType == null || entity.type == expectedType) &&
+                        (tag == null || tag in entity.tags) &&
+                        (uuid == null || entity.uuid == uuid) &&
+                        (position == null || entity.position == position) &&
+                        (expectedDimension == null || entity.dimension == expectedDimension)
+                }
+            val effects = entities.mapNotNull { entity -> entity.activeEffects[id]?.let { active -> entity to active } }
+            val matches =
+                effects.filter { (_, active) ->
+                    (durationTicks == null || active.durationTicks == durationTicks) &&
+                        (amplifier == null || active.amplifier == amplifier) &&
+                        (hideParticles == null || active.hideParticles == hideParticles)
+                }
+            val entityDescription = describeEntityExpectation(type, tag, uuid, position, dimension)
+            val effectDescription = describeEffectExpectation(effect, durationTicks, amplifier, hideParticles)
+            if (exists && matches.isEmpty()) {
+                failures += "entity effect $entityDescription expected $effectDescription but found ${effects.map { it.second.toJson() }}"
+            }
+            if (!exists && matches.isNotEmpty()) {
+                failures +=
+                    "entity effect $entityDescription expected missing $effectDescription but found ${matches.map { it.second.toJson() }}"
+            }
+        }
+
+    /**
+     * Asserts that a matching entity has, or does not have, an explicit attribute value.
+     */
+    @JvmOverloads
+    fun assertEntityAttribute(
+        attribute: String,
+        type: String? = null,
+        tag: String? = null,
+        uuid: String? = null,
+        position: Position? = null,
+        exists: Boolean = true,
+        value: Double? = null,
+        min: Double? = null,
+        max: Double? = null,
+        dimension: String? = null,
+    ): SandboxQuickTest =
+        apply {
+            val expectedType = type?.let(ResourceLocation::parse)
+            val expectedDimension = dimension?.let(ResourceLocation::parse)
+            val id = ResourceLocation.parse(attribute)
+            val entities =
+                sandbox.world.entities.filter { entity ->
+                    (expectedType == null || entity.type == expectedType) &&
+                        (tag == null || tag in entity.tags) &&
+                        (uuid == null || entity.uuid == uuid) &&
+                        (position == null || entity.position == position) &&
+                        (expectedDimension == null || entity.dimension == expectedDimension)
+                }
+            val attributes = entities.mapNotNull { entity -> entity.attributes[id]?.let { actual -> entity to actual } }
+            val matches =
+                attributes.filter { (_, actual) ->
+                    (value == null || actual == value) &&
+                        (min == null || actual >= min) &&
+                        (max == null || actual <= max)
+                }
+            val entityDescription = describeEntityExpectation(type, tag, uuid, position, dimension)
+            val attributeDescription = describeAttributeExpectation(attribute, value, min, max)
+            if (exists && matches.isEmpty()) {
+                failures += "entity attribute $entityDescription expected $attributeDescription but found ${attributes.map { it.second }}"
+            }
+            if (!exists && matches.isNotEmpty()) {
+                failures +=
+                    "entity attribute $entityDescription expected missing $attributeDescription but found ${matches.map { it.second }}"
+            }
+        }
+
+    /**
+     * Asserts the number of entities matching optional type and tag filters.
+     */
+    @JvmOverloads
+    fun assertEntityCount(
+        expected: Int,
+        type: String? = null,
+        tag: String? = null,
+        dimension: String? = null,
+    ): SandboxQuickTest =
+        apply {
+            val actual = entityCount(type, tag, dimension)
+            if (actual != expected) {
+                failures += "entityCount ${describeEntityCount(type, tag, dimension)} expected $expected but was $actual"
+            }
+        }
+
+    /**
+     * Asserts that the number of matching entities is at least [minimum].
+     */
+    @JvmOverloads
+    fun assertEntityCountAtLeast(
+        minimum: Int,
+        type: String? = null,
+        tag: String? = null,
+        dimension: String? = null,
+    ): SandboxQuickTest =
+        apply {
+            assertEntityCountBounds(min = minimum, max = null, type = type, tag = tag, dimension = dimension)
+        }
+
+    /**
+     * Asserts that the number of matching entities is at most [maximum].
+     */
+    @JvmOverloads
+    fun assertEntityCountAtMost(
+        maximum: Int,
+        type: String? = null,
+        tag: String? = null,
+        dimension: String? = null,
+    ): SandboxQuickTest =
+        apply {
+            assertEntityCountBounds(min = null, max = maximum, type = type, tag = tag, dimension = dimension)
+        }
+
+    /**
+     * Asserts optional lower and upper bounds for the number of matching entities.
+     */
+    @JvmOverloads
+    fun assertEntityCountRange(
+        min: Int? = null,
+        max: Int? = null,
+        type: String? = null,
+        tag: String? = null,
+        dimension: String? = null,
+    ): SandboxQuickTest =
+        apply {
+            assertEntityCountBounds(min, max, type, tag, dimension)
+        }
+
+    private fun assertEntityCountBounds(
+        min: Int?,
+        max: Int?,
+        type: String?,
+        tag: String?,
+        dimension: String?,
+    ) {
+        val actual = entityCount(type, tag, dimension)
+        val label = describeEntityCount(type, tag, dimension)
+        var checked = false
+        min?.let {
+            checked = true
+            if (actual < it) {
+                failures += "entityCount $label expected >= $it but was $actual"
+            }
+        }
+        max?.let {
+            checked = true
+            if (actual > it) {
+                failures += "entityCount $label expected <= $it but was $actual"
+            }
+        }
+        if (!checked) {
+            failures += "entityCount $label range assertion requires min or max"
+        }
+    }
+
+    private fun entityCount(
+        type: String?,
+        tag: String?,
+        dimension: String?,
+    ): Int {
+        val expectedType = type?.let(ResourceLocation::parse)
+        val expectedDimension = dimension?.let(ResourceLocation::parse)
+        return sandbox.world.entities.count { entity ->
+            (expectedType == null || entity.type == expectedType) &&
+                (tag == null || tag in entity.tags) &&
+                (expectedDimension == null || entity.dimension == expectedDimension)
+        }
+    }
+
+    private fun describeEntityCount(
+        type: String?,
+        tag: String?,
+        dimension: String?,
+    ): String =
+        listOfNotNull(
+            type?.let { "type=$it" },
+            tag?.let { "tag=$it" },
+            dimension?.let { "dimension=$it" },
+        ).ifEmpty { listOf("<any entity>") }.joinToString(", ")
+
+    /**
+     * Asserts that a player's inventory contains or does not contain a matching item.
+     */
+    @JvmOverloads
+    fun assertItem(
+        playerName: String,
+        id: String? = null,
+        count: Int? = null,
+        slot: Int? = null,
+        exists: Boolean = true,
+        minCount: Int? = null,
+        maxCount: Int? = null,
+        componentsPath: String? = null,
+        componentsEquals: String? = null,
+        componentsExists: Boolean? = null,
+        nbtPath: String? = null,
+        nbtEquals: String? = null,
+        nbtExists: Boolean? = null,
+        container: String = "inventory",
+    ): SandboxQuickTest =
+        apply {
+            val player = sandbox.world.requirePlayer(playerName)
+            val normalizedContainer = normalizeItemContainer(container)
+            if (normalizedContainer == null) {
+                failures += "item for player $playerName container $container is unsupported; use inventory or enderItems"
+                return@apply
+            }
+            val items = playerItems(player, normalizedContainer)
+            val expectedId = id?.let(ResourceLocation::parse)
+            val candidates = slot?.let { items.getOrNull(it)?.let(::listOf) ?: emptyList() } ?: items
+            val matches =
+                candidates.filter { item ->
+                    (expectedId == null || item.id == expectedId) &&
+                        (count == null || item.count == count) &&
+                        (minCount == null || item.count >= minCount) &&
+                        (maxCount == null || item.count <= maxCount) &&
+                        jsonPathMatches(item.components, componentsPath, componentsEquals, componentsExists) &&
+                        jsonPathMatches(item.nbt, nbtPath, nbtEquals, nbtExists)
+                }
+            val expectation =
+                describeItemExpectation(
+                    id = id,
+                    count = count,
+                    slot = slot,
+                    minCount = minCount,
+                    maxCount = maxCount,
+                    componentsPath = componentsPath,
+                    componentsEquals = componentsEquals,
+                    componentsExists = componentsExists,
+                    nbtPath = nbtPath,
+                    nbtEquals = nbtEquals,
+                    nbtExists = nbtExists,
+                )
+            val prefix = itemAssertionPrefix(playerName, normalizedContainer)
+            val itemSummary = items.map { "${it.id}x${it.count}" }
+            if (exists && matches.isEmpty()) {
+                failures += "$prefix expected $expectation but ${itemContainerLabel(normalizedContainer)} was $itemSummary"
+            }
+            if (!exists && matches.isNotEmpty()) {
+                failures += "$prefix expected missing $expectation but found ${matches.map { "${it.id}x${it.count}" }}"
+            }
+        }
+
+    fun assertItem(
+        playerName: String,
+        container: ItemContainer,
+        id: String? = null,
+        count: Int? = null,
+        slot: Int? = null,
+        exists: Boolean = true,
+        minCount: Int? = null,
+        maxCount: Int? = null,
+        componentsPath: String? = null,
+        componentsEquals: String? = null,
+        componentsExists: Boolean? = null,
+        nbtPath: String? = null,
+        nbtEquals: String? = null,
+        nbtExists: Boolean? = null,
+    ): SandboxQuickTest =
+        assertItem(
+            playerName = playerName,
+            id = id,
+            count = count,
+            slot = slot,
+            exists = exists,
+            minCount = minCount,
+            maxCount = maxCount,
+            componentsPath = componentsPath,
+            componentsEquals = componentsEquals,
+            componentsExists = componentsExists,
+            nbtPath = nbtPath,
+            nbtEquals = nbtEquals,
+            nbtExists = nbtExists,
+            container = container.id,
+        )
+
+    private fun normalizeItemContainer(raw: String): String? =
+        when (raw) {
+            "inventory" -> "inventory"
+            "enderItems", "ender", "ender_items", "enderChest", "ender_chest" -> "enderItems"
+            else -> null
+        }
+
+    private fun playerItems(
+        player: SandboxPlayer,
+        container: String,
+    ): List<ItemStack> =
+        when (container) {
+            "inventory" -> player.inventory
+            "enderItems" -> player.enderItems
+            else -> emptyList()
+        }
+
+    private fun itemAssertionPrefix(
+        playerName: String,
+        container: String,
+    ): String = if (container == "inventory") "item for player $playerName" else "item for player $playerName in $container"
+
+    private fun itemContainerLabel(container: String): String = if (container == "inventory") "inventory" else container
+
+    private fun jsonPathMatches(
+        root: JsonObject,
+        path: String?,
+        equalsJson: String?,
+        exists: Boolean?,
+    ): Boolean {
+        if (path == null && equalsJson == null && exists == null) return true
+        val actual = JsonPaths.get(root, path)
+        if (exists != null && (actual != null) != exists) return false
+        equalsJson?.let { expectedJson ->
+            if (actual != JsonValues.parse(expectedJson)) return false
+        }
+        return exists != null || equalsJson != null || actual != null
+    }
+
+    private fun pathExpectationFailure(
+        label: String,
+        root: JsonObject?,
+        path: String?,
+        equalsJson: String?,
+        exists: Boolean?,
+    ): String? {
+        if (path == null && equalsJson == null && exists == null) return null
+        val actual = root?.let { JsonPaths.get(it, path) }
+        val displayPath = path ?: "<root>"
+        exists?.let { expected ->
+            val actualExists = actual != null
+            if (actualExists != expected) {
+                return "$label $displayPath exists expected $expected but was $actualExists"
+            }
+        }
+        equalsJson?.let { expectedJson ->
+            val expected = JsonValues.parse(expectedJson)
+            if (actual != expected) {
+                return "$label $displayPath expected ${JsonValues.render(
+                    expected,
+                )} but was ${actual?.let(JsonValues::render) ?: "<missing>"}"
+            }
+        }
+        if (exists == null && equalsJson == null && actual == null) {
+            return "$label $displayPath expected present but was <missing>"
+        }
+        return null
+    }
+
+    private fun describeItemExpectation(
+        id: String?,
+        count: Int?,
+        slot: Int?,
+        minCount: Int?,
+        maxCount: Int?,
+        componentsPath: String?,
+        componentsEquals: String?,
+        componentsExists: Boolean?,
+        nbtPath: String?,
+        nbtEquals: String?,
+        nbtExists: Boolean?,
+    ): String =
+        listOfNotNull(
+            id?.let { "id=$it" },
+            count?.let { "count=$it" },
+            minCount?.let { "minCount=$it" },
+            maxCount?.let { "maxCount=$it" },
+            slot?.let { "slot=$it" },
+            componentsPath?.let { "componentsPath=$it" },
+            componentsEquals?.let { "componentsEquals=$it" },
+            componentsExists?.let { "componentsExists=$it" },
+            nbtPath?.let { "nbtPath=$it" },
+            nbtEquals?.let { "nbtEquals=$it" },
+            nbtExists?.let { "nbtExists=$it" },
+        ).ifEmpty { listOf("<any item>") }.joinToString(", ")
+
+    private fun describeEffectExpectation(
+        effect: String,
+        durationTicks: Int?,
+        amplifier: Int?,
+        hideParticles: Boolean?,
+    ): String =
+        listOfNotNull(
+            "id=$effect",
+            durationTicks?.let { "durationTicks=$it" },
+            amplifier?.let { "amplifier=$it" },
+            hideParticles?.let { "hideParticles=$it" },
+        ).joinToString(", ")
+
+    private fun describeAttributeExpectation(
+        attribute: String,
+        value: Double?,
+        min: Double?,
+        max: Double?,
+    ): String =
+        listOfNotNull(
+            "id=$attribute",
+            value?.let { "value=$it" },
+            min?.let { "min=$it" },
+            max?.let { "max=$it" },
+        ).joinToString(", ")
+
+    /**
+     * Asserts the result of evaluating a loaded predicate.
+     */
+    @JvmOverloads
+    fun assertPredicate(
+        id: String,
+        expected: Boolean = true,
+        playerName: String? = null,
+    ): SandboxQuickTest =
+        apply {
+            val predicateId = ResourceLocation.parse(id)
+            val actual = sandbox.predicates.test(predicateId, predicateContextFor(playerName))
+            if (actual != expected) {
+                failures += "predicate $predicateId expected $expected but was $actual"
+            }
+        }
+
+    /**
+     * Asserts deterministic loot generation from a loaded loot table.
+     */
+    @JvmOverloads
+    fun assertLoot(
+        table: String,
+        context: String = "minecraft:empty",
+        playerName: String? = null,
+        seed: Long = 0,
+        count: Int? = null,
+        item: String? = null,
+    ): SandboxQuickTest =
+        apply {
+            val result =
+                sandbox.generateLoot(
+                    ResourceLocation.parse(table),
+                    ResourceLocation.parse(context),
+                    playerName?.let { sandbox.world.requirePlayer(it) },
+                    seed,
+                )
+            count?.let {
+                if (result.items.size != it) failures += "loot count expected $it but was ${result.items.size}"
+            }
+            item?.let { expected ->
+                val expectedId = ResourceLocation.parse(expected)
+                if (result.items.none { it.id == expectedId }) {
+                    failures += "loot expected item $expectedId but got ${result.items.map { it.id }}"
+                }
+            }
+        }
+
+    fun assertLoot(
+        table: String,
+        context: LootContextId,
+        playerName: String? = null,
+        seed: Long = 0,
+        count: Int? = null,
+        item: String? = null,
+    ): SandboxQuickTest = assertLoot(table, context.id, playerName, seed, count, item)
+
+    private fun predicateContextFor(playerName: String?): PredicateContext {
+        val player = playerName?.let { sandbox.world.requirePlayer(it) }
+        return PredicateContext(
+            world = sandbox.world,
+            player = player,
+            thisEntity = player,
+            origin = player?.position,
+            dimension = player?.dimension,
+            tool = player?.selectedItem,
+        )
+    }
+
+    /**
+     * Asserts whether an advancement is complete for a player.
+     *
+     * Completion is computed from the loaded advancement definition and the
+     * player's current criterion progress.
+     */
+    @JvmOverloads
+    fun assertAdvancementDone(
+        playerName: String,
+        id: String,
+        expected: Boolean = true,
+    ): SandboxQuickTest =
+        apply {
+            val player = sandbox.world.requirePlayer(playerName)
+            val advancementId = ResourceLocation.parse(id)
+            val advancement = sandbox.datapack.advancements[advancementId]
+            val progress = player.advancementProgress[advancementId]
+            val actual = advancement != null && progress?.isDone(advancement.requirements) == true
+            if (actual != expected) {
+                failures += "advancement $advancementId for $playerName done expected $expected but was $actual"
+            }
+        }
+
+    /**
+     * Asserts that at least one output event contains [text].
+     */
+    fun assertOutputContains(text: String): SandboxQuickTest =
+        apply {
+            assertOutput(OutputExpectation(contains = text))
+        }
+
+    /**
+     * Applies a structured output assertion.
+     */
+    fun assertOutput(expectation: OutputExpectation): SandboxQuickTest =
+        apply {
+            failures += OutputAssertions.failures(sandbox.world.outputs, expectation)
+        }
+
+    /**
+     * Builds and applies a structured output assertion.
+     *
+     * Null parameters are wildcards. When [count] is provided, exactly that many
+     * events must match; otherwise at least one event must match.
+     */
+    @JvmOverloads
+    fun assertOutput(
+        command: String? = null,
+        channel: String? = null,
+        target: String? = null,
+        text: String? = null,
+        contains: String? = null,
+        textMatches: String? = null,
+        count: Int? = null,
+        order: Int? = null,
+        normalizedText: String? = null,
+        normalizedContains: String? = null,
+        normalizedMatches: String? = null,
+        rawText: String? = null,
+        rawContains: String? = null,
+        rawTextMatches: String? = null,
+        normalizedRawText: String? = null,
+        normalizedRawContains: String? = null,
+        normalizedRawMatches: String? = null,
+        payloadPath: String? = null,
+        payloadEquals: JsonElement? = null,
+    ): SandboxQuickTest =
+        assertOutput(
+            OutputExpectation(
+                command = command,
+                channel = channel,
+                target = target,
+                text = text,
+                contains = contains,
+                textMatches = textMatches,
+                count = count,
+                order = order,
+                normalizedText = normalizedText,
+                normalizedContains = normalizedContains,
+                normalizedMatches = normalizedMatches,
+                rawText = rawText,
+                rawContains = rawContains,
+                rawTextMatches = rawTextMatches,
+                normalizedRawText = normalizedRawText,
+                normalizedRawContains = normalizedRawContains,
+                normalizedRawMatches = normalizedRawMatches,
+                payloadPath = payloadPath,
+                payloadEquals = payloadEquals,
+            ),
+        )
+
+    fun assertOutput(
+        channel: OutputChannel,
+        command: String? = null,
+        target: String? = null,
+        text: String? = null,
+        contains: String? = null,
+        textMatches: String? = null,
+        count: Int? = null,
+        order: Int? = null,
+        normalizedText: String? = null,
+        normalizedContains: String? = null,
+        normalizedMatches: String? = null,
+        rawText: String? = null,
+        rawContains: String? = null,
+        rawTextMatches: String? = null,
+        normalizedRawText: String? = null,
+        normalizedRawContains: String? = null,
+        normalizedRawMatches: String? = null,
+        payloadPath: String? = null,
+        payloadEquals: JsonElement? = null,
+    ): SandboxQuickTest =
+        assertOutput(
+            command = command,
+            channel = channel.id,
+            target = target,
+            text = text,
+            contains = contains,
+            textMatches = textMatches,
+            count = count,
+            order = order,
+            normalizedText = normalizedText,
+            normalizedContains = normalizedContains,
+            normalizedMatches = normalizedMatches,
+            rawText = rawText,
+            rawContains = rawContains,
+            rawTextMatches = rawTextMatches,
+            normalizedRawText = normalizedRawText,
+            normalizedRawContains = normalizedRawContains,
+            normalizedRawMatches = normalizedRawMatches,
+            payloadPath = payloadPath,
+            payloadEquals = payloadEquals,
+        )
+
+    /**
+     * Applies a structured trace assertion.
+     */
+    fun assertTrace(expectation: TraceExpectation): SandboxQuickTest =
+        apply {
+            failures += TraceAssertions.failures(sandbox.world.traces, expectation)
+        }
+
+    /**
+     * Builds and applies a structured trace assertion.
+     *
+     * Null parameters are wildcards. When [count] is provided, exactly that many
+     * events must match; otherwise at least one match is required.
+     */
+    @JvmOverloads
+    fun assertTrace(
+        command: String? = null,
+        root: String? = null,
+        contains: String? = null,
+        success: Boolean? = null,
+        fileContains: String? = null,
+        function: String? = null,
+        count: Int? = null,
+        outputs: Int? = null,
+        outputContains: String? = null,
+        outputTarget: String? = null,
+        hasDiff: Boolean? = null,
+        diffPath: String? = null,
+        diffKind: SnapshotDiffKind? = null,
+        diffContains: String? = null,
+    ): SandboxQuickTest =
+        assertTrace(
+            TraceExpectation(
+                command = command,
+                root = root,
+                contains = contains,
+                success = success,
+                fileContains = fileContains,
+                function = function,
+                count = count,
+                outputs = outputs,
+                outputContains = outputContains,
+                outputTarget = outputTarget,
+                hasDiff = hasDiff,
+                diffPath = diffPath,
+                diffKind = diffKind,
+                diffContains = diffContains,
+            ),
+        )
+
+    fun assertTrace(
+        root: CommandRoot,
+        command: String? = null,
+        contains: String? = null,
+        success: Boolean? = null,
+        fileContains: String? = null,
+        function: String? = null,
+        count: Int? = null,
+        outputs: Int? = null,
+        outputContains: String? = null,
+        outputTarget: String? = null,
+        hasDiff: Boolean? = null,
+        diffPath: String? = null,
+        diffKind: SnapshotDiffKind? = null,
+        diffContains: String? = null,
+    ): SandboxQuickTest =
+        assertTrace(
+            command = command,
+            root = root.id,
+            contains = contains,
+            success = success,
+            fileContains = fileContains,
+            function = function,
+            count = count,
+            outputs = outputs,
+            outputContains = outputContains,
+            outputTarget = outputTarget,
+            hasDiff = hasDiff,
+            diffPath = diffPath,
+            diffKind = diffKind,
+            diffContains = diffContains,
+        )
+
+    /**
+     * Applies a structured player event trace assertion.
+     */
+    fun assertPlayerEventTrace(expectation: PlayerEventTraceExpectation): SandboxQuickTest =
+        apply {
+            failures += PlayerEventTraceAssertions.failures(sandbox.world.playerEventTraces, expectation)
+        }
+
+    /**
+     * Builds and applies a structured player event trace assertion.
+     *
+     * Null parameters are wildcards. When [count] is provided, exactly that many
+     * event traces must match; otherwise at least one event trace must match.
+     */
+    @JvmOverloads
+    fun assertPlayerEventTrace(
+        player: String? = null,
+        type: String? = null,
+        success: Boolean? = null,
+        advancement: String? = null,
+        criterion: String? = null,
+        count: Int? = null,
+        failedAdvancement: String? = null,
+        failedCriterion: String? = null,
+        failureContains: String? = null,
+        item: String? = null,
+        entity: String? = null,
+        block: String? = null,
+        blockX: Int? = null,
+        blockY: Int? = null,
+        blockZ: Int? = null,
+        recipe: String? = null,
+        fromDimension: String? = null,
+        toDimension: String? = null,
+        damageSource: String? = null,
+        damageAmount: Double? = null,
+        inputDevice: String? = null,
+        inputCode: String? = null,
+        inputAction: String? = null,
+        target: String? = null,
+        targetUuid: String? = null,
+        interactionResponse: Boolean? = null,
+    ): SandboxQuickTest =
+        assertPlayerEventTrace(
+            playerEventTraceExpectation(
+                player = player,
+                type = type,
+                success = success,
+                advancement = advancement,
+                criterion = criterion,
+                count = count,
+                failedAdvancement = failedAdvancement,
+                failedCriterion = failedCriterion,
+                failureContains = failureContains,
+                item = item,
+                entity = entity,
+                block = block,
+                blockX = blockX,
+                blockY = blockY,
+                blockZ = blockZ,
+                recipe = recipe,
+                fromDimension = fromDimension,
+                toDimension = toDimension,
+                damageSource = damageSource,
+                damageAmount = damageAmount,
+                inputDevice = inputDevice,
+                inputCode = inputCode,
+                inputAction = inputAction,
+                target = target,
+                targetUuid = targetUuid,
+                interactionResponse = interactionResponse,
+            ),
+        )
+
+    fun assertPlayerEventTrace(
+        type: PlayerEventType,
+        player: String? = null,
+        success: Boolean? = null,
+        advancement: String? = null,
+        criterion: String? = null,
+        count: Int? = null,
+        failedAdvancement: String? = null,
+        failedCriterion: String? = null,
+        failureContains: String? = null,
+        item: String? = null,
+        entity: String? = null,
+        block: String? = null,
+        blockX: Int? = null,
+        blockY: Int? = null,
+        blockZ: Int? = null,
+        recipe: String? = null,
+        fromDimension: String? = null,
+        toDimension: String? = null,
+        damageSource: String? = null,
+        damageAmount: Double? = null,
+        inputDevice: PlayerInputDevice? = null,
+        inputCode: String? = null,
+        inputAction: PlayerInputAction? = null,
+        target: String? = null,
+        targetUuid: String? = null,
+        interactionResponse: Boolean? = null,
+    ): SandboxQuickTest =
+        assertPlayerEventTrace(
+            player = player,
+            type = type.id,
+            success = success,
+            advancement = advancement,
+            criterion = criterion,
+            count = count,
+            failedAdvancement = failedAdvancement,
+            failedCriterion = failedCriterion,
+            failureContains = failureContains,
+            item = item,
+            entity = entity,
+            block = block,
+            blockX = blockX,
+            blockY = blockY,
+            blockZ = blockZ,
+            recipe = recipe,
+            fromDimension = fromDimension,
+            toDimension = toDimension,
+            damageSource = damageSource,
+            damageAmount = damageAmount,
+            inputDevice = inputDevice?.id,
+            inputCode = inputCode,
+            inputAction = inputAction?.id,
+            target = target,
+            targetUuid = targetUuid,
+            interactionResponse = interactionResponse,
+        )
+
+    /**
+     * Returns a defensive copy of all output events recorded so far.
+     */
+    fun outputs(): List<OutputEvent> = sandbox.world.outputs.toList()
+
+    /**
+     * Returns a defensive copy of all command trace events recorded so far.
+     */
+    fun traces(): List<CommandTraceEvent> = sandbox.world.traces.toList()
+
+    /**
+     * Returns a defensive copy of all player event trace records.
+     */
+    fun playerEventTraces(): List<PlayerEventTraceEvent> = sandbox.world.playerEventTraces.toList()
+
+    /**
+     * Returns player event trace records matching [expectation] without registering a failure.
+     */
+    fun matchingPlayerEventTraces(expectation: PlayerEventTraceExpectation): List<PlayerEventTraceEvent> =
+        PlayerEventTraceAssertions.matching(sandbox.world.playerEventTraces, expectation)
+
+    /**
+     * Builds a player event trace expectation and returns matching records without registering a failure.
+     */
+    @JvmOverloads
+    fun matchingPlayerEventTraces(
+        player: String? = null,
+        type: String? = null,
+        success: Boolean? = null,
+        advancement: String? = null,
+        criterion: String? = null,
+        count: Int? = null,
+        failedAdvancement: String? = null,
+        failedCriterion: String? = null,
+        failureContains: String? = null,
+        item: String? = null,
+        entity: String? = null,
+        block: String? = null,
+        blockX: Int? = null,
+        blockY: Int? = null,
+        blockZ: Int? = null,
+        recipe: String? = null,
+        fromDimension: String? = null,
+        toDimension: String? = null,
+        damageSource: String? = null,
+        damageAmount: Double? = null,
+        inputDevice: String? = null,
+        inputCode: String? = null,
+        inputAction: String? = null,
+        target: String? = null,
+        targetUuid: String? = null,
+        interactionResponse: Boolean? = null,
+    ): List<PlayerEventTraceEvent> =
+        matchingPlayerEventTraces(
+            playerEventTraceExpectation(
+                player = player,
+                type = type,
+                success = success,
+                advancement = advancement,
+                criterion = criterion,
+                count = count,
+                failedAdvancement = failedAdvancement,
+                failedCriterion = failedCriterion,
+                failureContains = failureContains,
+                item = item,
+                entity = entity,
+                block = block,
+                blockX = blockX,
+                blockY = blockY,
+                blockZ = blockZ,
+                recipe = recipe,
+                fromDimension = fromDimension,
+                toDimension = toDimension,
+                damageSource = damageSource,
+                damageAmount = damageAmount,
+                inputDevice = inputDevice,
+                inputCode = inputCode,
+                inputAction = inputAction,
+                target = target,
+                targetUuid = targetUuid,
+                interactionResponse = interactionResponse,
+            ),
+        )
+
+    fun matchingPlayerEventTraces(
+        type: PlayerEventType,
+        player: String? = null,
+        success: Boolean? = null,
+        advancement: String? = null,
+        criterion: String? = null,
+        count: Int? = null,
+        failedAdvancement: String? = null,
+        failedCriterion: String? = null,
+        failureContains: String? = null,
+        item: String? = null,
+        entity: String? = null,
+        block: String? = null,
+        blockX: Int? = null,
+        blockY: Int? = null,
+        blockZ: Int? = null,
+        recipe: String? = null,
+        fromDimension: String? = null,
+        toDimension: String? = null,
+        damageSource: String? = null,
+        damageAmount: Double? = null,
+        inputDevice: PlayerInputDevice? = null,
+        inputCode: String? = null,
+        inputAction: PlayerInputAction? = null,
+        target: String? = null,
+        targetUuid: String? = null,
+        interactionResponse: Boolean? = null,
+    ): List<PlayerEventTraceEvent> =
+        matchingPlayerEventTraces(
+            player = player,
+            type = type.id,
+            success = success,
+            advancement = advancement,
+            criterion = criterion,
+            count = count,
+            failedAdvancement = failedAdvancement,
+            failedCriterion = failedCriterion,
+            failureContains = failureContains,
+            item = item,
+            entity = entity,
+            block = block,
+            blockX = blockX,
+            blockY = blockY,
+            blockZ = blockZ,
+            recipe = recipe,
+            fromDimension = fromDimension,
+            toDimension = toDimension,
+            damageSource = damageSource,
+            damageAmount = damageAmount,
+            inputDevice = inputDevice?.id,
+            inputCode = inputCode,
+            inputAction = inputAction?.id,
+            target = target,
+            targetUuid = targetUuid,
+            interactionResponse = interactionResponse,
+        )
+
+    /**
+     * Returns command trace events matching [expectation] without registering a failure.
+     */
+    fun matchingTraces(expectation: TraceExpectation): List<CommandTraceEvent> = TraceAssertions.matching(sandbox.world.traces, expectation)
+
+    /**
+     * Builds a trace expectation and returns matching events without registering a failure.
+     */
+    @JvmOverloads
+    fun matchingTraces(
+        command: String? = null,
+        root: String? = null,
+        contains: String? = null,
+        success: Boolean? = null,
+        fileContains: String? = null,
+        function: String? = null,
+        outputs: Int? = null,
+        outputContains: String? = null,
+        outputTarget: String? = null,
+        hasDiff: Boolean? = null,
+        diffPath: String? = null,
+        diffKind: SnapshotDiffKind? = null,
+        diffContains: String? = null,
+    ): List<CommandTraceEvent> =
+        matchingTraces(
+            TraceExpectation(
+                command = command,
+                root = root,
+                contains = contains,
+                success = success,
+                fileContains = fileContains,
+                function = function,
+                outputs = outputs,
+                outputContains = outputContains,
+                outputTarget = outputTarget,
+                hasDiff = hasDiff,
+                diffPath = diffPath,
+                diffKind = diffKind,
+                diffContains = diffContains,
+            ),
+        )
+
+    fun matchingTraces(
+        root: CommandRoot,
+        command: String? = null,
+        contains: String? = null,
+        success: Boolean? = null,
+        fileContains: String? = null,
+        function: String? = null,
+        outputs: Int? = null,
+        outputContains: String? = null,
+        outputTarget: String? = null,
+        hasDiff: Boolean? = null,
+        diffPath: String? = null,
+        diffKind: SnapshotDiffKind? = null,
+        diffContains: String? = null,
+    ): List<CommandTraceEvent> =
+        matchingTraces(
+            command = command,
+            root = root.id,
+            contains = contains,
+            success = success,
+            fileContains = fileContains,
+            function = function,
+            outputs = outputs,
+            outputContains = outputContains,
+            outputTarget = outputTarget,
+            hasDiff = hasDiff,
+            diffPath = diffPath,
+            diffKind = diffKind,
+            diffContains = diffContains,
+        )
+
+    /**
+     * Returns stable JSON Pointer diffs from the initial scenario state to now.
+     */
+    fun snapshotDiffs(): List<SnapshotDiffEntry> = SnapshotDiff.stateDiff(initialSnapshot, sandbox.snapshotJson())
+
+    /**
+     * Asserts that the current scenario changed the initial snapshot as expected.
+     *
+     * Null parameters are wildcards. [contains] matches the rendered diff line.
+     * When [count] is provided, exactly that many entries must match; otherwise
+     * at least one match is required.
+     */
+    @JvmOverloads
+    fun assertSnapshotDiff(
+        path: String? = null,
+        kind: SnapshotDiffKind? = null,
+        contains: String? = null,
+        count: Int? = null,
+    ): SandboxQuickTest =
+        apply {
+            val entries = snapshotDiffs()
+            val matches =
+                entries.filter { entry ->
+                    (path == null || entry.path.ifBlank { "/" } == path) &&
+                        (kind == null || entry.kind == kind) &&
+                        (contains == null || contains in entry.render())
+                }
+            if (count != null && matches.size != count) {
+                failures +=
+                    "snapshotDiff ${describeSnapshotDiffExpectation(
+                        path,
+                        kind,
+                        contains,
+                    )} expected count $count but was ${matches.size}; ${actualSnapshotDiffs(entries)}"
+            }
+            if (count == null && matches.isEmpty()) {
+                failures +=
+                    "snapshotDiff ${describeSnapshotDiffExpectation(
+                        path,
+                        kind,
+                        contains,
+                    )} did not match any snapshot change; ${actualSnapshotDiffs(entries)}"
+            }
+        }
+
+    /**
+     * Returns output events matching [expectation] without registering a failure.
+     */
+    fun matchingOutputs(expectation: OutputExpectation): List<OutputEvent> = OutputAssertions.matching(sandbox.world.outputs, expectation)
+
+    /**
+     * Builds an output expectation and returns matching events without registering a failure.
+     */
+    @JvmOverloads
+    fun matchingOutputs(
+        command: String? = null,
+        channel: String? = null,
+        target: String? = null,
+        text: String? = null,
+        contains: String? = null,
+        textMatches: String? = null,
+        normalizedText: String? = null,
+        normalizedContains: String? = null,
+        normalizedMatches: String? = null,
+        rawText: String? = null,
+        rawContains: String? = null,
+        rawTextMatches: String? = null,
+        normalizedRawText: String? = null,
+        normalizedRawContains: String? = null,
+        normalizedRawMatches: String? = null,
+        payloadPath: String? = null,
+        payloadEquals: JsonElement? = null,
+    ): List<OutputEvent> =
+        matchingOutputs(
+            OutputExpectation(
+                command = command,
+                channel = channel,
+                target = target,
+                text = text,
+                contains = contains,
+                textMatches = textMatches,
+                normalizedText = normalizedText,
+                normalizedContains = normalizedContains,
+                normalizedMatches = normalizedMatches,
+                rawText = rawText,
+                rawContains = rawContains,
+                rawTextMatches = rawTextMatches,
+                normalizedRawText = normalizedRawText,
+                normalizedRawContains = normalizedRawContains,
+                normalizedRawMatches = normalizedRawMatches,
+                payloadPath = payloadPath,
+                payloadEquals = payloadEquals,
+            ),
+        )
+
+    fun matchingOutputs(
+        channel: OutputChannel,
+        command: String? = null,
+        target: String? = null,
+        text: String? = null,
+        contains: String? = null,
+        textMatches: String? = null,
+        normalizedText: String? = null,
+        normalizedContains: String? = null,
+        normalizedMatches: String? = null,
+        rawText: String? = null,
+        rawContains: String? = null,
+        rawTextMatches: String? = null,
+        normalizedRawText: String? = null,
+        normalizedRawContains: String? = null,
+        normalizedRawMatches: String? = null,
+        payloadPath: String? = null,
+        payloadEquals: JsonElement? = null,
+    ): List<OutputEvent> =
+        matchingOutputs(
+            command = command,
+            channel = channel.id,
+            target = target,
+            text = text,
+            contains = contains,
+            textMatches = textMatches,
+            normalizedText = normalizedText,
+            normalizedContains = normalizedContains,
+            normalizedMatches = normalizedMatches,
+            rawText = rawText,
+            rawContains = rawContains,
+            rawTextMatches = rawTextMatches,
+            normalizedRawText = normalizedRawText,
+            normalizedRawContains = normalizedRawContains,
+            normalizedRawMatches = normalizedRawMatches,
+            payloadPath = payloadPath,
+            payloadEquals = payloadEquals,
+        )
+
+    private fun entityHealth(entity: SandboxEntity): Double? =
+        entity
+            .fullNbt(sandbox.profile)
+            .get("Health")
+            ?.takeIf { it.isJsonPrimitive }
+            ?.asDouble
+
+    private fun entityNbtMatches(
+        entity: SandboxEntity,
+        path: String?,
+        equalsJson: String?,
+        exists: Boolean?,
+    ): Boolean = jsonPathMatches(entity.fullNbt(sandbox.profile), path, equalsJson, exists)
+
+    private fun describeEntityExpectation(
+        type: String?,
+        tag: String?,
+        uuid: String?,
+        position: Position?,
+        dimension: String?,
+        health: Double? = null,
+        vehicle: String? = null,
+        passenger: String? = null,
+        passengerCount: Int? = null,
+        nbtPath: String? = null,
+        nbtEquals: String? = null,
+        nbtExists: Boolean? = null,
+    ): String =
+        listOfNotNull(
+            type?.let { "type=$it" },
+            tag?.let { "tag=$it" },
+            uuid?.let { "uuid=$it" },
+            position?.let { "position=$it" },
+            dimension?.let { "dimension=$it" },
+            health?.let { "health=$it" },
+            vehicle?.let { "vehicle=$it" },
+            passenger?.let { "passenger=$it" },
+            passengerCount?.let { "passengerCount=$it" },
+            nbtPath?.let { "nbtPath=$it" },
+            nbtEquals?.let { "nbtEquals=$it" },
+            nbtExists?.let { "nbtExists=$it" },
+        ).ifEmpty { listOf("<any entity>") }.joinToString(", ")
+
+    private fun describeSnapshotDiffExpectation(
+        path: String?,
+        kind: SnapshotDiffKind?,
+        contains: String?,
+    ): String =
+        listOfNotNull(
+            path?.let { "path=$it" },
+            kind?.let { "kind=${it.name.lowercase()}" },
+            contains?.let { "contains=$it" },
+        ).ifEmpty { listOf("<any snapshot diff>") }.joinToString(", ")
+
+    private fun actualSnapshotDiffs(entries: List<SnapshotDiffEntry>): String {
+        if (entries.isEmpty()) return "actual snapshot diffs: <none>"
+        val rendered = entries.take(5).joinToString("; ") { it.render().take(240) }
+        val suffix = if (entries.size > 5) "; ... +${entries.size - 5} more" else ""
+        return "actual snapshot diffs: $rendered$suffix"
+    }
+
+    private fun actualScheduledFunctions(): String {
+        if (sandbox.world.scheduledFunctions.isEmpty()) return "actual scheduled functions: <none>"
+        val rendered =
+            sandbox.world.scheduledFunctions
+                .sortedWith(compareBy<ScheduledFunction> { it.dueTick }.thenBy { it.id.toString() })
+                .take(5)
+                .joinToString("; ") { "${it.id}@${it.dueTick}" }
+        val suffix = if (sandbox.world.scheduledFunctions.size > 5) "; ... +${sandbox.world.scheduledFunctions.size - 5} more" else ""
+        return "actual scheduled functions: $rendered$suffix"
+    }
+
+    private fun actualRandomSequences(): String {
+        if (sandbox.world.randomSequences.isEmpty()) return "actual random sequences: <none>"
+        val rendered =
+            sandbox.world.randomSequences
+                .toSortedMap()
+                .entries
+                .take(5)
+                .joinToString("; ") { (name, state) -> "$name=$state" }
+        val suffix = if (sandbox.world.randomSequences.size > 5) "; ... +${sandbox.world.randomSequences.size - 5} more" else ""
+        return "actual random sequences: $rendered$suffix"
+    }
+
+    private fun actualForcedChunks(): String {
+        if (sandbox.world.forcedChunks.isEmpty()) return "actual forced chunks: <none>"
+        val rendered =
+            sandbox.world.forcedChunks
+                .sorted()
+                .take(5)
+                .joinToString("; ") { "${it.x},${it.z}" }
+        val suffix = if (sandbox.world.forcedChunks.size > 5) "; ... +${sandbox.world.forcedChunks.size - 5} more" else ""
+        return "actual forced chunks: $rendered$suffix"
+    }
+
+    private fun actualGamerules(): String {
+        if (sandbox.world.gamerules.isEmpty()) return "actual gamerules: <none>"
+        val rendered =
+            sandbox.world.gamerules
+                .toSortedMap()
+                .entries
+                .take(5)
+                .joinToString("; ") { (name, value) -> "$name=$value" }
+        val suffix = if (sandbox.world.gamerules.size > 5) "; ... +${sandbox.world.gamerules.size - 5} more" else ""
+        return "actual gamerules: $rendered$suffix"
+    }
+
+    private fun actualScoreboardObjectives(): String {
+        if (sandbox.world.objectives.isEmpty()) return "actual scoreboard objectives: <none>"
+        val rendered =
+            sandbox.world.objectives
+                .toSortedMap()
+                .entries
+                .take(5)
+                .joinToString("; ") { (name, criteria) ->
+                    val metadata = sandbox.world.scoreboardObjectiveMetadata[name] ?: ScoreboardObjectiveMetadata()
+                    "$name($criteria, displayName=${metadata.displayName ?: name}, renderType=${metadata.renderType}, displayAutoUpdate=${metadata.displayAutoUpdate})"
+                }
+        val suffix = if (sandbox.world.objectives.size > 5) "; ... +${sandbox.world.objectives.size - 5} more" else ""
+        return "actual scoreboard objectives: $rendered$suffix"
+    }
+
+    private fun actualScoreboardDisplays(): String {
+        if (sandbox.world.scoreboardDisplays.isEmpty()) return "actual scoreboard displays: <none>"
+        val rendered =
+            sandbox.world.scoreboardDisplays
+                .toSortedMap()
+                .entries
+                .take(5)
+                .joinToString("; ") { (slot, objective) -> "$slot=$objective" }
+        val suffix = if (sandbox.world.scoreboardDisplays.size > 5) "; ... +${sandbox.world.scoreboardDisplays.size - 5} more" else ""
+        return "actual scoreboard displays: $rendered$suffix"
+    }
+
+    /**
+     * Builds an immutable report for the current scenario state.
+     */
+    fun report(): SandboxQuickTestReport =
+        SandboxQuickTestReport(
+            passed = failures.isEmpty(),
+            failures = failures.toList(),
+            outputs = sandbox.world.outputs.toList(),
+            traces = sandbox.world.traces.toList(),
+            playerEventTraces = sandbox.world.playerEventTraces.toList(),
+            snapshotDiffs = snapshotDiffs(),
+            resourceSummary = sandbox.datapack.resourceSummary(),
+            snapshot = sandbox.snapshotJson(),
+        )
+
+    /**
+     * Returns [report] when all collected assertions passed; otherwise throws
+     * [SandboxQuickTestAssertionError].
+     */
+    fun requirePassed(): SandboxQuickTestReport {
+        val report = report()
+        if (!report.passed) throw SandboxQuickTestAssertionError(report)
+        return report
+    }
+
+    companion object {
+        /**
+         * Creates a quick-test scenario from one or more datapack paths.
+         *
+         * @param packs Directories or zip files to load, in pack priority order.
+         * @param version Minecraft version profile id.
+         * @param defaultPlayerName Name of the initial player, or `null` to create no implicit player.
+         * @param unsupportedFeatureMode Policy for supported-by-vanilla but unsupported-by-sandbox commands.
+         */
+        @JvmStatic
+        @JvmOverloads
+        fun create(
+            packs: List<Path>,
+            version: String = VersionProfiles.default.id,
+            defaultPlayerName: String? = "Steve",
+            unsupportedFeatureMode: UnsupportedFeatureMode = UnsupportedFeatureMode.WARN,
+        ): SandboxQuickTest =
+            SandboxQuickTest(
+                createSandbox(version, packs, defaultPlayerName = defaultPlayerName, unsupportedFeatureMode = unsupportedFeatureMode),
+            )
+
+        /**
+         * Creates a multi-version quick-test matrix.
+         */
+        @JvmStatic
+        @JvmOverloads
+        fun matrix(
+            packsByVersion: Map<String, List<Path>>,
+            defaultPlayerName: String? = "Steve",
+            unsupportedFeatureMode: UnsupportedFeatureMode = UnsupportedFeatureMode.WARN,
+        ): SandboxQuickTestMatrix = SandboxQuickTestMatrix.create(packsByVersion, defaultPlayerName, unsupportedFeatureMode)
+
+        /**
+         * Creates a quick-test scenario backed by a single `.mcfunction` file.
+         *
+         * This is the lightest API path when a caller only wants to test one
+         * command file and does not want to create a full datapack directory.
+         *
+         * @param functionFile Path to the `.mcfunction` file.
+         * @param version Minecraft version profile id used for command parsing and NBT validation.
+         * @param functionId Temporary function id assigned to the file.
+         * @param dependencyPacks Datapack directories or zip files loaded before this function.
+         */
+        @JvmStatic
+        @JvmOverloads
+        fun singleFunction(
+            functionFile: Path,
+            version: String,
+            functionId: String = SingleFunctionDatapack.DEFAULT_ID,
+            defaultPlayerName: String? = "Steve",
+            unsupportedFeatureMode: UnsupportedFeatureMode = UnsupportedFeatureMode.WARN,
+            dependencyPacks: List<Path> = emptyList(),
+        ): SandboxQuickTest {
+            val id = ResourceLocation.parse(functionId)
+            return functions(
+                functionSources = listOf(FunctionSource.file(id.toString(), functionFile)),
+                version = version,
+                defaultFunctionId = id.toString(),
+                defaultPlayerName = defaultPlayerName,
+                unsupportedFeatureMode = unsupportedFeatureMode,
+                dependencyPacks = dependencyPacks,
+            )
+        }
+
+        /**
+         * Creates a quick-test scenario backed by one in-memory `.mcfunction` string.
+         *
+         * This avoids creating temporary files when tests generate command text
+         * dynamically.
+         *
+         * @param functionText Raw `.mcfunction` content.
+         * @param version Minecraft version profile id used for command parsing and NBT validation.
+         * @param functionId Temporary function id assigned to [functionText].
+         * @param sourceName Label used in diagnostics.
+         * @param dependencyPacks Datapack directories or zip files loaded before this function.
+         */
+        @JvmStatic
+        @JvmOverloads
+        fun singleFunctionText(
+            functionText: String,
+            version: String,
+            functionId: String = SingleFunctionDatapack.DEFAULT_ID,
+            sourceName: String = "<string:$functionId>",
+            defaultPlayerName: String? = "Steve",
+            unsupportedFeatureMode: UnsupportedFeatureMode = UnsupportedFeatureMode.WARN,
+            dependencyPacks: List<Path> = emptyList(),
+        ): SandboxQuickTest =
+            functions(
+                functionSources = listOf(FunctionSource.text(functionId, functionText, sourceName)),
+                version = version,
+                defaultFunctionId = functionId,
+                defaultPlayerName = defaultPlayerName,
+                unsupportedFeatureMode = unsupportedFeatureMode,
+                dependencyPacks = dependencyPacks,
+            )
+
+        /**
+         * Creates a quick-test scenario backed by multiple synthetic function sources.
+         *
+         * Use [FunctionSource.file] and [FunctionSource.text] to mix file-backed
+         * and in-memory functions without creating a full datapack directory.
+         *
+         * @param functionSources Functions to load into the synthetic datapack.
+         * @param defaultFunctionId Function id used by [SandboxQuickTest.function].
+         * @param dependencyPacks Datapack directories or zip files loaded before [functionSources].
+         */
+        @JvmStatic
+        @JvmOverloads
+        fun functions(
+            functionSources: List<FunctionSource>,
+            version: String,
+            defaultFunctionId: String = SingleFunctionDatapack.DEFAULT_ID,
+            defaultPlayerName: String? = "Steve",
+            unsupportedFeatureMode: UnsupportedFeatureMode = UnsupportedFeatureMode.WARN,
+            dependencyPacks: List<Path> = emptyList(),
+        ): SandboxQuickTest {
+            val id = ResourceLocation.parse(defaultFunctionId)
+            return SandboxQuickTest(
+                sandbox =
+                    if (dependencyPacks.isEmpty()) {
+                        createFunctionSandbox(
+                            version = version,
+                            functionSources = functionSources,
+                            defaultPlayerName = defaultPlayerName,
+                            unsupportedFeatureMode = unsupportedFeatureMode,
+                        )
+                    } else {
+                        createFunctionSandbox(
+                            version = version,
+                            packs = dependencyPacks,
+                            functionSources = functionSources,
+                            defaultPlayerName = defaultPlayerName,
+                            unsupportedFeatureMode = unsupportedFeatureMode,
+                        )
+                    },
+                defaultFunctionId = id,
+            )
+        }
+    }
+}

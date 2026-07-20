@@ -1,0 +1,1577 @@
+﻿package moe.afox.dpsandbox.core
+
+import com.google.gson.JsonPrimitive
+import java.nio.file.Files
+import java.nio.file.Path
+import java.util.zip.ZipEntry
+import java.util.zip.ZipOutputStream
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertTrue
+
+class SandboxQuickTestTest {
+    private fun fixturePack(): Path = Path.of("../core/src/test/resources/packs/counter")
+
+    private fun fullStackPack(): Path = Path.of("../examples/full-stack/pack")
+
+    @Test
+    fun `runs quick code tests from core api`() {
+        val report =
+            SandboxQuickTest
+                .create(listOf(fixturePack()), version = "26.1.2")
+                .load()
+                .ticks(20)
+                .assertScore("#clock", "ticks", 20)
+                .requirePassed()
+
+        assertTrue(report.passed)
+        assertEquals(
+            20,
+            report.snapshot.asJsonObject
+                .get("scores")
+                .asJsonObject
+                .get("ticks")
+                .asJsonObject
+                .get("#clock")
+                .asInt,
+        )
+    }
+
+    @Test
+    fun `quick reports expose resource diagnostics`() {
+        val dir = Files.createTempDirectory("dps-quick-resources")
+        val first = writeResourceDiagnosticPack(dir.resolve("first"), "one", includeMissingLoad = true)
+        val second = writeResourceDiagnosticPack(dir.resolve("second"), "two", includeMissingLoad = false)
+
+        val report = SandboxQuickTest.create(listOf(first, second), version = "26.2").report()
+
+        assertEquals(2, report.resourceSummary.functions)
+        assertEquals(1, report.resourceSummary.overriddenResources)
+        assertTrue(
+            report.resourceSummary.overlays.any {
+                it.type == "recipe" && it.id == ResourceLocation.parse("demo:marker") && it.active
+            },
+            report.resourceSummary.overlays.toString(),
+        )
+        assertTrue(
+            report.resourceSummary.missingReferences.any {
+                it.source == "#minecraft:load" && it.type == "function" && it.id == ResourceLocation.parse("demo:missing_load")
+            },
+            report.resourceSummary.missingReferences.toString(),
+        )
+    }
+
+    @Test
+    fun `quick code tests collect assertion failures`() {
+        val error =
+            assertFailsWith<SandboxQuickTestAssertionError> {
+                SandboxQuickTest
+                    .create(listOf(fixturePack()), version = "26.1.2")
+                    .assertScore("#clock", "ticks", 1)
+                    .requirePassed()
+            }
+
+        assertTrue(
+            error.report.failures
+                .single()
+                .contains("expected 1 but was 0"),
+        )
+    }
+
+    @Test
+    fun `quick storage existence assertions explain failures`() {
+        val report =
+            SandboxQuickTest
+                .create(listOf(fixturePack()), version = "26.1.2")
+                .world {
+                    storage("demo:env", "{ready:true}")
+                }.assertStorageExists("demo:env", "absent")
+                .assertStorageMissing("demo:env", "ready")
+                .report()
+
+        assertTrue(!report.passed)
+        assertTrue(
+            report.failures.any { "storage demo:env absent expected present but was <missing>" in it },
+            report.failures.joinToString(),
+        )
+        assertTrue(report.failures.any { "storage demo:env ready expected missing but was true" in it }, report.failures.joinToString())
+    }
+
+    @Test
+    fun `quick score range assertions explain failures`() {
+        val report =
+            SandboxQuickTest
+                .create(listOf(fixturePack()), version = "26.1.2")
+                .command("scoreboard objectives add runs dummy")
+                .command("scoreboard players set #range runs 5")
+                .assertScoreAtLeast("#range", "runs", 6)
+                .assertScoreAtMost("#range", "runs", 4)
+                .assertScoreRange("#range", "runs")
+                .report()
+
+        assertTrue(!report.passed)
+        assertTrue(report.failures.any { "score #range runs expected >= 6 but was 5" in it }, report.failures.joinToString())
+        assertTrue(report.failures.any { "score #range runs expected <= 4 but was 5" in it }, report.failures.joinToString())
+        assertTrue(report.failures.any { "score #range runs range assertion requires min or max" in it }, report.failures.joinToString())
+    }
+
+    @Test
+    fun `quick gamerule assertions check stored rule values`() {
+        val report =
+            SandboxQuickTest
+                .create(listOf(fixturePack()), version = "26.1.2")
+                .command("gamerule doDaylightCycle false")
+                .command("gamerule maxEntityCramming 0")
+                .assertGamerule("doDaylightCycle", "false")
+                .assertGamerule("maxEntityCramming", "0")
+                .assertGamerule("missingRule", exists = false)
+                .requirePassed()
+
+        assertTrue(report.passed)
+    }
+
+    @Test
+    fun `quick world state assertions check random sequences and forced chunks`() {
+        val report =
+            SandboxQuickTest
+                .create(listOf(fixturePack()), version = "26.1.2")
+                .world {
+                    randomSequence("demo:seq", 42)
+                    forcedChunk(0, 0)
+                }.assertRandomSequence("demo:seq", 42)
+                .assertRandomSequence("demo:missing", exists = false)
+                .assertForcedChunk(0, 0)
+                .assertForcedChunk(1, 1, exists = false)
+                .requirePassed()
+
+        assertTrue(report.passed)
+    }
+
+    @Test
+    fun `quick scoreboard UI assertions check objective metadata and displays`() {
+        val report =
+            SandboxQuickTest
+                .create(listOf(fixturePack()), version = "26.1.2")
+                .command("scoreboard objectives add health dummy")
+                .command("scoreboard objectives modify health displayname Health Points")
+                .command("scoreboard objectives modify health rendertype hearts")
+                .command("scoreboard objectives modify health displayautoupdate false")
+                .command("scoreboard objectives setdisplay sidebar.team.red health")
+                .assertScoreboardObjective(
+                    "health",
+                    renderType = ScoreboardRenderType.HEARTS,
+                    criteria = "dummy",
+                    displayName = "Health Points",
+                    displayAutoUpdate = false,
+                ).assertScoreboardObjective("missing", exists = false)
+                .assertScoreboardDisplay(ScoreboardDisplaySlot.SIDEBAR_TEAM_RED, "health")
+                .assertScoreboardDisplay("list", exists = false)
+                .requirePassed()
+
+        assertTrue(report.passed)
+    }
+
+    @Test
+    fun `quick entity count range assertions explain failures`() {
+        val report =
+            SandboxQuickTest
+                .create(listOf(fixturePack()), version = "26.1.2")
+                .world {
+                    entity("minecraft:pig", 0.0, 64.0, 0.0, tags = listOf("range"))
+                    entity("minecraft:pig", 1.0, 64.0, 0.0, tags = listOf("range"))
+                }.assertEntityCountAtLeast(3, type = "minecraft:pig", tag = "range")
+                .assertEntityCountAtMost(1, type = "minecraft:pig", tag = "range")
+                .assertEntityCountRange(type = "minecraft:pig", tag = "range")
+                .report()
+
+        assertTrue(!report.passed)
+        assertTrue(
+            report.failures.any {
+                "entityCount type=minecraft:pig, tag=range expected >= 3 but was 2" in it
+            },
+            report.failures.joinToString(),
+        )
+        assertTrue(
+            report.failures.any {
+                "entityCount type=minecraft:pig, tag=range expected <= 1 but was 2" in it
+            },
+            report.failures.joinToString(),
+        )
+        assertTrue(
+            report.failures.any {
+                "entityCount type=minecraft:pig, tag=range range assertion requires min or max" in it
+            },
+            report.failures.joinToString(),
+        )
+    }
+
+    @Test
+    fun `quick item count range assertions explain failures`() {
+        val report =
+            SandboxQuickTest
+                .create(listOf(fixturePack()), version = "26.1.2")
+                .world {
+                    player("Alex", inventory = listOf(item("minecraft:stick", 2)))
+                }.assertItem("Alex", ItemContainer.INVENTORY, "minecraft:stick", minCount = 3)
+                .report()
+
+        assertTrue(!report.passed)
+        assertTrue(
+            report.failures.any { "item for player Alex expected id=minecraft:stick, minCount=3" in it },
+            report.failures.joinToString(),
+        )
+    }
+
+    @Test
+    fun `quick item path assertions explain failures`() {
+        val report =
+            SandboxQuickTest
+                .create(listOf(fixturePack()), version = "26.1.2")
+                .world {
+                    player(
+                        "Alex",
+                        inventory =
+                            listOf(
+                                item(
+                                    "minecraft:stick",
+                                    2,
+                                    components = JsonValues.parse("{custom:{ready:true}}").asJsonObject,
+                                    nbt = JsonValues.parse("{tag:{level:2}}").asJsonObject,
+                                ),
+                            ),
+                    )
+                }.assertItem("Alex", "minecraft:stick", componentsPath = "custom.ready", componentsEquals = "false")
+                .assertItem("Alex", "minecraft:stick", nbtPath = "tag.missing", nbtExists = true)
+                .report()
+
+        assertTrue(!report.passed)
+        assertTrue(report.failures.any { "componentsPath=custom.ready" in it }, report.failures.joinToString())
+        assertTrue(report.failures.any { "nbtPath=tag.missing" in it }, report.failures.joinToString())
+    }
+
+    @Test
+    fun `quick block nbt path assertions explain failures`() {
+        val report =
+            SandboxQuickTest
+                .create(listOf(fixturePack()), version = "26.1.2")
+                .world {
+                    block(0, 64, 0, "minecraft:chest", nbt = "{Items:[]}")
+                }.assertBlock(0, 64, 0, "minecraft:chest", nbtPath = "Items", nbtEquals = "[]")
+                .assertBlock(0, 64, 0, "minecraft:chest", nbtPath = "Missing", nbtExists = true)
+                .report()
+
+        assertTrue(!report.passed)
+        assertTrue(
+            report.failures.any { "block 0 64 0 nbt Missing exists expected true but was false" in it },
+            report.failures.joinToString(),
+        )
+    }
+
+    @Test
+    fun `quick world fixture can fill block regions`() {
+        val report =
+            SandboxQuickTest
+                .create(listOf(fixturePack()), version = "26.1.2")
+                .world {
+                    region(0, 64, 0, 1, 64, 1, "minecraft:stone")
+                    block(1, 64, 1, "minecraft:diamond_ore")
+                }.assertBlock(0, 64, 0, "minecraft:stone")
+                .assertBlock(1, 64, 0, "minecraft:stone")
+                .assertBlock(0, 64, 1, "minecraft:stone")
+                .assertBlock(1, 64, 1, "minecraft:diamond_ore")
+                .requirePassed()
+
+        assertEquals(
+            4,
+            report.snapshot.asJsonObject
+                .getAsJsonArray("blocks")
+                .size(),
+        )
+    }
+
+    @Test
+    fun `quick world fixture can place structures`() {
+        val report =
+            SandboxQuickTest
+                .create(listOf(fixturePack()), version = "26.1.2", defaultPlayerName = null)
+                .world {
+                    structure(10, 64, 10) {
+                        block(0, 0, 0, "minecraft:stone")
+                        block(1, 0, 0, "minecraft:chest", nbt = "{Items:[]}")
+                        entity(
+                            "minecraft:pig",
+                            offsetX = 0.5,
+                            offsetY = 1.0,
+                            offsetZ = 0.5,
+                            tags = listOf("structure_fixture"),
+                            health = 6.0,
+                        )
+                    }
+                }.assertBlock(10, 64, 10, "minecraft:stone")
+                .assertBlock(11, 64, 10, "minecraft:chest", nbtPath = "Items", nbtEquals = "[]")
+                .assertEntity(
+                    type = "minecraft:pig",
+                    tag = "structure_fixture",
+                    position = Position(10.5, 65.0, 10.5),
+                    health = 6.0,
+                ).requirePassed()
+
+        assertEquals(
+            2,
+            report.snapshot.asJsonObject
+                .getAsJsonArray("blocks")
+                .size(),
+        )
+        assertEquals(
+            1,
+            report.snapshot.asJsonObject
+                .getAsJsonArray("entities")
+                .size(),
+        )
+    }
+
+    @Test
+    fun `quick world fixture assertions explain failures`() {
+        val report =
+            SandboxQuickTest
+                .create(listOf(fixturePack()), version = "26.1.2")
+                .world {
+                    forcedChunk(0, 0)
+                    biome(0, 64, 0, "minecraft:plains")
+                    worldSpawn(4.0, 70.0, 5.0, angle = 90.0, forced = true)
+                    worldBorder(centerX = 5.0, centerZ = -6.0, size = 100.0, warningDistance = 8)
+                }.assertWorld(
+                    forcedChunkX = 1,
+                    forcedChunkZ = 1,
+                    biomeX = 0,
+                    biomeY = 64,
+                    biomeZ = 0,
+                    biome = "minecraft:desert",
+                    worldSpawn = Position(1.0, 70.0, 5.0),
+                    worldSpawnDimension = "minecraft:the_nether",
+                    worldSpawnAngle = 45.0,
+                    worldSpawnForced = false,
+                    worldBorderCenterX = 4.0,
+                    worldBorderSize = 90.0,
+                    worldBorderWarningDistance = 9,
+                ).report()
+
+        assertTrue(!report.passed)
+        assertTrue(report.failures.any { "world expected forced chunk 1,1" in it }, report.failures.joinToString())
+        assertTrue(
+            report.failures.any {
+                "world biome 0 64 0 expected minecraft:desert but was minecraft:plains" in it
+            },
+            report.failures.joinToString(),
+        )
+        assertTrue(
+            report.failures.any { "world spawn position expected Position(x=1.0, y=70.0, z=5.0)" in it },
+            report.failures.joinToString(),
+        )
+        assertTrue(report.failures.any { "world spawn dimension expected minecraft:the_nether" in it }, report.failures.joinToString())
+        assertTrue(report.failures.any { "world spawn angle expected 45.0 but was 90.0" in it }, report.failures.joinToString())
+        assertTrue(report.failures.any { "world spawn forced expected false but was true" in it }, report.failures.joinToString())
+        assertTrue(report.failures.any { "world border centerX expected 4.0 but was 5.0" in it }, report.failures.joinToString())
+        assertTrue(report.failures.any { "world border size expected 90.0 but was 100.0" in it }, report.failures.joinToString())
+        assertTrue(report.failures.any { "world border warningDistance expected 9 but was 8" in it }, report.failures.joinToString())
+    }
+
+    @Test
+    fun `quick player spawn assertions explain failures`() {
+        val report =
+            SandboxQuickTest
+                .create(listOf(fixturePack()), version = "26.1.2", defaultPlayerName = null)
+                .world {
+                    player("Alex")
+                    playerSpawn("Alex", 2.0, 66.0, 3.0, angle = 90.0, forced = true)
+                }.assertPlayer(
+                    name = "Alex",
+                    spawn = Position(1.0, 66.0, 3.0),
+                    spawnDimension = "minecraft:the_nether",
+                    spawnAngle = 45.0,
+                    spawnForced = false,
+                ).report()
+
+        assertTrue(!report.passed)
+        assertTrue(
+            report.failures.any {
+                "player Alex spawn position expected Position(x=1.0, y=66.0, z=3.0)" in it
+            },
+            report.failures.joinToString(),
+        )
+        assertTrue(
+            report.failures.any {
+                "player Alex spawn dimension expected minecraft:the_nether but was minecraft:overworld" in it
+            },
+            report.failures.joinToString(),
+        )
+        assertTrue(report.failures.any { "player Alex spawn angle expected 45.0 but was 90.0" in it }, report.failures.joinToString())
+        assertTrue(report.failures.any { "player Alex spawn forced expected false but was true" in it }, report.failures.joinToString())
+    }
+
+    @Test
+    fun `quick team and bossbar assertions explain failures`() {
+        val report =
+            SandboxQuickTest
+                .create(listOf(fixturePack()), version = "26.1.2", defaultPlayerName = null)
+                .world {
+                    team("red", displayName = "Red", members = listOf("Alex"), options = mapOf("color" to "red"))
+                    bossbar("demo:bar", "Demo", value = 3, max = 10, color = "blue", style = "notched_10", players = listOf("Alex"))
+                }.assertTeam("red", displayName = "Blue", member = "Steve", memberCount = 2, optionName = "color", optionEquals = "blue")
+                .assertBossbar(
+                    "demo:bar",
+                    name = "Other",
+                    value = 4,
+                    max = 9,
+                    color = "red",
+                    style = "progress",
+                    visible = false,
+                    player = "Steve",
+                ).report()
+
+        assertTrue(!report.passed)
+        assertTrue(report.failures.any { "team red displayName expected Blue but was Red" in it }, report.failures.joinToString())
+        assertTrue(report.failures.any { "team red expected member Steve" in it }, report.failures.joinToString())
+        assertTrue(report.failures.any { "team red memberCount expected 2 but was 1" in it }, report.failures.joinToString())
+        assertTrue(report.failures.any { "team red option color expected blue but was red" in it }, report.failures.joinToString())
+        assertTrue(report.failures.any { "bossbar demo:bar name expected Other but was Demo" in it }, report.failures.joinToString())
+        assertTrue(report.failures.any { "bossbar demo:bar value expected 4 but was 3" in it }, report.failures.joinToString())
+        assertTrue(report.failures.any { "bossbar demo:bar max expected 9 but was 10" in it }, report.failures.joinToString())
+        assertTrue(report.failures.any { "bossbar demo:bar color expected red but was blue" in it }, report.failures.joinToString())
+        assertTrue(
+            report.failures.any { "bossbar demo:bar style expected progress but was notched_10" in it },
+            report.failures.joinToString(),
+        )
+        assertTrue(report.failures.any { "bossbar demo:bar visible expected false but was true" in it }, report.failures.joinToString())
+        assertTrue(report.failures.any { "bossbar demo:bar expected player Steve" in it }, report.failures.joinToString())
+    }
+
+    @Test
+    fun `quick predicate loot and advancement assertions cover full stack packs`() {
+        val report =
+            SandboxQuickTest
+                .create(listOf(fullStackPack()), version = "26.2", defaultPlayerName = null)
+                .world {
+                    player("Steve", inventory = listOf(item("minecraft:carrot_on_a_stick")))
+                }.assertPredicate("demo:has_carrot", playerName = "Steve")
+                .assertLoot(
+                    table = "demo:gift",
+                    context = LootContextId.ADVANCEMENT_REWARD,
+                    playerName = "Steve",
+                    seed = 42,
+                    count = 1,
+                    item = "minecraft:diamond",
+                ).event("Steve", "item_used", "minecraft:carrot_on_a_stick")
+                .assertAdvancementDone("Steve", "demo:use_carrot")
+                .requirePassed()
+
+        assertTrue(report.passed)
+        val rewardOutput = report.outputs.single { it.command == "advancement reward" }
+        val rewardPayload = rewardOutput.payload?.asJsonObject ?: error("missing advancement reward payload")
+        assertEquals(listOf("Steve"), rewardOutput.targets)
+        assertEquals("demo:use_carrot", rewardOutput.text)
+        assertEquals("Steve", rewardPayload.get("player").asString)
+        assertEquals("demo:use_carrot", rewardPayload.get("advancement").asString)
+        assertEquals(5, rewardPayload.get("experience").asInt)
+        assertEquals("demo:reward", rewardPayload.get("function").asString)
+        assertEquals("demo:gift", rewardPayload.getAsJsonArray("lootTables")[0].asString)
+        assertEquals(2, rewardPayload.get("itemCount").asInt)
+        assertEquals(
+            "minecraft:diamond",
+            rewardPayload
+                .getAsJsonArray("items")[0]
+                .asJsonObject
+                .get("id")
+                .asString,
+        )
+    }
+
+    @Test
+    fun `quick world fixture can predefine advancement progress`() {
+        val report =
+            SandboxQuickTest
+                .create(listOf(fullStackPack()), version = "26.2", defaultPlayerName = null)
+                .world {
+                    player("Steve")
+                    playerAdvancementCriterion("Steve", "demo:use_carrot", "use_carrot")
+                }.assertAdvancementDone("Steve", "demo:use_carrot")
+                .requirePassed()
+
+        val progress =
+            report.snapshot.asJsonObject
+                .getAsJsonObject("players")
+                .getAsJsonObject("Steve")
+                .getAsJsonObject("advancements")
+                .getAsJsonObject("demo:use_carrot")
+        assertEquals(true, progress.get("use_carrot").asBoolean)
+    }
+
+    @Test
+    fun `quick predicate loot and advancement assertions explain failures`() {
+        val report =
+            SandboxQuickTest
+                .create(listOf(fullStackPack()), version = "26.2", defaultPlayerName = null)
+                .world {
+                    player("Steve", inventory = listOf(item("minecraft:carrot_on_a_stick")))
+                }.assertPredicate("demo:has_carrot", expected = false, playerName = "Steve")
+                .assertLoot(
+                    table = "demo:gift",
+                    context = "minecraft:advancement_reward",
+                    playerName = "Steve",
+                    seed = 42,
+                    count = 2,
+                    item = "minecraft:emerald",
+                ).assertAdvancementDone("Steve", "demo:use_carrot")
+                .report()
+
+        assertTrue(!report.passed)
+        assertTrue(report.failures.any { "predicate demo:has_carrot expected false but was true" in it }, report.failures.joinToString())
+        assertTrue(report.failures.any { "loot count expected 2 but was 1" in it }, report.failures.joinToString())
+        assertTrue(
+            report.failures.any { "loot expected item minecraft:emerald but got [minecraft:diamond]" in it },
+            report.failures.joinToString(),
+        )
+        assertTrue(
+            report.failures.any {
+                "advancement demo:use_carrot for Steve done expected true but was false" in it
+            },
+            report.failures.joinToString(),
+        )
+    }
+
+    @Test
+    fun `records keyboard and mouse player input events`() {
+        val scenario =
+            SandboxQuickTest
+                .create(listOf(fixturePack()), version = "26.1.2")
+                .keyInput("Steve", "key.jump")
+                .mouseInput("Steve", "left", PlayerInputAction.CLICK, 12.0, 8.0)
+                .assertPlayerLastInput("Steve", PlayerInputDevice.MOUSE, "left", PlayerInputAction.CLICK)
+                .assertPlayerEventTrace(
+                    player = "Steve",
+                    type = PlayerEventType.KEY_INPUT,
+                    success = true,
+                    inputDevice = PlayerInputDevice.KEYBOARD,
+                    inputCode = "key.jump",
+                    inputAction = PlayerInputAction.PRESS,
+                    count = 1,
+                ).assertPlayerEventTrace(
+                    player = "Steve",
+                    type = PlayerEventType.MOUSE_INPUT,
+                    success = true,
+                    inputDevice = PlayerInputDevice.MOUSE,
+                    inputCode = "left",
+                    inputAction = PlayerInputAction.CLICK,
+                    count = 1,
+                )
+        val traces = scenario.playerEventTraces()
+        val mouseTraces =
+            scenario.matchingPlayerEventTraces(
+                type = PlayerEventType.MOUSE_INPUT,
+                player = "Steve",
+                inputCode = "left",
+                inputAction = PlayerInputAction.CLICK,
+            )
+        val report = scenario.requirePassed()
+
+        val player =
+            report.snapshot.asJsonObject
+                .get("players")
+                .asJsonObject
+                .get("Steve")
+                .asJsonObject
+        assertEquals(
+            "mouse",
+            player
+                .get("lastInput")
+                .asJsonObject
+                .get("device")
+                .asString,
+        )
+        assertEquals(2, player.get("inputEvents").asJsonArray.size())
+        assertEquals(2, traces.size)
+        assertEquals(1, mouseTraces.size)
+        assertEquals("mouse_input", report.playerEventTraces.last().type)
+        assertEquals(
+            2,
+            report.snapshot.asJsonObject
+                .getAsJsonArray("playerEventTraces")
+                .size(),
+        )
+    }
+
+    @Test
+    fun `player event trace assertion failures include actual event candidates`() {
+        val error =
+            assertFailsWith<SandboxQuickTestAssertionError> {
+                SandboxQuickTest
+                    .create(listOf(fixturePack()), version = "26.1.2")
+                    .keyInput("Steve", "key.jump")
+                    .assertPlayerEventTrace(player = "Steve", type = "damage")
+                    .requirePassed()
+            }
+        val message = error.message.orEmpty()
+
+        assertTrue("actual event traces:" in message, message)
+        assertTrue("player=Steve" in message, message)
+        assertTrue("type=key_input" in message, message)
+    }
+
+    @Test
+    fun `block player events update sparse world and trace positions`() {
+        val report =
+            SandboxQuickTest
+                .create(listOf(fixturePack()), version = "26.1.2")
+                .blockEvent("Steve", "block_placed", "minecraft:stone", 0, 64, 0)
+                .assertBlock(0, 64, 0, "minecraft:stone")
+                .blockEvent("Steve", "block_broken", "minecraft:stone", 0, 64, 0)
+                .assertBlock(0, 64, 0, exists = false)
+                .assertPlayerEventTrace(
+                    player = "Steve",
+                    type = "block_placed",
+                    block = "minecraft:stone",
+                    blockX = 0,
+                    blockY = 64,
+                    blockZ = 0,
+                    count = 1,
+                ).assertPlayerEventTrace(
+                    player = "Steve",
+                    type = "block_broken",
+                    block = "minecraft:stone",
+                    blockX = 0,
+                    blockY = 64,
+                    blockZ = 0,
+                    count = 1,
+                ).requirePassed()
+
+        val traces = report.snapshot.asJsonObject.getAsJsonArray("playerEventTraces")
+        val placedPos = traces[0].asJsonObject.getAsJsonObject("blockPos")
+        assertEquals(0, placedPos.get("x").asInt)
+        assertEquals(64, placedPos.get("y").asInt)
+        assertEquals(0, placedPos.get("z").asInt)
+    }
+
+    @Test
+    fun `runs single mcfunction files from api with explicit version`() {
+        val functionFile = Files.createTempFile("dps-single-function", ".mcfunction")
+        Files.writeString(
+            functionFile,
+            """
+            scoreboard objectives add runs dummy
+            scoreboard players set #single runs 7
+            """.trimIndent(),
+        )
+
+        val report =
+            SandboxQuickTest
+                .singleFunction(functionFile, "26.2")
+                .function()
+                .assertScore("#single", "runs", 7)
+                .requirePassed()
+
+        assertTrue(report.passed)
+        assertEquals(
+            7,
+            report.snapshot.asJsonObject
+                .get("scores")
+                .asJsonObject
+                .get("runs")
+                .asJsonObject
+                .get("#single")
+                .asInt,
+        )
+    }
+
+    @Test
+    fun `single mcfunction files may start with a utf8 bom`() {
+        val functionFile = Files.createTempFile("dps-single-function-bom", ".mcfunction")
+        Files.writeString(
+            functionFile,
+            "\uFEFFscoreboard objectives add runs dummy\nscoreboard players set #bom runs 3",
+        )
+
+        SandboxQuickTest
+            .singleFunction(functionFile, "26.2")
+            .function()
+            .assertScore("#bom", "runs", 3)
+            .requirePassed()
+    }
+
+    @Test
+    fun `runs single mcfunction strings from api`() {
+        SandboxQuickTest
+            .singleFunctionText(
+                """
+                scoreboard objectives add runs dummy
+                scoreboard players set #string runs 5
+                """.trimIndent(),
+                version = "26.2",
+            ).function()
+            .assertScore("#string", "runs", 5)
+            .requirePassed()
+    }
+
+    @Test
+    fun `loads multiple mcfunction files and strings together`() {
+        val helper = Files.createTempFile("dps-helper-function", ".mcfunction")
+        Files.writeString(
+            helper,
+            """
+            scoreboard players add #multi runs 2
+            function demo:inline
+            """.trimIndent(),
+        )
+
+        SandboxQuickTest
+            .functions(
+                functionSources =
+                    listOf(
+                        FunctionSource.text(
+                            "demo:main",
+                            """
+                            scoreboard objectives add runs dummy
+                            scoreboard players set #multi runs 1
+                            function demo:helper
+                            """.trimIndent(),
+                        ),
+                        FunctionSource.file("demo:helper", helper),
+                        FunctionSource.text("demo:inline", "scoreboard players add #multi runs 4"),
+                    ),
+                version = "26.2",
+                defaultFunctionId = "demo:main",
+            ).function()
+            .assertScore("#multi", "runs", 7)
+            .requirePassed()
+    }
+
+    @Test
+    fun `loads folder and zip datapacks as dependencies for function sources`() {
+        val root = Files.createTempDirectory("dps-function-deps")
+        val folderPack = writeDependencyPack(root.resolve("folder-pack"), "folder", "scoreboard players add #deps runs 2")
+        val zipPack =
+            zipPack(
+                writeDependencyPack(root.resolve("zip-pack"), "zip", "scoreboard players add #deps runs 4"),
+                root.resolve("zip-pack.zip"),
+            )
+
+        SandboxQuickTest
+            .functions(
+                functionSources =
+                    listOf(
+                        FunctionSource.text(
+                            "demo:main",
+                            """
+                            scoreboard objectives add runs dummy
+                            scoreboard players set #deps runs 1
+                            function demo:folder
+                            function demo:zip
+                            """.trimIndent(),
+                        ),
+                    ),
+                version = "26.2",
+                defaultFunctionId = "demo:main",
+                dependencyPacks = listOf(folderPack, zipPack),
+            ).function()
+            .assertScore("#deps", "runs", 7)
+            .requirePassed()
+    }
+
+    @Test
+    fun `quick tests can get and assert structured outputs`() {
+        val functionFile = Files.createTempFile("dps-output-function", ".mcfunction")
+        Files.writeString(
+            functionFile,
+            """
+            say hello from test
+            tellraw Steve {"text":"gold","color":"yellow"}
+            """.trimIndent(),
+        )
+
+        val scenario =
+            SandboxQuickTest
+                .singleFunction(functionFile, "26.2")
+                .function()
+                .assertOutput(
+                    channel = OutputChannel.CHAT,
+                    command = "say",
+                    target = "Steve",
+                    text = "<Server> hello from test",
+                    rawText = "hello from test",
+                    order = 1,
+                ).assertOutput(
+                    OutputExpectation(
+                        command = "tellraw",
+                        target = "Steve",
+                        text = "gold",
+                        segment = OutputSegmentExpectation(text = "gold", color = "yellow"),
+                        count = 1,
+                        order = 2,
+                    ),
+                )
+
+        val outputs = scenario.outputs()
+        val tellraw = scenario.matchingOutputs(command = "tellraw", text = "gold")
+        val say = scenario.matchingOutputs(channel = OutputChannel.CHAT, command = "say", rawText = "hello from test")
+
+        assertEquals(2, outputs.size)
+        assertEquals(1, tellraw.size)
+        assertEquals(1, say.size)
+        assertEquals("<Server> hello from test", outputs[0].text)
+        assertEquals("hello from test", outputs[0].rawText)
+        assertEquals("hello from test", outputs[0].toJson().get("rawText").asString)
+        scenario.requirePassed()
+    }
+
+    @Test
+    fun `output assertion failures include actual output candidates`() {
+        val error =
+            assertFailsWith<SandboxQuickTestAssertionError> {
+                SandboxQuickTest
+                    .singleFunctionText("say actual candidate", version = "26.2")
+                    .function()
+                    .assertOutput(command = "say", contains = "missing candidate")
+                    .requirePassed()
+            }
+        val message = error.message.orEmpty()
+
+        assertTrue("actual outputs:" in message, message)
+        assertTrue("command=say" in message, message)
+        assertTrue("<Server> actual candidate" in message, message)
+    }
+
+    @Test
+    fun `segment assertion failures include actual segment candidates`() {
+        val error =
+            assertFailsWith<SandboxQuickTestAssertionError> {
+                SandboxQuickTest
+                    .singleFunctionText("""tellraw Steve {"text":"gold","color":"yellow","bold":true}""", version = "26.2")
+                    .function()
+                    .assertOutput(
+                        OutputExpectation(
+                            command = "tellraw",
+                            segment = OutputSegmentExpectation(text = "gold", color = "blue"),
+                        ),
+                    ).requirePassed()
+            }
+        val message = error.message.orEmpty()
+
+        assertTrue("segments=" in message, message)
+        assertTrue("text='gold'" in message, message)
+        assertTrue("color=yellow" in message, message)
+        assertTrue("bold=true" in message, message)
+    }
+
+    @Test
+    fun `payload assertion failures include actual payload candidates`() {
+        val error =
+            assertFailsWith<SandboxQuickTestAssertionError> {
+                SandboxQuickTest
+                    .singleFunctionText("place structure demo:ruin 1 64 2", version = "26.2")
+                    .function()
+                    .assertOutput(
+                        command = "place structure",
+                        channel = "worldgen",
+                        payloadPath = "id",
+                        payloadEquals = JsonPrimitive("demo:other"),
+                    ).requirePassed()
+            }
+        val message = error.message.orEmpty()
+
+        assertTrue("actual outputs:" in message, message)
+        assertTrue("channel=worldgen" in message, message)
+        assertTrue("payload.id=\"demo:ruin\"" in message, message)
+    }
+
+    @Test
+    fun `quick output helpers support normalized text matching`() {
+        val scenario =
+            SandboxQuickTest
+                .singleFunctionText("tellraw Steve {\"text\":\"generated     output\"}", version = "26.2")
+                .function()
+                .assertOutput(command = "tellraw", normalizedText = "generated output", normalizedContains = "generated output", count = 1)
+
+        val matches = scenario.matchingOutputs(command = "tellraw", normalizedText = "generated output")
+
+        assertEquals(1, matches.size)
+        scenario.requirePassed()
+    }
+
+    @Test
+    fun `quick output helpers match structured place worldgen payloads`() {
+        val scenario =
+            SandboxQuickTest
+                .singleFunctionText("place structure demo:ruin 1 64 2", version = "26.2")
+                .function()
+                .assertOutput(
+                    command = "place structure",
+                    channel = "worldgen",
+                    payloadPath = "placed",
+                    payloadEquals = JsonPrimitive(false),
+                    count = 1,
+                ).assertOutput(
+                    command = "place structure",
+                    payloadPath = "id",
+                    payloadEquals = JsonPrimitive("demo:ruin"),
+                    count = 1,
+                )
+
+        val matches =
+            scenario.matchingOutputs(
+                command = "place structure",
+                channel = "worldgen",
+                payloadPath = "position.y",
+                payloadEquals = JsonPrimitive(64.0),
+            )
+
+        assertEquals(1, matches.size)
+        scenario.requirePassed()
+    }
+
+    @Test
+    fun `quick tests can get and assert structured traces`() {
+        val scenario =
+            SandboxQuickTest
+                .singleFunctionText(
+                    """
+                    say traced from quick test
+                    scoreboard objectives add traced dummy
+                    scoreboard players set #trace traced 3
+                    """.trimIndent(),
+                    version = "26.2",
+                ).function()
+                .assertTrace(
+                    root = CommandRoot.SAY,
+                    contains = "quick test",
+                    success = true,
+                    outputs = 1,
+                    outputContains = "traced from quick test",
+                    outputTarget = "Steve",
+                    hasDiff = true,
+                    diffPath = "/outputs/0",
+                    diffKind = SnapshotDiffKind.ADDED,
+                ).assertTrace(TraceExpectation(root = "scoreboard", count = 2))
+                .assertTrace(
+                    command = "scoreboard players set #trace traced 3",
+                    outputs = 0,
+                    hasDiff = true,
+                    diffPath = "/scores/traced",
+                    diffKind = SnapshotDiffKind.ADDED,
+                    diffContains = "#trace",
+                    count = 1,
+                )
+
+        val traces = scenario.traces()
+        val scoreboardTraces = scenario.matchingTraces(root = CommandRoot.SCOREBOARD)
+        val scoreWriteTraces = scenario.matchingTraces(diffPath = "/scores/traced", hasDiff = true)
+        val outputTraces = scenario.matchingTraces(outputContains = "quick test", outputTarget = "Steve")
+
+        assertEquals(3, traces.size)
+        assertEquals(2, scoreboardTraces.size)
+        assertEquals(1, scoreWriteTraces.size)
+        assertEquals(1, outputTraces.size)
+        scenario.requirePassed()
+    }
+
+    @Test
+    fun `trace assertion failures include actual trace candidates`() {
+        val error =
+            assertFailsWith<SandboxQuickTestAssertionError> {
+                SandboxQuickTest
+                    .singleFunctionText("say actual trace candidate", version = "26.2")
+                    .function()
+                    .assertTrace(root = "scoreboard")
+                    .requirePassed()
+            }
+        val message = error.message.orEmpty()
+
+        assertTrue("actual traces:" in message, message)
+        assertTrue("root=say" in message, message)
+        assertTrue("say actual trace candidate" in message, message)
+    }
+
+    @Test
+    fun `quick tests can assert snapshot diffs`() {
+        val scenario =
+            SandboxQuickTest
+                .singleFunctionText(
+                    """
+                    scoreboard objectives add runs dummy
+                    scoreboard players set #quick_diff runs 9
+                    """.trimIndent(),
+                    version = "26.2",
+                ).function()
+                .assertSnapshotDiff(path = "/scores/runs", kind = SnapshotDiffKind.ADDED, contains = "\"#quick_diff\": 9", count = 1)
+
+        val report = scenario.requirePassed()
+
+        assertTrue(report.snapshotDiffs.any { it.path == "/scores/runs" && it.kind == SnapshotDiffKind.ADDED })
+    }
+
+    @Test
+    fun `snapshot diff assertion failures include actual diff candidates`() {
+        val error =
+            assertFailsWith<SandboxQuickTestAssertionError> {
+                SandboxQuickTest
+                    .singleFunctionText(
+                        """
+                        scoreboard objectives add runs dummy
+                        scoreboard players set #actual_diff runs 7
+                        """.trimIndent(),
+                        version = "26.2",
+                    ).function()
+                    .assertSnapshotDiff(path = "/storage/demo:missing")
+                    .requirePassed()
+            }
+        val message = error.message.orEmpty()
+
+        assertTrue("actual snapshot diffs:" in message, message)
+        assertTrue("/scores/runs" in message, message)
+        assertTrue("\"#actual_diff\": 7" in message, message)
+    }
+
+    @Test
+    fun `quick test assertion errors include snapshot diff and trace summary`() {
+        val error =
+            assertFailsWith<SandboxQuickTestAssertionError> {
+                SandboxQuickTest
+                    .singleFunctionText(
+                        """
+                        scoreboard objectives add runs dummy
+                        scoreboard players set #quick_failure runs 4
+                        """.trimIndent(),
+                        version = "26.2",
+                    ).function()
+                    .assertScore("#quick_failure", "runs", 5)
+                    .requirePassed()
+            }
+        val message = error.message.orEmpty()
+
+        assertTrue("score #quick_failure runs expected 5 but was 4" in message, message)
+        assertTrue("snapshot diff:" in message, message)
+        assertTrue("\"#quick_failure\": 4" in message, message)
+        assertTrue("trace summary:" in message, message)
+        assertTrue("[OK] scoreboard players set #quick_failure runs 4" in message, message)
+    }
+
+    @Test
+    fun `quick tests can predefine world state`() {
+        val riderUuid = "00000000-0000-0000-0000-000000000101"
+        val vehicleUuid = "00000000-0000-0000-0000-000000000102"
+        val report =
+            SandboxQuickTest
+                .create(listOf(fixturePack()), version = "26.1.2", defaultPlayerName = null)
+                .world {
+                    seed(123)
+                    randomSequence("demo:seq", 42)
+                    difficulty("hard")
+                    defaultGameMode("creative")
+                    worldSpawn(4.0, 70.0, 5.0, angle = 90.0, forced = true)
+                    forcedChunk(0, 0)
+                    biome(0, 64, 0, "minecraft:plains")
+                    worldBorder(
+                        centerX = 5.0,
+                        centerZ = -6.0,
+                        size = 100.0,
+                        targetSize = 120.0,
+                        lerpTimeSeconds = 30,
+                        damageBuffer = 3.0,
+                        damageAmount = 0.5,
+                        warningDistance = 8,
+                        warningTime = 20,
+                    )
+                    block(0, 64, 0, "minecraft:chest", nbt = "{Items:[]}")
+                    entity(
+                        "minecraft:pig",
+                        1.0,
+                        64.0,
+                        0.0,
+                        tags = listOf("fixture"),
+                        equipment =
+                            mapOf(
+                                "weapon.mainhand" to
+                                    item(
+                                        "minecraft:iron_sword",
+                                        components = JsonValues.parse("{custom:{fixture:true}}").asJsonObject,
+                                        nbt = JsonValues.parse("{tag:{level:4}}").asJsonObject,
+                                    ),
+                            ),
+                        effects = listOf(effect("minecraft:strength", durationTicks = 80, amplifier = 2, hideParticles = true)),
+                        attributes = mapOf("minecraft:max_health" to 12.0),
+                        dimension = "minecraft:the_nether",
+                        health = 8.0,
+                        uuid = riderUuid,
+                        vehicle = vehicleUuid,
+                    )
+                    entity(
+                        "minecraft:cow",
+                        1.0,
+                        64.0,
+                        1.0,
+                        tags = listOf("fixture_vehicle"),
+                        uuid = vehicleUuid,
+                        passengers = listOf(riderUuid),
+                    )
+                    player(
+                        "Alex",
+                        x = 2.0,
+                        y = 65.0,
+                        z = 3.0,
+                        xp = 5,
+                        xpLevels = 4,
+                        inventory =
+                            listOf(
+                                item(
+                                    "minecraft:stick",
+                                    2,
+                                    components = JsonValues.parse("{custom:{ready:true}}").asJsonObject,
+                                    nbt = JsonValues.parse("{tag:{level:2}}").asJsonObject,
+                                ),
+                            ),
+                        enderItems = listOf(item("minecraft:ender_pearl", 4)),
+                    )
+                    playerEffect("Alex", "minecraft:speed", durationTicks = 40, amplifier = 1)
+                    playerRecipe("Alex", "minecraft:bread")
+                    playerStat("Alex", "minecraft:jump", 3)
+                    playerSpawn("Alex", 2.0, 66.0, 3.0, angle = 90.0, forced = true)
+                    team("red", members = listOf("Alex"), options = mapOf("color" to "red"))
+                    bossbar("demo:bar", "Demo", value = 3, max = 10, color = "blue", style = "notched_10", players = listOf("Alex"))
+                    score("#fixture", "ready", 1)
+                    storage("demo:env", "{ready:true}")
+                    gamerule("doDaylightCycle", "false")
+                }.assertWorld(
+                    difficulty = SandboxDifficulty.HARD,
+                    defaultGameMode = SandboxGameMode.CREATIVE,
+                    seed = 123,
+                    forcedChunkX = 0,
+                    forcedChunkZ = 0,
+                    biomeX = 0,
+                    biomeY = 64,
+                    biomeZ = 0,
+                    biome = "minecraft:plains",
+                    worldSpawn = Position(4.0, 70.0, 5.0),
+                    worldSpawnDimension = "minecraft:overworld",
+                    worldSpawnAngle = 90.0,
+                    worldSpawnForced = true,
+                    worldBorderCenterX = 5.0,
+                    worldBorderCenterZ = -6.0,
+                    worldBorderSize = 100.0,
+                    worldBorderTargetSize = 120.0,
+                    worldBorderLerpTimeSeconds = 30,
+                    worldBorderDamageBuffer = 3.0,
+                    worldBorderDamageAmount = 0.5,
+                    worldBorderWarningDistance = 8,
+                    worldBorderWarningTime = 20,
+                ).assertBlock(0, 64, 0, "minecraft:chest", nbtPath = "Items", nbtEquals = "[]")
+                .assertEntity(
+                    type = "minecraft:pig",
+                    tag = "fixture",
+                    position = Position(1.0, 64.0, 0.0),
+                    dimension = "minecraft:the_nether",
+                    health = 8.0,
+                    vehicle = vehicleUuid,
+                    nbtPath = "Health",
+                    nbtEquals = "8.0",
+                ).assertEntity(
+                    type = "minecraft:cow",
+                    tag = "fixture_vehicle",
+                    uuid = vehicleUuid,
+                    passenger = riderUuid,
+                    passengerCount = 1,
+                ).assertEntityEquipment(
+                    EntityEquipmentSlot.MAINHAND,
+                    type = "minecraft:pig",
+                    tag = "fixture",
+                    id = "minecraft:iron_sword",
+                    componentsPath = "custom.fixture",
+                    componentsEquals = "true",
+                    nbtPath = "tag.level",
+                    nbtEquals = "4",
+                    dimension = "minecraft:the_nether",
+                ).assertEntityEffect(
+                    "minecraft:strength",
+                    type = "minecraft:pig",
+                    tag = "fixture",
+                    durationTicks = 80,
+                    amplifier = 2,
+                    hideParticles = true,
+                    dimension = "minecraft:the_nether",
+                ).assertEntityAttribute(
+                    "minecraft:max_health",
+                    type = "minecraft:pig",
+                    tag = "fixture",
+                    value = 12.0,
+                    dimension = "minecraft:the_nether",
+                ).assertEntityCount(expected = 1, type = "minecraft:pig", tag = "fixture", dimension = "minecraft:the_nether")
+                .assertEntityCountAtLeast(1, type = "minecraft:pig", tag = "fixture", dimension = "minecraft:the_nether")
+                .assertEntityCountAtMost(1, type = "minecraft:pig", tag = "fixture", dimension = "minecraft:the_nether")
+                .assertEntityCountRange(min = 1, max = 1, type = "minecraft:pig", tag = "fixture", dimension = "minecraft:the_nether")
+                .assertPlayer(
+                    name = "Alex",
+                    gameMode = SandboxGameMode.SURVIVAL,
+                    position = Position(2.0, 65.0, 3.0),
+                    dimension = "minecraft:overworld",
+                    xp = 5,
+                    xpLevels = 4,
+                    inventoryCount = 1,
+                    enderItemCount = 1,
+                    recipe = "minecraft:bread",
+                    effect = "minecraft:speed",
+                    stat = "minecraft:jump",
+                    statValue = 3,
+                    spawn = Position(2.0, 66.0, 3.0),
+                    spawnDimension = "minecraft:overworld",
+                    spawnAngle = 90.0,
+                    spawnForced = true,
+                    nbtPath = "EnderItems[0].id",
+                    nbtEquals = "minecraft:ender_pearl",
+                ).assertTeam("red", TeamOption.COLOR, "red", member = "Alex", memberCount = 1)
+                .assertBossbar(
+                    "demo:bar",
+                    BossbarColor.BLUE,
+                    name = "Demo",
+                    value = 3,
+                    max = 10,
+                    style = BossbarStyle.NOTCHED_10,
+                    player = "Alex",
+                ).assertItem(
+                    "Alex",
+                    "minecraft:stick",
+                    2,
+                    minCount = 1,
+                    maxCount = 3,
+                    componentsPath = "custom.ready",
+                    componentsEquals = "true",
+                    nbtPath = "tag.level",
+                    nbtEquals = "2",
+                ).assertItem(
+                    "Alex",
+                    container = ItemContainer.ENDER_ITEMS,
+                    id = "minecraft:ender_pearl",
+                    count = 4,
+                ).assertScore("#fixture", "ready", 1)
+                .assertScoreAtLeast("#fixture", "ready", 1)
+                .assertScoreAtMost("#fixture", "ready", 1)
+                .assertScoreRange("#fixture", "ready", min = 1, max = 1)
+                .assertStorageExists("demo:env")
+                .assertStorageExists("demo:env", "ready")
+                .assertStorageEquals("demo:env", "ready", "true")
+                .assertStorageMissing("demo:env", "absent")
+                .assertRandomSequence("demo:seq", 42)
+                .assertPlayerXp("Alex", 5)
+                .assertPlayerXpLevels("Alex", 4)
+                .requirePassed()
+
+        val snapshot = report.snapshot.asJsonObject
+        assertEquals(
+            "minecraft:chest",
+            snapshot
+                .get("blocks")
+                .asJsonArray[0]
+                .asJsonObject
+                .get("id")
+                .asString,
+        )
+        assertEquals(
+            "false",
+            snapshot
+                .get("gamerules")
+                .asJsonObject
+                .get("doDaylightCycle")
+                .asString,
+        )
+        val pig =
+            snapshot
+                .get("entities")
+                .asJsonArray
+                .single { it.asJsonObject.get("type").asString == "minecraft:pig" }
+                .asJsonObject
+        val cow =
+            snapshot
+                .get("entities")
+                .asJsonArray
+                .single { it.asJsonObject.get("type").asString == "minecraft:cow" }
+                .asJsonObject
+        assertEquals("minecraft:the_nether", pig.get("dimension").asString)
+        assertEquals(8.0, pig.get("health").asDouble)
+        assertEquals(vehicleUuid, pig.get("vehicle").asString)
+        assertEquals(riderUuid, cow.getAsJsonArray("passengers")[0].asString)
+        assertEquals(
+            "minecraft:iron_sword",
+            pig
+                .getAsJsonObject("equipment")
+                .getAsJsonObject("weapon.mainhand")
+                .get("id")
+                .asString,
+        )
+        assertEquals(
+            "minecraft:strength",
+            pig
+                .getAsJsonArray("effects")[0]
+                .asJsonObject
+                .get("id")
+                .asString,
+        )
+        assertEquals(12.0, pig.getAsJsonObject("attributes").get("minecraft:max_health").asDouble)
+        assertEquals(1, snapshot.get("entities").asJsonArray.count { it.asJsonObject.get("type").asString == "minecraft:pig" })
+        assertEquals("hard", snapshot.get("difficulty").asString)
+        assertEquals(42L, snapshot.getAsJsonObject("randomSequences").get("demo:seq").asLong)
+        assertEquals(1, snapshot.get("forcedChunks").asJsonArray.size())
+        assertEquals(
+            "minecraft:ender_pearl",
+            snapshot
+                .getAsJsonObject("players")
+                .getAsJsonObject("Alex")
+                .getAsJsonArray("enderItems")[0]
+                .asJsonObject
+                .get("id")
+                .asString,
+        )
+        assertEquals(
+            4,
+            snapshot
+                .getAsJsonObject("players")
+                .getAsJsonObject("Alex")
+                .get("xpLevels")
+                .asInt,
+        )
+        assertEquals(
+            "Alex",
+            snapshot
+                .get("teams")
+                .asJsonObject
+                .get("red")
+                .asJsonObject
+                .getAsJsonArray("members")[0]
+                .asString,
+        )
+        assertEquals(
+            3,
+            snapshot
+                .get("bossbars")
+                .asJsonObject
+                .get("demo:bar")
+                .asJsonObject
+                .get("value")
+                .asInt,
+        )
+    }
+
+    @Test
+    fun `quick scheduled function assertions inspect queue and due ticks`() {
+        fun scheduledScenario(): SandboxQuickTest =
+            SandboxQuickTest.functions(
+                functionSources =
+                    listOf(
+                        FunctionSource.text(
+                            "demo:main",
+                            """
+                            scoreboard objectives add runs dummy
+                            schedule function demo:later 5t append
+                            schedule function demo:later 5t append
+                            """.trimIndent(),
+                        ),
+                        FunctionSource.text("demo:later", "scoreboard players add #later runs 1"),
+                    ),
+                version = "26.2",
+                defaultFunctionId = "demo:main",
+                defaultPlayerName = null,
+            )
+
+        val scenario = scheduledScenario()
+        val pending =
+            scenario
+                .function()
+                .assertScheduledFunction("demo:later", dueTick = 5, count = 2)
+                .report()
+
+        assertTrue(pending.passed, pending.failures.joinToString())
+        assertEquals(
+            2,
+            pending.snapshot.asJsonObject
+                .getAsJsonArray("scheduled")
+                .size(),
+        )
+
+        val mismatch =
+            scheduledScenario()
+                .function()
+                .assertScheduledFunction("demo:later", dueTick = 6)
+                .report()
+
+        assertTrue(!mismatch.passed)
+        assertTrue(
+            mismatch.failures.any { it.contains("scheduled function demo:later expected dueTick 6") && it.contains("demo:later@5") },
+            mismatch.failures.joinToString(),
+        )
+
+        val finished =
+            scenario
+                .ticks(5)
+                .assertScheduledFunction("demo:later", exists = false)
+                .assertScore("#later", "runs", 2)
+                .report()
+
+        assertTrue(finished.passed, finished.failures.joinToString())
+        assertEquals(
+            0,
+            finished.snapshot.asJsonObject
+                .getAsJsonArray("scheduled")
+                .size(),
+        )
+    }
+
+    @Test
+    fun `runs quick tests across multiple version-specific packs`() {
+        val dir = Files.createTempDirectory("dps-quick-matrix")
+        val pack1204 = writeVersionPack(dir.resolve("pack-1204"), packFormat = "26", functionDir = "functions")
+        val pack2612 = writeVersionPack(dir.resolve("pack-2612"), packFormat = "101.1", functionDir = "function")
+        val pack262 = writeVersionPack(dir.resolve("pack-262"), packFormat = "107.1", functionDir = "function")
+
+        val report =
+            SandboxQuickTest
+                .matrix(
+                    mapOf(
+                        "1.20.4" to listOf(pack1204),
+                        "26.1.2" to listOf(pack2612),
+                        "26.2" to listOf(pack262),
+                    ),
+                ).load()
+                .world { player("Alex", xp = 5, xpLevels = 2) }
+                .keyInput("Alex", "jump", PlayerInputAction.PRESS)
+                .forEachScenario { assertScore("#matrix", "runs", 6) }
+                .assertPlayerXp("Alex", 5)
+                .assertPlayerXpLevels("Alex", 2)
+                .assertPlayerLastInput("Alex", PlayerInputDevice.KEYBOARD, "jump", PlayerInputAction.PRESS)
+                .requirePassed()
+
+        assertTrue(report.passed)
+        assertEquals(setOf("1.20.4", "26.1.2", "26.2"), report.reports.keys)
+    }
+
+    private fun writeVersionPack(
+        root: Path,
+        packFormat: String,
+        functionDir: String,
+    ): Path {
+        Files.createDirectories(root)
+        Files.writeString(
+            root.resolve("pack.mcmeta"),
+            """
+            {
+              "pack": {
+                "pack_format": $packFormat,
+                "description": "temporary matrix pack"
+              }
+            }
+            """.trimIndent(),
+        )
+        val functionRoot = root.resolve("data").resolve("demo").resolve(functionDir)
+        Files.createDirectories(functionRoot)
+        Files.writeString(
+            functionRoot.resolve("load.mcfunction"),
+            """
+            scoreboard objectives add runs dummy
+            scoreboard players set #matrix runs 6
+            """.trimIndent(),
+        )
+        val tagRoot =
+            root
+                .resolve("data")
+                .resolve("minecraft")
+                .resolve("tags")
+                .resolve(functionDir)
+        Files.createDirectories(tagRoot)
+        Files.writeString(tagRoot.resolve("load.json"), """{"values":["demo:load"]}""")
+        return root
+    }
+
+    private fun writeDependencyPack(
+        root: Path,
+        functionName: String,
+        body: String,
+    ): Path {
+        Files.createDirectories(root)
+        Files.writeString(
+            root.resolve("pack.mcmeta"),
+            """
+            {
+              "pack": {
+                "pack_format": 107.1,
+                "description": "temporary dependency pack"
+              }
+            }
+            """.trimIndent(),
+        )
+        val functionRoot = root.resolve("data").resolve("demo").resolve("function")
+        Files.createDirectories(functionRoot)
+        Files.writeString(functionRoot.resolve("$functionName.mcfunction"), body)
+        return root
+    }
+
+    private fun writeResourceDiagnosticPack(
+        root: Path,
+        marker: String,
+        includeMissingLoad: Boolean,
+    ): Path {
+        Files.createDirectories(root)
+        Files.writeString(
+            root.resolve("pack.mcmeta"),
+            """
+            {
+              "pack": {
+                "pack_format": 107.1,
+                "description": "temporary resource diagnostic pack"
+              }
+            }
+            """.trimIndent(),
+        )
+        val functionRoot = root.resolve("data").resolve("demo").resolve("function")
+        Files.createDirectories(functionRoot)
+        Files.writeString(functionRoot.resolve("$marker.mcfunction"), "say $marker")
+
+        val recipeRoot = root.resolve("data").resolve("demo").resolve("recipe")
+        Files.createDirectories(recipeRoot)
+        Files.writeString(
+            recipeRoot.resolve("marker.json"),
+            """
+            {
+              "type": "minecraft:crafting_shapeless",
+              "category": "misc",
+              "ingredients": ["minecraft:stone"],
+              "result": { "id": "minecraft:stone", "count": 1 },
+              "marker": "$marker"
+            }
+            """.trimIndent(),
+        )
+
+        if (includeMissingLoad) {
+            val tagRoot =
+                root
+                    .resolve("data")
+                    .resolve("minecraft")
+                    .resolve("tags")
+                    .resolve("function")
+            Files.createDirectories(tagRoot)
+            Files.writeString(tagRoot.resolve("load.json"), """{"values":["demo:missing_load"]}""")
+        }
+        return root
+    }
+
+    private fun zipPack(
+        root: Path,
+        output: Path,
+    ): Path {
+        ZipOutputStream(Files.newOutputStream(output)).use { zip ->
+            Files.walk(root).use { walk ->
+                walk.filter { Files.isRegularFile(it) }.forEach { file ->
+                    val entryName = root.relativize(file).toString().replace('\\', '/')
+                    zip.putNextEntry(ZipEntry(entryName))
+                    Files.copy(file, zip)
+                    zip.closeEntry()
+                }
+            }
+        }
+        return output
+    }
+}
