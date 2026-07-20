@@ -4,9 +4,9 @@ import { fileURLToPath } from 'node:url'
 import { ErrorReporter, Failure, ResourceLocationNode, Source } from '@spyglassmc/core'
 import * as mcdoc from '@spyglassmc/mcdoc'
 
-const [sourceDirArg, outputFileArg] = process.argv.slice(2)
-if (!sourceDirArg || !outputFileArg) {
-  console.error('Usage: node tools/generate-vanilla-nbt-schemas.mjs <vanilla-mcdoc-source-dir> <output-json>')
+const [sourceDirArg, outputFileArg, sourceRevisionArg] = process.argv.slice(2)
+if (!sourceDirArg || !outputFileArg || !sourceRevisionArg) {
+  console.error('Usage: node tools/generate-vanilla-nbt-schemas.mjs <vanilla-mcdoc-source-dir> <output-json> <source-revision>')
   process.exit(2)
 }
 
@@ -19,6 +19,10 @@ const dispatches = []
 const parseErrors = []
 
 const files = walk(sourceDir).filter((file) => file.endsWith('.mcdoc')).sort()
+if (files.length < 100) {
+  console.error(`Refusing to generate an incomplete vanilla NBT schema: found only ${files.length} mcdoc files`)
+  process.exit(1)
+}
 for (const file of files) {
   const text = fs.readFileSync(file, 'utf8')
   const src = new Source(text)
@@ -85,6 +89,25 @@ for (const dispatch of dispatches.filter((entry) => entry.registry === 'block'))
   }
 }
 
+const minimumSchemaCounts = {
+  entities: 100,
+  blockEntities: 40,
+  blockMappings: 100,
+}
+if (
+  entitySchemas.size < minimumSchemaCounts.entities ||
+  blockEntitySchemas.size < minimumSchemaCounts.blockEntities ||
+  blockToBlockEntity.size < minimumSchemaCounts.blockMappings
+) {
+  console.error(
+    'Refusing to generate an incomplete vanilla NBT schema: ' +
+    `entities=${entitySchemas.size}/${minimumSchemaCounts.entities}, ` +
+    `blockEntities=${blockEntitySchemas.size}/${minimumSchemaCounts.blockEntities}, ` +
+    `blockMappings=${blockToBlockEntity.size}/${minimumSchemaCounts.blockMappings}`,
+  )
+  process.exit(1)
+}
+
 const supportedVersions = [
   '1.20.4',
   '1.20.5',
@@ -108,10 +131,17 @@ const supportedVersions = [
 ]
 const output = {
   source: 'https://github.com/SpyglassMC/vanilla-mcdoc',
+  sourceRevision: sourceRevisionArg,
   parser: '@spyglassmc/mcdoc',
-  format: 'mcdoc-nbt-schema-v2',
+  format: 'mcdoc-nbt-schema-v3',
   fileCount: files.length,
-  versions: Object.fromEntries(supportedVersions.map((version) => [version, schemaPayload(version)])),
+  schemaSets: {
+    vanilla: schemaPayload(),
+  },
+  versions: Object.fromEntries(supportedVersions.map((version) => [version, {
+    sourceVersion: version,
+    schemaSet: 'vanilla',
+  }])),
 }
 
 fs.mkdirSync(path.dirname(outputFile), { recursive: true })
@@ -121,9 +151,8 @@ console.log(
   `(entities=${entitySchemas.size}, blockEntities=${blockEntitySchemas.size}, blockMappings=${blockToBlockEntity.size})`,
 )
 
-function schemaPayload(sourceVersion) {
+function schemaPayload() {
   return {
-    sourceVersion,
     itemStackFields: sorted(itemStackFields),
     entitySchemas: sortedObject(entitySchemas),
     blockEntitySchemas: sortedObject(blockEntitySchemas),

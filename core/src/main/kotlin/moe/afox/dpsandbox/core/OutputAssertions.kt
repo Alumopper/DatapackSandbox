@@ -140,7 +140,10 @@ data class OutputExpectation(
      *
      * An empty list means the expectation passed.
      */
-    fun failures(outputs: List<OutputEvent>, label: String = "output"): List<String> {
+    fun failures(
+        outputs: List<OutputEvent>,
+        label: String = "output",
+    ): List<String> {
         val matches = matching(outputs)
         if (count != null && matches.size != count) {
             return listOf("$label expected $count match(es) but found ${matches.size}: ${describe()}; ${actualOutputs(outputs)}")
@@ -189,10 +192,13 @@ data class OutputExpectation(
 
     private fun actualOutputs(outputs: List<OutputEvent>): String {
         if (outputs.isEmpty()) return "actual outputs: <none>"
-        val rendered = outputs.take(5).mapIndexed { index, output ->
-            val raw = if (output.rawText == output.text) "" else " rawText=${quote(output.rawText.truncateForAssertion())}"
-            "#${index + 1} command=${output.command} channel=${output.channel} targets=${output.targets.sorted()} text=${quote(output.text.truncateForAssertion())}$raw${payloadSummary(output)}${segmentSummary(output)}"
-        }
+        val rendered =
+            outputs.take(5).mapIndexed { index, output ->
+                val raw = if (output.rawText == output.text) "" else " rawText=${quote(output.rawText.truncateForAssertion())}"
+                "#${index + 1} command=${output.command} channel=${output.channel} targets=${output.targets.sorted()} text=${quote(
+                    output.text.truncateForAssertion(),
+                )}$raw${payloadSummary(output)}${segmentSummary(output)}"
+            }
         val suffix = if (outputs.size > rendered.size) "; ... +${outputs.size - rendered.size} more" else ""
         return "actual outputs: ${rendered.joinToString("; ")}$suffix"
     }
@@ -213,18 +219,19 @@ data class OutputExpectation(
     private fun segmentSummary(output: OutputEvent): String {
         if (segment == null) return ""
         if (output.segments.isEmpty()) return " segments=<none>"
-        val rendered = output.segments.take(4).map { candidate ->
-            buildString {
-                append("{text=").append(quote(candidate.text.truncateForAssertion()))
-                candidate.color?.let { append(" color=").append(it) }
-                if (candidate.bold) append(" bold=true")
-                if (candidate.italic) append(" italic=true")
-                if (candidate.underlined) append(" underlined=true")
-                if (candidate.strikethrough) append(" strikethrough=true")
-                if (candidate.obfuscated) append(" obfuscated=true")
-                append("}")
+        val rendered =
+            output.segments.take(4).map { candidate ->
+                buildString {
+                    append("{text=").append(quote(candidate.text.truncateForAssertion()))
+                    candidate.color?.let { append(" color=").append(it) }
+                    if (candidate.bold) append(" bold=true")
+                    if (candidate.italic) append(" italic=true")
+                    if (candidate.underlined) append(" underlined=true")
+                    if (candidate.strikethrough) append(" strikethrough=true")
+                    if (candidate.obfuscated) append(" obfuscated=true")
+                    append("}")
+                }
             }
-        }
         val suffix = if (output.segments.size > rendered.size) " ... +${output.segments.size - rendered.size} more" else ""
         return " segments=${rendered.joinToString(",")}$suffix"
     }
@@ -237,8 +244,7 @@ data class OutputExpectation(
 
 private val OutputWhitespace = Regex("\\s+")
 
-internal fun normalizeOutputText(value: String): String =
-    value.trim().replace(OutputWhitespace, " ")
+internal fun normalizeOutputText(value: String): String = value.trim().replace(OutputWhitespace, " ")
 
 /**
  * Stateless helpers for matching output events.
@@ -247,14 +253,19 @@ object OutputAssertions {
     /**
      * Returns every event in [outputs] matching [expectation].
      */
-    fun matching(outputs: List<OutputEvent>, expectation: OutputExpectation): List<OutputEvent> =
-        expectation.matching(outputs)
+    fun matching(
+        outputs: List<OutputEvent>,
+        expectation: OutputExpectation,
+    ): List<OutputEvent> = expectation.matching(outputs)
 
     /**
      * Returns human-readable failures for [expectation].
      *
      * An empty list means the expectation passed.
      */
-    fun failures(outputs: List<OutputEvent>, expectation: OutputExpectation, label: String = "output"): List<String> =
-        expectation.failures(outputs, label)
+    fun failures(
+        outputs: List<OutputEvent>,
+        expectation: OutputExpectation,
+        label: String = "output",
+    ): List<String> = expectation.failures(outputs, label)
 }

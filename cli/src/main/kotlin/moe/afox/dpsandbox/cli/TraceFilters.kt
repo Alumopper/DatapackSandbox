@@ -6,14 +6,20 @@ import moe.afox.dpsandbox.core.JsonValues
 import moe.afox.dpsandbox.core.OutputEvent
 
 object TraceFilters {
-    fun apply(events: List<CommandTraceEvent>, filters: List<String>): List<CommandTraceEvent> =
+    fun apply(
+        events: List<CommandTraceEvent>,
+        filters: List<String>,
+    ): List<CommandTraceEvent> =
         if (filters.isEmpty()) {
             events
         } else {
             events.filter { event -> filters.all { filter -> matches(event, filter) } }
         }
 
-    private fun matches(event: CommandTraceEvent, raw: String): Boolean {
+    private fun matches(
+        event: CommandTraceEvent,
+        raw: String,
+    ): Boolean {
         val splitAt = raw.indexOf('=')
         if (splitAt < 0) return contains(event, raw)
         val key = raw.substring(0, splitAt).trim().lowercase()
@@ -40,7 +46,10 @@ object TraceFilters {
         }
     }
 
-    private fun contains(event: CommandTraceEvent, value: String): Boolean =
+    private fun contains(
+        event: CommandTraceEvent,
+        value: String,
+    ): Boolean =
         value in event.command ||
             value == event.root ||
             value == event.errorCode?.name ||
@@ -50,12 +59,18 @@ object TraceFilters {
             event.outputEvents.any { outputMatches(it, value) } ||
             event.snapshotDiffs.any { value in it.path || value in it.render() }
 
-    private fun outputCountMatches(event: CommandTraceEvent, value: String): Boolean =
+    private fun outputCountMatches(
+        event: CommandTraceEvent,
+        value: String,
+    ): Boolean =
         value.toIntOrNull()?.let { event.outputs == it }
             ?: value.toBooleanStrictOrNull()?.let { if (it) event.outputs > 0 else event.outputs == 0 }
             ?: false
 
-    private fun diagnosticMatches(event: CommandTraceEvent, value: String): Boolean =
+    private fun diagnosticMatches(
+        event: CommandTraceEvent,
+        value: String,
+    ): Boolean =
         value.toBooleanStrictOrNull()?.let { expected ->
             (event.errorCode != null) == expected
         } ?: (
@@ -63,9 +78,12 @@ object TraceFilters {
                 value in (event.errorMessage ?: "") ||
                 value in event.command ||
                 value == event.root
-            )
+        )
 
-    private fun selectorMatches(event: CommandTraceEvent, value: String): Boolean =
+    private fun selectorMatches(
+        event: CommandTraceEvent,
+        value: String,
+    ): Boolean =
         value in event.command ||
             value == event.executor ||
             event.outputEvents.any { output ->
@@ -73,13 +91,19 @@ object TraceFilters {
                     output.payload?.let { value in JsonValues.render(it) } == true
             }
 
-    private fun outputMatches(output: OutputEvent, value: String): Boolean =
+    private fun outputMatches(
+        output: OutputEvent,
+        value: String,
+    ): Boolean =
         value in output.text ||
             value == output.channel ||
             output.targets.any { value in it } ||
             output.payload?.let { value in JsonValues.render(it) } == true
 
-    private fun outputPayloadMatches(output: OutputEvent, value: String): Boolean {
+    private fun outputPayloadMatches(
+        output: OutputEvent,
+        value: String,
+    ): Boolean {
         val payload = output.payload?.takeIf { it.isJsonObject }?.asJsonObject ?: return false
         val splitAt = value.indexOf('=')
         if (splitAt < 0) {
@@ -92,16 +116,18 @@ object TraceFilters {
         val path = value.substring(0, splitAt).trim()
         val expectedText = value.substring(splitAt + 1).trim()
         if (path.isEmpty() || expectedText.isEmpty()) return false
-        val expected = try {
-            JsonValues.parse(expectedText)
-        } catch (_: Exception) {
-            return false
-        }
-        val actual = try {
-            JsonPaths.get(payload, path)
-        } catch (_: Exception) {
-            return false
-        }
+        val expected =
+            try {
+                JsonValues.parse(expectedText)
+            } catch (_: Exception) {
+                return false
+            }
+        val actual =
+            try {
+                JsonPaths.get(payload, path)
+            } catch (_: Exception) {
+                return false
+            }
         return actual == expected
     }
 }

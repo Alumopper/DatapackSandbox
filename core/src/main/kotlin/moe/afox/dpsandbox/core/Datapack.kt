@@ -65,8 +65,11 @@ class FunctionSource private constructor(
          */
         @JvmStatic
         @JvmOverloads
-        fun text(id: String, content: String, sourceName: String = "<string:$id>"): FunctionSource =
-            FunctionSource(ResourceLocation.parse(id), content, null, sourceName)
+        fun text(
+            id: String,
+            content: String,
+            sourceName: String = "<string:$id>",
+        ): FunctionSource = FunctionSource(ResourceLocation.parse(id), content, null, sourceName)
 
         /**
          * Creates a file-backed function source.
@@ -75,8 +78,10 @@ class FunctionSource private constructor(
          * [SandboxException] with the active version profile.
          */
         @JvmStatic
-        fun file(id: String, path: Path): FunctionSource =
-            FunctionSource(ResourceLocation.parse(id), null, path, path.toAbsolutePath().normalize().toString())
+        fun file(
+            id: String,
+            path: Path,
+        ): FunctionSource = FunctionSource(ResourceLocation.parse(id), null, path, path.toAbsolutePath().normalize().toString())
     }
 }
 
@@ -122,8 +127,7 @@ data class TagKey(
     val registry: String,
     val id: ResourceLocation,
 ) : Comparable<TagKey> {
-    override fun compareTo(other: TagKey): Int =
-        compareValuesBy(this, other, TagKey::registry, { it.id.toString() })
+    override fun compareTo(other: TagKey): Int = compareValuesBy(this, other, TagKey::registry, { it.id.toString() })
 
     override fun toString(): String = "$registry/$id"
 }
@@ -217,11 +221,22 @@ data class LootPool(
 )
 
 /** Loot entry with its raw JSON payload. */
-data class LootEntry(val type: String, val root: JsonObject)
+data class LootEntry(
+    val type: String,
+    val root: JsonObject,
+)
+
 /** Loot condition with its raw JSON payload. */
-data class LootCondition(val type: String, val root: JsonObject)
+data class LootCondition(
+    val type: String,
+    val root: JsonObject,
+)
+
 /** Loot function with its raw JSON payload. */
-data class LootFunction(val type: String, val root: JsonObject)
+data class LootFunction(
+    val type: String,
+    val root: JsonObject,
+)
 
 /**
  * Loaded predicate resource.
@@ -286,37 +301,38 @@ data class Datapack(
      */
     fun resourceSummary(): DatapackResourceSummary {
         val overlays = resourceIndex.filter { !it.active || it.overrides != null || it.overriddenBy != null }
-        val missingReferences = buildList {
-            loadFunctions
-                .filterNot { it in functions }
-                .forEach { add(DatapackMissingResourceReference("#minecraft:load", "function", it)) }
-            tickFunctions
-                .filterNot { it in functions }
-                .forEach { add(DatapackMissingResourceReference("#minecraft:tick", "function", it)) }
-            predicates.toSortedMap().forEach { (predicateId, predicate) ->
-                addAll(missingPredicateReferences(predicateId, predicate.root, predicates.keys))
+        val missingReferences =
+            buildList {
+                loadFunctions
+                    .filterNot { it in functions }
+                    .forEach { add(DatapackMissingResourceReference("#minecraft:load", "function", it)) }
+                tickFunctions
+                    .filterNot { it in functions }
+                    .forEach { add(DatapackMissingResourceReference("#minecraft:tick", "function", it)) }
+                predicates.toSortedMap().forEach { (predicateId, predicate) ->
+                    addAll(missingPredicateReferences(predicateId, predicate.root, predicates.keys))
+                }
+                lootTables.toSortedMap().forEach { (lootTableId, lootTable) ->
+                    addAll(missingLootTableReferences(lootTableId, lootTable.root, lootTables.keys, predicates.keys))
+                }
+                itemModifiers.toSortedMap().forEach { (itemModifierId, itemModifier) ->
+                    addAll(missingItemModifierReferences(itemModifierId, itemModifier.root, predicates.keys))
+                }
+                advancements.toSortedMap().forEach { (advancementId, advancement) ->
+                    advancement.parent
+                        ?.takeIf { it !in advancements }
+                        ?.let { add(DatapackMissingResourceReference("advancement $advancementId parent", "advancement", it)) }
+                    advancement.rewards.function
+                        ?.takeIf { it !in functions }
+                        ?.let { add(DatapackMissingResourceReference("advancement $advancementId rewards.function", "function", it)) }
+                    advancement.rewards.loot
+                        .filterNot { it in lootTables }
+                        .forEach { add(DatapackMissingResourceReference("advancement $advancementId rewards.loot", "loot_table", it)) }
+                    advancement.rewards.recipes
+                        .filterNot { it in recipes }
+                        .forEach { add(DatapackMissingResourceReference("advancement $advancementId rewards.recipes", "recipe", it)) }
+                }
             }
-            lootTables.toSortedMap().forEach { (lootTableId, lootTable) ->
-                addAll(missingLootTableReferences(lootTableId, lootTable.root, lootTables.keys, predicates.keys))
-            }
-            itemModifiers.toSortedMap().forEach { (itemModifierId, itemModifier) ->
-                addAll(missingItemModifierReferences(itemModifierId, itemModifier.root, predicates.keys))
-            }
-            advancements.toSortedMap().forEach { (advancementId, advancement) ->
-                advancement.parent
-                    ?.takeIf { it !in advancements }
-                    ?.let { add(DatapackMissingResourceReference("advancement $advancementId parent", "advancement", it)) }
-                advancement.rewards.function
-                    ?.takeIf { it !in functions }
-                    ?.let { add(DatapackMissingResourceReference("advancement $advancementId rewards.function", "function", it)) }
-                advancement.rewards.loot
-                    .filterNot { it in lootTables }
-                    .forEach { add(DatapackMissingResourceReference("advancement $advancementId rewards.loot", "loot_table", it)) }
-                advancement.rewards.recipes
-                    .filterNot { it in recipes }
-                    .forEach { add(DatapackMissingResourceReference("advancement $advancementId rewards.recipes", "recipe", it)) }
-            }
-        }
         return DatapackResourceSummary(
             functions = functions.size,
             lootTables = lootTables.size,
@@ -412,7 +428,10 @@ data class Datapack(
      *
      * @throws SandboxException with [DiagnosticCode.RESOURCE_NOT_FOUND] when missing.
      */
-    fun rawResource(kind: String, id: ResourceLocation): RawJsonResource {
+    fun rawResource(
+        kind: String,
+        id: ResourceLocation,
+    ): RawJsonResource {
         val normalizedKind = kind.replace('-', '_')
         return rawResources[normalizedKind]?.get(id)
             ?: throw SandboxException(
@@ -426,7 +445,10 @@ data class Datapack(
      *
      * @throws SandboxException with [DiagnosticCode.RESOURCE_NOT_FOUND] when missing.
      */
-    fun tag(registry: String, id: ResourceLocation): TagDefinition =
+    fun tag(
+        registry: String,
+        id: ResourceLocation,
+    ): TagDefinition =
         tags[TagKey(registry, id)]
             ?: throw SandboxException(
                 code = DiagnosticCode.RESOURCE_NOT_FOUND,
@@ -452,16 +474,18 @@ private fun collectPredicateReferences(
 ) {
     if (element == null || element.isJsonNull) return
     when {
-        element.isJsonArray -> element.asJsonArray.forEach {
-            collectPredicateReferences(source, it, knownPredicates, missing)
-        }
+        element.isJsonArray ->
+            element.asJsonArray.forEach {
+                collectPredicateReferences(source, it, knownPredicates, missing)
+            }
         element.isJsonObject -> {
             val obj = element.asJsonObject
             when (canonicalResourceKind(resourceJsonString(obj.get("condition")) ?: resourceJsonString(obj.get("predicate")))) {
-                "reference" -> resourceJsonString(obj.get("name"))
-                    ?.let(ResourceLocation::parse)
-                    ?.takeIf { it !in knownPredicates }
-                    ?.let { missing += DatapackMissingResourceReference(source, "predicate", it) }
+                "reference" ->
+                    resourceJsonString(obj.get("name"))
+                        ?.let(ResourceLocation::parse)
+                        ?.takeIf { it !in knownPredicates }
+                        ?.let { missing += DatapackMissingResourceReference(source, "predicate", it) }
                 "all_of", "any_of", "alternative" -> collectPredicateReferences(source, obj.get("terms"), knownPredicates, missing)
                 "inverted" -> collectPredicateReferences(source, obj.get("term") ?: obj.get("predicate"), knownPredicates, missing)
             }
@@ -496,9 +520,10 @@ private fun collectLootEntryReferences(
 ) {
     if (element == null || element.isJsonNull) return
     when {
-        element.isJsonArray -> element.asJsonArray.forEach {
-            collectLootEntryReferences(lootTableId, it, knownLootTables, knownPredicates, missing)
-        }
+        element.isJsonArray ->
+            element.asJsonArray.forEach {
+                collectLootEntryReferences(lootTableId, it, knownLootTables, knownPredicates, missing)
+            }
         element.isJsonObject -> {
             val obj = element.asJsonObject
             collectPredicateReferences("loot_table $lootTableId conditions", obj.get("conditions"), knownPredicates, missing)
@@ -522,9 +547,10 @@ private fun collectLootFunctionReferences(
 ) {
     if (element == null || element.isJsonNull) return
     when {
-        element.isJsonArray -> element.asJsonArray.forEach {
-            collectLootFunctionReferences(lootTableId, it, knownPredicates, missing)
-        }
+        element.isJsonArray ->
+            element.asJsonArray.forEach {
+                collectLootFunctionReferences(lootTableId, it, knownPredicates, missing)
+            }
         element.isJsonObject -> {
             val obj = element.asJsonObject
             collectPredicateReferences("loot_table $lootTableId conditions", obj.get("conditions"), knownPredicates, missing)
@@ -552,19 +578,23 @@ private fun collectItemModifierFunctionReferences(
 ) {
     if (element == null || element.isJsonNull) return
     when {
-        element.isJsonArray -> element.asJsonArray.forEach {
-            collectItemModifierFunctionReferences(itemModifierId, it, knownPredicates, missing)
-        }
+        element.isJsonArray ->
+            element.asJsonArray.forEach {
+                collectItemModifierFunctionReferences(itemModifierId, it, knownPredicates, missing)
+            }
         element.isJsonObject ->
-            collectPredicateReferences("item_modifier $itemModifierId conditions", element.asJsonObject.get("conditions"), knownPredicates, missing)
+            collectPredicateReferences(
+                "item_modifier $itemModifierId conditions",
+                element.asJsonObject.get("conditions"),
+                knownPredicates,
+                missing,
+            )
     }
 }
 
-private fun canonicalResourceKind(value: String?): String? =
-    value?.substringAfter(':')
+private fun canonicalResourceKind(value: String?): String? = value?.substringAfter(':')
 
-private fun JsonObject.resourceArrayOrNull(name: String) =
-    get(name)?.takeIf { it.isJsonArray }?.asJsonArray
+private fun JsonObject.resourceArrayOrNull(name: String) = get(name)?.takeIf { it.isJsonArray }?.asJsonArray
 
 private fun resourceJsonString(element: JsonElement?): String? =
     element?.takeIf { it.isJsonPrimitive && it.asJsonPrimitive.isString }?.asString

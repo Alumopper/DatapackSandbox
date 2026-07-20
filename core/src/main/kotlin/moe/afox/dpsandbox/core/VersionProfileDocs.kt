@@ -1,7 +1,10 @@
 package moe.afox.dpsandbox.core
 
 object VersionProfileDocs {
-    fun renderMarkdownTable(profiles: List<VersionProfile> = VersionProfiles.all, locale: String = "en"): String {
+    fun renderMarkdownTable(
+        profiles: List<VersionProfile> = VersionProfiles.all,
+        locale: String = "en",
+    ): String {
         val zh = locale.isZhCnDocsLocale()
         val directoryHeader = if (zh) "资源目录" else "Resource directories"
         return buildString {
@@ -17,25 +20,29 @@ object VersionProfileDocs {
         }.trimEnd()
     }
 
-    fun resourceDirectorySummary(profile: VersionProfile): String =
-        resourceDirectorySummary(profile, locale = "en")
+    fun resourceDirectorySummary(profile: VersionProfile): String = resourceDirectorySummary(profile, locale = "en")
 
-    fun resourceDirectorySummary(profile: VersionProfile, locale: String): String {
+    fun resourceDirectorySummary(
+        profile: VersionProfile,
+        locale: String,
+    ): String {
         val zh = locale.isZhCnDocsLocale()
         val separator = if (zh) "、" else ", "
         val directories = profile.resourceDirectories
-        val primary = listOf(
-            directories.functions.firstOrNull(),
-            directories.lootTables.firstOrNull(),
-            directories.predicates.firstOrNull(),
-            directories.advancements.firstOrNull(),
-        ).filterNotNull()
-        val aliases = listOf(
-            directories.functions.drop(1),
-            directories.lootTables.drop(1),
-            directories.predicates.drop(1),
-            directories.advancements.drop(1),
-        ).flatten()
+        val primary =
+            listOf(
+                directories.functions.firstOrNull(),
+                directories.lootTables.firstOrNull(),
+                directories.predicates.firstOrNull(),
+                directories.advancements.firstOrNull(),
+            ).filterNotNull()
+        val aliases =
+            listOf(
+                directories.functions.drop(1),
+                directories.lootTables.drop(1),
+                directories.predicates.drop(1),
+                directories.advancements.drop(1),
+            ).flatten()
 
         val primaryText = primary.joinToString(separator) { "`$it`" }
         return if (aliases.isEmpty()) {
@@ -47,6 +54,5 @@ object VersionProfileDocs {
         }
     }
 
-    private fun String.isZhCnDocsLocale(): Boolean =
-        lowercase().replace('_', '-') in setOf("zh", "zh-cn", "zh-hans", "zh-hans-cn")
+    private fun String.isZhCnDocsLocale(): Boolean = lowercase().replace('_', '-') in setOf("zh", "zh-cn", "zh-hans", "zh-hans-cn")
 }

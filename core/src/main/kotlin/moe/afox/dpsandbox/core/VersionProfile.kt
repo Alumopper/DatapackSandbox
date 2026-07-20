@@ -9,7 +9,9 @@ import java.math.BigDecimal
  * Recent Minecraft versions use decimal values such as `101.1`; this wrapper
  * preserves exact decimal comparison and stable string rendering.
  */
-data class DataPackFormat(val value: BigDecimal) : Comparable<DataPackFormat> {
+data class DataPackFormat(
+    val value: BigDecimal,
+) : Comparable<DataPackFormat> {
     /**
      * Returns true when this format is numerically equal to [other].
      */
@@ -24,6 +26,7 @@ data class DataPackFormat(val value: BigDecimal) : Comparable<DataPackFormat> {
          * Creates a whole-number data pack format.
          */
         fun of(value: Int): DataPackFormat = DataPackFormat(BigDecimal(value))
+
         /**
          * Creates a data pack format from a decimal string.
          */
@@ -55,19 +58,23 @@ data class DataPackFormat(val value: BigDecimal) : Comparable<DataPackFormat> {
             throw SandboxException(DiagnosticCode.INPUT_FORMAT, "pack_format must be a number or an array of one or two integers")
         }
 
-        private fun parseIntegerPart(element: JsonElement, label: String): Int {
+        private fun parseIntegerPart(
+            element: JsonElement,
+            label: String,
+        ): Int {
             if (!element.isJsonPrimitive || !element.asJsonPrimitive.isNumber) {
                 throw SandboxException(DiagnosticCode.INPUT_FORMAT, "pack_format $label part must be an integer")
             }
-            val value = try {
-                element.asBigDecimal.intValueExact()
-            } catch (error: ArithmeticException) {
-                throw SandboxException(
-                    code = DiagnosticCode.INPUT_FORMAT,
-                    message = "pack_format $label part must be an integer",
-                    cause = error,
-                )
-            }
+            val value =
+                try {
+                    element.asBigDecimal.intValueExact()
+                } catch (error: ArithmeticException) {
+                    throw SandboxException(
+                        code = DiagnosticCode.INPUT_FORMAT,
+                        message = "pack_format $label part must be an integer",
+                        cause = error,
+                    )
+                }
             if (value < 0) {
                 throw SandboxException(DiagnosticCode.INPUT_FORMAT, "pack_format $label part must be non-negative")
             }
@@ -93,26 +100,28 @@ data class ResourceDirectoryProfile(
 ) {
     companion object {
         /** Resource directory layout used by older plural-directory packs. */
-        val legacyPlural = ResourceDirectoryProfile(
-            functions = listOf("functions"),
-            functionTags = listOf("functions"),
-            lootTables = listOf("loot_tables"),
-            predicates = listOf("predicates"),
-            advancements = listOf("advancements"),
-            recipes = listOf("recipes"),
-            itemModifiers = listOf("item_modifiers"),
-        )
+        val legacyPlural =
+            ResourceDirectoryProfile(
+                functions = listOf("functions"),
+                functionTags = listOf("functions"),
+                lootTables = listOf("loot_tables"),
+                predicates = listOf("predicates"),
+                advancements = listOf("advancements"),
+                recipes = listOf("recipes"),
+                itemModifiers = listOf("item_modifiers"),
+            )
 
         /** Current singular directory layout plus legacy aliases for compatibility profiles. */
-        val currentWithLegacyAliases = ResourceDirectoryProfile(
-            functions = listOf("function", "functions"),
-            functionTags = listOf("function", "functions"),
-            lootTables = listOf("loot_table", "loot_tables"),
-            predicates = listOf("predicate", "predicates"),
-            advancements = listOf("advancement", "advancements"),
-            recipes = listOf("recipe", "recipes"),
-            itemModifiers = listOf("item_modifier", "item_modifiers"),
-        )
+        val currentWithLegacyAliases =
+            ResourceDirectoryProfile(
+                functions = listOf("function", "functions"),
+                functionTags = listOf("function", "functions"),
+                lootTables = listOf("loot_table", "loot_tables"),
+                predicates = listOf("predicate", "predicates"),
+                advancements = listOf("advancement", "advancements"),
+                recipes = listOf("recipe", "recipes"),
+                itemModifiers = listOf("item_modifier", "item_modifiers"),
+            )
     }
 }
 
@@ -128,90 +137,91 @@ data class CommandProfile(
     fun hasRoot(command: String): Boolean = command in roots
 
     companion object {
-        private val commonRoots = setOf(
-            "advancement",
-            "attribute",
-            "ban",
-            "ban-ip",
-            "banlist",
-            "bossbar",
-            "clear",
-            "clone",
-            "damage",
-            "data",
-            "datapack",
-            "debug",
-            "defaultgamemode",
-            "deop",
-            "difficulty",
-            "effect",
-            "enchant",
-            "execute",
-            "experience",
-            "fill",
-            "fillbiome",
-            "forceload",
-            "function",
-            "gamemode",
-            "gamerule",
-            "give",
-            "help",
-            "item",
-            "jfr",
-            "kick",
-            "kill",
-            "list",
-            "locate",
-            "loot",
-            "me",
-            "msg",
-            "op",
-            "pardon",
-            "pardon-ip",
-            "particle",
-            "perf",
-            "place",
-            "playsound",
-            "publish",
-            "random",
-            "recipe",
-            "reload",
-            "return",
-            "ride",
-            "rotate",
-            "save-all",
-            "save-off",
-            "save-on",
-            "say",
-            "schedule",
-            "scoreboard",
-            "seed",
-            "setblock",
-            "setidletimeout",
-            "setworldspawn",
-            "spawnpoint",
-            "spectate",
-            "spreadplayers",
-            "stop",
-            "stopsound",
-            "summon",
-            "tag",
-            "team",
-            "teammsg",
-            "tell",
-            "tellraw",
-            "tick",
-            "time",
-            "title",
-            "tm",
-            "tp",
-            "trigger",
-            "w",
-            "weather",
-            "whitelist",
-            "worldborder",
-            "xp",
-        )
+        private val commonRoots =
+            setOf(
+                "advancement",
+                "attribute",
+                "ban",
+                "ban-ip",
+                "banlist",
+                "bossbar",
+                "clear",
+                "clone",
+                "damage",
+                "data",
+                "datapack",
+                "debug",
+                "defaultgamemode",
+                "deop",
+                "difficulty",
+                "effect",
+                "enchant",
+                "execute",
+                "experience",
+                "fill",
+                "fillbiome",
+                "forceload",
+                "function",
+                "gamemode",
+                "gamerule",
+                "give",
+                "help",
+                "item",
+                "jfr",
+                "kick",
+                "kill",
+                "list",
+                "locate",
+                "loot",
+                "me",
+                "msg",
+                "op",
+                "pardon",
+                "pardon-ip",
+                "particle",
+                "perf",
+                "place",
+                "playsound",
+                "publish",
+                "random",
+                "recipe",
+                "reload",
+                "return",
+                "ride",
+                "rotate",
+                "save-all",
+                "save-off",
+                "save-on",
+                "say",
+                "schedule",
+                "scoreboard",
+                "seed",
+                "setblock",
+                "setidletimeout",
+                "setworldspawn",
+                "spawnpoint",
+                "spectate",
+                "spreadplayers",
+                "stop",
+                "stopsound",
+                "summon",
+                "tag",
+                "team",
+                "teammsg",
+                "tell",
+                "tellraw",
+                "tick",
+                "time",
+                "title",
+                "tm",
+                "tp",
+                "trigger",
+                "w",
+                "weather",
+                "whitelist",
+                "worldborder",
+                "xp",
+            )
 
         val minecraft1204 = CommandProfile(commonRoots)
         val modern = CommandProfile(commonRoots + "transfer")
@@ -262,27 +272,28 @@ object VersionProfiles {
     val minecraft262 = profile("26.2", java = 25, data = 4903, pack = "107.1", registryView = RegistryView.vanilla262)
 
     val default: VersionProfile = minecraft262
-    val all: List<VersionProfile> = listOf(
-        minecraft1204,
-        minecraft1205,
-        minecraft1206,
-        minecraft121,
-        minecraft1211,
-        minecraft1212,
-        minecraft1213,
-        minecraft1214,
-        minecraft1215,
-        minecraft1216,
-        minecraft1217,
-        minecraft1218,
-        minecraft1219,
-        minecraft12110,
-        minecraft12111,
-        minecraft261,
-        minecraft2611,
-        minecraft2612,
-        minecraft262,
-    )
+    val all: List<VersionProfile> =
+        listOf(
+            minecraft1204,
+            minecraft1205,
+            minecraft1206,
+            minecraft121,
+            minecraft1211,
+            minecraft1212,
+            minecraft1213,
+            minecraft1214,
+            minecraft1215,
+            minecraft1216,
+            minecraft1217,
+            minecraft1218,
+            minecraft1219,
+            minecraft12110,
+            minecraft12111,
+            minecraft261,
+            minecraft2611,
+            minecraft2612,
+            minecraft262,
+        )
 
     /**
      * Returns a built-in profile by id.

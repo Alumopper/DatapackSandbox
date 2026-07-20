@@ -288,14 +288,14 @@ Items[{Slot:0b}].id
 JSON Schema 位于：
 
 ```text
-docs/dps-manifest.schema.json
+schema/manifest/dps-manifest.schema.json
 ```
 
 standalone CLI 也会内置该 schema：
 
 ```bash
 java -jar cli/build/libs/datapack-sandbox-cli.jar schema --output dps-manifest.schema.json
-java -jar cli/build/libs/datapack-sandbox-cli.jar schema --check docs/dps-manifest.schema.json
+java -jar cli/build/libs/datapack-sandbox-cli.jar schema --check schema/manifest/dps-manifest.schema.json
 ```
 
 使用 `check --validate-schema` 可以在执行前校验 manifest 结构：

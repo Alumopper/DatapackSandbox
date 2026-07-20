@@ -11,8 +11,10 @@ import org.jline.utils.AttributedStyle
 class DpsHighlighter(
     private val profile: () -> VersionProfile = { VersionProfiles.default },
 ) : Highlighter {
-    override fun highlight(reader: LineReader, buffer: String): AttributedString =
-        highlightLine(buffer)
+    override fun highlight(
+        reader: LineReader,
+        buffer: String,
+    ): AttributedString = highlightLine(buffer)
 
     fun highlightLine(buffer: String): AttributedString {
         val builder = AttributedStringBuilder(buffer.length)
@@ -20,17 +22,23 @@ class DpsHighlighter(
         var nonBlankIndex = -1
         matches.forEach { match ->
             val token = match.value
-            val tokenIndex = if (token.isBlank()) -1 else {
-                nonBlankIndex += 1
-                nonBlankIndex
-            }
+            val tokenIndex =
+                if (token.isBlank()) {
+                    -1
+                } else {
+                    nonBlankIndex += 1
+                    nonBlankIndex
+                }
             val style = styleFor(token, tokenIndex)
             builder.styled(style, token)
         }
         return builder.toAttributedString()
     }
 
-    private fun styleFor(token: String, index: Int): AttributedStyle =
+    private fun styleFor(
+        token: String,
+        index: Int,
+    ): AttributedStyle =
         when {
             token.isBlank() -> normal
             index == 0 -> commandStyle(token)
@@ -53,65 +61,63 @@ class DpsHighlighter(
         }
     }
 
-    private fun String.isQuoted(): Boolean =
-        length >= 1 && (startsWith("\"") || startsWith("'"))
+    private fun String.isQuoted(): Boolean = length >= 1 && (startsWith("\"") || startsWith("'"))
 
-    private fun String.isNumberLike(): Boolean =
-        matches(numberPattern) || this == "~" || startsWith("~") && drop(1).matches(numberPattern)
+    private fun String.isNumberLike(): Boolean = matches(numberPattern) || this == "~" || startsWith("~") && drop(1).matches(numberPattern)
 
-    private fun String.isResourceLocationLike(): Boolean =
-        trimEnd(',', ']', '}', ')').matches(resourceLocationPattern)
+    private fun String.isResourceLocationLike(): Boolean = trimEnd(',', ']', '}', ')').matches(resourceLocationPattern)
 
     companion object {
         private val tokenPattern = Regex("""\s+|"(?:\\.|[^"\\])*"?|'(?:\\.|[^'\\])*'?|\S+""")
         private val numberPattern = Regex("""-?\d+(?:\.\d+)?[bBsSlLfFdD]?""")
         private val resourceLocationPattern = Regex("""[a-z0-9_.-]+:[a-z0-9_./-]+""")
 
-        private val syntaxKeywords = setOf(
-            "add",
-            "append",
-            "as",
-            "at",
-            "bossbar",
-            "block",
-            "clear",
-            "destroy",
-            "entity",
-            "everything",
-            "from",
-            "get",
-            "if",
-            "insert",
-            "keep",
-            "list",
-            "merge",
-            "modify",
-            "mount",
-            "move",
-            "masked",
-            "normal",
-            "objectives",
-            "only",
-            "players",
-            "positioned",
-            "prepend",
-            "query",
-            "remove",
-            "replace",
-            "result",
-            "revoke",
-            "run",
-            "score",
-            "set",
-            "success",
-            "storage",
-            "strict",
-            "through",
-            "until",
-            "unless",
-            "value",
-            "with",
-        )
+        private val syntaxKeywords =
+            setOf(
+                "add",
+                "append",
+                "as",
+                "at",
+                "bossbar",
+                "block",
+                "clear",
+                "destroy",
+                "entity",
+                "everything",
+                "from",
+                "get",
+                "if",
+                "insert",
+                "keep",
+                "list",
+                "merge",
+                "modify",
+                "mount",
+                "move",
+                "masked",
+                "normal",
+                "objectives",
+                "only",
+                "players",
+                "positioned",
+                "prepend",
+                "query",
+                "remove",
+                "replace",
+                "result",
+                "revoke",
+                "run",
+                "score",
+                "set",
+                "success",
+                "storage",
+                "strict",
+                "through",
+                "until",
+                "unless",
+                "value",
+                "with",
+            )
 
         private val normal = AttributedStyle.DEFAULT
         private val rootCommandStyle = AttributedStyle.DEFAULT.foreground(AttributedStyle.CYAN).bold()

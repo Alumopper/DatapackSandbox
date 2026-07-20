@@ -80,9 +80,8 @@
         },
         "datapackSandbox.defaultVersion": {
           "type": "string",
-          "default": "26.2",
-          "enum": ["1.20.4", "1.20.5", "1.20.6", "1.21", "1.21.1", "1.21.2", "1.21.3", "1.21.4", "1.21.5", "1.21.6", "1.21.7", "1.21.8", "1.21.9", "1.21.10", "1.21.11", "26.1", "26.1.1", "26.1.2", "26.2"],
-          "description": "Default Minecraft version profile."
+          "default": "",
+          "description": "Optional Minecraft version profile override. Empty uses the bundled CLI's canonical default profile."
         },
         "datapackSandbox.packPaths": {
           "type": "array",
@@ -160,7 +159,7 @@
             "required": ["program"],
             "properties": {
               "program": { "type": "string", "description": "Path to .mcfunction or .dps.json file." },
-              "version": { "type": "string", "default": "26.2" },
+              "version": { "type": "string", "default": "", "description": "Optional profile override; empty uses the bundled CLI default." },
               "packs": { "type": "array", "items": { "type": "string" }, "default": [] },
               "strict": { "type": "boolean", "default": false },
               "sandbox": { "type": "string", "enum": ["temporary", "active"], "default": "temporary", "description": "Run in a new temporary sandbox or the active persistent sandbox." },
@@ -174,7 +173,6 @@
             "type": "datapack-sandbox",
             "request": "launch",
             "program": "${file}",
-            "version": "26.2",
             "sandbox": "temporary",
             "stopOnEntry": false
           }

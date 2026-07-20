@@ -2,9 +2,12 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "generate:vanilla-nbt-schemas": "node tools/generate-vanilla-nbt-schemas.mjs",
+    "sync:doc-assets": "node tools/sync-doc-assets.mjs",
+    "predocs:dev": "npm run sync:doc-assets",
     "docs:dev": "vitepress dev docs --host 127.0.0.1",
+    "predocs:build": "npm run sync:doc-assets",
     "docs:build": "vitepress build docs",
+    "predocs:preview": "npm run sync:doc-assets",
     "docs:preview": "vitepress preview docs --host 127.0.0.1"
   },
   "devDependencies": {

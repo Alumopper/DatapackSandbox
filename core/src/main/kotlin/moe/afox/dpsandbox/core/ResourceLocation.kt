@@ -10,7 +10,10 @@ private val pathPattern = Regex("[a-z0-9_./-]+")
  * Minecraft resources. Missing namespaces default to `minecraft` unless a
  * different namespace is supplied to [parse].
  */
-data class ResourceLocation(val namespace: String, val path: String) : Comparable<ResourceLocation> {
+data class ResourceLocation(
+    val namespace: String,
+    val path: String,
+) : Comparable<ResourceLocation> {
     init {
         require(namespacePattern.matches(namespace)) { "Invalid namespace: $namespace" }
         require(pathPattern.matches(path)) { "Invalid resource path: $path" }
@@ -18,8 +21,7 @@ data class ResourceLocation(val namespace: String, val path: String) : Comparabl
 
     override fun toString(): String = "$namespace:$path"
 
-    override fun compareTo(other: ResourceLocation): Int =
-        compareValuesBy(this, other, ResourceLocation::namespace, ResourceLocation::path)
+    override fun compareTo(other: ResourceLocation): Int = compareValuesBy(this, other, ResourceLocation::namespace, ResourceLocation::path)
 
     companion object {
         /**
@@ -29,7 +31,10 @@ data class ResourceLocation(val namespace: String, val path: String) : Comparabl
          * @param defaultNamespace Namespace used when [value] does not include one.
          * @throws SandboxException when the id is empty or contains invalid characters.
          */
-        fun parse(value: String, defaultNamespace: String = "minecraft"): ResourceLocation {
+        fun parse(
+            value: String,
+            defaultNamespace: String = "minecraft",
+        ): ResourceLocation {
             val trimmed = value.trim()
             val split = trimmed.split(":", limit = 2)
             val namespace = if (split.size == 2 && split[0].isNotEmpty()) split[0] else defaultNamespace

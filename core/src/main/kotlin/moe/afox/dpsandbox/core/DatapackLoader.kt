@@ -67,10 +67,11 @@ object DatapackLoader {
 
     private const val MAX_LOAD_CACHE_ENTRIES = 16
 
-    private val loadCache = object : LinkedHashMap<LoadCacheKey, Datapack>(MAX_LOAD_CACHE_ENTRIES, 0.75f, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<LoadCacheKey, Datapack>?): Boolean =
-            size > MAX_LOAD_CACHE_ENTRIES
-    }
+    private val loadCache =
+        object : LinkedHashMap<LoadCacheKey, Datapack>(MAX_LOAD_CACHE_ENTRIES, 0.75f, true) {
+            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<LoadCacheKey, Datapack>?): Boolean =
+                size > MAX_LOAD_CACHE_ENTRIES
+        }
 
     /**
      * Clears cached parsed datapacks. Content fingerprints normally invalidate
@@ -97,7 +98,10 @@ object DatapackLoader {
      * malformed JSON, or invalid resource ids. Pack format mismatches are
      * returned as [Datapack.warnings].
      */
-    fun load(paths: List<Path>, profile: VersionProfile): Datapack {
+    fun load(
+        paths: List<Path>,
+        profile: VersionProfile,
+    ): Datapack {
         if (paths.isEmpty()) {
             throw SandboxException(DiagnosticCode.INPUT_FORMAT, "At least one datapack path is required", version = profile.id)
         }
@@ -112,7 +116,10 @@ object DatapackLoader {
         return datapack
     }
 
-    private fun loadUncached(paths: List<Path>, profile: VersionProfile): Datapack {
+    private fun loadUncached(
+        paths: List<Path>,
+        profile: VersionProfile,
+    ): Datapack {
         val functions = linkedMapOf<ResourceLocation, DatapackFunction>()
         val loadFunctionEntries = mutableListOf<FunctionTagEntry>()
         val tickFunctionEntries = mutableListOf<FunctionTagEntry>()
@@ -126,7 +133,10 @@ object DatapackLoader {
         val resourceIndex = ResourceIndexBuilder()
         val warnings = mutableListOf<DatapackWarning>()
 
-        fun mergeRawResources(kind: String, resources: Map<ResourceLocation, RawJsonResource>) {
+        fun mergeRawResources(
+            kind: String,
+            resources: Map<ResourceLocation, RawJsonResource>,
+        ) {
             if (resources.isEmpty()) return
             rawResources.getOrPut(kind) { linkedMapOf() }.putAll(resources)
         }
@@ -245,15 +255,20 @@ object DatapackLoader {
             functions = functions.toSortedMap(),
             loadFunctions = emptyList(),
             tickFunctions = emptyList(),
-            resourceIndex = functions.values.mapIndexed { index, function ->
-                ResourceIndexEntry(
-                    type = "function",
-                    id = function.id,
-                    file = function.lines.firstOrNull()?.location?.file ?: "<synthetic:${function.id}>",
-                    pack = "<synthetic>",
-                    order = index,
-                )
-            },
+            resourceIndex =
+                functions.values.mapIndexed { index, function ->
+                    ResourceIndexEntry(
+                        type = "function",
+                        id = function.id,
+                        file =
+                            function.lines
+                                .firstOrNull()
+                                ?.location
+                                ?.file ?: "<synthetic:${function.id}>",
+                        pack = "<synthetic>",
+                        order = index,
+                    )
+                },
         )
     }
 
@@ -291,13 +306,22 @@ object DatapackLoader {
             itemModifiers = dependencies.itemModifiers,
             rawResources = dependencies.rawResources,
             tags = dependencies.tags,
-            resourceIndex = dependencies.resourceIndex + overlay.resourceIndex.map { entry ->
-                if (dependencies.functions.containsKey(entry.id) && entry.type == "function") {
-                    entry.copy(overrides = dependencies.functions[entry.id]?.lines?.firstOrNull()?.location?.file)
-                } else {
-                    entry
-                }
-            },
+            resourceIndex =
+                dependencies.resourceIndex +
+                    overlay.resourceIndex.map { entry ->
+                        if (dependencies.functions.containsKey(entry.id) && entry.type == "function") {
+                            entry.copy(
+                                overrides =
+                                    dependencies.functions[entry.id]
+                                        ?.lines
+                                        ?.firstOrNull()
+                                        ?.location
+                                        ?.file,
+                            )
+                        } else {
+                            entry
+                        }
+                    },
         )
     }
 
@@ -306,7 +330,7 @@ object DatapackLoader {
      *
      * The resulting datapack contains exactly one function with [functionId] and
      * no load/tick tags. This is the low-level helper used by
-     * [createFunctionSandbox] and [SandboxQuickTest.singleFunction].
+     * [createFunctionSandbox] and the testkit module's `SandboxQuickTest.singleFunction` facade.
      *
      * @throws SandboxException when [functionFile] is missing or not a regular
      * `.mcfunction` file.
@@ -317,8 +341,7 @@ object DatapackLoader {
         functionFile: Path,
         profile: VersionProfile,
         functionId: ResourceLocation = SingleFunctionDatapack.defaultId(),
-    ): Datapack =
-        loadFunctionSources(listOf(FunctionSource.file(functionId.toString(), functionFile)), profile)
+    ): Datapack = loadFunctionSources(listOf(FunctionSource.file(functionId.toString(), functionFile)), profile)
 
     /**
      * Loads one in-memory `.mcfunction` string as a synthetic datapack.
@@ -329,12 +352,13 @@ object DatapackLoader {
         content: String,
         profile: VersionProfile,
         functionId: ResourceLocation = SingleFunctionDatapack.defaultId(),
-        sourceName: String = "<string:${functionId}>",
-    ): Datapack =
-        loadFunctionSources(listOf(FunctionSource.text(functionId.toString(), content, sourceName)), profile)
+        sourceName: String = "<string:$functionId>",
+    ): Datapack = loadFunctionSources(listOf(FunctionSource.text(functionId.toString(), content, sourceName)), profile)
 
-    private fun loadCacheKey(paths: List<Path>, profile: VersionProfile): LoadCacheKey =
-        LoadCacheKey(profile.id, paths.map(::fingerprintPack))
+    private fun loadCacheKey(
+        paths: List<Path>,
+        profile: VersionProfile,
+    ): LoadCacheKey = LoadCacheKey(profile.id, paths.map(::fingerprintPack))
 
     private fun fingerprintPack(input: Path): PackFingerprint {
         val normalized = input.toAbsolutePath().normalize()
@@ -345,10 +369,11 @@ object DatapackLoader {
             val files = mutableListOf<FileFingerprint>()
             Files.walk(normalized).use { walk ->
                 walk.filter { it.isRegularFile() }.forEach { file ->
-                    files += FileFingerprint(
-                        relativePath = file.relativeTo(normalized).toString().replace('\\', '/'),
-                        hash = sha256(file),
-                    )
+                    files +=
+                        FileFingerprint(
+                            relativePath = file.relativeTo(normalized).toString().replace('\\', '/'),
+                            hash = sha256(file),
+                        )
                 }
             }
             return PackFingerprint(
@@ -402,28 +427,33 @@ object DatapackLoader {
             advancements = advancements.mapValues { (_, advancement) -> advancement.cacheCopy() }.toSortedMap(),
             recipes = recipes.mapValues { (_, resource) -> resource.cacheCopy() }.toSortedMap(),
             itemModifiers = itemModifiers.mapValues { (_, resource) -> resource.cacheCopy() }.toSortedMap(),
-            rawResources = rawResources
-                .mapValues { (_, resources) -> resources.mapValues { (_, resource) -> resource.cacheCopy() }.toSortedMap() }
-                .toSortedMap(),
+            rawResources =
+                rawResources
+                    .mapValues { (_, resources) -> resources.mapValues { (_, resource) -> resource.cacheCopy() }.toSortedMap() }
+                    .toSortedMap(),
             tags = tags.mapValues { (_, tag) -> tag.copy(values = tag.values.toList()) }.toSortedMap(),
             resourceIndex = resourceIndex.toList(),
             warnings = warnings.toList(),
         )
 
-    private fun RawJsonResource.cacheCopy(): RawJsonResource =
-        copy(root = root.deepCopy())
+    private fun RawJsonResource.cacheCopy(): RawJsonResource = copy(root = root.deepCopy())
 
     private fun AdvancementDefinition.cacheCopy(): AdvancementDefinition =
         copy(
             root = root.deepCopy().asJsonObject,
-            criteria = criteria.mapValues { (_, criterion) ->
-                criterion.copy(conditions = criterion.conditions?.deepCopy()?.asJsonObject)
-            }.toSortedMap(),
+            criteria =
+                criteria
+                    .mapValues { (_, criterion) ->
+                        criterion.copy(conditions = criterion.conditions?.deepCopy()?.asJsonObject)
+                    }.toSortedMap(),
             requirements = requirements.map { it.toList() },
             rewards = rewards.copy(loot = rewards.loot.toList(), recipes = rewards.recipes.toList()),
         )
 
-    private fun withPackRoot(input: Path, block: (Path) -> Unit) {
+    private fun withPackRoot(
+        input: Path,
+        block: (Path) -> Unit,
+    ) {
         val normalized = input.toAbsolutePath().normalize()
         if (!normalized.exists()) {
             throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Datapack path does not exist: $normalized")
@@ -467,16 +497,18 @@ object DatapackLoader {
             if (!element.isJsonObject || !element.asJsonObject.has("pack")) {
                 throw IllegalArgumentException("pack.mcmeta must contain a top-level 'pack' object")
             }
-            val pack = element.asJsonObject.getAsJsonObject("pack")
-                ?: throw IllegalArgumentException("pack.mcmeta must contain a top-level 'pack' object")
+            val pack =
+                element.asJsonObject.getAsJsonObject("pack")
+                    ?: throw IllegalArgumentException("pack.mcmeta must contain a top-level 'pack' object")
             val declaration = parsePackFormatDeclaration(pack)
             if (!declaration.matches(profile.dataPackFormat)) {
-                warnings += DatapackWarning(
-                    code = DiagnosticCode.VERSION_MISMATCH,
-                    message = "Datapack format ${declaration.describe()} is not compatible with version ${profile.id}; expected ${profile.dataPackFormat}",
-                    file = meta.toString(),
-                    version = profile.id,
-                )
+                warnings +=
+                    DatapackWarning(
+                        code = DiagnosticCode.VERSION_MISMATCH,
+                        message = "Datapack format ${declaration.describe()} is not compatible with version ${profile.id}; expected ${profile.dataPackFormat}",
+                        file = meta.toString(),
+                        version = profile.id,
+                    )
             }
         } catch (error: Exception) {
             if (error is SandboxException) throw error
@@ -517,10 +549,11 @@ object DatapackLoader {
             }
             element.isJsonObject -> {
                 val obj = element.asJsonObject
-                val range = FormatRange(
-                    min = (obj.get("min_format") ?: obj.get("min") ?: obj.get("min_inclusive"))?.let(DataPackFormat.Companion::parse),
-                    max = (obj.get("max_format") ?: obj.get("max") ?: obj.get("max_inclusive"))?.let(DataPackFormat.Companion::parse),
-                )
+                val range =
+                    FormatRange(
+                        min = (obj.get("min_format") ?: obj.get("min") ?: obj.get("min_inclusive"))?.let(DataPackFormat.Companion::parse),
+                        max = (obj.get("max_format") ?: obj.get("max") ?: obj.get("max_inclusive"))?.let(DataPackFormat.Companion::parse),
+                    )
                 if (range.min == null && range.max == null) {
                     throw IllegalArgumentException("supported_formats object must declare a min or max format")
                 }
@@ -533,8 +566,7 @@ object DatapackLoader {
         val exact: DataPackFormat?,
         val range: FormatRange?,
     ) {
-        fun matches(expected: DataPackFormat): Boolean =
-            exact?.matches(expected) == true || range?.contains(expected) == true
+        fun matches(expected: DataPackFormat): Boolean = exact?.matches(expected) == true || range?.contains(expected) == true
 
         fun describe(): String =
             listOfNotNull(
@@ -547,14 +579,15 @@ object DatapackLoader {
         val min: DataPackFormat?,
         val max: DataPackFormat?,
     ) {
-        fun contains(value: DataPackFormat): Boolean =
-            (min == null || value >= min) && (max == null || value <= max)
+        fun contains(value: DataPackFormat): Boolean = (min == null || value >= min) && (max == null || value <= max)
 
-        fun describe(): String =
-            "${min?.toString() ?: "-inf"}..${max?.toString() ?: "+inf"}"
+        fun describe(): String = "${min?.toString() ?: "-inf"}..${max?.toString() ?: "+inf"}"
     }
 
-    private fun readFunctions(root: Path, profile: VersionProfile): Map<ResourceLocation, DatapackFunction> {
+    private fun readFunctions(
+        root: Path,
+        profile: VersionProfile,
+    ): Map<ResourceLocation, DatapackFunction> {
         val data = root.resolve("data")
         if (!data.exists()) return emptyMap()
 
@@ -566,15 +599,17 @@ object DatapackLoader {
                     val functionRoot = namespaceDir.resolve(functionDirName)
                     if (!functionRoot.exists()) return@forEach
                     Files.walk(functionRoot).use { walk ->
-                        walk.filter { it.isRegularFile() && it.name.endsWith(".mcfunction") }
+                        walk
+                            .filter { it.isRegularFile() && it.name.endsWith(".mcfunction") }
                             .forEach { file ->
                                 val relative = file.relativeTo(functionRoot).toString().replace('\\', '/')
                                 val idPath = relative.removeSuffix(".mcfunction")
                                 val id = ResourceLocation(namespace, idPath)
-                                functions[id] = DatapackFunction(
-                                    id,
-                                    readFunctionLines(file.toString(), Files.readAllLines(file, StandardCharsets.UTF_8)),
-                                )
+                                functions[id] =
+                                    DatapackFunction(
+                                        id,
+                                        readFunctionLines(file.toString(), Files.readAllLines(file, StandardCharsets.UTF_8)),
+                                    )
                             }
                     }
                 }
@@ -583,7 +618,10 @@ object DatapackLoader {
         return functions
     }
 
-    private fun readFunctionLines(source: FunctionSource, profile: VersionProfile): List<FunctionLine> {
+    private fun readFunctionLines(
+        source: FunctionSource,
+        profile: VersionProfile,
+    ): List<FunctionLine> {
         source.path?.let { path ->
             val normalized = path.toAbsolutePath().normalize()
             if (!normalized.exists()) {
@@ -605,7 +643,10 @@ object DatapackLoader {
         return readFunctionLines(source.sourceName, source.content.orEmpty().lines())
     }
 
-    private fun readFunctionLines(sourceName: String, lines: List<String>): List<FunctionLine> =
+    private fun readFunctionLines(
+        sourceName: String,
+        lines: List<String>,
+    ): List<FunctionLine> =
         lines.mapIndexedNotNull { index, raw ->
             val stripped = raw.removePrefix("\uFEFF").trim()
             if (stripped.isEmpty() || stripped.startsWith("#")) {
@@ -616,27 +657,33 @@ object DatapackLoader {
             }
         }
 
-    private fun readFunctionTag(root: Path, profile: VersionProfile, tagName: String): List<FunctionTagDefinition> {
+    private fun readFunctionTag(
+        root: Path,
+        profile: VersionProfile,
+        tagName: String,
+    ): List<FunctionTagDefinition> {
         val tags = root.resolve("data").resolve("minecraft").resolve("tags")
-        val candidates = profile.resourceDirectories.functionTags
-            .map { tags.resolve(it).resolve("$tagName.json") }
+        val candidates =
+            profile.resourceDirectories.functionTags
+                .map { tags.resolve(it).resolve("$tagName.json") }
 
         return candidates.filter { it.exists() }.map { tagPath ->
-            val json = try {
-                val parsed = JsonParser.parseString(Files.readString(tagPath, StandardCharsets.UTF_8))
-                if (!parsed.isJsonObject) {
-                    throw IllegalArgumentException("Function tag must be a JSON object")
+            val json =
+                try {
+                    val parsed = JsonParser.parseString(Files.readString(tagPath, StandardCharsets.UTF_8))
+                    if (!parsed.isJsonObject) {
+                        throw IllegalArgumentException("Function tag must be a JSON object")
+                    }
+                    parsed.asJsonObject
+                } catch (error: Exception) {
+                    throw SandboxException(
+                        code = DiagnosticCode.INPUT_FORMAT,
+                        message = "Invalid function tag $tagPath: ${error.message}",
+                        location = SourceLocation(file = tagPath.toString()),
+                        version = profile.id,
+                        cause = error,
+                    )
                 }
-                parsed.asJsonObject
-            } catch (error: Exception) {
-                throw SandboxException(
-                    code = DiagnosticCode.INPUT_FORMAT,
-                    message = "Invalid function tag ${tagPath}: ${error.message}",
-                    location = SourceLocation(file = tagPath.toString()),
-                    version = profile.id,
-                    cause = error,
-                )
-            }
             FunctionTagDefinition(
                 id = ResourceLocation("minecraft", tagName),
                 file = tagPath.toString(),
@@ -646,7 +693,10 @@ object DatapackLoader {
         }
     }
 
-    private fun mergeFunctionTags(target: MutableList<FunctionTagEntry>, definitions: List<FunctionTagDefinition>) {
+    private fun mergeFunctionTags(
+        target: MutableList<FunctionTagEntry>,
+        definitions: List<FunctionTagDefinition>,
+    ) {
         definitions.forEach { definition ->
             if (definition.replace) target.clear()
             target += definition.values
@@ -656,10 +706,13 @@ object DatapackLoader {
     private fun effectiveFunctionTagFunctions(
         entries: List<FunctionTagEntry>,
         functions: Map<ResourceLocation, DatapackFunction>,
-    ): List<ResourceLocation> =
-        entries.filter { it.required || it.id in functions }.map { it.id }
+    ): List<ResourceLocation> = entries.filter { it.required || it.id in functions }.map { it.id }
 
-    private fun readFunctionTagValues(json: JsonObject, tagPath: Path, profile: VersionProfile): List<FunctionTagEntry> {
+    private fun readFunctionTagValues(
+        json: JsonObject,
+        tagPath: Path,
+        profile: VersionProfile,
+    ): List<FunctionTagEntry> {
         val values = json.get("values")
         if (values !is JsonArray) {
             throw SandboxException(
@@ -694,25 +747,39 @@ object DatapackLoader {
         }
     }
 
-    private fun readLootTables(root: Path, profile: VersionProfile): Map<ResourceLocation, LootTable> =
+    private fun readLootTables(
+        root: Path,
+        profile: VersionProfile,
+    ): Map<ResourceLocation, LootTable> =
         readJsonResources(root, profile, profile.resourceDirectories.lootTables, "loot table")
             .mapValues { (_, resource) ->
                 val objectRoot = resource.root.asObjectOrError(resource, profile, "Loot table")
                 LootTable(resource.id, resource.file, objectRoot)
             }
 
-    private fun readPredicates(root: Path, profile: VersionProfile): Map<ResourceLocation, PredicateDefinition> =
+    private fun readPredicates(
+        root: Path,
+        profile: VersionProfile,
+    ): Map<ResourceLocation, PredicateDefinition> =
         readJsonResources(root, profile, profile.resourceDirectories.predicates, "predicate")
             .mapValues { (_, resource) -> PredicateDefinition(resource.id, resource.file, resource.root) }
 
-    private fun readAdvancements(root: Path, profile: VersionProfile): Map<ResourceLocation, AdvancementDefinition> =
+    private fun readAdvancements(
+        root: Path,
+        profile: VersionProfile,
+    ): Map<ResourceLocation, AdvancementDefinition> =
         readJsonResources(root, profile, profile.resourceDirectories.advancements, "advancement")
             .mapValues { (_, resource) -> parseAdvancement(resource, profile) }
 
-    private fun readRecipes(root: Path, profile: VersionProfile): Map<ResourceLocation, RawJsonResource> =
-        readRawJsonResources(root, profile, "recipe", profile.resourceDirectories.recipes)
+    private fun readRecipes(
+        root: Path,
+        profile: VersionProfile,
+    ): Map<ResourceLocation, RawJsonResource> = readRawJsonResources(root, profile, "recipe", profile.resourceDirectories.recipes)
 
-    private fun readItemModifiers(root: Path, profile: VersionProfile): Map<ResourceLocation, RawJsonResource> =
+    private fun readItemModifiers(
+        root: Path,
+        profile: VersionProfile,
+    ): Map<ResourceLocation, RawJsonResource> =
         readRawJsonResources(root, profile, "item_modifier", profile.resourceDirectories.itemModifiers, "item modifier")
 
     private fun readAdditionalRawJsonResources(
@@ -739,7 +806,10 @@ object DatapackLoader {
         readJsonResources(root, profile, directoryNames, errorLabel)
             .mapValues { (_, resource) -> RawJsonResource(kind, resource.id, resource.file, resource.root, profile.id) }
 
-    private fun readBinaryStructureResources(root: Path, profile: VersionProfile): Map<ResourceLocation, RawJsonResource> {
+    private fun readBinaryStructureResources(
+        root: Path,
+        profile: VersionProfile,
+    ): Map<ResourceLocation, RawJsonResource> {
         val data = root.resolve("data")
         if (!data.exists()) return emptyMap()
 
@@ -752,40 +822,44 @@ object DatapackLoader {
                     val resourceRoot = namespaceDir.resolve(directoryName)
                     if (!resourceRoot.exists()) return@forEach
                     Files.walk(resourceRoot).use { walk ->
-                        walk.filter { it.isRegularFile() && it.name.lowercase().endsWith(".nbt") }
+                        walk
+                            .filter { it.isRegularFile() && it.name.lowercase().endsWith(".nbt") }
                             .forEach { file ->
                                 val relative = file.relativeTo(resourceRoot).toString().replace('\\', '/')
                                 val idPath = relative.substring(0, relative.length - ".nbt".length)
-                                val id = try {
-                                    ResourceLocation(namespace, idPath)
-                                } catch (error: IllegalArgumentException) {
-                                    throw SandboxException(
-                                        code = DiagnosticCode.INPUT_FORMAT,
-                                        message = "Invalid binary structure resource id '$namespace:$idPath': ${error.message}",
-                                        location = SourceLocation(file = file.toString()),
+                                val id =
+                                    try {
+                                        ResourceLocation(namespace, idPath)
+                                    } catch (error: IllegalArgumentException) {
+                                        throw SandboxException(
+                                            code = DiagnosticCode.INPUT_FORMAT,
+                                            message = "Invalid binary structure resource id '$namespace:$idPath': ${error.message}",
+                                            location = SourceLocation(file = file.toString()),
+                                            version = profile.id,
+                                            cause = error,
+                                        )
+                                    }
+                                val rootJson =
+                                    try {
+                                        readNbtCompoundJson(file)
+                                    } catch (error: Exception) {
+                                        throw SandboxException(
+                                            code = DiagnosticCode.INPUT_FORMAT,
+                                            message = "Invalid binary structure NBT for '$id': ${error.message}",
+                                            location = SourceLocation(file = file.toString()),
+                                            version = profile.id,
+                                            cause = error,
+                                        )
+                                    }
+                                resources[id] =
+                                    RawJsonResource(
+                                        kind = "worldgen/structure",
+                                        id = id,
+                                        file = file.toString(),
+                                        root = rootJson,
                                         version = profile.id,
-                                        cause = error,
+                                        sourceFormat = "binary-structure-nbt",
                                     )
-                                }
-                                val rootJson = try {
-                                    readNbtCompoundJson(file)
-                                } catch (error: Exception) {
-                                    throw SandboxException(
-                                        code = DiagnosticCode.INPUT_FORMAT,
-                                        message = "Invalid binary structure NBT for '$id': ${error.message}",
-                                        location = SourceLocation(file = file.toString()),
-                                        version = profile.id,
-                                        cause = error,
-                                    )
-                                }
-                                resources[id] = RawJsonResource(
-                                    kind = "worldgen/structure",
-                                    id = id,
-                                    file = file.toString(),
-                                    root = rootJson,
-                                    version = profile.id,
-                                    sourceFormat = "binary-structure-nbt",
-                                )
                             }
                     }
                 }
@@ -797,11 +871,12 @@ object DatapackLoader {
     private fun readNbtCompoundJson(file: Path): JsonObject {
         val bytes = Files.readAllBytes(file)
         val rawInput = ByteArrayInputStream(bytes)
-        val payloadInput = if (bytes.size >= 2 && bytes[0] == 0x1f.toByte() && bytes[1] == 0x8b.toByte()) {
-            GZIPInputStream(rawInput)
-        } else {
-            rawInput
-        }
+        val payloadInput =
+            if (bytes.size >= 2 && bytes[0] == 0x1f.toByte() && bytes[1] == 0x8b.toByte()) {
+                GZIPInputStream(rawInput)
+            } else {
+                rawInput
+            }
         DataInputStream(payloadInput).use { input ->
             val rootType = input.readUnsignedByte()
             if (rootType == NBT_TAG_END) return JsonObject()
@@ -819,24 +894,27 @@ object DatapackLoader {
             NBT_TAG_LONG -> JsonPrimitive(readLong())
             NBT_TAG_FLOAT -> JsonPrimitive(readFloat())
             NBT_TAG_DOUBLE -> JsonPrimitive(readDouble())
-            NBT_TAG_BYTE_ARRAY -> JsonArray().also { array ->
-                val size = readInt()
-                require(size >= 0) { "negative NBT byte array length $size" }
-                repeat(size) { array.add(readByte().toInt()) }
-            }
+            NBT_TAG_BYTE_ARRAY ->
+                JsonArray().also { array ->
+                    val size = readInt()
+                    require(size >= 0) { "negative NBT byte array length $size" }
+                    repeat(size) { array.add(readByte().toInt()) }
+                }
             NBT_TAG_STRING -> JsonPrimitive(readNbtString())
             NBT_TAG_LIST -> readNbtListPayload()
             NBT_TAG_COMPOUND -> readNbtCompoundPayload()
-            NBT_TAG_INT_ARRAY -> JsonArray().also { array ->
-                val size = readInt()
-                require(size >= 0) { "negative NBT int array length $size" }
-                repeat(size) { array.add(readInt()) }
-            }
-            NBT_TAG_LONG_ARRAY -> JsonArray().also { array ->
-                val size = readInt()
-                require(size >= 0) { "negative NBT long array length $size" }
-                repeat(size) { array.add(readLong()) }
-            }
+            NBT_TAG_INT_ARRAY ->
+                JsonArray().also { array ->
+                    val size = readInt()
+                    require(size >= 0) { "negative NBT int array length $size" }
+                    repeat(size) { array.add(readInt()) }
+                }
+            NBT_TAG_LONG_ARRAY ->
+                JsonArray().also { array ->
+                    val size = readInt()
+                    require(size >= 0) { "negative NBT long array length $size" }
+                    repeat(size) { array.add(readLong()) }
+                }
             else -> throw IllegalArgumentException("unsupported NBT tag type $type")
         }
 
@@ -869,7 +947,10 @@ object DatapackLoader {
         return String(bytes, StandardCharsets.UTF_8)
     }
 
-    private fun readTags(root: Path, profile: VersionProfile): Map<TagKey, TagDefinition> {
+    private fun readTags(
+        root: Path,
+        profile: VersionProfile,
+    ): Map<TagKey, TagDefinition> {
         val data = root.resolve("data")
         if (!data.exists()) return emptyMap()
 
@@ -880,12 +961,16 @@ object DatapackLoader {
                 val tagsRoot = namespaceDir.resolve("tags")
                 if (!tagsRoot.exists()) return@forEach
                 Files.walk(tagsRoot).use { walk ->
-                    walk.filter { it.isRegularFile() && it.name.endsWith(".json") }
+                    walk
+                        .filter { it.isRegularFile() && it.name.endsWith(".json") }
                         .forEach { file ->
                             val relative = file.relativeTo(tagsRoot).toString().replace('\\', '/')
                             val registry = relative.substringBefore('/', missingDelimiterValue = "")
                             val idPath = relative.substringAfter('/', missingDelimiterValue = "").removeSuffix(".json")
-                            if (registry in profile.resourceDirectories.functionTags && namespace == "minecraft" && idPath in setOf("load", "tick")) {
+                            if (registry in profile.resourceDirectories.functionTags &&
+                                namespace == "minecraft" &&
+                                idPath in setOf("load", "tick")
+                            ) {
                                 return@forEach
                             }
                             if (registry.isBlank() || idPath.isBlank()) {
@@ -897,17 +982,18 @@ object DatapackLoader {
                                 )
                             }
                             val key = TagKey(registry, ResourceLocation(namespace, idPath))
-                            val json = try {
-                                JsonParser.parseString(Files.readString(file, StandardCharsets.UTF_8)).asJsonObject
-                            } catch (error: Exception) {
-                                throw SandboxException(
-                                    code = DiagnosticCode.INPUT_FORMAT,
-                                    message = "Invalid tag JSON for '$key': ${error.message}",
-                                    location = SourceLocation(file = file.toString()),
-                                    version = profile.id,
-                                    cause = error,
-                                )
-                            }
+                            val json =
+                                try {
+                                    JsonParser.parseString(Files.readString(file, StandardCharsets.UTF_8)).asJsonObject
+                                } catch (error: Exception) {
+                                    throw SandboxException(
+                                        code = DiagnosticCode.INPUT_FORMAT,
+                                        message = "Invalid tag JSON for '$key': ${error.message}",
+                                        location = SourceLocation(file = file.toString()),
+                                        version = profile.id,
+                                        cause = error,
+                                    )
+                                }
                             tags[key] = parseTagDefinition(key, file.toString(), json, profile)
                         }
                 }
@@ -916,7 +1002,12 @@ object DatapackLoader {
         return tags
     }
 
-    private fun parseTagDefinition(key: TagKey, file: String, json: JsonObject, profile: VersionProfile): TagDefinition {
+    private fun parseTagDefinition(
+        key: TagKey,
+        file: String,
+        json: JsonObject,
+        profile: VersionProfile,
+    ): TagDefinition {
         val values = json.get("values")
         if (values !is JsonArray) {
             throw SandboxException(
@@ -934,7 +1025,13 @@ object DatapackLoader {
         )
     }
 
-    private fun parseTagValue(key: TagKey, index: Int, entry: JsonElement, file: String, profile: VersionProfile): TagValue {
+    private fun parseTagValue(
+        key: TagKey,
+        index: Int,
+        entry: JsonElement,
+        file: String,
+        profile: VersionProfile,
+    ): TagValue {
         val id: String
         val required: Boolean
         when {
@@ -960,14 +1057,18 @@ object DatapackLoader {
         return TagValue(id, required)
     }
 
-    private fun mergeTags(target: MutableMap<TagKey, TagDefinition>, source: Map<TagKey, TagDefinition>) {
+    private fun mergeTags(
+        target: MutableMap<TagKey, TagDefinition>,
+        source: Map<TagKey, TagDefinition>,
+    ) {
         source.forEach { (key, tag) ->
             val existing = target[key]
-            target[key] = if (existing == null || tag.replace) {
-                tag
-            } else {
-                tag.copy(values = existing.values + tag.values, replace = false)
-            }
+            target[key] =
+                if (existing == null || tag.replace) {
+                    tag
+                } else {
+                    tag.copy(values = existing.values + tag.values, replace = false)
+                }
         }
     }
 
@@ -988,32 +1089,35 @@ object DatapackLoader {
                     val resourceRoot = namespaceDir.resolve(directoryName)
                     if (!resourceRoot.exists()) return@forEach
                     Files.walk(resourceRoot).use { walk ->
-                        walk.filter { it.isRegularFile() && it.name.endsWith(".json") }
+                        walk
+                            .filter { it.isRegularFile() && it.name.endsWith(".json") }
                             .forEach { file ->
                                 val relative = file.relativeTo(resourceRoot).toString().replace('\\', '/')
                                 val idPath = relative.removeSuffix(".json")
-                                val id = try {
-                                    ResourceLocation(namespace, idPath)
-                                } catch (error: IllegalArgumentException) {
-                                    throw SandboxException(
-                                        code = DiagnosticCode.INPUT_FORMAT,
-                                        message = "Invalid $kind resource id '$namespace:$idPath': ${error.message}",
-                                        location = SourceLocation(file = file.toString()),
-                                        version = profile.id,
-                                        cause = error,
-                                    )
-                                }
-                                val element = try {
-                                    JsonParser.parseString(Files.readString(file, StandardCharsets.UTF_8))
-                                } catch (error: Exception) {
-                                    throw SandboxException(
-                                        code = DiagnosticCode.INPUT_FORMAT,
-                                        message = "Invalid $kind JSON for '$id': ${error.message}",
-                                        location = SourceLocation(file = file.toString()),
-                                        version = profile.id,
-                                        cause = error,
-                                    )
-                                }
+                                val id =
+                                    try {
+                                        ResourceLocation(namespace, idPath)
+                                    } catch (error: IllegalArgumentException) {
+                                        throw SandboxException(
+                                            code = DiagnosticCode.INPUT_FORMAT,
+                                            message = "Invalid $kind resource id '$namespace:$idPath': ${error.message}",
+                                            location = SourceLocation(file = file.toString()),
+                                            version = profile.id,
+                                            cause = error,
+                                        )
+                                    }
+                                val element =
+                                    try {
+                                        JsonParser.parseString(Files.readString(file, StandardCharsets.UTF_8))
+                                    } catch (error: Exception) {
+                                        throw SandboxException(
+                                            code = DiagnosticCode.INPUT_FORMAT,
+                                            message = "Invalid $kind JSON for '$id': ${error.message}",
+                                            location = SourceLocation(file = file.toString()),
+                                            version = profile.id,
+                                            cause = error,
+                                        )
+                                    }
                                 resources[id] = ResourceJson(id, file.toString(), element, kind)
                             }
                     }
@@ -1023,64 +1127,83 @@ object DatapackLoader {
         return resources
     }
 
-    private fun parseAdvancement(resource: ResourceJson, profile: VersionProfile): AdvancementDefinition {
+    private fun parseAdvancement(
+        resource: ResourceJson,
+        profile: VersionProfile,
+    ): AdvancementDefinition {
         val root = resource.root.asObjectOrError(resource, profile, "Advancement")
         val parent = root.optionalString("parent")?.let { ResourceLocation.parse(it) }
-        val criteriaObject = root.getAsJsonObject("criteria")
-            ?: throw resourceError(resource, profile, "Advancement must contain a criteria object")
+        val criteriaObject =
+            root.getAsJsonObject("criteria")
+                ?: throw resourceError(resource, profile, "Advancement must contain a criteria object")
 
-        val criteria = criteriaObject.entrySet().associate { (name, value) ->
-            if (!value.isJsonObject) {
-                throw resourceError(resource, profile, "Criterion '$name' must be an object")
-            }
-            val criterion = value.asJsonObject
-            val trigger = criterion.optionalString("trigger")
-                ?: throw resourceError(resource, profile, "Criterion '$name' is missing trigger")
-            name to Criterion(
-                name = name,
-                trigger = ResourceLocation.parse(trigger),
-                conditions = criterion.getAsJsonObject("conditions"),
-            )
-        }.toSortedMap()
-
-        val requirements = when (val requirementsJson = root.get("requirements")) {
-            null -> criteria.keys.map { listOf(it) }
-            else -> {
-                if (!requirementsJson.isJsonArray) {
-                    throw resourceError(resource, profile, "Advancement requirements must be an array")
-                }
-                requirementsJson.asJsonArray.map { row ->
-                    if (!row.isJsonArray) {
-                        throw resourceError(resource, profile, "Advancement requirement rows must be arrays")
+        val criteria =
+            criteriaObject
+                .entrySet()
+                .associate { (name, value) ->
+                    if (!value.isJsonObject) {
+                        throw resourceError(resource, profile, "Criterion '$name' must be an object")
                     }
-                    row.asJsonArray.map { it.asString }
+                    val criterion = value.asJsonObject
+                    val trigger =
+                        criterion.optionalString("trigger")
+                            ?: throw resourceError(resource, profile, "Criterion '$name' is missing trigger")
+                    name to
+                        Criterion(
+                            name = name,
+                            trigger = ResourceLocation.parse(trigger),
+                            conditions = criterion.getAsJsonObject("conditions"),
+                        )
+                }.toSortedMap()
+
+        val requirements =
+            when (val requirementsJson = root.get("requirements")) {
+                null -> criteria.keys.map { listOf(it) }
+                else -> {
+                    if (!requirementsJson.isJsonArray) {
+                        throw resourceError(resource, profile, "Advancement requirements must be an array")
+                    }
+                    requirementsJson.asJsonArray.map { row ->
+                        if (!row.isJsonArray) {
+                            throw resourceError(resource, profile, "Advancement requirement rows must be arrays")
+                        }
+                        row.asJsonArray.map { it.asString }
+                    }
                 }
             }
-        }
 
-        val rewards = root.getAsJsonObject("rewards")?.let { rewards ->
-            AdvancementReward(
-                experience = rewards.get("experience")?.asInt ?: 0,
-                loot = rewards.arrayStrings("loot").map { ResourceLocation.parse(it) },
-                recipes = rewards.arrayStrings("recipes").map { ResourceLocation.parse(it) },
-                function = rewards.optionalString("function")?.let { ResourceLocation.parse(it) },
-            )
-        } ?: AdvancementReward()
+        val rewards =
+            root.getAsJsonObject("rewards")?.let { rewards ->
+                AdvancementReward(
+                    experience = rewards.get("experience")?.asInt ?: 0,
+                    loot = rewards.arrayStrings("loot").map { ResourceLocation.parse(it) },
+                    recipes = rewards.arrayStrings("recipes").map { ResourceLocation.parse(it) },
+                    function = rewards.optionalString("function")?.let { ResourceLocation.parse(it) },
+                )
+            } ?: AdvancementReward()
 
         return AdvancementDefinition(resource.id, resource.file, root, parent, criteria, requirements, rewards)
     }
 
-    private fun JsonElement.asObjectOrError(resource: ResourceJson, profile: VersionProfile, kind: String): JsonObject {
+    private fun JsonElement.asObjectOrError(
+        resource: ResourceJson,
+        profile: VersionProfile,
+        kind: String,
+    ): JsonObject {
         if (!isJsonObject) {
             throw resourceError(resource, profile, "$kind must be a JSON object")
         }
         return asJsonObject
     }
 
-    private fun JsonObject.optionalString(name: String): String? =
-        get(name)?.takeIf { it.isJsonPrimitive }?.asString
+    private fun JsonObject.optionalString(name: String): String? = get(name)?.takeIf { it.isJsonPrimitive }?.asString
 
-    private fun JsonObject.requiredString(name: String, label: String, file: String, profile: VersionProfile): String {
+    private fun JsonObject.requiredString(
+        name: String,
+        label: String,
+        file: String,
+        profile: VersionProfile,
+    ): String {
         val value = get(name)
         if (value == null || !value.isJsonPrimitive || !value.asJsonPrimitive.isString) {
             throw SandboxException(
@@ -1093,7 +1216,12 @@ object DatapackLoader {
         return value.asString
     }
 
-    private fun JsonObject.optionalBoolean(name: String, label: String, file: String, profile: VersionProfile): Boolean? {
+    private fun JsonObject.optionalBoolean(
+        name: String,
+        label: String,
+        file: String,
+        profile: VersionProfile,
+    ): Boolean? {
         val value = get(name) ?: return null
         if (!value.isJsonPrimitive || !value.asJsonPrimitive.isBoolean) {
             throw SandboxException(
@@ -1106,7 +1234,12 @@ object DatapackLoader {
         return value.asBoolean
     }
 
-    private fun parseResourceLocation(value: String, label: String, file: String, profile: VersionProfile): ResourceLocation =
+    private fun parseResourceLocation(
+        value: String,
+        label: String,
+        file: String,
+        profile: VersionProfile,
+    ): ResourceLocation =
         try {
             ResourceLocation.parse(value)
         } catch (error: Exception) {
@@ -1125,7 +1258,11 @@ object DatapackLoader {
         return value.asJsonArray.map { it.asString }
     }
 
-    private fun resourceError(resource: ResourceJson, profile: VersionProfile, message: String): SandboxException =
+    private fun resourceError(
+        resource: ResourceJson,
+        profile: VersionProfile,
+        message: String,
+    ): SandboxException =
         SandboxException(
             code = DiagnosticCode.INPUT_FORMAT,
             message = "Invalid ${resource.kind} resource '${resource.id}': $message",
@@ -1154,7 +1291,11 @@ object DatapackLoader {
         private val entries = mutableListOf<ResourceIndexEntry>()
         private val activeByKey = linkedMapOf<Pair<String, ResourceLocation>, MutableList<Int>>()
 
-        fun recordAll(type: String, resources: Map<ResourceLocation, *>, pack: String) {
+        fun recordAll(
+            type: String,
+            resources: Map<ResourceLocation, *>,
+            pack: String,
+        ) {
             resources.toSortedMap().forEach { (id, resource) ->
                 record(
                     type = type,
@@ -1178,15 +1319,16 @@ object DatapackLoader {
                 entries[index] = entries[index].copy(active = false, overriddenBy = file)
             }
             val nextIndex = entries.size
-            entries += ResourceIndexEntry(
-                type = type,
-                id = id,
-                file = file,
-                pack = pack,
-                order = nextIndex,
-                active = true,
-                overrides = previous.takeIf { it.isNotEmpty() }?.joinToString(";") { entries[it].file },
-            )
+            entries +=
+                ResourceIndexEntry(
+                    type = type,
+                    id = id,
+                    file = file,
+                    pack = pack,
+                    order = nextIndex,
+                    active = true,
+                    overrides = previous.takeIf { it.isNotEmpty() }?.joinToString(";") { entries[it].file },
+                )
             if (overridesPrevious) {
                 activeByKey[key] = mutableListOf(nextIndex)
             } else {
@@ -1199,7 +1341,11 @@ object DatapackLoader {
 
         private fun resourceFile(resource: Any?): String? =
             when (resource) {
-                is DatapackFunction -> resource.lines.firstOrNull()?.location?.file ?: "<function:${resource.id}>"
+                is DatapackFunction ->
+                    resource.lines
+                        .firstOrNull()
+                        ?.location
+                        ?.file ?: "<function:${resource.id}>"
                 is LootTable -> resource.file
                 is PredicateDefinition -> resource.file
                 is AdvancementDefinition -> resource.file

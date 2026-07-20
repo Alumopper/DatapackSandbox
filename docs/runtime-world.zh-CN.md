@@ -150,14 +150,12 @@ snapshot 会包含用于测试的确定性状态，包括：
 运行：
 
 ```powershell
-.\gradlew.bat generateVanillaNbtSchemas --no-daemon --console=plain
+.\gradlew.bat :schema-generator:updateVanillaNbtSchemas --no-daemon --console=plain
 ```
 
-该任务会下载 `SpyglassMC/vanilla-mcdoc` 到 `build/vanilla-mcdoc`，安装官方 `@spyglassmc/mcdoc` 解析器，解析 mcdoc AST，并生成 `build/generated/vanilla-mcdoc/resources/vanilla-nbt-schemas.json`。
+独立的 `:schema-generator` 工程会下载固定 commit 的 `SpyglassMC/vanilla-mcdoc` 归档、校验 SHA-256、通过 `npm ci` 安装锁定依赖、解析 mcdoc AST、拒绝不完整输出，并更新唯一源 `schema/vanilla/vanilla-nbt-schemas.json`。普通 `:core` 构建不再联网，而是直接打包这份已检入 schema；CI 还会运行 `:schema-generator:checkGeneratedVanillaNbtSchemas`，验证生成结果逐字节可复现。
 
-`:core` 的资源管线依赖该任务，所以运行时会优先从 classpath 加载生成 schema；只有资源缺失时才回退到旧的保守内置 schema。
-
-`generateVanillaMcdocIndex` 任务仍保留为人工查看和实验用的词法索引，但它不是 NBT 校验来源。更细粒度的 `since`/`until` 版本属性裁剪仍是后续工作；当前运行时消费 upstream vanilla mcdoc snapshot，并在顶层字段保持严格未知字段诊断。
+更细粒度的 `since`/`until` 版本属性裁剪仍是后续工作；当前运行时消费固定的 upstream vanilla mcdoc revision，并在顶层字段保持严格未知字段诊断。
 
 ## 客户端/服务端嵌入对比
 

@@ -11,9 +11,10 @@ import kotlin.test.assertTrue
 class ManifestSchemaCommandTest {
     @Test
     fun `schema command prints bundled manifest schema`() {
-        val output = captureStdout {
-            main(arrayOf("schema"))
-        }
+        val output =
+            captureStdout {
+                main(arrayOf("schema"))
+            }
 
         val schema = JsonParser.parseString(output).asJsonObject
 
@@ -27,9 +28,10 @@ class ManifestSchemaCommandTest {
         val dir = Files.createTempDirectory("dps-schema-command")
         val outputFile = dir.resolve("dps-manifest.schema.json")
 
-        val output = captureStdout {
-            main(arrayOf("schema", "--output", outputFile.toString()))
-        }
+        val output =
+            captureStdout {
+                main(arrayOf("schema", "--output", outputFile.toString()))
+            }
 
         val schema = JsonParser.parseString(Files.readString(outputFile)).asJsonObject
         assertTrue("schema written: $outputFile" in output, output)
@@ -44,9 +46,10 @@ class ManifestSchemaCommandTest {
             main(arrayOf("schema", "--output", outputFile.toString()))
         }
 
-        val output = captureStdout {
-            main(arrayOf("schema", "--check", outputFile.toString()))
-        }
+        val output =
+            captureStdout {
+                main(arrayOf("schema", "--check", outputFile.toString()))
+            }
 
         assertTrue("schema up to date: $outputFile" in output, output)
     }

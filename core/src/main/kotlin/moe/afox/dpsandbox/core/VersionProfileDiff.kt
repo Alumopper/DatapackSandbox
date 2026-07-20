@@ -28,7 +28,10 @@ data class SetChange(
 }
 
 object VersionProfileDiffs {
-    fun diff(from: VersionProfile, to: VersionProfile): VersionProfileDiff =
+    fun diff(
+        from: VersionProfile,
+        to: VersionProfile,
+    ): VersionProfileDiff =
         VersionProfileDiff(
             from = from.id,
             to = to.id,
@@ -70,7 +73,10 @@ object VersionProfileDiffs {
         return parts.joinToString(" ")
     }
 
-    private fun resourceDirectoryDiffs(from: ResourceDirectoryProfile, to: ResourceDirectoryProfile): Map<String, SetChange> =
+    private fun resourceDirectoryDiffs(
+        from: ResourceDirectoryProfile,
+        to: ResourceDirectoryProfile,
+    ): Map<String, SetChange> =
         linkedMapOf(
             "functions" to setDiff(from.functions, to.functions),
             "function_tags" to setDiff(from.functionTags, to.functionTags),
@@ -81,7 +87,10 @@ object VersionProfileDiffs {
             "item_modifiers" to setDiff(from.itemModifiers, to.itemModifiers),
         )
 
-    private fun registryDiffs(from: RegistryView, to: RegistryView): Map<String, SetChange> =
+    private fun registryDiffs(
+        from: RegistryView,
+        to: RegistryView,
+    ): Map<String, SetChange> =
         linkedMapOf(
             "items" to setDiff(from.items.map { it.toString() }, to.items.map { it.toString() }),
             "blocks" to setDiff(from.blocks.map { it.toString() }, to.blocks.map { it.toString() }),
@@ -97,7 +106,10 @@ object VersionProfileDiffs {
             "loot_functions" to setDiff(from.lootFunctions.map { it.toString() }, to.lootFunctions.map { it.toString() }),
         )
 
-    private fun setDiff(from: Iterable<String>, to: Iterable<String>): SetChange {
+    private fun setDiff(
+        from: Iterable<String>,
+        to: Iterable<String>,
+    ): SetChange {
         val fromSet = from.toSet()
         val toSet = to.toSet()
         return SetChange(

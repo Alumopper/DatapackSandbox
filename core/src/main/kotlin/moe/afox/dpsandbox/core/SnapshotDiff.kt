@@ -44,7 +44,9 @@ data class SnapshotDiffEntry(
         return when (kind) {
             SnapshotDiffKind.ADDED -> "+ $pathText = ${after?.let(JsonValues::render) ?: "null"}"
             SnapshotDiffKind.REMOVED -> "- $pathText was ${before?.let(JsonValues::render) ?: "null"}"
-            SnapshotDiffKind.CHANGED -> "~ $pathText: ${before?.let(JsonValues::render) ?: "null"} -> ${after?.let(JsonValues::render) ?: "null"}"
+            SnapshotDiffKind.CHANGED -> "~ $pathText: ${before?.let(
+                JsonValues::render,
+            ) ?: "null"} -> ${after?.let(JsonValues::render) ?: "null"}"
         }
     }
 }
@@ -57,7 +59,10 @@ object SnapshotDiff {
      * Returns every JSON-level difference between [before] and [after].
      */
     @JvmStatic
-    fun diff(before: JsonElement, after: JsonElement): List<SnapshotDiffEntry> {
+    fun diff(
+        before: JsonElement,
+        after: JsonElement,
+    ): List<SnapshotDiffEntry> {
         val entries = mutableListOf<SnapshotDiffEntry>()
         diffValue("", before, after, entries)
         return entries.sortedWith(compareBy<SnapshotDiffEntry> { it.path }.thenBy { it.kind.name })
@@ -71,15 +76,16 @@ object SnapshotDiff {
      * modeled world state, outputs, scores, storage, players, entities, and blocks.
      */
     @JvmStatic
-    fun stateDiff(before: JsonElement, after: JsonElement): List<SnapshotDiffEntry> =
-        diff(before, after).filterNot { it.path.isTraceMetadataPath() }
+    fun stateDiff(
+        before: JsonElement,
+        after: JsonElement,
+    ): List<SnapshotDiffEntry> = diff(before, after).filterNot { it.path.isTraceMetadataPath() }
 
     /**
      * Serializes a diff list into a JSON array.
      */
     @JvmStatic
-    fun toJson(entries: List<SnapshotDiffEntry>): JsonArray =
-        JsonArray().also { array -> entries.forEach { array.add(it.toJson()) } }
+    fun toJson(entries: List<SnapshotDiffEntry>): JsonArray = JsonArray().also { array -> entries.forEach { array.add(it.toJson()) } }
 
     /**
      * Renders a diff list as line-oriented text.
@@ -92,7 +98,12 @@ object SnapshotDiff {
             entries.joinToString(separator = System.lineSeparator()) { it.render() }
         }
 
-    private fun diffValue(path: String, before: JsonElement?, after: JsonElement?, entries: MutableList<SnapshotDiffEntry>) {
+    private fun diffValue(
+        path: String,
+        before: JsonElement?,
+        after: JsonElement?,
+        entries: MutableList<SnapshotDiffEntry>,
+    ) {
         when {
             before == null && after == null -> return
             before == null -> entries += SnapshotDiffEntry(path, SnapshotDiffKind.ADDED, after = after?.normalized())
@@ -104,14 +115,24 @@ object SnapshotDiff {
         }
     }
 
-    private fun diffObjects(path: String, before: JsonObject, after: JsonObject, entries: MutableList<SnapshotDiffEntry>) {
+    private fun diffObjects(
+        path: String,
+        before: JsonObject,
+        after: JsonObject,
+        entries: MutableList<SnapshotDiffEntry>,
+    ) {
         val keys = (before.keySet() + after.keySet()).sorted()
         keys.forEach { key ->
             diffValue(joinPath(path, key), before.get(key), after.get(key), entries)
         }
     }
 
-    private fun diffArrays(path: String, before: JsonArray, after: JsonArray, entries: MutableList<SnapshotDiffEntry>) {
+    private fun diffArrays(
+        path: String,
+        before: JsonArray,
+        after: JsonArray,
+        entries: MutableList<SnapshotDiffEntry>,
+    ) {
         val max = maxOf(before.size(), after.size())
         for (index in 0 until max) {
             diffValue(
@@ -123,17 +144,16 @@ object SnapshotDiff {
         }
     }
 
-    private fun JsonArray.getOrNull(index: Int): JsonElement? =
-        if (index in 0 until size()) get(index) else null
+    private fun JsonArray.getOrNull(index: Int): JsonElement? = if (index in 0 until size()) get(index) else null
 
-    private fun JsonElement.normalized(): JsonElement =
-        if (this is JsonNull) JsonNull.INSTANCE else deepCopy()
+    private fun JsonElement.normalized(): JsonElement = if (this is JsonNull) JsonNull.INSTANCE else deepCopy()
 
-    private fun joinPath(path: String, token: String): String =
-        "${path}/${escape(token)}"
+    private fun joinPath(
+        path: String,
+        token: String,
+    ): String = "$path/${escape(token)}"
 
-    private fun escape(token: String): String =
-        token.replace("~", "~0").replace("/", "~1")
+    private fun escape(token: String): String = token.replace("~", "~0").replace("/", "~1")
 
     private fun String.isTraceMetadataPath(): Boolean =
         this == "/traces" ||

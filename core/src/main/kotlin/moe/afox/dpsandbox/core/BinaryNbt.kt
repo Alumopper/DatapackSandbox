@@ -9,7 +9,10 @@ import java.io.EOFException
 import java.io.InputStream
 import java.nio.charset.StandardCharsets
 
-internal data class NamedNbt(val name: String, val value: JsonElement)
+internal data class NamedNbt(
+    val name: String,
+    val value: JsonElement,
+)
 
 internal object BinaryNbt {
     private const val TAG_END = 0
@@ -34,7 +37,10 @@ internal object BinaryNbt {
         return NamedNbt(name, readPayload(data, type))
     }
 
-    private fun readPayload(data: DataInputStream, type: Int): JsonElement =
+    private fun readPayload(
+        data: DataInputStream,
+        type: Int,
+    ): JsonElement =
         when (type) {
             TAG_BYTE -> JsonPrimitive(data.readByte().toInt())
             TAG_SHORT -> JsonPrimitive(data.readShort().toInt())
@@ -67,18 +73,22 @@ internal object BinaryNbt {
     private fun readCompound(data: DataInputStream): JsonObject {
         val json = JsonObject()
         while (true) {
-            val type = try {
-                data.readUnsignedByte()
-            } catch (error: EOFException) {
-                throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Unexpected end of NBT compound", cause = error)
-            }
+            val type =
+                try {
+                    data.readUnsignedByte()
+                } catch (error: EOFException) {
+                    throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Unexpected end of NBT compound", cause = error)
+                }
             if (type == TAG_END) return json
             val name = readString(data)
             json.add(name, readPayload(data, type))
         }
     }
 
-    private fun readLength(data: DataInputStream, label: String): Int {
+    private fun readLength(
+        data: DataInputStream,
+        label: String,
+    ): Int {
         val length = data.readInt()
         if (length < 0) throw SandboxException(DiagnosticCode.INPUT_FORMAT, "NBT $label length cannot be negative")
         return length

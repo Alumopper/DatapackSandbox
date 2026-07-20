@@ -271,7 +271,7 @@
 
 主要任务：
 
-- 增加 manifest schema 文档和 JSON Schema；`schema --check docs/dps-manifest.schema.json` 已可校验仓库 schema 与 standalone jar 内置 schema 一致，并已接入 Gradle smoke。
+- 增加 manifest schema 文档和 JSON Schema；`schema --check schema/manifest/dps-manifest.schema.json` 已可校验仓库 schema 与 standalone jar 内置 schema 一致，并已接入 Gradle smoke。
 - 扩展 `world`：
   - 支持 fixture 引用、模板继承、局部覆盖、save import 范围、多个玩家和多个维度；`world.save`/`world.saves` 已通过 schema 和 manifest 回归测试覆盖 `from`/`to` 范围导入。
 - 扩展 `steps`：
@@ -358,10 +358,10 @@
   - `SandboxLimits` 已提供可配置的函数递归深度、sandbox 实例累计命令数、单次 `runTicks` 最大 tick 数、保留输出事件数和渲染后 snapshot 大小边界，用于阻止 runaway 单元测试和 CI 任务。
   - CLI `run` 和 `check` 已暴露 `--max-commands`、`--max-function-depth`、`--max-ticks-per-run`、`--max-output-events` 和 `--max-snapshot-bytes`，可在随手小测、命令生成器验证和批量 manifest CI 中直接收紧执行边界。
 - 发布质量：
-  - fat jar smoke test、Windows/Linux/macOS 命令测试、README 示例测试。
+  - fat jar smoke test、Windows/Linux 命令测试、README 示例测试。
   - standalone jar smoke 已覆盖 schema 导出与防漂移检查、示例 manifest、命令/资源/版本文档中英检查、资源索引、diff、benchmark、README loot/event/stdin 示例、run 断言简写、执行边界和预期失败命令的 diagnostic 断言。
-  - `releaseCheck` 已作为 1.0 发布门禁聚合 `:core:check`、`:cli:check`、standalone CLI smoke、release jar/sources jar/javadoc jar、Maven POM 生成检查和非 snapshot 语义版本检查；CI 已在 Linux、Windows 和 macOS 矩阵上运行该门禁。
-  - Maven 发布准备已完成：统一坐标 `moe.afox.dpsandbox`、release 版本号 `1.0.0`、`maven-publish` publication、源码包、文档包、POM 元数据和带凭据校验的远端仓库配置均可检查。
+  - `releaseCheck` 聚合全部 JVM 模块检查、schema 可复现性、API/架构门禁、standalone CLI smoke、release jar/sources jar/javadoc jar、Maven POM 生成检查和非 snapshot 语义版本检查；CI 在 Linux 和 Windows 矩阵上运行该门禁。
+  - Maven 发布准备已完成：统一坐标 `moe.afox.dpsandbox`、release 版本号 `1.0.1`、`maven-publish` publication、源码包、文档包、POM 元数据和带凭据校验的远端仓库配置均可检查。
 
 验收标准：
 
@@ -393,7 +393,7 @@ P2 1.0 收口状态：
 - worldgen/structure 更深入模拟已按数据包测试需求完成实用近似；`place structure` / `place template` 已覆盖沙盒结构 JSON、JSON 化 palette-style 结构和二进制结构 NBT 的方块/实体落地、基础旋转/镜像、integrity 过滤以及 processor_list 的 block_ignore、protected_blocks、jigsaw_replacement、capped、nop 和带 block/tag 谓词的 rule 替换，`place jigsaw` 已覆盖 template_pool single/legacy/list/feature 元素、fallback pool、元素 processor 和基础 jigsaw connector 链接的落地与回归测试，`place feature` 已覆盖 placed/configured simple_block、block_column、disk、vegetation_patch、tree、basalt_columns、delta_feature、lake、spring_feature、block_pile、glowstone_blob、forest_rock、netherrack_replace_blobs、chorus_plant、replace_single_block、replace_blob、selector、random_patch、flower 和 sparse-world ore 的确定性基础落地；完整原版区块生成和高精度生态系统模拟属于明确非目标，不作为 1.0 交付范围。
 - 可选外部差分验证已收口到 `diff --script` 可重放脚本导出、`diff --snapshot --check` report/snapshot 比较和 JSON artifact 输出，外部原版或第三方 harness 只需提供可观察结果文件即可接入。
 - 高级性能缓存已由 pack 内容指纹缓存、schema lazy cache、版本 profile 静态目录和 manifest schema lazy cache 覆盖；watch/reload 通过 `DatapackLoader.clearCache()` 保留显式失效入口。
-- Maven 发布和更完整的平台测试已完成；1.0 使用 `releaseCheck` 验证 release artifacts、Maven POM、standalone jar smoke，并在 Linux/Windows/macOS CI 矩阵执行。
+- Maven 发布和更完整的平台测试已完成；`releaseCheck` 验证 release artifacts、Maven POM、standalone jar smoke，并在 Linux/Windows CI 矩阵执行。
 
 ## 设计约束
 
@@ -410,4 +410,4 @@ P2 1.0 收口状态：
 2. `0.3`：`execute/data/loot/item` 高频路径补齐，命令生成器测试模板可用。
 3. `0.4`：玩家事件和 world fixture 大幅增强，examples 覆盖主要使用场景。
 4. `0.5`：多版本 profile 更新流程稳定，P0/P1 资源覆盖完成。
-5. `1.0`：核心 API 稳定、CLI 行为稳定、文档示例可验证、CI 覆盖完整，适合作为数据包本地回归测试工具长期使用；当前发布版本标记为 `1.0.0`。
+5. `1.0`：核心 API 稳定、CLI 行为稳定、文档示例可验证、CI 覆盖完整，适合作为数据包本地回归测试工具长期使用；当前发布版本标记为 `1.0.1`。

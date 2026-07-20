@@ -21,25 +21,36 @@ data class AdvancementEventResult(
     val failures: List<AdvancementCriterionFailure>,
 )
 
-class AdvancementRuntime(private val sandbox: DatapackSandbox) {
+class AdvancementRuntime(
+    private val sandbox: DatapackSandbox,
+) {
     private val predicates = PredicateEngine(sandbox.datapack, sandbox.profile)
     private val loot = LootEngine(sandbox.datapack, sandbox.profile.registryView, sandbox.profile)
 
-    fun grant(player: SandboxPlayer, id: ResourceLocation, criterion: String? = null): List<AdvancementUpdate> {
+    fun grant(
+        player: SandboxPlayer,
+        id: ResourceLocation,
+        criterion: String? = null,
+    ): List<AdvancementUpdate> {
         val advancement = sandbox.datapack.advancement(id)
         val progress = progressFor(player, advancement)
         val wasDone = progress.isDone(advancement.requirements)
         val criteriaToGrant = criterion?.let { listOf(it) } ?: advancement.criteria.keys.toList()
-        val updates = criteriaToGrant.mapNotNull {
-            if (progress.criteria[it] == true) return@mapNotNull null
-            progress.criteria[it] = true
-            AdvancementUpdate(id, it, progress.isDone(advancement.requirements))
-        }
+        val updates =
+            criteriaToGrant.mapNotNull {
+                if (progress.criteria[it] == true) return@mapNotNull null
+                progress.criteria[it] = true
+                AdvancementUpdate(id, it, progress.isDone(advancement.requirements))
+            }
         if (!wasDone && progress.isDone(advancement.requirements)) applyRewards(player, advancement)
         return updates
     }
 
-    fun revoke(player: SandboxPlayer, id: ResourceLocation, criterion: String? = null): List<AdvancementUpdate> {
+    fun revoke(
+        player: SandboxPlayer,
+        id: ResourceLocation,
+        criterion: String? = null,
+    ): List<AdvancementUpdate> {
         val advancement = sandbox.datapack.advancement(id)
         val progress = progressFor(player, advancement)
         val criteriaToRevoke = criterion?.let { listOf(it) } ?: advancement.criteria.keys.toList()
@@ -50,11 +61,12 @@ class AdvancementRuntime(private val sandbox: DatapackSandbox) {
         }
     }
 
-    fun progress(player: SandboxPlayer, id: ResourceLocation): AdvancementProgress =
-        progressFor(player, sandbox.datapack.advancement(id))
+    fun progress(
+        player: SandboxPlayer,
+        id: ResourceLocation,
+    ): AdvancementProgress = progressFor(player, sandbox.datapack.advancement(id))
 
-    fun handle(rawEvent: PlayerEvent): List<AdvancementUpdate> =
-        handleWithDebug(rawEvent).updates
+    fun handle(rawEvent: PlayerEvent): List<AdvancementUpdate> = handleWithDebug(rawEvent).updates
 
     fun handleWithDebug(rawEvent: PlayerEvent): AdvancementEventResult {
         val event = rawEvent.normalized()
@@ -84,35 +96,52 @@ class AdvancementRuntime(private val sandbox: DatapackSandbox) {
         val reason: String? = null,
     )
 
-    private fun evaluateCriterion(player: SandboxPlayer, event: PlayerEvent, criterion: Criterion): CriterionEvaluation {
+    private fun evaluateCriterion(
+        player: SandboxPlayer,
+        event: PlayerEvent,
+        criterion: Criterion,
+    ): CriterionEvaluation {
         val trigger = criterion.trigger.path
         if (!triggerMatchesEvent(trigger, event.type)) return CriterionEvaluation(false)
         val conditions = criterion.conditions ?: return CriterionEvaluation(true)
         val incomingDamageEvent = event.type in setOf("damage", "death", "entity_killed_player", "entity_hurt_player")
-        val playerAttackEvent = event.type in setOf("killed_entity", "entity_killed", "player_killed_entity", "player_hurt_entity")
-        val attacker = when {
-            incomingDamageEvent -> event.entity
-            playerAttackEvent -> player
-            else -> event.entity
-        }
-        val predicateContext = PredicateContext(
-            world = sandbox.world,
-            origin = player.position,
-            thisEntity = player,
-            player = player,
-            directEntity = attacker,
-            attacker = attacker,
-            attackingPlayer = when {
+        val playerAttackEvent =
+            event.type in
+                setOf(
+                    "killed_entity",
+                    "entity_killed",
+                    "player_killed_entity",
+                    "player_hurt_entity",
+                    "entity_attacked",
+                    "player_attacked_entity",
+                    "attack_entity",
+                )
+        val attacker =
+            when {
+                incomingDamageEvent -> event.entity
                 playerAttackEvent -> player
-                else -> event.entity as? SandboxPlayer
-            },
-            targetEntity = if (incomingDamageEvent) player else event.entity,
-            interactingEntity = player,
-            killer = if (event.type in setOf("death", "entity_killed_player")) event.entity else attacker,
-            tool = event.item ?: player.selectedItem,
-            block = event.block,
-            damageSource = event.damageSource,
-        )
+                else -> event.entity
+            }
+        val predicateContext =
+            PredicateContext(
+                world = sandbox.world,
+                origin = player.position,
+                thisEntity = player,
+                player = player,
+                directEntity = attacker,
+                attacker = attacker,
+                attackingPlayer =
+                    when {
+                        playerAttackEvent -> player
+                        else -> event.entity as? SandboxPlayer
+                    },
+                targetEntity = if (incomingDamageEvent) player else event.entity,
+                interactingEntity = player,
+                killer = if (event.type in setOf("death", "entity_killed_player")) event.entity else attacker,
+                tool = event.item ?: player.selectedItem,
+                block = event.block,
+                damageSource = event.damageSource,
+            )
         conditions.getAsJsonObject("player")?.let {
             if (!predicates.testElement(entityCondition("this", it), predicateContext.copy(thisEntity = player))) {
                 return CriterionEvaluation(false, "player predicate did not match")
@@ -131,9 +160,10 @@ class AdvancementRuntime(private val sandbox: DatapackSandbox) {
             }
         }
         conditions.getAsJsonArray("items")?.let { items ->
-            val matched = player.inventory.any { stack ->
-                items.any { it.isJsonObject && predicates.testItemPredicate(stack, it.asJsonObject) }
-            }
+            val matched =
+                player.inventory.any { stack ->
+                    items.any { it.isJsonObject && predicates.testItemPredicate(stack, it.asJsonObject) }
+                }
             if (!matched) return CriterionEvaluation(false, "player inventory did not match any items predicate")
         }
         conditions.string("recipe")?.let {
@@ -203,7 +233,10 @@ class AdvancementRuntime(private val sandbox: DatapackSandbox) {
         return CriterionEvaluation(true)
     }
 
-    private fun triggerMatchesEvent(trigger: String, eventType: String): Boolean =
+    private fun triggerMatchesEvent(
+        trigger: String,
+        eventType: String,
+    ): Boolean =
         when (trigger) {
             "tick" -> eventType == "tick"
             "inventory_changed" -> eventType in setOf("inventory_changed", "item_picked_up", "item_added")
@@ -213,7 +246,7 @@ class AdvancementRuntime(private val sandbox: DatapackSandbox) {
             "damage" -> eventType == "damage"
             "death" -> eventType == "death"
             "entity_hurt_player" -> eventType in setOf("damage", "entity_hurt_player")
-            "player_hurt_entity" -> eventType == "player_hurt_entity"
+            "player_hurt_entity" -> eventType in setOf("player_hurt_entity", "entity_attacked", "player_attacked_entity", "attack_entity")
             "player_killed_entity" -> eventType in setOf("killed_entity", "entity_killed", "player_killed_entity")
             "entity_killed_player" -> eventType == "entity_killed_player"
             "location" -> eventType in setOf("location", "moved")
@@ -228,18 +261,28 @@ class AdvancementRuntime(private val sandbox: DatapackSandbox) {
             else -> false
         }
 
-    private fun applyRewards(player: SandboxPlayer, advancement: AdvancementDefinition) {
+    private fun applyRewards(
+        player: SandboxPlayer,
+        advancement: AdvancementDefinition,
+    ) {
         val rewards = advancement.rewards
         player.xp += rewards.experience
         rewards.recipes.forEach { player.recipes += it }
         rewards.function?.let { sandbox.runFunction(it, ExecutionContext(entity = player, position = player.position)) }
         val lootItems = mutableListOf<ItemStack>()
         rewards.loot.forEach { table ->
-            val context = LootContext(
-                type = ResourceLocation("minecraft", "advancement_reward"),
-                predicateContext = PredicateContext(world = sandbox.world, player = player, thisEntity = player, origin = player.position),
-                seed = sandbox.world.gameTime,
-            )
+            val context =
+                LootContext(
+                    type = ResourceLocation("minecraft", "advancement_reward"),
+                    predicateContext =
+                        PredicateContext(
+                            world = sandbox.world,
+                            player = player,
+                            thisEntity = player,
+                            origin = player.position,
+                        ),
+                    seed = sandbox.world.gameTime,
+                )
             val generated = loot.generate(table, context).items
             player.inventory += generated
             lootItems += generated
@@ -259,31 +302,51 @@ class AdvancementRuntime(private val sandbox: DatapackSandbox) {
             "data",
             targets = listOf(player.name),
             text = advancement.id.toString(),
-            payload = JsonObject().also { payload ->
-                payload.addProperty("player", player.name)
-                payload.addProperty("advancement", advancement.id.toString())
-                payload.addProperty("experience", rewards.experience)
-                rewards.function?.let { payload.addProperty("function", it.toString()) }
-                payload.add("recipes", JsonArray().also { array ->
-                    rewards.recipes.sorted().forEach { array.add(it.toString()) }
-                })
-                payload.add("lootTables", JsonArray().also { array ->
-                    rewards.loot.sorted().forEach { array.add(it.toString()) }
-                })
-                payload.addProperty("itemCount", lootItems.sumOf { it.count })
-                payload.add("items", JsonArray().also { array ->
-                    lootItems.forEach { array.add(it.toJson()) }
-                })
-            },
+            payload =
+                JsonObject().also { payload ->
+                    payload.addProperty("player", player.name)
+                    payload.addProperty("advancement", advancement.id.toString())
+                    payload.addProperty("experience", rewards.experience)
+                    rewards.function?.let { payload.addProperty("function", it.toString()) }
+                    payload.add(
+                        "recipes",
+                        JsonArray().also { array ->
+                            rewards.recipes.sorted().forEach { array.add(it.toString()) }
+                        },
+                    )
+                    payload.add(
+                        "lootTables",
+                        JsonArray().also { array ->
+                            rewards.loot.sorted().forEach { array.add(it.toString()) }
+                        },
+                    )
+                    payload.addProperty("itemCount", lootItems.sumOf { it.count })
+                    payload.add(
+                        "items",
+                        JsonArray().also { array ->
+                            lootItems.forEach { array.add(it.toJson()) }
+                        },
+                    )
+                },
         )
     }
 
-    private fun progressFor(player: SandboxPlayer, advancement: AdvancementDefinition): AdvancementProgress =
+    private fun progressFor(
+        player: SandboxPlayer,
+        advancement: AdvancementDefinition,
+    ): AdvancementProgress =
         player.advancementProgress.getOrPut(advancement.id) {
-            AdvancementProgress(advancement.criteria.keys.associateWith { false }.toMutableMap())
+            AdvancementProgress(
+                advancement.criteria.keys
+                    .associateWith { false }
+                    .toMutableMap(),
+            )
         }
 
-    private fun entityCondition(entity: String, predicate: JsonObject): JsonObject {
+    private fun entityCondition(
+        entity: String,
+        predicate: JsonObject,
+    ): JsonObject {
         val condition = JsonObject()
         condition.addProperty("condition", "minecraft:entity_properties")
         condition.addProperty("entity", entity)
@@ -298,7 +361,11 @@ class AdvancementRuntime(private val sandbox: DatapackSandbox) {
         return condition
     }
 
-    private fun damageMismatch(event: PlayerEvent, predicate: JsonObject, context: PredicateContext): String? {
+    private fun damageMismatch(
+        event: PlayerEvent,
+        predicate: JsonObject,
+        context: PredicateContext,
+    ): String? {
         predicate.get("amount")?.let {
             rangeMismatch("damage amount", event.damageAmount, it)?.let { reason -> return reason }
         }
@@ -316,12 +383,13 @@ class AdvancementRuntime(private val sandbox: DatapackSandbox) {
                         return "damage source expected $expected but was ${event.damageSource ?: "<missing>"}"
                     }
                 }
-                typePredicate.isJsonObject -> typePredicate.asJsonObject.string("type")?.let {
-                    val expected = ResourceLocation.parse(it)
-                    if (event.damageSource != expected) {
-                        return "damage source expected $expected but was ${event.damageSource ?: "<missing>"}"
+                typePredicate.isJsonObject ->
+                    typePredicate.asJsonObject.string("type")?.let {
+                        val expected = ResourceLocation.parse(it)
+                        if (event.damageSource != expected) {
+                            return "damage source expected $expected but was ${event.damageSource ?: "<missing>"}"
+                        }
                     }
-                }
                 else -> return "damage type predicate must be a string or object"
             }
         }
@@ -340,14 +408,19 @@ class AdvancementRuntime(private val sandbox: DatapackSandbox) {
         return null
     }
 
-    private fun rangeMismatch(label: String, actual: Double?, expected: JsonElement): String? {
+    private fun rangeMismatch(
+        label: String,
+        actual: Double?,
+        expected: JsonElement,
+    ): String? {
         val value = actual ?: return "$label missing"
         if (expected.isJsonPrimitive) {
             val expectedValue = expected.asDouble
             return if (value == expectedValue) null else "$label expected $expectedValue but was $value"
         }
-        val range = expected.takeIf { it.isJsonObject }?.asJsonObject
-            ?: return "$label predicate must be a number or range object"
+        val range =
+            expected.takeIf { it.isJsonObject }?.asJsonObject
+                ?: return "$label predicate must be a number or range object"
         range.get("min")?.let {
             if (value < it.asDouble) return "$label expected at least ${it.asDouble} but was $value"
         }
@@ -357,6 +430,5 @@ class AdvancementRuntime(private val sandbox: DatapackSandbox) {
         return null
     }
 
-    private fun JsonObject.string(name: String): String? =
-        get(name)?.takeIf { it.isJsonPrimitive }?.asString
+    private fun JsonObject.string(name: String): String? = get(name)?.takeIf { it.isJsonPrimitive }?.asString
 }

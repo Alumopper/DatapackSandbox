@@ -30,7 +30,11 @@ code --install-extension .\datapack-sandbox-vscode.vsix
 
 命令补全支持鼠标选择，也支持 `↑`、`↓` 切换，按 `Tab` 或 `Enter` 接受建议。Inspector 中的 JSON 可以逐层展开；带源码位置的 trace 可以直接跳回 `.mcfunction` 文件。
 
-Profile 下拉框由当前插件内置 CLI 动态提供，支持从 `1.20.4` 到 `26.2` 的全部内置版本。通过命令面板启动沙盒时也会先显示同一份版本选择列表。
+Profile 下拉框直接读取插件内置 CLI 的唯一版本注册表。通过命令面板启动沙盒时也会显示同一份动态列表。
+
+## 在 VS Code 中使用 Jupyter Notebook
+
+除本扩展外，还需要安装 Microsoft 的 **Python** 和 **Jupyter** 扩展。选择安装 Datapack Sandbox wheel 和 kernelspec 的同一个 Python 解释器，打开 `examples/jupyter/datapack-sandbox-demo.ipynb`，点击 **Select Kernel** 并选择 **Datapack Sandbox (MCFunction)**。Notebook Kernel 会在多个单元格之间保留同一个沙盒世界，每个成功的 MCF 单元下方默认显示内嵌 PNG。Spyglass 风格的编辑和诊断适用于独立的 `.mcfunction` 文件，不会自动注入 Notebook 单元格。
 
 ## 临时沙盒与活动沙盒
 
@@ -93,7 +97,7 @@ Test Explorer 会发现工作区中的 `**/*.dps.json`，并提供四个 Profile
 | 设置 | 默认值 | 说明 |
 | --- | --- | --- |
 | `datapackSandbox.javaPath` | `java` | Java 25 可执行文件 |
-| `datapackSandbox.defaultVersion` | `26.2` | 默认 Minecraft Profile |
+| `datapackSandbox.defaultVersion` | 空 | 可选 Profile 覆盖；留空时跟随内置 CLI 的唯一默认版本 |
 | `datapackSandbox.packPaths` | `[]` | 额外数据包目录或 zip |
 | `datapackSandbox.strict` | `false` | Run/Debug 是否使用严格检查 |
 | `datapackSandbox.defaultExecutionTarget` | `temporary` | 普通 Run/Debug 的默认执行目标 |

@@ -32,13 +32,32 @@ class ExtendedRuntimeTest {
         player.inventory += ItemStack(ResourceLocation.parse("minecraft:carrot_on_a_stick"))
         player.selectedSlot = 0
 
-        assertTrue(sandbox.predicates.test(ResourceLocation.parse("demo:has_carrot"), PredicateContext(world = sandbox.world, player = player, thisEntity = player, origin = player.position, tool = player.selectedItem)))
+        assertTrue(
+            sandbox.predicates.test(
+                ResourceLocation.parse("demo:has_carrot"),
+                PredicateContext(
+                    world = sandbox.world,
+                    player = player,
+                    thisEntity = player,
+                    origin = player.position,
+                    tool = player.selectedItem,
+                ),
+            ),
+        )
 
-        val loot = sandbox.generateLoot(ResourceLocation.parse("demo:gift"), ResourceLocation.parse("minecraft:advancement_reward"), player, seed = 42)
+        val loot =
+            sandbox.generateLoot(
+                ResourceLocation.parse("demo:gift"),
+                ResourceLocation.parse("minecraft:advancement_reward"),
+                player,
+                seed = 42,
+            )
         assertEquals(ResourceLocation.parse("minecraft:diamond"), loot.items.single().id)
         assertEquals(2, loot.items.single().count)
 
-        sandbox.handlePlayerEvent(PlayerEvent(player.name, "item_used", item = ItemStack(ResourceLocation.parse("minecraft:carrot_on_a_stick"))))
+        sandbox.handlePlayerEvent(
+            PlayerEvent(player.name, "item_used", item = ItemStack(ResourceLocation.parse("minecraft:carrot_on_a_stick"))),
+        )
 
         assertEquals(5, player.xp)
         assertEquals(2, player.inventory.size)
@@ -56,7 +75,12 @@ class ExtendedRuntimeTest {
 
         sandbox.executeCommand("advancement test Steve demo:use_carrot use_carrot")
 
-        assertEquals("0", sandbox.world.outputs.single { it.command == "advancement test" }.text)
+        assertEquals(
+            "0",
+            sandbox.world.outputs
+                .single { it.command == "advancement test" }
+                .text,
+        )
 
         sandbox.executeCommand("advancement grant Steve only demo:use_carrot use_carrot")
         sandbox.executeCommand("advancement test Steve demo:use_carrot use_carrot")
@@ -84,20 +108,23 @@ class ExtendedRuntimeTest {
         val childId = ResourceLocation.parse("demo:child")
         val grandId = ResourceLocation.parse("demo:grand")
         val sideId = ResourceLocation.parse("demo:side")
-        val sandbox = DatapackSandbox(
-            profile = VersionProfiles.default,
-            datapack = Datapack(
-                functions = emptyMap(),
-                loadFunctions = emptyList(),
-                tickFunctions = emptyList(),
-                advancements = listOf(
-                    testAdvancement(rootId),
-                    testAdvancement(childId, rootId),
-                    testAdvancement(grandId, childId),
-                    testAdvancement(sideId, rootId),
-                ).associateBy { it.id },
-            ),
-        )
+        val sandbox =
+            DatapackSandbox(
+                profile = VersionProfiles.default,
+                datapack =
+                    Datapack(
+                        functions = emptyMap(),
+                        loadFunctions = emptyList(),
+                        tickFunctions = emptyList(),
+                        advancements =
+                            listOf(
+                                testAdvancement(rootId),
+                                testAdvancement(childId, rootId),
+                                testAdvancement(grandId, childId),
+                                testAdvancement(sideId, rootId),
+                            ).associateBy { it.id },
+                    ),
+            )
         val player = sandbox.createPlayer("Steve")
 
         sandbox.executeCommand("advancement grant Steve from demo:child")
@@ -137,7 +164,13 @@ class ExtendedRuntimeTest {
         output = sandbox.world.outputs.last { it.command == "advancement grant" }
         assertEquals("1", output.text)
         assertEquals(listOf("demo:root", "demo:child", "demo:grand"), output.advancementIds())
-        assertEquals(1, output.payload?.asJsonObject?.get("changed")?.asInt)
+        assertEquals(
+            1,
+            output.payload
+                ?.asJsonObject
+                ?.get("changed")
+                ?.asInt,
+        )
 
         sandbox.executeCommand("scoreboard objectives add adv dummy")
         sandbox.executeCommand("execute store result score Steve adv run advancement revoke Steve from demo:child")
@@ -145,28 +178,33 @@ class ExtendedRuntimeTest {
         assertEquals(2, sandbox.world.getScore("Steve", "adv"))
     }
 
-    private fun testAdvancement(id: ResourceLocation, parent: ResourceLocation? = null): AdvancementDefinition =
+    private fun testAdvancement(
+        id: ResourceLocation,
+        parent: ResourceLocation? = null,
+    ): AdvancementDefinition =
         AdvancementDefinition(
             id = id,
             file = "<test>",
             root = JsonObject(),
             parent = parent,
-            criteria = mapOf(
-                id.path to Criterion(
-                    name = id.path,
-                    trigger = ResourceLocation.parse("minecraft:tick"),
-                    conditions = null,
+            criteria =
+                mapOf(
+                    id.path to
+                        Criterion(
+                            name = id.path,
+                            trigger = ResourceLocation.parse("minecraft:tick"),
+                            conditions = null,
+                        ),
                 ),
-            ),
             requirements = listOf(listOf(id.path)),
             rewards = AdvancementReward(),
         )
 
-    private fun SandboxPlayer.criterionDone(id: ResourceLocation): Boolean =
-        advancementProgress[id]?.criteria?.get(id.path) == true
+    private fun SandboxPlayer.criterionDone(id: ResourceLocation): Boolean = advancementProgress[id]?.criteria?.get(id.path) == true
 
     private fun OutputEvent.advancementIds(): List<String> =
-        payload?.asJsonObject
+        payload
+            ?.asJsonObject
             ?.getAsJsonArray("advancements")
             ?.map { it.asString }
             ?: emptyList()

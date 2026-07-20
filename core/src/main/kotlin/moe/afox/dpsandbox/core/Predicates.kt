@@ -3,7 +3,6 @@
 import com.google.gson.JsonArray
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
-import com.google.gson.JsonPrimitive
 import kotlin.math.abs
 import kotlin.math.floor
 import kotlin.math.sqrt
@@ -58,13 +57,18 @@ data class PredicateContext(
 /**
  * Minimal weather state exposed to predicate evaluation.
  */
-data class WeatherState(val raining: Boolean = false, val thundering: Boolean = false)
+data class WeatherState(
+    val raining: Boolean = false,
+    val thundering: Boolean = false,
+)
 
 /**
  * Exception thrown when a predicate references context that the sandbox caller
  * did not provide.
  */
-class MissingPredicateContext(message: String) : SandboxException(DiagnosticCode.MISSING_CONTEXT, message)
+class MissingPredicateContext(
+    message: String,
+) : SandboxException(DiagnosticCode.MISSING_CONTEXT, message)
 
 /**
  * Predicate evaluator for loaded datapack predicate resources and inline loot conditions.
@@ -79,8 +83,10 @@ class PredicateEngine(
      * @throws SandboxException when the predicate is missing, malformed, needs
      * missing context, or uses an unsupported condition type.
      */
-    fun test(id: ResourceLocation, context: PredicateContext): Boolean =
-        testElement(datapack.predicate(id).root, context)
+    fun test(
+        id: ResourceLocation,
+        context: PredicateContext,
+    ): Boolean = testElement(datapack.predicate(id).root, context)
 
     /**
      * Evaluates an inline predicate element.
@@ -88,7 +94,10 @@ class PredicateEngine(
      * Supported roots are object, array, boolean, null. Array roots require all
      * contained predicates to pass.
      */
-    fun testElement(element: JsonElement?, context: PredicateContext): Boolean {
+    fun testElement(
+        element: JsonElement?,
+        context: PredicateContext,
+    ): Boolean {
         if (element == null || element.isJsonNull) return true
         return when {
             element.isJsonArray -> element.asJsonArray.all { testElement(it, context) }
@@ -101,7 +110,10 @@ class PredicateEngine(
     /**
      * Evaluates a loot-condition style condition list or object.
      */
-    fun testConditions(conditions: JsonElement?, context: PredicateContext): Boolean =
+    fun testConditions(
+        conditions: JsonElement?,
+        context: PredicateContext,
+    ): Boolean =
         when {
             conditions == null || conditions.isJsonNull -> true
             conditions.isJsonArray -> conditions.asJsonArray.all { testElement(it, context) }
@@ -109,8 +121,13 @@ class PredicateEngine(
             else -> throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Conditions must be an object or array")
         }
 
-    private fun testObject(root: JsonObject, context: PredicateContext): Boolean {
-        val type = root.string("condition") ?: root.string("predicate") ?: return testEntityPredicate(context.thisEntity ?: context.player, root, context)
+    private fun testObject(
+        root: JsonObject,
+        context: PredicateContext,
+    ): Boolean {
+        val type =
+            root.string("condition") ?: root.string("predicate")
+                ?: return testEntityPredicate(context.thisEntity ?: context.player, root, context)
         return when (canonical(type)) {
             "all_of" -> root.terms().all { testElement(it, context) }
             "any_of", "alternative" -> root.terms().any { testElement(it, context) }
@@ -139,7 +156,11 @@ class PredicateEngine(
                 }
             }
             "location_check" -> testLocation(root.getAsJsonObject("predicate") ?: JsonObject(), root.getAsJsonObject("offset"), context)
-            "match_tool" -> testItemPredicate(requireContext(context.tool, "match_tool requires tool context"), root.getAsJsonObject("predicate") ?: root)
+            "match_tool" ->
+                testItemPredicate(
+                    requireContext(context.tool, "match_tool requires tool context"),
+                    root.getAsJsonObject("predicate") ?: root,
+                )
             "damage_source_properties" -> {
                 val source = requireContext(context.damageSource, "damage_source_properties requires damage source context")
                 root.getAsJsonObject("predicate")?.string("type")?.let { ResourceLocation.parse(it) == source } ?: true
@@ -157,7 +178,10 @@ class PredicateEngine(
         }
     }
 
-    private fun testTableBonus(root: JsonObject, context: PredicateContext): Boolean {
+    private fun testTableBonus(
+        root: JsonObject,
+        context: PredicateContext,
+    ): Boolean {
         val enchantment = ResourceLocation.parse(root.requiredString("enchantment"))
         val level = toolEnchantmentLevel(context.tool, enchantment).coerceAtLeast(0)
         val chances = root.getAsJsonArray("chances") ?: JsonArray()
@@ -166,7 +190,10 @@ class PredicateEngine(
         return context.random.nextDouble() < chance.coerceIn(0.0, 1.0)
     }
 
-    private fun numberProviderValue(element: JsonElement?, context: PredicateContext): Double {
+    private fun numberProviderValue(
+        element: JsonElement?,
+        context: PredicateContext,
+    ): Double {
         if (element == null || element.isJsonNull) return 0.0
         if (element.isJsonPrimitive) return element.asDouble
         if (!element.isJsonObject) {
@@ -174,9 +201,10 @@ class PredicateEngine(
         }
         val root = element.asJsonObject
         return when (root.string("type")?.let(::canonical)) {
-            null -> root.get("value")?.let { numberProviderValue(it, context) }
-                ?: root.numberOrNull("min")
-                ?: 0.0
+            null ->
+                root.get("value")?.let { numberProviderValue(it, context) }
+                    ?: root.numberOrNull("min")
+                    ?: 0.0
             "constant" -> numberProviderValue(root.get("value"), context)
             "uniform" -> {
                 val min = numberProviderValue(root.get("min"), context)
@@ -193,18 +221,27 @@ class PredicateEngine(
                 successes.toDouble()
             }
             "score" -> {
-                val objective = root.string("score") ?: root.string("objective")
-                    ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Score number provider requires 'score' or 'objective'")
+                val objective =
+                    root.string("score") ?: root.string("objective")
+                        ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Score number provider requires 'score' or 'objective'")
                 context.world.getScore(scoreProviderTarget(root.get("target"), context), objective).toDouble()
             }
-            else -> throw SandboxException(DiagnosticCode.UNSUPPORTED_FEATURE, "Number provider type '${root.string("type")}' is not implemented")
+            else -> throw SandboxException(
+                DiagnosticCode.UNSUPPORTED_FEATURE,
+                "Number provider type '${root.string("type")}' is not implemented",
+            )
         }
     }
 
-    private fun scoreProviderTarget(element: JsonElement?, context: PredicateContext): String {
-        if (element == null || element.isJsonNull) return context.player?.scoreHolder
-            ?: context.thisEntity?.scoreHolder
-            ?: throw MissingPredicateContext("Score number provider requires target context")
+    private fun scoreProviderTarget(
+        element: JsonElement?,
+        context: PredicateContext,
+    ): String {
+        if (element == null || element.isJsonNull) {
+            return context.player?.scoreHolder
+                ?: context.thisEntity?.scoreHolder
+                ?: throw MissingPredicateContext("Score number provider requires target context")
+        }
         if (element.isJsonPrimitive) return element.asString
         if (!element.isJsonObject) {
             throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Score number provider target must be a string or object")
@@ -213,19 +250,26 @@ class PredicateEngine(
         return when (root.string("type")?.let(::canonical)) {
             null, "fixed" -> root.requiredString("name")
             "context" -> resolveEntity(root.string("target") ?: "this", context).scoreHolder
-            else -> throw SandboxException(DiagnosticCode.UNSUPPORTED_FEATURE, "Score target type '${root.string("type")}' is not implemented")
+            else -> throw SandboxException(
+                DiagnosticCode.UNSUPPORTED_FEATURE,
+                "Score target type '${root.string("type")}' is not implemented",
+            )
         }
     }
 
-    private fun testRandomChanceWithEnchantedBonus(root: JsonObject, context: PredicateContext): Boolean {
+    private fun testRandomChanceWithEnchantedBonus(
+        root: JsonObject,
+        context: PredicateContext,
+    ): Boolean {
         val unenchantedChance = root.number("unenchanted_chance", root.number("chance", 0.0))
         val level = predicateEnchantment(root)?.let { toolEnchantmentLevel(context.tool, it) } ?: 0
-        val chance = if (level <= 0) {
-            unenchantedChance
-        } else {
-            root.get("enchanted_chance")?.let { enchantmentLevelValue(it, level) }
-                ?: legacyEnchantedChance(root, unenchantedChance, level)
-        }
+        val chance =
+            if (level <= 0) {
+                unenchantedChance
+            } else {
+                root.get("enchanted_chance")?.let { enchantmentLevelValue(it, level) }
+                    ?: legacyEnchantedChance(root, unenchantedChance, level)
+            }
         return context.random.nextDouble() < chance.coerceIn(0.0, 1.0)
     }
 
@@ -235,17 +279,25 @@ class PredicateEngine(
                 root.get("looting_multiplier") != null || canonical(root.string("condition") ?: "") == "random_chance_with_looting"
             }
 
-    private fun legacyEnchantedChance(root: JsonObject, unenchantedChance: Double, level: Int): Double {
+    private fun legacyEnchantedChance(
+        root: JsonObject,
+        unenchantedChance: Double,
+        level: Int,
+    ): Double {
         val baseChance = root.number("chance", unenchantedChance)
-        val multiplier = root.numberOrNull("looting_multiplier")
-            ?: root.numberOrNull("enchanted_bonus_multiplier")
-            ?: root.numberOrNull("bonus_multiplier")
-            ?: root.numberOrNull("enchanted_bonus")
-            ?: return unenchantedChance
+        val multiplier =
+            root.numberOrNull("looting_multiplier")
+                ?: root.numberOrNull("enchanted_bonus_multiplier")
+                ?: root.numberOrNull("bonus_multiplier")
+                ?: root.numberOrNull("enchanted_bonus")
+                ?: return unenchantedChance
         return baseChance + level * multiplier
     }
 
-    private fun enchantmentLevelValue(element: JsonElement?, level: Int): Double {
+    private fun enchantmentLevelValue(
+        element: JsonElement?,
+        level: Int,
+    ): Double {
         if (element == null || element.isJsonNull) return 0.0
         if (element.isJsonPrimitive) return element.asDouble
         if (!element.isJsonObject) {
@@ -253,13 +305,15 @@ class PredicateEngine(
         }
         val root = element.asJsonObject
         return when (root.string("type")?.let(::canonical)) {
-            null -> root.get("value")?.let { enchantmentLevelValue(it, level) }
-                ?: root.numberOrNull("chance")
-                ?: root.numberOrNull("base")
-                ?: 0.0
+            null ->
+                root.get("value")?.let { enchantmentLevelValue(it, level) }
+                    ?: root.numberOrNull("chance")
+                    ?: root.numberOrNull("base")
+                    ?: 0.0
             "constant" -> root.number("value", 0.0)
-            "linear" -> root.number("base", 0.0) +
-                root.number("per_level_above_first", root.number("perLevelAboveFirst", 0.0)) * (level - 1).coerceAtLeast(0)
+            "linear" ->
+                root.number("base", 0.0) +
+                    root.number("per_level_above_first", root.number("perLevelAboveFirst", 0.0)) * (level - 1).coerceAtLeast(0)
             "clamped" -> {
                 val value = enchantmentLevelValue(root.get("value"), level)
                 value.coerceIn(root.number("min", Double.NEGATIVE_INFINITY), root.number("max", Double.POSITIVE_INFINITY))
@@ -276,18 +330,27 @@ class PredicateEngine(
                     ?: root.get("fallback")?.let { enchantmentLevelValue(it, level) }
                     ?: 0.0
             }
-            else -> throw SandboxException(DiagnosticCode.UNSUPPORTED_FEATURE, "Enchanted chance value type '${root.string("type")}' is not implemented")
+            else -> throw SandboxException(
+                DiagnosticCode.UNSUPPORTED_FEATURE,
+                "Enchanted chance value type '${root.string("type")}' is not implemented",
+            )
         }
     }
 
-    private fun toolEnchantmentLevel(tool: ItemStack?, enchantment: ResourceLocation): Int {
+    private fun toolEnchantmentLevel(
+        tool: ItemStack?,
+        enchantment: ResourceLocation,
+    ): Int {
         val enchantments = tool?.components?.getAsJsonObject("minecraft:enchantments") ?: return 0
         return enchantmentLevel(enchantments, enchantment)
             ?: enchantments.getAsJsonObject("levels")?.let { enchantmentLevel(it, enchantment) }
             ?: 0
     }
 
-    private fun enchantmentLevel(enchantments: JsonObject, enchantment: ResourceLocation): Int? =
+    private fun enchantmentLevel(
+        enchantments: JsonObject,
+        enchantment: ResourceLocation,
+    ): Int? =
         enchantmentLevelElement(enchantments.get(enchantment.toString()))
             ?: enchantmentLevelElement(enchantments.get(enchantment.path))
 
@@ -295,11 +358,19 @@ class PredicateEngine(
         when {
             element == null || element.isJsonNull -> null
             element.isJsonPrimitive -> element.asInt
-            element.isJsonObject -> element.asJsonObject.get("level")?.takeIf { it.isJsonPrimitive }?.asInt
+            element.isJsonObject ->
+                element.asJsonObject
+                    .get("level")
+                    ?.takeIf { it.isJsonPrimitive }
+                    ?.asInt
             else -> null
         }
 
-    private fun testEntityPredicate(entity: SandboxEntity?, predicate: JsonObject, context: PredicateContext): Boolean {
+    private fun testEntityPredicate(
+        entity: SandboxEntity?,
+        predicate: JsonObject,
+        context: PredicateContext,
+    ): Boolean {
         val actual = requireContext(entity, "Entity predicate requires an entity context")
         predicate.string("type")?.let {
             if (ResourceLocation.parse(it) != actual.type) return false
@@ -318,9 +389,11 @@ class PredicateEngine(
             val dz = actual.position.z - origin.z
             if (!testDistancePredicate(dx, dy, dz, distance)) return false
         }
-        (predicate.getAsJsonObject("player") ?: predicate.getAsJsonObject("type_specific")?.takeIf {
-            it.string("type") == "minecraft:player" || it.string("type") == "player"
-        })?.let { playerPredicate ->
+        (
+            predicate.getAsJsonObject("player") ?: predicate.getAsJsonObject("type_specific")?.takeIf {
+                it.string("type") == "minecraft:player" || it.string("type") == "player"
+            }
+        )?.let { playerPredicate ->
             val player = actual as? SandboxPlayer ?: return false
             if (!testPlayerPredicate(player, playerPredicate, context)) return false
         }
@@ -333,7 +406,10 @@ class PredicateEngine(
         return true
     }
 
-    private fun testEffectsPredicate(entity: SandboxEntity, predicate: JsonObject): Boolean {
+    private fun testEffectsPredicate(
+        entity: SandboxEntity,
+        predicate: JsonObject,
+    ): Boolean {
         predicate.entrySet().forEach { (id, value) ->
             val effect = entityEffect(entity, ResourceLocation.parse(id))
             if (value.isJsonPrimitive && value.asJsonPrimitive.isBoolean) {
@@ -357,7 +433,12 @@ class PredicateEngine(
         return true
     }
 
-    private fun testDistancePredicate(dx: Double, dy: Double, dz: Double, predicate: JsonObject): Boolean {
+    private fun testDistancePredicate(
+        dx: Double,
+        dy: Double,
+        dz: Double,
+        predicate: JsonObject,
+    ): Boolean {
         predicate.get("absolute")?.let {
             if (!testRange(sqrt(dx * dx + dy * dy + dz * dz), it)) return false
         }
@@ -370,14 +451,20 @@ class PredicateEngine(
         return true
     }
 
-    private fun entityEffect(entity: SandboxEntity, id: ResourceLocation): PlayerEffect? =
+    private fun entityEffect(
+        entity: SandboxEntity,
+        id: ResourceLocation,
+    ): PlayerEffect? =
         if (entity is SandboxPlayer) {
             entity.effectDetails[id] ?: id.takeIf { it in entity.effects }?.let { PlayerEffect(it) }
         } else {
             entity.activeEffects[id]
         }
 
-    private fun testEquipmentPredicate(entity: SandboxEntity, predicate: JsonObject): Boolean {
+    private fun testEquipmentPredicate(
+        entity: SandboxEntity,
+        predicate: JsonObject,
+    ): Boolean {
         predicate.entrySet().forEach { (key, value) ->
             if (!value.isJsonObject) return false
             val item = equipmentItem(entity, key) ?: return false
@@ -386,7 +473,10 @@ class PredicateEngine(
         return true
     }
 
-    private fun equipmentItem(entity: SandboxEntity, key: String): ItemStack? {
+    private fun equipmentItem(
+        entity: SandboxEntity,
+        key: String,
+    ): ItemStack? {
         if (entity is SandboxPlayer) {
             return when (key) {
                 "mainhand", EquipmentSlots.MAINHAND -> entity.selectedItem
@@ -398,19 +488,24 @@ class PredicateEngine(
                 else -> null
             }
         }
-        val slot = when (key) {
-            "mainhand", EquipmentSlots.MAINHAND -> EquipmentSlots.MAINHAND
-            "offhand", EquipmentSlots.OFFHAND -> EquipmentSlots.OFFHAND
-            "feet", EquipmentSlots.FEET -> EquipmentSlots.FEET
-            "legs", EquipmentSlots.LEGS -> EquipmentSlots.LEGS
-            "chest", EquipmentSlots.CHEST -> EquipmentSlots.CHEST
-            "head", EquipmentSlots.HEAD -> EquipmentSlots.HEAD
-            else -> null
-        }
+        val slot =
+            when (key) {
+                "mainhand", EquipmentSlots.MAINHAND -> EquipmentSlots.MAINHAND
+                "offhand", EquipmentSlots.OFFHAND -> EquipmentSlots.OFFHAND
+                "feet", EquipmentSlots.FEET -> EquipmentSlots.FEET
+                "legs", EquipmentSlots.LEGS -> EquipmentSlots.LEGS
+                "chest", EquipmentSlots.CHEST -> EquipmentSlots.CHEST
+                "head", EquipmentSlots.HEAD -> EquipmentSlots.HEAD
+                else -> null
+            }
         return slot?.let { entity.equipment[it] }
     }
 
-    private fun testPlayerPredicate(player: SandboxPlayer, predicate: JsonObject, context: PredicateContext): Boolean {
+    private fun testPlayerPredicate(
+        player: SandboxPlayer,
+        predicate: JsonObject,
+        context: PredicateContext,
+    ): Boolean {
         predicate.getAsJsonObject("recipes")?.entrySet()?.forEach { (id, value) ->
             if ((ResourceLocation.parse(id) in player.recipes) != value.asBoolean) return false
         }
@@ -433,7 +528,10 @@ class PredicateEngine(
     /**
      * Evaluates an item predicate against [item].
      */
-    fun testItemPredicate(item: ItemStack, predicate: JsonObject): Boolean {
+    fun testItemPredicate(
+        item: ItemStack,
+        predicate: JsonObject,
+    ): Boolean {
         val ids = predicate.get("items") ?: predicate.get("item")
         if (ids != null && !matchesIdList(item.id, ids)) return false
         predicate.get("count")?.let { if (!testRange(item.count.toLong(), it)) return false }
@@ -453,7 +551,11 @@ class PredicateEngine(
         return true
     }
 
-    private fun testEnchantments(item: ItemStack, component: String, predicate: JsonObject): Boolean {
+    private fun testEnchantments(
+        item: ItemStack,
+        component: String,
+        predicate: JsonObject,
+    ): Boolean {
         val actual = item.components.getAsJsonObject(component) ?: return false
         predicate.entrySet().forEach { (id, range) ->
             val level = actual.get(id)?.takeIf { it.isJsonPrimitive } ?: return false
@@ -462,8 +564,16 @@ class PredicateEngine(
         return true
     }
 
-    private fun testLocation(predicate: JsonObject, offset: JsonObject?, context: PredicateContext): Boolean {
-        val origin = requireContext(context.origin ?: context.player?.position ?: context.thisEntity?.position, "Location predicate requires origin context")
+    private fun testLocation(
+        predicate: JsonObject,
+        offset: JsonObject?,
+        context: PredicateContext,
+    ): Boolean {
+        val origin =
+            requireContext(
+                context.origin ?: context.player?.position ?: context.thisEntity?.position,
+                "Location predicate requires origin context",
+            )
         val x = origin.x + (offset?.number("x", 0.0) ?: 0.0)
         val y = origin.y + (offset?.number("y", 0.0) ?: 0.0)
         val z = origin.z + (offset?.number("z", 0.0) ?: 0.0)
@@ -490,7 +600,11 @@ class PredicateEngine(
         return true
     }
 
-    private fun testBlockPredicate(block: SandboxBlock?, pos: BlockPos, predicate: JsonObject): Boolean {
+    private fun testBlockPredicate(
+        block: SandboxBlock?,
+        pos: BlockPos,
+        predicate: JsonObject,
+    ): Boolean {
         val blockId = block?.id ?: ResourceLocation.parse("minecraft:air")
         predicate.get("blocks")?.let { if (!matchesBlockId(blockId, it)) return false }
         predicate.get("block")?.let { if (!matchesBlockId(blockId, it)) return false }
@@ -509,7 +623,10 @@ class PredicateEngine(
         return true
     }
 
-    private fun testBlockProperties(block: SandboxBlock, predicate: JsonObject): Boolean {
+    private fun testBlockProperties(
+        block: SandboxBlock,
+        predicate: JsonObject,
+    ): Boolean {
         predicate.entrySet().forEach { (key, expected) ->
             val actual = block.properties[key] ?: return false
             when {
@@ -525,7 +642,10 @@ class PredicateEngine(
         return true
     }
 
-    private fun matchesBlockId(id: ResourceLocation, element: JsonElement): Boolean =
+    private fun matchesBlockId(
+        id: ResourceLocation,
+        element: JsonElement,
+    ): Boolean =
         when {
             element.isJsonPrimitive -> {
                 val raw = element.asString
@@ -539,30 +659,39 @@ class PredicateEngine(
             else -> false
         }
 
-    private fun blockMatchesTag(id: ResourceLocation, tagId: ResourceLocation, visited: MutableSet<ResourceLocation>): Boolean {
+    private fun blockMatchesTag(
+        id: ResourceLocation,
+        tagId: ResourceLocation,
+        visited: MutableSet<ResourceLocation>,
+    ): Boolean {
         if (!visited.add(tagId)) {
             throw SandboxException(DiagnosticCode.COMMAND_ERROR, "Recursive block tag reference: $tagId")
         }
         val tag = datapack.tags[TagKey("block", tagId)] ?: datapack.tags[TagKey("blocks", tagId)]
-        val result = tag?.values?.any { value ->
-            if (value.id.startsWith("#")) {
-                val nested = ResourceLocation.parse(value.id.removePrefix("#"))
-                blockMatchesTag(id, nested, visited)
-            } else {
-                ResourceLocation.parse(value.id) == id
-            }
-        } == true
+        val result =
+            tag?.values?.any { value ->
+                if (value.id.startsWith("#")) {
+                    val nested = ResourceLocation.parse(value.id.removePrefix("#"))
+                    blockMatchesTag(id, nested, visited)
+                } else {
+                    ResourceLocation.parse(value.id) == id
+                }
+            } == true
         visited.remove(tagId)
         return result
     }
 
-    private fun resolveEntity(name: String, context: PredicateContext): SandboxEntity =
+    private fun resolveEntity(
+        name: String,
+        context: PredicateContext,
+    ): SandboxEntity =
         when (name) {
             "this" -> context.thisEntity ?: context.player ?: missing(context, "Predicate entity 'this' is missing")
             "direct_attacker" -> context.directEntity ?: missing(context, "Predicate direct attacker entity is missing")
             "attacker" -> context.attacker ?: missing(context, "Predicate attacker entity is missing")
-            "attacking_player" -> context.attackingPlayer ?: context.player ?: (context.attacker as? SandboxPlayer)
-                ?: missing(context, "Predicate attacking player entity is missing")
+            "attacking_player" ->
+                context.attackingPlayer ?: context.player ?: (context.attacker as? SandboxPlayer)
+                    ?: missing(context, "Predicate attacking player entity is missing")
             "target_entity" -> context.targetEntity ?: missing(context, "Predicate target entity is missing")
             "interacting_entity" -> context.interactingEntity ?: missing(context, "Predicate interacting entity is missing")
             else -> throw SandboxException(
@@ -571,15 +700,23 @@ class PredicateEngine(
             )
         }
 
-    private fun <T : Any> requireContext(value: T?, message: String): T =
-        value ?: throw MissingPredicateContext(message)
+    private fun <T : Any> requireContext(
+        value: T?,
+        message: String,
+    ): T = value ?: throw MissingPredicateContext(message)
 
-    private fun missing(context: PredicateContext, message: String): Nothing {
+    private fun missing(
+        context: PredicateContext,
+        message: String,
+    ): Nothing {
         if (context.looseMissingContext) throw MissingPredicateContext(message)
         throw MissingPredicateContext(message)
     }
 
-    private fun matchesIdList(id: ResourceLocation, element: JsonElement): Boolean =
+    private fun matchesIdList(
+        id: ResourceLocation,
+        element: JsonElement,
+    ): Boolean =
         when {
             element.isJsonPrimitive -> {
                 val raw = element.asString
@@ -593,34 +730,48 @@ class PredicateEngine(
             else -> false
         }
 
-    private fun itemMatchesTag(id: ResourceLocation, tagId: ResourceLocation, visited: MutableSet<ResourceLocation>): Boolean {
+    private fun itemMatchesTag(
+        id: ResourceLocation,
+        tagId: ResourceLocation,
+        visited: MutableSet<ResourceLocation>,
+    ): Boolean {
         if (!visited.add(tagId)) {
             throw SandboxException(DiagnosticCode.COMMAND_ERROR, "Recursive item tag reference: $tagId")
         }
         val tag = datapack.tags[TagKey("item", tagId)] ?: datapack.tags[TagKey("items", tagId)]
-        val result = tag?.values?.any { value ->
-            if (value.id.startsWith("#")) {
-                val nested = ResourceLocation.parse(value.id.removePrefix("#"))
-                val nestedTag = datapack.tags[TagKey("item", nested)] ?: datapack.tags[TagKey("items", nested)]
-                if (nestedTag == null) {
-                    if (value.required) {
-                        throw SandboxException(DiagnosticCode.RESOURCE_NOT_FOUND, "Item tag '$nested' referenced by '$tagId' was not found")
+        val result =
+            tag?.values?.any { value ->
+                if (value.id.startsWith("#")) {
+                    val nested = ResourceLocation.parse(value.id.removePrefix("#"))
+                    val nestedTag = datapack.tags[TagKey("item", nested)] ?: datapack.tags[TagKey("items", nested)]
+                    if (nestedTag == null) {
+                        if (value.required) {
+                            throw SandboxException(
+                                DiagnosticCode.RESOURCE_NOT_FOUND,
+                                "Item tag '$nested' referenced by '$tagId' was not found",
+                            )
+                        }
+                        false
+                    } else {
+                        itemMatchesTag(id, nestedTag.key.id, visited)
                     }
-                    false
                 } else {
-                    itemMatchesTag(id, nestedTag.key.id, visited)
+                    ResourceLocation.parse(value.id) == id
                 }
-            } else {
-                ResourceLocation.parse(value.id) == id
-            }
-        } == true
+            } == true
         visited.remove(tagId)
         return result
     }
 
-    private fun testRange(actual: Long, range: JsonElement?): Boolean = testRange(actual.toDouble(), range)
+    private fun testRange(
+        actual: Long,
+        range: JsonElement?,
+    ): Boolean = testRange(actual.toDouble(), range)
 
-    private fun testRange(actual: Double, range: JsonElement?): Boolean {
+    private fun testRange(
+        actual: Double,
+        range: JsonElement?,
+    ): Boolean {
         if (range == null || range.isJsonNull) return true
         if (range.isJsonPrimitive) return actual == range.asDouble
         if (!range.isJsonObject) return false
@@ -630,35 +781,37 @@ class PredicateEngine(
         return true
     }
 
-    private fun containsAll(actual: JsonObject, expected: JsonObject): Boolean =
+    private fun containsAll(
+        actual: JsonObject,
+        expected: JsonObject,
+    ): Boolean =
         expected.entrySet().all { (key, expectedValue) ->
             val actualValue = actual.get(key) ?: return@all false
             when {
                 expectedValue.isJsonObject && actualValue.isJsonObject -> containsAll(actualValue.asJsonObject, expectedValue.asJsonObject)
-                expectedValue.isJsonArray && actualValue.isJsonArray -> expectedValue.asJsonArray.all { expectedItem ->
-                    actualValue.asJsonArray.any { actualItem -> actualItem == expectedItem }
-                }
+                expectedValue.isJsonArray && actualValue.isJsonArray ->
+                    expectedValue.asJsonArray.all { expectedItem ->
+                        actualValue.asJsonArray.any { actualItem -> actualItem == expectedItem }
+                    }
                 else -> actualValue == expectedValue
             }
         }
 
     private fun canonical(raw: String): String = ResourceLocation.parse(raw).path
 
-    private fun JsonObject.terms(): JsonArray =
-        getAsJsonArray("terms") ?: getAsJsonArray("conditions") ?: JsonArray()
+    private fun JsonObject.terms(): JsonArray = getAsJsonArray("terms") ?: getAsJsonArray("conditions") ?: JsonArray()
 
-    private fun JsonObject.string(name: String): String? =
-        get(name)?.takeIf { it.isJsonPrimitive }?.asString
+    private fun JsonObject.string(name: String): String? = get(name)?.takeIf { it.isJsonPrimitive }?.asString
 
     private fun JsonObject.requiredString(name: String): String =
         string(name) ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Missing required string '$name'")
 
-    private fun JsonObject.number(name: String, default: Double): Double =
-        get(name)?.takeIf { it.isJsonPrimitive }?.asDouble ?: default
+    private fun JsonObject.number(
+        name: String,
+        default: Double,
+    ): Double = get(name)?.takeIf { it.isJsonPrimitive }?.asDouble ?: default
 
-    private fun JsonObject.numberOrNull(name: String): Double? =
-        get(name)?.takeIf { it.isJsonPrimitive }?.asDouble
+    private fun JsonObject.numberOrNull(name: String): Double? = get(name)?.takeIf { it.isJsonPrimitive }?.asDouble
 
-    private fun JsonObject.optionalBoolean(name: String): Boolean? =
-        get(name)?.takeIf { it.isJsonPrimitive }?.asBoolean
+    private fun JsonObject.optionalBoolean(name: String): Boolean? = get(name)?.takeIf { it.isJsonPrimitive }?.asBoolean
 }

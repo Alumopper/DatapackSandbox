@@ -10,9 +10,11 @@ import java.util.UUID
  *
  * `x` and `z` are chunk coordinates, not block coordinates.
  */
-data class ChunkPos(val x: Int, val z: Int) : Comparable<ChunkPos> {
-    override fun compareTo(other: ChunkPos): Int =
-        compareValuesBy(this, other, ChunkPos::z, ChunkPos::x)
+data class ChunkPos(
+    val x: Int,
+    val z: Int,
+) : Comparable<ChunkPos> {
+    override fun compareTo(other: ChunkPos): Int = compareValuesBy(this, other, ChunkPos::z, ChunkPos::x)
 }
 
 /**
@@ -30,7 +32,10 @@ class SandboxWorldSetup {
      *
      * @param profile Version profile used for NBT schema validation.
      */
-    fun applyTo(world: SandboxWorld, profile: VersionProfile) {
+    fun applyTo(
+        world: SandboxWorld,
+        profile: VersionProfile,
+    ) {
         operations.forEach { it(world, profile) }
         normalizeEntityRelationships(world)
     }
@@ -48,54 +53,63 @@ class SandboxWorldSetup {
      *
      * @return this setup for fluent chaining.
      */
-    fun gameTime(value: Long): SandboxWorldSetup = apply {
-        operations += { world, _ -> world.setGameTime(value) }
-    }
+    fun gameTime(value: Long): SandboxWorldSetup =
+        apply {
+            operations += { world, _ -> world.setGameTime(value) }
+        }
 
     /**
      * Sets the world's daytime value.
      *
      * @return this setup for fluent chaining.
      */
-    fun dayTime(value: Long): SandboxWorldSetup = apply {
-        operations += { world, _ -> world.setDayTime(value) }
-    }
+    fun dayTime(value: Long): SandboxWorldSetup =
+        apply {
+            operations += { world, _ -> world.setDayTime(value) }
+        }
 
     /**
      * Sets the world's deterministic seed.
      *
      * @return this setup for fluent chaining.
      */
-    fun seed(value: Long): SandboxWorldSetup = apply {
-        operations += { world, _ -> world.seed = value }
-    }
+    fun seed(value: Long): SandboxWorldSetup =
+        apply {
+            operations += { world, _ -> world.seed = value }
+        }
 
     /**
      * Sets one deterministic random sequence state.
      *
      * @return this setup for fluent chaining.
      */
-    fun randomSequence(name: String, state: Long): SandboxWorldSetup = apply {
-        operations += { world, _ -> world.randomSequences[name] = state }
-    }
+    fun randomSequence(
+        name: String,
+        state: Long,
+    ): SandboxWorldSetup =
+        apply {
+            operations += { world, _ -> world.randomSequences[name] = state }
+        }
 
     /**
      * Sets the world's stored difficulty.
      *
      * @return this setup for fluent chaining.
      */
-    fun difficulty(value: String): SandboxWorldSetup = apply {
-        operations += { world, _ -> world.difficulty = value.lowercase() }
-    }
+    fun difficulty(value: String): SandboxWorldSetup =
+        apply {
+            operations += { world, _ -> world.difficulty = value.lowercase() }
+        }
 
     /**
      * Sets the world's default game mode.
      *
      * @return this setup for fluent chaining.
      */
-    fun defaultGameMode(value: String): SandboxWorldSetup = apply {
-        operations += { world, _ -> world.defaultGameMode = value.lowercase() }
-    }
+    fun defaultGameMode(value: String): SandboxWorldSetup =
+        apply {
+            operations += { world, _ -> world.defaultGameMode = value.lowercase() }
+        }
 
     /**
      * Sets the world spawn point.
@@ -110,16 +124,18 @@ class SandboxWorldSetup {
         dimension: String = "minecraft:overworld",
         angle: Double? = null,
         forced: Boolean = false,
-    ): SandboxWorldSetup = apply {
-        operations += { world, _ ->
-            world.worldSpawn = SpawnPoint(
-                position = Position(x, y, z),
-                dimension = ResourceLocation.parse(dimension),
-                angle = angle,
-                forced = forced,
-            )
+    ): SandboxWorldSetup =
+        apply {
+            operations += { world, _ ->
+                world.worldSpawn =
+                    SpawnPoint(
+                        position = Position(x, y, z),
+                        dimension = ResourceLocation.parse(dimension),
+                        angle = angle,
+                        forced = forced,
+                    )
+            }
         }
-    }
 
     /**
      * Sets selected world border fields.
@@ -137,23 +153,24 @@ class SandboxWorldSetup {
         damageAmount: Double? = null,
         warningDistance: Int? = null,
         warningTime: Int? = null,
-    ): SandboxWorldSetup = apply {
-        operations += { world, _ ->
-            val border = world.worldBorder
-            centerX?.let { border.centerX = it }
-            centerZ?.let { border.centerZ = it }
-            size?.let {
-                border.size = it
-                if (targetSize == null) border.targetSize = it
+    ): SandboxWorldSetup =
+        apply {
+            operations += { world, _ ->
+                val border = world.worldBorder
+                centerX?.let { border.centerX = it }
+                centerZ?.let { border.centerZ = it }
+                size?.let {
+                    border.size = it
+                    if (targetSize == null) border.targetSize = it
+                }
+                targetSize?.let { border.targetSize = it }
+                lerpTimeSeconds?.let { border.lerpTimeSeconds = it }
+                damageBuffer?.let { border.damageBuffer = it }
+                damageAmount?.let { border.damageAmount = it }
+                warningDistance?.let { border.warningDistance = it }
+                warningTime?.let { border.warningTime = it }
             }
-            targetSize?.let { border.targetSize = it }
-            lerpTimeSeconds?.let { border.lerpTimeSeconds = it }
-            damageBuffer?.let { border.damageBuffer = it }
-            damageAmount?.let { border.damageAmount = it }
-            warningDistance?.let { border.warningDistance = it }
-            warningTime?.let { border.warningTime = it }
         }
-    }
 
     /**
      * Sets the stored weather state.
@@ -164,34 +181,48 @@ class SandboxWorldSetup {
      * @return this setup for fluent chaining.
      */
     @JvmOverloads
-    fun weather(kind: String, duration: Int = 0): SandboxWorldSetup = apply {
-        operations += { world, _ ->
-            val normalized = kind.lowercase()
-            if (normalized !in setOf("clear", "rain", "thunder")) {
-                throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Weather must be clear, rain, or thunder")
+    fun weather(
+        kind: String,
+        duration: Int = 0,
+    ): SandboxWorldSetup =
+        apply {
+            operations += { world, _ ->
+                val normalized = kind.lowercase()
+                if (normalized !in setOf("clear", "rain", "thunder")) {
+                    throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Weather must be clear, rain, or thunder")
+                }
+                world.weather = normalized
+                world.weatherDuration = duration.coerceAtLeast(0)
             }
-            world.weather = normalized
-            world.weatherDuration = duration.coerceAtLeast(0)
         }
-    }
 
     /**
      * Marks a chunk as force-loaded.
      *
      * @return this setup for fluent chaining.
      */
-    fun forcedChunk(x: Int, z: Int): SandboxWorldSetup = apply {
-        operations += { world, _ -> world.forcedChunks += ChunkPos(x, z) }
-    }
+    fun forcedChunk(
+        x: Int,
+        z: Int,
+    ): SandboxWorldSetup =
+        apply {
+            operations += { world, _ -> world.forcedChunks += ChunkPos(x, z) }
+        }
 
     /**
      * Stores an explicit biome override at a block position.
      *
      * @return this setup for fluent chaining.
      */
-    fun biome(x: Int, y: Int, z: Int, id: String): SandboxWorldSetup = apply {
-        operations += { world, _ -> world.biomes[BlockPos(x, y, z)] = ResourceLocation.parse(id) }
-    }
+    fun biome(
+        x: Int,
+        y: Int,
+        z: Int,
+        id: String,
+    ): SandboxWorldSetup =
+        apply {
+            operations += { world, _ -> world.biomes[BlockPos(x, y, z)] = ResourceLocation.parse(id) }
+        }
 
     /**
      * Places a block fixture using primitive coordinates and optional SNBT/JSON NBT text.
@@ -210,8 +241,7 @@ class SandboxWorldSetup {
         id: String,
         properties: Map<String, String> = emptyMap(),
         nbt: String? = null,
-    ): SandboxWorldSetup =
-        block(BlockPos(x, y, z), ResourceLocation.parse(id), properties, nbt?.let { JsonValues.parse(it).asJsonObject })
+    ): SandboxWorldSetup = block(BlockPos(x, y, z), ResourceLocation.parse(id), properties, nbt?.let { JsonValues.parse(it).asJsonObject })
 
     /**
      * Places a block fixture using typed ids and JSON NBT.
@@ -224,17 +254,18 @@ class SandboxWorldSetup {
         id: ResourceLocation,
         properties: Map<String, String> = emptyMap(),
         nbt: JsonObject? = null,
-    ): SandboxWorldSetup = apply {
-        operations += { world, profile ->
-            val sandboxBlock = SandboxBlock(id, properties.toMutableMap())
-            if (nbt != null && nbt.entrySet().isNotEmpty()) {
-                val full = sandboxBlock.fullNbt(pos, profile)
-                JsonPaths.merge(full, null, nbt)
-                sandboxBlock.writeFullNbt(pos, profile, full)
+    ): SandboxWorldSetup =
+        apply {
+            operations += { world, profile ->
+                val sandboxBlock = SandboxBlock(id, properties.toMutableMap())
+                if (nbt != null && nbt.entrySet().isNotEmpty()) {
+                    val full = sandboxBlock.fullNbt(pos, profile)
+                    JsonPaths.merge(full, null, nbt)
+                    sandboxBlock.writeFullNbt(pos, profile, full)
+                }
+                world.setBlock(pos, sandboxBlock)
             }
-            world.setBlock(pos, sandboxBlock)
         }
-    }
 
     /**
      * Fills an inclusive cuboid region with one block fixture.
@@ -251,28 +282,33 @@ class SandboxWorldSetup {
         id: ResourceLocation,
         properties: Map<String, String> = emptyMap(),
         nbt: JsonObject? = null,
-    ): SandboxWorldSetup = apply {
-        val xs = minOf(from.x, to.x)..maxOf(from.x, to.x)
-        val ys = minOf(from.y, to.y)..maxOf(from.y, to.y)
-        val zs = minOf(from.z, to.z)..maxOf(from.z, to.z)
-        val volume = xs.count() * ys.count() * zs.count()
-        if (volume > 32768) {
-            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "World region fixture volume $volume exceeds sandbox limit 32768")
-        }
-        val nbtCopy = nbt?.deepCopy()
-        operations += { world, profile ->
-            for (x in xs) for (y in ys) for (z in zs) {
-                val pos = BlockPos(x, y, z)
-                val sandboxBlock = SandboxBlock(id, properties.toMutableMap())
-                if (nbtCopy != null && nbtCopy.entrySet().isNotEmpty()) {
-                    val full = sandboxBlock.fullNbt(pos, profile)
-                    JsonPaths.merge(full, null, nbtCopy.deepCopy())
-                    sandboxBlock.writeFullNbt(pos, profile, full)
+    ): SandboxWorldSetup =
+        apply {
+            val xs = minOf(from.x, to.x)..maxOf(from.x, to.x)
+            val ys = minOf(from.y, to.y)..maxOf(from.y, to.y)
+            val zs = minOf(from.z, to.z)..maxOf(from.z, to.z)
+            val volume = xs.count() * ys.count() * zs.count()
+            if (volume > 32768) {
+                throw SandboxException(DiagnosticCode.INPUT_FORMAT, "World region fixture volume $volume exceeds sandbox limit 32768")
+            }
+            val nbtCopy = nbt?.deepCopy()
+            operations += { world, profile ->
+                for (x in xs) {
+                    for (y in ys) {
+                        for (z in zs) {
+                            val pos = BlockPos(x, y, z)
+                            val sandboxBlock = SandboxBlock(id, properties.toMutableMap())
+                            if (nbtCopy != null && nbtCopy.entrySet().isNotEmpty()) {
+                                val full = sandboxBlock.fullNbt(pos, profile)
+                                JsonPaths.merge(full, null, nbtCopy.deepCopy())
+                                sandboxBlock.writeFullNbt(pos, profile, full)
+                            }
+                            world.setBlock(pos, sandboxBlock)
+                        }
+                    }
                 }
-                world.setBlock(pos, sandboxBlock)
             }
         }
-    }
 
     /**
      * Fills an inclusive cuboid region with one block fixture.
@@ -310,54 +346,67 @@ class SandboxWorldSetup {
      *
      * @return this setup for fluent chaining.
      */
-    fun structure(origin: BlockPos, configure: SandboxStructureSetup.() -> Unit): SandboxWorldSetup = apply {
-        val structure = SandboxStructureSetup().apply(configure)
-        if (structure.blocks.size > 32768) {
-            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "World structure fixture has ${structure.blocks.size} blocks; limit is 32768")
+    fun structure(
+        origin: BlockPos,
+        configure: SandboxStructureSetup.() -> Unit,
+    ): SandboxWorldSetup =
+        apply {
+            val structure = SandboxStructureSetup().apply(configure)
+            if (structure.blocks.size > 32768) {
+                throw SandboxException(
+                    DiagnosticCode.INPUT_FORMAT,
+                    "World structure fixture has ${structure.blocks.size} blocks; limit is 32768",
+                )
+            }
+            structure.blocks.forEach { fixture ->
+                block(
+                    pos =
+                        BlockPos(
+                            x = origin.x + fixture.offset.x,
+                            y = origin.y + fixture.offset.y,
+                            z = origin.z + fixture.offset.z,
+                        ),
+                    id = fixture.id,
+                    properties = fixture.properties,
+                    nbt = fixture.nbt?.deepCopy(),
+                )
+            }
+            structure.entities.forEach { fixture ->
+                entity(
+                    type = fixture.type,
+                    position =
+                        Position(
+                            x = origin.x + fixture.offset.x,
+                            y = origin.y + fixture.offset.y,
+                            z = origin.z + fixture.offset.z,
+                        ),
+                    tags = fixture.tags,
+                    nbt = fixture.nbt?.deepCopy(),
+                    yaw = fixture.yaw,
+                    pitch = fixture.pitch,
+                    equipment = fixture.equipment,
+                    effects = fixture.effects,
+                    attributes = fixture.attributes,
+                    dimension = fixture.dimension,
+                    health = fixture.health,
+                    uuid = fixture.uuid,
+                    vehicle = fixture.vehicle,
+                    passengers = fixture.passengers,
+                )
+            }
         }
-        structure.blocks.forEach { fixture ->
-            block(
-                pos = BlockPos(
-                    x = origin.x + fixture.offset.x,
-                    y = origin.y + fixture.offset.y,
-                    z = origin.z + fixture.offset.z,
-                ),
-                id = fixture.id,
-                properties = fixture.properties,
-                nbt = fixture.nbt?.deepCopy(),
-            )
-        }
-        structure.entities.forEach { fixture ->
-            entity(
-                type = fixture.type,
-                position = Position(
-                    x = origin.x + fixture.offset.x,
-                    y = origin.y + fixture.offset.y,
-                    z = origin.z + fixture.offset.z,
-                ),
-                tags = fixture.tags,
-                nbt = fixture.nbt?.deepCopy(),
-                yaw = fixture.yaw,
-                pitch = fixture.pitch,
-                equipment = fixture.equipment,
-                effects = fixture.effects,
-                attributes = fixture.attributes,
-                dimension = fixture.dimension,
-                health = fixture.health,
-                uuid = fixture.uuid,
-                vehicle = fixture.vehicle,
-                passengers = fixture.passengers,
-            )
-        }
-    }
 
     /**
      * Places a compact structure fixture relative to primitive block coordinates.
      *
      * @return this setup for fluent chaining.
      */
-    fun structure(originX: Int, originY: Int, originZ: Int, configure: SandboxStructureSetup.() -> Unit): SandboxWorldSetup =
-        structure(BlockPos(originX, originY, originZ), configure)
+    fun structure(
+        originX: Int,
+        originY: Int,
+        originZ: Int,
+        configure: SandboxStructureSetup.() -> Unit,
+    ): SandboxWorldSetup = structure(BlockPos(originX, originY, originZ), configure)
 
     /**
      * Adds a non-player entity fixture using primitive coordinates and optional SNBT/JSON NBT text.
@@ -423,42 +472,45 @@ class SandboxWorldSetup {
         uuid: String? = null,
         vehicle: String? = null,
         passengers: Iterable<String> = emptyList(),
-    ): SandboxWorldSetup = apply {
-        val equipmentCopies = equipment.map { (slot, item) -> slot to item.copyForSetup() }
-        val effectCopies = effects.map { it.copy() }
-        val attributeCopies = attributes.map { (id, value) -> ResourceLocation.parse(id) to value }
-        val passengerCopies = passengers.toMutableSet()
-        operations += { world, profile ->
-            val entity = SandboxEntity(
-                uuid = uuid ?: UUID.randomUUID().toString(),
-                type = type,
-                position = position,
-                tags = tags.toMutableSet(),
-                yaw = yaw,
-                pitch = pitch,
-                dimension = dimension,
-                vehicle = vehicle,
-                passengers = passengerCopies.toMutableSet(),
-            )
-            val hasNbt = nbt != null && nbt.entrySet().isNotEmpty()
-            if (hasNbt || health != null) {
-                val full = entity.fullNbt(profile)
-                if (nbt != null) JsonPaths.merge(full, null, nbt)
-                health?.let { full.addProperty("Health", it) }
-                entity.writeFullNbt(profile, full)
-            } else {
-                entity.fullNbt(profile)
+    ): SandboxWorldSetup =
+        apply {
+            val equipmentCopies = equipment.map { (slot, item) -> slot to item.copyForSetup() }
+            val effectCopies = effects.map { it.copy() }
+            val attributeCopies = attributes.map { (id, value) -> ResourceLocation.parse(id) to value }
+            val passengerCopies = passengers.toMutableSet()
+            operations += { world, profile ->
+                val entity =
+                    SandboxEntity(
+                        uuid = uuid ?: UUID.randomUUID().toString(),
+                        type = type,
+                        position = position,
+                        tags = tags.toMutableSet(),
+                        yaw = yaw,
+                        pitch = pitch,
+                        dimension = dimension,
+                        vehicle = vehicle,
+                        passengers = passengerCopies.toMutableSet(),
+                    )
+                val hasNbt = nbt != null && nbt.entrySet().isNotEmpty()
+                if (hasNbt || health != null) {
+                    val full = entity.fullNbt(profile)
+                    if (nbt != null) JsonPaths.merge(full, null, nbt)
+                    health?.let { full.addProperty("Health", it) }
+                    entity.writeFullNbt(profile, full)
+                } else {
+                    entity.fullNbt(profile)
+                }
+                equipmentCopies.forEach { (rawSlot, item) ->
+                    val slot =
+                        EquipmentSlots.canonical(rawSlot)
+                            ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Entity equipment slot '$rawSlot' is not supported")
+                    entity.equipment[slot] = item.copyForSetup()
+                }
+                effectCopies.forEach { effect -> entity.activeEffects[effect.id] = effect.copy() }
+                attributeCopies.forEach { (id, value) -> entity.attributes[id] = value }
+                world.entities += entity
             }
-            equipmentCopies.forEach { (rawSlot, item) ->
-                val slot = EquipmentSlots.canonical(rawSlot)
-                    ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Entity equipment slot '$rawSlot' is not supported")
-                entity.equipment[slot] = item.copyForSetup()
-            }
-            effectCopies.forEach { effect -> entity.activeEffects[effect.id] = effect.copy() }
-            attributeCopies.forEach { (id, value) -> entity.attributes[id] = value }
-            world.entities += entity
         }
-    }
 
     /**
      * Creates or replaces a player fixture.
@@ -484,41 +536,51 @@ class SandboxWorldSetup {
         selectedSlot: Int = 0,
         inventory: Iterable<ItemStack> = emptyList(),
         enderItems: Iterable<ItemStack> = emptyList(),
-    ): SandboxWorldSetup = apply {
-        operations += { world, _ ->
-            val player = world.createPlayer(name)
-            player.position = Position(x, y, z)
-            player.dimension = ResourceLocation.parse(dimension)
-            player.gameMode = gameMode
-            player.xp = xp
-            player.xpLevels = xpLevels
-            player.health = health
-            player.food = food
-            player.selectedSlot = selectedSlot.coerceAtLeast(0)
-            player.inventory.clear()
-            player.inventory += inventory.map { it.copy(components = it.components.deepCopy(), nbt = it.nbt.deepCopy()) }
-            player.enderItems.clear()
-            player.enderItems += enderItems.map { it.copy(components = it.components.deepCopy(), nbt = it.nbt.deepCopy()) }
+    ): SandboxWorldSetup =
+        apply {
+            operations += { world, _ ->
+                val player = world.createPlayer(name)
+                player.position = Position(x, y, z)
+                player.dimension = ResourceLocation.parse(dimension)
+                player.gameMode = gameMode
+                player.xp = xp
+                player.xpLevels = xpLevels
+                player.health = health
+                player.food = food
+                player.selectedSlot = selectedSlot.coerceAtLeast(0)
+                player.inventory.clear()
+                player.inventory += inventory.map { it.copy(components = it.components.deepCopy(), nbt = it.nbt.deepCopy()) }
+                player.enderItems.clear()
+                player.enderItems += enderItems.map { it.copy(components = it.components.deepCopy(), nbt = it.nbt.deepCopy()) }
+            }
         }
-    }
 
     /**
      * Adds a recipe to an existing or newly-created player fixture.
      *
      * @return this setup for fluent chaining.
      */
-    fun playerRecipe(name: String, recipe: String): SandboxWorldSetup = apply {
-        operations += { world, _ -> world.createPlayer(name).recipes += ResourceLocation.parse(recipe) }
-    }
+    fun playerRecipe(
+        name: String,
+        recipe: String,
+    ): SandboxWorldSetup =
+        apply {
+            operations += { world, _ -> world.createPlayer(name).recipes += ResourceLocation.parse(recipe) }
+        }
 
     /**
      * Adds a stat value to an existing or newly-created player fixture.
      *
      * @return this setup for fluent chaining.
      */
-    fun playerStat(name: String, stat: String, value: Int): SandboxWorldSetup = apply {
-        operations += { world, _ -> world.createPlayer(name).stats[ResourceLocation.parse(stat)] = value }
-    }
+    fun playerStat(
+        name: String,
+        stat: String,
+        value: Int,
+    ): SandboxWorldSetup =
+        apply {
+            operations += { world, _ -> world.createPlayer(name).stats[ResourceLocation.parse(stat)] = value }
+        }
 
     /**
      * Sets one advancement criterion state on an existing or newly-created player fixture.
@@ -531,26 +593,32 @@ class SandboxWorldSetup {
         advancement: String,
         criterion: String,
         done: Boolean = true,
-    ): SandboxWorldSetup = apply {
-        operations += { world, _ ->
-            val id = ResourceLocation.parse(advancement)
-            val progress = world.createPlayer(name).advancementProgress.getOrPut(id) { AdvancementProgress() }
-            progress.criteria[criterion] = done
+    ): SandboxWorldSetup =
+        apply {
+            operations += { world, _ ->
+                val id = ResourceLocation.parse(advancement)
+                val progress = world.createPlayer(name).advancementProgress.getOrPut(id) { AdvancementProgress() }
+                progress.criteria[criterion] = done
+            }
         }
-    }
 
     /**
      * Sets multiple advancement criterion states on an existing or newly-created player fixture.
      *
      * @return this setup for fluent chaining.
      */
-    fun playerAdvancement(name: String, advancement: String, criteria: Map<String, Boolean>): SandboxWorldSetup = apply {
-        operations += { world, _ ->
-            val id = ResourceLocation.parse(advancement)
-            val progress = world.createPlayer(name).advancementProgress.getOrPut(id) { AdvancementProgress() }
-            criteria.forEach { (criterion, done) -> progress.criteria[criterion] = done }
+    fun playerAdvancement(
+        name: String,
+        advancement: String,
+        criteria: Map<String, Boolean>,
+    ): SandboxWorldSetup =
+        apply {
+            operations += { world, _ ->
+                val id = ResourceLocation.parse(advancement)
+                val progress = world.createPlayer(name).advancementProgress.getOrPut(id) { AdvancementProgress() }
+                criteria.forEach { (criterion, done) -> progress.criteria[criterion] = done }
+            }
         }
-    }
 
     /**
      * Adds an active effect to an existing or newly-created player fixture.
@@ -558,14 +626,21 @@ class SandboxWorldSetup {
      * @return this setup for fluent chaining.
      */
     @JvmOverloads
-    fun playerEffect(name: String, effect: String, durationTicks: Int = -1, amplifier: Int = 0, hideParticles: Boolean = false): SandboxWorldSetup = apply {
-        operations += { world, _ ->
-            val id = ResourceLocation.parse(effect)
-            val player = world.createPlayer(name)
-            player.effects += id
-            player.effectDetails[id] = PlayerEffect(id, durationTicks, amplifier, hideParticles)
+    fun playerEffect(
+        name: String,
+        effect: String,
+        durationTicks: Int = -1,
+        amplifier: Int = 0,
+        hideParticles: Boolean = false,
+    ): SandboxWorldSetup =
+        apply {
+            operations += { world, _ ->
+                val id = ResourceLocation.parse(effect)
+                val player = world.createPlayer(name)
+                player.effects += id
+                player.effectDetails[id] = PlayerEffect(id, durationTicks, amplifier, hideParticles)
+            }
         }
-    }
 
     /**
      * Sets a player's spawn point.
@@ -581,16 +656,18 @@ class SandboxWorldSetup {
         dimension: String = "minecraft:overworld",
         angle: Double? = null,
         forced: Boolean = false,
-    ): SandboxWorldSetup = apply {
-        operations += { world, _ ->
-            world.createPlayer(name).spawnPoint = SpawnPoint(
-                position = Position(x, y, z),
-                dimension = ResourceLocation.parse(dimension),
-                angle = angle,
-                forced = forced,
-            )
+    ): SandboxWorldSetup =
+        apply {
+            operations += { world, _ ->
+                world.createPlayer(name).spawnPoint =
+                    SpawnPoint(
+                        position = Position(x, y, z),
+                        dimension = ResourceLocation.parse(dimension),
+                        angle = angle,
+                        forced = forced,
+                    )
+            }
         }
-    }
 
     /**
      * Creates an [ItemStack] helper for player inventories and assertions.
@@ -598,15 +675,23 @@ class SandboxWorldSetup {
      * The returned stack owns deep copies of [components] and [nbt].
      */
     @JvmOverloads
-    fun item(id: String, count: Int = 1, components: JsonObject = JsonObject(), nbt: JsonObject = JsonObject()): ItemStack =
-        ItemStack(ResourceLocation.parse(id), count, components.deepCopy(), nbt.deepCopy())
+    fun item(
+        id: String,
+        count: Int = 1,
+        components: JsonObject = JsonObject(),
+        nbt: JsonObject = JsonObject(),
+    ): ItemStack = ItemStack(ResourceLocation.parse(id), count, components.deepCopy(), nbt.deepCopy())
 
     /**
      * Creates an active effect helper for non-player entity fixtures.
      */
     @JvmOverloads
-    fun effect(id: String, durationTicks: Int = -1, amplifier: Int = 0, hideParticles: Boolean = false): PlayerEffect =
-        PlayerEffect(ResourceLocation.parse(id), durationTicks, amplifier, hideParticles)
+    fun effect(
+        id: String,
+        durationTicks: Int = -1,
+        amplifier: Int = 0,
+        hideParticles: Boolean = false,
+    ): PlayerEffect = PlayerEffect(ResourceLocation.parse(id), durationTicks, amplifier, hideParticles)
 
     /**
      * Creates an objective if necessary and sets a scoreboard value.
@@ -614,12 +699,18 @@ class SandboxWorldSetup {
      * @return this setup for fluent chaining.
      */
     @JvmOverloads
-    fun score(target: String, objective: String, value: Int, criteria: String = "dummy"): SandboxWorldSetup = apply {
-        operations += { world, _ ->
-            if (!world.objectives.containsKey(objective)) world.addObjective(objective, criteria)
-            world.setScore(target, objective, value)
+    fun score(
+        target: String,
+        objective: String,
+        value: Int,
+        criteria: String = "dummy",
+    ): SandboxWorldSetup =
+        apply {
+            operations += { world, _ ->
+                if (!world.objectives.containsKey(objective)) world.addObjective(objective, criteria)
+                world.setScore(target, objective, value)
+            }
         }
-    }
 
     /**
      * Sets a storage object from SNBT/JSON text.
@@ -628,8 +719,10 @@ class SandboxWorldSetup {
      * @param value Object value to store.
      * @return this setup for fluent chaining.
      */
-    fun storage(id: String, value: String): SandboxWorldSetup =
-        storage(ResourceLocation.parse(id), JsonValues.parse(value))
+    fun storage(
+        id: String,
+        value: String,
+    ): SandboxWorldSetup = storage(ResourceLocation.parse(id), JsonValues.parse(value))
 
     /**
      * Sets a storage object from a parsed JSON element.
@@ -637,14 +730,18 @@ class SandboxWorldSetup {
      * @throws SandboxException when [value] is not an object.
      * @return this setup for fluent chaining.
      */
-    fun storage(id: ResourceLocation, value: JsonElement): SandboxWorldSetup = apply {
-        operations += { world, _ ->
-            if (!value.isJsonObject) {
-                throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Storage setup value for $id must be an object")
+    fun storage(
+        id: ResourceLocation,
+        value: JsonElement,
+    ): SandboxWorldSetup =
+        apply {
+            operations += { world, _ ->
+                if (!value.isJsonObject) {
+                    throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Storage setup value for $id must be an object")
+                }
+                world.storages[id] = value.asJsonObject.deepCopy()
             }
-            world.storages[id] = value.asJsonObject.deepCopy()
         }
-    }
 
     /**
      * Stores a gamerule value as a string.
@@ -654,9 +751,13 @@ class SandboxWorldSetup {
      *
      * @return this setup for fluent chaining.
      */
-    fun gamerule(name: String, value: String): SandboxWorldSetup = apply {
-        operations += { world, _ -> world.gamerules[name] = value }
-    }
+    fun gamerule(
+        name: String,
+        value: String,
+    ): SandboxWorldSetup =
+        apply {
+            operations += { world, _ -> world.gamerules[name] = value }
+        }
 
     /**
      * Creates or replaces a team fixture.
@@ -669,16 +770,18 @@ class SandboxWorldSetup {
         displayName: String = name,
         members: Iterable<String> = emptyList(),
         options: Map<String, String> = emptyMap(),
-    ): SandboxWorldSetup = apply {
-        operations += { world, _ ->
-            world.teams[name] = SandboxTeam(
-                name = name,
-                displayName = displayName,
-                members = members.toMutableSet().toSortedSet(),
-                options = options.toMutableMap(),
-            )
+    ): SandboxWorldSetup =
+        apply {
+            operations += { world, _ ->
+                world.teams[name] =
+                    SandboxTeam(
+                        name = name,
+                        displayName = displayName,
+                        members = members.toMutableSet().toSortedSet(),
+                        options = options.toMutableMap(),
+                    )
+            }
         }
-    }
 
     /**
      * Creates or replaces a bossbar fixture.
@@ -695,20 +798,22 @@ class SandboxWorldSetup {
         style: String = "progress",
         visible: Boolean = true,
         players: Iterable<String> = emptyList(),
-    ): SandboxWorldSetup = apply {
-        operations += { world, _ ->
-            world.bossbars[ResourceLocation.parse(id)] = SandboxBossbar(
-                id = ResourceLocation.parse(id),
-                name = name,
-                value = value,
-                max = max,
-                color = color,
-                style = style,
-                visible = visible,
-                players = players.toMutableSet().toSortedSet(),
-            )
+    ): SandboxWorldSetup =
+        apply {
+            operations += { world, _ ->
+                world.bossbars[ResourceLocation.parse(id)] =
+                    SandboxBossbar(
+                        id = ResourceLocation.parse(id),
+                        name = name,
+                        value = value,
+                        max = max,
+                        color = color,
+                        style = style,
+                        visible = visible,
+                        players = players.toMutableSet().toSortedSet(),
+                    )
+            }
         }
-    }
 
     /**
      * Imports selected chunks from an existing Java Edition save.
@@ -728,23 +833,25 @@ class SandboxWorldSetup {
         includeBlocks: Boolean = true,
         includeBlockEntities: Boolean = true,
         includeEntities: Boolean = true,
-    ): SandboxWorldSetup = apply {
-        val chunkList = chunks.toList()
-        operations += { world, profile ->
-            MinecraftSaveImporter.importInto(
-                world = world,
-                profile = profile,
-                options = MinecraftSaveImportOptions(
-                    path = path,
-                    dimension = ResourceLocation.parse(dimension),
-                    chunks = chunkList,
-                    includeBlocks = includeBlocks,
-                    includeBlockEntities = includeBlockEntities,
-                    includeEntities = includeEntities,
-                ),
-            )
+    ): SandboxWorldSetup =
+        apply {
+            val chunkList = chunks.toList()
+            operations += { world, profile ->
+                MinecraftSaveImporter.importInto(
+                    world = world,
+                    profile = profile,
+                    options =
+                        MinecraftSaveImportOptions(
+                            path = path,
+                            dimension = ResourceLocation.parse(dimension),
+                            chunks = chunkList,
+                            includeBlocks = includeBlocks,
+                            includeBlockEntities = includeBlockEntities,
+                            includeEntities = includeEntities,
+                        ),
+                )
+            }
         }
-    }
 
     /**
      * Imports every chunk touched by the inclusive block range [from]..[to].
@@ -763,8 +870,7 @@ class SandboxWorldSetup {
         includeBlocks: Boolean = true,
         includeBlockEntities: Boolean = true,
         includeEntities: Boolean = true,
-    ): SandboxWorldSetup =
-        importSave(path, chunksInBlockRange(from, to), dimension, includeBlocks, includeBlockEntities, includeEntities)
+    ): SandboxWorldSetup = importSave(path, chunksInBlockRange(from, to), dimension, includeBlocks, includeBlockEntities, includeEntities)
 }
 
 /**
@@ -806,14 +912,16 @@ class SandboxStructureSetup {
         id: ResourceLocation,
         properties: Map<String, String> = emptyMap(),
         nbt: JsonObject? = null,
-    ): SandboxStructureSetup = apply {
-        blocks += SandboxStructureBlockFixture(
-            offset = offset,
-            id = id,
-            properties = properties.toMap(),
-            nbt = nbt?.deepCopy(),
-        )
-    }
+    ): SandboxStructureSetup =
+        apply {
+            blocks +=
+                SandboxStructureBlockFixture(
+                    offset = offset,
+                    id = id,
+                    properties = properties.toMap(),
+                    nbt = nbt?.deepCopy(),
+                )
+        }
 
     /**
      * Adds a non-player entity at a decimal offset from the structure origin.
@@ -877,24 +985,26 @@ class SandboxStructureSetup {
         uuid: String? = null,
         vehicle: String? = null,
         passengers: Iterable<String> = emptyList(),
-    ): SandboxStructureSetup = apply {
-        entities += SandboxStructureEntityFixture(
-            type = type,
-            offset = offset,
-            tags = tags.toList(),
-            nbt = nbt?.deepCopy(),
-            yaw = yaw,
-            pitch = pitch,
-            equipment = equipment.map { (slot, item) -> slot to item.copyForSetup() }.toMap(),
-            effects = effects.map { it.copy() },
-            attributes = attributes.toMap(),
-            dimension = dimension,
-            health = health,
-            uuid = uuid,
-            vehicle = vehicle,
-            passengers = passengers.toList(),
-        )
-    }
+    ): SandboxStructureSetup =
+        apply {
+            entities +=
+                SandboxStructureEntityFixture(
+                    type = type,
+                    offset = offset,
+                    tags = tags.toList(),
+                    nbt = nbt?.deepCopy(),
+                    yaw = yaw,
+                    pitch = pitch,
+                    equipment = equipment.map { (slot, item) -> slot to item.copyForSetup() }.toMap(),
+                    effects = effects.map { it.copy() },
+                    attributes = attributes.toMap(),
+                    dimension = dimension,
+                    health = health,
+                    uuid = uuid,
+                    vehicle = vehicle,
+                    passengers = passengers.toList(),
+                )
+        }
 }
 
 internal data class SandboxStructureBlockFixture(
@@ -921,20 +1031,25 @@ internal data class SandboxStructureEntityFixture(
     val passengers: List<String>,
 )
 
-private fun ItemStack.copyForSetup(): ItemStack =
-    copy(components = components.deepCopy(), nbt = nbt.deepCopy())
+private fun ItemStack.copyForSetup(): ItemStack = copy(components = components.deepCopy(), nbt = nbt.deepCopy())
 
 /**
  * Applies a [SandboxWorldSetup] to this world with [profile] validation.
  */
-fun SandboxWorld.applySetup(setup: SandboxWorldSetup, profile: VersionProfile) {
+fun SandboxWorld.applySetup(
+    setup: SandboxWorldSetup,
+    profile: VersionProfile,
+) {
     setup.applyTo(this, profile)
 }
 
 /**
  * Returns all chunk coordinates intersecting the inclusive block range.
  */
-fun chunksInBlockRange(from: BlockPos, to: BlockPos): List<ChunkPos> {
+fun chunksInBlockRange(
+    from: BlockPos,
+    to: BlockPos,
+): List<ChunkPos> {
     val minX = minOf(from.x, to.x).floorDiv16()
     val maxX = maxOf(from.x, to.x).floorDiv16()
     val minZ = minOf(from.z, to.z).floorDiv16()

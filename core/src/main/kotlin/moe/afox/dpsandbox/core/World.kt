@@ -8,9 +8,12 @@ import java.util.UUID
 /**
  * Integer block position in the sandbox world.
  */
-data class BlockPos(val x: Int, val y: Int, val z: Int) : Comparable<BlockPos> {
-    override fun compareTo(other: BlockPos): Int =
-        compareValuesBy(this, other, BlockPos::y, BlockPos::z, BlockPos::x)
+data class BlockPos(
+    val x: Int,
+    val y: Int,
+    val z: Int,
+) : Comparable<BlockPos> {
+    override fun compareTo(other: BlockPos): Int = compareValuesBy(this, other, BlockPos::y, BlockPos::z, BlockPos::x)
 
     override fun toString(): String = "$x $y $z"
 }
@@ -26,26 +29,38 @@ data class SandboxBlock(
     /**
      * Returns the block entity NBT view using the default version profile.
      */
-    fun fullNbt(pos: BlockPos, location: SourceLocation? = null): JsonObject =
-        NbtSchemas.blockEntityNbt(this, pos, location)
+    fun fullNbt(
+        pos: BlockPos,
+        location: SourceLocation? = null,
+    ): JsonObject = NbtSchemas.blockEntityNbt(this, pos, location)
 
     /**
      * Returns the block entity NBT view for [profile].
      */
-    fun fullNbt(pos: BlockPos, profile: VersionProfile, location: SourceLocation? = null): JsonObject =
-        NbtSchemas.blockEntityNbt(this, pos, profile, location)
+    fun fullNbt(
+        pos: BlockPos,
+        profile: VersionProfile,
+        location: SourceLocation? = null,
+    ): JsonObject = NbtSchemas.blockEntityNbt(this, pos, profile, location)
 
     /**
      * Validates and writes a full block entity NBT view using the default profile.
      */
-    fun writeFullNbt(pos: BlockPos, updated: JsonObject, location: SourceLocation? = null) =
-        NbtSchemas.writeBlockEntityNbt(this, pos, updated, location)
+    fun writeFullNbt(
+        pos: BlockPos,
+        updated: JsonObject,
+        location: SourceLocation? = null,
+    ) = NbtSchemas.writeBlockEntityNbt(this, pos, updated, location)
 
     /**
      * Validates and writes a full block entity NBT view for [profile].
      */
-    fun writeFullNbt(pos: BlockPos, profile: VersionProfile, updated: JsonObject, location: SourceLocation? = null) =
-        NbtSchemas.writeBlockEntityNbt(this, pos, profile, updated, location)
+    fun writeFullNbt(
+        pos: BlockPos,
+        profile: VersionProfile,
+        updated: JsonObject,
+        location: SourceLocation? = null,
+    ) = NbtSchemas.writeBlockEntityNbt(this, pos, profile, updated, location)
 
     /**
      * Serializes this block into deterministic snapshot JSON.
@@ -67,9 +82,11 @@ data class SandboxBlock(
 /**
  * Internal scoreboard key exposed in snapshots and direct world access.
  */
-data class ScoreKey(val target: String, val objective: String) : Comparable<ScoreKey> {
-    override fun compareTo(other: ScoreKey): Int =
-        compareValuesBy(this, other, ScoreKey::objective, ScoreKey::target)
+data class ScoreKey(
+    val target: String,
+    val objective: String,
+) : Comparable<ScoreKey> {
+    override fun compareTo(other: ScoreKey): Int = compareValuesBy(this, other, ScoreKey::objective, ScoreKey::target)
 }
 
 /**
@@ -80,7 +97,10 @@ data class ScoreboardObjectiveMetadata(
     var renderType: String = "integer",
     var displayAutoUpdate: Boolean = true,
 ) {
-    fun toJson(name: String, criteria: String): JsonObject =
+    fun toJson(
+        name: String,
+        criteria: String,
+    ): JsonObject =
         JsonObject().also { json ->
             json.addProperty("name", name)
             json.addProperty("criteria", criteria)
@@ -93,7 +113,11 @@ data class ScoreboardObjectiveMetadata(
 /**
  * Floating-point entity or command position.
  */
-data class Position(val x: Double, val y: Double, val z: Double) {
+data class Position(
+    val x: Double,
+    val y: Double,
+    val z: Double,
+) {
     companion object {
         val zero = Position(0.0, 0.0, 0.0)
     }
@@ -160,9 +184,12 @@ internal fun itemStackFromNbtJson(json: JsonObject): ItemStack? {
     val id = json.get("id")?.takeIf { it.isJsonPrimitive }?.asString ?: return null
     val count = (json.get("count") ?: json.get("Count"))?.takeIf { it.isJsonPrimitive }?.asInt ?: 1
     val components = json.getAsJsonObject("components")?.deepCopy() ?: JsonObject()
-    val nbt = (json.getAsJsonObject("nbt")
-        ?: json.getAsJsonObject("tag")
-        ?: components.getAsJsonObject("minecraft:custom_data"))?.deepCopy() ?: JsonObject()
+    val nbt =
+        (
+            json.getAsJsonObject("nbt")
+                ?: json.getAsJsonObject("tag")
+                ?: components.getAsJsonObject("minecraft:custom_data")
+        )?.deepCopy() ?: JsonObject()
     return ItemStack(ResourceLocation.parse(id), count, components, nbt)
 }
 
@@ -196,18 +223,22 @@ data class PlayerEffect(
 }
 
 internal fun effectFromNbtJson(json: JsonObject): PlayerEffect? {
-    val id = json.get("id")?.takeIf { it.isJsonPrimitive }?.asString
-        ?: json.get("Id")?.takeIf { it.isJsonPrimitive }?.asString
-        ?: return null
-    val amplifier = json.get("amplifier")?.takeIf { it.isJsonPrimitive }?.asInt
-        ?: json.get("Amplifier")?.takeIf { it.isJsonPrimitive }?.asInt
-        ?: 0
-    val duration = json.get("duration")?.takeIf { it.isJsonPrimitive }?.asInt
-        ?: json.get("Duration")?.takeIf { it.isJsonPrimitive }?.asInt
-        ?: -1
-    val showParticles = json.get("show_particles")?.takeIf { it.isJsonPrimitive }?.asBoolean
-        ?: json.get("ShowParticles")?.takeIf { it.isJsonPrimitive }?.asBoolean
-        ?: true
+    val id =
+        json.get("id")?.takeIf { it.isJsonPrimitive }?.asString
+            ?: json.get("Id")?.takeIf { it.isJsonPrimitive }?.asString
+            ?: return null
+    val amplifier =
+        json.get("amplifier")?.takeIf { it.isJsonPrimitive }?.asInt
+            ?: json.get("Amplifier")?.takeIf { it.isJsonPrimitive }?.asInt
+            ?: 0
+    val duration =
+        json.get("duration")?.takeIf { it.isJsonPrimitive }?.asInt
+            ?: json.get("Duration")?.takeIf { it.isJsonPrimitive }?.asInt
+            ?: -1
+    val showParticles =
+        json.get("show_particles")?.takeIf { it.isJsonPrimitive }?.asBoolean
+            ?: json.get("ShowParticles")?.takeIf { it.isJsonPrimitive }?.asBoolean
+            ?: true
     return PlayerEffect(ResourceLocation.parse(id), duration, amplifier, hideParticles = !showParticles)
 }
 
@@ -256,6 +287,10 @@ open class SandboxEntity(
     var dimension: ResourceLocation = ResourceLocation("minecraft", "overworld"),
 ) {
     open val scoreHolder: String get() = uuid
+
+    /** Number of sandbox ticks this entity has existed, used by deterministic special-entity interpolation. */
+    internal var ageTicks: Long = 0
+    internal var displayRuntime: DisplayRuntimeState? = null
     val attributes: MutableMap<ResourceLocation, Double> = linkedMapOf()
     val attributeModifiers: MutableMap<ResourceLocation, MutableMap<ResourceLocation, AttributeModifier>> = linkedMapOf()
     val equipment: MutableMap<String, ItemStack> = linkedMapOf()
@@ -264,26 +299,32 @@ open class SandboxEntity(
     /**
      * Returns the entity NBT view using the default version profile.
      */
-    open fun fullNbt(location: SourceLocation? = null): JsonObject =
-        NbtSchemas.entityNbt(this, location)
+    open fun fullNbt(location: SourceLocation? = null): JsonObject = NbtSchemas.entityNbt(this, location)
 
     /**
      * Returns the entity NBT view for [profile].
      */
-    open fun fullNbt(profile: VersionProfile, location: SourceLocation? = null): JsonObject =
-        NbtSchemas.entityNbt(this, profile, location)
+    open fun fullNbt(
+        profile: VersionProfile,
+        location: SourceLocation? = null,
+    ): JsonObject = NbtSchemas.entityNbt(this, profile, location)
 
     /**
      * Validates and writes a full entity NBT view using the default profile.
      */
-    open fun writeFullNbt(updated: JsonObject, location: SourceLocation? = null) =
-        NbtSchemas.writeEntityNbt(this, updated, location)
+    open fun writeFullNbt(
+        updated: JsonObject,
+        location: SourceLocation? = null,
+    ) = NbtSchemas.writeEntityNbt(this, updated, location)
 
     /**
      * Validates and writes a full entity NBT view for [profile].
      */
-    open fun writeFullNbt(profile: VersionProfile, updated: JsonObject, location: SourceLocation? = null) =
-        NbtSchemas.writeEntityNbt(this, profile, updated, location)
+    open fun writeFullNbt(
+        profile: VersionProfile,
+        updated: JsonObject,
+        location: SourceLocation? = null,
+    ) = NbtSchemas.writeEntityNbt(this, profile, updated, location)
 }
 
 /**
@@ -320,9 +361,7 @@ class SandboxPlayer(
     /**
      * Returns the player NBT view using the default version profile.
      */
-    override fun fullNbt(location: SourceLocation?): JsonObject {
-        return fullNbt(VersionProfiles.default, location)
-    }
+    override fun fullNbt(location: SourceLocation?): JsonObject = fullNbt(VersionProfiles.default, location)
 
     /**
      * Returns the player NBT view for [profile].
@@ -330,7 +369,10 @@ class SandboxPlayer(
      * Player NBT is readable for commands and predicates, but direct NBT writes
      * are blocked by [writeFullNbt].
      */
-    override fun fullNbt(profile: VersionProfile, location: SourceLocation?): JsonObject {
+    override fun fullNbt(
+        profile: VersionProfile,
+        location: SourceLocation?,
+    ): JsonObject {
         val json = super.fullNbt(profile, location)
         json.addProperty("Name", name)
         json.addProperty("Dimension", dimension.toString())
@@ -385,19 +427,25 @@ class SandboxPlayer(
             enderItemsJson.add(itemJson)
         }
         json.add("EnderItems", enderItemsJson)
-        json.add("abilities", JsonObject().also {
-            it.addProperty("invulnerable", false)
-            it.addProperty("flying", false)
-            it.addProperty("mayfly", gameMode == "creative" || gameMode == "spectator")
-            it.addProperty("instabuild", gameMode == "creative")
-            it.addProperty("mayBuild", gameMode != "spectator")
-            it.addProperty("flySpeed", 0.05)
-            it.addProperty("walkSpeed", 0.1)
-        })
-        json.add("recipeBook", JsonObject().also {
-            it.add("recipes", JsonArray().also { array -> recipes.sorted().forEach { recipe -> array.add(recipe.toString()) } })
-            it.add("toBeDisplayed", JsonArray())
-        })
+        json.add(
+            "abilities",
+            JsonObject().also {
+                it.addProperty("invulnerable", false)
+                it.addProperty("flying", false)
+                it.addProperty("mayfly", gameMode == "creative" || gameMode == "spectator")
+                it.addProperty("instabuild", gameMode == "creative")
+                it.addProperty("mayBuild", gameMode != "spectator")
+                it.addProperty("flySpeed", 0.05)
+                it.addProperty("walkSpeed", 0.1)
+            },
+        )
+        json.add(
+            "recipeBook",
+            JsonObject().also {
+                it.add("recipes", JsonArray().also { array -> recipes.sorted().forEach { recipe -> array.add(recipe.toString()) } })
+                it.add("toBeDisplayed", JsonArray())
+            },
+        )
         json.addProperty("seenCredits", false)
         return json
     }
@@ -405,16 +453,27 @@ class SandboxPlayer(
     /**
      * Always fails because player NBT is read-only in this sandbox.
      */
-    override fun writeFullNbt(updated: JsonObject, location: SourceLocation?) {
-        throw SandboxException(DiagnosticCode.COMMAND_ERROR, "Player NBT is read-only in this sandbox; use player events or movement commands")
-    }
+    override fun writeFullNbt(
+        updated: JsonObject,
+        location: SourceLocation?,
+    ): Unit =
+        throw SandboxException(
+            DiagnosticCode.COMMAND_ERROR,
+            "Player NBT is read-only in this sandbox; use player events or movement commands",
+        )
 
     /**
      * Always fails because player NBT is read-only in this sandbox.
      */
-    override fun writeFullNbt(profile: VersionProfile, updated: JsonObject, location: SourceLocation?) {
-        throw SandboxException(DiagnosticCode.COMMAND_ERROR, "Player NBT is read-only in this sandbox; use player events or movement commands")
-    }
+    override fun writeFullNbt(
+        profile: VersionProfile,
+        updated: JsonObject,
+        location: SourceLocation?,
+    ): Unit =
+        throw SandboxException(
+            DiagnosticCode.COMMAND_ERROR,
+            "Player NBT is read-only in this sandbox; use player events or movement commands",
+        )
 
     /**
      * Records keyboard or mouse input metadata on this player.
@@ -579,9 +638,12 @@ data class CommandSource(
             line?.let { json.addProperty("line", it) }
             command?.let { json.addProperty("command", it) }
             if (functionStack.isNotEmpty()) {
-                json.add("functionStack", JsonArray().also { array ->
-                    functionStack.forEach { array.add(it.toJson()) }
-                })
+                json.add(
+                    "functionStack",
+                    JsonArray().also { array ->
+                        functionStack.forEach { array.add(it.toJson()) }
+                    },
+                )
             }
         }
 }
@@ -625,11 +687,14 @@ data class CommandTraceEvent(
             }
             json.add("snapshotDiffs", SnapshotDiff.toJson(snapshotDiffs))
             executor?.let { json.addProperty("executor", it) }
-            json.add("position", JsonObject().also { pos ->
-                pos.addProperty("x", position.x)
-                pos.addProperty("y", position.y)
-                pos.addProperty("z", position.z)
-            })
+            json.add(
+                "position",
+                JsonObject().also { pos ->
+                    pos.addProperty("x", position.x)
+                    pos.addProperty("y", position.y)
+                    pos.addProperty("z", position.z)
+                },
+            )
             source?.let { json.add("source", it.toJson()) }
             errorCode?.let { json.addProperty("errorCode", it.name) }
             errorMessage?.let { json.addProperty("errorMessage", it) }
@@ -658,6 +723,9 @@ data class PlayerEventTraceEvent(
     val success: Boolean = true,
     val errorCode: DiagnosticCode? = null,
     val errorMessage: String? = null,
+    val target: String? = null,
+    val targetUuid: String? = null,
+    val interactionResponse: Boolean? = null,
 ) {
     /**
      * Serializes this player event trace into deterministic snapshot JSON.
@@ -670,13 +738,19 @@ data class PlayerEventTraceEvent(
             json.addProperty("success", success)
             item?.let { json.addProperty("item", it.toString()) }
             entity?.let { json.addProperty("entity", it.toString()) }
+            target?.let { json.addProperty("target", it) }
+            targetUuid?.let { json.addProperty("targetUuid", it) }
+            interactionResponse?.let { json.addProperty("response", it) }
             block?.let { json.addProperty("block", it.toString()) }
             blockPos?.let { pos ->
-                json.add("blockPos", JsonObject().also { blockPosJson ->
-                    blockPosJson.addProperty("x", pos.x)
-                    blockPosJson.addProperty("y", pos.y)
-                    blockPosJson.addProperty("z", pos.z)
-                })
+                json.add(
+                    "blockPos",
+                    JsonObject().also { blockPosJson ->
+                        blockPosJson.addProperty("x", pos.x)
+                        blockPosJson.addProperty("y", pos.y)
+                        blockPosJson.addProperty("z", pos.z)
+                    },
+                )
             }
             recipe?.let { json.addProperty("recipe", it.toString()) }
             fromDimension?.let { json.addProperty("from", it.toString()) }
@@ -708,8 +782,7 @@ data class PlayerEventTraceEvent(
                             compareBy<AdvancementCriterionFailure> { it.advancement.toString() }
                                 .thenBy { it.criterion }
                                 .thenBy { it.reason },
-                        )
-                        .forEach { failure ->
+                        ).forEach { failure ->
                             array.add(
                                 JsonObject().also { advancement ->
                                     advancement.addProperty("id", failure.advancement.toString())
@@ -740,6 +813,9 @@ data class PlayerEventTraceEvent(
                 type = event.type,
                 item = event.item?.id,
                 entity = event.entity?.type,
+                target = event.target,
+                targetUuid = event.entity?.uuid?.takeIf { event.target != null },
+                interactionResponse = event.interactionResponse,
                 block = event.block,
                 blockPos = event.blockPos,
                 recipe = event.recipe,
@@ -846,6 +922,7 @@ class SandboxWorld {
         gameTime += 1
         dayTime = (dayTime + 1).floorMod(24000)
         if (weatherDuration > 0) weatherDuration -= 1
+        entities.forEach { entity -> entity.ageTicks += 1 }
     }
 
     /**
@@ -872,7 +949,10 @@ class SandboxWorld {
     /**
      * Adds or replaces a scoreboard objective.
      */
-    fun addObjective(name: String, criteria: String) {
+    fun addObjective(
+        name: String,
+        criteria: String,
+    ) {
         objectives[name] = criteria
         scoreboardObjectiveMetadata[name] = ScoreboardObjectiveMetadata()
     }
@@ -890,13 +970,19 @@ class SandboxWorld {
     /**
      * Returns the current score, or zero when no score has been set.
      */
-    fun getScore(target: String, objective: String): Int =
-        scores[ScoreKey(target, objective)] ?: 0
+    fun getScore(
+        target: String,
+        objective: String,
+    ): Int = scores[ScoreKey(target, objective)] ?: 0
 
     /**
      * Sets a score after verifying the objective exists.
      */
-    fun setScore(target: String, objective: String, value: Int) {
+    fun setScore(
+        target: String,
+        objective: String,
+        value: Int,
+    ) {
         ensureObjective(objective)
         scores[ScoreKey(target, objective)] = value
     }
@@ -904,7 +990,11 @@ class SandboxWorld {
     /**
      * Adds [delta] to the current score after verifying the objective exists.
      */
-    fun addScore(target: String, objective: String, delta: Int) {
+    fun addScore(
+        target: String,
+        objective: String,
+        delta: Int,
+    ) {
         setScore(target, objective, getScore(target, objective) + delta)
     }
 
@@ -920,8 +1010,7 @@ class SandboxWorld {
     /**
      * Returns a storage object, creating an empty one when missing.
      */
-    fun storage(id: ResourceLocation): JsonObject =
-        storages.getOrPut(id) { JsonObject() }
+    fun storage(id: ResourceLocation): JsonObject = storages.getOrPut(id) { JsonObject() }
 
     /**
      * Creates or reuses a sandbox player and ensures it is present in [entities].
@@ -953,7 +1042,10 @@ class SandboxWorld {
      *
      * Passing null or `minecraft:air` removes the explicit block entry.
      */
-    fun setBlock(pos: BlockPos, block: SandboxBlock?) {
+    fun setBlock(
+        pos: BlockPos,
+        block: SandboxBlock?,
+    ) {
         if (block == null || block.id == ResourceLocation("minecraft", "air")) {
             blocks.remove(pos)
         } else {
@@ -977,17 +1069,18 @@ class SandboxWorld {
         source: CommandSource? = currentCommandSource,
         rawText: String = text,
     ) {
-        outputs += OutputEvent(
-            tick = gameTime,
-            command = command,
-            channel = channel,
-            targets = targets,
-            text = text,
-            payload = payload,
-            segments = segments,
-            source = source,
-            rawText = rawText,
-        )
+        outputs +=
+            OutputEvent(
+                tick = gameTime,
+                command = command,
+                channel = channel,
+                targets = targets,
+                text = text,
+                payload = payload,
+                segments = segments,
+                source = source,
+                rawText = rawText,
+            )
     }
 
     /**
@@ -1031,9 +1124,10 @@ class SandboxWorld {
 
         val scoresJson = JsonObject()
         scores.toSortedMap().forEach { (key, value) ->
-            val objectiveJson = scoresJson.getAsJsonObject(key.objective) ?: JsonObject().also {
-                scoresJson.add(key.objective, it)
-            }
+            val objectiveJson =
+                scoresJson.getAsJsonObject(key.objective) ?: JsonObject().also {
+                    scoresJson.add(key.objective, it)
+                }
             objectiveJson.addProperty(key.target, value)
         }
         root.add("scores", scoresJson)
@@ -1087,21 +1181,25 @@ class SandboxWorld {
 
         val forcedChunkJson = JsonArray()
         forcedChunks.sorted().forEach { chunk ->
-            forcedChunkJson.add(JsonObject().also {
-                it.addProperty("x", chunk.x)
-                it.addProperty("z", chunk.z)
-            })
+            forcedChunkJson.add(
+                JsonObject().also {
+                    it.addProperty("x", chunk.x)
+                    it.addProperty("z", chunk.z)
+                },
+            )
         }
         root.add("forcedChunks", forcedChunkJson)
 
         val biomeJson = JsonArray()
         biomes.toSortedMap().forEach { (pos, biome) ->
-            biomeJson.add(JsonObject().also {
-                it.addProperty("x", pos.x)
-                it.addProperty("y", pos.y)
-                it.addProperty("z", pos.z)
-                it.addProperty("biome", biome.toString())
-            })
+            biomeJson.add(
+                JsonObject().also {
+                    it.addProperty("x", pos.x)
+                    it.addProperty("y", pos.y)
+                    it.addProperty("z", pos.z)
+                    it.addProperty("biome", biome.toString())
+                },
+            )
         }
         root.add("biomes", biomeJson)
         root.add("worldBorder", worldBorder.toJson())
@@ -1141,7 +1239,11 @@ fun SandboxEntity.toJson(profile: VersionProfile = VersionProfiles.default): Jso
     tags.sorted().forEach { tagsJson.add(it) }
     json.add("tags", tagsJson)
     val nbtJson = fullNbt(profile)
-    nbtJson.get("Health")?.takeIf { it.isJsonPrimitive }?.asDouble?.let { json.addProperty("health", it) }
+    nbtJson
+        .get("Health")
+        ?.takeIf { it.isJsonPrimitive }
+        ?.asDouble
+        ?.let { json.addProperty("health", it) }
     json.add("nbt", nbtJson)
     val equipmentJson = JsonObject()
     equipment.toSortedMap().forEach { (slot, item) -> equipmentJson.add(slot, item.toJson()) }
@@ -1167,6 +1269,7 @@ fun SandboxEntity.toJson(profile: VersionProfile = VersionProfiles.default): Jso
             },
         )
     }
+    SpecialEntitySupport.snapshot(this)?.let { json.add("special", it) }
     return json
 }
 
@@ -1217,5 +1320,4 @@ fun SandboxPlayer.toPlayerJson(profile: VersionProfile = VersionProfiles.default
     return json
 }
 
-private fun Long.floorMod(modulus: Long): Long =
-    Math.floorMod(this, modulus)
+private fun Long.floorMod(modulus: Long): Long = Math.floorMod(this, modulus)

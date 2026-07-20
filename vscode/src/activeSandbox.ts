@@ -12,15 +12,19 @@ interface TrackedResult {
   state: Record<string, unknown>;
 }
 
+export interface VersionMetadata {
+  default: string;
+  versions: Array<{ id: string; javaMajor: number; dataVersion: number; packFormat: string }>;
+}
+
 export class ActiveSandboxService {
   constructor(private readonly client: SandboxClient) {}
 
   get active(): boolean { return this.client.hasActiveSandbox; }
 
-  async versions(): Promise<Array<{ id: string; javaMajor: number; dataVersion: number; packFormat: string }>> {
-    const result = await this.client.request<{ versions: Array<{ id: string; javaMajor: number; dataVersion: number; packFormat: string }> }>("versions");
-    return result.versions;
-  }
+  async versionMetadata(): Promise<VersionMetadata> { return this.client.request<VersionMetadata>("versions"); }
+
+  async versions(): Promise<VersionMetadata["versions"]> { return (await this.versionMetadata()).versions; }
 
   async start(uri?: vscode.Uri, version?: string): Promise<Record<string, unknown>> {
     const config = vscode.workspace.getConfiguration("datapackSandbox");
@@ -30,7 +34,8 @@ export class ActiveSandboxService {
       const inferred = inferFunctionContext(uri.fsPath).packRoot;
       if (inferred) packs.unshift(inferred);
     }
-    return this.client.create(version ?? config.get("defaultVersion", "26.2"), [...new Set(packs)]);
+    const configured = config.get<string>("defaultVersion", "").trim();
+    return this.client.create(version?.trim() || configured || undefined, [...new Set(packs)]);
   }
 
   stop(): void { this.client.close(); }

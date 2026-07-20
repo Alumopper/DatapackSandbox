@@ -3,7 +3,15 @@ package moe.afox.dpsandbox.cli
 internal object ReplPresentation {
     private const val WIDTH = 64
 
-    fun dashboard(version: String, packs: Int, watch: Boolean, trace: Boolean, gameTime: Long, players: Int, entities: Int): String =
+    fun dashboard(
+        version: String,
+        packs: Int,
+        watch: Boolean,
+        trace: Boolean,
+        gameTime: Long,
+        players: Int,
+        entities: Int,
+    ): String =
         buildString {
             appendLine(topBorder(" Datapack Sandbox "))
             appendLine(row("profile", ConsoleStyle.brightCyan(version), "packs", packs.toString()))
@@ -14,11 +22,16 @@ internal object ReplPresentation {
             append(bottomBorder())
         }
 
-    fun prompt(version: String, watch: Boolean, trace: Boolean): String {
-        val modes = buildList {
-            if (watch) add("watch")
-            if (trace) add("trace")
-        }.joinToString(",")
+    fun prompt(
+        version: String,
+        watch: Boolean,
+        trace: Boolean,
+    ): String {
+        val modes =
+            buildList {
+                if (watch) add("watch")
+                if (trace) add("trace")
+            }.joinToString(",")
         val suffix = if (modes.isEmpty()) "" else ConsoleStyle.gray(" [$modes]")
         return "${ConsoleStyle.brightCyan("dps")}${ConsoleStyle.gray("@$version")}$suffix ${ConsoleStyle.cyan(">")} "
     }
@@ -51,15 +64,25 @@ internal object ReplPresentation {
             append(command("exit", "leave the REPL"))
         }
 
-    fun detailHelp(command: String, text: String): String = "${section(command)}\n${text.prependIndent("  ")}"
+    fun detailHelp(
+        command: String,
+        text: String,
+    ): String = "${section(command)}\n${text.prependIndent("  ")}"
 
-    fun success(label: String, detail: String): String =
-        "${ConsoleStyle.success("OK")} ${ConsoleStyle.bold(label)} ${ConsoleStyle.gray("($detail)")}"
+    fun success(
+        label: String,
+        detail: String,
+    ): String = "${ConsoleStyle.success("OK")} ${ConsoleStyle.bold(label)} ${ConsoleStyle.gray("($detail)")}"
 
     fun warning(text: String): String = "${ConsoleStyle.yellow("!")} $text"
 
     private fun section(name: String): String = ConsoleStyle.bold(ConsoleStyle.brightCyan(name.uppercase()))
-    private fun command(command: String, description: String): String = "  ${ConsoleStyle.cyan(command.padEnd(25))} ${ConsoleStyle.dim(description)}"
+
+    private fun command(
+        command: String,
+        description: String,
+    ): String = "  ${ConsoleStyle.cyan(command.padEnd(25))} ${ConsoleStyle.dim(description)}"
+
     private fun state(enabled: Boolean): String = if (enabled) ConsoleStyle.green("on") else ConsoleStyle.gray("off")
 
     private fun topBorder(title: String): String {
@@ -68,9 +91,15 @@ internal object ReplPresentation {
     }
 
     private fun divider(): String = ConsoleStyle.gray("+${"-".repeat(WIDTH)}+")
+
     private fun bottomBorder(): String = ConsoleStyle.gray("+${"-".repeat(WIDTH)}+")
 
-    private fun row(leftLabel: String, leftValue: String, rightLabel: String, rightValue: String): String {
+    private fun row(
+        leftLabel: String,
+        leftValue: String,
+        rightLabel: String,
+        rightValue: String,
+    ): String {
         val left = "${leftLabel.padEnd(10)} $leftValue"
         val right = "${rightLabel.padEnd(18)} $rightValue"
         return line(left.padEnd(29) + right)

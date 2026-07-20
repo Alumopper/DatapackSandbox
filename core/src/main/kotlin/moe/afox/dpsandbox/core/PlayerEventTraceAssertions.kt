@@ -53,6 +53,12 @@ data class PlayerEventTraceExpectation(
     val inputCode: String? = null,
     /** Input action recorded on keyboard/mouse event traces. */
     val inputAction: String? = null,
+    /** Selector or UUID used to resolve a real event target. */
+    val target: String? = null,
+    /** UUID of the resolved real event target. */
+    val targetUuid: String? = null,
+    /** Interaction entity response flag recorded for a targeted player action. */
+    val interactionResponse: Boolean? = null,
 ) {
     private val normalizedType: String? = type?.replace('-', '_')
 
@@ -68,6 +74,9 @@ data class PlayerEventTraceExpectation(
             failureMatches(event) &&
             (item == null || event.item == item) &&
             (entity == null || event.entity == entity) &&
+            (target == null || event.target == target) &&
+            (targetUuid == null || event.targetUuid == targetUuid) &&
+            (interactionResponse == null || event.interactionResponse == interactionResponse) &&
             (block == null || event.block == block) &&
             (blockX == null || event.blockPos?.x == blockX) &&
             (blockY == null || event.blockPos?.y == blockY) &&
@@ -93,15 +102,17 @@ data class PlayerEventTraceExpectation(
     /**
      * Returns every player event trace that satisfies this expectation.
      */
-    fun matching(events: List<PlayerEventTraceEvent>): List<PlayerEventTraceEvent> =
-        events.filter(::matches)
+    fun matching(events: List<PlayerEventTraceEvent>): List<PlayerEventTraceEvent> = events.filter(::matches)
 
     /**
      * Returns assertion failure messages for [events].
      *
      * An empty list means the expectation passed.
      */
-    fun failures(events: List<PlayerEventTraceEvent>, label: String = "eventTrace"): List<String> {
+    fun failures(
+        events: List<PlayerEventTraceEvent>,
+        label: String = "eventTrace",
+    ): List<String> {
         val matches = matching(events)
         if (count != null && matches.size != count) {
             return listOf("$label expected $count match(es) but found ${matches.size}: ${describe()}; ${actualEvents(events)}")
@@ -127,6 +138,9 @@ data class PlayerEventTraceExpectation(
             failureContains?.let { "failureContains=$it" },
             item?.let { "item=$it" },
             entity?.let { "entity=$it" },
+            target?.let { "target=$it" },
+            targetUuid?.let { "targetUuid=$it" },
+            interactionResponse?.let { "response=$it" },
             block?.let { "block=$it" },
             blockX?.let { "blockX=$it" },
             blockY?.let { "blockY=$it" },
@@ -143,16 +157,19 @@ data class PlayerEventTraceExpectation(
 
     private fun actualEvents(events: List<PlayerEventTraceEvent>): String {
         if (events.isEmpty()) return "actual event traces: <none>"
-        val rendered = events.take(5).mapIndexed { index, event ->
-            val status = if (event.success) "OK" else "ERR"
-            val advancements = event.advancements
-                .take(3)
-                .joinToString(prefix = "[", postfix = "]") { "${it.advancement}/${it.criterion}:completed=${it.completed}" }
-            val failures = event.advancementFailures
-                .take(3)
-                .joinToString(prefix = "[", postfix = "]") { "${it.advancement}/${it.criterion}:${it.reason}" }
-            "#${index + 1} [$status] player=${event.playerName} type=${event.type} advancements=$advancements failures=$failures"
-        }
+        val rendered =
+            events.take(5).mapIndexed { index, event ->
+                val status = if (event.success) "OK" else "ERR"
+                val advancements =
+                    event.advancements
+                        .take(3)
+                        .joinToString(prefix = "[", postfix = "]") { "${it.advancement}/${it.criterion}:completed=${it.completed}" }
+                val failures =
+                    event.advancementFailures
+                        .take(3)
+                        .joinToString(prefix = "[", postfix = "]") { "${it.advancement}/${it.criterion}:${it.reason}" }
+                "#${index + 1} [$status] player=${event.playerName} type=${event.type} advancements=$advancements failures=$failures"
+            }
         val suffix = if (events.size > rendered.size) "; ... +${events.size - rendered.size} more" else ""
         return "actual event traces: ${rendered.joinToString("; ")}$suffix"
     }
@@ -165,14 +182,19 @@ object PlayerEventTraceAssertions {
     /**
      * Returns every event trace in [events] matching [expectation].
      */
-    fun matching(events: List<PlayerEventTraceEvent>, expectation: PlayerEventTraceExpectation): List<PlayerEventTraceEvent> =
-        expectation.matching(events)
+    fun matching(
+        events: List<PlayerEventTraceEvent>,
+        expectation: PlayerEventTraceExpectation,
+    ): List<PlayerEventTraceEvent> = expectation.matching(events)
 
     /**
      * Returns human-readable failures for [expectation].
      *
      * An empty list means the expectation passed.
      */
-    fun failures(events: List<PlayerEventTraceEvent>, expectation: PlayerEventTraceExpectation, label: String = "eventTrace"): List<String> =
-        expectation.failures(events, label)
+    fun failures(
+        events: List<PlayerEventTraceEvent>,
+        expectation: PlayerEventTraceExpectation,
+        label: String = "eventTrace",
+    ): List<String> = expectation.failures(events, label)
 }

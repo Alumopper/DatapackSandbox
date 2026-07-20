@@ -4,6 +4,8 @@
 
 内置版本 profile 覆盖 Minecraft Java `1.20.4` 到 `26.2`，默认使用最新 profile `26.2`。项目不嵌入原版服务端运行时，也不分发 Mojang 服务端代码；构建时会使用公开的 `SpyglassMC/vanilla-mcdoc` 资料和官方 `@spyglassmc/mcdoc` 解析器生成 NBT schema，用于运行时校验。
 
+可选的 `renderer` 模块可以读取用户提供的 Minecraft 资产，把已建模世界输出为无窗口透视 PNG。原生 Jupyter Kernel 能连续运行 `mcfunction` 单元，并在单元下方直接显示命令输出、snapshot diff 和当前画面。参见[三维渲染与 Jupyter Kernel](docs/rendering-notebook.zh-CN.md)。
+
 ## 构建
 
 ```bash
@@ -22,13 +24,15 @@ Windows：
 .\gradlew.bat :cli:smokeCliJar
 ```
 
-运行完整 1.0 发布门禁，包括单元检查、standalone jar smoke 和 Maven publication artifact 验证：
+运行完整发布门禁，包括单元检查、standalone jar smoke 和 Maven publication artifact 验证：
 
 ```powershell
 .\gradlew.bat releaseCheck
 ```
 
-smoke 会构建 jar、导出内置 manifest schema、运行全部 examples manifest，并实际执行 README 里的 `loot`、玩家 `event` 和 stdin `run` 示例。标准 `check` 生命周期也会运行单元测试、manifest 示例和 standalone jar smoke。CI 会在 Linux、Windows 和 macOS 上运行 `releaseCheck`，因此 release jar、sources jar、javadocs jar 和生成的 Maven POM 都会在三平台检查。
+smoke 会构建 jar、导出内置 manifest schema、运行全部 examples 与 integration manifests，并实际执行 README 里的 `loot`、玩家 `event` 和 stdin `run` 示例。标准 `check` 生命周期也会运行单元测试、manifest 示例和 standalone jar smoke。CI 会在 Linux 和 Windows 上运行 `releaseCheck`，因此 release jar、sources jar、javadocs jar 和生成的 Maven POM 都会在两个受支持平台检查。
+
+该门禁还会逐字节重建固定 revision 的 vanilla NBT schema、运行 ktlint、检查依赖锁与公开 JVM API 基线，并执行源码体积架构门禁。
 
 standalone jar 输出到：
 
@@ -38,9 +42,9 @@ cli/build/libs/datapack-sandbox-cli.jar
 
 ## 作为 JVM API 库使用
 
-把 `core` 模块作为可嵌入 API 库使用。`cli` 模块是 standalone 应用，不建议作为应用依赖引入。
+把 `core` 模块作为可嵌入运行时 API；需要 PNG 输出时再引入 `renderer`。`cli` 模块是 standalone 应用，不建议作为应用依赖引入。
 
-发布 artifact 目标运行环境是 Java 25。外部项目需要配置项目 Maven 仓库、Maven Central 和 Mojang library 仓库，再依赖 `core`：
+发布 artifact 目标运行环境是 Java 25。外部项目需要配置项目 Maven 仓库、Maven Central 和 Mojang library 仓库；快速测试依赖 `testkit`，它会传递引入 `core`：
 
 ```kotlin
 repositories {
@@ -50,7 +54,7 @@ repositories {
 }
 
 dependencies {
-    testImplementation("moe.afox.dpsandbox:core:1.0.0")
+    testImplementation("moe.afox.dpsandbox:testkit:1.0.1")
 }
 ```
 
@@ -58,7 +62,7 @@ dependencies {
 
 ```kotlin
 dependencies {
-    testImplementation(project(":core"))
+    testImplementation(project(":testkit"))
 }
 ```
 
@@ -237,7 +241,7 @@ manifest 可以用 `{"snapshot":{"equalsFile":"expected.json"}}` 将最终 snaps
 
 ```bash
 java -jar cli/build/libs/datapack-sandbox-cli.jar schema --output dps-manifest.schema.json
-java -jar cli/build/libs/datapack-sandbox-cli.jar schema --check docs/dps-manifest.schema.json
+java -jar cli/build/libs/datapack-sandbox-cli.jar schema --check schema/manifest/dps-manifest.schema.json
 ```
 
 断言失败时可以同时输出最终 snapshot 或最小 snapshot diff：
@@ -419,6 +423,7 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar check examples
 ```powershell
 java -jar cli/build/libs/datapack-sandbox-cli.jar check examples/full-stack/full-stack.dps.json
 java -jar cli/build/libs/datapack-sandbox-cli.jar check examples/player-events/player-events.dps.json
+java -jar cli/build/libs/datapack-sandbox-cli.jar check examples/special-entities/special-entities.dps.json
 java -jar cli/build/libs/datapack-sandbox-cli.jar check examples/single-function/single-function.dps.json
 java -jar cli/build/libs/datapack-sandbox-cli.jar check examples/generator-output/generator-output.dps.json
 java -jar cli/build/libs/datapack-sandbox-cli.jar check examples/generator-template/generator-template.dps.json

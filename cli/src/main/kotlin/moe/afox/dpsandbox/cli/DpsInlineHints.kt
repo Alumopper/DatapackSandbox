@@ -22,14 +22,20 @@ class DpsInlineHints private constructor(
         addWidget("_dps-kill-line", updatingWidget(LineReader.KILL_LINE))
         addWidget("_dps-kill-whole-line", updatingWidget(LineReader.KILL_WHOLE_LINE))
         addWidget("_dps-expand-or-complete", updatingWidget(LineReader.EXPAND_OR_COMPLETE))
-        addWidget("_dps-redisplay", Widget {
-            refresh()
-            builtin(LineReader.REDISPLAY)
-        })
-        addWidget("_dps-accept-line", Widget {
-            clearHints()
-            builtin(LineReader.ACCEPT_LINE)
-        })
+        addWidget(
+            "_dps-redisplay",
+            Widget {
+                refresh()
+                builtin(LineReader.REDISPLAY)
+            },
+        )
+        addWidget(
+            "_dps-accept-line",
+            Widget {
+                clearHints()
+                builtin(LineReader.ACCEPT_LINE)
+            },
+        )
     }
 
     fun enable() {
@@ -59,8 +65,7 @@ class DpsInlineHints private constructor(
             result
         }
 
-    private fun builtin(name: String): Boolean =
-        reader.builtinWidgets[name]?.apply() ?: false
+    private fun builtin(name: String): Boolean = reader.builtinWidgets[name]?.apply() ?: false
 
     private fun refresh() {
         updateTailTip(completer.inlineHint(buffer().toString()))
@@ -85,21 +90,28 @@ class DpsInlineHints private constructor(
     }
 
     companion object {
-        fun install(reader: LineReader, completer: DpsCompleter) {
+        fun install(
+            reader: LineReader,
+            completer: DpsCompleter,
+        ) {
             DpsInlineHints(
                 reader = reader,
                 completer = completer,
-                multilineDescriptions = DpsInlineHintPolicy.multilineDescriptionsEnabled(
-                    osName = System.getProperty("os.name").orEmpty(),
-                    override = System.getenv("DPS_MULTILINE_HINTS"),
-                ),
+                multilineDescriptions =
+                    DpsInlineHintPolicy.multilineDescriptionsEnabled(
+                        osName = System.getProperty("os.name").orEmpty(),
+                        override = System.getenv("DPS_MULTILINE_HINTS"),
+                    ),
             ).enable()
         }
     }
 }
 
 internal object DpsInlineHintPolicy {
-    fun multilineDescriptionsEnabled(osName: String, override: String?): Boolean =
+    fun multilineDescriptionsEnabled(
+        osName: String,
+        override: String?,
+    ): Boolean =
         when (override?.trim()?.lowercase()) {
             "1", "true", "on", "yes" -> true
             "0", "false", "off", "no" -> false

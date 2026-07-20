@@ -17,22 +17,35 @@ class VersionProfileJsonTest {
         assertEquals("26.2:26.2", profile.get("nbtSchema").asString)
         assertTrue(profile.getAsJsonArray("commandRoots").map { it.asString }.contains("transfer"))
         assertTrue(profile.getAsJsonObject("registryCounts").get("items").asInt > 0)
-        assertTrue(profile.getAsJsonObject("registries").getAsJsonArray("damage_types").map { it.asString }.contains("minecraft:generic"))
+        assertTrue(
+            profile
+                .getAsJsonObject("registries")
+                .getAsJsonArray("damage_types")
+                .map { it.asString }
+                .contains("minecraft:generic"),
+        )
     }
 
     @Test
     fun `renders profile diff as json`() {
-        val diff = VersionProfileJson.diff(
-            VersionProfileDiffs.diff(
-                VersionProfiles.get("1.20.4"),
-                VersionProfiles.get("26.2"),
-            ),
-        )
+        val diff =
+            VersionProfileJson.diff(
+                VersionProfileDiffs.diff(
+                    VersionProfiles.get("1.20.4"),
+                    VersionProfiles.get("26.2"),
+                ),
+            )
 
         assertEquals("1.20.4", diff.get("from").asString)
         assertEquals("26.2", diff.get("to").asString)
         assertEquals("1.20.4:1.20.4", diff.getAsJsonObject("nbtSchema").get("from").asString)
         assertEquals("26.2:26.2", diff.getAsJsonObject("nbtSchema").get("to").asString)
-        assertTrue(diff.getAsJsonObject("commandRoots").getAsJsonArray("added").map { it.asString }.contains("transfer"))
+        assertTrue(
+            diff
+                .getAsJsonObject("commandRoots")
+                .getAsJsonArray("added")
+                .map { it.asString }
+                .contains("transfer"),
+        )
     }
 }

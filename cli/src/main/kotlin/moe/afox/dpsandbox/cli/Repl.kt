@@ -57,24 +57,29 @@ class Repl(
         }
 
         val nonInteractive = System.console() == null
-        val terminalBuilder = TerminalBuilder.builder()
-            .system(true)
-            .dumb(nonInteractive)
+        val terminalBuilder =
+            TerminalBuilder
+                .builder()
+                .system(true)
+                .dumb(nonInteractive)
         if (nonInteractive) {
             terminalBuilder.jna(false).jni(false).ffm(false)
         }
-        val terminal = terminalBuilder
-            .build()
+        val terminal =
+            terminalBuilder
+                .build()
         val completer = DpsCompleter { sandbox }
-        val reader = LineReaderBuilder.builder()
-            .terminal(terminal)
-            .completer(completer)
-            .highlighter(DpsHighlighter { sandbox.profile })
-            .variable(LineReader.HISTORY_FILE, Path.of(".dps_history"))
-            .option(LineReader.Option.AUTO_MENU, true)
-            .option(LineReader.Option.AUTO_LIST, true)
-            .option(LineReader.Option.AUTO_MENU_LIST, true)
-            .build()
+        val reader =
+            LineReaderBuilder
+                .builder()
+                .terminal(terminal)
+                .completer(completer)
+                .highlighter(DpsHighlighter { sandbox.profile })
+                .variable(LineReader.HISTORY_FILE, Path.of(".dps_history"))
+                .option(LineReader.Option.AUTO_MENU, true)
+                .option(LineReader.Option.AUTO_LIST, true)
+                .option(LineReader.Option.AUTO_MENU_LIST, true)
+                .build()
 
         runCatching { DpsInlineHints.install(reader, completer) }
 
@@ -82,15 +87,16 @@ class Repl(
         terminal.writer().flush()
 
         while (true) {
-            val line = try {
-                reader.readLine(ReplPresentation.prompt(sandbox.profile.id, watch, traceEnabled))
-            } catch (_: UserInterruptException) {
-                terminal.writer().println()
-                terminal.writer().flush()
-                break
-            } catch (_: EndOfFileException) {
-                break
-            }
+            val line =
+                try {
+                    reader.readLine(ReplPresentation.prompt(sandbox.profile.id, watch, traceEnabled))
+                } catch (_: UserInterruptException) {
+                    terminal.writer().println()
+                    terminal.writer().flush()
+                    break
+                } catch (_: EndOfFileException) {
+                    break
+                }
             val keepGoing = handle(line.trim())
             if (!keepGoing) break
         }
@@ -188,31 +194,39 @@ class Repl(
         return keepGoing
     }
 
-    private fun printCommandResult(label: String, result: ExecutionResult, outputBefore: Int) {
+    private fun printCommandResult(
+        label: String,
+        result: ExecutionResult,
+        outputBefore: Int,
+    ) {
         val newOutputs = sandbox.world.outputs.size - outputBefore
         val outputText = if (newOutputs > 0) ", outputs=+$newOutputs" else ""
         println(ReplPresentation.success(label, "commands=${result.commandsExecuted}, gameTime=${sandbox.world.gameTime}$outputText"))
     }
 
-    private fun printManualResult(label: String, detail: String) {
+    private fun printManualResult(
+        label: String,
+        detail: String,
+    ) {
         println(ReplPresentation.success(label, detail))
     }
 
     private fun printHelp(command: String?) {
-        val text = when (command) {
-            null -> helpText()
-            "reload" -> "reload - reload datapack files from disk while keeping the in-memory world state"
-            "event" -> eventHelp()
-            "trace" -> "trace <on|off|status> - print command trace events produced after trace is enabled"
-            "diff" -> "diff last - print the snapshot diff for the last executed world-changing command"
-            "rerun" -> "rerun last - run the last executed world-changing command again"
-            "reset" -> "reset world - replace the current world with a fresh sparse world"
-            "load" -> "load - run #minecraft:load; load fixture <file> - apply a manifest-style world fixture JSON"
-            "tellraw" -> "tellraw <targets> <message-json> - record a chat output event from a JSON text component"
-            "title" -> "title <targets> <title|subtitle|actionbar|clear|reset|times> ... - record title output events"
-            "inspect" -> inspectUsage()
-            else -> "No detailed help for '$command'. Try TAB for available forms."
-        }
+        val text =
+            when (command) {
+                null -> helpText()
+                "reload" -> "reload - reload datapack files from disk while keeping the in-memory world state"
+                "event" -> eventHelp()
+                "trace" -> "trace <on|off|status> - print command trace events produced after trace is enabled"
+                "diff" -> "diff last - print the snapshot diff for the last executed world-changing command"
+                "rerun" -> "rerun last - run the last executed world-changing command again"
+                "reset" -> "reset world - replace the current world with a fresh sparse world"
+                "load" -> "load - run #minecraft:load; load fixture <file> - apply a manifest-style world fixture JSON"
+                "tellraw" -> "tellraw <targets> <message-json> - record a chat output event from a JSON text component"
+                "title" -> "title <targets> <title|subtitle|actionbar|clear|reset|times> ... - record title output events"
+                "inspect" -> inspectUsage()
+                else -> "No detailed help for '$command'. Try TAB for available forms."
+            }
         println(if (command == null) text else ReplPresentation.detailHelp(command, text))
     }
 
@@ -256,7 +270,9 @@ class Repl(
         packStamp = fingerprintPacks()
         println(
             ConsoleStyle.green(
-                "reloaded packs: functions=${sandbox.datapack.functions.size} loot=${sandbox.datapack.lootTables.size} predicates=${sandbox.datapack.predicates.size} advancements=${sandbox.datapack.advancements.size} recipes=${sandbox.datapack.recipes.size} itemModifiers=${sandbox.datapack.itemModifiers.size} raw=${sandbox.datapack.rawResources.values.sumOf { it.size }} tags=${sandbox.datapack.tags.size}",
+                "reloaded packs: functions=${sandbox.datapack.functions.size} loot=${sandbox.datapack.lootTables.size} predicates=${sandbox.datapack.predicates.size} advancements=${sandbox.datapack.advancements.size} recipes=${sandbox.datapack.recipes.size} itemModifiers=${sandbox.datapack.itemModifiers.size} raw=${sandbox.datapack.rawResources.values.sumOf {
+                    it.size
+                }} tags=${sandbox.datapack.tags.size}",
             ),
         )
     }
@@ -265,7 +281,8 @@ class Repl(
         val current = fingerprintPacks()
         if (current > packStamp) {
             try {
-                sandbox = createSandbox(version, packs, sandbox.world, unsupportedFeatureMode = unsupportedFeatureMode, limits = sandbox.limits)
+                sandbox =
+                    createSandbox(version, packs, sandbox.world, unsupportedFeatureMode = unsupportedFeatureMode, limits = sandbox.limits)
                 packStamp = current
                 println(ReplPresentation.warning("packs changed; reloaded"))
             } catch (error: SandboxException) {
@@ -324,16 +341,20 @@ class Repl(
     private fun loadFixture(fileName: String) {
         val file = Path.of(fileName)
         val root = parseJsonObject(Files.readString(file, StandardCharsets.UTF_8), "fixture $file")
-        val world = when {
-            !root.has("world") -> root
-            root.get("world").isJsonObject -> root.getAsJsonObject("world")
-            else -> throw IllegalArgumentException("fixture file contains non-object world")
-        }
+        val world =
+            when {
+                !root.has("world") -> root
+                root.get("world").isJsonObject -> root.getAsJsonObject("world")
+                else -> throw IllegalArgumentException("fixture file contains non-object world")
+            }
         ManifestWorldSetup.apply(world, sandbox, file.parent ?: Path.of("."))
         printManualResult("load fixture $file", "applied")
     }
 
-    private fun parseJsonObject(raw: String, label: String): JsonObject =
+    private fun parseJsonObject(
+        raw: String,
+        label: String,
+    ): JsonObject =
         try {
             val parsed = JsonParser.parseString(raw)
             if (!parsed.isJsonObject) throw IllegalArgumentException("$label must be a JSON object")
@@ -413,20 +434,32 @@ class Repl(
             "item", "items", "inventory" -> inspectPlayerItems(args)
             "recipes", "recipe-book", "player-recipes" -> inspectPlayerRecipes(args)
             "advancement-progress", "advancements-progress", "player-advancements" -> inspectAdvancementProgress(args)
-            "loot" -> sandbox.datapack.lootTables.keys.forEach { println(it) }
-            "predicate" -> sandbox.datapack.predicates.keys.forEach { println(it) }
-            "advancement" -> sandbox.datapack.advancements.keys.forEach { println(it) }
-            "recipe" -> sandbox.datapack.recipes.keys.forEach { println(it) }
-            "item_modifier", "item-modifier" -> sandbox.datapack.itemModifiers.keys.forEach { println(it) }
+            "loot" ->
+                sandbox.datapack.lootTables.keys
+                    .forEach { println(it) }
+            "predicate" ->
+                sandbox.datapack.predicates.keys
+                    .forEach { println(it) }
+            "advancement" ->
+                sandbox.datapack.advancements.keys
+                    .forEach { println(it) }
+            "recipe" ->
+                sandbox.datapack.recipes.keys
+                    .forEach { println(it) }
+            "item_modifier", "item-modifier" ->
+                sandbox.datapack.itemModifiers.keys
+                    .forEach { println(it) }
             "raw", "raw_resource", "raw-resource" -> inspectRawResource(args)
             "tag", "tags" -> {
                 val registryFilter = args.getOrNull(1)
-                sandbox.datapack.tags.toSortedMap()
+                sandbox.datapack.tags
+                    .toSortedMap()
                     .filterKeys { registryFilter == null || it.registry == registryFilter }
                     .forEach { (key, tag) ->
-                        val values = tag.values.joinToString(prefix = "[", postfix = "]") { value ->
-                            if (value.required) value.id else "${value.id}?"
-                        }
+                        val values =
+                            tag.values.joinToString(prefix = "[", postfix = "]") { value ->
+                                if (value.required) value.id else "${value.id}?"
+                            }
                         println("${key.registry} ${key.id} replace=${tag.replace} values=$values")
                     }
             }
@@ -499,12 +532,19 @@ class Repl(
             println(team?.let { renderTeam(it) } ?: "<missing>")
             return
         }
-        sandbox.world.teams.toSortedMap().values.forEach { println(renderTeam(it)) }
+        sandbox.world.teams
+            .toSortedMap()
+            .values
+            .forEach { println(renderTeam(it)) }
     }
 
     private fun renderTeam(team: SandboxTeam): String {
         val members = team.members.sorted().joinToString(prefix = "[", postfix = "]")
-        val options = team.options.toSortedMap().entries.joinToString(prefix = "[", postfix = "]") { "${it.key}=${it.value}" }
+        val options =
+            team.options
+                .toSortedMap()
+                .entries
+                .joinToString(prefix = "[", postfix = "]") { "${it.key}=${it.value}" }
         return "team ${team.name} displayName=${team.displayName} members=$members options=$options"
     }
 
@@ -515,7 +555,10 @@ class Repl(
             println(bossbar?.let { renderBossbar(it) } ?: "<missing>")
             return
         }
-        sandbox.world.bossbars.toSortedMap().values.forEach { println(renderBossbar(it)) }
+        sandbox.world.bossbars
+            .toSortedMap()
+            .values
+            .forEach { println(renderBossbar(it)) }
     }
 
     private fun renderBossbar(bossbar: SandboxBossbar): String {
@@ -534,12 +577,24 @@ class Repl(
             println("Usage: inspect block <x> <y> <z>")
             return
         }
-        sandbox.world.blocks.toSortedMap().forEach { (blockPos, block) -> println(renderBlock(blockPos, block)) }
+        sandbox.world.blocks
+            .toSortedMap()
+            .forEach { (blockPos, block) -> println(renderBlock(blockPos, block)) }
     }
 
-    private fun renderBlock(pos: BlockPos, block: SandboxBlock): String {
-        val properties = block.properties.toSortedMap().entries.joinToString(prefix = "[", postfix = "]") { "${it.key}=${it.value}" }
-        val biome = sandbox.world.biomes[pos]?.let { " biome=$it" }.orEmpty()
+    private fun renderBlock(
+        pos: BlockPos,
+        block: SandboxBlock,
+    ): String {
+        val properties =
+            block.properties
+                .toSortedMap()
+                .entries
+                .joinToString(prefix = "[", postfix = "]") { "${it.key}=${it.value}" }
+        val biome =
+            sandbox.world.biomes[pos]
+                ?.let { " biome=$it" }
+                .orEmpty()
         return "block ${renderBlockPos(pos)} id=${block.id} properties=$properties nbt=${JsonValues.render(block.nbt)}$biome"
     }
 
@@ -559,7 +614,10 @@ class Repl(
         }
     }
 
-    private fun parseInspectBlockPos(args: List<String>, startIndex: Int): BlockPos? {
+    private fun parseInspectBlockPos(
+        args: List<String>,
+        startIndex: Int,
+    ): BlockPos? {
         val first = args.getOrNull(startIndex) ?: return null
         if ("," in first) {
             val parts = first.split(',')
@@ -581,12 +639,14 @@ class Repl(
 
     private fun inspectEntities(args: List<String>) {
         val selector = args.getOrNull(1)
-        val entities = if (selector == null) {
-            sandbox.world.entities.sortedWith(compareBy<SandboxEntity> { it.type.toString() }.thenBy { it.uuid })
-        } else {
-            sandbox.world.entities.filter { matchesEntityInspectSelector(it, selector) }
-                .sortedWith(compareBy<SandboxEntity> { it.type.toString() }.thenBy { it.uuid })
-        }
+        val entities =
+            if (selector == null) {
+                sandbox.world.entities.sortedWith(compareBy<SandboxEntity> { it.type.toString() }.thenBy { it.uuid })
+            } else {
+                sandbox.world.entities
+                    .filter { matchesEntityInspectSelector(it, selector) }
+                    .sortedWith(compareBy<SandboxEntity> { it.type.toString() }.thenBy { it.uuid })
+            }
         if (selector != null && entities.isEmpty()) {
             println("<missing>")
             return
@@ -594,7 +654,10 @@ class Repl(
         entities.forEach { println(renderEntity(it)) }
     }
 
-    private fun matchesEntityInspectSelector(entity: SandboxEntity, selector: String): Boolean =
+    private fun matchesEntityInspectSelector(
+        entity: SandboxEntity,
+        selector: String,
+    ): Boolean =
         entity.uuid == selector ||
             entity.scoreHolder == selector ||
             entity.type.toString() == selector ||
@@ -604,19 +667,26 @@ class Repl(
     private fun renderEntity(entity: SandboxEntity): String {
         val position = "${entity.position.x},${entity.position.y},${entity.position.z}"
         val tags = entity.tags.sorted().joinToString(prefix = "[", postfix = "]")
-        val equipment = entity.equipment.toSortedMap().entries.joinToString(prefix = "[", postfix = "]") { (slot, item) ->
-            "$slot=${renderItemStack(item)}"
-        }
+        val equipment =
+            entity.equipment.toSortedMap().entries.joinToString(prefix = "[", postfix = "]") { (slot, item) ->
+                "$slot=${renderItemStack(item)}"
+            }
         val effects = entityEffects(entity).joinToString(prefix = "[", postfix = "]") { renderEffect(it) }
-        val attributes = entity.attributes.toSortedMap().entries.joinToString(prefix = "[", postfix = "]") { (id, value) ->
-            "$id=$value"
-        }
-        val modifiers = entity.attributeModifiers.toSortedMap().flatMap { (attribute, values) ->
-            values.toSortedMap().values.map { modifier -> "$attribute/${modifier.id}=${modifier.amount}:${modifier.operation}" }
-        }.joinToString(prefix = "[", postfix = "]")
+        val attributes =
+            entity.attributes.toSortedMap().entries.joinToString(prefix = "[", postfix = "]") { (id, value) ->
+                "$id=$value"
+            }
+        val modifiers =
+            entity.attributeModifiers
+                .toSortedMap()
+                .flatMap { (attribute, values) ->
+                    values.toSortedMap().values.map { modifier -> "$attribute/${modifier.id}=${modifier.amount}:${modifier.operation}" }
+                }.joinToString(prefix = "[", postfix = "]")
         val passengers = entity.passengers.sorted().joinToString(prefix = "[", postfix = "]")
         val vehicle = entity.vehicle ?: "<none>"
-        return "entity ${entity.scoreHolder} uuid=${entity.uuid} type=${entity.type} pos=$position dimension=${entity.dimension} yaw=${entity.yaw} pitch=${entity.pitch} health=${entityHealth(entity)} tags=$tags equipment=$equipment effects=$effects attributes=$attributes modifiers=$modifiers vehicle=$vehicle passengers=$passengers"
+        return "entity ${entity.scoreHolder} uuid=${entity.uuid} type=${entity.type} pos=$position dimension=${entity.dimension} yaw=${entity.yaw} pitch=${entity.pitch} health=${entityHealth(
+            entity,
+        )} tags=$tags equipment=$equipment effects=$effects attributes=$attributes modifiers=$modifiers vehicle=$vehicle passengers=$passengers"
     }
 
     private fun renderItemStack(item: ItemStack): String {
@@ -629,7 +699,10 @@ class Repl(
         if (entity is SandboxPlayer) {
             entity.effects.sorted().map { effect -> entity.effectDetails[effect] ?: PlayerEffect(effect) }
         } else {
-            entity.activeEffects.toSortedMap().values.toList()
+            entity.activeEffects
+                .toSortedMap()
+                .values
+                .toList()
         }
 
     private fun renderEffect(effect: PlayerEffect): String =
@@ -639,17 +712,24 @@ class Repl(
         if (entity is SandboxPlayer) {
             entity.health.toString()
         } else {
-            entity.fullNbt(sandbox.profile).get("Health")?.takeIf { it.isJsonPrimitive }?.asDouble?.toString() ?: "<unset>"
+            entity
+                .fullNbt(sandbox.profile)
+                .get("Health")
+                ?.takeIf { it.isJsonPrimitive }
+                ?.asDouble
+                ?.toString() ?: "<unset>"
         }
 
     private fun inspectPlayerItems(args: List<String>) {
         val name = args.getOrNull(1)
         val slot = args.getOrNull(2)
-        val players = if (name == null) {
-            sandbox.world.players.values.sortedBy { it.name }
-        } else {
-            listOf(sandbox.world.requirePlayer(name))
-        }
+        val players =
+            if (name == null) {
+                sandbox.world.players.values
+                    .sortedBy { it.name }
+            } else {
+                listOf(sandbox.world.requirePlayer(name))
+            }
         players.forEach { player ->
             if (slot != null) {
                 println(renderPlayerSlot(player, slot))
@@ -668,20 +748,28 @@ class Repl(
         }
     }
 
-    private fun renderPlayerSlot(player: SandboxPlayer, rawSlot: String): String {
+    private fun renderPlayerSlot(
+        player: SandboxPlayer,
+        rawSlot: String,
+    ): String {
         val resolved = resolvePlayerSlot(player, rawSlot)
         val canonical = resolved?.first ?: rawSlot
         val item = resolved?.second
         return "item ${player.name} $canonical ${item?.let { renderItemStack(it) } ?: "<empty>"}"
     }
 
-    private fun resolvePlayerSlot(player: SandboxPlayer, rawSlot: String): Pair<String, ItemStack?>? {
+    private fun resolvePlayerSlot(
+        player: SandboxPlayer,
+        rawSlot: String,
+    ): Pair<String, ItemStack?>? {
         val normalized = rawSlot.lowercase()
-        fun inventorySlot(index: Int, prefix: String = "inventory"): Pair<String, ItemStack?> =
-            "$prefix.$index" to player.inventory.getOrNull(index)
 
-        fun enderSlot(index: Int): Pair<String, ItemStack?> =
-            "enderchest.$index" to player.enderItems.getOrNull(index)
+        fun inventorySlot(
+            index: Int,
+            prefix: String = "inventory",
+        ): Pair<String, ItemStack?> = "$prefix.$index" to player.inventory.getOrNull(index)
+
+        fun enderSlot(index: Int): Pair<String, ItemStack?> = "enderchest.$index" to player.enderItems.getOrNull(index)
 
         normalized.toIntOrNull()?.let { return inventorySlot(it) }
         return when {
@@ -701,11 +789,13 @@ class Repl(
     private fun inspectPlayerRecipes(args: List<String>) {
         val name = args.getOrNull(1)
         val recipe = args.getOrNull(2)?.let { ResourceLocation.parse(it) }
-        val players = if (name == null) {
-            sandbox.world.players.values.sortedBy { it.name }
-        } else {
-            listOf(sandbox.world.requirePlayer(name))
-        }
+        val players =
+            if (name == null) {
+                sandbox.world.players.values
+                    .sortedBy { it.name }
+            } else {
+                listOf(sandbox.world.requirePlayer(name))
+            }
         players.forEach { player ->
             if (recipe != null) {
                 println("recipe ${player.name} $recipe unlocked=${recipe in player.recipes}")
@@ -719,14 +809,18 @@ class Repl(
     private fun inspectAdvancementProgress(args: List<String>) {
         val name = args.getOrNull(1)
         val advancement = args.getOrNull(2)?.let { ResourceLocation.parse(it) }
-        val players = if (name == null) {
-            sandbox.world.players.values.sortedBy { it.name }
-        } else {
-            listOf(sandbox.world.requirePlayer(name))
-        }
+        val players =
+            if (name == null) {
+                sandbox.world.players.values
+                    .sortedBy { it.name }
+            } else {
+                listOf(sandbox.world.requirePlayer(name))
+            }
         players.forEach { player ->
-            val entries = player.advancementProgress.toSortedMap()
-                .filterKeys { advancement == null || it == advancement }
+            val entries =
+                player.advancementProgress
+                    .toSortedMap()
+                    .filterKeys { advancement == null || it == advancement }
             if (advancement != null && entries.isEmpty()) {
                 println("advancement ${player.name} $advancement <missing>")
                 return@forEach
@@ -734,7 +828,11 @@ class Repl(
             entries.forEach { (id, progress) ->
                 val definition = sandbox.datapack.advancements[id]
                 val done = definition?.let { progress.isDone(it.requirements) } ?: progress.criteria.values.any { it }
-                val criteria = progress.criteria.toSortedMap().entries.joinToString(prefix = "[", postfix = "]") { "${it.key}=${it.value}" }
+                val criteria =
+                    progress.criteria
+                        .toSortedMap()
+                        .entries
+                        .joinToString(prefix = "[", postfix = "]") { "${it.key}=${it.value}" }
                 println("advancement ${player.name} $id done=$done criteria=$criteria")
             }
         }
@@ -745,10 +843,11 @@ class Repl(
             .filter { typeFilter == null || it.type == typeFilter }
             .forEach { entry ->
                 val active = if (entry.active) "active" else "overridden"
-                val overlay = listOfNotNull(
-                    entry.overrides?.let { "overrides=$it" },
-                    entry.overriddenBy?.let { "overriddenBy=$it" },
-                ).joinToString(prefix = " ", separator = " ").takeIf { it.isNotBlank() }.orEmpty()
+                val overlay =
+                    listOfNotNull(
+                        entry.overrides?.let { "overrides=$it" },
+                        entry.overriddenBy?.let { "overriddenBy=$it" },
+                    ).joinToString(prefix = " ", separator = " ").takeIf { it.isNotBlank() }.orEmpty()
                 println("${entry.type} ${entry.id} ${entry.behaviorLevel.id} $active pack=${entry.pack} file=${entry.file}$overlay")
             }
     }
@@ -797,23 +896,30 @@ class Repl(
         println(resources[id]?.let { JsonValues.render(it.root) } ?: "<missing>")
     }
 
-    private fun runEvent(parts: List<String>, outputBefore: Int) {
+    private fun runEvent(
+        parts: List<String>,
+        outputBefore: Int,
+    ) {
         if (parts.getOrNull(1) != "player") {
             println("Usage: event player <name> <type> [id] [detail/action|x y z|pos=x,y,z]")
             return
         }
-        val event = try {
-            parsePlayerEventArgs(parts.drop(1), "event")
-        } catch (error: SandboxException) {
-            println(ConsoleStyle.diagnostic(error.render()))
-            return
-        }
+        val event =
+            try {
+                parsePlayerEventArgs(parts.drop(1), "event")
+            } catch (error: SandboxException) {
+                println(ConsoleStyle.diagnostic(error.render()))
+                return
+            }
         val player = sandbox.createPlayer(event.playerName)
         val updates = sandbox.handlePlayerEvent(event)
         val outputText = (sandbox.world.outputs.size - outputBefore).takeIf { it > 0 }?.let { ", outputs=+$it" }.orEmpty()
         val inputText = event.input?.let { ", input=${it.device}:${it.code}/${it.action}" }.orEmpty()
         val blockPosText = event.blockPos?.let { ", blockPos=${it.x},${it.y},${it.z}" }.orEmpty()
-        printManualResult("event player ${player.name} ${event.type}", "updates=${updates.size}, gameTime=${sandbox.world.gameTime}$inputText$blockPosText$outputText")
+        printManualResult(
+            "event player ${player.name} ${event.type}",
+            "updates=${updates.size}, gameTime=${sandbox.world.gameTime}$inputText$blockPosText$outputText",
+        )
         updates.forEach { println(it) }
     }
 
@@ -844,12 +950,14 @@ class Repl(
         packs.maxOfOrNull { pack ->
             when {
                 pack.isRegularFile() -> Files.getLastModifiedTime(pack).toMillis()
-                pack.isDirectory() -> Files.walk(pack).use { walk ->
-                    walk.filter { it.isRegularFile() }
-                        .mapToLong { Files.getLastModifiedTime(it).toMillis() }
-                        .max()
-                        .orElse(0L)
-                }
+                pack.isDirectory() ->
+                    Files.walk(pack).use { walk ->
+                        walk
+                            .filter { it.isRegularFile() }
+                            .mapToLong { Files.getLastModifiedTime(it).toMillis() }
+                            .max()
+                            .orElse(0L)
+                    }
                 else -> 0L
             }
         } ?: 0L

@@ -1,3 +1,0 @@
-{"ts":1783614254928,"sessionID":"ses_0b8562950ffedCk8kt14EdAJIF","goalId":"8fb2abbf-7b66-4765-9297-a0ee6a94aa4f","condition":"implement the plan in docs/vscode-extension-plan.md","type":"set","detail":"Goal created with limits: 10 auto-continues, 900s, 200,000 context tokens."}
-{"ts":1783614499495,"sessionID":"ses_0b8562950ffedCk8kt14EdAJIF","goalId":"8fb2abbf-7b66-4765-9297-a0ee6a94aa4f","condition":"implement the plan in docs/vscode-extension-plan.md","type":"auto-continue","detail":"Sent auto-continue prompt 1/10."}
-{"ts":1783615013284,"sessionID":"ses_0b8562950ffedCk8kt14EdAJIF","goalId":"8fb2abbf-7b66-4765-9297-a0ee6a94aa4f","condition":"implement the plan in docs/vscode-extension-plan.md","type":"auto-continue","detail":"Sent auto-continue prompt 2/10."}

@@ -9,7 +9,7 @@ Published by **Alumopper** as `Alumopper.datapack-sandbox-vscode`.
 - Run the current `.mcfunction` file in the sandbox.
 - Run `.dps.json` manifests from commands, code lenses, and Test Explorer.
 - Start and stop a persistent sandbox directly from the Command Palette.
-- Choose any built-in profile from `1.20.4` through `26.2` in the panel or startup picker.
+- Choose any built-in profile reported by the bundled CLI in the panel or startup picker.
 - Choose temporary or active sandbox profiles in Test Explorer; regular Run and Debug remain temporary by default.
 - Trace-debug `.mcfunction` and manifest runs, stopping at the first breakpoint instead of the first command.
 - Expand nested trace, diagnostic, output, and snapshot JSON directly in the Debug sidebar.
@@ -51,7 +51,7 @@ Normal Run and Debug commands use isolated temporary sandboxes by default. Test 
 ## Settings
 
 - `datapackSandbox.javaPath`: Java 25 executable.
-- `datapackSandbox.defaultVersion`: default Minecraft profile.
+- `datapackSandbox.defaultVersion`: optional profile override; empty follows the bundled CLI default.
 - `datapackSandbox.packPaths`: extra datapack directories or zip files.
 - `datapackSandbox.defaultExecutionTarget`: `temporary` by default, or `active` for persistent execution.
 - `datapackSandbox.cliJarPath`: optional custom CLI JAR; empty uses the bundled CLI.

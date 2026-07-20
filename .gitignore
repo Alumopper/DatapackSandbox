@@ -1,8 +1,10 @@
 .gradle/
+.kotlin/
 build/
 **/build/
 docs/.vitepress/cache/
 docs/.vitepress/dist/
+docs/public/dps-manifest.schema.json
 
 *.class
 *.log
@@ -15,3 +17,19 @@ node_modules/
 vscode/out/
 vscode/schemas/
 vscode/bin/
+
+# Generated Jupyter package artifacts
+jupyter/dist/
+jupyter/*.egg-info/
+jupyter/src/*.egg-info/
+jupyter/src/datapack_sandbox_kernel/resources/datapack-sandbox-cli.jar
+jupyter/**/__pycache__/
+
+# Local runtime and agent state
+.dps_history
+.opencode/
+
+# Accidental archive/native extraction artifacts at the repository root
+/META-INF/
+/jzmq.dll
+/libzmq-mt-4_3_6.dll

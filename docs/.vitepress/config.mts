@@ -17,6 +17,7 @@ const zhSidebar = [
       { text: '文档首页', link: '/' },
       { text: '快速开始', link: '/guide/getting-started' },
       { text: 'VS Code 插件', link: '/guide/vscode-extension' },
+      { text: '三维渲染与 Jupyter', link: '/guide/rendering-notebook' },
       { text: '测试方案', link: '/guide/testing-patterns' },
       { text: '代码测试 API', link: '/guide/code-test-api' },
       { text: '排障手册', link: '/guide/troubleshooting' },
@@ -56,6 +57,7 @@ const enSidebar = [
       { text: 'Overview', link: '/en/' },
       { text: 'Getting Started', link: '/en/guide/getting-started' },
       { text: 'VS Code Extension', link: '/en/guide/vscode-extension' },
+      { text: 'Rendering and Jupyter', link: '/en/guide/rendering-notebook' },
       { text: 'Testing Patterns', link: '/en/guide/testing-patterns' },
       { text: 'Code Test API', link: '/en/guide/code-test-api' },
       { text: 'Troubleshooting', link: '/en/guide/troubleshooting' },
@@ -93,6 +95,7 @@ const zhNav = [
     text: '使用指南',
     items: [
       { text: 'VS Code 插件', link: '/guide/vscode-extension' },
+      { text: '三维渲染与 Jupyter', link: '/guide/rendering-notebook' },
       { text: '开发者入门', link: '/guide/getting-started' },
       { text: '测试模式', link: '/guide/testing-patterns' },
       { text: '代码测试 API', link: '/guide/code-test-api' },
@@ -119,6 +122,7 @@ const enNav = [
     items: [
       { text: 'Getting Started', link: '/en/guide/getting-started' },
       { text: 'VS Code Extension', link: '/en/guide/vscode-extension' },
+      { text: 'Rendering and Jupyter', link: '/en/guide/rendering-notebook' },
       { text: 'Testing Patterns', link: '/en/guide/testing-patterns' },
       { text: 'Code Test API', link: '/en/guide/code-test-api' },
       { text: 'Troubleshooting', link: '/en/guide/troubleshooting' },
@@ -287,6 +291,7 @@ export default defineConfigWithTheme<ThemeConfig>({
   },
   rewrites: {
     'vscode-extension.zh-CN.md': 'guide/vscode-extension.md',
+    'rendering-notebook.zh-CN.md': 'guide/rendering-notebook.md',
     'getting-started.zh-CN.md': 'guide/getting-started.md',
     'testing-patterns.zh-CN.md': 'guide/testing-patterns.md',
     'code-test-api.zh-CN.md': 'guide/code-test-api.md',
@@ -299,6 +304,7 @@ export default defineConfigWithTheme<ThemeConfig>({
     'development-roadmap.zh-CN.md': 'project/development-roadmap.md',
     'getting-started.md': 'en/guide/getting-started.md',
     'vscode-extension.md': 'en/guide/vscode-extension.md',
+    'rendering-notebook.md': 'en/guide/rendering-notebook.md',
     'testing-patterns.md': 'en/guide/testing-patterns.md',
     'code-test-api.md': 'en/guide/code-test-api.md',
     'troubleshooting.md': 'en/guide/troubleshooting.md',

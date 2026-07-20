@@ -1,19 +1,19 @@
 ﻿# Code Test API
 
 In addition to the CLI and `.dps.json` manifests, Kotlin/Java projects can call
-the `:core` quick-test API directly. This is useful for local unit tests, plugin
+the `:testkit` quick-test API directly. This is useful for local unit tests, plugin
 tests, and build-tool smoke tests.
 
 ## Artifact and Requirements
 
-The API library is the `core` artifact:
+The fluent testing API is the `testkit` artifact:
 
 ```text
-moe.afox.dpsandbox:core:1.0.0
+moe.afox.dpsandbox:testkit:1.0.1
 ```
 
 The `cli` module and `datapack-sandbox-cli.jar` are for command-line use. JVM
-projects should depend on `core` instead.
+projects should depend on `testkit` instead; it brings in the lower-level `core` runtime transitively.
 
 The published artifacts are built with the project's Java 25 toolchain, so
 consumers need Java 25 or newer for compilation and test execution. Runtime
@@ -33,7 +33,7 @@ repositories {
 }
 
 dependencies {
-    testImplementation("moe.afox.dpsandbox:core:1.0.0")
+    testImplementation("moe.afox.dpsandbox:testkit:1.0.1")
 }
 ```
 
@@ -46,7 +46,7 @@ Inside the same multi-project build:
 
 ```kotlin
 dependencies {
-    testImplementation(project(":core"))
+    testImplementation(project(":testkit"))
 }
 ```
 
@@ -67,8 +67,8 @@ dependencies {
 <dependencies>
   <dependency>
     <groupId>moe.afox.dpsandbox</groupId>
-    <artifactId>core</artifactId>
-    <version>1.0.0</version>
+    <artifactId>testkit</artifactId>
+    <version>1.0.1</version>
     <scope>test</scope>
   </dependency>
 </dependencies>
@@ -518,6 +518,10 @@ SandboxQuickTest.matrix(
     .requirePassed()
 ```
 
+Use `forEachScenario { ... }` to apply any current or future single-scenario
+operation/assertion across the matrix without waiting for a mirrored matrix
+convenience method.
+
 ## Java Example
 
 ```java
@@ -566,7 +570,7 @@ class MyDatapackTest {
 | `setupWorld(setup)` | Apply a reusable `SandboxWorldSetup` |
 | `importSave(path, chunks, dimension)` | Import selected Java Anvil save chunks |
 | `player(name)` | Create or reuse a player |
-| `event(player, type, id, action)` | Inject a player event |
+| `event(player, type, id, action)` | Inject a player event; interaction/attack `id` may be a selector or UUID targeting one real entity |
 | `blockEvent(player, type, id, x, y, z)` | Inject a block player event and update the sparse-world position |
 | `keyInput(player, key, action)` | Inject keyboard input |
 | `mouseInput(player, button, action, x, y)` | Inject mouse input |
@@ -608,7 +612,7 @@ class MyDatapackTest {
 | `assertOutputContains(text)` | Assert output event text |
 | `assertOutput(...)` | Assert command/channel/target/rendered text/rawText/regex/normalized text/payload path/segment/count/order for output events |
 | `assertTrace(...)` | Assert command/root/source/success/output count/output text/output target/diff path/diff kind/count for trace events |
-| `assertPlayerEventTrace(...)` | Assert player event trace player/type/success/context/block position/input metadata/advancement/failed advancement/count |
+| `assertPlayerEventTrace(...)` | Assert player event trace player/type/success/context/target UUID/interaction response/block position/input metadata/advancement/failed advancement/count |
 | `assertSnapshotDiff(...)` | Assert before/after snapshot path/kind/rendered text/count; failures list actual diff candidates |
 | `outputs()` | Return recorded output events |
 | `traces()` | Return recorded structured command trace events |
@@ -669,7 +673,7 @@ Java callers get autocomplete:
 | `assertItem` | Player inventory or `enderItems` item id/count/slot/min/max plus component and NBT paths. |
 | `assertOutputContains`, `assertOutput` | Output event command, channel, target(s), rendered `text`, command-visible `rawText`, regex/normalized matching, payload paths, text segments, count, and order. |
 | `assertTrace` | Command trace command/root/source file/function, success flag, output count/text/target, and snapshot diff path/kind/rendered text. |
-| `assertPlayerEventTrace` | Player event dispatch player/type/success, advancement matches/failures, item/entity/block/recipe/dimension/damage metadata, and input device/code/action. |
+| `assertPlayerEventTrace` | Player event dispatch player/type/success, advancement matches/failures, item/entity/target/interaction response/block/recipe/dimension/damage metadata, and input device/code/action. |
 | `assertSnapshotDiff` | Initial-to-current snapshot diff path, kind, rendered text, and count. |
 
 For `say`, `me`, `msg`/`tell`/`w`, and `teammsg`/`tm`, `OutputEvent.text`

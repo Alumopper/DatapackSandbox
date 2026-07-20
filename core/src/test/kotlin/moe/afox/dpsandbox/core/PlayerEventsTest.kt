@@ -10,46 +10,56 @@ import kotlin.test.assertTrue
 class PlayerEventsTest {
     @Test
     fun `shorthand changed dimension event carries from and to dimensions`() {
-        val criterion = Criterion(
-            name = "enter_nether",
-            trigger = ResourceLocation.parse("minecraft:changed_dimension"),
-            conditions = JsonObject().also {
-                it.addProperty("from", "minecraft:overworld")
-                it.addProperty("to", "minecraft:the_nether")
-            },
-        )
+        val criterion =
+            Criterion(
+                name = "enter_nether",
+                trigger = ResourceLocation.parse("minecraft:changed_dimension"),
+                conditions =
+                    JsonObject().also {
+                        it.addProperty("from", "minecraft:overworld")
+                        it.addProperty("to", "minecraft:the_nether")
+                    },
+            )
         val advancementId = ResourceLocation.parse("demo:nether_trip")
         val sandbox = sandboxWithAdvancement(advancementId, criterion)
         val player = sandbox.createPlayer("Steve")
-        val event = PlayerEvents.shorthand(
-            playerName = "Steve",
-            type = "changed-dimension",
-            id = "minecraft:overworld",
-            action = "minecraft:the_nether",
-        )
+        val event =
+            PlayerEvents.shorthand(
+                playerName = "Steve",
+                type = "changed-dimension",
+                id = "minecraft:overworld",
+                action = "minecraft:the_nether",
+            )
 
         val updates = sandbox.handlePlayerEvent(event)
 
         assertEquals(ResourceLocation.parse("minecraft:overworld"), event.fromDimension)
         assertEquals(ResourceLocation.parse("minecraft:the_nether"), event.toDimension)
         assertEquals(1, updates.size)
-        assertTrue(player.advancementProgress.getValue(advancementId).criteria.getValue("enter_nether"))
+        assertTrue(
+            player.advancementProgress
+                .getValue(advancementId)
+                .criteria
+                .getValue("enter_nether"),
+        )
     }
 
     @Test
     fun `kill command from player context fires killed entity advancement event`() {
-        val criterion = Criterion(
-            name = "kill_zombie",
-            trigger = ResourceLocation.parse("minecraft:player_killed_entity"),
-            conditions = JsonObject().also { condition ->
-                condition.add(
-                    "entity",
-                    JsonObject().also {
-                        it.addProperty("type", "minecraft:zombie")
+        val criterion =
+            Criterion(
+                name = "kill_zombie",
+                trigger = ResourceLocation.parse("minecraft:player_killed_entity"),
+                conditions =
+                    JsonObject().also { condition ->
+                        condition.add(
+                            "entity",
+                            JsonObject().also {
+                                it.addProperty("type", "minecraft:zombie")
+                            },
+                        )
                     },
-                )
-            },
-        )
+            )
         val advancementId = ResourceLocation.parse("demo:kill_zombie")
         val sandbox = sandboxWithAdvancement(advancementId, criterion)
         val player = sandbox.createPlayer("Steve")
@@ -61,7 +71,12 @@ class PlayerEventsTest {
         )
 
         assertTrue(sandbox.world.entities.none { it.type == ResourceLocation.parse("minecraft:zombie") })
-        assertTrue(player.advancementProgress.getValue(advancementId).criteria.getValue("kill_zombie"))
+        assertTrue(
+            player.advancementProgress
+                .getValue(advancementId)
+                .criteria
+                .getValue("kill_zombie"),
+        )
         val output = sandbox.world.outputs.single { it.command == "kill" }
         val payload = output.payload?.asJsonObject ?: error("missing kill payload")
         val killed = payload.getAsJsonArray("targets")[0].asJsonObject
@@ -74,18 +89,20 @@ class PlayerEventsTest {
 
     @Test
     fun `shorthand entity interacted event triggers interaction advancements`() {
-        val criterion = Criterion(
-            name = "talk_to_villager",
-            trigger = ResourceLocation.parse("minecraft:player_interacted_with_entity"),
-            conditions = JsonObject().also { condition ->
-                condition.add(
-                    "entity",
-                    JsonObject().also {
-                        it.addProperty("type", "minecraft:villager")
+        val criterion =
+            Criterion(
+                name = "talk_to_villager",
+                trigger = ResourceLocation.parse("minecraft:player_interacted_with_entity"),
+                conditions =
+                    JsonObject().also { condition ->
+                        condition.add(
+                            "entity",
+                            JsonObject().also {
+                                it.addProperty("type", "minecraft:villager")
+                            },
+                        )
                     },
-                )
-            },
-        )
+            )
         val advancementId = ResourceLocation.parse("demo:talk_to_villager")
         val sandbox = sandboxWithAdvancement(advancementId, criterion)
         val player = sandbox.createPlayer("Steve")
@@ -93,7 +110,12 @@ class PlayerEventsTest {
         val updates = sandbox.handlePlayerEvent(PlayerEvents.shorthand("Steve", "entity_interacted", "minecraft:villager"))
 
         assertEquals(1, updates.size)
-        assertTrue(player.advancementProgress.getValue(advancementId).criteria.getValue("talk_to_villager"))
+        assertTrue(
+            player.advancementProgress
+                .getValue(advancementId)
+                .criteria
+                .getValue("talk_to_villager"),
+        )
     }
 
     @Test
@@ -101,73 +123,96 @@ class PlayerEventsTest {
         val placedId = ResourceLocation.parse("demo:placed_stone")
         val brokenId = ResourceLocation.parse("demo:broke_nest")
         val killedId = ResourceLocation.parse("demo:killed_zombie")
-        val sandbox = DatapackSandbox(
-            profile = VersionProfiles.default,
-            datapack = Datapack(
-                functions = emptyMap(),
-                loadFunctions = emptyList(),
-                tickFunctions = emptyList(),
-                advancements = mapOf(
-                    placedId to advancement(
-                        placedId,
-                        "placed_stone",
-                        "minecraft:placed_block",
-                        JsonObject().also { it.addProperty("block", "minecraft:stone") },
+        val sandbox =
+            DatapackSandbox(
+                profile = VersionProfiles.default,
+                datapack =
+                    Datapack(
+                        functions = emptyMap(),
+                        loadFunctions = emptyList(),
+                        tickFunctions = emptyList(),
+                        advancements =
+                            mapOf(
+                                placedId to
+                                    advancement(
+                                        placedId,
+                                        "placed_stone",
+                                        "minecraft:placed_block",
+                                        JsonObject().also { it.addProperty("block", "minecraft:stone") },
+                                    ),
+                                brokenId to
+                                    advancement(
+                                        brokenId,
+                                        "broke_nest",
+                                        "minecraft:bee_nest_destroyed",
+                                        JsonObject().also { it.addProperty("block", "minecraft:bee_nest") },
+                                    ),
+                                killedId to
+                                    advancement(
+                                        killedId,
+                                        "killed_zombie",
+                                        "minecraft:player_killed_entity",
+                                        JsonObject().also { condition ->
+                                            condition.add(
+                                                "entity",
+                                                JsonObject().also { it.addProperty("type", "minecraft:zombie") },
+                                            )
+                                        },
+                                    ),
+                            ),
                     ),
-                    brokenId to advancement(
-                        brokenId,
-                        "broke_nest",
-                        "minecraft:bee_nest_destroyed",
-                        JsonObject().also { it.addProperty("block", "minecraft:bee_nest") },
-                    ),
-                    killedId to advancement(
-                        killedId,
-                        "killed_zombie",
-                        "minecraft:player_killed_entity",
-                        JsonObject().also { condition ->
-                            condition.add(
-                                "entity",
-                                JsonObject().also { it.addProperty("type", "minecraft:zombie") },
-                            )
-                        },
-                    ),
-                ),
-            ),
-        )
+            )
         val player = sandbox.createPlayer("Steve")
 
         sandbox.handlePlayerEvent(PlayerEvents.shorthand("Steve", "block_placed", "minecraft:stone"))
         sandbox.handlePlayerEvent(PlayerEvents.shorthand("Steve", "block_broken", "minecraft:bee_nest"))
         sandbox.handlePlayerEvent(PlayerEvents.shorthand("Steve", "entity_killed", "minecraft:zombie"))
 
-        assertTrue(player.advancementProgress.getValue(placedId).criteria.getValue("placed_stone"))
-        assertTrue(player.advancementProgress.getValue(brokenId).criteria.getValue("broke_nest"))
-        assertTrue(player.advancementProgress.getValue(killedId).criteria.getValue("killed_zombie"))
+        assertTrue(
+            player.advancementProgress
+                .getValue(placedId)
+                .criteria
+                .getValue("placed_stone"),
+        )
+        assertTrue(
+            player.advancementProgress
+                .getValue(brokenId)
+                .criteria
+                .getValue("broke_nest"),
+        )
+        assertTrue(
+            player.advancementProgress
+                .getValue(killedId)
+                .criteria
+                .getValue("killed_zombie"),
+        )
         assertEquals(listOf("block_placed", "block_broken", "entity_killed"), sandbox.world.playerEventTraces.map { it.type })
         assertTrue(sandbox.world.playerEventTraces.all { it.success })
     }
 
     @Test
     fun `shorthand damage event triggers hurt player advancements`() {
-        val criterion = Criterion(
-            name = "fell_far",
-            trigger = ResourceLocation.parse("minecraft:entity_hurt_player"),
-            conditions = JsonObject().also { condition ->
-                condition.add(
-                    "damage",
-                    JsonObject().also { damage ->
-                        damage.add(
-                            "type",
-                            JsonObject().also { it.addProperty("type", "minecraft:fall") },
-                        )
-                        damage.add(
-                            "dealt",
-                            JsonObject().also { it.addProperty("min", 4.0) },
+        val criterion =
+            Criterion(
+                name = "fell_far",
+                trigger = ResourceLocation.parse("minecraft:entity_hurt_player"),
+                conditions =
+                    JsonObject().also { condition ->
+                        condition.add(
+                            "damage",
+                            JsonObject().also { damage ->
+                                damage.add(
+                                    "type",
+                                    JsonObject().also { it.addProperty("type", "minecraft:fall") },
+                                )
+                                damage.add(
+                                    "dealt",
+                                    JsonObject().also { it.addProperty("min", 4.0) },
+                                )
+                            },
                         )
                     },
-                )
-            },
-        )
+            )
         val advancementId = ResourceLocation.parse("demo:fall_damage")
         val sandbox = sandboxWithAdvancement(advancementId, criterion)
         val player = sandbox.createPlayer("Steve")
@@ -178,7 +223,12 @@ class PlayerEventsTest {
         assertEquals(ResourceLocation.parse("minecraft:fall"), event.damageSource)
         assertEquals(4.5, event.damageAmount)
         assertEquals(1, updates.size)
-        assertTrue(player.advancementProgress.getValue(advancementId).criteria.getValue("fell_far"))
+        assertTrue(
+            player.advancementProgress
+                .getValue(advancementId)
+                .criteria
+                .getValue("fell_far"),
+        )
         val trace = sandbox.world.playerEventTraces.single()
         assertEquals("damage", trace.type)
         assertTrue(trace.success)
@@ -189,14 +239,16 @@ class PlayerEventsTest {
 
     @Test
     fun `player event trace expectations filter recorded event context`() {
-        val sandbox = DatapackSandbox(
-            profile = VersionProfiles.default,
-            datapack = Datapack(
-                functions = emptyMap(),
-                loadFunctions = emptyList(),
-                tickFunctions = emptyList(),
-            ),
-        )
+        val sandbox =
+            DatapackSandbox(
+                profile = VersionProfiles.default,
+                datapack =
+                    Datapack(
+                        functions = emptyMap(),
+                        loadFunctions = emptyList(),
+                        tickFunctions = emptyList(),
+                    ),
+            )
         sandbox.createPlayer("Steve")
 
         sandbox.handlePlayerEvent(PlayerEvents.shorthand("Steve", "item_used", "minecraft:carrot"))
@@ -243,22 +295,26 @@ class PlayerEventsTest {
     @Test
     fun `player event traces explain failed advancement criteria`() {
         val advancementId = ResourceLocation.parse("demo:place_diamond")
-        val sandbox = DatapackSandbox(
-            profile = VersionProfiles.default,
-            datapack = Datapack(
-                functions = emptyMap(),
-                loadFunctions = emptyList(),
-                tickFunctions = emptyList(),
-                advancements = mapOf(
-                    advancementId to advancement(
-                        advancementId,
-                        "place_diamond",
-                        "minecraft:placed_block",
-                        JsonObject().also { it.addProperty("block", "minecraft:diamond_block") },
+        val sandbox =
+            DatapackSandbox(
+                profile = VersionProfiles.default,
+                datapack =
+                    Datapack(
+                        functions = emptyMap(),
+                        loadFunctions = emptyList(),
+                        tickFunctions = emptyList(),
+                        advancements =
+                            mapOf(
+                                advancementId to
+                                    advancement(
+                                        advancementId,
+                                        "place_diamond",
+                                        "minecraft:placed_block",
+                                        JsonObject().also { it.addProperty("block", "minecraft:diamond_block") },
+                                    ),
+                            ),
                     ),
-                ),
-            ),
-        )
+            )
         sandbox.createPlayer("Steve")
 
         sandbox.handlePlayerEvent(PlayerEvents.shorthand("Steve", "block_placed", "minecraft:stone"))
@@ -270,38 +326,43 @@ class PlayerEventsTest {
         assertTrue("block expected minecraft:diamond_block" in failure.reason, failure.reason)
         assertEquals(
             1,
-            PlayerEventTraceAssertions.matching(
-                sandbox.world.playerEventTraces,
-                PlayerEventTraceExpectation(
-                    failedAdvancement = advancementId,
-                    failedCriterion = "place_diamond",
-                    failureContains = "minecraft:stone",
-                ),
-            ).size,
+            PlayerEventTraceAssertions
+                .matching(
+                    sandbox.world.playerEventTraces,
+                    PlayerEventTraceExpectation(
+                        failedAdvancement = advancementId,
+                        failedCriterion = "place_diamond",
+                        failureContains = "minecraft:stone",
+                    ),
+                ).size,
         )
         assertTrue(
-            "block expected minecraft:diamond_block" in sandbox.snapshotJson()
-                .getAsJsonArray("playerEventTraces")
-                .single()
-                .asJsonObject
-                .getAsJsonArray("advancementFailures")
-                .single()
-                .asJsonObject
-                .get("reason")
-                .asString,
+            "block expected minecraft:diamond_block" in
+                sandbox
+                    .snapshotJson()
+                    .getAsJsonArray("playerEventTraces")
+                    .single()
+                    .asJsonObject
+                    .getAsJsonArray("advancementFailures")
+                    .single()
+                    .asJsonObject
+                    .get("reason")
+                    .asString,
         )
     }
 
     @Test
     fun `player events mutate observable player state`() {
-        val sandbox = DatapackSandbox(
-            profile = VersionProfiles.default,
-            datapack = Datapack(
-                functions = emptyMap(),
-                loadFunctions = emptyList(),
-                tickFunctions = emptyList(),
-            ),
-        )
+        val sandbox =
+            DatapackSandbox(
+                profile = VersionProfiles.default,
+                datapack =
+                    Datapack(
+                        functions = emptyMap(),
+                        loadFunctions = emptyList(),
+                        tickFunctions = emptyList(),
+                    ),
+            )
         val player = sandbox.createPlayer("Steve")
         player.food = 16
         player.inventory += ItemStack(ResourceLocation.parse("minecraft:apple"), count = 2)
@@ -329,24 +390,26 @@ class PlayerEventsTest {
 
     @Test
     fun `damage command with source entity fires killed player advancement event`() {
-        val criterion = Criterion(
-            name = "killed_by_zombie",
-            trigger = ResourceLocation.parse("minecraft:entity_killed_player"),
-            conditions = JsonObject().also { condition ->
-                condition.add(
-                    "entity",
-                    JsonObject().also {
-                        it.addProperty("type", "minecraft:zombie")
+        val criterion =
+            Criterion(
+                name = "killed_by_zombie",
+                trigger = ResourceLocation.parse("minecraft:entity_killed_player"),
+                conditions =
+                    JsonObject().also { condition ->
+                        condition.add(
+                            "entity",
+                            JsonObject().also {
+                                it.addProperty("type", "minecraft:zombie")
+                            },
+                        )
+                        condition.add(
+                            "damage",
+                            JsonObject().also { damage ->
+                                damage.addProperty("type", "minecraft:mob_attack")
+                            },
+                        )
                     },
-                )
-                condition.add(
-                    "damage",
-                    JsonObject().also { damage ->
-                        damage.addProperty("type", "minecraft:mob_attack")
-                    },
-                )
-            },
-        )
+            )
         val advancementId = ResourceLocation.parse("demo:killed_by_zombie")
         val sandbox = sandboxWithAdvancement(advancementId, criterion)
         val player = sandbox.createPlayer("Steve")
@@ -355,38 +418,59 @@ class PlayerEventsTest {
         sandbox.executeCommand("damage Steve 25 minecraft:mob_attack by @e[type=minecraft:zombie,limit=1]")
 
         assertEquals(0.0, player.health)
-        assertTrue(player.advancementProgress.getValue(advancementId).criteria.getValue("killed_by_zombie"))
+        assertTrue(
+            player.advancementProgress
+                .getValue(advancementId)
+                .criteria
+                .getValue("killed_by_zombie"),
+        )
         val output = sandbox.world.outputs.single { it.command == "damage" }
         val payload = output.payload?.asJsonObject ?: error("missing damage payload")
         assertEquals("minecraft:mob_attack", payload.get("damageSource").asString)
         assertEquals("minecraft:zombie", payload.get("sourceType").asString)
-        assertEquals("Steve", payload.getAsJsonArray("targets")[0].asJsonObject.get("target").asString)
-        assertEquals(true, payload.getAsJsonArray("targets")[0].asJsonObject.get("dead").asBoolean)
+        assertEquals(
+            "Steve",
+            payload
+                .getAsJsonArray("targets")[0]
+                .asJsonObject
+                .get("target")
+                .asString,
+        )
+        assertEquals(
+            true,
+            payload
+                .getAsJsonArray("targets")[0]
+                .asJsonObject
+                .get("dead")
+                .asBoolean,
+        )
     }
 
     @Test
     fun `damage command from player source fires hurt entity advancement event`() {
-        val criterion = Criterion(
-            name = "hit_cow",
-            trigger = ResourceLocation.parse("minecraft:player_hurt_entity"),
-            conditions = JsonObject().also { condition ->
-                condition.add(
-                    "entity",
-                    JsonObject().also {
-                        it.addProperty("type", "minecraft:cow")
-                    },
-                )
-                condition.add(
-                    "damage",
-                    JsonObject().also { damage ->
-                        damage.add(
-                            "taken",
-                            JsonObject().also { it.addProperty("min", 4.0) },
+        val criterion =
+            Criterion(
+                name = "hit_cow",
+                trigger = ResourceLocation.parse("minecraft:player_hurt_entity"),
+                conditions =
+                    JsonObject().also { condition ->
+                        condition.add(
+                            "entity",
+                            JsonObject().also {
+                                it.addProperty("type", "minecraft:cow")
+                            },
+                        )
+                        condition.add(
+                            "damage",
+                            JsonObject().also { damage ->
+                                damage.add(
+                                    "taken",
+                                    JsonObject().also { it.addProperty("min", 4.0) },
+                                )
+                            },
                         )
                     },
-                )
-            },
-        )
+            )
         val advancementId = ResourceLocation.parse("demo:hit_cow")
         val sandbox = sandboxWithAdvancement(advancementId, criterion)
         val player = sandbox.createPlayer("Steve")
@@ -394,7 +478,12 @@ class PlayerEventsTest {
 
         sandbox.executeCommand("damage @e[type=minecraft:cow,limit=1] 4 minecraft:player_attack at 1 65 -2 by Steve")
 
-        assertTrue(player.advancementProgress.getValue(advancementId).criteria.getValue("hit_cow"))
+        assertTrue(
+            player.advancementProgress
+                .getValue(advancementId)
+                .criteria
+                .getValue("hit_cow"),
+        )
         val output = sandbox.world.outputs.single { it.command == "damage" }
         val payload = output.payload?.asJsonObject ?: error("missing damage payload")
         assertEquals("Steve", payload.get("source").asString)
@@ -402,21 +491,44 @@ class PlayerEventsTest {
         assertEquals(1.0, payload.getAsJsonObject("position").get("x").asDouble)
         assertEquals(65.0, payload.getAsJsonObject("position").get("y").asDouble)
         assertEquals(-2.0, payload.getAsJsonObject("position").get("z").asDouble)
-        assertEquals("minecraft:cow", payload.getAsJsonArray("targets")[0].asJsonObject.get("type").asString)
-        assertEquals(8.0, payload.getAsJsonArray("targets")[0].asJsonObject.get("beforeHealth").asDouble)
-        assertEquals(4.0, payload.getAsJsonArray("targets")[0].asJsonObject.get("afterHealth").asDouble)
+        assertEquals(
+            "minecraft:cow",
+            payload
+                .getAsJsonArray("targets")[0]
+                .asJsonObject
+                .get("type")
+                .asString,
+        )
+        assertEquals(
+            8.0,
+            payload
+                .getAsJsonArray("targets")[0]
+                .asJsonObject
+                .get("beforeHealth")
+                .asDouble,
+        )
+        assertEquals(
+            4.0,
+            payload
+                .getAsJsonArray("targets")[0]
+                .asJsonObject
+                .get("afterHealth")
+                .asDouble,
+        )
     }
 
     @Test
     fun `damage command records direct and causing source entities`() {
-        val sandbox = DatapackSandbox(
-            profile = VersionProfiles.default,
-            datapack = Datapack(
-                functions = emptyMap(),
-                loadFunctions = emptyList(),
-                tickFunctions = emptyList(),
-            ),
-        )
+        val sandbox =
+            DatapackSandbox(
+                profile = VersionProfiles.default,
+                datapack =
+                    Datapack(
+                        functions = emptyMap(),
+                        loadFunctions = emptyList(),
+                        tickFunctions = emptyList(),
+                    ),
+            )
         val player = sandbox.createPlayer("Steve")
         sandbox.executeCommand("""summon minecraft:arrow 0 64 0 {Tags:["projectile"]}""")
         sandbox.executeCommand("""summon minecraft:skeleton 0 64 0 {Tags:["shooter"]}""")
@@ -424,7 +536,11 @@ class PlayerEventsTest {
         sandbox.executeCommand("damage Steve 3 minecraft:arrow at ~1 ~2 ~3 by @e[tag=projectile,limit=1] from @e[tag=shooter,limit=1]")
 
         assertEquals(17.0, player.health)
-        val payload = sandbox.world.outputs.single { it.command == "damage" }.payload?.asJsonObject ?: error("missing damage payload")
+        val payload =
+            sandbox.world.outputs
+                .single { it.command == "damage" }
+                .payload
+                ?.asJsonObject ?: error("missing damage payload")
         assertEquals("minecraft:arrow", payload.get("damageSource").asString)
         assertEquals("minecraft:arrow", payload.get("sourceType").asString)
         assertEquals("minecraft:arrow", payload.get("directSourceType").asString)
@@ -442,7 +558,11 @@ class PlayerEventsTest {
         sandbox.executeCommand("damage Steve 3 demo:acid")
 
         assertEquals(17.0, player.health)
-        val payload = sandbox.world.outputs.single { it.command == "damage" }.payload?.asJsonObject ?: error("missing damage payload")
+        val payload =
+            sandbox.world.outputs
+                .single { it.command == "damage" }
+                .payload
+                ?.asJsonObject ?: error("missing damage payload")
         assertEquals("demo:acid", payload.get("damageSource").asString)
         val damageType = payload.getAsJsonObject("damageType")
         assertEquals("demo:acid", damageType.get("id").asString)
@@ -462,40 +582,53 @@ class PlayerEventsTest {
         assertEquals(count, PlayerEventTraceAssertions.matching(sandbox.world.playerEventTraces, expectation).size)
     }
 
-    private fun sandboxWithAdvancement(id: ResourceLocation, criterion: Criterion): DatapackSandbox =
+    private fun sandboxWithAdvancement(
+        id: ResourceLocation,
+        criterion: Criterion,
+    ): DatapackSandbox =
         DatapackSandbox(
             profile = VersionProfiles.default,
-            datapack = Datapack(
-                functions = emptyMap(),
-                loadFunctions = emptyList(),
-                tickFunctions = emptyList(),
-                advancements = mapOf(
-                    id to AdvancementDefinition(
-                        id = id,
-                        file = "<test>",
-                        root = JsonObject(),
-                        parent = null,
-                        criteria = mapOf(criterion.name to criterion),
-                        requirements = listOf(listOf(criterion.name)),
-                        rewards = AdvancementReward(),
-                    ),
+            datapack =
+                Datapack(
+                    functions = emptyMap(),
+                    loadFunctions = emptyList(),
+                    tickFunctions = emptyList(),
+                    advancements =
+                        mapOf(
+                            id to
+                                AdvancementDefinition(
+                                    id = id,
+                                    file = "<test>",
+                                    root = JsonObject(),
+                                    parent = null,
+                                    criteria = mapOf(criterion.name to criterion),
+                                    requirements = listOf(listOf(criterion.name)),
+                                    rewards = AdvancementReward(),
+                                ),
+                        ),
                 ),
-            ),
         )
 
-    private fun advancement(id: ResourceLocation, criterionName: String, trigger: String, conditions: JsonObject): AdvancementDefinition =
+    private fun advancement(
+        id: ResourceLocation,
+        criterionName: String,
+        trigger: String,
+        conditions: JsonObject,
+    ): AdvancementDefinition =
         AdvancementDefinition(
             id = id,
             file = "<test>",
             root = JsonObject(),
             parent = null,
-            criteria = mapOf(
-                criterionName to Criterion(
-                    name = criterionName,
-                    trigger = ResourceLocation.parse(trigger),
-                    conditions = conditions,
+            criteria =
+                mapOf(
+                    criterionName to
+                        Criterion(
+                            name = criterionName,
+                            trigger = ResourceLocation.parse(trigger),
+                            conditions = conditions,
+                        ),
                 ),
-            ),
             requirements = listOf(listOf(criterionName)),
             rewards = AdvancementReward(),
         )

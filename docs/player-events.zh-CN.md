@@ -7,6 +7,8 @@
 ```text
 dps> event player Steve item_used minecraft:carrot_on_a_stick
 dps> event player Steve entity_interacted minecraft:villager
+dps> event player Steve entity_interacted @e[type=minecraft:interaction,tag=button,limit=1]
+dps> event player Steve entity_attacked @e[type=minecraft:interaction,tag=button,limit=1]
 dps> event player Steve damage minecraft:fall 4.5
 dps> event player Steve entity_killed minecraft:zombie
 dps> event player Steve block_placed minecraft:oak_log 0 64 0
@@ -31,6 +33,12 @@ event player <name> <event-type> [resource-id] [detail/action|x y z|pos=x,y,z]
 - `placed_block`、`block_placed`、`broke_block`、`block_broken`、`broken_block`：方块 id。
 - `changed_dimension`：`resource-id` 是来源维度，`detail` 是目标维度。
 - `recipe_unlocked`：recipe id。
+
+对于 `entity_interacted`、`entity_attacked`、`player_attacked_entity`、
+`attack_entity` 和 `player_hurt_entity`，id 也可以填写只命中一个真实沙盒实体的
+selector 或 UUID。目标为 interaction 实体时，事件会把玩家 UUID 和当前 game tick
+写入 `interaction` 或 `attack`，并在 event trace 中记录 `response` 与目标 UUID。
+零尺寸 interaction 命中箱、display、marker 和 Marker 模式盔甲架会拒绝这类定向玩家动作。
 
 方块放置/破坏事件的尾部参数也可以声明目标 sparse-world 坐标，支持
 `0 64 0`、`pos=0,64,0`、`blockPos=0,64,0` 或 `@0,64,0`。传入坐标后，
@@ -92,6 +100,13 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar run --version 26.2 \
         "damageSource": "minecraft:fall",
         "amount": 4.5
       }
+    },
+    {
+      "event": {
+        "player": "Steve",
+        "type": "entity_interacted",
+        "target": "@e[type=minecraft:interaction,tag=button,limit=1]"
+      }
     }
   ]
 }
@@ -108,7 +123,8 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar run --version 26.2 \
 | `item_picked_up` / `item_added` | `item` | 把物品加入玩家背包，并作为 inventory changed 的别名路径。 |
 | `key_input` / `key_pressed` / `key_released` | `key`、`action` | 记录玩家键盘输入；沙盒自定义 `key_input` advancement trigger 可匹配。 |
 | `mouse_input` / `mouse_clicked` / `mouse_released` / `mouse_moved` | `button`、`action`、`x`、`y` | 记录玩家鼠标输入；沙盒自定义 `mouse_input` advancement trigger 可匹配。 |
-| `entity_interacted` | `entity` | 触发 `minecraft:player_interacted_with_entity`。 |
+| `entity_interacted` | `entity` 或 `target` selector/UUID | 触发 `minecraft:player_interacted_with_entity`；真实 interaction 目标会记录右击玩家、tick 和 response。 |
+| `entity_attacked` / `player_attacked_entity` / `attack_entity` / `player_hurt_entity` | `entity` 或 `target` selector/UUID | 触发 `minecraft:player_hurt_entity`；真实 interaction 目标会记录攻击玩家和 tick，但不扣生命值。 |
 | `damage` | `damageSource`、`amount`、`entity` | 扣减玩家 health，并触发 `minecraft:entity_hurt_player`；`entity` 表示伤害来源实体。 |
 | `death` | `damageSource`、`amount`、`entity` | 把玩家 health 置为 0，并触发沙盒自定义 `death`；带来源实体的 `damage` 命令击杀玩家时也会触发 `entity_killed_player`。 |
 | `killed_entity` / `entity_killed` / `player_killed_entity` | `entity` | 触发 `minecraft:player_killed_entity`。 |
@@ -121,6 +137,15 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar run --version 26.2 \
 | `effects_changed` | 无 | 用于 effects changed 条件。 |
 
 REPL 快捷命令暴露一个可选 `[resource-id]` 和一个可选 detail 或输入 action。需要更完整上下文时使用 JSON 清单，例如带 NBT 的物品、精确实体上下文、伤害源元数据或鼠标坐标。
+
+定向 interaction 事件发生后，可按原版 interaction 关系形状切换执行者：
+
+```mcfunction
+execute as @e[type=minecraft:interaction,tag=button] on target run function demo:right_click
+execute as @e[type=minecraft:interaction,tag=button] on attacker run function demo:left_click
+```
+
+`on target` 使用最近右击记录，`on attacker` 使用最近攻击记录；尚未产生对应记录时，该执行分支没有上下文。
 
 原版风格的 `damage` 命令也会发出玩家事件：玩家受伤时发出 `damage`；
 生命值归零时发出 `death`；如果命令使用 `by <entity>` 或 `from <entity>`，

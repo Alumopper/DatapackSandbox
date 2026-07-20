@@ -48,7 +48,7 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar commands --json --output build
 | `bossbar` | 部分支持 | `modeled` | `add`、`remove`、`list`、`get`、`set`；修改命令和 `get` 都会记录结构化 data 输出，供断言和 `execute store result` 使用；状态进入 snapshot，不模拟客户端 UI。 |
 | `clear` | 部分支持 | `modeled` | 从沙盒玩家背包移除匹配物品，支持 JSON/SNBT-lite NBT 和 components payload 过滤，记录 matched/removed 数量；`maxCount=0` 作为只查询不删除的检查。 |
 | `clone` | 部分支持 | `modeled` | 复制稀疏世界中的方块状态和方块实体 NBT，并记录结构化复制/变化位置输出；不执行更新、掉落或重叠区物理。 |
-| `damage` | 部分支持 | `modeled` | 降低实体或玩家生命值，结构化输出支持 `at`、`by`、`from` 上下文，会为自定义伤害来源暴露已加载的 `damage_type` JSON 元数据，发出沙盒 damage/death advancement 事件，并记录生命值变化；不计算盔甲、无敌帧、死亡掉落和完整战斗规则。 |
+| `damage` | 部分支持 | `modeled` | 降低实体或玩家生命值，结构化输出支持 `at`、`by`、`from` 上下文，会为自定义伤害来源暴露已加载的 `damage_type` JSON 元数据，发出沙盒 damage/death advancement 事件，并记录生命值变化；display、marker、interaction、Marker 模式盔甲架和带 `Invulnerable` 的实体拒绝伤害；不计算盔甲、无敌帧、死亡掉落和完整战斗规则。 |
 | `data` | 部分支持 | `modeled` | 支持带可选数值 scale 的 `get`，以及 `merge`、`modify`、`remove`，目标支持 `storage`、`entity`、`block`；写入类操作会记录结构化前后输出；path 支持字段、正/负数字索引和简单对象匹配；`modify` 支持 `value`、`from` 和 `string` 来源；append/prepend/insert 会拒绝已存在的非列表目标而不是覆盖它；顶层 NBT 字段经过 schema 校验。 |
 | `datapack` | 部分支持 | `modeled` | `list [available|enabled]` 会在结构化 payload 中报告已加载 pack 路径、typed/raw/tag/resource-index 资源数量、资源覆盖诊断和缺失引用诊断；`enable`/`disable` 作为 no-op 接受，因为沙盒创建后 pack 顺序固定，并会记录请求的 pack 名称和顺序参数供断言。 |
 | `debug`、`jfr`、`perf` | 空操作 | `observed-noop` | 接受 action/参数 token 并记录结构化 debug 输出；不模拟 profiling 和 flight recording。 |
@@ -57,7 +57,7 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar commands --json --output build
 | `deop`、`op` | 空操作 | `observed-noop` | 记录请求的权限目标为结构化 debug 输出；不存储权限状态。 |
 | `effect` | 部分支持 | `modeled` | `give`、`clear`；更新玩家效果状态并触发相关 advancement 事件，也会更新非玩家实体 active effects，并通过 snapshot 和 `ActiveEffects` NBT 暴露；记录可用于 report/assertion 的结构化输出。 |
 | `enchant` | 部分支持 | `modeled` | 向玩家选中物品和非玩家实体主手装备写入附魔组件；命中已加载资源时会在结构化输出中暴露 `enchantment` JSON 元数据，并记录修改后的物品用于 report/assertion；不检查可附魔性。 |
-| `execute` | 部分支持 | `modeled` | 支持 `as`、`at`、`positioned <pos>`、`positioned as <selector>`、`align`、`anchored`、`facing`、`in`、`rotated`、`store`、`if`、`unless`、`run` 的核心路径；`as` 只切换执行者，`at` 会把执行位置、维度和旋转移动到目标实体，`positioned as` 只移动执行位置；`align` 会对校验过的 `x`/`y`/`z` 轴取整；`rotated` 和 `facing` 会更新命令旋转上下文，供 `tp` 的相对旋转参数和局部坐标使用；`anchored` 会更新局部坐标基准点；`store` 目标覆盖 score、storage、entity NBT、block NBT 和 bossbar value/max，NBT 目标会按 byte/short/int/long/float/double 类型和 scale 转换数值，整数类型使用窄化转换语义，嵌套条件失败和 `return fail` 会按 success/result `0` 写入；条件覆盖 `entity`、`score`、`data`、`block`、`blocks`、`predicate`、`function`、`dimension`、`biome` 和 `loaded`。 |
+| `execute` | 部分支持 | `modeled` | 支持 `as`、`at`、`on target|attacker`、`positioned <pos>`、`positioned as <selector>`、`align`、`anchored`、`facing`、`in`、`rotated`、`store`、`if`、`unless`、`run` 的核心路径；`on target`/`on attacker` 会解析 interaction 实体最后记录的右击/攻击玩家；`as` 只切换执行者，`at` 会把执行位置、维度和旋转移动到目标实体，`positioned as` 只移动执行位置；`align` 会对校验过的 `x`/`y`/`z` 轴取整；`rotated` 和 `facing` 会更新命令旋转上下文，供 `tp` 的相对旋转参数和局部坐标使用；`anchored` 会更新局部坐标基准点；`store` 目标覆盖 score、storage、entity NBT、block NBT 和 bossbar value/max，NBT 目标会按 byte/short/int/long/float/double 类型和 scale 转换数值，整数类型使用窄化转换语义，嵌套条件失败和 `return fail` 会按 success/result `0` 写入；条件覆盖 `entity`、`score`、`data`、`block`、`blocks`、`predicate`、`function`、`dimension`、`biome` 和 `loaded`。 |
 | `experience`、`xp` | 部分支持 | `modeled` | `add`、`set`、`query`；玩家 points 与 levels 分开存储；修改和 query 命令都会记录结构化 data 输出，供断言和 `execute store result` 使用。 |
 | `fill` | 部分支持 | `modeled` | `fill <from> <to> <block[state]{nbt}> [replace|keep|destroy|hollow|outline]`；记录结构化变化位置输出；位置参数支持局部坐标；不执行更新或掉落。 |
 | `fillbiome` | 部分支持 | `modeled` | 为显式方块范围记录 biome 覆盖，并记录结构化变化位置输出；同一批显式覆盖可被 `execute if biome` 和 predicate `location_check` 的 biome 条件读取；不模拟区块 biome 容器或生成效果。 |
@@ -67,7 +67,7 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar commands --json --output build
 | `gamerule` | 部分支持 | `modeled` | 存储任意 gamerule 字符串值，并为修改/query 记录结构化输出；不执行具体游戏规则副作用。 |
 | `give` | 部分支持 | `modeled` | 向玩家背包添加物品，记录可用于 report/assertion 的结构化输出；物品含匹配组件且命中已加载资源时会暴露 equipment asset、banner pattern、instrument、jukebox song 和 armor trim material/pattern 元数据；触发 inventory advancement 事件；item argument 支持沙盒 JSON/SNBT-lite NBT 和 components payload。 |
 | `help` | 部分支持 | `modeled` | 输出命令根节点和基础沙盒帮助。 |
-| `item` | 部分支持 | `modeled` | `replace entity|block ... with <item> [count]` 和 `from entity|block ...`；`replace` 与 `modify` 会记录可用于 report/assertion 的结构化输出，物品含匹配组件且命中已加载资源时会暴露 equipment asset、banner pattern、instrument、jukebox song 和 armor trim material/pattern 元数据；item argument 支持沙盒 JSON/SNBT-lite NBT 和 components payload；container item-stack NBT 校验接受旧/新版 `Count`/`count` 与 `Slot`/`slot` 别名；entity 槽位覆盖玩家背包、当前主手、`enderchest.*` 槽和非玩家实体装备槽；`modify entity|block ... <modifier>` 会应用常用 item modifier 函数（`set_components`、`set_custom_data`、`set_count`、`limit_count`、`set_item`、`discard`、`set_damage`、`set_name`、`set_lore`、`copy_nbt`、`copy_components`、`filtered`、`reference`、`sequence`）。 |
+| `item` | 部分支持 | `modeled` | `replace entity|block ... with <item> [count]` 和 `from entity|block ...`；`replace` 与 `modify` 会记录可用于 report/assertion 的结构化输出，物品含匹配组件且命中已加载资源时会暴露 equipment asset、banner pattern、instrument、jukebox song 和 armor trim material/pattern 元数据；item argument 支持沙盒 JSON/SNBT-lite NBT 和 components payload；container item-stack NBT 校验接受旧/新版 `Count`/`count` 与 `Slot`/`slot` 别名；entity 槽位覆盖玩家背包、当前主手、`enderchest.*`、普通非玩家装备、盔甲架装备和 item display 的 `inventory.0`，其他非生物特殊实体拒绝装备槽；`modify entity|block ... <modifier>` 会应用常用 item modifier 函数（`set_components`、`set_custom_data`、`set_count`、`limit_count`、`set_item`、`discard`、`set_damage`、`set_name`、`set_lore`、`copy_nbt`、`copy_components`、`filtered`、`reference`、`sequence`）。 |
 | `kick` | 空操作 | `observed-noop` | 记录请求的踢出目标和消息为结构化 debug 输出；不移除真实网络会话。 |
 | `kill` | 支持 | `modeled` | 移除选中的沙盒实体，并记录可用于 report/assertion 的结构化目标输出；目标维度命中已加载资源时会暴露 dimension 元数据；玩家执行上下文会为非玩家目标触发 `killed_entity` advancement 事件。 |
 | `list` | 支持 | `modeled` | 报告沙盒玩家及 UUID。 |
@@ -99,11 +99,11 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar commands --json --output build
 | `spreadplayers` | 部分支持 | `modeled` | 确定性地把选中实体分布到中心附近；不实现原版碰撞/队伍算法。 |
 | `stop` | 空操作 | `observed-noop` | 记录结构化 debug 生命周期请求；宿主进程仍然控制运行时，不会被沙盒命令停止。 |
 | `stopsound` | 部分支持 | `observed-noop` | 记录为 sound 输出事件。 |
-| `summon` | 部分支持 | `modeled` | 在当前执行维度创建带位置、tag 和 schema 校验 NBT 的实体，并记录可用于 report/assertion 的结构化创建输出；命中已加载资源时会暴露 dimension/dimension_type 元数据，以及 cat/chicken/cow/frog/painting/pig/wolf 等实体 variant 元数据；实体 AI 不 tick。 |
+| `summon` | 部分支持 | `modeled` | 在当前执行维度创建带位置、tag 和 schema 校验 NBT 的实体，并记录可用于 report/assertion 的结构化创建输出；命中已加载资源时会暴露 dimension/dimension_type 元数据，以及 cat/chicken/cow/frog/painting/pig/wolf 等实体 variant 元数据。display 会校验方块/物品/文本内容、变换、渲染属性、成组变换/样式插值和传送插值；盔甲架会校验 Pose、Marker、Small、ShowArms、NoBasePlate、DisabledSlots；marker 保留任意复合 `data`；interaction 会建模 width/height/response、最近攻击/右击记录、命中箱和关系目标。派生渲染状态与命中箱进入实体 snapshot 的 `special`；不执行客户端绘制或实体 AI。 |
 | `tag` | 支持 | `modeled` | `add`、`remove`、`list`。 |
 | `team` | 部分支持 | `modeled` | `add`、`remove`、`list`、`join`、`leave`、`empty`、`modify`；记录结构化队伍/成员/选项输出，不执行 gameplay 副作用。 |
 | `teammsg`、`tm` | 支持 | `modeled` | 记录为 team chat 输出事件；命中已加载的命令 chat type 时会暴露 `chat_type` JSON 元数据。 |
-| `teleport`、`tp` | 部分支持 | `modeled` | 坐标传送支持局部坐标、可选旋转、`facing` 和当前执行维度；目标实体传送会复制目标位置、维度和旋转；记录可用于 report/assertion 的结构化移动输出，命中已加载资源时会暴露 from/to dimension 元数据。 |
+| `teleport`、`tp` | 部分支持 | `modeled` | 坐标传送支持局部坐标、可选旋转、`facing` 和当前执行维度；目标实体传送会复制目标位置、维度和旋转；display 的 `teleport_duration` 会产生确定性的 snapshot 渲染位置插值，而 selector 会立即使用服务端目标位置；记录可用于 report/assertion 的结构化移动输出，命中已加载资源时会暴露 from/to dimension 元数据。 |
 | `tellraw` | 支持 | `modeled` | 解析 JSON text component 并记录输出事件。 |
 | `tick` | 部分支持 | `modeled` | `query`、`rate`、`freeze`、`unfreeze`、`step`、`sprint`、`stop`；更新沙盒 tick 状态，可推进 tick，并记录结构化状态/推进输出用于调试。 |
 | `time` | 部分支持 | `modeled` | `set`、`add`、`query daytime|gametime|day`；修改和 query 都会记录结构化 data 输出，供断言和 `execute store result` 使用。 |
@@ -135,6 +135,22 @@ JSON text component 支持 `text`、`score`、`selector`、`translate`、`keybin
 
 已实现选项：`type`、`tag`、`name`、`gamemode`、`team`、`nbt`、`predicate`、`scores`、`advancements`、`level`、`x_rotation`、`y_rotation`、`limit`、`sort`、`distance`、`x`、`y`、`z`、`dx`、`dy`、`dz`；score 和等级过滤支持 `scores={kills=1..,deaths=..0}`、`level=..5` 这类整数范围，advancement 过滤按玩家当前进度支持整体完成或 criterion 布尔匹配，NBT 过滤使用包含式对象匹配和数值等值比较，predicate 过滤会把候选实体作为 `this` 上下文并使用候选实体的位置/维度交给已加载数据包 predicate 引擎评估，支持 `!` 取反，旋转过滤支持带符号数值范围；`sort=random` 使用基于原点的确定性顺序，便于重复测试。未支持的 selector 选项会按当前 unsupported 策略产生诊断或 warning。
 
+## 特殊实体
+
+从 `1.20.4` 到 `26.2` 的全部内置 profile 都会建模以下特殊实体 NBT：
+
+| 实体 | 已建模状态与行为 |
+|---|---|
+| `block_display`、`item_display`、`text_display` | 校验展示内容和通用 display 字段，接受分解形式或 16 数字矩阵变换；按 tick 对成组的变换/阴影/文本样式状态插值，并按 `teleport_duration` 对渲染位置和旋转插值。命令读取的逻辑位置会立即到达目标。 |
+| `armor_stand` | 校验并保存 `Pose`、`Marker`、`Small`、`ShowArms`、`NoBasePlate`、`Invisible`、`DisabledSlots`；snapshot 暴露有效姿态以及普通/小型/Marker 命中箱。Marker 模式拒绝定向攻击、交互和伤害。 |
+| `marker` | 保存任意复合 `data`，可继续充当 selector/计分板逻辑锚点，暴露零尺寸不可交互命中箱，并拒绝伤害。 |
+| `interaction` | 校验 `width`、`height`、`response`、`attack`、`interaction`；定向玩家事件记录 UUID/timestamp，暴露命中箱和 response，并供 `execute on target` / `execute on attacker` 使用。 |
+
+实体 snapshot 会把派生状态放在 `entities[*].special`。display 包含
+`renderTransformation`、`renderPosition`、插值进度、`cullingBox`、零尺寸游戏
+`hitbox` 和已保存内容；盔甲架和 interaction 则包含有效游戏命中箱。定向玩家事件
+表示客户端已经解析完成的一次命中；沙盒不会从玩家视线做 raycast，也不绘制客户端模型或文本。
+
 ## 世界与 NBT 说明
 
 - 初始世界是稀疏虚空。
@@ -149,7 +165,7 @@ JSON text component 支持 `text`、`score`、`selector`、`translate`、`keybin
 
 | 命令 | 行为等级 | 用途 |
 |---|---:|---|
-| `event player <name> <type> ...` | `modeled` | 注入玩家事件，用于 advancement/predicate 测试，并更新可观察玩家状态，例如消耗/拾取物品、维度、health、recipe 和输入元数据。 |
+| `event player <name> <type> ...` | `modeled` | 注入玩家事件，用于 advancement/predicate 测试，并更新可观察玩家状态，例如消耗/拾取物品、维度、health、recipe 和输入元数据；交互/攻击事件可通过 selector 或 UUID 定向一个真实实体，写入 interaction action NBT 和 response，并供 `execute on target|attacker` 使用。 |
 | `player <name>` | `modeled` | 创建或复用沙盒玩家。 |
 | `inspect <...>` | `modeled` | 查看世界状态、世界边界、score、storage、gamerule、random sequence、scheduled function、强加载 chunk、scoreboard objective/display、team、bossbar、entity state、blocks、biome override、player、玩家物品槽、玩家 recipe、advancement progress、loot、predicate、advancement、recipe、item_modifier、raw JSON resource、tags、resource index、registry group、outputs 和玩家事件 trace。 |
 | `snapshot [file]` | `modeled` | 打印或写出确定性的世界 JSON。 |

@@ -9,8 +9,7 @@ import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
 
 class SandboxBehaviorTest {
-    private fun fixturePack(): Path =
-        Path.of("src/test/resources/packs/counter")
+    private fun fixturePack(): Path = Path.of("src/test/resources/packs/counter")
 
     private fun writeRecipeCommandPack(root: Path): Path {
         Files.writeString(
@@ -46,7 +45,12 @@ class SandboxBehaviorTest {
         sandbox.runTicks(20)
 
         assertEquals(20, sandbox.world.getScore("#clock", "ticks"))
-        assertEquals("ticking", sandbox.world.storages[ResourceLocation.parse("demo:state")]?.get("phase")?.asString)
+        assertEquals(
+            "ticking",
+            sandbox.world.storages[ResourceLocation.parse("demo:state")]
+                ?.get("phase")
+                ?.asString,
+        )
         assertTrue(sandbox.snapshotString().contains("\"version\": \"26.1.2\""))
     }
 
@@ -68,12 +72,21 @@ class SandboxBehaviorTest {
 
         assertEquals(26, sandbox.world.getScore("#clock", "ticks"))
         assertEquals(1, sandbox.world.entities.count { it.type == ResourceLocation.parse("minecraft:marker") && "active" in it.tags })
-        assertEquals(true, sandbox.world.storages[ResourceLocation.parse("demo:state")]?.get("scheduled")?.asBoolean)
+        assertEquals(
+            true,
+            sandbox.world.storages[ResourceLocation.parse("demo:state")]
+                ?.get("scheduled")
+                ?.asBoolean,
+        )
 
         sandbox.executeCommand("schedule function demo:scheduled 5t append")
         sandbox.executeCommand("schedule clear demo:scheduled")
-        val clearPayload = sandbox.world.outputs.last { it.command == "schedule clear" }.payload?.asJsonObject
-            ?: error("missing schedule clear payload")
+        val clearPayload =
+            sandbox.world.outputs
+                .last { it.command == "schedule clear" }
+                .payload
+                ?.asJsonObject
+                ?: error("missing schedule clear payload")
         assertEquals("demo:scheduled", clearPayload.get("id").asString)
         assertEquals(1, clearPayload.get("removed").asInt)
         assertEquals(0, clearPayload.get("remaining").asInt)
@@ -85,8 +98,18 @@ class SandboxBehaviorTest {
 
         sandbox.executeCommand("schedule noop demo:later 1t")
 
-        assertEquals("warning", sandbox.world.outputs.single().channel)
-        assertTrue(sandbox.world.outputs.single().text.contains("schedule"))
+        assertEquals(
+            "warning",
+            sandbox.world.outputs
+                .single()
+                .channel,
+        )
+        assertTrue(
+            sandbox.world.outputs
+                .single()
+                .text
+                .contains("schedule"),
+        )
     }
 
     @Test
@@ -96,27 +119,31 @@ class SandboxBehaviorTest {
         assertTrue(ignored.world.outputs.isEmpty())
 
         val strict = createSandbox("26.1.2", listOf(fixturePack()), unsupportedFeatureMode = UnsupportedFeatureMode.ERROR)
-        val error = assertFailsWith<SandboxException> {
-            strict.executeCommand("schedule noop demo:later 1t")
-        }
+        val error =
+            assertFailsWith<SandboxException> {
+                strict.executeCommand("schedule noop demo:later 1t")
+            }
         assertEquals(DiagnosticCode.UNSUPPORTED_FEATURE, error.code)
     }
 
     @Test
     fun `execution limits stop runaway command counts`() {
-        val sandbox = createFunctionSandboxFromString(
-            version = "26.2",
-            functionText = """
-            say one
-            say two
-            say three
-            """.trimIndent(),
-            limits = SandboxLimits(maxCommands = 2),
-        )
+        val sandbox =
+            createFunctionSandboxFromString(
+                version = "26.2",
+                functionText =
+                    """
+                    say one
+                    say two
+                    say three
+                    """.trimIndent(),
+                limits = SandboxLimits(maxCommands = 2),
+            )
 
-        val error = assertFailsWith<SandboxException> {
-            sandbox.runFunction(SingleFunctionDatapack.DEFAULT_ID)
-        }
+        val error =
+            assertFailsWith<SandboxException> {
+                sandbox.runFunction(SingleFunctionDatapack.DEFAULT_ID)
+            }
 
         assertEquals(DiagnosticCode.COMMAND_ERROR, error.code)
         assertTrue(error.message.contains("Command execution count exceeded sandbox limit 2"))
@@ -125,15 +152,17 @@ class SandboxBehaviorTest {
 
     @Test
     fun `execution limits stop oversized tick runs`() {
-        val sandbox = DatapackSandbox(
-            profile = VersionProfiles.default,
-            datapack = Datapack(emptyMap(), emptyList(), emptyList()),
-            limits = SandboxLimits(maxTicksPerRun = 2),
-        )
+        val sandbox =
+            DatapackSandbox(
+                profile = VersionProfiles.default,
+                datapack = Datapack(emptyMap(), emptyList(), emptyList()),
+                limits = SandboxLimits(maxTicksPerRun = 2),
+            )
 
-        val error = assertFailsWith<SandboxException> {
-            sandbox.runTicks(3)
-        }
+        val error =
+            assertFailsWith<SandboxException> {
+                sandbox.runTicks(3)
+            }
 
         assertEquals(DiagnosticCode.COMMAND_ERROR, error.code)
         assertTrue(error.message.contains("Tick count 3 exceeds sandbox limit 2"))
@@ -142,18 +171,21 @@ class SandboxBehaviorTest {
 
     @Test
     fun `execution limits stop excessive output events`() {
-        val sandbox = createFunctionSandboxFromString(
-            version = "26.2",
-            functionText = """
-            say one
-            say two
-            """.trimIndent(),
-            limits = SandboxLimits(maxOutputEvents = 1),
-        )
+        val sandbox =
+            createFunctionSandboxFromString(
+                version = "26.2",
+                functionText =
+                    """
+                    say one
+                    say two
+                    """.trimIndent(),
+                limits = SandboxLimits(maxOutputEvents = 1),
+            )
 
-        val error = assertFailsWith<SandboxException> {
-            sandbox.runFunction(SingleFunctionDatapack.DEFAULT_ID)
-        }
+        val error =
+            assertFailsWith<SandboxException> {
+                sandbox.runFunction(SingleFunctionDatapack.DEFAULT_ID)
+            }
 
         assertEquals(DiagnosticCode.COMMAND_ERROR, error.code)
         assertTrue(error.message.contains("Output event count 2 exceeds sandbox limit 1"))
@@ -164,34 +196,43 @@ class SandboxBehaviorTest {
     fun `execution limits stop oversized snapshots`() {
         val baseline = createFunctionSandboxFromString(version = "26.2", functionText = "say baseline")
         val limit = baseline.snapshotString().toByteArray(Charsets.UTF_8).size + 200
-        val sandbox = createFunctionSandboxFromString(
-            version = "26.2",
-            functionText = "say ${"x".repeat(1024)}",
-            limits = SandboxLimits(maxSnapshotBytes = limit),
-        )
+        val sandbox =
+            createFunctionSandboxFromString(
+                version = "26.2",
+                functionText = "say ${"x".repeat(1024)}",
+                limits = SandboxLimits(maxSnapshotBytes = limit),
+            )
 
-        val error = assertFailsWith<SandboxException> {
-            sandbox.runFunction(SingleFunctionDatapack.DEFAULT_ID)
-        }
+        val error =
+            assertFailsWith<SandboxException> {
+                sandbox.runFunction(SingleFunctionDatapack.DEFAULT_ID)
+            }
 
         assertEquals(DiagnosticCode.COMMAND_ERROR, error.code)
         assertTrue(error.message.contains("Snapshot size "))
         assertTrue(error.message.contains("exceeds sandbox limit $limit bytes"))
         assertEquals(1, sandbox.world.traces.size)
-        assertEquals(false, sandbox.world.traces.single().success)
+        assertEquals(
+            false,
+            sandbox.world.traces
+                .single()
+                .success,
+        )
     }
 
     @Test
     fun `execution limits make function depth configurable`() {
-        val sandbox = createFunctionSandbox(
-            version = "26.2",
-            functionSources = listOf(FunctionSource.text("demo:loop", "function demo:loop")),
-            limits = SandboxLimits(maxFunctionDepth = 2),
-        )
+        val sandbox =
+            createFunctionSandbox(
+                version = "26.2",
+                functionSources = listOf(FunctionSource.text("demo:loop", "function demo:loop")),
+                limits = SandboxLimits(maxFunctionDepth = 2),
+            )
 
-        val error = assertFailsWith<SandboxException> {
-            sandbox.runFunction("demo:loop")
-        }
+        val error =
+            assertFailsWith<SandboxException> {
+                sandbox.runFunction("demo:loop")
+            }
 
         assertEquals(DiagnosticCode.COMMAND_ERROR, error.code)
         assertTrue(error.message.contains("Function call depth exceeded sandbox limit 2"))
@@ -278,8 +319,18 @@ class SandboxBehaviorTest {
         assertEquals(200, weatherPayload.get("duration").asInt)
         assertEquals(true, weatherPayload.get("raining").asBoolean)
         assertEquals(false, weatherPayload.get("thundering").asBoolean)
-        assertTrue("Steve" in sandbox.world.teams.getValue("red").members)
-        assertEquals("blue", sandbox.world.teams.getValue("red").options["color"])
+        assertTrue(
+            "Steve" in
+                sandbox.world.teams
+                    .getValue("red")
+                    .members,
+        )
+        assertEquals(
+            "blue",
+            sandbox.world.teams
+                .getValue("red")
+                .options["color"],
+        )
         val teamAddOutput = sandbox.world.outputs.single { it.command == "team add" }
         val teamAddPayload = teamAddOutput.payload?.asJsonObject ?: error("missing team add payload")
         assertEquals("red", teamAddOutput.text)
@@ -321,7 +372,14 @@ class SandboxBehaviorTest {
         assertEquals(3, sandbox.world.getScore("#xp", "xp_copy"))
         assertEquals(3, player.fullNbt(sandbox.profile).get("XpLevel").asInt)
         assertTrue(ResourceLocation.parse("minecraft:bread") in player.recipes)
-        assertEquals(2, player.selectedItem?.components?.getAsJsonObject("minecraft:enchantments")?.get("minecraft:sharpness")?.asInt)
+        assertEquals(
+            2,
+            player.selectedItem
+                ?.components
+                ?.getAsJsonObject("minecraft:enchantments")
+                ?.get("minecraft:sharpness")
+                ?.asInt,
+        )
     }
 
     @Test
@@ -381,9 +439,18 @@ class SandboxBehaviorTest {
 
         val player = sandbox.world.requirePlayer("Steve")
         assertEquals(5, player.inventory.single { it.id == apple }.count)
-        val queryPayload = sandbox.world.outputs.last { it.command == "clear" }.payload?.asJsonObject
-            ?: error("missing clear payload")
-        assertEquals("5", sandbox.world.outputs.last { it.command == "clear" }.text)
+        val queryPayload =
+            sandbox.world.outputs
+                .last { it.command == "clear" }
+                .payload
+                ?.asJsonObject
+                ?: error("missing clear payload")
+        assertEquals(
+            "5",
+            sandbox.world.outputs
+                .last { it.command == "clear" }
+                .text,
+        )
         assertEquals(true, queryPayload.get("query").asBoolean)
         assertEquals(5, queryPayload.get("matched").asInt)
         assertEquals(0, queryPayload.get("removed").asInt)
@@ -391,9 +458,18 @@ class SandboxBehaviorTest {
         sandbox.executeCommand("clear Steve minecraft:apple 2")
 
         assertEquals(3, player.inventory.single { it.id == apple }.count)
-        val removePayload = sandbox.world.outputs.last { it.command == "clear" }.payload?.asJsonObject
-            ?: error("missing clear payload")
-        assertEquals("2", sandbox.world.outputs.last { it.command == "clear" }.text)
+        val removePayload =
+            sandbox.world.outputs
+                .last { it.command == "clear" }
+                .payload
+                ?.asJsonObject
+                ?: error("missing clear payload")
+        assertEquals(
+            "2",
+            sandbox.world.outputs
+                .last { it.command == "clear" }
+                .text,
+        )
         assertEquals(false, removePayload.get("query").asBoolean)
         assertEquals(5, removePayload.get("matched").asInt)
         assertEquals(2, removePayload.get("removed").asInt)
@@ -452,9 +528,28 @@ class SandboxBehaviorTest {
         val giveOutput = sandbox.world.outputs.single { it.command == "recipe give" }
         assertTrue(recipe in player.recipes)
         assertEquals("1", giveOutput.text)
-        assertEquals("*", giveOutput.payload?.asJsonObject?.get("recipe")?.asString)
-        assertEquals(1, giveOutput.payload?.asJsonObject?.get("changed")?.asInt)
-        assertEquals("demo:marker", giveOutput.payload?.asJsonObject?.getAsJsonArray("changedRecipes")?.get(0)?.asString)
+        assertEquals(
+            "*",
+            giveOutput.payload
+                ?.asJsonObject
+                ?.get("recipe")
+                ?.asString,
+        )
+        assertEquals(
+            1,
+            giveOutput.payload
+                ?.asJsonObject
+                ?.get("changed")
+                ?.asInt,
+        )
+        assertEquals(
+            "demo:marker",
+            giveOutput.payload
+                ?.asJsonObject
+                ?.getAsJsonArray("changedRecipes")
+                ?.get(0)
+                ?.asString,
+        )
 
         sandbox.executeCommand("scoreboard objectives add recipes dummy")
         sandbox.executeCommand("execute store result score Steve recipes run recipe take Steve *")
@@ -462,7 +557,14 @@ class SandboxBehaviorTest {
         val takeOutput = sandbox.world.outputs.last { it.command == "recipe take" }
         assertTrue(recipe !in player.recipes)
         assertEquals("1", takeOutput.text)
-        assertEquals("demo:marker", takeOutput.payload?.asJsonObject?.getAsJsonArray("changedRecipes")?.get(0)?.asString)
+        assertEquals(
+            "demo:marker",
+            takeOutput.payload
+                ?.asJsonObject
+                ?.getAsJsonArray("changedRecipes")
+                ?.get(0)
+                ?.asString,
+        )
         assertEquals(1, sandbox.world.getScore("Steve", "recipes"))
     }
 
@@ -490,8 +592,12 @@ class SandboxBehaviorTest {
         sandbox.executeCommand("execute store success bossbar demo:stored max run random value 1..1")
         sandbox.executeCommand("execute store success score Steve success run random value 1..1")
         sandbox.executeCommand("execute if entity @e[type=minecraft:skeleton] store success score #none success run random value 1..1")
-        sandbox.executeCommand("execute store success score #nested success run execute if entity @e[type=minecraft:skeleton] run random value 1..1")
-        sandbox.executeCommand("execute store result score #nested runs run execute if entity @e[type=minecraft:skeleton] run random value 1..1")
+        sandbox.executeCommand(
+            "execute store success score #nested success run execute if entity @e[type=minecraft:skeleton] run random value 1..1",
+        )
+        sandbox.executeCommand(
+            "execute store result score #nested runs run execute if entity @e[type=minecraft:skeleton] run random value 1..1",
+        )
         sandbox.executeCommand("execute store success score #nested_pass success run execute if entity Steve run random value 1..1")
 
         assertEquals(ResourceLocation.parse("minecraft:stone"), sandbox.world.requireBlock(BlockPos(0, 1, 0)).id)
@@ -525,7 +631,13 @@ class SandboxBehaviorTest {
         assertEquals(90.0, pig.yaw)
         assertEquals(15.0, pig.pitch)
         assertEquals(4.0, pig.fullNbt().get("Health").asDouble)
-        assertEquals(ResourceLocation.parse("minecraft:diamond_sword"), sandbox.world.requirePlayer("Steve").inventory[0].id)
+        assertEquals(
+            ResourceLocation.parse("minecraft:diamond_sword"),
+            sandbox.world
+                .requirePlayer("Steve")
+                .inventory[0]
+                .id,
+        )
         assertEquals(3, sandbox.world.getScore("Steve", "runs"))
         assertEquals(1, sandbox.world.getScore("Steve", "success"))
         assertEquals(0, sandbox.world.getScore("#none", "success"))
@@ -535,8 +647,13 @@ class SandboxBehaviorTest {
         assertEquals(6L, JsonPaths.get(sandbox.world.storage(ResourceLocation.parse("demo:store")), "value")?.asLong)
         assertEquals(
             6,
-            sandbox.world.requireBlock(BlockPos(2, 0, 0)).fullNbt(BlockPos(2, 0, 0), sandbox.profile)
-                .getAsJsonArray("Items")[0].asJsonObject.get("count").asInt,
+            sandbox.world
+                .requireBlock(BlockPos(2, 0, 0))
+                .fullNbt(BlockPos(2, 0, 0), sandbox.profile)
+                .getAsJsonArray("Items")[0]
+                .asJsonObject
+                .get("count")
+                .asInt,
         )
         assertEquals(7, sandbox.world.bossbars[ResourceLocation.parse("demo:stored")]?.value)
         assertEquals(1, sandbox.world.bossbars[ResourceLocation.parse("demo:stored")]?.max)
@@ -580,9 +697,10 @@ class SandboxBehaviorTest {
         assertEquals(-3, JsonPaths.get(storage, "negativeTruncated")?.asInt)
 
         val strictSandbox = createFunctionSandbox("26.2", functionSources, unsupportedFeatureMode = UnsupportedFeatureMode.ERROR)
-        val error = assertFailsWith<SandboxException> {
-            strictSandbox.executeCommand("execute store result storage demo:typed bad decimal 1 run random value 1..1")
-        }
+        val error =
+            assertFailsWith<SandboxException> {
+                strictSandbox.executeCommand("execute store result storage demo:typed bad decimal 1 run random value 1..1")
+            }
         assertEquals(DiagnosticCode.UNSUPPORTED_FEATURE, error.code)
         assertTrue("Unsupported execute store numeric type 'decimal'" in error.message)
     }
@@ -592,7 +710,10 @@ class SandboxBehaviorTest {
         fun randomValue(seed: Long): String {
             val sandbox = createSandbox("26.1.2", listOf(fixturePack()), world = SandboxWorld().apply { this.seed = seed })
             sandbox.executeCommand("random value 0..1000000")
-            return sandbox.world.outputs.single { it.command == "random value" }.text.orEmpty()
+            return sandbox.world.outputs
+                .single { it.command == "random value" }
+                .text
+                .orEmpty()
         }
 
         assertEquals(randomValue(123), randomValue(123))
@@ -610,7 +731,14 @@ class SandboxBehaviorTest {
         assertEquals(listOf("demo:seq"), valueOutput.targets)
         assertEquals(1, valuePayload.get("value").asInt)
         assertEquals(stateAfterValue, sandbox.world.randomSequences.getValue("demo:seq"))
-        assertEquals(stateAfterValue, sandbox.snapshotJson().getAsJsonObject("randomSequences").get("demo:seq").asLong)
+        assertEquals(
+            stateAfterValue,
+            sandbox
+                .snapshotJson()
+                .getAsJsonObject("randomSequences")
+                .get("demo:seq")
+                .asLong,
+        )
 
         sandbox.executeCommand("random reset demo:seq 42")
         val resetOutput = sandbox.world.outputs.single { it.command == "random reset" }
@@ -639,9 +767,10 @@ class SandboxBehaviorTest {
         assertEquals("demo:seq", clearPayload.getAsJsonArray("sequences")[0].asString)
         assertTrue(sandbox.world.randomSequences.isEmpty())
 
-        val error = assertFailsWith<SandboxException> {
-            sandbox.executeCommand("random reset demo:seq not-a-seed")
-        }
+        val error =
+            assertFailsWith<SandboxException> {
+                sandbox.executeCommand("random reset demo:seq not-a-seed")
+            }
         assertEquals(DiagnosticCode.INPUT_FORMAT, error.code)
         assertTrue(error.message.contains("Invalid random seed"))
     }
@@ -662,16 +791,18 @@ class SandboxBehaviorTest {
 
     @Test
     fun `records command traces and output source metadata`() {
-        val sandbox = createFunctionSandboxFromString(
-            version = "26.2",
-            functionText = """
-            say traced
-            scoreboard objectives add runs dummy
-            scoreboard players set #trace runs 1
-            """.trimIndent(),
-            functionId = "demo:main",
-            sourceName = "<trace-test>",
-        )
+        val sandbox =
+            createFunctionSandboxFromString(
+                version = "26.2",
+                functionText =
+                    """
+                    say traced
+                    scoreboard objectives add runs dummy
+                    scoreboard players set #trace runs 1
+                    """.trimIndent(),
+                functionId = "demo:main",
+                sourceName = "<trace-test>",
+            )
 
         sandbox.runFunction("demo:main")
 
@@ -683,8 +814,20 @@ class SandboxBehaviorTest {
         assertEquals(1, first.outputs)
         assertEquals("<trace-test>", first.source?.file)
         assertEquals(1, first.source?.line)
-        assertEquals("demo:main", first.source?.functionStack?.singleOrNull()?.id.toString())
-        assertEquals(first.source, sandbox.world.outputs.single().source)
+        assertEquals(
+            "demo:main",
+            first.source
+                ?.functionStack
+                ?.singleOrNull()
+                ?.id
+                .toString(),
+        )
+        assertEquals(
+            first.source,
+            sandbox.world.outputs
+                .single()
+                .source,
+        )
         assertEquals(3, sandbox.snapshotJson().getAsJsonArray("traces").size())
     }
 
@@ -714,7 +857,14 @@ class SandboxBehaviorTest {
         assertEquals("scoreboard objectives list", sandbox.world.outputs[0].command)
         assertEquals("No scoreboard objectives", sandbox.world.outputs[0].text)
         assertEquals("rewards (dummy)", sandbox.world.outputs[1].text)
-        assertEquals("dummy", sandbox.world.outputs[1].payload?.asJsonObject?.get("rewards")?.asString)
+        assertEquals(
+            "dummy",
+            sandbox.world.outputs[1]
+                .payload
+                ?.asJsonObject
+                ?.get("rewards")
+                ?.asString,
+        )
     }
 
     @Test
@@ -736,9 +886,27 @@ class SandboxBehaviorTest {
 
         val setOutput = sandbox.world.outputs.first { it.command == "scoreboard objectives setdisplay" }
         assertEquals("sidebar.team.red=runs", setOutput.text)
-        assertEquals("sidebar.team.red", setOutput.payload?.asJsonObject?.get("slot")?.asString)
-        assertEquals("runs", setOutput.payload?.asJsonObject?.get("objective")?.asString)
-        assertEquals(false, setOutput.payload?.asJsonObject?.get("cleared")?.asBoolean)
+        assertEquals(
+            "sidebar.team.red",
+            setOutput.payload
+                ?.asJsonObject
+                ?.get("slot")
+                ?.asString,
+        )
+        assertEquals(
+            "runs",
+            setOutput.payload
+                ?.asJsonObject
+                ?.get("objective")
+                ?.asString,
+        )
+        assertEquals(
+            false,
+            setOutput.payload
+                ?.asJsonObject
+                ?.get("cleared")
+                ?.asBoolean,
+        )
     }
 
     @Test
@@ -755,19 +923,46 @@ class SandboxBehaviorTest {
         assertEquals("hearts", metadata.renderType)
         assertEquals(false, metadata.displayAutoUpdate)
 
-        val detail = sandbox.snapshotJson().getAsJsonArray("objectiveDetails")
-            .single { it.asJsonObject.get("name").asString == "health" }
-            .asJsonObject
+        val detail =
+            sandbox
+                .snapshotJson()
+                .getAsJsonArray("objectiveDetails")
+                .single { it.asJsonObject.get("name").asString == "health" }
+                .asJsonObject
         assertEquals("dummy", detail.get("criteria").asString)
         assertEquals("Health Points", detail.get("displayName").asString)
         assertEquals("hearts", detail.get("renderType").asString)
         assertEquals(false, detail.get("displayAutoUpdate").asBoolean)
 
         val displayNameOutput = sandbox.world.outputs.first { it.command == "scoreboard objectives modify" }
-        assertEquals("health", displayNameOutput.payload?.asJsonObject?.get("objective")?.asString)
-        assertEquals("displayName", displayNameOutput.payload?.asJsonObject?.get("field")?.asString)
-        assertEquals("Health Points", displayNameOutput.payload?.asJsonObject?.get("value")?.asString)
-        assertEquals("health", displayNameOutput.payload?.asJsonObject?.get("previous")?.asString)
+        assertEquals(
+            "health",
+            displayNameOutput.payload
+                ?.asJsonObject
+                ?.get("objective")
+                ?.asString,
+        )
+        assertEquals(
+            "displayName",
+            displayNameOutput.payload
+                ?.asJsonObject
+                ?.get("field")
+                ?.asString,
+        )
+        assertEquals(
+            "Health Points",
+            displayNameOutput.payload
+                ?.asJsonObject
+                ?.get("value")
+                ?.asString,
+        )
+        assertEquals(
+            "health",
+            displayNameOutput.payload
+                ?.asJsonObject
+                ?.get("previous")
+                ?.asString,
+        )
     }
 
     @Test
@@ -782,7 +977,13 @@ class SandboxBehaviorTest {
         assertTrue(playerNbt.has("abilities"))
         assertTrue(playerNbt.has("EnderItems"))
         assertTrue(playerNbt.has("foodLevel"))
-        assertEquals("[]", sandbox.world.outputs.single().text.trim())
+        assertEquals(
+            "[]",
+            sandbox.world.outputs
+                .single()
+                .text
+                .trim(),
+        )
     }
 
     @Test
@@ -818,9 +1019,10 @@ class SandboxBehaviorTest {
     fun `rejects custom entity nbt fields`() {
         val sandbox = createSandbox("26.1.2", listOf(fixturePack()))
 
-        val error = assertFailsWith<SandboxException> {
-            sandbox.executeCommand("""summon minecraft:pig 0 0 0 {test:1}""")
-        }
+        val error =
+            assertFailsWith<SandboxException> {
+                sandbox.executeCommand("""summon minecraft:pig 0 0 0 {test:1}""")
+            }
 
         assertEquals(DiagnosticCode.INPUT_FORMAT, error.code)
         assertTrue(error.message.contains("Unknown NBT field"))
@@ -860,7 +1062,14 @@ class SandboxBehaviorTest {
 
         val player = sandbox.world.requirePlayer("Steve")
         assertEquals(Position(10.0, 64.0, -2.0), player.position)
-        assertEquals(10.0, sandbox.world.requirePlayer("Steve").fullNbt().getAsJsonArray("Pos")[0].asDouble)
+        assertEquals(
+            10.0,
+            sandbox.world
+                .requirePlayer("Steve")
+                .fullNbt()
+                .getAsJsonArray("Pos")[0]
+                .asDouble,
+        )
         val teleportOutput = sandbox.world.outputs.single { it.command == "tp" }
         val teleportPayload = teleportOutput.payload?.asJsonObject ?: error("missing teleport payload")
         val moved = teleportPayload.getAsJsonArray("targets")[0].asJsonObject
@@ -874,11 +1083,17 @@ class SandboxBehaviorTest {
         assertEquals(10.0, to.get("x").asDouble)
         assertEquals(64.0, to.get("y").asDouble)
         assertEquals(-2.0, to.get("z").asDouble)
-        assertEquals("get", sandbox.world.outputs.last { it.command == "get" }.command)
+        assertEquals(
+            "get",
+            sandbox.world.outputs
+                .last { it.command == "get" }
+                .command,
+        )
 
-        val error = assertFailsWith<SandboxException> {
-            sandbox.executeCommand("data modify entity Steve Health set value 1f")
-        }
+        val error =
+            assertFailsWith<SandboxException> {
+                sandbox.executeCommand("data modify entity Steve Health set value 1f")
+            }
         assertEquals(DiagnosticCode.COMMAND_ERROR, error.code)
     }
 
@@ -948,7 +1163,14 @@ class SandboxBehaviorTest {
         assertTrue(mergePayload.getAsJsonObject("value").has("value"))
         assertEquals(true, mergeResult.get("changed").asBoolean)
         assertEquals("demo:src", mergeResult.get("target").asString)
-        assertEquals(1, mergeResult.getAsJsonObject("after").getAsJsonObject("value").get("foo").asInt)
+        assertEquals(
+            1,
+            mergeResult
+                .getAsJsonObject("after")
+                .getAsJsonObject("value")
+                .get("foo")
+                .asInt,
+        )
         val modifyOutputs = sandbox.world.outputs.filter { it.command == "data modify" }
         val mergedOutput = modifyOutputs.last()
         val mergedPayload = mergedOutput.payload?.asJsonObject ?: error("missing data modify payload")
@@ -962,11 +1184,19 @@ class SandboxBehaviorTest {
         assertEquals("merged", mergedDetails.get("path").asString)
         assertEquals(1, mergedPayload.getAsJsonObject("value").get("a").asInt)
         assertEquals(true, mergedResult.get("changed").asBoolean)
-        assertEquals(1, mergedResult.getAsJsonObject("after").getAsJsonObject("merged").get("a").asInt)
+        assertEquals(
+            1,
+            mergedResult
+                .getAsJsonObject("after")
+                .getAsJsonObject("merged")
+                .get("a")
+                .asInt,
+        )
 
-        val error = assertFailsWith<SandboxException> {
-            sandbox.executeCommand("data modify storage demo:dst missing set from storage demo:src nope")
-        }
+        val error =
+            assertFailsWith<SandboxException> {
+                sandbox.executeCommand("data modify storage demo:dst missing set from storage demo:src nope")
+            }
         assertEquals(DiagnosticCode.COMMAND_ERROR, error.code)
     }
 
@@ -975,9 +1205,10 @@ class SandboxBehaviorTest {
         val sandbox = createSandbox("26.1.2", listOf(fixturePack()))
 
         sandbox.executeCommand("""data merge storage demo:dst {list:5}""")
-        val error = assertFailsWith<SandboxException> {
-            sandbox.executeCommand("data modify storage demo:dst list append value 1")
-        }
+        val error =
+            assertFailsWith<SandboxException> {
+                sandbox.executeCommand("data modify storage demo:dst list append value 1")
+            }
 
         assertEquals(DiagnosticCode.COMMAND_ERROR, error.code)
         assertTrue(error.message.contains("Data path 'list' is not a list"), error.render())
@@ -1011,9 +1242,10 @@ class SandboxBehaviorTest {
         assertEquals(true, removeResult.get("changed").asBoolean)
         assertEquals(1, removeResult.getAsJsonObject("after").getAsJsonArray("list").size())
 
-        val error = assertFailsWith<SandboxException> {
-            sandbox.executeCommand("data modify storage demo:path list[-2].count set value 9")
-        }
+        val error =
+            assertFailsWith<SandboxException> {
+                sandbox.executeCommand("data modify storage demo:path list[-2].count set value 9")
+            }
         assertEquals(DiagnosticCode.COMMAND_ERROR, error.code)
     }
 
@@ -1030,9 +1262,10 @@ class SandboxBehaviorTest {
         assertEquals(10.0, output.payload?.asDouble)
         assertEquals(7, sandbox.world.getScore("#scaled", "data"))
 
-        val error = assertFailsWith<SandboxException> {
-            sandbox.executeCommand("data get storage demo:src name 2")
-        }
+        val error =
+            assertFailsWith<SandboxException> {
+                sandbox.executeCommand("data get storage demo:src name 2")
+            }
         assertEquals(DiagnosticCode.COMMAND_ERROR, error.code)
     }
 
@@ -1053,9 +1286,10 @@ class SandboxBehaviorTest {
         assertEquals("Bet", JsonPaths.get(dst, "tail")?.asString)
         assertEquals("Beta", JsonPaths.get(dst, "list[0]")?.asString)
 
-        val error = assertFailsWith<SandboxException> {
-            sandbox.executeCommand("data modify storage demo:dst missing set string storage demo:src nope")
-        }
+        val error =
+            assertFailsWith<SandboxException> {
+                sandbox.executeCommand("data modify storage demo:dst missing set string storage demo:src nope")
+            }
         assertEquals(DiagnosticCode.COMMAND_ERROR, error.code)
     }
 
@@ -1078,13 +1312,19 @@ class SandboxBehaviorTest {
         val sandbox = createSandbox("26.1.2", listOf(fixturePack()))
 
         sandbox.executeCommand("setblock 0 0 1 minecraft:chest")
-        val error = assertFailsWith<SandboxException> {
-            sandbox.executeCommand("data modify block 0 0 1 test set value 1")
-        }
+        val error =
+            assertFailsWith<SandboxException> {
+                sandbox.executeCommand("data modify block 0 0 1 test set value 1")
+            }
 
         assertEquals(DiagnosticCode.INPUT_FORMAT, error.code)
         assertTrue(error.message.contains("custom block NBT fields are not allowed"))
-        assertTrue(!sandbox.world.requireBlock(BlockPos(0, 0, 1)).nbt.has("test"))
+        assertTrue(
+            !sandbox.world
+                .requireBlock(BlockPos(0, 0, 1))
+                .nbt
+                .has("test"),
+        )
     }
 
     @Test
@@ -1092,9 +1332,10 @@ class SandboxBehaviorTest {
         val sandbox = createSandbox("26.1.2", listOf(fixturePack()))
 
         sandbox.executeCommand("setblock 0 0 1 minecraft:chest")
-        val error = assertFailsWith<SandboxException> {
-            sandbox.executeCommand("""data modify block 0 0 1 Items append value {Slot:0b,id:"minecraft:stone",count:1b,test:1}""")
-        }
+        val error =
+            assertFailsWith<SandboxException> {
+                sandbox.executeCommand("""data modify block 0 0 1 Items append value {Slot:0b,id:"minecraft:stone",count:1b,test:1}""")
+            }
 
         assertEquals(DiagnosticCode.INPUT_FORMAT, error.code)
         assertTrue(error.message.contains("Unknown NBT field(s) for item stack"))

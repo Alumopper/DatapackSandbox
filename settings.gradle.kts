@@ -14,4 +14,4 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "datapack-sandbox"
-include(":core", ":cli")
+include(":core", ":renderer", ":testkit", ":manifest", ":cli", ":schema-generator")

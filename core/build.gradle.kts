@@ -12,6 +12,12 @@ kotlin {
     jvmToolchain(25)
 }
 
+sourceSets {
+    main {
+        resources.srcDir(rootProject.layout.projectDirectory.dir("schema/vanilla"))
+    }
+}
+
 dependencies {
     api("com.google.code.gson:gson:2.13.2")
     implementation("com.mojang:brigadier:1.3.10")

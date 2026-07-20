@@ -8,17 +8,27 @@ object ConsoleStyle {
             (System.console() != null || System.getenv("CLICOLOR_FORCE") == "1")
 
     fun green(text: String): String = color("32", text)
+
     fun red(text: String): String = color("31", text)
+
     fun yellow(text: String): String = color("33", text)
+
     fun blue(text: String): String = color("34", text)
+
     fun magenta(text: String): String = color("35", text)
+
     fun cyan(text: String): String = color("36", text)
+
     fun brightCyan(text: String): String = color("96", text)
+
     fun gray(text: String): String = color("90", text)
+
     fun dim(text: String): String = color("2", text)
+
     fun bold(text: String): String = color("1", text)
 
     fun success(text: String): String = green("+ $text")
+
     fun failure(text: String): String = red("- $text")
 
     fun diagnostic(text: String): String = red(text)
@@ -26,19 +36,22 @@ object ConsoleStyle {
     fun minecraft(segments: List<OutputTextSegment>): String =
         if (segments.isEmpty()) "" else segments.joinToString(separator = "") { minecraft(it) }
 
-    private fun color(code: String, text: String): String =
-        if (enabled) "\u001B[${code}m$text\u001B[0m" else text
+    private fun color(
+        code: String,
+        text: String,
+    ): String = if (enabled) "\u001B[${code}m$text\u001B[0m" else text
 
     private fun minecraft(segment: OutputTextSegment): String {
         if (!enabled) return segment.text
-        val codes = buildList {
-            segment.color?.let { add(minecraftColorCode(it)) }
-            if (segment.bold) add("1")
-            if (segment.italic) add("3")
-            if (segment.underlined) add("4")
-            if (segment.strikethrough) add("9")
-            if (segment.obfuscated) add("2")
-        }.filterNotNull()
+        val codes =
+            buildList {
+                segment.color?.let { add(minecraftColorCode(it)) }
+                if (segment.bold) add("1")
+                if (segment.italic) add("3")
+                if (segment.underlined) add("4")
+                if (segment.strikethrough) add("9")
+                if (segment.obfuscated) add("2")
+            }.filterNotNull()
         return if (codes.isEmpty()) segment.text else "\u001B[${codes.joinToString(";")}m${segment.text}\u001B[0m"
     }
 

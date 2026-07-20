@@ -80,7 +80,7 @@ export class SandboxPanel implements vscode.Disposable {
   }
 
   private async start(payload: Record<string, unknown>): Promise<Record<string, unknown>> {
-    await this.client.create(String(payload.version || "26.2"), stringList(payload.packs));
+    await this.client.create(String(payload.version || "").trim() || undefined, stringList(payload.packs));
     return this.inspect();
   }
 
@@ -170,7 +170,7 @@ function parseJsonPayload(value: unknown, label: string): unknown {
 
 function html(webview: vscode.Webview): string {
   const nonce = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-  const version = vscode.workspace.getConfiguration("datapackSandbox").get("defaultVersion", "26.2");
+  const version = vscode.workspace.getConfiguration("datapackSandbox").get("defaultVersion", "");
   return `<!doctype html>
 <html lang="en">
 <head>

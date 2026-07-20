@@ -54,15 +54,17 @@ data class TraceExpectation(
     /**
      * Returns every trace event that satisfies this expectation.
      */
-    fun matching(traces: List<CommandTraceEvent>): List<CommandTraceEvent> =
-        traces.filter(::matches)
+    fun matching(traces: List<CommandTraceEvent>): List<CommandTraceEvent> = traces.filter(::matches)
 
     /**
      * Returns assertion failure messages for [traces].
      *
      * An empty list means the expectation passed.
      */
-    fun failures(traces: List<CommandTraceEvent>, label: String = "trace"): List<String> {
+    fun failures(
+        traces: List<CommandTraceEvent>,
+        label: String = "trace",
+    ): List<String> {
         val matches = matching(traces)
         if (count != null && matches.size != count) {
             return listOf("$label expected $count match(es) but found ${matches.size}: ${describe()}; ${actualTraces(traces)}")
@@ -112,20 +114,32 @@ data class TraceExpectation(
 
     private fun actualTraces(traces: List<CommandTraceEvent>): String {
         if (traces.isEmpty()) return "actual traces: <none>"
-        val rendered = traces.take(5).mapIndexed { index, trace ->
-            val status = if (trace.success) "OK" else "ERR"
-            val source = trace.source?.file?.let { " file=$it" }.orEmpty()
-            val line = trace.source?.line?.let { ":$it" }.orEmpty()
-            val stats = " commands=${trace.commandsExecuted} outputs=${trace.outputs} diffs=${trace.snapshotDiffs.size}"
-            val outputText = trace.outputEvents
-                .firstOrNull()
-                ?.text
-                ?.truncateForAssertion()
-                ?.let { " output=${quote(it)}" }
-                .orEmpty()
-            val error = trace.errorCode?.let { " error=$it" }.orEmpty()
-            "#${index + 1} [$status] root=${trace.root} command=${quote(trace.command.truncateForAssertion())}$stats$outputText$source$line$error"
-        }
+        val rendered =
+            traces.take(5).mapIndexed { index, trace ->
+                val status = if (trace.success) "OK" else "ERR"
+                val source =
+                    trace.source
+                        ?.file
+                        ?.let { " file=$it" }
+                        .orEmpty()
+                val line =
+                    trace.source
+                        ?.line
+                        ?.let { ":$it" }
+                        .orEmpty()
+                val stats = " commands=${trace.commandsExecuted} outputs=${trace.outputs} diffs=${trace.snapshotDiffs.size}"
+                val outputText =
+                    trace.outputEvents
+                        .firstOrNull()
+                        ?.text
+                        ?.truncateForAssertion()
+                        ?.let { " output=${quote(it)}" }
+                        .orEmpty()
+                val error = trace.errorCode?.let { " error=$it" }.orEmpty()
+                "#${index + 1} [$status] root=${trace.root} command=${quote(
+                    trace.command.truncateForAssertion(),
+                )}$stats$outputText$source$line$error"
+            }
         val suffix = if (traces.size > rendered.size) "; ... +${traces.size - rendered.size} more" else ""
         return "actual traces: ${rendered.joinToString("; ")}$suffix"
     }
@@ -145,14 +159,19 @@ object TraceAssertions {
     /**
      * Returns every event in [traces] matching [expectation].
      */
-    fun matching(traces: List<CommandTraceEvent>, expectation: TraceExpectation): List<CommandTraceEvent> =
-        expectation.matching(traces)
+    fun matching(
+        traces: List<CommandTraceEvent>,
+        expectation: TraceExpectation,
+    ): List<CommandTraceEvent> = expectation.matching(traces)
 
     /**
      * Returns human-readable failures for [expectation].
      *
      * An empty list means the expectation passed.
      */
-    fun failures(traces: List<CommandTraceEvent>, expectation: TraceExpectation, label: String = "trace"): List<String> =
-        expectation.failures(traces, label)
+    fun failures(
+        traces: List<CommandTraceEvent>,
+        expectation: TraceExpectation,
+        label: String = "trace",
+    ): List<String> = expectation.failures(traces, label)
 }

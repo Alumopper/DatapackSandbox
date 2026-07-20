@@ -1,9 +1,16 @@
 ﻿package moe.afox.dpsandbox.core
 
-data class CommandToken(val text: String, val start: Int, val end: Int)
+data class CommandToken(
+    val text: String,
+    val start: Int,
+    val end: Int,
+)
 
 object CommandTokenizer {
-    fun tokenize(command: String, location: SourceLocation? = null): List<CommandToken> {
+    fun tokenize(
+        command: String,
+        location: SourceLocation? = null,
+    ): List<CommandToken> {
         val tokens = mutableListOf<CommandToken>()
         var index = 0
         while (index < command.length) {
@@ -94,9 +101,13 @@ object CommandTokenizer {
         return tokens
     }
 
-    fun tailFrom(command: String, token: CommandToken): String =
-        command.substring(token.start).trim()
+    fun tailFrom(
+        command: String,
+        token: CommandToken,
+    ): String = command.substring(token.start).trim()
 
-    fun tailAfter(command: String, token: CommandToken): String =
-        command.substring(token.end).trimStart()
+    fun tailAfter(
+        command: String,
+        token: CommandToken,
+    ): String = command.substring(token.end).trimStart()
 }

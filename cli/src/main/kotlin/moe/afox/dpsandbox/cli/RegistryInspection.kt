@@ -9,20 +9,21 @@ data class RegistryInspectionGroup(
 )
 
 object RegistryInspection {
-    val groupNames: List<String> = listOf(
-        "items",
-        "blocks",
-        "entity_types",
-        "biomes",
-        "damage_types",
-        "enchantments",
-        "effects",
-        "dimensions",
-        "loot_context_types",
-        "advancement_triggers",
-        "loot_conditions",
-        "loot_functions",
-    )
+    val groupNames: List<String> =
+        listOf(
+            "items",
+            "blocks",
+            "entity_types",
+            "biomes",
+            "damage_types",
+            "enchantments",
+            "effects",
+            "dimensions",
+            "loot_context_types",
+            "advancement_triggers",
+            "loot_conditions",
+            "loot_functions",
+        )
 
     fun groups(profile: VersionProfile): List<RegistryInspectionGroup> {
         val view = profile.registryView
@@ -42,7 +43,10 @@ object RegistryInspection {
         )
     }
 
-    fun select(profile: VersionProfile, groupFilter: String?): List<RegistryInspectionGroup> {
+    fun select(
+        profile: VersionProfile,
+        groupFilter: String?,
+    ): List<RegistryInspectionGroup> {
         val normalizedFilter = groupFilter?.replace('-', '_')
         val groups = groups(profile)
         return if (normalizedFilter == null) {
@@ -53,21 +57,22 @@ object RegistryInspection {
     }
 
     fun aliases(name: String): Set<String> {
-        val singular = when (name) {
-            "items" -> setOf("item")
-            "blocks" -> setOf("block")
-            "entity_types" -> setOf("entity_type", "entities", "entity")
-            "biomes" -> setOf("biome")
-            "damage_types" -> setOf("damage_type")
-            "enchantments" -> setOf("enchantment")
-            "effects" -> setOf("effect")
-            "dimensions" -> setOf("dimension")
-            "loot_context_types" -> setOf("loot_context_type", "loot_contexts")
-            "advancement_triggers" -> setOf("advancement_trigger", "triggers")
-            "loot_conditions" -> setOf("loot_condition", "conditions")
-            "loot_functions" -> setOf("loot_function")
-            else -> emptySet()
-        }
+        val singular =
+            when (name) {
+                "items" -> setOf("item")
+                "blocks" -> setOf("block")
+                "entity_types" -> setOf("entity_type", "entities", "entity")
+                "biomes" -> setOf("biome")
+                "damage_types" -> setOf("damage_type")
+                "enchantments" -> setOf("enchantment")
+                "effects" -> setOf("effect")
+                "dimensions" -> setOf("dimension")
+                "loot_context_types" -> setOf("loot_context_type", "loot_contexts")
+                "advancement_triggers" -> setOf("advancement_trigger", "triggers")
+                "loot_conditions" -> setOf("loot_condition", "conditions")
+                "loot_functions" -> setOf("loot_function")
+                else -> emptySet()
+            }
         return (setOf(name, name.replace('_', '-')) + singular).map { it.replace('-', '_') }.toSet()
     }
 }

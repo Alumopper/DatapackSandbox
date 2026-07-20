@@ -17,6 +17,8 @@ kotlin {
 
 dependencies {
     implementation(project(":core"))
+    implementation(project(":renderer"))
+    implementation(project(":manifest"))
     implementation("com.github.ajalt.clikt:clikt:5.1.0")
     implementation("com.google.code.gson:gson:2.13.2")
     implementation("org.jline:jline:3.30.6")
@@ -27,10 +29,6 @@ dependencies {
 
 application {
     mainClass.set("moe.afox.dpsandbox.cli.MainKt")
-}
-
-tasks.processResources {
-    from(rootProject.layout.projectDirectory.file("docs/dps-manifest.schema.json"))
 }
 
 tasks.register<Jar>("fatJar") {
@@ -46,16 +44,18 @@ tasks.register<Jar>("fatJar") {
     from(sourceSets.main.get().output)
     dependsOn(configurations.runtimeClasspath)
     from({
-        configurations.runtimeClasspath.get()
+        configurations.runtimeClasspath
+            .get()
             .filter { it.name.endsWith(".jar") }
             .map { zipTree(it) }
     })
 }
 
 val fatJar = tasks.named<Jar>("fatJar")
-val cliSmokeJavaLauncher = javaToolchains.launcherFor {
-    languageVersion.set(JavaLanguageVersion.of(25))
-}
+val cliSmokeJavaLauncher =
+    javaToolchains.launcherFor {
+        languageVersion.set(JavaLanguageVersion.of(25))
+    }
 
 fun registerCliJarSmokeTask(
     name: String,
@@ -65,94 +65,113 @@ fun registerCliJarSmokeTask(
     group = "verification"
     description = descriptionText
     dependsOn(fatJar)
-    executable = cliSmokeJavaLauncher.get().executablePath.asFile.absolutePath
+    executable =
+        cliSmokeJavaLauncher
+            .get()
+            .executablePath.asFile.absolutePath
     inputs.file(fatJar.flatMap { it.archiveFile })
 
     doFirst {
-        setArgs(listOf("-jar", fatJar.get().archiveFile.get().asFile.absolutePath) + cliArgs)
+        setArgs(
+            listOf(
+                "-jar",
+                fatJar
+                    .get()
+                    .archiveFile
+                    .get()
+                    .asFile.absolutePath,
+            ) + cliArgs,
+        )
     }
 }
 
-val smokeCliJarVersion = registerCliJarSmokeTask(
-    name = "smokeCliJarVersion",
-    descriptionText = "Runs the standalone CLI jar version command.",
-    "version",
-)
+val smokeCliJarVersion =
+    registerCliJarSmokeTask(
+        name = "smokeCliJarVersion",
+        descriptionText = "Runs the standalone CLI jar version command.",
+        "version",
+    )
 
 val versionProfileDoc = rootProject.layout.projectDirectory.file("docs/version-profile.md")
-val smokeCliJarVersionDocs = registerCliJarSmokeTask(
-    name = "smokeCliJarVersionDocs",
-    descriptionText = "Checks that the generated version profile docs table is current.",
-    "version",
-    "--docs",
-    "--check",
-    versionProfileDoc.asFile.absolutePath,
-)
+val smokeCliJarVersionDocs =
+    registerCliJarSmokeTask(
+        name = "smokeCliJarVersionDocs",
+        descriptionText = "Checks that the generated version profile docs table is current.",
+        "version",
+        "--docs",
+        "--check",
+        versionProfileDoc.asFile.absolutePath,
+    )
 smokeCliJarVersionDocs.configure {
     inputs.file(versionProfileDoc)
 }
 
 val versionProfileZhDoc = rootProject.layout.projectDirectory.file("docs/version-profile.zh-CN.md")
-val smokeCliJarVersionDocsZh = registerCliJarSmokeTask(
-    name = "smokeCliJarVersionDocsZh",
-    descriptionText = "Checks that the generated localized version profile docs table is current.",
-    "version",
-    "--docs",
-    "--locale",
-    "zh-CN",
-    "--check",
-    versionProfileZhDoc.asFile.absolutePath,
-)
+val smokeCliJarVersionDocsZh =
+    registerCliJarSmokeTask(
+        name = "smokeCliJarVersionDocsZh",
+        descriptionText = "Checks that the generated localized version profile docs table is current.",
+        "version",
+        "--docs",
+        "--locale",
+        "zh-CN",
+        "--check",
+        versionProfileZhDoc.asFile.absolutePath,
+    )
 smokeCliJarVersionDocsZh.configure {
     inputs.file(versionProfileZhDoc)
 }
 
 val commandSupportDoc = rootProject.layout.projectDirectory.file("docs/command-support.md")
-val smokeCliJarCommandDocs = registerCliJarSmokeTask(
-    name = "smokeCliJarCommandDocs",
-    descriptionText = "Checks that command support docs cover the command behavior catalog.",
-    "commands",
-    "--check",
-    commandSupportDoc.asFile.absolutePath,
-)
+val smokeCliJarCommandDocs =
+    registerCliJarSmokeTask(
+        name = "smokeCliJarCommandDocs",
+        descriptionText = "Checks that command support docs cover the command behavior catalog.",
+        "commands",
+        "--check",
+        commandSupportDoc.asFile.absolutePath,
+    )
 smokeCliJarCommandDocs.configure {
     inputs.file(commandSupportDoc)
 }
 
 val commandSupportZhDoc = rootProject.layout.projectDirectory.file("docs/command-support.zh-CN.md")
-val smokeCliJarCommandDocsZh = registerCliJarSmokeTask(
-    name = "smokeCliJarCommandDocsZh",
-    descriptionText = "Checks that localized command support docs cover the command behavior catalog.",
-    "commands",
-    "--check",
-    commandSupportZhDoc.asFile.absolutePath,
-)
+val smokeCliJarCommandDocsZh =
+    registerCliJarSmokeTask(
+        name = "smokeCliJarCommandDocsZh",
+        descriptionText = "Checks that localized command support docs cover the command behavior catalog.",
+        "commands",
+        "--check",
+        commandSupportZhDoc.asFile.absolutePath,
+    )
 smokeCliJarCommandDocsZh.configure {
     inputs.file(commandSupportZhDoc)
 }
 
 val resourceFormatsDoc = rootProject.layout.projectDirectory.file("docs/resource-formats.md")
-val smokeCliJarResourceDocs = registerCliJarSmokeTask(
-    name = "smokeCliJarResourceDocs",
-    descriptionText = "Checks that resource format docs cover the resource behavior catalog.",
-    "resources",
-    "--check",
-    resourceFormatsDoc.asFile.absolutePath,
-)
+val smokeCliJarResourceDocs =
+    registerCliJarSmokeTask(
+        name = "smokeCliJarResourceDocs",
+        descriptionText = "Checks that resource format docs cover the resource behavior catalog.",
+        "resources",
+        "--check",
+        resourceFormatsDoc.asFile.absolutePath,
+    )
 smokeCliJarResourceDocs.configure {
     inputs.file(resourceFormatsDoc)
 }
 
 val resourceFormatsZhDoc = rootProject.layout.projectDirectory.file("docs/resource-formats.zh-CN.md")
-val smokeCliJarResourceDocsZh = registerCliJarSmokeTask(
-    name = "smokeCliJarResourceDocsZh",
-    descriptionText = "Checks that localized resource format docs cover the resource behavior catalog.",
-    "resources",
-    "--check",
-    resourceFormatsZhDoc.asFile.absolutePath,
-    "--locale",
-    "zh-CN",
-)
+val smokeCliJarResourceDocsZh =
+    registerCliJarSmokeTask(
+        name = "smokeCliJarResourceDocsZh",
+        descriptionText = "Checks that localized resource format docs cover the resource behavior catalog.",
+        "resources",
+        "--check",
+        resourceFormatsZhDoc.asFile.absolutePath,
+        "--locale",
+        "zh-CN",
+    )
 smokeCliJarResourceDocsZh.configure {
     inputs.file(resourceFormatsZhDoc)
 }
@@ -161,73 +180,83 @@ val examplesDir = rootProject.layout.projectDirectory.dir("examples")
 val fullStackExamplePack = examplesDir.dir("full-stack/pack")
 
 val smokeResourceIndexOutput = layout.buildDirectory.file("smoke/resources-loaded.json")
-val smokeCliJarResourcesLoaded = registerCliJarSmokeTask(
-    name = "smokeCliJarResourcesLoaded",
-    descriptionText = "Checks the standalone CLI jar can export a loaded pack resource index.",
-    "resources",
-    "--version",
-    "26.2",
-    "--pack",
-    fullStackExamplePack.asFile.absolutePath,
-    "--type",
-    "function",
-    "--id",
-    "demo:reward",
-    "--namespace",
-    "demo",
-    "--source-pack",
-    fullStackExamplePack.asFile.absolutePath,
-    "--active-only",
-    "--json",
-    "--output",
-    smokeResourceIndexOutput.get().asFile.absolutePath,
-)
+val smokeCliJarResourcesLoaded =
+    registerCliJarSmokeTask(
+        name = "smokeCliJarResourcesLoaded",
+        descriptionText = "Checks the standalone CLI jar can export a loaded pack resource index.",
+        "resources",
+        "--version",
+        "26.2",
+        "--pack",
+        fullStackExamplePack.asFile.absolutePath,
+        "--type",
+        "function",
+        "--id",
+        "demo:reward",
+        "--namespace",
+        "demo",
+        "--source-pack",
+        fullStackExamplePack.asFile.absolutePath,
+        "--active-only",
+        "--json",
+        "--output",
+        smokeResourceIndexOutput.get().asFile.absolutePath,
+    )
 smokeCliJarResourcesLoaded.configure {
     inputs.dir(fullStackExamplePack)
     outputs.file(smokeResourceIndexOutput)
     doFirst {
-        smokeResourceIndexOutput.get().asFile.parentFile.mkdirs()
+        smokeResourceIndexOutput
+            .get()
+            .asFile.parentFile
+            .mkdirs()
     }
 }
 
 val smokeSchemaOutput = layout.buildDirectory.file("smoke/dps-manifest.schema.json")
-val smokeCliJarSchema = registerCliJarSmokeTask(
-    name = "smokeCliJarSchema",
-    descriptionText = "Exports the bundled manifest JSON Schema from the standalone CLI jar.",
-    "schema",
-    "--output",
-    smokeSchemaOutput.get().asFile.absolutePath,
-)
+val smokeCliJarSchema =
+    registerCliJarSmokeTask(
+        name = "smokeCliJarSchema",
+        descriptionText = "Exports the bundled manifest JSON Schema from the standalone CLI jar.",
+        "schema",
+        "--output",
+        smokeSchemaOutput.get().asFile.absolutePath,
+    )
 smokeCliJarSchema.configure {
     outputs.file(smokeSchemaOutput)
     doFirst {
-        smokeSchemaOutput.get().asFile.parentFile.mkdirs()
+        smokeSchemaOutput
+            .get()
+            .asFile.parentFile
+            .mkdirs()
     }
 }
 
-val manifestSchemaDoc = rootProject.layout.projectDirectory.file("docs/dps-manifest.schema.json")
-val smokeCliJarSchemaDocs = registerCliJarSmokeTask(
-    name = "smokeCliJarSchemaDocs",
-    descriptionText = "Checks that the checked-in manifest JSON Schema matches the standalone CLI jar.",
-    "schema",
-    "--check",
-    manifestSchemaDoc.asFile.absolutePath,
-)
+val manifestSchemaDoc = rootProject.layout.projectDirectory.file("schema/manifest/dps-manifest.schema.json")
+val smokeCliJarSchemaDocs =
+    registerCliJarSmokeTask(
+        name = "smokeCliJarSchemaDocs",
+        descriptionText = "Checks that the checked-in manifest JSON Schema matches the standalone CLI jar.",
+        "schema",
+        "--check",
+        manifestSchemaDoc.asFile.absolutePath,
+    )
 smokeCliJarSchemaDocs.configure {
     inputs.file(manifestSchemaDoc)
 }
 
 val smokeDiffBefore = layout.buildDirectory.file("smoke/diff-before-report.json")
 val smokeDiffAfter = layout.buildDirectory.file("smoke/diff-after-report.json")
-val smokeCliJarDiff = registerCliJarSmokeTask(
-    name = "smokeCliJarDiff",
-    descriptionText = "Checks the standalone CLI jar can compare report snapshots.",
-    "diff",
-    "--snapshot",
-    "--check",
-    smokeDiffBefore.get().asFile.absolutePath,
-    smokeDiffAfter.get().asFile.absolutePath,
-)
+val smokeCliJarDiff =
+    registerCliJarSmokeTask(
+        name = "smokeCliJarDiff",
+        descriptionText = "Checks the standalone CLI jar can compare report snapshots.",
+        "diff",
+        "--snapshot",
+        "--check",
+        smokeDiffBefore.get().asFile.absolutePath,
+        smokeDiffAfter.get().asFile.absolutePath,
+    )
 smokeCliJarDiff.configure {
     doFirst {
         smokeDiffBefore.get().asFile.apply {
@@ -242,49 +271,70 @@ smokeCliJarDiff.configure {
 }
 
 val smokeBenchmarkOutput = layout.buildDirectory.file("smoke/benchmark.json")
-val smokeCliJarBenchmark = registerCliJarSmokeTask(
-    name = "smokeCliJarBenchmark",
-    descriptionText = "Runs the standalone CLI jar built-in benchmark smoke profile.",
-    "benchmark",
-    "--version",
-    "26.2",
-    "--scale",
-    "3",
-    "--json",
-    "--output",
-    smokeBenchmarkOutput.get().asFile.absolutePath,
-)
+val smokeCliJarBenchmark =
+    registerCliJarSmokeTask(
+        name = "smokeCliJarBenchmark",
+        descriptionText = "Runs the standalone CLI jar built-in benchmark smoke profile.",
+        "benchmark",
+        "--version",
+        "26.2",
+        "--scale",
+        "3",
+        "--json",
+        "--output",
+        smokeBenchmarkOutput.get().asFile.absolutePath,
+    )
 smokeCliJarBenchmark.configure {
     outputs.file(smokeBenchmarkOutput)
     doFirst {
-        smokeBenchmarkOutput.get().asFile.parentFile.mkdirs()
+        smokeBenchmarkOutput
+            .get()
+            .asFile.parentFile
+            .mkdirs()
     }
 }
 
-val smokeCliJarExamples = registerCliJarSmokeTask(
-    name = "smokeCliJarExamples",
-    descriptionText = "Runs all example manifests through the standalone CLI jar.",
-    "check",
-    "--validate-schema",
-    examplesDir.asFile.absolutePath,
-)
+val smokeCliJarExamples =
+    registerCliJarSmokeTask(
+        name = "smokeCliJarExamples",
+        descriptionText = "Runs all example manifests through the standalone CLI jar.",
+        "check",
+        "--validate-schema",
+        examplesDir.asFile.absolutePath,
+    )
 smokeCliJarExamples.configure {
     inputs.dir(examplesDir)
 }
 
-val smokeCliJarReadmeLoot = registerCliJarSmokeTask(
-    name = "smokeCliJarReadmeLoot",
-    descriptionText = "Runs the README loot CLI example through the standalone jar.",
-    "loot",
-    "--pack",
-    fullStackExamplePack.asFile.absolutePath,
-    "--table",
-    "demo:gift",
-    "--context",
-    "minecraft:advancement_reward",
-    "--seed",
-    "42",
-)
+val integrationTestsDir = rootProject.layout.projectDirectory.dir("integration-tests")
+val smokeCliJarIntegrationTests =
+    registerCliJarSmokeTask(
+        name = "smokeCliJarIntegrationTests",
+        descriptionText = "Runs release-gated integration regression manifests through the standalone CLI jar.",
+        "check",
+        "--validate-schema",
+        "--strict",
+        integrationTestsDir.asFile.absolutePath,
+    )
+smokeCliJarIntegrationTests.configure {
+    inputs.dir(integrationTestsDir)
+    inputs.dir(examplesDir)
+}
+
+val smokeCliJarReadmeLoot =
+    registerCliJarSmokeTask(
+        name = "smokeCliJarReadmeLoot",
+        descriptionText = "Runs the README loot CLI example through the standalone jar.",
+        "loot",
+        "--pack",
+        fullStackExamplePack.asFile.absolutePath,
+        "--table",
+        "demo:gift",
+        "--context",
+        "minecraft:advancement_reward",
+        "--seed",
+        "42",
+    )
 smokeCliJarReadmeLoot.configure {
     inputs.dir(fullStackExamplePack)
     val output = ByteArrayOutputStream()
@@ -292,17 +342,18 @@ smokeCliJarReadmeLoot.configure {
     errorOutput = output
 }
 
-val smokeCliJarReadmeEvent = registerCliJarSmokeTask(
-    name = "smokeCliJarReadmeEvent",
-    descriptionText = "Runs the README player event CLI example through the standalone jar.",
-    "event",
-    "--pack",
-    fullStackExamplePack.asFile.absolutePath,
-    "player",
-    "Steve",
-    "item-used",
-    "minecraft:carrot_on_a_stick",
-)
+val smokeCliJarReadmeEvent =
+    registerCliJarSmokeTask(
+        name = "smokeCliJarReadmeEvent",
+        descriptionText = "Runs the README player event CLI example through the standalone jar.",
+        "event",
+        "--pack",
+        fullStackExamplePack.asFile.absolutePath,
+        "player",
+        "Steve",
+        "item-used",
+        "minecraft:carrot_on_a_stick",
+    )
 smokeCliJarReadmeEvent.configure {
     inputs.dir(fullStackExamplePack)
     val output = ByteArrayOutputStream()
@@ -310,50 +361,52 @@ smokeCliJarReadmeEvent.configure {
     errorOutput = output
 }
 
-val smokeCliJarReadmeRunAssert = registerCliJarSmokeTask(
-    name = "smokeCliJarReadmeRunAssert",
-    descriptionText = "Runs the README run assertion shorthand example through the standalone jar.",
-    "run",
-    "--version",
-    "26.2",
-    "--command",
-    "scoreboard objectives add runs dummy",
-    "--command",
-    "scoreboard players set #fixture runs 1",
-    "--command",
-    "data merge storage demo:env {ready:true}",
-    "--command",
-    "give Steve minecraft:stick 3",
-    "--command",
-    "summon minecraft:pig 0 0 0 {Tags:[\"fixture\"]}",
-    "--command",
-    "say generated ok",
-    "--assert",
-    "score:#fixture:runs=1",
-    "--assert",
-    "storage:demo:env:ready=true",
-    "--assert",
-    "item:Steve:minecraft:stick=3",
-    "--assert",
-    "entity:minecraft:pig@fixture=1",
-    "--assert",
-    "trace:scoreboard=2",
-    "--assert",
-    "output:generated ok",
-)
+val smokeCliJarReadmeRunAssert =
+    registerCliJarSmokeTask(
+        name = "smokeCliJarReadmeRunAssert",
+        descriptionText = "Runs the README run assertion shorthand example through the standalone jar.",
+        "run",
+        "--version",
+        "26.2",
+        "--command",
+        "scoreboard objectives add runs dummy",
+        "--command",
+        "scoreboard players set #fixture runs 1",
+        "--command",
+        "data merge storage demo:env {ready:true}",
+        "--command",
+        "give Steve minecraft:stick 3",
+        "--command",
+        "summon minecraft:pig 0 0 0 {Tags:[\"fixture\"]}",
+        "--command",
+        "say generated ok",
+        "--assert",
+        "score:#fixture:runs=1",
+        "--assert",
+        "storage:demo:env:ready=true",
+        "--assert",
+        "item:Steve:minecraft:stick=3",
+        "--assert",
+        "entity:minecraft:pig@fixture=1",
+        "--assert",
+        "trace:scoreboard=2",
+        "--assert",
+        "output:generated ok",
+    )
 
 val readmeStdinFunctionText = "scoreboard objectives add runs dummy\nscoreboard players set #stdin runs 1\n"
-val smokeCliJarReadmeStdin = registerCliJarSmokeTask(
-    name = "smokeCliJarReadmeStdin",
-    descriptionText = "Runs the README stdin mcfunction example through the standalone jar.",
-    "run",
-    "--version",
-    "26.2",
-    "--stdin",
-    "--snapshot",
-    "--assert",
-    "score:#stdin:runs=1",
-)
+val smokeCliJarReadmeStdin =
+    registerCliJarSmokeTask(
+        name = "smokeCliJarReadmeStdin",
+        descriptionText = "Runs the README stdin mcfunction example through the standalone jar.",
+        "run",
+        "--version",
+        "26.2",
+        "--stdin",
+        "--snapshot",
+        "--assert",
+        "score:#stdin:runs=1",
+    )
 smokeCliJarReadmeStdin.configure {
     inputs.property("stdinFunctionText", readmeStdinFunctionText)
     doFirst {
@@ -361,36 +414,65 @@ smokeCliJarReadmeStdin.configure {
     }
 }
 
-val smokeCliJarRunDiagnostics = registerCliJarSmokeTask(
-    name = "smokeCliJarRunDiagnostics",
-    descriptionText = "Checks standalone CLI expected command failures can be asserted diagnostically.",
-    "run",
-    "--version",
-    "26.2",
-    "--allow-command-failure",
-    "--command",
-    "scoreboard players set #bad missing 1",
-    "--command",
-    "say diagnostic smoke",
-    "--assert",
-    "diagnostic:COMMAND_ERROR:Unknown scoreboard objective 'missing'=1",
-    "--assert",
-    "output:diagnostic smoke",
-)
+val smokeCliJarRunDiagnostics =
+    registerCliJarSmokeTask(
+        name = "smokeCliJarRunDiagnostics",
+        descriptionText = "Checks standalone CLI expected command failures can be asserted diagnostically.",
+        "run",
+        "--version",
+        "26.2",
+        "--allow-command-failure",
+        "--command",
+        "scoreboard players set #bad missing 1",
+        "--command",
+        "say diagnostic smoke",
+        "--assert",
+        "diagnostic:COMMAND_ERROR:Unknown scoreboard objective 'missing'=1",
+        "--assert",
+        "output:diagnostic smoke",
+    )
 
-val smokeCliJarRunLimits = registerCliJarSmokeTask(
-    name = "smokeCliJarRunLimits",
-    descriptionText = "Checks standalone CLI run limit options are accepted.",
-    "run",
-    "--version",
-    "26.2",
-    "--max-commands",
-    "10",
-    "--max-snapshot-bytes",
-    "1000000",
-    "--command",
-    "say limit smoke",
-)
+val smokeCliJarRunLimits =
+    registerCliJarSmokeTask(
+        name = "smokeCliJarRunLimits",
+        descriptionText = "Checks standalone CLI run limit options are accepted.",
+        "run",
+        "--version",
+        "26.2",
+        "--max-commands",
+        "10",
+        "--max-snapshot-bytes",
+        "1000000",
+        "--command",
+        "say limit smoke",
+    )
+
+val smokeRenderOutput = layout.buildDirectory.file("smoke/render-state.png")
+val smokeCliJarRender =
+    registerCliJarSmokeTask(
+        name = "smokeCliJarRender",
+        descriptionText = "Checks the standalone CLI jar can render current sandbox state to PNG.",
+        "run",
+        "--version",
+        "26.2",
+        "--command",
+        "setblock 0 0 2 minecraft:stone",
+        "--screenshot-file",
+        smokeRenderOutput.get().asFile.absolutePath,
+        "--screenshot-width",
+        "320",
+        "--screenshot-height",
+        "180",
+    )
+smokeCliJarRender.configure {
+    outputs.file(smokeRenderOutput)
+    doFirst {
+        smokeRenderOutput
+            .get()
+            .asFile.parentFile
+            .mkdirs()
+    }
+}
 
 tasks.register("smokeCliJar") {
     group = "verification"
@@ -409,12 +491,14 @@ tasks.register("smokeCliJar") {
         smokeCliJarDiff,
         smokeCliJarBenchmark,
         smokeCliJarExamples,
+        smokeCliJarIntegrationTests,
         smokeCliJarReadmeLoot,
         smokeCliJarReadmeEvent,
         smokeCliJarReadmeRunAssert,
         smokeCliJarReadmeStdin,
         smokeCliJarRunDiagnostics,
         smokeCliJarRunLimits,
+        smokeCliJarRender,
     )
 }
 

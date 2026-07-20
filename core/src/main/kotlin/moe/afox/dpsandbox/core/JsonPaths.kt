@@ -11,7 +11,10 @@ import com.google.gson.JsonPrimitive
 object JsonValues {
     val prettyGson = GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create()
 
-    fun parse(raw: String, location: SourceLocation? = null): JsonElement =
+    fun parse(
+        raw: String,
+        location: SourceLocation? = null,
+    ): JsonElement =
         try {
             SnbtParser(raw).parse()
         } catch (error: Exception) {
@@ -35,16 +38,27 @@ object JsonValues {
 }
 
 object JsonPaths {
-    fun get(root: JsonObject, path: String?): JsonElement? {
+    fun get(
+        root: JsonObject,
+        path: String?,
+    ): JsonElement? {
         if (path.isNullOrBlank()) return root
         return NbtPath.parse(path).get(root)
     }
 
-    fun set(root: JsonObject, path: String, value: JsonElement) {
+    fun set(
+        root: JsonObject,
+        path: String,
+        value: JsonElement,
+    ) {
         NbtPath.parse(path).set(root, value)
     }
 
-    fun merge(root: JsonObject, path: String?, value: JsonElement) {
+    fun merge(
+        root: JsonObject,
+        path: String?,
+        value: JsonElement,
+    ) {
         val current = get(root, path)
         if (path.isNullOrBlank()) {
             mergeInto(root, value)
@@ -55,12 +69,22 @@ object JsonPaths {
         }
     }
 
-    fun append(root: JsonObject, path: String, value: JsonElement, location: SourceLocation? = null) {
+    fun append(
+        root: JsonObject,
+        path: String,
+        value: JsonElement,
+        location: SourceLocation? = null,
+    ) {
         val array = requireArray(root, path, location)
         array.add(value)
     }
 
-    fun prepend(root: JsonObject, path: String, value: JsonElement, location: SourceLocation? = null) {
+    fun prepend(
+        root: JsonObject,
+        path: String,
+        value: JsonElement,
+        location: SourceLocation? = null,
+    ) {
         val array = requireArray(root, path, location)
         val replacement = JsonArray()
         replacement.add(value.deepCopy())
@@ -68,7 +92,13 @@ object JsonPaths {
         set(root, path, replacement)
     }
 
-    fun insert(root: JsonObject, path: String, index: Int, value: JsonElement, location: SourceLocation? = null) {
+    fun insert(
+        root: JsonObject,
+        path: String,
+        index: Int,
+        value: JsonElement,
+        location: SourceLocation? = null,
+    ) {
         val array = requireArray(root, path, location)
         val targetIndex = index.coerceIn(0, array.size())
         val replacement = JsonArray()
@@ -80,14 +110,21 @@ object JsonPaths {
         set(root, path, replacement)
     }
 
-    fun remove(root: JsonObject, path: String): Boolean {
-        return NbtPath.parse(path).remove(root)
-    }
+    fun remove(
+        root: JsonObject,
+        path: String,
+    ): Boolean = NbtPath.parse(path).remove(root)
 
-    fun exists(root: JsonObject, path: String): Boolean =
-        get(root, path) != null && get(root, path) !is JsonNull
+    fun exists(
+        root: JsonObject,
+        path: String,
+    ): Boolean = get(root, path) != null && get(root, path) !is JsonNull
 
-    private fun requireArray(root: JsonObject, path: String, location: SourceLocation?): JsonArray {
+    private fun requireArray(
+        root: JsonObject,
+        path: String,
+        location: SourceLocation?,
+    ): JsonArray {
         val value = get(root, path)
         if (value != null && value.isJsonArray) return value.asJsonArray
         if (value != null && value !is JsonNull) {
@@ -99,7 +136,10 @@ object JsonPaths {
             ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Failed to create array at path '$path'", location)
     }
 
-    private fun mergeInto(target: JsonObject, value: JsonElement) {
+    private fun mergeInto(
+        target: JsonObject,
+        value: JsonElement,
+    ) {
         if (!value.isJsonObject) {
             throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Merged value must be an object")
         }
@@ -115,89 +155,135 @@ object JsonPaths {
 }
 
 private sealed interface PathPart {
-    data class Field(val name: String) : PathPart
-    data class Index(val index: Int) : PathPart
-    data class Match(val expected: JsonObject) : PathPart
+    data class Field(
+        val name: String,
+    ) : PathPart
+
+    data class Index(
+        val index: Int,
+    ) : PathPart
+
+    data class Match(
+        val expected: JsonObject,
+    ) : PathPart
 }
 
-private data class NbtPath(val parts: List<PathPart>) {
+private data class NbtPath(
+    val parts: List<PathPart>,
+) {
     fun get(root: JsonElement): JsonElement? {
         var current: JsonElement = root
         parts.forEach { part ->
-            current = when (part) {
-                is PathPart.Field -> if (current.isJsonObject) current.asJsonObject.get(part.name) ?: return null else return null
-                is PathPart.Index -> if (current.isJsonArray) {
-                    val array = current.asJsonArray
-                    val normalized = existingIndex(part.index, array.size()) ?: return null
-                    array[normalized]
-                } else {
-                    return null
+            current =
+                when (part) {
+                    is PathPart.Field -> if (current.isJsonObject) current.asJsonObject.get(part.name) ?: return null else return null
+                    is PathPart.Index ->
+                        if (current.isJsonArray) {
+                            val array = current.asJsonArray
+                            val normalized = existingIndex(part.index, array.size()) ?: return null
+                            array[normalized]
+                        } else {
+                            return null
+                        }
+                    is PathPart.Match ->
+                        if (current.isJsonArray) {
+                            current.asJsonArray.firstOrNull { it.isJsonObject && objectMatches(it.asJsonObject, part.expected) }
+                                ?: return null
+                        } else {
+                            return null
+                        }
                 }
-                is PathPart.Match -> if (current.isJsonArray) {
-                    current.asJsonArray.firstOrNull { it.isJsonObject && objectMatches(it.asJsonObject, part.expected) } ?: return null
-                } else {
-                    return null
-                }
-            }
         }
         return current
     }
 
-    fun set(root: JsonObject, value: JsonElement) {
+    fun set(
+        root: JsonObject,
+        value: JsonElement,
+    ) {
         if (parts.isEmpty()) {
             throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Path cannot be empty for set")
         }
         var current: JsonElement = root
         parts.dropLast(1).forEachIndexed { index, part ->
             val next = parts[index + 1]
-            current = when (part) {
-                is PathPart.Field -> {
-                    if (!current.isJsonObject) throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Path segment '${part.name}' is not an object")
-                    val objectCurrent = current.asJsonObject
-                    val existing = objectCurrent.get(part.name)
-                    if (existing == null || existing is JsonNull) {
-                        val created = if (next is PathPart.Index || next is PathPart.Match) JsonArray() else JsonObject()
-                        objectCurrent.add(part.name, created)
-                        created
-                    } else {
-                        existing
+            current =
+                when (part) {
+                    is PathPart.Field -> {
+                        if (!current.isJsonObject) {
+                            throw SandboxException(
+                                DiagnosticCode.INPUT_FORMAT,
+                                "Path segment '${part.name}' is not an object",
+                            )
+                        }
+                        val objectCurrent = current.asJsonObject
+                        val existing = objectCurrent.get(part.name)
+                        if (existing == null || existing is JsonNull) {
+                            val created = if (next is PathPart.Index || next is PathPart.Match) JsonArray() else JsonObject()
+                            objectCurrent.add(part.name, created)
+                            created
+                        } else {
+                            existing
+                        }
+                    }
+                    is PathPart.Index -> {
+                        if (!current.isJsonArray) {
+                            throw SandboxException(
+                                DiagnosticCode.INPUT_FORMAT,
+                                "Path segment [${part.index}] is not an array",
+                            )
+                        }
+                        val array = current.asJsonArray
+                        val index =
+                            if (part.index < 0) {
+                                existingIndex(part.index, array.size())
+                                    ?: throw SandboxException(
+                                        DiagnosticCode.COMMAND_ERROR,
+                                        "Path index [${part.index}] did not match any array entry",
+                                    )
+                            } else {
+                                while (array.size() <= part.index) array.add(JsonObject())
+                                part.index
+                            }
+                        array[index]
+                    }
+                    is PathPart.Match -> {
+                        if (!current.isJsonArray) {
+                            throw SandboxException(
+                                DiagnosticCode.INPUT_FORMAT,
+                                "Path object matcher is not applied to an array",
+                            )
+                        }
+                        current.asJsonArray.firstOrNull { it.isJsonObject && objectMatches(it.asJsonObject, part.expected) }
+                            ?: throw SandboxException(DiagnosticCode.COMMAND_ERROR, "Path object matcher did not match any array entry")
                     }
                 }
-                is PathPart.Index -> {
-                    if (!current.isJsonArray) throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Path segment [${part.index}] is not an array")
-                    val array = current.asJsonArray
-                    val index = if (part.index < 0) {
-                        existingIndex(part.index, array.size())
-                            ?: throw SandboxException(DiagnosticCode.COMMAND_ERROR, "Path index [${part.index}] did not match any array entry")
-                    } else {
-                        while (array.size() <= part.index) array.add(JsonObject())
-                        part.index
-                    }
-                    array[index]
-                }
-                is PathPart.Match -> {
-                    if (!current.isJsonArray) throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Path object matcher is not applied to an array")
-                    current.asJsonArray.firstOrNull { it.isJsonObject && objectMatches(it.asJsonObject, part.expected) }
-                        ?: throw SandboxException(DiagnosticCode.COMMAND_ERROR, "Path object matcher did not match any array entry")
-                }
-            }
         }
 
         when (val last = parts.last()) {
             is PathPart.Field -> {
-                if (!current.isJsonObject) throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Path target '${last.name}' is not an object")
+                if (!current.isJsonObject) {
+                    throw SandboxException(
+                        DiagnosticCode.INPUT_FORMAT,
+                        "Path target '${last.name}' is not an object",
+                    )
+                }
                 current.asJsonObject.add(last.name, value.deepCopy())
             }
             is PathPart.Index -> {
                 if (!current.isJsonArray) throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Path target [${last.index}] is not an array")
                 val array = current.asJsonArray
-                val index = if (last.index < 0) {
-                    existingIndex(last.index, array.size())
-                        ?: throw SandboxException(DiagnosticCode.COMMAND_ERROR, "Path index [${last.index}] did not match any array entry")
-                } else {
-                    while (array.size() <= last.index) array.add(JsonNull.INSTANCE)
-                    last.index
-                }
+                val index =
+                    if (last.index < 0) {
+                        existingIndex(last.index, array.size())
+                            ?: throw SandboxException(
+                                DiagnosticCode.COMMAND_ERROR,
+                                "Path index [${last.index}] did not match any array entry",
+                            )
+                    } else {
+                        while (array.size() <= last.index) array.add(JsonNull.INSTANCE)
+                        last.index
+                    }
                 array.set(index, value.deepCopy())
             }
             is PathPart.Match -> {
@@ -214,21 +300,25 @@ private data class NbtPath(val parts: List<PathPart>) {
         if (parts.isEmpty()) return false
         var current: JsonElement = root
         parts.dropLast(1).forEach { part ->
-            current = when (part) {
-                is PathPart.Field -> if (current.isJsonObject) current.asJsonObject.get(part.name) ?: return false else return false
-                is PathPart.Index -> if (current.isJsonArray) {
-                    val array = current.asJsonArray
-                    val normalized = existingIndex(part.index, array.size()) ?: return false
-                    array[normalized]
-                } else {
-                    return false
+            current =
+                when (part) {
+                    is PathPart.Field -> if (current.isJsonObject) current.asJsonObject.get(part.name) ?: return false else return false
+                    is PathPart.Index ->
+                        if (current.isJsonArray) {
+                            val array = current.asJsonArray
+                            val normalized = existingIndex(part.index, array.size()) ?: return false
+                            array[normalized]
+                        } else {
+                            return false
+                        }
+                    is PathPart.Match ->
+                        if (current.isJsonArray) {
+                            current.asJsonArray.firstOrNull { it.isJsonObject && objectMatches(it.asJsonObject, part.expected) }
+                                ?: return false
+                        } else {
+                            return false
+                        }
                 }
-                is PathPart.Match -> if (current.isJsonArray) {
-                    current.asJsonArray.firstOrNull { it.isJsonObject && objectMatches(it.asJsonObject, part.expected) } ?: return false
-                } else {
-                    return false
-                }
-            }
         }
         return when (val last = parts.last()) {
             is PathPart.Field -> current.isJsonObject && current.asJsonObject.remove(last.name) != null
@@ -248,29 +338,45 @@ private data class NbtPath(val parts: List<PathPart>) {
         }
     }
 
-    private fun objectMatches(actual: JsonObject, expected: JsonObject): Boolean =
+    private fun objectMatches(
+        actual: JsonObject,
+        expected: JsonObject,
+    ): Boolean =
         expected.entrySet().all { (key, expectedValue) ->
             val actualValue = actual.get(key) ?: return@all false
             elementMatches(actualValue, expectedValue)
         }
 
-    private fun elementMatches(actual: JsonElement, expected: JsonElement): Boolean =
+    private fun elementMatches(
+        actual: JsonElement,
+        expected: JsonElement,
+    ): Boolean =
         when {
             expected.isJsonObject -> actual.isJsonObject && objectMatches(actual.asJsonObject, expected.asJsonObject)
-            expected.isJsonArray -> actual.isJsonArray && actual.asJsonArray.size() == expected.asJsonArray.size() &&
-                actual.asJsonArray.zip(expected.asJsonArray).all { (actualElement, expectedElement) -> elementMatches(actualElement, expectedElement) }
+            expected.isJsonArray ->
+                actual.isJsonArray &&
+                    actual.asJsonArray.size() == expected.asJsonArray.size() &&
+                    actual.asJsonArray.zip(expected.asJsonArray).all { (actualElement, expectedElement) ->
+                        elementMatches(actualElement, expectedElement)
+                    }
             expected.isJsonPrimitive && actual.isJsonPrimitive -> primitiveMatches(actual.asJsonPrimitive, expected.asJsonPrimitive)
             else -> actual == expected
         }
 
-    private fun primitiveMatches(actual: JsonPrimitive, expected: JsonPrimitive): Boolean =
+    private fun primitiveMatches(
+        actual: JsonPrimitive,
+        expected: JsonPrimitive,
+    ): Boolean =
         when {
             actual.isNumber && expected.isNumber -> actual.asDouble == expected.asDouble
             actual.isBoolean && expected.isBoolean -> actual.asBoolean == expected.asBoolean
             else -> actual.asString == expected.asString
         }
 
-    private fun existingIndex(index: Int, size: Int): Int? {
+    private fun existingIndex(
+        index: Int,
+        size: Int,
+    ): Int? {
         val normalized = if (index < 0) size + index else index
         return normalized.takeIf { it in 0 until size }
     }
@@ -281,6 +387,7 @@ private data class NbtPath(val parts: List<PathPart>) {
             val parts = mutableListOf<PathPart>()
             var index = 0
             val name = StringBuilder()
+
             fun flushName() {
                 if (name.isNotEmpty()) {
                     parts += PathPart.Field(name.toString())
@@ -298,17 +405,22 @@ private data class NbtPath(val parts: List<PathPart>) {
                         val end = findClosingBracket(path, index)
                         if (end < 0) throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Unclosed path index in '$path'")
                         val rawIndex = path.substring(index + 1, end)
-                        parts += if (rawIndex.trimStart().startsWith("{")) {
-                            val matcher = JsonValues.parse(rawIndex)
-                            if (!matcher.isJsonObject) {
-                                throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Path object matcher must be an object in '$path'")
+                        parts +=
+                            if (rawIndex.trimStart().startsWith("{")) {
+                                val matcher = JsonValues.parse(rawIndex)
+                                if (!matcher.isJsonObject) {
+                                    throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Path object matcher must be an object in '$path'")
+                                }
+                                PathPart.Match(matcher.asJsonObject)
+                            } else {
+                                val parsed =
+                                    rawIndex.toIntOrNull()
+                                        ?: throw SandboxException(
+                                            DiagnosticCode.INPUT_FORMAT,
+                                            "Only numeric path indexes and object matchers are supported in '$path'",
+                                        )
+                                PathPart.Index(parsed)
                             }
-                            PathPart.Match(matcher.asJsonObject)
-                        } else {
-                            val parsed = rawIndex.toIntOrNull()
-                                ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Only numeric path indexes and object matchers are supported in '$path'")
-                            PathPart.Index(parsed)
-                        }
                         index = end + 1
                     }
                     else -> {
@@ -321,7 +433,10 @@ private data class NbtPath(val parts: List<PathPart>) {
             return NbtPath(parts)
         }
 
-        private fun findClosingBracket(path: String, start: Int): Int {
+        private fun findClosingBracket(
+            path: String,
+            start: Int,
+        ): Int {
             var index = start + 1
             var objectDepth = 0
             var arrayDepth = 0
@@ -355,7 +470,9 @@ private data class NbtPath(val parts: List<PathPart>) {
     }
 }
 
-private class SnbtParser(private val input: String) {
+private class SnbtParser(
+    private val input: String,
+) {
     private var index = 0
 
     fun parse(): JsonElement {
@@ -435,7 +552,17 @@ private class SnbtParser(private val input: String) {
             token.equals("false", ignoreCase = true) -> JsonPrimitive(false)
             token.matches(Regex("[-+]?\\d+[bBsSlL]")) -> JsonPrimitive(token.dropLast(1).toLong())
             token.matches(Regex("[-+]?\\d+")) -> JsonPrimitive(token.toLong())
-            token.matches(Regex("[-+]?(\\d+\\.\\d*|\\d*\\.\\d+)([fFdD])?")) -> JsonPrimitive(token.removeSuffix("f").removeSuffix("F").removeSuffix("d").removeSuffix("D").toDouble())
+            token.matches(
+                Regex("[-+]?(\\d+\\.\\d*|\\d*\\.\\d+)([fFdD])?"),
+            ) ->
+                JsonPrimitive(
+                    token
+                        .removeSuffix("f")
+                        .removeSuffix("F")
+                        .removeSuffix("d")
+                        .removeSuffix("D")
+                        .toDouble(),
+                )
             token.matches(Regex("[-+]?\\d+[fFdD]")) -> JsonPrimitive(token.dropLast(1).toDouble())
             else -> JsonPrimitive(token)
         }
@@ -482,7 +609,5 @@ private class SnbtParser(private val input: String) {
 
     private fun peek(char: Char): Boolean = index < input.length && input[index] == char
 
-    private fun error(message: String): Nothing {
-        throw IllegalArgumentException("$message at offset $index in '$input'")
-    }
+    private fun error(message: String): Nothing = throw IllegalArgumentException("$message at offset $index in '$input'")
 }

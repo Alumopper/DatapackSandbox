@@ -15,90 +15,99 @@ data class RegistryView(
     val lootFunctions: Set<ResourceLocation>,
 ) {
     fun containsAny(id: ResourceLocation): Boolean =
-        id in items || id in blocks || id in entityTypes || id in biomes || id in damageTypes ||
-            id in enchantments || id in effects || id in dimensions
+        id in items ||
+            id in blocks ||
+            id in entityTypes ||
+            id in biomes ||
+            id in damageTypes ||
+            id in enchantments ||
+            id in effects ||
+            id in dimensions
 
     companion object {
-        val vanilla262 = RegistryView(
-            items = ids("air", "stone", "diamond", "stick", "carrot_on_a_stick", "apple", "experience_bottle"),
-            blocks = ids("air", "stone", "dirt", "grass_block", "diamond_ore", "chest"),
-            entityTypes = ids("player", "marker", "zombie", "skeleton", "item", "minecraft:experience_orb"),
-            biomes = ids("plains", "forest", "desert"),
-            damageTypes = ids("generic", "player_attack", "mob_attack", "fall", "out_of_world"),
-            enchantments = ids("sharpness", "fortune", "looting", "unbreaking"),
-            effects = ids("speed", "strength", "regeneration", "poison"),
-            dimensions = ids("overworld", "the_nether", "the_end"),
-            lootContextTypes = ids("empty", "block", "entity", "chest", "fishing", "advancement_reward", "advancement_entity"),
-            advancementTriggers = ids(
-                "impossible",
-                "tick",
-                "inventory_changed",
-                "item_used_on_block",
-                "using_item",
-                "consume_item",
-                "player_interacted_with_entity",
-                "damage",
-                "death",
-                "entity_hurt_player",
-                "player_hurt_entity",
-                "player_killed_entity",
-                "entity_killed_player",
-                "location",
-                "changed_dimension",
-                "placed_block",
-                "bee_nest_destroyed",
-                "recipe_unlocked",
-                "effects_changed",
-            ),
-            lootConditions = ids(
-                "all_of",
-                "any_of",
-                "inverted",
-                "alternative",
-                "reference",
-                "random_chance",
-                "random_chance_with_enchanted_bonus",
-                "table_bonus",
-                "value_check",
-                "killed_by_player",
-                "entity_properties",
-                "entity_scores",
-                "location_check",
-                "match_tool",
-                "block_state_property",
-                "damage_source_properties",
-                "time_check",
-                "weather_check",
-                "survives_explosion",
-            ),
-            lootFunctions = ids(
-                "set_count",
-                "set_item",
-                "set_components",
-                "set_custom_data",
-                "set_name",
-                "set_lore",
-                "discard",
-                "copy_name",
-                "copy_components",
-                "copy_nbt",
-                "set_damage",
-                "enchant_randomly",
-                "enchant_with_levels",
-                "apply_bonus",
-                "explosion_decay",
-                "limit_count",
-                "filtered",
-                "reference",
-                "sequence",
-            ),
-        )
+        val vanilla262 =
+            RegistryView(
+                items = ids("air", "stone", "diamond", "stick", "carrot_on_a_stick", "apple", "experience_bottle"),
+                blocks = ids("air", "stone", "dirt", "grass_block", "diamond_ore", "chest"),
+                entityTypes = ids("player", "marker", "zombie", "skeleton", "item", "minecraft:experience_orb"),
+                biomes = ids("plains", "forest", "desert"),
+                damageTypes = ids("generic", "player_attack", "mob_attack", "fall", "out_of_world"),
+                enchantments = ids("sharpness", "fortune", "looting", "unbreaking"),
+                effects = ids("speed", "strength", "regeneration", "poison"),
+                dimensions = ids("overworld", "the_nether", "the_end"),
+                lootContextTypes = ids("empty", "block", "entity", "chest", "fishing", "advancement_reward", "advancement_entity"),
+                advancementTriggers =
+                    ids(
+                        "impossible",
+                        "tick",
+                        "inventory_changed",
+                        "item_used_on_block",
+                        "using_item",
+                        "consume_item",
+                        "player_interacted_with_entity",
+                        "damage",
+                        "death",
+                        "entity_hurt_player",
+                        "player_hurt_entity",
+                        "player_killed_entity",
+                        "entity_killed_player",
+                        "location",
+                        "changed_dimension",
+                        "placed_block",
+                        "bee_nest_destroyed",
+                        "recipe_unlocked",
+                        "effects_changed",
+                    ),
+                lootConditions =
+                    ids(
+                        "all_of",
+                        "any_of",
+                        "inverted",
+                        "alternative",
+                        "reference",
+                        "random_chance",
+                        "random_chance_with_enchanted_bonus",
+                        "table_bonus",
+                        "value_check",
+                        "killed_by_player",
+                        "entity_properties",
+                        "entity_scores",
+                        "location_check",
+                        "match_tool",
+                        "block_state_property",
+                        "damage_source_properties",
+                        "time_check",
+                        "weather_check",
+                        "survives_explosion",
+                    ),
+                lootFunctions =
+                    ids(
+                        "set_count",
+                        "set_item",
+                        "set_components",
+                        "set_custom_data",
+                        "set_name",
+                        "set_lore",
+                        "discard",
+                        "copy_name",
+                        "copy_components",
+                        "copy_nbt",
+                        "set_damage",
+                        "enchant_randomly",
+                        "enchant_with_levels",
+                        "apply_bonus",
+                        "explosion_decay",
+                        "limit_count",
+                        "filtered",
+                        "reference",
+                        "sequence",
+                    ),
+            )
 
         val vanilla2612 = vanilla262.copy()
         val vanilla1204 = vanilla2612.copy()
 
-        private fun ids(vararg values: String): Set<ResourceLocation> =
-            values.map { ResourceLocation.parse(it) }.toSortedSet()
+        private fun ids(vararg values: String): Set<ResourceLocation> = values.map { ResourceLocation.parse(it) }.toSortedSet()
     }
 }
 

@@ -17,6 +17,8 @@ object ExitCodes {
             DiagnosticCode.VERSION_MISMATCH,
             DiagnosticCode.RESOURCE_NOT_FOUND,
             DiagnosticCode.COMMAND_ERROR,
-            DiagnosticCode.MISSING_CONTEXT -> UNSUPPORTED_OR_VERSION
+            DiagnosticCode.EXECUTION_INTERRUPTED,
+            DiagnosticCode.MISSING_CONTEXT,
+            -> UNSUPPORTED_OR_VERSION
         }
 }

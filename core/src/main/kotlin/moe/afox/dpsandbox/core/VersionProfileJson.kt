@@ -108,8 +108,7 @@ object VersionProfileJson {
             json.addProperty("changed", change.changed)
         }
 
-    private fun stringArray(values: Iterable<String>): JsonArray =
-        JsonArray().also { array -> values.forEach { array.add(it) } }
+    private fun stringArray(values: Iterable<String>): JsonArray = JsonArray().also { array -> values.forEach { array.add(it) } }
 
     private fun value(value: Any?): JsonElement =
         when (value) {

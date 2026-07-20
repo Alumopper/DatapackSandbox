@@ -6,12 +6,18 @@ data class CompletionContext(
     val prefix: String,
     val endsWithWhitespace: Boolean,
 ) {
-    val first: String = words.firstOrNull()?.removePrefix("/")?.lowercase().orEmpty()
+    val first: String =
+        words
+            .firstOrNull()
+            ?.removePrefix("/")
+            ?.lowercase()
+            .orEmpty()
 
     fun filter(options: List<CompletionSuggestion>): List<CompletionSuggestion> {
         val rawPrefix = if (wordIndex == 0) prefix.removePrefix("/") else prefix
         val slashRoot = wordIndex == 0 && prefix.startsWith("/")
-        return options.asSequence()
+        return options
+            .asSequence()
             .filter { rawPrefix.isBlank() || it.value.startsWith(rawPrefix) }
             .distinctBy { it.value }
             .sortedWith(compareBy<CompletionSuggestion> { it.value != rawPrefix }.thenBy { it.value })
@@ -20,7 +26,10 @@ data class CompletionContext(
     }
 
     companion object {
-        fun parse(buffer: String, cursor: Int = buffer.length): CompletionContext {
+        fun parse(
+            buffer: String,
+            cursor: Int = buffer.length,
+        ): CompletionContext {
             val beforeCursor = buffer.take(cursor.coerceIn(0, buffer.length))
             if (beforeCursor.isBlank()) {
                 return CompletionContext(emptyList(), 0, "", beforeCursor.lastOrNull()?.isWhitespace() == true)

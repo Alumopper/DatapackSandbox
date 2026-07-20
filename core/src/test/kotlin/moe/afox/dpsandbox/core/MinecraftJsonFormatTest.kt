@@ -10,19 +10,21 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class MinecraftJsonFormatTest {
-    private val currentEntityTargets = setOf(
-        "this",
-        "attacker",
-        "direct_attacker",
-        "attacking_player",
-        "target_entity",
-        "interacting_entity",
-    )
+    private val currentEntityTargets =
+        setOf(
+            "this",
+            "attacker",
+            "direct_attacker",
+            "attacking_player",
+            "target_entity",
+            "interacting_entity",
+        )
 
-    private val minecraftJsonRoots = listOf(
-        Path.of("src/test/resources/packs"),
-        Path.of("../examples"),
-    )
+    private val minecraftJsonRoots =
+        listOf(
+            Path.of("src/test/resources/packs"),
+            Path.of("../examples"),
+        )
 
     @Test
     fun `minecraft json resources parse as json`() {
@@ -78,25 +80,48 @@ class MinecraftJsonFormatTest {
 
     private fun minecraftJsonFiles(): List<Path> =
         minecraftJsonRoots.flatMap { root ->
-            if (!Files.exists(root)) emptyList() else Files.walk(root).use { walk ->
-                walk.filter {
-                    Files.isRegularFile(it) &&
-                        (it.name.endsWith(".json") || it.name == "pack.mcmeta") &&
-                        !it.name.endsWith(".dps.json")
-                }.toList()
+            if (!Files.exists(root)) {
+                emptyList()
+            } else {
+                Files.walk(root).use { walk ->
+                    walk
+                        .filter {
+                            Files.isRegularFile(it) &&
+                                (it.name.endsWith(".json") || it.name == "pack.mcmeta") &&
+                                !it.name.endsWith(".dps.json")
+                        }.toList()
+                }
             }
         }
 
-    private fun assertNoLegacyPlayerPredicate(root: JsonObject, file: Path) {
+    private fun assertNoLegacyPlayerPredicate(
+        root: JsonObject,
+        file: Path,
+    ) {
         root.entrySet().forEach { (key, value) ->
             assertTrue(key != "player" || !root.has("type"), "Use type_specific for player entity predicates in $file")
             if (value.isJsonObject) assertNoLegacyPlayerPredicate(value.asJsonObject, file)
-            if (value.isJsonArray) value.asJsonArray.filter { it.isJsonObject }.forEach { assertNoLegacyPlayerPredicate(it.asJsonObject, file) }
+            if (value.isJsonArray) {
+                value.asJsonArray.filter { it.isJsonObject }.forEach {
+                    assertNoLegacyPlayerPredicate(
+                        it.asJsonObject,
+                        file,
+                    )
+                }
+            }
         }
     }
 
-    private fun assertValidEntityTargets(root: JsonObject, file: Path) {
-        val condition = root.get("condition")?.takeIf { it.isJsonPrimitive }?.asString?.substringAfter(':')
+    private fun assertValidEntityTargets(
+        root: JsonObject,
+        file: Path,
+    ) {
+        val condition =
+            root
+                .get("condition")
+                ?.takeIf { it.isJsonPrimitive }
+                ?.asString
+                ?.substringAfter(':')
         if (condition == "entity_properties" || condition == "entity_scores") {
             val entity = root.get("entity")?.takeIf { it.isJsonPrimitive }?.asString
             if (entity != null) assertTrue(entity in currentEntityTargets, "Invalid entity target '$entity' in $file")

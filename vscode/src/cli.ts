@@ -47,7 +47,8 @@ export class CliRunner {
     const reportFile = await this.tempFile("run-report.json");
     const packs = [...(overrides.packs ?? this.config().get<string[]>("packPaths", []))];
     if ((forcePack || context.packRoot) && context.packRoot) packs.unshift(context.packRoot);
-    const args = buildRunArgs(context.file, context.id, reportFile, overrides.version ?? this.config().get("defaultVersion", "26.2"), [...new Set(packs)], this.config().get<string[]>("traceFilter", []), overrides.strict ?? this.config().get<boolean>("strict", false));
+    const version = overrides.version?.trim() || this.config().get<string>("defaultVersion", "").trim() || undefined;
+    const args = buildRunArgs(context.file, context.id, reportFile, version, [...new Set(packs)], this.config().get<string[]>("traceFilter", []), overrides.strict ?? this.config().get<boolean>("strict", false));
     const processResult = await this.runJar(args);
     return { ...processResult, report: await readRunReport(reportFile) };
   }

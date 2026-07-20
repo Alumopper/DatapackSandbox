@@ -70,8 +70,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand("datapackSandbox.openSandboxPanel", () => panel.show()),
     vscode.commands.registerCommand("datapackSandbox.startSandbox", (uri?: vscode.Uri) => safe(async () => {
       const config = vscode.workspace.getConfiguration("datapackSandbox");
-      const configured = config.get<string>("defaultVersion", "26.2");
-      const profiles = await activeSandbox.versions();
+      const metadata = await activeSandbox.versionMetadata();
+      const configured = config.get<string>("defaultVersion", "").trim() || metadata.default;
+      const profiles = metadata.versions;
       const selected = await vscode.window.showQuickPick(
         profiles.map((profile) => ({ label: profile.id, description: `pack ${profile.packFormat} · data ${profile.dataVersion}`, detail: `Modeled Minecraft ${profile.id} profile`, picked: profile.id === configured })),
         { title: "Start Datapack Sandbox", placeHolder: `Choose a Minecraft profile (configured default: ${configured})` },
@@ -84,7 +85,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand("datapackSandbox.stopSandbox", () => { activeSandbox.stop(); void vscode.window.showInformationMessage("Datapack Sandbox stopped."); }),
     vscode.commands.registerCommand("datapackSandbox.reloadTests", () => tests.discover()),
     vscode.commands.registerCommand("datapackSandbox.refreshResources", () => safe(() => resources.refresh())),
-    vscode.commands.registerCommand("datapackSandbox.generateManifest", (uri?: vscode.Uri) => safe(() => generateManifest(uri))),
+    vscode.commands.registerCommand("datapackSandbox.generateManifest", (uri?: vscode.Uri) => safe(() => generateManifest(uri, activeSandbox))),
     vscode.languages.registerCodeLensProvider([{ language: "mcfunction" }, { language: "json", pattern: "**/*.dps.json" }], new DatapackCodeLensProvider()),
     vscode.languages.registerCompletionItemProvider({ language: "mcfunction" }, new SandboxCompletionProvider(client), " ", ":", "@"),
     vscode.window.registerTreeDataProvider("datapackSandbox.resources", resources),
@@ -98,14 +99,16 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
 export function deactivate(): void {}
 
-async function generateManifest(uri?: vscode.Uri): Promise<void> {
+async function generateManifest(uri: vscode.Uri | undefined, activeSandbox: ActiveSandboxService): Promise<void> {
   const target = resolveUri(uri, ".mcfunction");
   if (!target) return;
   const context = inferFunctionContext(target.fsPath);
   const defaultUri = vscode.Uri.file(path.join(path.dirname(target.fsPath), `${path.basename(target.fsPath, ".mcfunction")}.dps.json`));
   const destination = await vscode.window.showSaveDialog({ defaultUri, filters: { "Datapack Sandbox Manifest": ["dps.json"] } });
   if (!destination) return;
-  const manifest = { version: vscode.workspace.getConfiguration("datapackSandbox").get("defaultVersion", "26.2"), ...(context.packRoot ? { packs: [path.relative(path.dirname(destination.fsPath), context.packRoot) || "."] } : {}), steps: [{ mcfunction: path.relative(path.dirname(destination.fsPath), target.fsPath).replace(/\\/g, "/") }], assertions: [] };
+  const configured = vscode.workspace.getConfiguration("datapackSandbox").get<string>("defaultVersion", "").trim();
+  const version = configured || (await activeSandbox.versionMetadata()).default;
+  const manifest = { version, ...(context.packRoot ? { packs: [path.relative(path.dirname(destination.fsPath), context.packRoot) || "."] } : {}), steps: [{ mcfunction: path.relative(path.dirname(destination.fsPath), target.fsPath).replace(/\\/g, "/") }], assertions: [] };
   await fs.writeFile(destination.fsPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
   await vscode.window.showTextDocument(destination);
 }

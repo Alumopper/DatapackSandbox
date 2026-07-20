@@ -9,24 +9,27 @@ class PredicateEngineTest {
     @Test
     fun `random chance with enchanted bonus uses tool enchantments`() {
         val engine = PredicateEngine(Datapack(emptyMap(), emptyList(), emptyList()))
-        val predicate = JsonValues.parse(
-            """
-            {
-              condition: "minecraft:random_chance_with_enchanted_bonus",
-              enchantment: "minecraft:fortune",
-              unenchanted_chance: 0.0,
-              enchanted_chance: {type: "minecraft:linear", base: 0.5, per_level_above_first: 0.5}
-            }
-            """.trimIndent(),
-        )
-        val flatTool = ItemStack(
-            id = ResourceLocation.parse("minecraft:diamond_pickaxe"),
-            components = JsonValues.parse("{\"minecraft:enchantments\":{\"minecraft:fortune\":2}}").asJsonObject,
-        )
-        val nestedTool = ItemStack(
-            id = ResourceLocation.parse("minecraft:diamond_pickaxe"),
-            components = JsonValues.parse("{\"minecraft:enchantments\":{levels:{fortune:2}}}").asJsonObject,
-        )
+        val predicate =
+            JsonValues.parse(
+                """
+                {
+                  condition: "minecraft:random_chance_with_enchanted_bonus",
+                  enchantment: "minecraft:fortune",
+                  unenchanted_chance: 0.0,
+                  enchanted_chance: {type: "minecraft:linear", base: 0.5, per_level_above_first: 0.5}
+                }
+                """.trimIndent(),
+            )
+        val flatTool =
+            ItemStack(
+                id = ResourceLocation.parse("minecraft:diamond_pickaxe"),
+                components = JsonValues.parse("{\"minecraft:enchantments\":{\"minecraft:fortune\":2}}").asJsonObject,
+            )
+        val nestedTool =
+            ItemStack(
+                id = ResourceLocation.parse("minecraft:diamond_pickaxe"),
+                components = JsonValues.parse("{\"minecraft:enchantments\":{levels:{fortune:2}}}").asJsonObject,
+            )
 
         assertFalse(engine.testElement(predicate, context(tool = null)))
         assertTrue(engine.testElement(predicate, context(tool = flatTool)))
@@ -36,19 +39,21 @@ class PredicateEngineTest {
     @Test
     fun `random chance with enchanted bonus supports legacy multiplier`() {
         val engine = PredicateEngine(Datapack(emptyMap(), emptyList(), emptyList()))
-        val predicate = JsonValues.parse(
-            """
-            {
-              condition: "minecraft:random_chance_with_looting",
-              chance: 0.0,
-              looting_multiplier: 1.0
-            }
-            """.trimIndent(),
-        )
-        val sword = ItemStack(
-            id = ResourceLocation.parse("minecraft:diamond_sword"),
-            components = JsonValues.parse("{\"minecraft:enchantments\":{\"minecraft:looting\":1}}").asJsonObject,
-        )
+        val predicate =
+            JsonValues.parse(
+                """
+                {
+                  condition: "minecraft:random_chance_with_looting",
+                  chance: 0.0,
+                  looting_multiplier: 1.0
+                }
+                """.trimIndent(),
+            )
+        val sword =
+            ItemStack(
+                id = ResourceLocation.parse("minecraft:diamond_sword"),
+                components = JsonValues.parse("{\"minecraft:enchantments\":{\"minecraft:looting\":1}}").asJsonObject,
+            )
 
         assertTrue(engine.testElement(predicate, context(tool = sword)))
     }
@@ -56,56 +61,62 @@ class PredicateEngineTest {
     @Test
     fun `location check matches sparse block state tag and nbt`() {
         val tagId = ResourceLocation.parse("demo:containers")
-        val datapack = Datapack(
-            functions = emptyMap(),
-            loadFunctions = emptyList(),
-            tickFunctions = emptyList(),
-            tags = mapOf(
-                TagKey("block", tagId) to TagDefinition(
-                    key = TagKey("block", tagId),
-                    file = "<test>",
-                    values = listOf(TagValue("minecraft:chest")),
-                ),
-            ),
-        )
+        val datapack =
+            Datapack(
+                functions = emptyMap(),
+                loadFunctions = emptyList(),
+                tickFunctions = emptyList(),
+                tags =
+                    mapOf(
+                        TagKey("block", tagId) to
+                            TagDefinition(
+                                key = TagKey("block", tagId),
+                                file = "<test>",
+                                values = listOf(TagValue("minecraft:chest")),
+                            ),
+                    ),
+            )
         val engine = PredicateEngine(datapack)
         val pos = BlockPos(1, 64, 2)
         val world = SandboxWorld()
-        world.blocks[pos] = SandboxBlock(
-            id = ResourceLocation.parse("minecraft:chest"),
-            properties = mutableMapOf("facing" to "north", "slots" to "27"),
-            nbt = JsonValues.parse("""{CustomName:{text:"Cache"}}""").asJsonObject,
-        )
-        val predicate = JsonValues.parse(
-            """
-            {
-              condition: "minecraft:location_check",
-              predicate: {
-                block: {
-                  blocks: "#demo:containers",
-                  state: {
-                    facing: "north",
-                    slots: {min: 20, max: 30}
-                  },
-                  nbt: {CustomName:{text:"Cache"}}
+        world.blocks[pos] =
+            SandboxBlock(
+                id = ResourceLocation.parse("minecraft:chest"),
+                properties = mutableMapOf("facing" to "north", "slots" to "27"),
+                nbt = JsonValues.parse("""{CustomName:{text:"Cache"}}""").asJsonObject,
+            )
+        val predicate =
+            JsonValues.parse(
+                """
+                {
+                  condition: "minecraft:location_check",
+                  predicate: {
+                    block: {
+                      blocks: "#demo:containers",
+                      state: {
+                        facing: "north",
+                        slots: {min: 20, max: 30}
+                      },
+                      nbt: {CustomName:{text:"Cache"}}
+                    }
+                  }
                 }
-              }
-            }
-            """.trimIndent(),
-        )
-        val wrongState = JsonValues.parse(
-            """
-            {
-              condition: "minecraft:location_check",
-              predicate: {
-                block: {
-                  blocks: "#demo:containers",
-                  state: {facing: "south"}
+                """.trimIndent(),
+            )
+        val wrongState =
+            JsonValues.parse(
+                """
+                {
+                  condition: "minecraft:location_check",
+                  predicate: {
+                    block: {
+                      blocks: "#demo:containers",
+                      state: {facing: "south"}
+                    }
+                  }
                 }
-              }
-            }
-            """.trimIndent(),
-        )
+                """.trimIndent(),
+            )
 
         val context = PredicateContext(world = world, origin = Position(pos.x.toDouble(), pos.y.toDouble(), pos.z.toDouble()))
         assertTrue(engine.testElement(predicate, context))
@@ -115,46 +126,50 @@ class PredicateEngineTest {
     @Test
     fun `entity distance predicate uses real absolute horizontal and axis distances`() {
         val engine = PredicateEngine(Datapack(emptyMap(), emptyList(), emptyList()))
-        val pig = SandboxEntity(
-            type = ResourceLocation.parse("minecraft:pig"),
-            position = Position(3.0, 4.0, 12.0),
-        )
-        val predicate = JsonValues.parse(
-            """
-            {
-              condition: "minecraft:entity_properties",
-              entity: "this",
-              predicate: {
-                type: "minecraft:pig",
-                distance: {
-                  absolute: {min: 13, max: 13},
-                  horizontal: {min: 12.36, max: 12.37},
-                  x: 3,
-                  y: 4,
-                  z: 12
+        val pig =
+            SandboxEntity(
+                type = ResourceLocation.parse("minecraft:pig"),
+                position = Position(3.0, 4.0, 12.0),
+            )
+        val predicate =
+            JsonValues.parse(
+                """
+                {
+                  condition: "minecraft:entity_properties",
+                  entity: "this",
+                  predicate: {
+                    type: "minecraft:pig",
+                    distance: {
+                      absolute: {min: 13, max: 13},
+                      horizontal: {min: 12.36, max: 12.37},
+                      x: 3,
+                      y: 4,
+                      z: 12
+                    }
+                  }
                 }
-              }
-            }
-            """.trimIndent(),
-        )
-        val tooClose = JsonValues.parse(
-            """
-            {
-              condition: "minecraft:entity_properties",
-              entity: "this",
-              predicate: {
-                distance: {
-                  absolute: {max: 12}
+                """.trimIndent(),
+            )
+        val tooClose =
+            JsonValues.parse(
+                """
+                {
+                  condition: "minecraft:entity_properties",
+                  entity: "this",
+                  predicate: {
+                    distance: {
+                      absolute: {max: 12}
+                    }
+                  }
                 }
-              }
-            }
-            """.trimIndent(),
-        )
-        val context = PredicateContext(
-            world = SandboxWorld(),
-            origin = Position.zero,
-            thisEntity = pig,
-        )
+                """.trimIndent(),
+            )
+        val context =
+            PredicateContext(
+                world = SandboxWorld(),
+                origin = Position.zero,
+                thisEntity = pig,
+            )
 
         assertTrue(engine.testElement(predicate, context))
         assertFalse(engine.testElement(tooClose, context))
@@ -166,61 +181,67 @@ class PredicateEngineTest {
         val world = SandboxWorld()
         world.addObjective("points", "dummy")
         world.setScore("#clock", "points", 4)
-        val tool = ItemStack(
-            id = ResourceLocation.parse("minecraft:diamond_pickaxe"),
-            components = JsonValues.parse("{\"minecraft:enchantments\":{\"minecraft:fortune\":2}}").asJsonObject,
-        )
+        val tool =
+            ItemStack(
+                id = ResourceLocation.parse("minecraft:diamond_pickaxe"),
+                components = JsonValues.parse("{\"minecraft:enchantments\":{\"minecraft:fortune\":2}}").asJsonObject,
+            )
         val player = SandboxPlayer("Steve")
-        val context = PredicateContext(
-            world = world,
-            tool = tool,
-            attackingPlayer = player,
-            random = Random(0),
-        )
-        val scoreValue = JsonValues.parse(
-            """
-            {
-              condition: "minecraft:value_check",
-              value: {
-                type: "minecraft:score",
-                target: {type: "minecraft:fixed", name: "#clock"},
-                score: "points"
-              },
-              range: 4
-            }
-            """.trimIndent(),
-        )
-        val binomialValue = JsonValues.parse(
-            """
-            {
-              condition: "minecraft:value_check",
-              value: {
-                type: "minecraft:binomial",
-                n: 3,
-                p: 1.0
-              },
-              range: {min: 3, max: 3}
-            }
-            """.trimIndent(),
-        )
-        val tableBonusPass = JsonValues.parse(
-            """
-            {
-              condition: "minecraft:table_bonus",
-              enchantment: "minecraft:fortune",
-              chances: [0.0, 0.0, 1.0]
-            }
-            """.trimIndent(),
-        )
-        val tableBonusFail = JsonValues.parse(
-            """
-            {
-              condition: "minecraft:table_bonus",
-              enchantment: "minecraft:fortune",
-              chances: [0.0, 0.0, 0.0]
-            }
-            """.trimIndent(),
-        )
+        val context =
+            PredicateContext(
+                world = world,
+                tool = tool,
+                attackingPlayer = player,
+                random = Random(0),
+            )
+        val scoreValue =
+            JsonValues.parse(
+                """
+                {
+                  condition: "minecraft:value_check",
+                  value: {
+                    type: "minecraft:score",
+                    target: {type: "minecraft:fixed", name: "#clock"},
+                    score: "points"
+                  },
+                  range: 4
+                }
+                """.trimIndent(),
+            )
+        val binomialValue =
+            JsonValues.parse(
+                """
+                {
+                  condition: "minecraft:value_check",
+                  value: {
+                    type: "minecraft:binomial",
+                    n: 3,
+                    p: 1.0
+                  },
+                  range: {min: 3, max: 3}
+                }
+                """.trimIndent(),
+            )
+        val tableBonusPass =
+            JsonValues.parse(
+                """
+                {
+                  condition: "minecraft:table_bonus",
+                  enchantment: "minecraft:fortune",
+                  chances: [0.0, 0.0, 1.0]
+                }
+                """.trimIndent(),
+            )
+        val tableBonusFail =
+            JsonValues.parse(
+                """
+                {
+                  condition: "minecraft:table_bonus",
+                  enchantment: "minecraft:fortune",
+                  chances: [0.0, 0.0, 0.0]
+                }
+                """.trimIndent(),
+            )
         val killedByPlayer = JsonValues.parse("""{condition: "minecraft:killed_by_player"}""")
 
         assertTrue(engine.testElement(scoreValue, context))
@@ -235,41 +256,47 @@ class PredicateEngineTest {
     fun `item predicates match item tags and nested optional values`() {
         val rootTag = ResourceLocation.parse("demo:tools")
         val nestedTag = ResourceLocation.parse("demo:debug_tools")
-        val engine = PredicateEngine(
-            Datapack(
-                functions = emptyMap(),
-                loadFunctions = emptyList(),
-                tickFunctions = emptyList(),
-                tags = mapOf(
-                    TagKey("item", rootTag) to TagDefinition(
-                        key = TagKey("item", rootTag),
-                        file = "<test>",
-                        values = listOf(TagValue("#demo:debug_tools")),
-                    ),
-                    TagKey("item", nestedTag) to TagDefinition(
-                        key = TagKey("item", nestedTag),
-                        file = "<test>",
-                        values = listOf(
-                            TagValue("minecraft:stick"),
-                            TagValue("#demo:missing_optional", required = false),
+        val engine =
+            PredicateEngine(
+                Datapack(
+                    functions = emptyMap(),
+                    loadFunctions = emptyList(),
+                    tickFunctions = emptyList(),
+                    tags =
+                        mapOf(
+                            TagKey("item", rootTag) to
+                                TagDefinition(
+                                    key = TagKey("item", rootTag),
+                                    file = "<test>",
+                                    values = listOf(TagValue("#demo:debug_tools")),
+                                ),
+                            TagKey("item", nestedTag) to
+                                TagDefinition(
+                                    key = TagKey("item", nestedTag),
+                                    file = "<test>",
+                                    values =
+                                        listOf(
+                                            TagValue("minecraft:stick"),
+                                            TagValue("#demo:missing_optional", required = false),
+                                        ),
+                                ),
                         ),
-                    ),
                 ),
-            ),
-        )
+            )
         val stick = ItemStack(ResourceLocation.parse("minecraft:stick"))
         val apple = ItemStack(ResourceLocation.parse("minecraft:apple"))
         val itemPredicate = JsonValues.parse("""{items:"#demo:tools"}""").asJsonObject
-        val matchTool = JsonValues.parse(
-            """
-            {
-              condition: "minecraft:match_tool",
-              predicate: {
-                items: "#demo:tools"
-              }
-            }
-            """.trimIndent(),
-        )
+        val matchTool =
+            JsonValues.parse(
+                """
+                {
+                  condition: "minecraft:match_tool",
+                  predicate: {
+                    items: "#demo:tools"
+                  }
+                }
+                """.trimIndent(),
+            )
 
         assertTrue(engine.testItemPredicate(stick, itemPredicate))
         assertFalse(engine.testItemPredicate(apple, itemPredicate))
@@ -280,33 +307,36 @@ class PredicateEngineTest {
     @Test
     fun `block state property condition matches block properties`() {
         val engine = PredicateEngine(Datapack(emptyMap(), emptyList(), emptyList()))
-        val block = SandboxBlock(
-            id = ResourceLocation.parse("minecraft:stone"),
-            properties = mutableMapOf("variant" to "smooth", "level" to "3"),
-        )
-        val pass = JsonValues.parse(
-            """
-            {
-              condition: "minecraft:block_state_property",
-              block: "minecraft:stone",
-              properties: {
-                variant: "smooth",
-                level: {min: 2, max: 4}
-              }
-            }
-            """.trimIndent(),
-        )
-        val fail = JsonValues.parse(
-            """
-            {
-              condition: "minecraft:block_state_property",
-              block: "minecraft:stone",
-              properties: {
-                variant: "rough"
-              }
-            }
-            """.trimIndent(),
-        )
+        val block =
+            SandboxBlock(
+                id = ResourceLocation.parse("minecraft:stone"),
+                properties = mutableMapOf("variant" to "smooth", "level" to "3"),
+            )
+        val pass =
+            JsonValues.parse(
+                """
+                {
+                  condition: "minecraft:block_state_property",
+                  block: "minecraft:stone",
+                  properties: {
+                    variant: "smooth",
+                    level: {min: 2, max: 4}
+                  }
+                }
+                """.trimIndent(),
+            )
+        val fail =
+            JsonValues.parse(
+                """
+                {
+                  condition: "minecraft:block_state_property",
+                  block: "minecraft:stone",
+                  properties: {
+                    variant: "rough"
+                  }
+                }
+                """.trimIndent(),
+            )
         val context = PredicateContext(world = SandboxWorld(), block = block.id, blockState = block)
 
         assertTrue(engine.testElement(pass, context))

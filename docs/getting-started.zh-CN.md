@@ -27,12 +27,13 @@ JVM 项目应依赖 `core` artifact，而不是 CLI fat jar。
 
 ```kotlin
 repositories {
+    maven("https://nexus.mcfpp.top/repository/maven-releases/")
     mavenCentral()
     maven("https://libraries.minecraft.net")
 }
 
 dependencies {
-    testImplementation("moe.afox.dpsandbox:core:1.0.0")
+    testImplementation("moe.afox.dpsandbox:testkit:1.0.1")
 }
 ```
 

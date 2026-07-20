@@ -4,117 +4,119 @@ import moe.afox.dpsandbox.core.VersionProfile
 import moe.afox.dpsandbox.core.VersionProfiles
 
 object DpsCommandCatalog {
-    private val baseRootCommands: List<CompletionSuggestion> = listOf(
-        command("load", "run #minecraft:load"),
-        command("reload", "reload datapack files", CommandBehaviorLevel.OBSERVED_NOOP),
-        command("tick", "advance sandbox ticks"),
-        command("function", "run a loaded function"),
-        command("player", "create or reuse a player"),
-        command("event", "inject a player event"),
-        command("trace", "toggle command trace printing"),
-        command("diff", "inspect the last snapshot diff"),
-        command("rerun", "rerun the last tracked command"),
-        command("reset", "reset sandbox state"),
-        command("inspect", "inspect sandbox state"),
-        command("snapshot", "print or write a snapshot"),
-        command("help", "show help"),
-        command("exit", "leave the REPL"),
-        command("quit", "leave the REPL"),
-        command("advancement", "grant, revoke, or test advancement progress"),
-        command("attribute", "read or edit stored entity attributes"),
-        command("ban", "record a server ban request", CommandBehaviorLevel.OBSERVED_NOOP),
-        command("ban-ip", "record an IP ban request", CommandBehaviorLevel.OBSERVED_NOOP),
-        command("banlist", "record a ban-list query", CommandBehaviorLevel.OBSERVED_NOOP),
-        command("bossbar", "edit stored bossbar state"),
-        command("clear", "remove items from player inventories"),
-        command("clone", "copy sparse sandbox blocks"),
-        command("damage", "apply sandbox health damage"),
-        command("data", "read or mutate storage/entity/block NBT"),
-        command("debug", "record a profiling request", CommandBehaviorLevel.OBSERVED_NOOP),
-        command("defaultgamemode", "edit world default game mode"),
-        command("deop", "record a permission removal request", CommandBehaviorLevel.OBSERVED_NOOP),
-        command("difficulty", "edit world difficulty"),
-        command("effect", "give or clear player effects"),
-        command("enchant", "write enchantment components"),
-        command("execute", "run a command in a modified context"),
-        command("experience", "edit player XP"),
-        command("xp", "edit player XP"),
-        command("fill", "fill sparse sandbox blocks"),
-        command("fillbiome", "store sparse biome overrides"),
-        command("forceload", "edit forced chunk state"),
-        command("gamemode", "edit player game mode"),
-        command("gamerule", "edit stored gamerule values"),
-        command("give", "add items to players"),
-        command("item", "replace entity item slots"),
-        command("jfr", "record a profiling request", CommandBehaviorLevel.OBSERVED_NOOP),
-        command("kick", "record a network kick request", CommandBehaviorLevel.OBSERVED_NOOP),
-        command("kill", "remove entities"),
-        command("list", "report sandbox players"),
-        command("locate", "report deterministic void-world locate results"),
-        command("loot", "generate or place loot"),
-        command("op", "record a permission grant request", CommandBehaviorLevel.OBSERVED_NOOP),
-        command("pardon", "record a pardon request", CommandBehaviorLevel.OBSERVED_NOOP),
-        command("pardon-ip", "record an IP pardon request", CommandBehaviorLevel.OBSERVED_NOOP),
-        command("publish", "record a LAN publish request", CommandBehaviorLevel.OBSERVED_NOOP),
-        command("random", "generate deterministic random values"),
-        command("recipe", "give or take player recipes"),
-        command("return", "stop the current function"),
-        command("ride", "edit riding relationships"),
-        command("rotate", "edit entity yaw and pitch"),
-        command("save-all", "record a save lifecycle request", CommandBehaviorLevel.OBSERVED_NOOP),
-        command("save-off", "record a save lifecycle request", CommandBehaviorLevel.OBSERVED_NOOP),
-        command("save-on", "record a save lifecycle request", CommandBehaviorLevel.OBSERVED_NOOP),
-        command("schedule", "schedule or clear functions"),
-        command("scoreboard", "edit objectives and player scores"),
-        command("seed", "report sandbox seed"),
-        command("setblock", "place one sparse sandbox block"),
-        command("setidletimeout", "record an idle timeout request", CommandBehaviorLevel.OBSERVED_NOOP),
-        command("setworldspawn", "edit world spawn point"),
-        command("spawnpoint", "edit player spawn points"),
-        command("spectate", "record spectator target"),
-        command("spreadplayers", "deterministically spread entities"),
-        command("stop", "record a lifecycle stop request", CommandBehaviorLevel.OBSERVED_NOOP),
-        command("summon", "create an entity"),
-        command("tag", "edit entity tags"),
-        command("team", "edit team state"),
-        command("teleport", "move entities"),
-        command("tp", "move entities"),
-        command("time", "edit world time state"),
-        command("weather", "edit weather state"),
-        command("worldborder", "edit stored world border state"),
-        command("whitelist", "record a whitelist administration request", CommandBehaviorLevel.OBSERVED_NOOP),
-        command("tellraw", "record a raw JSON chat output"),
-        command("title", "record title output"),
-        command("transfer", "record a server transfer request", CommandBehaviorLevel.OBSERVED_NOOP),
-        command("trigger", "edit trigger objective scores"),
-        command("say", "record chat output"),
-        command("me", "record chat output"),
-        command("msg", "record private chat output"),
-        command("tell", "record private chat output"),
-        command("w", "record private chat output"),
-        command("teammsg", "record team chat output"),
-        command("tm", "record team chat output"),
-        command("playsound", "record a sound output", CommandBehaviorLevel.OBSERVED_NOOP),
-        command("stopsound", "record a stop-sound output", CommandBehaviorLevel.OBSERVED_NOOP),
-        command("particle", "record a visual output", CommandBehaviorLevel.OBSERVED_NOOP),
-        command("place", "place modeled structure, template, jigsaw, and feature resources"),
-        command("datapack", "inspect loaded datapack resources"),
-        command("perf", "record a profiling request", CommandBehaviorLevel.OBSERVED_NOOP),
-    ).distinctBy { it.value }.sortedBy { it.value }
+    private val baseRootCommands: List<CompletionSuggestion> =
+        listOf(
+            command("load", "run #minecraft:load"),
+            command("reload", "reload datapack files", CommandBehaviorLevel.OBSERVED_NOOP),
+            command("tick", "advance sandbox ticks"),
+            command("function", "run a loaded function"),
+            command("player", "create or reuse a player"),
+            command("event", "inject a player event"),
+            command("trace", "toggle command trace printing"),
+            command("diff", "inspect the last snapshot diff"),
+            command("rerun", "rerun the last tracked command"),
+            command("reset", "reset sandbox state"),
+            command("inspect", "inspect sandbox state"),
+            command("snapshot", "print or write a snapshot"),
+            command("help", "show help"),
+            command("exit", "leave the REPL"),
+            command("quit", "leave the REPL"),
+            command("advancement", "grant, revoke, or test advancement progress"),
+            command("attribute", "read or edit stored entity attributes"),
+            command("ban", "record a server ban request", CommandBehaviorLevel.OBSERVED_NOOP),
+            command("ban-ip", "record an IP ban request", CommandBehaviorLevel.OBSERVED_NOOP),
+            command("banlist", "record a ban-list query", CommandBehaviorLevel.OBSERVED_NOOP),
+            command("bossbar", "edit stored bossbar state"),
+            command("clear", "remove items from player inventories"),
+            command("clone", "copy sparse sandbox blocks"),
+            command("damage", "apply sandbox health damage"),
+            command("data", "read or mutate storage/entity/block NBT"),
+            command("debug", "record a profiling request", CommandBehaviorLevel.OBSERVED_NOOP),
+            command("defaultgamemode", "edit world default game mode"),
+            command("deop", "record a permission removal request", CommandBehaviorLevel.OBSERVED_NOOP),
+            command("difficulty", "edit world difficulty"),
+            command("effect", "give or clear player effects"),
+            command("enchant", "write enchantment components"),
+            command("execute", "run a command in a modified context"),
+            command("experience", "edit player XP"),
+            command("xp", "edit player XP"),
+            command("fill", "fill sparse sandbox blocks"),
+            command("fillbiome", "store sparse biome overrides"),
+            command("forceload", "edit forced chunk state"),
+            command("gamemode", "edit player game mode"),
+            command("gamerule", "edit stored gamerule values"),
+            command("give", "add items to players"),
+            command("item", "replace entity item slots"),
+            command("jfr", "record a profiling request", CommandBehaviorLevel.OBSERVED_NOOP),
+            command("kick", "record a network kick request", CommandBehaviorLevel.OBSERVED_NOOP),
+            command("kill", "remove entities"),
+            command("list", "report sandbox players"),
+            command("locate", "report deterministic void-world locate results"),
+            command("loot", "generate or place loot"),
+            command("op", "record a permission grant request", CommandBehaviorLevel.OBSERVED_NOOP),
+            command("pardon", "record a pardon request", CommandBehaviorLevel.OBSERVED_NOOP),
+            command("pardon-ip", "record an IP pardon request", CommandBehaviorLevel.OBSERVED_NOOP),
+            command("publish", "record a LAN publish request", CommandBehaviorLevel.OBSERVED_NOOP),
+            command("random", "generate deterministic random values"),
+            command("recipe", "give or take player recipes"),
+            command("return", "stop the current function"),
+            command("ride", "edit riding relationships"),
+            command("rotate", "edit entity yaw and pitch"),
+            command("save-all", "record a save lifecycle request", CommandBehaviorLevel.OBSERVED_NOOP),
+            command("save-off", "record a save lifecycle request", CommandBehaviorLevel.OBSERVED_NOOP),
+            command("save-on", "record a save lifecycle request", CommandBehaviorLevel.OBSERVED_NOOP),
+            command("schedule", "schedule or clear functions"),
+            command("scoreboard", "edit objectives and player scores"),
+            command("seed", "report sandbox seed"),
+            command("setblock", "place one sparse sandbox block"),
+            command("setidletimeout", "record an idle timeout request", CommandBehaviorLevel.OBSERVED_NOOP),
+            command("setworldspawn", "edit world spawn point"),
+            command("spawnpoint", "edit player spawn points"),
+            command("spectate", "record spectator target"),
+            command("spreadplayers", "deterministically spread entities"),
+            command("stop", "record a lifecycle stop request", CommandBehaviorLevel.OBSERVED_NOOP),
+            command("summon", "create an entity"),
+            command("tag", "edit entity tags"),
+            command("team", "edit team state"),
+            command("teleport", "move entities"),
+            command("tp", "move entities"),
+            command("time", "edit world time state"),
+            command("weather", "edit weather state"),
+            command("worldborder", "edit stored world border state"),
+            command("whitelist", "record a whitelist administration request", CommandBehaviorLevel.OBSERVED_NOOP),
+            command("tellraw", "record a raw JSON chat output"),
+            command("title", "record title output"),
+            command("transfer", "record a server transfer request", CommandBehaviorLevel.OBSERVED_NOOP),
+            command("trigger", "edit trigger objective scores"),
+            command("say", "record chat output"),
+            command("me", "record chat output"),
+            command("msg", "record private chat output"),
+            command("tell", "record private chat output"),
+            command("w", "record private chat output"),
+            command("teammsg", "record team chat output"),
+            command("tm", "record team chat output"),
+            command("playsound", "record a sound output", CommandBehaviorLevel.OBSERVED_NOOP),
+            command("stopsound", "record a stop-sound output", CommandBehaviorLevel.OBSERVED_NOOP),
+            command("particle", "record a visual output", CommandBehaviorLevel.OBSERVED_NOOP),
+            command("place", "place modeled structure, template, jigsaw, and feature resources"),
+            command("datapack", "inspect loaded datapack resources"),
+            command("perf", "record a profiling request", CommandBehaviorLevel.OBSERVED_NOOP),
+        ).distinctBy { it.value }.sortedBy { it.value }
 
     fun rootCommands(profile: VersionProfile = VersionProfiles.default): List<CompletionSuggestion> {
-        val scoped = baseRootCommands.filter { suggestion ->
-            suggestion.value in sandboxOnlyRoots || profile.commands.hasRoot(suggestion.value)
-        }
+        val scoped =
+            baseRootCommands.filter { suggestion ->
+                suggestion.value in sandboxOnlyRoots || profile.commands.hasRoot(suggestion.value)
+            }
         val known = scoped.mapTo(mutableSetOf()) { it.value }
-        val inferredUnsupported = profile.commands.roots
-            .filterNot { it in known }
-            .map(::unsupported)
+        val inferredUnsupported =
+            profile.commands.roots
+                .filterNot { it in known }
+                .map(::unsupported)
         return (scoped + inferredUnsupported).distinctBy { it.value }.sortedBy { it.value }
     }
 
-    fun rootNames(profile: VersionProfile = VersionProfiles.default): Set<String> =
-        rootCommands(profile).mapTo(sortedSetOf()) { it.value }
+    fun rootNames(profile: VersionProfile = VersionProfiles.default): Set<String> = rootCommands(profile).mapTo(sortedSetOf()) { it.value }
 
     fun usageSuffix(command: String): String =
         when (command) {
@@ -126,7 +128,7 @@ object DpsCommandCatalog {
             "rerun" -> " last"
             "reset" -> " world"
             "inspect" -> " <world|worldborder|score|storage|gamerule|random|schedule|forced-chunks|scoreboard|team|bossbar|entity|entities|block|blocks|biome|biomes|player|item|items|recipes|advancement-progress|loot|predicate|advancement|recipe|item_modifier|raw|tags|resources|registry [group]|outputs|event-traces>"
-            "event" -> " player <name> <type> [id] [action]"
+            "event" -> " player <name> <type> [id|target-selector] [action]"
             "attribute" -> " <target> <attribute> <get|base|modifier> ..."
             "ban", "ban-ip", "kick" -> " <target> [reason]"
             "banlist" -> " [ips|players]"
@@ -134,7 +136,7 @@ object DpsCommandCatalog {
             "whitelist" -> " <add|remove|list|on|off|reload> [target]"
             "debug", "jfr", "perf" -> " <action> [...]"
             "scoreboard" -> " objectives <add|remove|list|modify|setdisplay>|players ..."
-            "execute" -> " as|at|if|unless|store ... run <command>"
+            "execute" -> " as|at|on|if|unless|store ... run <command>"
             "data" -> " <get|modify|merge|remove> <storage|entity|block> ..."
             "bossbar" -> " <add|remove|list|get|set> ..."
             "give" -> " <players> <item> [count]"
@@ -163,19 +165,20 @@ object DpsCommandCatalog {
             "save-off", "save-on", "stop" -> ""
             "setidletimeout" -> " <minutes>"
             "transfer" -> " <host> [port] [players]"
-            else -> baseRootCommands.firstOrNull { it.value == command }
-                ?.description
-                ?.takeIf { it.isNotBlank() }
-                ?.let { " - $it" }
-                .orEmpty()
+            else ->
+                baseRootCommands
+                    .firstOrNull { it.value == command }
+                    ?.description
+                    ?.takeIf { it.isNotBlank() }
+                    ?.let { " - $it" }
+                    .orEmpty()
         }
 
     private fun command(
         value: String,
         description: String,
         behaviorLevel: CommandBehaviorLevel = CommandBehaviorLevel.MODELED,
-    ): CompletionSuggestion =
-        CompletionSuggestion(value, description, "commands", appendSpace = true, behaviorLevel = behaviorLevel)
+    ): CompletionSuggestion = CompletionSuggestion(value, description, "commands", appendSpace = true, behaviorLevel = behaviorLevel)
 
     private fun unsupported(value: String): CompletionSuggestion =
         CompletionSuggestion(
@@ -186,17 +189,18 @@ object DpsCommandCatalog {
             behaviorLevel = CommandBehaviorLevel.UNSUPPORTED,
         )
 
-    private val sandboxOnlyRoots = setOf(
-        "load",
-        "player",
-        "event",
-        "trace",
-        "diff",
-        "rerun",
-        "reset",
-        "inspect",
-        "snapshot",
-        "exit",
-        "quit",
-    )
+    private val sandboxOnlyRoots =
+        setOf(
+            "load",
+            "player",
+            "event",
+            "trace",
+            "diff",
+            "rerun",
+            "reset",
+            "inspect",
+            "snapshot",
+            "exit",
+            "quit",
+        )
 }

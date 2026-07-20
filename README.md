@@ -11,6 +11,11 @@ The runtime does not embed or distribute a vanilla server. Build tooling uses
 public `SpyglassMC/vanilla-mcdoc` data and the official `@spyglassmc/mcdoc`
 parser to generate NBT schemas for validation.
 
+The optional `renderer` module produces headless, perspective PNGs from the
+modeled world using user-provided Minecraft assets. The native Jupyter Kernel
+runs persistent `mcfunction` cells and displays output, snapshot diffs, and the
+current frame inline. See [Rendering and Jupyter Kernel](docs/rendering-notebook.md).
+
 ## Build
 
 ```bash
@@ -29,7 +34,7 @@ Run release smoke checks for the standalone jar:
 .\gradlew.bat :cli:smokeCliJar
 ```
 
-Run the full 1.0 release gate, including unit checks, standalone jar smoke, and
+Run the full release gate, including unit checks, standalone jar smoke, and
 Maven publication artifact verification:
 
 ```powershell
@@ -37,12 +42,15 @@ Maven publication artifact verification:
 ```
 
 The smoke checks build the jar, export the bundled manifest schema, run all
-example manifests, exercise the built-in benchmark and diff commands, and
+example and integration manifests, exercise the built-in benchmark and diff commands, and
 execute the concrete README `loot`, player `event`, and stdin `run` examples.
 The standard `check` lifecycle also runs unit tests, manifest examples, and the
-standalone jar smoke checks. CI runs `releaseCheck` on Linux, Windows, and
-macOS, so release jars, sources jars, javadocs jars, and generated Maven POMs
-are checked on every platform.
+standalone jar smoke checks. CI runs `releaseCheck` on Linux and Windows, so
+release jars, sources jars, javadocs jars, and generated Maven POMs
+are checked on both supported CI platforms.
+The gate also regenerates the pinned vanilla NBT schema byte-for-byte, runs
+ktlint, checks dependency locks and public JVM API baselines, and enforces the
+source-size architecture limit.
 
 The standalone jar is written to:
 
@@ -52,11 +60,12 @@ cli/build/libs/datapack-sandbox-cli.jar
 
 ## JVM Library Usage
 
-Use the `core` module as the embeddable API library. The `cli` module is the
-standalone application and should not be used as an application dependency.
+Use the `core` module as the embeddable runtime API and `renderer` when an
+application needs PNG output. The `cli` module is the standalone application
+and should not be used as an application dependency.
 
 Released artifacts target Java 25. Configure the project Maven repository, Maven
-Central, and Mojang's library repository, then depend on `core`:
+Central, and Mojang's library repository, then depend on `testkit` for the fluent test API:
 
 ```kotlin
 repositories {
@@ -66,7 +75,7 @@ repositories {
 }
 
 dependencies {
-    testImplementation("moe.afox.dpsandbox:core:1.0.0")
+    testImplementation("moe.afox.dpsandbox:testkit:1.0.1")
 }
 ```
 
@@ -76,7 +85,7 @@ multi-project build, depend on the module directly:
 
 ```kotlin
 dependencies {
-    testImplementation(project(":core"))
+    testImplementation(project(":testkit"))
 }
 ```
 
@@ -299,7 +308,7 @@ Export the bundled manifest JSON Schema for editors or CI tooling:
 
 ```bash
 java -jar cli/build/libs/datapack-sandbox-cli.jar schema --output dps-manifest.schema.json
-java -jar cli/build/libs/datapack-sandbox-cli.jar schema --check docs/dps-manifest.schema.json
+java -jar cli/build/libs/datapack-sandbox-cli.jar schema --check schema/manifest/dps-manifest.schema.json
 ```
 
 Use `--verbose` to include deterministic resource summaries, pack overlay
@@ -524,7 +533,8 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar check examples
 ```
 
 The `examples/` directory covers full-stack datapack events, a player-event
-matrix, single-function scratch tests, command-generator output, a reusable
+matrix, special display/armor-stand/marker/interaction entities,
+single-function scratch tests, command-generator output, a reusable
 generator-output template, golden snapshot assertions, and multi-version
 manifests.
 
@@ -533,6 +543,7 @@ Run the shortest example for each common workflow:
 ```powershell
 java -jar cli/build/libs/datapack-sandbox-cli.jar check examples/full-stack/full-stack.dps.json
 java -jar cli/build/libs/datapack-sandbox-cli.jar check examples/player-events/player-events.dps.json
+java -jar cli/build/libs/datapack-sandbox-cli.jar check examples/special-entities/special-entities.dps.json
 java -jar cli/build/libs/datapack-sandbox-cli.jar check examples/single-function/single-function.dps.json
 java -jar cli/build/libs/datapack-sandbox-cli.jar check examples/generator-output/generator-output.dps.json
 java -jar cli/build/libs/datapack-sandbox-cli.jar check examples/generator-template/generator-template.dps.json

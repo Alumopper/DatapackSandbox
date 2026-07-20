@@ -14,7 +14,13 @@ class CheckCommandTest {
     @Test
     fun `check can validate manifests against bundled schema before running`() {
         val dir = Files.createTempDirectory("dps-check-schema")
-        val pack = Path.of("../core/src/test/resources/packs/counter").toAbsolutePath().normalize().toString().replace("\\", "\\\\")
+        val pack =
+            Path
+                .of("../core/src/test/resources/packs/counter")
+                .toAbsolutePath()
+                .normalize()
+                .toString()
+                .replace("\\", "\\\\")
         val manifest = dir.resolve("schema-valid.dps.json")
         Files.writeString(
             manifest,
@@ -32,28 +38,30 @@ class CheckCommandTest {
             """.trimIndent(),
         )
 
-        val output = captureStdout {
-            main(arrayOf("check", manifest.toString(), "--validate-schema"))
-        }
+        val output =
+            captureStdout {
+                main(arrayOf("check", manifest.toString(), "--validate-schema"))
+            }
 
         assertTrue("PASS $manifest" in output, output)
     }
 
     @Test
     fun `manifest schema validator reports invalid manifest shapes`() {
-        val errors = ManifestSchemaValidator.validate(
-            JsonParser.parseString(
-                """
-                {
-                  "version": "26.2",
-                  "packs": "pack",
-                  "steps": [
-                    { "ticks": "one" }
-                  ]
-                }
-                """.trimIndent(),
-            ),
-        )
+        val errors =
+            ManifestSchemaValidator.validate(
+                JsonParser.parseString(
+                    """
+                    {
+                      "version": "26.2",
+                      "packs": "pack",
+                      "steps": [
+                        { "ticks": "one" }
+                      ]
+                    }
+                    """.trimIndent(),
+                ),
+            )
 
         assertTrue(errors.any { it.contains("$/packs") }, errors.joinToString())
         assertTrue(errors.any { it.contains("$/steps/0/ticks") }, errors.joinToString())
@@ -125,7 +133,13 @@ class CheckCommandTest {
         val dir = Files.createTempDirectory("dps-schema-include")
         val common = dir.resolve("common")
         Files.createDirectories(common)
-        val pack = Path.of("../core/src/test/resources/packs/counter").toAbsolutePath().normalize().toString().replace("\\", "\\\\")
+        val pack =
+            Path
+                .of("../core/src/test/resources/packs/counter")
+                .toAbsolutePath()
+                .normalize()
+                .toString()
+                .replace("\\", "\\\\")
         val included = common.resolve("bad.dps.json")
         Files.writeString(
             included,
@@ -160,7 +174,12 @@ class CheckCommandTest {
     @Test
     fun `manifest schema validator reports missing included manifests`() {
         val dir = Files.createTempDirectory("dps-schema-missing-include")
-        val missing = dir.resolve("common").resolve("missing.dps.json").toAbsolutePath().normalize()
+        val missing =
+            dir
+                .resolve("common")
+                .resolve("missing.dps.json")
+                .toAbsolutePath()
+                .normalize()
         val manifest = dir.resolve("root.dps.json")
         Files.writeString(
             manifest,
@@ -180,7 +199,13 @@ class CheckCommandTest {
     fun `check can print and write manifest command traces`() {
         val dir = Files.createTempDirectory("dps-check-trace")
         val traceFile = dir.resolve("trace.jsonl")
-        val pack = Path.of("../core/src/test/resources/packs/counter").toAbsolutePath().normalize().toString().replace("\\", "\\\\")
+        val pack =
+            Path
+                .of("../core/src/test/resources/packs/counter")
+                .toAbsolutePath()
+                .normalize()
+                .toString()
+                .replace("\\", "\\\\")
         val manifest = dir.resolve("trace.dps.json")
         Files.writeString(
             manifest,
@@ -201,9 +226,10 @@ class CheckCommandTest {
             """.trimIndent(),
         )
 
-        val output = captureStdout {
-            main(arrayOf("check", manifest.toString(), "--trace", "--trace-filter", "root=say", "--trace-file", traceFile.toString()))
-        }
+        val output =
+            captureStdout {
+                main(arrayOf("check", manifest.toString(), "--trace", "--trace-filter", "root=say", "--trace-file", traceFile.toString()))
+            }
 
         assertTrue("PASS $manifest" in output, output)
         assertTrue("trace OK say traced from check" in output, output)
@@ -221,7 +247,13 @@ class CheckCommandTest {
     fun `check writes manifest output events as jsonl`() {
         val dir = Files.createTempDirectory("dps-check-outputs")
         val outputsFile = dir.resolve("outputs.jsonl")
-        val pack = Path.of("../core/src/test/resources/packs/counter").toAbsolutePath().normalize().toString().replace("\\", "\\\\")
+        val pack =
+            Path
+                .of("../core/src/test/resources/packs/counter")
+                .toAbsolutePath()
+                .normalize()
+                .toString()
+                .replace("\\", "\\\\")
         val manifest = dir.resolve("outputs.dps.json")
         Files.writeString(
             manifest,
@@ -239,9 +271,10 @@ class CheckCommandTest {
             """.trimIndent(),
         )
 
-        val output = captureStdout {
-            main(arrayOf("check", manifest.toString(), "--outputs-file", outputsFile.toString()))
-        }
+        val output =
+            captureStdout {
+                main(arrayOf("check", manifest.toString(), "--outputs-file", outputsFile.toString()))
+            }
 
         assertTrue("PASS $manifest" in output, output)
         assertTrue("outputs written: $outputsFile" in output, output)
@@ -254,7 +287,13 @@ class CheckCommandTest {
     fun `check writes player event traces as jsonl`() {
         val dir = Files.createTempDirectory("dps-check-event-trace")
         val eventTraceFile = dir.resolve("event-trace.jsonl")
-        val pack = Path.of("../core/src/test/resources/packs/counter").toAbsolutePath().normalize().toString().replace("\\", "\\\\")
+        val pack =
+            Path
+                .of("../core/src/test/resources/packs/counter")
+                .toAbsolutePath()
+                .normalize()
+                .toString()
+                .replace("\\", "\\\\")
         val manifest = dir.resolve("event-trace.dps.json")
         Files.writeString(
             manifest,
@@ -282,9 +321,10 @@ class CheckCommandTest {
             """.trimIndent(),
         )
 
-        val output = captureStdout {
-            main(arrayOf("check", manifest.toString(), "--event-trace-file", eventTraceFile.toString()))
-        }
+        val output =
+            captureStdout {
+                main(arrayOf("check", manifest.toString(), "--event-trace-file", eventTraceFile.toString()))
+            }
 
         assertTrue("PASS $manifest" in output, output)
         assertTrue("event trace written: $eventTraceFile" in output, output)
@@ -301,7 +341,13 @@ class CheckCommandTest {
     fun `check writes structured manifest reports`() {
         val dir = Files.createTempDirectory("dps-check-report")
         val reportFile = dir.resolve("report.json")
-        val pack = Path.of("../core/src/test/resources/packs/counter").toAbsolutePath().normalize().toString().replace("\\", "\\\\")
+        val pack =
+            Path
+                .of("../core/src/test/resources/packs/counter")
+                .toAbsolutePath()
+                .normalize()
+                .toString()
+                .replace("\\", "\\\\")
         val manifest = dir.resolve("report.dps.json")
         Files.writeString(
             manifest,
@@ -323,9 +369,10 @@ class CheckCommandTest {
             """.trimIndent(),
         )
 
-        val output = captureStdout {
-            main(arrayOf("check", manifest.toString(), "--report-file", reportFile.toString()))
-        }
+        val output =
+            captureStdout {
+                main(arrayOf("check", manifest.toString(), "--report-file", reportFile.toString()))
+            }
 
         assertTrue("PASS $manifest" in output, output)
         assertTrue("report written: $reportFile" in output, output)
@@ -334,13 +381,44 @@ class CheckCommandTest {
         assertTrue(report.get("outputCount").asInt == 1)
         assertTrue(report.get("traceCount").asInt >= 3)
         assertTrue(report.get("eventTraceCount").asInt == 1)
-        assertTrue(report.getAsJsonArray("outputs")[0].asJsonObject.get("text").asString == "<Server> check report ok")
-        assertTrue(report.getAsJsonArray("eventTraces")[0].asJsonObject.get("type").asString == "key_input")
-        assertTrue(report.getAsJsonArray("attempts")[0].asJsonObject.get("version").asString == "26.1.2")
+        assertTrue(
+            report
+                .getAsJsonArray("outputs")[0]
+                .asJsonObject
+                .get("text")
+                .asString == "<Server> check report ok",
+        )
+        assertTrue(
+            report
+                .getAsJsonArray("eventTraces")[0]
+                .asJsonObject
+                .get("type")
+                .asString == "key_input",
+        )
+        assertTrue(
+            report
+                .getAsJsonArray("attempts")[0]
+                .asJsonObject
+                .get("version")
+                .asString == "26.1.2",
+        )
         val attempt = report.getAsJsonArray("attempts")[0].asJsonObject
         assertTrue(attempt.get("eventTraceCount").asInt == 1)
-        assertTrue(attempt.getAsJsonArray("eventTraces")[0].asJsonObject.get("player").asString == "Steve")
-        assertTrue(attempt.getAsJsonObject("snapshot").getAsJsonObject("scores").getAsJsonObject("ticks").get("#clock").asInt == 5)
+        assertTrue(
+            attempt
+                .getAsJsonArray("eventTraces")[0]
+                .asJsonObject
+                .get("player")
+                .asString == "Steve",
+        )
+        assertTrue(
+            attempt
+                .getAsJsonObject("snapshot")
+                .getAsJsonObject("scores")
+                .getAsJsonObject("ticks")
+                .get("#clock")
+                .asInt == 5,
+        )
         assertTrue(
             attempt.getAsJsonArray("snapshotDiffs").any { entry ->
                 entry.asJsonObject.get("path").asString == "/scores/ticks"
@@ -365,9 +443,10 @@ class CheckCommandTest {
             """.trimIndent(),
         )
 
-        val output = captureStdout {
-            main(arrayOf("check", manifest.toString(), "--verbose"))
-        }
+        val output =
+            captureStdout {
+                main(arrayOf("check", manifest.toString(), "--verbose"))
+            }
 
         assertTrue("PASS $manifest" in output, output)
         assertTrue("resources 26.2 functions=1" in output, output)
@@ -378,7 +457,12 @@ class CheckCommandTest {
         assertTrue("missing-reference #minecraft:load -> function demo:missing_load" in output, output)
     }
 
-    private fun writeVerbosePack(root: Path, name: String, marker: String, includeMissingLoad: Boolean): Path {
+    private fun writeVerbosePack(
+        root: Path,
+        name: String,
+        marker: String,
+        includeMissingLoad: Boolean,
+    ): Path {
         val pack = root.resolve(name)
         Files.createDirectories(pack)
         Files.writeString(
@@ -412,7 +496,12 @@ class CheckCommandTest {
         )
 
         if (includeMissingLoad) {
-            val tagRoot = pack.resolve("data").resolve("minecraft").resolve("tags").resolve("function")
+            val tagRoot =
+                pack
+                    .resolve("data")
+                    .resolve("minecraft")
+                    .resolve("tags")
+                    .resolve("function")
             Files.createDirectories(tagRoot)
             Files.writeString(
                 tagRoot.resolve("load.json"),
@@ -427,7 +516,11 @@ class CheckCommandTest {
     }
 
     private fun manifestPath(path: Path): String =
-        path.toAbsolutePath().normalize().toString().replace("\\", "\\\\")
+        path
+            .toAbsolutePath()
+            .normalize()
+            .toString()
+            .replace("\\", "\\\\")
 
     private fun captureStdout(block: () -> Unit): String {
         val original = System.out
@@ -442,21 +535,22 @@ class CheckCommandTest {
     }
 
     private fun runCliProcess(vararg args: String): ProcessResult {
-        val javaBinary = Path.of(
-            System.getProperty("java.home"),
-            "bin",
-            if (System.getProperty("os.name").startsWith("Windows")) "java.exe" else "java",
-        )
-        val process = ProcessBuilder(
-            listOf(
-                javaBinary.toString(),
-                "-cp",
-                System.getProperty("java.class.path"),
-                "moe.afox.dpsandbox.cli.MainKt",
-            ) + args,
-        )
-            .redirectErrorStream(true)
-            .start()
+        val javaBinary =
+            Path.of(
+                System.getProperty("java.home"),
+                "bin",
+                if (System.getProperty("os.name").startsWith("Windows")) "java.exe" else "java",
+            )
+        val process =
+            ProcessBuilder(
+                listOf(
+                    javaBinary.toString(),
+                    "-cp",
+                    System.getProperty("java.class.path"),
+                    "moe.afox.dpsandbox.cli.MainKt",
+                ) + args,
+            ).redirectErrorStream(true)
+                .start()
         val finished = process.waitFor(30, TimeUnit.SECONDS)
         val output = process.inputStream.readAllBytes().toString(Charsets.UTF_8)
         if (!finished) {
@@ -466,5 +560,8 @@ class CheckCommandTest {
         return ProcessResult(process.exitValue(), output)
     }
 
-    private data class ProcessResult(val exitCode: Int, val output: String)
+    private data class ProcessResult(
+        val exitCode: Int,
+        val output: String,
+    )
 }

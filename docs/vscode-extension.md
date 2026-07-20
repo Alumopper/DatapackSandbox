@@ -30,7 +30,17 @@ Set `datapackSandbox.javaPath` when Java 25 is not available on `PATH`.
 
 Use `↑` and `↓` to move through suggestions and `Tab` or `Enter` to accept one. Inspector JSON is expandable, and traces with source locations can open the corresponding `.mcfunction` line.
 
-The profile selector is populated by the bundled CLI and includes every built-in profile from `1.20.4` through `26.2`. Starting a sandbox from the Command Palette presents the same profile picker.
+The profile selector is populated from the bundled CLI's canonical profile registry. Starting a sandbox from the Command Palette presents the same dynamically reported list.
+
+## Use the Jupyter Notebook kernel in VS Code
+
+Install the Microsoft **Python** and **Jupyter** extensions in addition to this
+extension. Select the Python interpreter where the Datapack Sandbox wheel and
+kernelspec were installed, open `examples/jupyter/datapack-sandbox-demo.ipynb`,
+and choose **Datapack Sandbox (MCFunction)** from **Select Kernel**. The
+Notebook kernel keeps one sandbox world across cells and displays an inline PNG
+after each successful MCF cell. Spyglass-style editing and diagnostics apply to
+standalone `.mcfunction` files; they are not injected into Notebook cells.
 
 ## Temporary and Active Sandboxes
 
@@ -86,7 +96,7 @@ To stop on the first trace event, set `stopOnEntry` explicitly:
 | Setting | Default | Purpose |
 | --- | --- | --- |
 | `datapackSandbox.javaPath` | `java` | Java 25 executable |
-| `datapackSandbox.defaultVersion` | `26.2` | Default Minecraft profile |
+| `datapackSandbox.defaultVersion` | empty | Optional profile override; empty follows the bundled CLI's canonical default |
 | `datapackSandbox.packPaths` | `[]` | Extra datapack directories or zip files |
 | `datapackSandbox.strict` | `false` | Enable strict Run/Debug checks |
 | `datapackSandbox.defaultExecutionTarget` | `temporary` | Default Run/Debug target |

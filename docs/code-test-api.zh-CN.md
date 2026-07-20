@@ -1,16 +1,16 @@
 ﻿# 代码测试 API
 
-除了 CLI 和 `.dps.json` 清单，Kotlin/Java 项目也可以直接调用 `:core` 的 quick-test API。适用场景包括本地单元测试、插件测试、构建脚本冒烟测试，以及只想验证一个 `.mcfunction` 文件的轻量用法。
+除了 CLI 和 `.dps.json` 清单，Kotlin/Java 项目也可以直接调用 `:testkit` 的 quick-test API。适用场景包括本地单元测试、插件测试、构建脚本冒烟测试，以及只想验证一个 `.mcfunction` 文件的轻量用法。
 
 ## Artifact 与运行要求
 
-API 库对应的是 `core` artifact：
+fluent 测试 API 对应的是 `testkit` artifact：
 
 ```text
-moe.afox.dpsandbox:core:1.0.0
+moe.afox.dpsandbox:testkit:1.0.1
 ```
 
-`cli` 模块和 `datapack-sandbox-cli.jar` 面向命令行使用。JVM 项目集成时应依赖 `core`，不要把 standalone CLI jar 当作库依赖。
+`cli` 模块和 `datapack-sandbox-cli.jar` 面向命令行使用。JVM 测试应依赖 `testkit`，它会传递引入底层 `core` runtime；不要把 standalone CLI jar 当作库依赖。
 
 发布 artifact 使用项目的 Java 25 toolchain 构建，因此编译和测试执行需要 Java 25 或更新版本。运行时依赖会通过 Maven 传递解析，但外部构建需要包含 Maven Central 和 Mojang library 仓库，因为 core runtime 依赖 Gson、Brigadier 和 LZ4。
 
@@ -26,7 +26,7 @@ repositories {
 }
 
 dependencies {
-    testImplementation("moe.afox.dpsandbox:core:1.0.0")
+    testImplementation("moe.afox.dpsandbox:testkit:1.0.1")
 }
 ```
 
@@ -36,7 +36,7 @@ dependencies {
 
 ```kotlin
 dependencies {
-    testImplementation(project(":core"))
+    testImplementation(project(":testkit"))
 }
 ```
 
@@ -57,8 +57,8 @@ dependencies {
 <dependencies>
   <dependency>
     <groupId>moe.afox.dpsandbox</groupId>
-    <artifactId>core</artifactId>
-    <version>1.0.0</version>
+    <artifactId>testkit</artifactId>
+    <version>1.0.1</version>
     <scope>test</scope>
   </dependency>
 </dependencies>
@@ -472,6 +472,8 @@ SandboxQuickTest.matrix(
     .requirePassed()
 ```
 
+可以使用 `forEachScenario { ... }` 将任意当前或未来的单场景操作/断言应用到整个矩阵，不必等待矩阵类再增加一份镜像便捷方法。
+
 ## Java 示例
 
 ```java
@@ -520,7 +522,7 @@ class MyDatapackTest {
 | `setupWorld(setup)` | 应用可复用的 `SandboxWorldSetup`。 |
 | `importSave(path, chunks, dimension)` | 导入指定 Java Anvil 存档 chunk。 |
 | `player(name)` | 创建或复用玩家。 |
-| `event(player, type, id, action)` | 注入玩家事件。 |
+| `event(player, type, id, action)` | 注入玩家事件；交互/攻击事件的 `id` 可填写只定向一个真实实体的 selector 或 UUID。 |
 | `blockEvent(player, type, id, x, y, z)` | 注入带坐标的方块玩家事件，并更新 sparse world 目标位置。 |
 | `keyInput(player, key, action)` | 注入键盘输入。 |
 | `mouseInput(player, button, action, x, y)` | 注入鼠标输入。 |
@@ -562,7 +564,7 @@ class MyDatapackTest {
 | `assertOutputContains(text)` | 断言输出事件包含文本。 |
 | `assertOutput(...)` | 按 command/channel/target/渲染后 text/rawText/正则/规范化文本/payload path/segment/count/order 断言输出事件。 |
 | `assertTrace(...)` | 按 command/root/source/success/输出数量/输出文本/输出目标/diff path/diff kind/count 断言 trace 事件。 |
-| `assertPlayerEventTrace(...)` | 按 player/type/success/上下文/方块坐标/input 元数据/advancement/失败 advancement/count 断言玩家事件 trace。 |
+| `assertPlayerEventTrace(...)` | 按 player/type/success/上下文/目标 UUID/interaction response/方块坐标/input 元数据/advancement/失败 advancement/count 断言玩家事件 trace。 |
 | `assertSnapshotDiff(...)` | 按 before/after snapshot 的 path/kind/渲染文本/count 断言状态变化；失败时列出实际 diff 候选。 |
 | `outputs()` | 返回记录的输出事件。 |
 | `traces()` | 返回记录的结构化命令 trace。 |
@@ -619,7 +621,7 @@ class MyDatapackTest {
 | `assertItem` | 玩家 `inventory` 或 `enderItems` 中物品 id/count/slot/min/max，以及 component 和 NBT path。 |
 | `assertOutputContains`、`assertOutput` | 输出事件的 command、channel、target(s)、渲染后 `text`、命令可见 `rawText`、正则/规范化匹配、payload path、文本 segment、count 和 order。 |
 | `assertTrace` | 命令 trace 的 command/root/source file/function、success、输出数量/文本/目标，以及 snapshot diff path/kind/渲染文本。 |
-| `assertPlayerEventTrace` | 玩家事件 dispatch 的 player/type/success、advancement 命中/失败、item/entity/block/recipe/dimension/damage 元数据和 input device/code/action。 |
+| `assertPlayerEventTrace` | 玩家事件 dispatch 的 player/type/success、advancement 命中/失败、item/entity/target/interaction response/block/recipe/dimension/damage 元数据和 input device/code/action。 |
 | `assertSnapshotDiff` | 从初始状态到当前状态的 snapshot diff path、kind、渲染文本和数量。 |
 
 对于 `say`、`me`、`msg`/`tell`/`w`、`teammsg`/`tm`，`OutputEvent.text`

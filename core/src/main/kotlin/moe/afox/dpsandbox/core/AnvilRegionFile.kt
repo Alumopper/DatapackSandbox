@@ -12,7 +12,9 @@ import java.nio.file.Path
 import java.util.zip.GZIPInputStream
 import java.util.zip.InflaterInputStream
 
-internal class AnvilRegionFile(path: Path) {
+internal class AnvilRegionFile(
+    path: Path,
+) {
     private val bytes = Files.readAllBytes(path)
 
     fun readChunk(chunk: ChunkPos): JsonObject? {
@@ -50,21 +52,23 @@ internal class AnvilRegionFile(path: Path) {
         return readInt((localX + localZ * ANVIL_REGION_CHUNKS) * 4)
     }
 
-    private fun decompressed(payload: ByteArray, compression: Int) =
-        when (compression) {
-            1 -> GZIPInputStream(ByteArrayInputStream(payload))
-            2 -> InflaterInputStream(ByteArrayInputStream(payload))
-            3 -> ByteArrayInputStream(payload)
-            4 -> LZ4BlockInputStream(
+    private fun decompressed(
+        payload: ByteArray,
+        compression: Int,
+    ) = when (compression) {
+        1 -> GZIPInputStream(ByteArrayInputStream(payload))
+        2 -> InflaterInputStream(ByteArrayInputStream(payload))
+        3 -> ByteArrayInputStream(payload)
+        4 ->
+            LZ4BlockInputStream(
                 ByteArrayInputStream(payload),
                 LZ4Factory.safeInstance().fastDecompressor(),
                 XXHashFactory.safeInstance().newStreamingHash32(LZ4_CHECKSUM_SEED).asChecksum(),
             )
-            else -> throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Unknown Anvil chunk compression type $compression")
-        }
+        else -> throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Unknown Anvil chunk compression type $compression")
+    }
 
-    private fun readInt(offset: Int): Int =
-        ByteBuffer.wrap(bytes, offset, 4).order(ByteOrder.BIG_ENDIAN).int
+    private fun readInt(offset: Int): Int = ByteBuffer.wrap(bytes, offset, 4).order(ByteOrder.BIG_ENDIAN).int
 
     private companion object {
         const val ANVIL_HEADER_BYTES = 8192

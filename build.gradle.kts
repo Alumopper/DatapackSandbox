@@ -1,6 +1,4 @@
-﻿import java.net.URI
-import java.util.zip.ZipInputStream
-import java.util.zip.ZipOutputStream
+import java.util.zip.ZipFile
 import org.gradle.api.artifacts.repositories.PasswordCredentials
 import org.gradle.api.publish.PublishingExtension
 import org.gradle.api.publish.maven.MavenPublication
@@ -8,6 +6,7 @@ import org.gradle.api.publish.maven.tasks.PublishToMavenRepository
 
 plugins {
     kotlin("jvm") version "2.4.0" apply false
+    id("org.jlleitschuh.gradle.ktlint") version "14.2.0" apply false
 }
 
 allprojects {
@@ -40,11 +39,17 @@ val mavenRepositoryPassword = providers
 subprojects {
     apply(plugin = "maven-publish")
 
+    dependencyLocking {
+        lockAllConfigurations()
+    }
+
     tasks.withType<Test>().configureEach {
         useJUnitPlatform()
     }
 
     plugins.withId("org.jetbrains.kotlin.jvm") {
+        apply(plugin = "org.jlleitschuh.gradle.ktlint")
+
         extensions.configure<JavaPluginExtension> {
             withSourcesJar()
             withJavadocJar()
@@ -96,7 +101,95 @@ subprojects {
     }
 }
 
-val releaseModules = listOf("core", "cli")
+val releaseModules = listOf("core", "renderer", "testkit", "manifest", "cli")
+
+fun publicApiDump(module: String): String {
+    val jar = project(":$module").layout.buildDirectory.file("libs/$module-${project.version}.jar").get().asFile
+    require(jar.isFile) { "Missing module jar for API dump: ${jar.absolutePath}" }
+    val classes = ZipFile(jar).use { zip ->
+        zip.entries().asSequence()
+            .map { it.name }
+            .filter { it.endsWith(".class") && !it.startsWith("META-INF/") && it != "module-info.class" }
+            .map { it.removeSuffix(".class").replace('/', '.') }
+            .sorted()
+            .toList()
+    }
+    val javap = File(
+        System.getProperty("java.home"),
+        if (System.getProperty("os.name").lowercase().contains("windows")) "bin/javap.exe" else "bin/javap",
+    )
+    require(javap.isFile) { "JDK javap executable is missing: ${javap.absolutePath}" }
+    val output = buildString {
+        appendLine("# Public JVM API for moe.afox.dpsandbox:$module:${project.version}")
+        classes.chunked(100).forEach { chunk ->
+            val process = ProcessBuilder(listOf(javap.absolutePath, "-public", "-classpath", jar.absolutePath) + chunk)
+                .redirectErrorStream(true)
+                .start()
+            val text = process.inputStream.bufferedReader().use { it.readText() }
+            require(process.waitFor() == 0) { "javap failed for :$module:\n$text" }
+            text.lineSequence()
+                .filterNot { it.startsWith("Compiled from ") }
+                .forEach { line -> appendLine(line.trimEnd()) }
+        }
+    }
+    return output.trimEnd() + "\n"
+}
+
+tasks.register("apiDump") {
+    group = "verification"
+    description = "Updates checked-in JDK 25 public API baselines for all published modules."
+    dependsOn(releaseModules.map { ":$it:jar" })
+    doLast {
+        val directory = layout.projectDirectory.dir("api").asFile
+        directory.mkdirs()
+        releaseModules.forEach { module -> directory.resolve("$module.api").writeText(publicApiDump(module)) }
+    }
+}
+
+val apiCheck = tasks.register("apiCheck") {
+    group = "verification"
+    description = "Checks published JVM APIs against the checked-in JDK 25 javap baselines."
+    dependsOn(releaseModules.map { ":$it:jar" })
+    inputs.files(releaseModules.map { layout.projectDirectory.file("api/$it.api") })
+    doLast {
+        releaseModules.forEach { module ->
+            val baseline = layout.projectDirectory.file("api/$module.api").asFile
+            require(baseline.isFile) { "Missing API baseline ${baseline.absolutePath}; run ./gradlew apiDump" }
+            val actual = publicApiDump(module)
+            require(baseline.readText() == actual) {
+                "Public API for :$module changed. Review compatibility and run ./gradlew apiDump when intentional."
+            }
+        }
+    }
+}
+
+val architectureCheck = tasks.register("architectureCheck") {
+    group = "verification"
+    description = "Prevents Kotlin source files from growing back into unreviewable God files."
+    val sourceRoots = releaseModules.map { module -> project(":$module").layout.projectDirectory.dir("src") }
+    inputs.files(sourceRoots)
+    doLast {
+        val maximumLines = 3_200
+        val oversized =
+            sourceRoots
+                .flatMap { root ->
+                    root.asFile
+                        .walkTopDown()
+                        .filter { it.isFile && it.extension == "kt" }
+                        .map { file -> file to file.readLines().size }
+                        .filter { (_, lines) -> lines > maximumLines }
+                        .toList()
+                }.sortedByDescending { (_, lines) -> lines }
+        require(oversized.isEmpty()) {
+            buildString {
+                appendLine("Kotlin source files must stay at or below $maximumLines lines; split by responsibility:")
+                oversized.forEach { (file, lines) ->
+                    appendLine("- ${file.relativeTo(rootDir)}: $lines lines")
+                }
+            }
+        }
+    }
+}
 
 tasks.register("verifyReleaseArtifacts") {
     group = "verification"
@@ -165,140 +258,57 @@ tasks.register("verifyReleaseArtifacts") {
 
 tasks.register("releaseCheck") {
     group = "verification"
-    description = "Runs the full 1.0 release gate: unit checks, standalone CLI smoke, and publication artifact checks."
-    dependsOn(":core:check", ":cli:check", "verifyReleaseArtifacts")
-}
-
-val vanillaMcdocArchive = layout.buildDirectory.file("vanilla-mcdoc/vanilla-mcdoc-main.zip")
-val vanillaMcdocSourceDir = layout.buildDirectory.dir("vanilla-mcdoc/source")
-val vanillaMcdocIndexFile = layout.buildDirectory.file("generated/vanilla-mcdoc/index.json")
-val vanillaNbtSchemaResourceDir = layout.buildDirectory.dir("generated/vanilla-mcdoc/resources")
-val vanillaNbtSchemaFile = vanillaNbtSchemaResourceDir.map { it.file("vanilla-nbt-schemas.json") }
-val nodeExecutable = if (System.getProperty("os.name").lowercase().contains("windows")) "node.exe" else "node"
-val npmExecutable = if (System.getProperty("os.name").lowercase().contains("windows")) "npm.cmd" else "npm"
-
-tasks.register("fetchVanillaMcdoc") {
-    group = "vanilla data"
-    description = "Downloads the SpyglassMC vanilla-mcdoc repository snapshot for local schema/resource extraction."
-    outputs.file(vanillaMcdocArchive)
-    outputs.dir(vanillaMcdocSourceDir)
-
-    doLast {
-        val archive = vanillaMcdocArchive.get().asFile
-        val sourceDir = vanillaMcdocSourceDir.get().asFile
-        archive.parentFile.mkdirs()
-        sourceDir.mkdirs()
-
-        if (!archive.isFile) {
-            try {
-                URI("https://github.com/SpyglassMC/vanilla-mcdoc/archive/refs/heads/main.zip")
-                    .toURL()
-                    .openStream()
-                    .use { input -> archive.outputStream().use { output -> input.copyTo(output) } }
-            } catch (error: Exception) {
-                logger.warn("Could not download vanilla-mcdoc; generating fallback versioned NBT schema from empty input: ${error.message}")
-                archive.delete()
-                ZipOutputStream(archive.outputStream()).use {}
-            }
-        }
-
-        sourceDir.deleteRecursively()
-        sourceDir.mkdirs()
-        if (!archive.isFile) return@doLast
-
-        ZipInputStream(archive.inputStream()).use { zip ->
-            generateSequence { zip.nextEntry }.forEach { entry ->
-                if (!entry.name.endsWith(".mcdoc")) return@forEach
-                val relative = entry.name.substringAfter('/', missingDelimiterValue = entry.name)
-                val target = sourceDir.resolve(relative).normalize()
-                require(target.toPath().startsWith(sourceDir.toPath())) { "Refusing to unzip outside target directory: ${entry.name}" }
-                target.parentFile.mkdirs()
-                target.outputStream().use { zip.copyTo(it) }
-            }
-        }
-    }
-}
-
-tasks.register("generateVanillaMcdocIndex") {
-    group = "vanilla data"
-    description = "Generates a lightweight lexical index from downloaded mcdoc files for inspection. Runtime NBT validation uses generateVanillaNbtSchemas."
-    dependsOn("fetchVanillaMcdoc")
-    outputs.file(vanillaMcdocIndexFile)
-
-    doLast {
-        val sourceDir = vanillaMcdocSourceDir.get().asFile
-        val output = vanillaMcdocIndexFile.get().asFile
-        val files = sourceDir.walkTopDown().filter { it.isFile && it.extension == "mcdoc" }.toList()
-        val resourceLocationPattern = Regex("""minecraft:[a-z0-9_./-]+""")
-        val declarationPattern = Regex("""(?m)^\s*(struct|enum|dispatch|type)\s+([A-Za-z0-9_.$]+)""")
-        val resourceLocations = sortedSetOf<String>()
-        val declarations = sortedSetOf<String>()
-
-        files.forEach { file ->
-            val text = file.readText()
-            resourceLocationPattern.findAll(text).forEach { resourceLocations += it.value }
-            declarationPattern.findAll(text).forEach { declarations += "${it.groupValues[1]} ${it.groupValues[2]}" }
-        }
-
-        output.parentFile.mkdirs()
-        output.writeText(
-            buildString {
-                appendLine("{")
-                appendLine("""  "source": "https://github.com/SpyglassMC/vanilla-mcdoc",""")
-                appendLine("""  "format": "mcdoc-lexical-index-v1",""")
-                appendLine("""  "fileCount": ${files.size},""")
-                appendLine("""  "resourceLocations": [""")
-                append(resourceLocations.joinToString(",\n") { """    "${it.jsonEscaped()}"""" })
-                appendLine()
-                appendLine("  ],")
-                appendLine("""  "declarations": [""")
-                append(declarations.joinToString(",\n") { """    "${it.jsonEscaped()}"""" })
-                appendLine()
-                appendLine("  ]")
-                appendLine("}")
-            },
-        )
-        println("Generated ${output.toPath().toAbsolutePath().normalize()} from ${files.size} mcdoc files")
-    }
-}
-
-val npmInstallMcdocTools = tasks.register<Exec>("npmInstallMcdocTools") {
-    group = "vanilla data"
-    description = "Installs the official Spyglass mcdoc parser used by vanilla schema generation."
-    inputs.file(layout.projectDirectory.file("package.json"))
-    outputs.dir(layout.projectDirectory.dir("node_modules/@spyglassmc/mcdoc"))
-    commandLine(npmExecutable, "install", "--no-audit", "--no-fund")
-}
-
-tasks.register<Exec>("generateVanillaNbtSchemas") {
-    group = "vanilla data"
-    description = "Uses the official Spyglass mcdoc parser to generate lightweight NBT schema resources for the runtime."
-    dependsOn("fetchVanillaMcdoc", npmInstallMcdocTools)
-    inputs.dir(vanillaMcdocSourceDir)
-    inputs.file(layout.projectDirectory.file("tools/generate-vanilla-nbt-schemas.mjs"))
-    inputs.file(layout.projectDirectory.file("package.json"))
-    outputs.file(vanillaNbtSchemaFile)
-    commandLine(
-        nodeExecutable,
-        layout.projectDirectory.file("tools/generate-vanilla-nbt-schemas.mjs").asFile.absolutePath,
-        vanillaMcdocSourceDir.get().asFile.absolutePath,
-        vanillaNbtSchemaFile.get().asFile.absolutePath,
+    description = "Runs the full release gate: module checks, reproducibility, API/architecture, CLI smoke, and artifacts."
+    dependsOn(
+        ":core:check",
+        ":renderer:check",
+        ":testkit:check",
+        ":manifest:check",
+        ":cli:check",
+        ":schema-generator:check",
+        apiCheck,
+        architectureCheck,
+        "verifyReleaseArtifacts",
     )
 }
 
-project(":core") {
-    plugins.withId("org.jetbrains.kotlin.jvm") {
-        the<SourceSetContainer>().named("main") {
-            resources.srcDir(vanillaNbtSchemaResourceDir)
-        }
-        tasks.named("processResources") {
-            dependsOn(rootProject.tasks.named("generateVanillaNbtSchemas"))
-        }
-        tasks.named("sourcesJar") {
-            dependsOn(rootProject.tasks.named("generateVanillaNbtSchemas"))
-        }
-    }
+val prepareJupyterKernel = tasks.register<Copy>("prepareJupyterKernel") {
+    group = "build"
+    description = "Copies the standalone CLI jar into the Python Jupyter Kernel package."
+    dependsOn(":cli:fatJar")
+    from(project(":cli").layout.buildDirectory.file("libs/datapack-sandbox-cli.jar"))
+    into(layout.projectDirectory.dir("jupyter/src/datapack_sandbox_kernel/resources"))
 }
 
-fun String.jsonEscaped(): String =
-    replace("\\", "\\\\").replace("\"", "\\\"")
+tasks.register<Exec>("jupyterKernelTest") {
+    group = "verification"
+    description = "Runs the Python unit and real Jupyter Kernel integration tests."
+    dependsOn(prepareJupyterKernel)
+    val python = providers.environmentVariable("PYTHON").orElse("python")
+    val packageRoot = layout.projectDirectory.dir("jupyter/src").asFile.absolutePath
+    val cliJar = project(":cli").layout.buildDirectory.file("libs/datapack-sandbox-cli.jar")
+    environment("PYTHONPATH", packageRoot)
+    environment("DPS_CLI_JAR", cliJar.get().asFile.absolutePath)
+    commandLine(
+        python.get(),
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        layout.projectDirectory.dir("jupyter/tests").asFile.absolutePath,
+        "-p",
+        "test*.py",
+        "-v",
+    )
+}
+
+tasks.register<Exec>("jupyterKernelPackage") {
+    group = "build"
+    description = "Builds and verifies offline Jupyter Kernel wheel and sdist artifacts."
+    dependsOn(prepareJupyterKernel)
+    val python = providers.environmentVariable("PYTHON").orElse("python")
+    commandLine(
+        python.get(),
+        layout.projectDirectory.file("jupyter/scripts/build_offline.py").asFile.absolutePath,
+    )
+}

@@ -103,8 +103,8 @@ export class SandboxClient implements vscode.Disposable {
     });
   }
 
-  async create(version: string, packs: string[], functionSources: unknown[] = []): Promise<Record<string, unknown>> {
-    const state = await this.request<Record<string, unknown>>("createSandbox", { version, packs, functionSources });
+  async create(version: string | undefined, packs: string[], functionSources: unknown[] = []): Promise<Record<string, unknown>> {
+    const state = await this.request<Record<string, unknown>>("createSandbox", { ...(version ? { version } : {}), packs, functionSources });
     this.setState(state); return state;
   }
 

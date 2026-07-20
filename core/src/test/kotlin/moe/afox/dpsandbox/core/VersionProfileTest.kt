@@ -82,14 +82,16 @@ class VersionProfileTest {
 
     @Test
     fun `loads datapacks that declare a supported pack format range`() {
-        val pack = writePackWithPackFields(
-            name = "1.21.9-range",
-            packFields = """
-                "min_format": 88,
-                "max_format": 107.1
-            """.trimIndent(),
-            directories = ResourceDirectoryProfile.currentWithLegacyAliases,
-        )
+        val pack =
+            writePackWithPackFields(
+                name = "1.21.9-range",
+                packFields =
+                    """
+                    "min_format": 88,
+                    "max_format": 107.1
+                    """.trimIndent(),
+                directories = ResourceDirectoryProfile.currentWithLegacyAliases,
+            )
 
         val sandbox = createSandbox("1.21.9", listOf(pack))
         sandbox.runLoad()
@@ -106,14 +108,16 @@ class VersionProfileTest {
         assertEquals(4, exactSandbox.world.getScore("#legacy", "runs"))
         assertTrue(exactSandbox.datapack.warnings.isEmpty())
 
-        val rangePack = writePackWithPackFields(
-            name = "26.2-tuple-range",
-            packFields = """
-                "min_format": [94],
-                "max_format": [107, 1]
-            """.trimIndent(),
-            directories = ResourceDirectoryProfile.currentWithLegacyAliases,
-        )
+        val rangePack =
+            writePackWithPackFields(
+                name = "26.2-tuple-range",
+                packFields =
+                    """
+                    "min_format": [94],
+                    "max_format": [107, 1]
+                    """.trimIndent(),
+                directories = ResourceDirectoryProfile.currentWithLegacyAliases,
+            )
 
         val rangeSandbox = createSandbox("26.2", listOf(rangePack))
         rangeSandbox.runLoad()
@@ -138,9 +142,10 @@ class VersionProfileTest {
     @Test
     fun `unsupported command roots are scoped to the active version profile`() {
         val legacy = createSandbox("1.20.4", listOf(writePack("1.20.4-commands", "26", ResourceDirectoryProfile.legacyPlural)))
-        val legacyError = assertFailsWith<SandboxException> {
-            legacy.executeCommand("transfer Steve example.org")
-        }
+        val legacyError =
+            assertFailsWith<SandboxException> {
+                legacy.executeCommand("transfer Steve example.org")
+            }
 
         assertEquals(DiagnosticCode.INPUT_FORMAT, legacyError.code)
         assertTrue(legacyError.message.contains("Unknown command 'transfer'"), legacyError.message)
@@ -159,9 +164,10 @@ class VersionProfileTest {
         assertEquals("target-first", payload.get("syntax").asString)
         assertEquals(true, payload.get("noOp").asBoolean)
 
-        val portError = assertFailsWith<SandboxException> {
-            latest.executeCommand("transfer example.org 70000 Steve")
-        }
+        val portError =
+            assertFailsWith<SandboxException> {
+                latest.executeCommand("transfer example.org 70000 Steve")
+            }
         assertEquals(DiagnosticCode.INPUT_FORMAT, portError.code)
         assertTrue(portError.message.contains("transfer port"), portError.message)
     }
@@ -178,17 +184,31 @@ class VersionProfileTest {
         val warning = sandbox.world.outputs.single()
         assertEquals("warning", warning.channel)
         assertTrue(warning.text.contains("expected 26"), warning.text)
-        assertEquals(DiagnosticCode.VERSION_MISMATCH.name, warning.payload?.asJsonObject?.get("code")?.asString)
+        assertEquals(
+            DiagnosticCode.VERSION_MISMATCH.name,
+            warning.payload
+                ?.asJsonObject
+                ?.get("code")
+                ?.asString,
+        )
     }
 
-    private fun writePack(name: String, packFormat: String, directories: ResourceDirectoryProfile): Path =
+    private fun writePack(
+        name: String,
+        packFormat: String,
+        directories: ResourceDirectoryProfile,
+    ): Path =
         writePackWithPackFields(
             name = name,
             packFields = """"pack_format": $packFormat""",
             directories = directories,
         )
 
-    private fun writePackWithPackFields(name: String, packFields: String, directories: ResourceDirectoryProfile): Path {
+    private fun writePackWithPackFields(
+        name: String,
+        packFields: String,
+        directories: ResourceDirectoryProfile,
+    ): Path {
         val root = Files.createTempDirectory("dps-$name-pack")
         Files.writeString(
             root.resolve("pack.mcmeta"),
@@ -212,7 +232,12 @@ class VersionProfileTest {
             """.trimIndent(),
         )
 
-        val tagRoot = root.resolve("data").resolve("minecraft").resolve("tags").resolve(directories.functionTags.first())
+        val tagRoot =
+            root
+                .resolve("data")
+                .resolve("minecraft")
+                .resolve("tags")
+                .resolve(directories.functionTags.first())
         Files.createDirectories(tagRoot)
         Files.writeString(
             tagRoot.resolve("load.json"),

@@ -10,6 +10,8 @@ contexts, loot contexts, and advancement triggers.
 ```text
 dps> event player Steve item_used minecraft:carrot_on_a_stick
 dps> event player Steve entity_interacted minecraft:villager
+dps> event player Steve entity_interacted @e[type=minecraft:interaction,tag=button,limit=1]
+dps> event player Steve entity_attacked @e[type=minecraft:interaction,tag=button,limit=1]
 dps> event player Steve damage minecraft:fall 4.5
 dps> event player Steve entity_killed minecraft:zombie
 dps> event player Steve block_placed minecraft:oak_log 0 64 0
@@ -34,6 +36,14 @@ an item, `entity_interacted`/`killed_entity`/`entity_killed` as an entity type,
 dimension. For `damage`/`death`, optional `[detail]` is the damage amount. For
 `changed_dimension`, the optional `[detail]` argument is the destination
 dimension.
+
+For `entity_interacted`, `entity_attacked`, `player_attacked_entity`,
+`attack_entity`, and `player_hurt_entity`, the id may instead be a selector or
+UUID resolving to exactly one real sandbox entity. Targeting an interaction
+entity writes its `interaction` or `attack` record with the player's UUID and
+current game tick. The configured `response` flag and target UUID are included
+in the event trace. Zero-sized interaction hitboxes, displays, markers, and
+marker-mode armor stands reject targeted player actions.
 
 For block place/break events, the optional tail can be a target sparse-world
 block position. Accepted forms are `0 64 0`, `pos=0,64,0`,
@@ -92,6 +102,13 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar run --version 26.2 \
         "damageSource": "minecraft:fall",
         "amount": 4.5
       }
+    },
+    {
+      "event": {
+        "player": "Steve",
+        "type": "entity_interacted",
+        "target": "@e[type=minecraft:interaction,tag=button,limit=1]"
+      }
     }
   ]
 }
@@ -108,7 +125,8 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar run --version 26.2 \
 | `item_picked_up` / `item_added` | `item` | Adds the item stack to player inventory and follows the inventory-change alias path |
 | `key_input` / `key_pressed` / `key_released` | `key`, `action` | Records player keyboard input; sandbox custom `key_input` advancement triggers can match it |
 | `mouse_input` / `mouse_clicked` / `mouse_released` / `mouse_moved` | `button`, `action`, `x`, `y` | Records player mouse input; sandbox custom `mouse_input` advancement triggers can match it |
-| `entity_interacted` | `entity` | `minecraft:player_interacted_with_entity` |
+| `entity_interacted` | `entity` or `target` selector/UUID | `minecraft:player_interacted_with_entity`; a real interaction target records the right-click player/tick and response |
+| `entity_attacked` / `player_attacked_entity` / `attack_entity` / `player_hurt_entity` | `entity` or `target` selector/UUID | `minecraft:player_hurt_entity`; a real interaction target records the attacking player/tick without taking health damage |
 | `damage` | `damageSource`, `amount`, `entity` | Reduces player health, triggers `minecraft:entity_hurt_player`; `entity` is the source entity when provided |
 | `death` | `damageSource`, `amount`, `entity` | Sets player health to zero and triggers sandbox `death`; command damage with a source entity also emits `entity_killed_player` |
 | `killed_entity` / `entity_killed` / `player_killed_entity` | `entity` | `minecraft:player_killed_entity` |
@@ -123,6 +141,18 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar run --version 26.2 \
 The REPL shorthand exposes one optional `[resource-id]` and optional detail or
 input action. Use manifest JSON for richer item data, exact entity context,
 damage source metadata, or mouse coordinates.
+
+After a targeted interaction event, relationship execution follows vanilla's
+interaction-entity shape:
+
+```mcfunction
+execute as @e[type=minecraft:interaction,tag=button] on target run function demo:right_click
+execute as @e[type=minecraft:interaction,tag=button] on attacker run function demo:left_click
+```
+
+`on target` uses the last right-click record and `on attacker` uses the last
+attack record. If that relation has not been recorded, the execution branch
+produces no contexts.
 
 The vanilla-style `damage` command also emits player events. Damaging a player
 emits `damage`; reducing a player's health to zero emits `death`; and if the

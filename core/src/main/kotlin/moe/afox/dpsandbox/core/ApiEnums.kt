@@ -3,7 +3,9 @@ package moe.afox.dpsandbox.core
 /**
  * Logical output channels used by [OutputEvent].
  */
-enum class OutputChannel(val id: String) {
+enum class OutputChannel(
+    val id: String,
+) {
     CHAT("chat"),
     TITLE("title"),
     SOUND("sound"),
@@ -17,7 +19,9 @@ enum class OutputChannel(val id: String) {
 /**
  * Common vanilla command roots used by trace assertions.
  */
-enum class CommandRoot(val id: String) {
+enum class CommandRoot(
+    val id: String,
+) {
     ADVANCEMENT("advancement"),
     ATTRIBUTE("attribute"),
     BAN("ban"),
@@ -103,32 +107,42 @@ enum class CommandRoot(val id: String) {
     XP("xp"),
 }
 
-enum class SandboxWeather(val id: String) {
+enum class SandboxWeather(
+    val id: String,
+) {
     CLEAR("clear"),
     RAIN("rain"),
     THUNDER("thunder"),
 }
 
-enum class SandboxDifficulty(val id: String) {
+enum class SandboxDifficulty(
+    val id: String,
+) {
     PEACEFUL("peaceful"),
     EASY("easy"),
     NORMAL("normal"),
     HARD("hard"),
 }
 
-enum class SandboxGameMode(val id: String) {
+enum class SandboxGameMode(
+    val id: String,
+) {
     SURVIVAL("survival"),
     CREATIVE("creative"),
     ADVENTURE("adventure"),
     SPECTATOR("spectator"),
 }
 
-enum class PlayerInputDevice(val id: String) {
+enum class PlayerInputDevice(
+    val id: String,
+) {
     KEYBOARD("keyboard"),
     MOUSE("mouse"),
 }
 
-enum class PlayerInputAction(val id: String) {
+enum class PlayerInputAction(
+    val id: String,
+) {
     PRESS("press"),
     RELEASE("release"),
     CLICK("click"),
@@ -136,7 +150,9 @@ enum class PlayerInputAction(val id: String) {
     SCROLL("scroll"),
 }
 
-enum class PlayerEventType(val id: String) {
+enum class PlayerEventType(
+    val id: String,
+) {
     KEY_INPUT("key_input"),
     KEYBOARD_INPUT("keyboard_input"),
     KEY_PRESSED("key_pressed"),
@@ -166,7 +182,9 @@ enum class PlayerEventType(val id: String) {
     DEATH("death"),
 }
 
-enum class LootContextId(val id: String) {
+enum class LootContextId(
+    val id: String,
+) {
     EMPTY("minecraft:empty"),
     ADVANCEMENT_REWARD("minecraft:advancement_reward"),
     COMMAND("minecraft:command"),
@@ -181,12 +199,16 @@ enum class LootContextId(val id: String) {
     BARTER("minecraft:barter"),
 }
 
-enum class ItemContainer(val id: String) {
+enum class ItemContainer(
+    val id: String,
+) {
     INVENTORY("inventory"),
     ENDER_ITEMS("enderItems"),
 }
 
-enum class EntityEquipmentSlot(val id: String) {
+enum class EntityEquipmentSlot(
+    val id: String,
+) {
     MAINHAND("weapon.mainhand"),
     OFFHAND("weapon.offhand"),
     HEAD("armor.head"),
@@ -195,7 +217,9 @@ enum class EntityEquipmentSlot(val id: String) {
     FEET("armor.feet"),
 }
 
-enum class ScoreboardDisplaySlot(val id: String) {
+enum class ScoreboardDisplaySlot(
+    val id: String,
+) {
     LIST("list"),
     SIDEBAR("sidebar"),
     BELOW_NAME("below_name"),
@@ -217,12 +241,16 @@ enum class ScoreboardDisplaySlot(val id: String) {
     SIDEBAR_TEAM_WHITE("sidebar.team.white"),
 }
 
-enum class ScoreboardRenderType(val id: String) {
+enum class ScoreboardRenderType(
+    val id: String,
+) {
     INTEGER("integer"),
     HEARTS("hearts"),
 }
 
-enum class BossbarColor(val id: String) {
+enum class BossbarColor(
+    val id: String,
+) {
     PINK("pink"),
     BLUE("blue"),
     RED("red"),
@@ -232,7 +260,9 @@ enum class BossbarColor(val id: String) {
     WHITE("white"),
 }
 
-enum class BossbarStyle(val id: String) {
+enum class BossbarStyle(
+    val id: String,
+) {
     PROGRESS("progress"),
     NOTCHED_6("notched_6"),
     NOTCHED_10("notched_10"),
@@ -240,7 +270,9 @@ enum class BossbarStyle(val id: String) {
     NOTCHED_20("notched_20"),
 }
 
-enum class TeamOption(val id: String) {
+enum class TeamOption(
+    val id: String,
+) {
     COLOR("color"),
     FRIENDLY_FIRE("friendlyFire"),
     SEE_FRIENDLY_INVISIBLES("seeFriendlyInvisibles"),

@@ -12,207 +12,268 @@ object NbtSchemas {
     private val generatedBlockEntityKeys = setOf("id", "x", "y", "z")
     private val loadedSchemas: Map<String, LoadedNbtSchemas> = loadGeneratedSchemas()
 
-    private val commonEntityKeys = generatedEntityKeys + setOf(
-        "Motion",
-        "Rotation",
-        "FallDistance",
-        "Fire",
-        "Air",
-        "OnGround",
-        "NoGravity",
-        "Invulnerable",
-        "PortalCooldown",
-        "Silent",
-        "Glowing",
-        "CustomName",
-        "CustomNameVisible",
-        "Passengers",
-        "Team",
-        "Health",
-        "HurtTime",
-        "HurtByTimestamp",
-        "DeathTime",
-        "AbsorptionAmount",
-        "Attributes",
-        "ActiveEffects",
-        "Brain",
-        "HandItems",
-        "ArmorItems",
-        "HandDropChances",
-        "ArmorDropChances",
-        "CanPickUpLoot",
-        "PersistenceRequired",
-        "LeftHanded",
-        "Leash",
-        "NoAI",
-        "Age",
-        "ForcedAge",
-        "InLove",
-        "CannotEnterHiveTicks",
-        "Saddle",
-        "IsBaby",
-        "CanBreakDoors",
-        "ConversionTime",
-        "DrownedConversionTime",
-        "InWaterTime",
-        "Item",
-        "PickupDelay",
-        "Owner",
-        "Thrower",
-        "variant",
-        "Variant",
-        "sound_variant",
-        "SoundVariant",
-        "AgeLocked",
-    )
+    private val commonEntityKeys =
+        generatedEntityKeys +
+            setOf(
+                "Motion",
+                "Rotation",
+                "FallDistance",
+                "Fire",
+                "Air",
+                "OnGround",
+                "NoGravity",
+                "Invulnerable",
+                "PortalCooldown",
+                "Silent",
+                "Glowing",
+                "CustomName",
+                "CustomNameVisible",
+                "Passengers",
+                "Team",
+                "Health",
+                "HurtTime",
+                "HurtByTimestamp",
+                "DeathTime",
+                "AbsorptionAmount",
+                "Attributes",
+                "ActiveEffects",
+                "Brain",
+                "HandItems",
+                "ArmorItems",
+                "HandDropChances",
+                "ArmorDropChances",
+                "CanPickUpLoot",
+                "PersistenceRequired",
+                "LeftHanded",
+                "Leash",
+                "NoAI",
+                "Age",
+                "ForcedAge",
+                "InLove",
+                "CannotEnterHiveTicks",
+                "Saddle",
+                "IsBaby",
+                "CanBreakDoors",
+                "ConversionTime",
+                "DrownedConversionTime",
+                "InWaterTime",
+                "Item",
+                "PickupDelay",
+                "Owner",
+                "Thrower",
+                "variant",
+                "Variant",
+                "sound_variant",
+                "SoundVariant",
+                "AgeLocked",
+            )
 
-    private val playerKeys = commonEntityKeys + setOf(
-        "Name",
-        "Dimension",
-        "playerGameType",
-        "previousPlayerGameType",
-        "SelectedItemSlot",
-        "SelectedItem",
-        "Inventory",
-        "EnderItems",
-        "abilities",
-        "XpLevel",
-        "XpP",
-        "XpTotal",
-        "XpSeed",
-        "foodLevel",
-        "foodTickTimer",
-        "foodSaturationLevel",
-        "foodExhaustionLevel",
-        "recipeBook",
-        "seenCredits",
-        "ShoulderEntityLeft",
-        "ShoulderEntityRight",
-        "enteredNetherPosition",
-        "RootVehicle",
-        "SpawnX",
-        "SpawnY",
-        "SpawnZ",
-        "SpawnDimension",
-        "SpawnForced",
-        "warden_spawn_tracker",
-    )
+    private val playerKeys =
+        commonEntityKeys +
+            setOf(
+                "Name",
+                "Dimension",
+                "playerGameType",
+                "previousPlayerGameType",
+                "SelectedItemSlot",
+                "SelectedItem",
+                "Inventory",
+                "EnderItems",
+                "abilities",
+                "XpLevel",
+                "XpP",
+                "XpTotal",
+                "XpSeed",
+                "foodLevel",
+                "foodTickTimer",
+                "foodSaturationLevel",
+                "foodExhaustionLevel",
+                "recipeBook",
+                "seenCredits",
+                "ShoulderEntityLeft",
+                "ShoulderEntityRight",
+                "enteredNetherPosition",
+                "RootVehicle",
+                "SpawnX",
+                "SpawnY",
+                "SpawnZ",
+                "SpawnDimension",
+                "SpawnForced",
+                "warden_spawn_tracker",
+            )
 
-    private val commonBlockEntityKeys = generatedBlockEntityKeys + setOf(
-        "CustomName",
-        "Lock",
-        "LootTable",
-        "LootTableSeed",
-        "keepPacked",
-        "components",
-    )
+    private val commonBlockEntityKeys =
+        generatedBlockEntityKeys +
+            setOf(
+                "CustomName",
+                "Lock",
+                "LootTable",
+                "LootTableSeed",
+                "keepPacked",
+                "components",
+            )
 
     private val containerKeys = commonBlockEntityKeys + setOf("Items")
     private val furnaceKeys = containerKeys + setOf("BurnTime", "CookTime", "CookTimeTotal", "RecipesUsed")
     private val signKeys = commonBlockEntityKeys + setOf("front_text", "back_text", "is_waxed")
     private val fallbackItemStackKeys = setOf("Slot", "slot", "id", "count", "Count", "components")
-    private val broadKnownBlockEntityKeys = setOf(
-        "Items",
-        "BurnTime",
-        "CookTime",
-        "CookTimeTotal",
-        "RecipesUsed",
-        "primary_effect",
-        "secondary_effect",
-        "Levels",
-        "SpawnData",
-        "SpawnPotentials",
-        "Delay",
-        "MinSpawnDelay",
-        "MaxSpawnDelay",
-        "SpawnCount",
-        "MaxNearbyEntities",
-        "RequiredPlayerRange",
-        "SpawnRange",
-        "RecordItem",
-        "Book",
-        "Page",
-        "patterns",
-        "note_block_sound",
-        "profile",
-        "powered",
-        "OutputSignal",
-        "last_vibration_frequency",
-        "warning_level",
-        "listener",
-        "final_state",
-        "joint",
-        "pool",
-        "name",
-        "target",
-        "ignore_entities",
-        "show_air",
-        "show_bounding_box",
-        "mode",
-        "posX",
-        "posY",
-        "posZ",
-        "sizeX",
-        "sizeY",
-        "sizeZ",
-        "integrity",
-        "seed",
-        "author",
-        "metadata",
-    )
+    private val broadKnownBlockEntityKeys =
+        setOf(
+            "Items",
+            "BurnTime",
+            "CookTime",
+            "CookTimeTotal",
+            "RecipesUsed",
+            "primary_effect",
+            "secondary_effect",
+            "Levels",
+            "SpawnData",
+            "SpawnPotentials",
+            "Delay",
+            "MinSpawnDelay",
+            "MaxSpawnDelay",
+            "SpawnCount",
+            "MaxNearbyEntities",
+            "RequiredPlayerRange",
+            "SpawnRange",
+            "RecordItem",
+            "Book",
+            "Page",
+            "patterns",
+            "note_block_sound",
+            "profile",
+            "powered",
+            "OutputSignal",
+            "last_vibration_frequency",
+            "warning_level",
+            "listener",
+            "final_state",
+            "joint",
+            "pool",
+            "name",
+            "target",
+            "ignore_entities",
+            "show_air",
+            "show_bounding_box",
+            "mode",
+            "posX",
+            "posY",
+            "posZ",
+            "sizeX",
+            "sizeY",
+            "sizeZ",
+            "integrity",
+            "seed",
+            "author",
+            "metadata",
+        )
 
-    private val fallbackBlockEntitySchemas: List<BlockEntitySchema> = listOf(
-        BlockEntitySchema({ it.path == "chest" || it.path == "trapped_chest" || it.path == "copper_chest" }, { ResourceLocation("minecraft", "chest") }, containerKeys) {
-            it.ensureArray("Items")
-        },
-        BlockEntitySchema({ it.path == "barrel" }, { ResourceLocation("minecraft", "barrel") }, containerKeys) {
-            it.ensureArray("Items")
-        },
-        BlockEntitySchema({ it.path.endsWith("shulker_box") }, { ResourceLocation("minecraft", "shulker_box") }, containerKeys) {
-            it.ensureArray("Items")
-        },
-        BlockEntitySchema({ it.path in setOf("dispenser", "dropper", "hopper") }, { id -> ResourceLocation("minecraft", id.path) }, containerKeys) {
-            it.ensureArray("Items")
-        },
-        BlockEntitySchema({ it.path in setOf("furnace", "blast_furnace", "smoker") }, { id -> ResourceLocation("minecraft", id.path) }, furnaceKeys) {
-            it.ensureArray("Items")
-        },
-        BlockEntitySchema({ it.path in setOf("brewing_stand", "crafter", "decorated_pot") }, { id -> ResourceLocation("minecraft", id.path) }, containerKeys) {
-            it.ensureArray("Items")
-        },
-        BlockEntitySchema({ it.path.endsWith("hanging_sign") }, { ResourceLocation("minecraft", "hanging_sign") }, signKeys),
-        BlockEntitySchema({ it.path.endsWith("sign") }, { ResourceLocation("minecraft", "sign") }, signKeys),
-        BlockEntitySchema({ it.path in setOf("beacon", "bed", "bell", "campfire", "command_block", "comparator", "conduit", "daylight_detector", "enchanting_table", "end_gateway", "end_portal", "ender_chest", "jigsaw", "jukebox", "lectern", "mob_spawner", "piston", "sculk_catalyst", "sculk_sensor", "sculk_shrieker", "skull", "structure_block", "trial_spawner", "vault") }, { id -> ResourceLocation("minecraft", id.path) }, commonBlockEntityKeys + broadKnownBlockEntityKeys),
-    )
+    private val fallbackBlockEntitySchemas: List<BlockEntitySchema> =
+        listOf(
+            BlockEntitySchema({
+                it.path == "chest" || it.path == "trapped_chest" || it.path == "copper_chest"
+            }, { ResourceLocation("minecraft", "chest") }, containerKeys) {
+                it.ensureArray("Items")
+            },
+            BlockEntitySchema({ it.path == "barrel" }, { ResourceLocation("minecraft", "barrel") }, containerKeys) {
+                it.ensureArray("Items")
+            },
+            BlockEntitySchema({ it.path.endsWith("shulker_box") }, { ResourceLocation("minecraft", "shulker_box") }, containerKeys) {
+                it.ensureArray("Items")
+            },
+            BlockEntitySchema(
+                { it.path in setOf("dispenser", "dropper", "hopper") },
+                { id -> ResourceLocation("minecraft", id.path) },
+                containerKeys,
+            ) {
+                it.ensureArray("Items")
+            },
+            BlockEntitySchema({
+                it.path in setOf("furnace", "blast_furnace", "smoker")
+            }, { id -> ResourceLocation("minecraft", id.path) }, furnaceKeys) {
+                it.ensureArray("Items")
+            },
+            BlockEntitySchema({
+                it.path in setOf("brewing_stand", "crafter", "decorated_pot")
+            }, { id -> ResourceLocation("minecraft", id.path) }, containerKeys) {
+                it.ensureArray("Items")
+            },
+            BlockEntitySchema({ it.path.endsWith("hanging_sign") }, { ResourceLocation("minecraft", "hanging_sign") }, signKeys),
+            BlockEntitySchema({ it.path.endsWith("sign") }, { ResourceLocation("minecraft", "sign") }, signKeys),
+            BlockEntitySchema(
+                {
+                    it.path in
+                        setOf(
+                            "beacon",
+                            "bed",
+                            "bell",
+                            "campfire",
+                            "command_block",
+                            "comparator",
+                            "conduit",
+                            "daylight_detector",
+                            "enchanting_table",
+                            "end_gateway",
+                            "end_portal",
+                            "ender_chest",
+                            "jigsaw",
+                            "jukebox",
+                            "lectern",
+                            "mob_spawner",
+                            "piston",
+                            "sculk_catalyst",
+                            "sculk_sensor",
+                            "sculk_shrieker",
+                            "skull",
+                            "structure_block",
+                            "trial_spawner",
+                            "vault",
+                        )
+                },
+                { id -> ResourceLocation("minecraft", id.path) },
+                commonBlockEntityKeys + broadKnownBlockEntityKeys,
+            ),
+        )
 
-    fun entityNbt(entity: SandboxEntity, location: SourceLocation? = null): JsonObject =
-        entityNbt(entity, VersionProfiles.default, location)
+    fun entityNbt(
+        entity: SandboxEntity,
+        location: SourceLocation? = null,
+    ): JsonObject = entityNbt(entity, VersionProfiles.default, location)
 
-    fun entityNbt(entity: SandboxEntity, profile: VersionProfile, location: SourceLocation? = null): JsonObject {
+    fun entityNbt(
+        entity: SandboxEntity,
+        profile: VersionProfile,
+        location: SourceLocation? = null,
+    ): JsonObject {
         val json = JsonObject()
         addEntityDefaults(entity, profile, json)
         entity.nbt.entrySet().forEach { (key, value) -> json.add(key, value.deepCopy()) }
         addEquipmentNbt(entity, profile, json)
         addActiveEffectsNbt(entity, profile, json)
         if (entity.attributes.isNotEmpty() || entity.attributeModifiers.isNotEmpty()) {
-            json.add("Attributes", JsonArray().also { array ->
-                (entity.attributes.keys + entity.attributeModifiers.keys).sorted().forEach { id ->
-                    array.add(JsonObject().also {
-                        it.addProperty("id", id.toString())
-                        it.addProperty("base", entity.attributes[id] ?: 0.0)
-                        entity.attributeModifiers[id]?.takeIf { modifiers -> modifiers.isNotEmpty() }?.let { modifiers ->
-                            it.add(
-                                "modifiers",
-                                JsonArray().also { modifiersJson ->
-                                    modifiers.values.sortedBy { modifier -> modifier.id.toString() }.forEach { modifier ->
-                                        modifiersJson.add(modifier.toJson())
-                                    }
-                                },
-                            )
-                        }
-                    })
-                }
-            })
+            json.add(
+                "Attributes",
+                JsonArray().also { array ->
+                    (entity.attributes.keys + entity.attributeModifiers.keys).sorted().forEach { id ->
+                        array.add(
+                            JsonObject().also {
+                                it.addProperty("id", id.toString())
+                                it.addProperty("base", entity.attributes[id] ?: 0.0)
+                                entity.attributeModifiers[id]?.takeIf { modifiers -> modifiers.isNotEmpty() }?.let { modifiers ->
+                                    it.add(
+                                        "modifiers",
+                                        JsonArray().also { modifiersJson ->
+                                            modifiers.values.sortedBy { modifier -> modifier.id.toString() }.forEach { modifier ->
+                                                modifiersJson.add(modifier.toJson())
+                                            }
+                                        },
+                                    )
+                                }
+                            },
+                        )
+                    }
+                },
+            )
         }
         json.addProperty("id", entity.type.toString())
         json.addProperty("UUID", entity.uuid)
@@ -226,12 +287,29 @@ object NbtSchemas {
         return json
     }
 
-    fun writeEntityNbt(entity: SandboxEntity, updated: JsonObject, location: SourceLocation? = null) =
-        writeEntityNbt(entity, VersionProfiles.default, updated, location)
+    fun writeEntityNbt(
+        entity: SandboxEntity,
+        updated: JsonObject,
+        location: SourceLocation? = null,
+    ) = writeEntityNbt(entity, VersionProfiles.default, updated, location)
 
-    fun writeEntityNbt(entity: SandboxEntity, profile: VersionProfile, updated: JsonObject, location: SourceLocation? = null) {
+    fun writeEntityNbt(
+        entity: SandboxEntity,
+        profile: VersionProfile,
+        updated: JsonObject,
+        location: SourceLocation? = null,
+    ) {
         validateEntity(entity, profile, updated, location)
+        val beforePosition = entity.position
+        val beforeYaw = entity.yaw
+        val beforePitch = entity.pitch
         updated.getAsJsonArray("Pos")?.let { entity.position = it.toPosition() }
+        updated.getAsJsonArray("Rotation")?.let { rotation ->
+            if (rotation.size() >= 2) {
+                entity.yaw = rotation[0].asDouble
+                entity.pitch = rotation[1].asDouble
+            }
+        }
         updated.getAsJsonArray("Tags")?.let { tags ->
             entity.tags.replaceWith(tags.mapNotNull { tag -> tag.takeIf { it.isJsonPrimitive }?.asString })
         }
@@ -239,19 +317,34 @@ object NbtSchemas {
         syncActiveEffectsFromNbt(entity, profile, updated)
 
         entity.nbt.clearObject()
-        updated.entrySet()
+        updated
+            .entrySet()
             .filterNot { (key, _) -> key in generatedEntityKeys }
             .filterNot { (key, _) -> key == "HandItems" || key == "ArmorItems" }
             .filterNot { (key, value) -> isDefaultEntityKey(key) && isDefaultEntityValue(key, value) }
             .forEach { (key, value) -> entity.nbt.add(key, value.deepCopy()) }
+        SpecialEntitySupport.syncAfterNbtWrite(entity, updated, beforePosition, beforeYaw, beforePitch)
     }
 
-    fun validateEntity(entity: SandboxEntity, nbt: JsonObject, location: SourceLocation? = null) =
-        validateEntity(entity, VersionProfiles.default, nbt, location)
+    fun validateEntity(
+        entity: SandboxEntity,
+        nbt: JsonObject,
+        location: SourceLocation? = null,
+    ) = validateEntity(entity, VersionProfiles.default, nbt, location)
 
-    fun validateEntity(entity: SandboxEntity, profile: VersionProfile, nbt: JsonObject, location: SourceLocation? = null) {
+    fun validateEntity(
+        entity: SandboxEntity,
+        profile: VersionProfile,
+        nbt: JsonObject,
+        location: SourceLocation? = null,
+    ) {
         val allowed = allowedEntityKeys(entity, profile)
-        val unknown = nbt.entrySet().map { it.key }.filterNot { it in allowed }.sorted()
+        val unknown =
+            nbt
+                .entrySet()
+                .map { it.key }
+                .filterNot { it in allowed }
+                .sorted()
         if (unknown.isNotEmpty()) {
             throw SandboxException(
                 DiagnosticCode.INPUT_FORMAT,
@@ -261,13 +354,41 @@ object NbtSchemas {
         }
         validateItemArray(profile, nbt.get("HandItems"), "entity ${entity.type}.HandItems", location)
         validateItemArray(profile, nbt.get("ArmorItems"), "entity ${entity.type}.ArmorItems", location)
-        nbt.getAsJsonObject("Item")?.let { validateItemStack(profile, it, "entity ${entity.type}.Item", location) }
+        nbt.get("Item")?.let {
+            if (!it.isJsonObject) {
+                throw SandboxException(
+                    DiagnosticCode.INPUT_FORMAT,
+                    "entity ${entity.type}.Item must be an item compound",
+                    location,
+                )
+            }
+            validateItemStack(profile, it.asJsonObject, "entity ${entity.type}.Item", location)
+        }
+        nbt.get("item")?.let {
+            if (!it.isJsonObject) {
+                throw SandboxException(
+                    DiagnosticCode.INPUT_FORMAT,
+                    "entity ${entity.type}.item must be an item compound",
+                    location,
+                )
+            }
+            if (it.asJsonObject.entrySet().isNotEmpty()) validateItemStack(profile, it.asJsonObject, "entity ${entity.type}.item", location)
+        }
+        SpecialEntitySupport.validate(entity, nbt, location)
     }
 
-    fun blockEntityNbt(block: SandboxBlock, pos: BlockPos, location: SourceLocation? = null): JsonObject =
-        blockEntityNbt(block, pos, VersionProfiles.default, location)
+    fun blockEntityNbt(
+        block: SandboxBlock,
+        pos: BlockPos,
+        location: SourceLocation? = null,
+    ): JsonObject = blockEntityNbt(block, pos, VersionProfiles.default, location)
 
-    fun blockEntityNbt(block: SandboxBlock, pos: BlockPos, profile: VersionProfile, location: SourceLocation? = null): JsonObject {
+    fun blockEntityNbt(
+        block: SandboxBlock,
+        pos: BlockPos,
+        profile: VersionProfile,
+        location: SourceLocation? = null,
+    ): JsonObject {
         val schema = requireBlockEntitySchema(block, pos, profile, location)
         val json = JsonObject()
         json.addProperty("id", schema.blockEntityId(block.id).toString())
@@ -280,28 +401,56 @@ object NbtSchemas {
         return json
     }
 
-    fun writeBlockEntityNbt(block: SandboxBlock, pos: BlockPos, updated: JsonObject, location: SourceLocation? = null) =
-        writeBlockEntityNbt(block, pos, VersionProfiles.default, updated, location)
+    fun writeBlockEntityNbt(
+        block: SandboxBlock,
+        pos: BlockPos,
+        updated: JsonObject,
+        location: SourceLocation? = null,
+    ) = writeBlockEntityNbt(block, pos, VersionProfiles.default, updated, location)
 
-    fun writeBlockEntityNbt(block: SandboxBlock, pos: BlockPos, profile: VersionProfile, updated: JsonObject, location: SourceLocation? = null) {
+    fun writeBlockEntityNbt(
+        block: SandboxBlock,
+        pos: BlockPos,
+        profile: VersionProfile,
+        updated: JsonObject,
+        location: SourceLocation? = null,
+    ) {
         validateBlockEntity(block, pos, profile, updated, location)
         block.nbt.clearObject()
-        updated.entrySet()
+        updated
+            .entrySet()
             .filterNot { (key, _) -> key in generatedBlockEntityKeys }
             .filterNot { (key, value) -> key == "Items" && value.isJsonArray && value.asJsonArray.size() == 0 }
             .forEach { (key, value) -> block.nbt.add(key, value.deepCopy()) }
     }
 
-    fun validateBlockEntity(block: SandboxBlock, pos: BlockPos, nbt: JsonObject, location: SourceLocation? = null) =
-        validateBlockEntity(block, pos, VersionProfiles.default, nbt, location)
+    fun validateBlockEntity(
+        block: SandboxBlock,
+        pos: BlockPos,
+        nbt: JsonObject,
+        location: SourceLocation? = null,
+    ) = validateBlockEntity(block, pos, VersionProfiles.default, nbt, location)
 
-    fun validateBlockEntity(block: SandboxBlock, pos: BlockPos, profile: VersionProfile, nbt: JsonObject, location: SourceLocation? = null) {
+    fun validateBlockEntity(
+        block: SandboxBlock,
+        pos: BlockPos,
+        profile: VersionProfile,
+        nbt: JsonObject,
+        location: SourceLocation? = null,
+    ) {
         val schema = requireBlockEntitySchema(block, pos, profile, location)
-        val unknown = nbt.entrySet().map { it.key }.filterNot { it in schema.allowedKeys }.sorted()
+        val unknown =
+            nbt
+                .entrySet()
+                .map { it.key }
+                .filterNot { it in schema.allowedKeys }
+                .sorted()
         if (unknown.isNotEmpty()) {
             throw SandboxException(
                 DiagnosticCode.INPUT_FORMAT,
-                "Unknown NBT field(s) for block entity ${schema.blockEntityId(block.id)} at $pos: ${unknown.joinToString()}; custom block NBT fields are not allowed",
+                "Unknown NBT field(s) for block entity ${schema.blockEntityId(
+                    block.id,
+                )} at $pos: ${unknown.joinToString()}; custom block NBT fields are not allowed",
                 location,
             )
         }
@@ -310,29 +459,48 @@ object NbtSchemas {
 
     fun hasBlockEntity(block: SandboxBlock): Boolean = hasBlockEntity(block, VersionProfiles.default)
 
-    fun hasBlockEntity(block: SandboxBlock, profile: VersionProfile): Boolean = schemaForBlock(block.id, profile) != null
+    fun hasBlockEntity(
+        block: SandboxBlock,
+        profile: VersionProfile,
+    ): Boolean = schemaForBlock(block.id, profile) != null
 
-    private fun requireBlockEntitySchema(block: SandboxBlock, pos: BlockPos, profile: VersionProfile, location: SourceLocation?): BlockEntitySchema =
+    private fun requireBlockEntitySchema(
+        block: SandboxBlock,
+        pos: BlockPos,
+        profile: VersionProfile,
+        location: SourceLocation?,
+    ): BlockEntitySchema =
         schemaForBlock(block.id, profile) ?: throw SandboxException(
             DiagnosticCode.COMMAND_ERROR,
             "Block ${block.id} at $pos does not expose block entity NBT",
             location,
         )
 
-    private fun schemaForBlock(id: ResourceLocation, profile: VersionProfile): BlockEntitySchema? =
+    private fun schemaForBlock(
+        id: ResourceLocation,
+        profile: VersionProfile,
+    ): BlockEntitySchema? =
         if (id.namespace == "minecraft") {
             schemaFor(profile)?.blockEntitySchemaForBlock(id) ?: fallbackBlockEntitySchemas.firstOrNull { it.matches(id) }
         } else {
             null
         }
 
-    private fun addEntityDefaults(entity: SandboxEntity, profile: VersionProfile, json: JsonObject) {
+    private fun addEntityDefaults(
+        entity: SandboxEntity,
+        profile: VersionProfile,
+        json: JsonObject,
+    ) {
         val allowed = allowedEntityKeys(entity, profile)
         json.addIfAllowed(allowed, "Motion", zeroVector())
-        json.addIfAllowed(allowed, "Rotation", JsonArray().also {
-            it.add(0.0)
-            it.add(0.0)
-        })
+        json.addIfAllowed(
+            allowed,
+            "Rotation",
+            JsonArray().also {
+                it.add(entity.yaw)
+                it.add(entity.pitch)
+            },
+        )
         json.addPropertyIfAllowed(allowed, "FallDistance", 0.0)
         json.addPropertyIfAllowed(allowed, "Fire", -20)
         json.addPropertyIfAllowed(allowed, "Air", 300)
@@ -342,46 +510,65 @@ object NbtSchemas {
         json.addPropertyIfAllowed(allowed, "PortalCooldown", 0)
         json.addPropertyIfAllowed(allowed, "Silent", false)
         json.addPropertyIfAllowed(allowed, "Glowing", false)
-        if (entity.type != ResourceLocation("minecraft", "marker")) {
+        if (!SpecialEntitySupport.isNonLivingSpecial(entity.type)) {
             json.addPropertyIfAllowed(allowed, "Health", defaultHealth(entity.type))
             json.addPropertyIfAllowed(allowed, "HurtTime", 0)
             json.addPropertyIfAllowed(allowed, "HurtByTimestamp", 0)
             json.addPropertyIfAllowed(allowed, "DeathTime", 0)
             json.addPropertyIfAllowed(allowed, "AbsorptionAmount", 0.0)
             json.addIfAllowed(allowed, "ActiveEffects", JsonArray())
-            json.addIfAllowed(allowed, "HandItems", JsonArray().also {
-                it.add(JsonObject())
-                it.add(JsonObject())
-            })
+            json.addIfAllowed(
+                allowed,
+                "HandItems",
+                JsonArray().also {
+                    it.add(JsonObject())
+                    it.add(JsonObject())
+                },
+            )
             json.addIfAllowed(allowed, "ArmorItems", JsonArray().also { repeat(4) { _ -> it.add(JsonObject()) } })
-            json.addIfAllowed(allowed, "HandDropChances", JsonArray().also {
-                it.add(0.085)
-                it.add(0.085)
-            })
+            json.addIfAllowed(
+                allowed,
+                "HandDropChances",
+                JsonArray().also {
+                    it.add(0.085)
+                    it.add(0.085)
+                },
+            )
             json.addIfAllowed(allowed, "ArmorDropChances", JsonArray().also { repeat(4) { _ -> it.add(0.085) } })
             json.addPropertyIfAllowed(allowed, "CanPickUpLoot", false)
             json.addPropertyIfAllowed(allowed, "PersistenceRequired", false)
         }
+        SpecialEntitySupport.addDefaults(entity, json)
     }
 
-    private fun addEquipmentNbt(entity: SandboxEntity, profile: VersionProfile, json: JsonObject) {
+    private fun addEquipmentNbt(
+        entity: SandboxEntity,
+        profile: VersionProfile,
+        json: JsonObject,
+    ) {
         if (entity.equipment.isEmpty()) return
         val allowed = allowedEntityKeys(entity, profile)
         if ("HandItems" in allowed) {
-            json.add("HandItems", JsonArray().also { items ->
-                repeat(2) { index ->
-                    val slot = EquipmentSlots.handSlot(index)
-                    items.add(equipmentItemJson(slot?.let { entity.equipment[it] }))
-                }
-            })
+            json.add(
+                "HandItems",
+                JsonArray().also { items ->
+                    repeat(2) { index ->
+                        val slot = EquipmentSlots.handSlot(index)
+                        items.add(equipmentItemJson(slot?.let { entity.equipment[it] }))
+                    }
+                },
+            )
         }
         if ("ArmorItems" in allowed) {
-            json.add("ArmorItems", JsonArray().also { items ->
-                repeat(4) { index ->
-                    val slot = EquipmentSlots.armorSlot(index)
-                    items.add(equipmentItemJson(slot?.let { entity.equipment[it] }))
-                }
-            })
+            json.add(
+                "ArmorItems",
+                JsonArray().also { items ->
+                    repeat(4) { index ->
+                        val slot = EquipmentSlots.armorSlot(index)
+                        items.add(equipmentItemJson(slot?.let { entity.equipment[it] }))
+                    }
+                },
+            )
         }
     }
 
@@ -392,7 +579,11 @@ object NbtSchemas {
             JsonObject()
         }
 
-    private fun syncEquipmentFromNbt(entity: SandboxEntity, profile: VersionProfile, nbt: JsonObject) {
+    private fun syncEquipmentFromNbt(
+        entity: SandboxEntity,
+        profile: VersionProfile,
+        nbt: JsonObject,
+    ) {
         val allowed = allowedEntityKeys(entity, profile)
         if ("HandItems" in allowed) {
             entity.equipment.remove(EquipmentSlots.MAINHAND)
@@ -410,7 +601,11 @@ object NbtSchemas {
         }
     }
 
-    private fun syncEquipmentItem(entity: SandboxEntity, slot: String, element: JsonElement) {
+    private fun syncEquipmentItem(
+        entity: SandboxEntity,
+        slot: String,
+        element: JsonElement,
+    ) {
         if (!element.isJsonObject || element.asJsonObject.entrySet().isEmpty()) return
         val item = itemStackFromNbtJson(element.asJsonObject) ?: return
         if (item.count > 0 && item.id != ResourceLocation("minecraft", "air")) {
@@ -418,17 +613,28 @@ object NbtSchemas {
         }
     }
 
-    private fun addActiveEffectsNbt(entity: SandboxEntity, profile: VersionProfile, json: JsonObject) {
+    private fun addActiveEffectsNbt(
+        entity: SandboxEntity,
+        profile: VersionProfile,
+        json: JsonObject,
+    ) {
         if (entity.activeEffects.isEmpty()) return
         if ("ActiveEffects" !in allowedEntityKeys(entity, profile)) return
-        json.add("ActiveEffects", JsonArray().also { effects ->
-            entity.activeEffects.toSortedMap().forEach { (_, effect) ->
-                effects.add(effect.toNbtJson())
-            }
-        })
+        json.add(
+            "ActiveEffects",
+            JsonArray().also { effects ->
+                entity.activeEffects.toSortedMap().forEach { (_, effect) ->
+                    effects.add(effect.toNbtJson())
+                }
+            },
+        )
     }
 
-    private fun syncActiveEffectsFromNbt(entity: SandboxEntity, profile: VersionProfile, nbt: JsonObject) {
+    private fun syncActiveEffectsFromNbt(
+        entity: SandboxEntity,
+        profile: VersionProfile,
+        nbt: JsonObject,
+    ) {
         if ("ActiveEffects" !in allowedEntityKeys(entity, profile)) return
         entity.activeEffects.clear()
         nbt.getAsJsonArray("ActiveEffects")?.forEach { element ->
@@ -445,32 +651,36 @@ object NbtSchemas {
         }
 
     private fun isDefaultEntityKey(key: String): Boolean =
-        key in setOf(
-            "Motion",
-            "Rotation",
-            "FallDistance",
-            "Fire",
-            "Air",
-            "OnGround",
-            "NoGravity",
-            "Invulnerable",
-            "PortalCooldown",
-            "Silent",
-            "Glowing",
-            "HurtTime",
-            "HurtByTimestamp",
-            "DeathTime",
-            "AbsorptionAmount",
-            "ActiveEffects",
-            "HandItems",
-            "ArmorItems",
-            "HandDropChances",
-            "ArmorDropChances",
-            "CanPickUpLoot",
-            "PersistenceRequired",
-        )
+        key in
+            setOf(
+                "Motion",
+                "Rotation",
+                "FallDistance",
+                "Fire",
+                "Air",
+                "OnGround",
+                "NoGravity",
+                "Invulnerable",
+                "PortalCooldown",
+                "Silent",
+                "Glowing",
+                "HurtTime",
+                "HurtByTimestamp",
+                "DeathTime",
+                "AbsorptionAmount",
+                "ActiveEffects",
+                "HandItems",
+                "ArmorItems",
+                "HandDropChances",
+                "ArmorDropChances",
+                "CanPickUpLoot",
+                "PersistenceRequired",
+            )
 
-    private fun isDefaultEntityValue(key: String, value: JsonElement): Boolean =
+    private fun isDefaultEntityValue(
+        key: String,
+        value: JsonElement,
+    ): Boolean =
         when (key) {
             "FallDistance", "AbsorptionAmount" -> value.isNumber(0.0)
             "Fire" -> value.isNumber(-20.0)
@@ -481,7 +691,12 @@ object NbtSchemas {
             else -> false
         }
 
-    private fun validateItemArray(profile: VersionProfile, value: JsonElement?, label: String, location: SourceLocation?) {
+    private fun validateItemArray(
+        profile: VersionProfile,
+        value: JsonElement?,
+        label: String,
+        location: SourceLocation?,
+    ) {
         if (value == null) return
         if (!value.isJsonArray) {
             throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label must be a list of item compounds", location)
@@ -495,9 +710,19 @@ object NbtSchemas {
         }
     }
 
-    private fun validateItemStack(profile: VersionProfile, item: JsonObject, label: String, location: SourceLocation?) {
+    private fun validateItemStack(
+        profile: VersionProfile,
+        item: JsonObject,
+        label: String,
+        location: SourceLocation?,
+    ) {
         val itemStackKeys = allowedItemStackKeys(profile)
-        val unknown = item.entrySet().map { it.key }.filterNot { it in itemStackKeys }.sorted()
+        val unknown =
+            item
+                .entrySet()
+                .map { it.key }
+                .filterNot { it in itemStackKeys }
+                .sorted()
         if (unknown.isNotEmpty()) {
             throw SandboxException(
                 DiagnosticCode.INPUT_FORMAT,
@@ -505,7 +730,11 @@ object NbtSchemas {
                 location,
             )
         }
-        item.get("id")?.takeIf { it.isJsonPrimitive }?.asString?.let { ResourceLocation.parse(it) }
+        item
+            .get("id")
+            ?.takeIf { it.isJsonPrimitive }
+            ?.asString
+            ?.let { ResourceLocation.parse(it) }
         item.get("components")?.let {
             if (!it.isJsonObject) {
                 throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Item stack $label components must be an object", location)
@@ -515,12 +744,13 @@ object NbtSchemas {
 
     private fun allowedItemStackKeys(profile: VersionProfile): Set<String> {
         val fields = schemaFor(profile)?.itemStackFields ?: return fallbackItemStackKeys
-        return fields + setOfNotNull(
-            "slot",
-            "Slot",
-            "count".takeIf { "Count" in fields },
-            "Count".takeIf { "count" in fields },
-        )
+        return fields +
+            setOfNotNull(
+                "slot",
+                "Slot",
+                "count".takeIf { "Count" in fields },
+                "Count".takeIf { "count" in fields },
+            )
     }
 
     private data class BlockEntitySchema(
@@ -552,12 +782,15 @@ object NbtSchemas {
         }
     }
 
-    private fun allowedEntityKeys(entity: SandboxEntity, profile: VersionProfile): Set<String> {
+    private fun allowedEntityKeys(
+        entity: SandboxEntity,
+        profile: VersionProfile,
+    ): Set<String> {
         val schemaId = if (entity is SandboxPlayer) ResourceLocation("minecraft", "player") else entity.type
-        val fallback = if (entity is SandboxPlayer) playerKeys else commonEntityKeys
+        val fallback = if (entity is SandboxPlayer) playerKeys else commonEntityKeys + SpecialEntitySupport.allowedKeys(schemaId)
         val loaded = schemaFor(profile)?.entitySchemas?.get(schemaId)
         val synthetic = if (entity is SandboxPlayer) setOf("Name") else emptySet()
-        return (loaded ?: fallback) + generatedEntityKeys + synthetic
+        return (loaded ?: fallback) + generatedEntityKeys + synthetic + SpecialEntitySupport.allowedKeys(schemaId)
     }
 
     fun schemaSummary(profile: VersionProfile): String =
@@ -572,8 +805,24 @@ object NbtSchemas {
             InputStreamReader(stream, StandardCharsets.UTF_8).use { reader ->
                 val root = JsonParser.parseReader(reader).asJsonObject
                 if (root.has("versions") && root.get("versions").isJsonObject) {
+                    val schemaSets =
+                        root
+                            .get("schemaSets")
+                            ?.takeIf { it.isJsonObject }
+                            ?.asJsonObject
                     root.getAsJsonObject("versions").entrySet().associate { (version, value) ->
-                        version to parseSchema(value.asJsonObject, version)
+                        val versionSchema = value.asJsonObject
+                        val schemaSet =
+                            versionSchema
+                                .optionalString("schemaSet")
+                                ?.let { name -> schemaSets?.get(name) }
+                                ?.takeIf { it.isJsonObject }
+                                ?.asJsonObject
+                        version to
+                            parseSchema(
+                                root = schemaSet ?: versionSchema,
+                                sourceVersion = versionSchema.optionalString("sourceVersion") ?: version,
+                            )
                     }
                 } else {
                     mapOf("default" to parseSchema(root, "default"))
@@ -582,7 +831,10 @@ object NbtSchemas {
         }.getOrDefault(emptyMap())
     }
 
-    private fun parseSchema(root: JsonObject, sourceVersion: String): LoadedNbtSchemas =
+    private fun parseSchema(
+        root: JsonObject,
+        sourceVersion: String,
+    ): LoadedNbtSchemas =
         LoadedNbtSchemas(
             itemStackFields = root.stringSet("itemStackFields"),
             entitySchemas = root.schemaMap("entitySchemas"),
@@ -599,19 +851,20 @@ object NbtSchemas {
             ?.toSet()
             .orEmpty()
 
-    private fun JsonObject.optionalString(name: String): String? =
-        get(name)?.takeIf { it.isJsonPrimitive }?.asString
+    private fun JsonObject.optionalString(name: String): String? = get(name)?.takeIf { it.isJsonPrimitive }?.asString
 
     private fun JsonObject.schemaMap(name: String): Map<ResourceLocation, Set<String>> {
         val json = get(name)?.takeIf { it.isJsonObject }?.asJsonObject ?: return emptyMap()
         val result = linkedMapOf<ResourceLocation, Set<String>>()
         json.entrySet().forEach { (id, value) ->
             val resource = runCatching { ResourceLocation.parse(id) }.getOrNull() ?: return@forEach
-            val fields = value.takeIf { it.isJsonArray }
-                ?.asJsonArray
-                ?.mapNotNull { it.takeIf { field -> field.isJsonPrimitive }?.asString }
-                ?.toSet()
-                .orEmpty()
+            val fields =
+                value
+                    .takeIf { it.isJsonArray }
+                    ?.asJsonArray
+                    ?.mapNotNull { it.takeIf { field -> field.isJsonPrimitive }?.asString }
+                    ?.toSet()
+                    .orEmpty()
             result[resource] = fields
         }
         return result
@@ -655,23 +908,33 @@ private fun JsonObject.ensureArray(key: String) {
     if (!has(key)) add(key, JsonArray())
 }
 
-private fun JsonObject.addIfAllowed(allowedKeys: Set<String>, key: String, value: JsonElement) {
+private fun JsonObject.addIfAllowed(
+    allowedKeys: Set<String>,
+    key: String,
+    value: JsonElement,
+) {
     if (key in allowedKeys) add(key, value)
 }
 
-private fun JsonObject.addPropertyIfAllowed(allowedKeys: Set<String>, key: String, value: Number) {
+private fun JsonObject.addPropertyIfAllowed(
+    allowedKeys: Set<String>,
+    key: String,
+    value: Number,
+) {
     if (key in allowedKeys) addProperty(key, value)
 }
 
-private fun JsonObject.addPropertyIfAllowed(allowedKeys: Set<String>, key: String, value: Boolean) {
+private fun JsonObject.addPropertyIfAllowed(
+    allowedKeys: Set<String>,
+    key: String,
+    value: Boolean,
+) {
     if (key in allowedKeys) addProperty(key, value)
 }
 
-private fun JsonElement.isNumber(expected: Double): Boolean =
-    isJsonPrimitive && asJsonPrimitive.isNumber && asDouble == expected
+private fun JsonElement.isNumber(expected: Double): Boolean = isJsonPrimitive && asJsonPrimitive.isNumber && asDouble == expected
 
-private fun JsonElement.isBoolean(expected: Boolean): Boolean =
-    isJsonPrimitive && asJsonPrimitive.isBoolean && asBoolean == expected
+private fun JsonElement.isBoolean(expected: Boolean): Boolean = isJsonPrimitive && asJsonPrimitive.isBoolean && asBoolean == expected
 
 private fun <T> MutableSet<T>.replaceWith(values: Iterable<T>) {
     clear()

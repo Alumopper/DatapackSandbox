@@ -23,16 +23,17 @@ java -jar .\cli\build\libs\datapack-sandbox-cli.jar repl --version 26.2 --pack .
 
 ## Minimal Dependency
 
-JVM projects should depend on the `core` artifact, not the CLI fat jar.
+JVM tests should depend on the `testkit` artifact, which brings in `core` transitively, rather than the CLI fat jar.
 
 ```kotlin
 repositories {
+    maven("https://nexus.mcfpp.top/repository/maven-releases/")
     mavenCentral()
     maven("https://libraries.minecraft.net")
 }
 
 dependencies {
-    testImplementation("moe.afox.dpsandbox:core:1.0.0")
+    testImplementation("moe.afox.dpsandbox:testkit:1.0.1")
 }
 ```
 

@@ -159,14 +159,14 @@ Manifests may contain `version` or `versions`, `unsupported`, `seed`,
 `assertions`. The JSON Schema is available at:
 
 ```text
-docs/dps-manifest.schema.json
+schema/manifest/dps-manifest.schema.json
 ```
 
 The standalone CLI also bundles the schema:
 
 ```bash
 java -jar cli/build/libs/datapack-sandbox-cli.jar schema --output dps-manifest.schema.json
-java -jar cli/build/libs/datapack-sandbox-cli.jar schema --check docs/dps-manifest.schema.json
+java -jar cli/build/libs/datapack-sandbox-cli.jar schema --check schema/manifest/dps-manifest.schema.json
 ```
 
 Use `check --validate-schema` to validate manifest structure before execution:

@@ -7,10 +7,11 @@ import kotlin.test.assertTrue
 class VersionProfileDiffTest {
     @Test
     fun `reports profile differences for legacy to latest versions`() {
-        val diff = VersionProfileDiffs.diff(
-            VersionProfiles.get("1.20.4"),
-            VersionProfiles.get("26.2"),
-        )
+        val diff =
+            VersionProfileDiffs.diff(
+                VersionProfiles.get("1.20.4"),
+                VersionProfiles.get("26.2"),
+            )
 
         assertEquals(ValueChange(17, 25), diff.javaMajor)
         assertEquals(ValueChange("26", "107.1"), diff.dataPackFormat)

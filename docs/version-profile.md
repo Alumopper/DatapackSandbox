@@ -26,9 +26,9 @@ minimum supported legacy datapack profile is `1.20.4`.
 | `26.1.2` | 25 | 4790 | 101.1 | `26.1.2:26.1.2` | `function`, `loot_table`, `predicate`, `advancement` with legacy aliases `functions`, `loot_tables`, `predicates`, `advancements` |
 | `26.2` | 25 | 4903 | 107.1 | `26.2:26.2` | `function`, `loot_table`, `predicate`, `advancement` with legacy aliases `functions`, `loot_tables`, `predicates`, `advancements` |
 
-Runtime NBT validation loads a versioned `mcdoc-nbt-schema-v2` resource. Each
-profile resolves its schema by profile id, with the default profile kept as a
-fallback for older generated resources.
+Runtime NBT validation loads a versioned `mcdoc-nbt-schema-v3` resource. Schema
+sets are deduplicated and each profile maps to its source-version label; the
+default profile remains a fallback for older resources.
 
 Command root recognition is also scoped by profile. A command root that exists
 in the active vanilla profile but is not implemented by the sandbox follows the

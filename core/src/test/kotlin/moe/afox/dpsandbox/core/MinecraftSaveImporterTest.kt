@@ -22,14 +22,15 @@ class MinecraftSaveImporterTest {
         writeRegion(save.resolve("entities"), ChunkPos(0, 0), entityChunkNbt())
 
         val world = SandboxWorld()
-        val result = MinecraftSaveImporter.importInto(
-            world,
-            VersionProfiles.get("26.2"),
-            MinecraftSaveImportOptions(
-                path = save,
-                chunks = listOf(ChunkPos(0, 0)),
-            ),
-        )
+        val result =
+            MinecraftSaveImporter.importInto(
+                world,
+                VersionProfiles.get("26.2"),
+                MinecraftSaveImportOptions(
+                    path = save,
+                    chunks = listOf(ChunkPos(0, 0)),
+                ),
+            )
 
         assertEquals(1, result.chunksRead)
         assertEquals(4096, result.blocksImported)
@@ -86,13 +87,19 @@ class MinecraftSaveImporterTest {
             }
         }
 
-    private fun writeRegion(regionDir: Path, chunk: ChunkPos, nbt: ByteArray, compression: Int = 2) {
+    private fun writeRegion(
+        regionDir: Path,
+        chunk: ChunkPos,
+        nbt: ByteArray,
+        compression: Int = 2,
+    ) {
         Files.createDirectories(regionDir)
-        val payload = when (compression) {
-            2 -> zlib(nbt)
-            4 -> lz4(nbt)
-            else -> error("Unsupported test compression $compression")
-        }
+        val payload =
+            when (compression) {
+                2 -> zlib(nbt)
+                4 -> lz4(nbt)
+                else -> error("Unsupported test compression $compression")
+            }
         val chunkRecord = ByteArray(5 + payload.size)
         ByteBuffer.wrap(chunkRecord).order(ByteOrder.BIG_ENDIAN).putInt(payload.size + 1)
         chunkRecord[4] = compression.toByte()
@@ -138,7 +145,9 @@ class MinecraftSaveImporterTest {
         return out.toByteArray()
     }
 
-    private class NbtWriter(private val data: DataOutputStream) {
+    private class NbtWriter(
+        private val data: DataOutputStream,
+    ) {
         fun compoundPayload(block: NbtWriter.() -> Unit) {
             block()
             data.writeByte(TAG_END)
@@ -148,27 +157,42 @@ class MinecraftSaveImporterTest {
             compoundPayload(block)
         }
 
-        fun tagByte(name: String, value: Int) {
+        fun tagByte(
+            name: String,
+            value: Int,
+        ) {
             tag(TAG_BYTE, name)
             data.writeByte(value)
         }
 
-        fun tagInt(name: String, value: Int) {
+        fun tagInt(
+            name: String,
+            value: Int,
+        ) {
             tag(TAG_INT, name)
             data.writeInt(value)
         }
 
-        fun tagString(name: String, value: String) {
+        fun tagString(
+            name: String,
+            value: String,
+        ) {
             tag(TAG_STRING, name)
             data.writeNbtString(value)
         }
 
-        fun tagCompound(name: String, block: NbtWriter.() -> Unit) {
+        fun tagCompound(
+            name: String,
+            block: NbtWriter.() -> Unit,
+        ) {
             tag(TAG_COMPOUND, name)
             compoundPayload(block)
         }
 
-        fun tagListCompound(name: String, block: ListBuilder.() -> Unit) {
+        fun tagListCompound(
+            name: String,
+            block: ListBuilder.() -> Unit,
+        ) {
             val entries = ListBuilder().apply(block).entries
             tag(TAG_LIST, name)
             data.writeByte(TAG_COMPOUND)
@@ -176,21 +200,30 @@ class MinecraftSaveImporterTest {
             entries.forEach { compoundPayload(it) }
         }
 
-        fun tagListDouble(name: String, vararg values: Double) {
+        fun tagListDouble(
+            name: String,
+            vararg values: Double,
+        ) {
             tag(TAG_LIST, name)
             data.writeByte(TAG_DOUBLE)
             data.writeInt(values.size)
             values.forEach(data::writeDouble)
         }
 
-        fun tagListString(name: String, vararg values: String) {
+        fun tagListString(
+            name: String,
+            vararg values: String,
+        ) {
             tag(TAG_LIST, name)
             data.writeByte(TAG_STRING)
             data.writeInt(values.size)
             values.forEach(data::writeNbtString)
         }
 
-        private fun tag(type: Int, name: String) {
+        private fun tag(
+            type: Int,
+            name: String,
+        ) {
             data.writeByte(type)
             data.writeNbtString(name)
         }

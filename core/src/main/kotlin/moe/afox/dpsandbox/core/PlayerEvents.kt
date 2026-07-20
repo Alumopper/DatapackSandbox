@@ -1,6 +1,7 @@
 ﻿package moe.afox.dpsandbox.core
 
 import com.google.gson.JsonObject
+import java.util.UUID
 
 /**
  * Recorded keyboard or mouse input for a sandbox player.
@@ -65,12 +66,15 @@ data class PlayerEvent(
     val input: PlayerInput? = null,
     /** Optional target block position for place/break block events. */
     val blockPos: BlockPos? = null,
+    /** Optional selector or UUID resolved to a real sandbox entity before interaction dispatch. */
+    val target: String? = null,
+    /** Modeled interaction response flag copied from a targeted interaction entity. */
+    val interactionResponse: Boolean? = null,
 ) {
     /**
      * Returns a copy with [type] normalized from hyphen naming to underscore naming.
      */
-    fun normalized(): PlayerEvent =
-        copy(type = type.replace('-', '_'))
+    fun normalized(): PlayerEvent = copy(type = type.replace('-', '_'))
 }
 
 /**
@@ -87,11 +91,28 @@ object PlayerEvents {
      */
     @JvmStatic
     @JvmOverloads
-    fun shorthand(playerName: String, type: String, id: String? = null, action: String? = null): PlayerEvent {
+    fun shorthand(
+        playerName: String,
+        type: String,
+        id: String? = null,
+        action: String? = null,
+    ): PlayerEvent {
         val normalizedType = type.replace('-', '_')
         return when {
-            normalizedType.isKeyboardInputType() -> keyInput(playerName, id ?: "unknown", action ?: defaultKeyboardAction(normalizedType), normalizedType)
-            normalizedType.isMouseInputType() -> mouseInput(playerName, id ?: "left", action ?: defaultMouseAction(normalizedType), type = normalizedType)
+            normalizedType.isKeyboardInputType() ->
+                keyInput(
+                    playerName,
+                    id ?: "unknown",
+                    action ?: defaultKeyboardAction(normalizedType),
+                    normalizedType,
+                )
+            normalizedType.isMouseInputType() ->
+                mouseInput(
+                    playerName,
+                    id ?: "left",
+                    action ?: defaultMouseAction(normalizedType),
+                    type = normalizedType,
+                )
             else -> vanillaVisibleEvent(playerName, normalizedType, id, action)
         }
     }
@@ -105,7 +126,12 @@ object PlayerEvents {
      */
     @JvmStatic
     @JvmOverloads
-    fun keyInput(playerName: String, key: String, action: String = "press", type: String = "key_input"): PlayerEvent =
+    fun keyInput(
+        playerName: String,
+        key: String,
+        action: String = "press",
+        type: String = "key_input",
+    ): PlayerEvent =
         PlayerEvent(
             playerName = playerName,
             type = type.replace('-', '_'),
@@ -133,20 +159,37 @@ object PlayerEvents {
             input = PlayerInput(device = "mouse", code = button, action = action, x = x, y = y),
         )
 
-    private fun vanillaVisibleEvent(playerName: String, type: String, id: String?, detail: String?): PlayerEvent {
-        val resource = id?.let(ResourceLocation::parse)
-        val damageAmount = if (type in damageEventTypes) {
-            detail?.toDoubleOrNull() ?: detail?.let {
-                throw IllegalArgumentException("Damage event detail must be a number, got '$it'")
+    private fun vanillaVisibleEvent(
+        playerName: String,
+        type: String,
+        id: String?,
+        detail: String?,
+    ): PlayerEvent {
+        val target =
+            id?.takeIf { candidate ->
+                (type.contains("interact") || type.contains("attack") || type == "player_hurt_entity") &&
+                    (candidate.startsWith("@") || runCatching { UUID.fromString(candidate) }.isSuccess)
             }
-        } else {
-            null
-        }
+        val resource = id?.takeIf { target == null }?.let(ResourceLocation::parse)
+        val damageAmount =
+            if (type in damageEventTypes) {
+                detail?.toDoubleOrNull() ?: detail?.let {
+                    throw IllegalArgumentException("Damage event detail must be a number, got '$it'")
+                }
+            } else {
+                null
+            }
         return PlayerEvent(
             playerName = playerName,
             type = type,
             item = if (type in itemEventTypes) resource?.let { ItemStack(it) } else null,
-            entity = if (type.contains("kill") || type.contains("interact")) resource?.let { SandboxEntity(type = it) } else null,
+            entity =
+                if (type.contains("kill") || type.contains("interact") || type.contains("attack") || type == "player_hurt_entity") {
+                    resource?.let { SandboxEntity(type = it) }
+                } else {
+                    null
+                },
+            target = target,
             damageAmount = damageAmount,
             damageSource = if (type in damageEventTypes) resource else null,
             block = if (type.contains("block")) resource else null,
@@ -156,8 +199,7 @@ object PlayerEvents {
         )
     }
 
-    private fun String.isKeyboardInputType(): Boolean =
-        this in setOf("key_input", "keyboard_input", "key_pressed", "key_released")
+    private fun String.isKeyboardInputType(): Boolean = this in setOf("key_input", "keyboard_input", "key_pressed", "key_released")
 
     private fun String.isMouseInputType(): Boolean =
         this in setOf("mouse_input", "mouse_button", "mouse_clicked", "mouse_released", "mouse_moved")
@@ -175,16 +217,17 @@ object PlayerEvents {
             else -> "click"
         }
 
-    private val itemEventTypes = setOf(
-        "item_used",
-        "using_item",
-        "item_used_on_block",
-        "item_consumed",
-        "consume_item",
-        "inventory_changed",
-        "item_picked_up",
-        "item_added",
-    )
+    private val itemEventTypes =
+        setOf(
+            "item_used",
+            "using_item",
+            "item_used_on_block",
+            "item_consumed",
+            "consume_item",
+            "inventory_changed",
+            "item_picked_up",
+            "item_added",
+        )
 
     private val damageEventTypes = setOf("damage", "death")
 }

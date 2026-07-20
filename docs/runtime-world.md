@@ -156,20 +156,19 @@ lifecycle state.
 Run:
 
 ```powershell
-.\gradlew.bat generateVanillaNbtSchemas --no-daemon --console=plain
+.\gradlew.bat :schema-generator:updateVanillaNbtSchemas --no-daemon --console=plain
 ```
 
-This downloads `SpyglassMC/vanilla-mcdoc` into `build/vanilla-mcdoc`, installs
-the official `@spyglassmc/mcdoc` parser, parses the mcdoc AST, and writes
-`build/generated/vanilla-mcdoc/resources/vanilla-nbt-schemas.json`. The `:core`
-resource pipeline depends on this task, so the runtime loads that generated
-schema from the classpath and only falls back to the old conservative in-code
-schema if the resource is absent.
+The dedicated `:schema-generator` project downloads a commit-pinned
+`SpyglassMC/vanilla-mcdoc` archive, verifies its SHA-256, installs dependencies
+with `npm ci`, parses the mcdoc AST, rejects incomplete output, and updates the
+canonical `schema/vanilla/vanilla-nbt-schemas.json`. Ordinary `:core` builds are
+offline and package this checked-in schema. CI additionally runs
+`:schema-generator:checkGeneratedVanillaNbtSchemas` to prove byte-for-byte
+reproducibility.
 
-The older `generateVanillaMcdocIndex` task still exists as a quick lexical
-inventory for humans and experiments, but it is not the NBT validation source.
 Fine-grained `since`/`until` attribute pruning is still a follow-up; the current
-runtime consumes the upstream vanilla mcdoc snapshot and keeps strict unknown
+runtime consumes the pinned upstream vanilla mcdoc revision and keeps strict unknown
 field diagnostics at the top level.
 
 ## Client vs Sandbox

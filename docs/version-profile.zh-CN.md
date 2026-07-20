@@ -36,7 +36,7 @@
 - 当前版本的命令根识别。
 - NBT schema 资源选择。
 
-运行时 NBT 校验会加载版本化的 `mcdoc-nbt-schema-v2` 资源。每个 profile 会按 profile id 解析 schema；旧生成资源缺失时默认 profile 会作为 fallback。
+运行时 NBT 校验会加载版本化的 `mcdoc-nbt-schema-v3` 资源。schema set 会去重存储，各 profile 映射到对应 source-version 标签；旧资源缺失时仍以默认 profile 作为 fallback。
 
 命令根识别也受 profile 影响。一个命令根如果存在于当前原版 profile，但沙盒没有实现，会按 unsupported 策略处理：`warn`、`ignore` 或 `error`。一个命令根如果不存在于当前 profile，则按 `INPUT_FORMAT` 失败。
 

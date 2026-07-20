@@ -6,26 +6,28 @@ import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 class DatapackResourceIndexTest {
     @Test
     fun `p0 resource matrix is indexed for directory and zip alias layouts`() {
-        val current = writeP0ResourceMatrixPack(
-            name = "p0-current",
-            packFormat = "107.1",
-            layout = ResourceLayout.current,
-            marker = "current",
-        )
-        val legacy = writeP0ResourceMatrixPack(
-            name = "p0-legacy",
-            packFormat = "26",
-            layout = ResourceLayout.legacy,
-            marker = "legacy",
-        )
+        val current =
+            writeP0ResourceMatrixPack(
+                name = "p0-current",
+                packFormat = "107.1",
+                layout = ResourceLayout.current,
+                marker = "current",
+            )
+        val legacy =
+            writeP0ResourceMatrixPack(
+                name = "p0-legacy",
+                packFormat = "26",
+                layout = ResourceLayout.legacy,
+                marker = "legacy",
+            )
         val legacyZip = zipPack(legacy, Files.createTempFile("dps-p0-legacy-pack", ".zip"))
 
         assertP0ResourceMatrix(createSandbox("26.2", listOf(current)).datapack, "item", "current")
@@ -34,21 +36,36 @@ class DatapackResourceIndexTest {
 
     @Test
     fun `loads current recipe item modifier and tag resources`() {
-        val pack = writePack(
-            name = "current",
-            packFormat = "107.1",
-            recipeDir = "recipe",
-            itemModifierDir = "item_modifier",
-            itemTagDir = "item",
-            recipeMarker = "current",
-        )
+        val pack =
+            writePack(
+                name = "current",
+                packFormat = "107.1",
+                recipeDir = "recipe",
+                itemModifierDir = "item_modifier",
+                itemTagDir = "item",
+                recipeMarker = "current",
+            )
 
         val sandbox = createSandbox("26.2", listOf(pack))
         val datapack = sandbox.datapack
 
-        assertEquals("current", datapack.recipe(ResourceLocation.parse("demo:marker")).root.asJsonObject.get("marker").asString)
+        assertEquals(
+            "current",
+            datapack
+                .recipe(ResourceLocation.parse("demo:marker"))
+                .root.asJsonObject
+                .get("marker")
+                .asString,
+        )
         assertEquals("item_modifier", datapack.itemModifier(ResourceLocation.parse("demo:mark_item")).kind)
-        assertEquals("current", datapack.rawResource("damage-type", ResourceLocation.parse("demo:debug_damage")).root.asJsonObject.get("marker").asString)
+        assertEquals(
+            "current",
+            datapack
+                .rawResource("damage-type", ResourceLocation.parse("demo:debug_damage"))
+                .root.asJsonObject
+                .get("marker")
+                .asString,
+        )
         assertEquals("26.2", datapack.rawResource("worldgen/configured_feature", ResourceLocation.parse("demo:debug_feature")).version)
 
         val tag = datapack.tag("item", ResourceLocation.parse("demo:debug_items"))
@@ -57,7 +74,9 @@ class DatapackResourceIndexTest {
         assertEquals(listOf(true, false), tag.values.map { it.required })
 
         assertTrue(datapack.resourceIndex.any { it.type == "recipe" && it.id == ResourceLocation.parse("demo:marker") && it.active })
-        assertTrue(datapack.resourceIndex.any { it.type == "item_modifier" && it.id == ResourceLocation.parse("demo:mark_item") && it.active })
+        assertTrue(
+            datapack.resourceIndex.any { it.type == "item_modifier" && it.id == ResourceLocation.parse("demo:mark_item") && it.active },
+        )
         assertTrue(datapack.resourceIndex.any { it.type == "tag/item" && it.id == ResourceLocation.parse("demo:debug_items") && it.active })
         assertEquals(
             ResourceBehaviorLevel.MODELED,
@@ -65,7 +84,14 @@ class DatapackResourceIndexTest {
         )
         assertEquals(
             ResourceBehaviorLevel.MODELED,
-            datapack.resourceIndex.single { it.type == "damage_type" && it.id == ResourceLocation.parse("demo:debug_damage") }.behaviorLevel,
+            datapack.resourceIndex
+                .single {
+                    it.type == "damage_type" &&
+                        it.id ==
+                        ResourceLocation.parse(
+                            "demo:debug_damage",
+                        )
+                }.behaviorLevel,
         )
         assertEquals(
             ResourceBehaviorLevel.OBSERVED_NOOP,
@@ -77,8 +103,12 @@ class DatapackResourceIndexTest {
         }
 
         sandbox.executeCommand("datapack list")
-        val payload = sandbox.world.outputs.single { it.command == "datapack list" }.payload?.asJsonObject
-            ?: error("missing datapack list payload")
+        val payload =
+            sandbox.world.outputs
+                .single { it.command == "datapack list" }
+                .payload
+                ?.asJsonObject
+                ?: error("missing datapack list payload")
         assertEquals(datapack.rawResources.size, payload.get("rawResourceKinds").asInt)
         assertEquals(datapack.rawResources.values.sumOf { it.size }, payload.get("rawResources").asInt)
         assertEquals(datapack.tags.size, payload.get("tags").asInt)
@@ -91,20 +121,28 @@ class DatapackResourceIndexTest {
 
     @Test
     fun `loads legacy resource aliases from zip datapacks`() {
-        val root = writePack(
-            name = "legacy",
-            packFormat = "26",
-            recipeDir = "recipes",
-            itemModifierDir = "item_modifiers",
-            itemTagDir = "items",
-            recipeMarker = "legacy",
-        )
+        val root =
+            writePack(
+                name = "legacy",
+                packFormat = "26",
+                recipeDir = "recipes",
+                itemModifierDir = "item_modifiers",
+                itemTagDir = "items",
+                recipeMarker = "legacy",
+            )
         val zip = zipPack(root, Files.createTempFile("dps-legacy-pack", ".zip"))
 
         val sandbox = createSandbox("1.20.4", listOf(zip))
         val datapack = sandbox.datapack
 
-        assertEquals("legacy", datapack.recipe(ResourceLocation.parse("demo:marker")).root.asJsonObject.get("marker").asString)
+        assertEquals(
+            "legacy",
+            datapack
+                .recipe(ResourceLocation.parse("demo:marker"))
+                .root.asJsonObject
+                .get("marker")
+                .asString,
+        )
         assertNotNull(datapack.itemModifier(ResourceLocation.parse("demo:mark_item")))
         assertEquals("1.20.4", datapack.rawResource("damage_type", ResourceLocation.parse("demo:debug_damage")).version)
         assertEquals(2, datapack.tag("items", ResourceLocation.parse("demo:debug_items")).values.size)
@@ -119,12 +157,33 @@ class DatapackResourceIndexTest {
             val functionId = ResourceLocation.parse("demo:cached")
 
             val first = DatapackLoader.load(listOf(pack), profile)
-            assertEquals("say cached one", first.function(functionId).lines.single().command)
+            assertEquals(
+                "say cached one",
+                first
+                    .function(functionId)
+                    .lines
+                    .single()
+                    .command,
+            )
 
-            Files.writeString(pack.resolve("data").resolve("demo").resolve("function").resolve("cached.mcfunction"), "say cached two")
+            Files.writeString(
+                pack
+                    .resolve("data")
+                    .resolve("demo")
+                    .resolve("function")
+                    .resolve("cached.mcfunction"),
+                "say cached two",
+            )
 
             val second = DatapackLoader.load(listOf(pack), profile)
-            assertEquals("say cached two", second.function(functionId).lines.single().command)
+            assertEquals(
+                "say cached two",
+                second
+                    .function(functionId)
+                    .lines
+                    .single()
+                    .command,
+            )
         } finally {
             DatapackLoader.clearCache()
         }
@@ -139,10 +198,20 @@ class DatapackResourceIndexTest {
             val recipeId = ResourceLocation.parse("demo:marker")
 
             val first = DatapackLoader.load(listOf(pack), profile)
-            first.recipe(recipeId).root.asJsonObject.addProperty("marker", "mutated")
+            first
+                .recipe(recipeId)
+                .root.asJsonObject
+                .addProperty("marker", "mutated")
 
             val second = DatapackLoader.load(listOf(pack), profile)
-            assertEquals("original", second.recipe(recipeId).root.asJsonObject.get("marker").asString)
+            assertEquals(
+                "original",
+                second
+                    .recipe(recipeId)
+                    .root.asJsonObject
+                    .get("marker")
+                    .asString,
+            )
         } finally {
             DatapackLoader.clearCache()
         }
@@ -156,7 +225,14 @@ class DatapackResourceIndexTest {
         val sandbox = createSandbox("26.2", listOf(first, second))
         val datapack = sandbox.datapack
 
-        assertEquals("second", datapack.recipe(ResourceLocation.parse("demo:marker")).root.asJsonObject.get("marker").asString)
+        assertEquals(
+            "second",
+            datapack
+                .recipe(ResourceLocation.parse("demo:marker"))
+                .root.asJsonObject
+                .get("marker")
+                .asString,
+        )
         val recipeEntries = datapack.resourceIndex.filter { it.type == "recipe" && it.id == ResourceLocation.parse("demo:marker") }
 
         assertEquals(2, recipeEntries.size)
@@ -165,28 +241,50 @@ class DatapackResourceIndexTest {
         assertTrue(recipeEntries[1].active)
         assertTrue(recipeEntries[1].overrides?.contains("overlay-first") == true, recipeEntries[1].toString())
 
-        assertEquals("second", datapack.rawResource("damage_type", ResourceLocation.parse("demo:debug_damage")).root.asJsonObject.get("marker").asString)
-        val damageEntries = datapack.resourceIndex.filter { it.type == "damage_type" && it.id == ResourceLocation.parse("demo:debug_damage") }
+        assertEquals(
+            "second",
+            datapack
+                .rawResource("damage_type", ResourceLocation.parse("demo:debug_damage"))
+                .root.asJsonObject
+                .get("marker")
+                .asString,
+        )
+        val damageEntries =
+            datapack.resourceIndex.filter {
+                it.type == "damage_type" &&
+                    it.id ==
+                    ResourceLocation.parse(
+                        "demo:debug_damage",
+                    )
+            }
         assertEquals(2, damageEntries.size)
         assertFalse(damageEntries[0].active)
         assertTrue(damageEntries[1].active)
 
         sandbox.executeCommand("datapack list")
-        val payload = sandbox.world.outputs.single { it.command == "datapack list" }.payload?.asJsonObject
-            ?: error("missing datapack list payload")
+        val payload =
+            sandbox.world.outputs
+                .single { it.command == "datapack list" }
+                .payload
+                ?.asJsonObject
+                ?: error("missing datapack list payload")
         val overlayEntries = datapack.resourceIndex.filter { !it.active || it.overrides != null || it.overriddenBy != null }
         assertEquals(datapack.resourceIndex.count { !it.active }, payload.get("overriddenResources").asInt)
         assertEquals(overlayEntries.size, payload.getAsJsonArray("resourceOverrides").size())
 
-        val recipeOverride = payload.getAsJsonArray("resourceOverrides")
-            .map { it.asJsonObject }
-            .single { it.get("type").asString == "recipe" && it.get("id").asString == "demo:marker" && it.get("active").asBoolean }
+        val recipeOverride =
+            payload
+                .getAsJsonArray("resourceOverrides")
+                .map { it.asJsonObject }
+                .single { it.get("type").asString == "recipe" && it.get("id").asString == "demo:marker" && it.get("active").asBoolean }
         assertTrue(recipeOverride.get("overrides").asString.contains("overlay-first"), recipeOverride.toString())
         assertEquals("modeled", recipeOverride.get("behavior").asString)
 
-        val overriddenRecipe = payload.getAsJsonArray("resourceOverrides")
-            .map { it.asJsonObject }
-            .single { it.get("type").asString == "recipe" && it.get("id").asString == "demo:marker" && !it.get("active").asBoolean }
+        val overriddenRecipe =
+            payload
+                .getAsJsonArray("resourceOverrides")
+                .map { it.asJsonObject }
+                .single { it.get("type").asString == "recipe" && it.get("id").asString == "demo:marker" && !it.get("active").asBoolean }
         assertTrue(overriddenRecipe.get("overriddenBy").asString.contains("overlay-second"), overriddenRecipe.toString())
     }
 
@@ -204,13 +302,14 @@ class DatapackResourceIndexTest {
 
     @Test
     fun `optional missing function tag entries are skipped`() {
-        val pack = writeFunctionTagPack(
-            name = "load-optional",
-            replace = false,
-            functionName = "present_load",
-            message = "present load",
-            valuesJson = "{ \"id\": \"demo:missing_optional\", \"required\": false }, \"demo:present_load\"",
-        )
+        val pack =
+            writeFunctionTagPack(
+                name = "load-optional",
+                replace = false,
+                functionName = "present_load",
+                message = "present load",
+                valuesJson = "{ \"id\": \"demo:missing_optional\", \"required\": false }, \"demo:present_load\"",
+            )
 
         val sandbox = createSandbox("26.2", listOf(pack))
 
@@ -221,17 +320,19 @@ class DatapackResourceIndexTest {
 
     @Test
     fun `function tag validation reports typed field errors with location and version`() {
-        val pack = writeFunctionTagPack(
-            name = "invalid-function-tag-required",
-            replace = false,
-            functionName = "present_load",
-            message = "present load",
-            valuesJson = """{ "id": "demo:present_load", "required": "no" }""",
-        )
+        val pack =
+            writeFunctionTagPack(
+                name = "invalid-function-tag-required",
+                replace = false,
+                functionName = "present_load",
+                message = "present load",
+                valuesJson = """{ "id": "demo:present_load", "required": "no" }""",
+            )
 
-        val error = assertFailsWith<SandboxException> {
-            createSandbox("26.2", listOf(pack))
-        }
+        val error =
+            assertFailsWith<SandboxException> {
+                createSandbox("26.2", listOf(pack))
+            }
 
         assertEquals(DiagnosticCode.INPUT_FORMAT, error.code)
         assertEquals("26.2", error.version)
@@ -241,17 +342,19 @@ class DatapackResourceIndexTest {
 
     @Test
     fun `function tag validation reports invalid resource locations with location and version`() {
-        val pack = writeFunctionTagPack(
-            name = "invalid-function-tag-id",
-            replace = false,
-            functionName = "present_load",
-            message = "present load",
-            valuesJson = """{ "id": "Demo:present_load" }""",
-        )
+        val pack =
+            writeFunctionTagPack(
+                name = "invalid-function-tag-id",
+                replace = false,
+                functionName = "present_load",
+                message = "present load",
+                valuesJson = """{ "id": "Demo:present_load" }""",
+            )
 
-        val error = assertFailsWith<SandboxException> {
-            createSandbox("26.2", listOf(pack))
-        }
+        val error =
+            assertFailsWith<SandboxException> {
+                createSandbox("26.2", listOf(pack))
+            }
 
         assertEquals(DiagnosticCode.INPUT_FORMAT, error.code)
         assertEquals("26.2", error.version)
@@ -270,8 +373,9 @@ class DatapackResourceIndexTest {
         assertTrue(tag.replace)
         assertEquals(listOf("minecraft:diamond"), tag.values.map { it.id })
 
-        val entries = sandbox.datapack.resourceIndex
-            .filter { it.type == "tag/item" && it.id == ResourceLocation.parse("demo:replace_items") }
+        val entries =
+            sandbox.datapack.resourceIndex
+                .filter { it.type == "tag/item" && it.id == ResourceLocation.parse("demo:replace_items") }
         assertEquals(2, entries.size)
         assertFalse(entries[0].active)
         assertTrue(entries[0].overriddenBy?.contains("tag-second") == true, entries[0].toString())
@@ -281,19 +385,22 @@ class DatapackResourceIndexTest {
 
     @Test
     fun `regular tag validation reports replace type errors with location and version`() {
-        val pack = writeRawTagPack(
-            name = "invalid-tag-replace",
-            body = """
-            {
-              "replace": "yes",
-              "values": ["minecraft:stick"]
-            }
-            """.trimIndent(),
-        )
+        val pack =
+            writeRawTagPack(
+                name = "invalid-tag-replace",
+                body =
+                    """
+                    {
+                      "replace": "yes",
+                      "values": ["minecraft:stick"]
+                    }
+                    """.trimIndent(),
+            )
 
-        val error = assertFailsWith<SandboxException> {
-            createSandbox("26.2", listOf(pack))
-        }
+        val error =
+            assertFailsWith<SandboxException> {
+                createSandbox("26.2", listOf(pack))
+            }
 
         assertEquals(DiagnosticCode.INPUT_FORMAT, error.code)
         assertEquals("26.2", error.version)
@@ -305,9 +412,10 @@ class DatapackResourceIndexTest {
     fun `json resource validation reports invalid resource ids with location and version`() {
         val pack = writeInvalidRecipeIdPack()
 
-        val error = assertFailsWith<SandboxException> {
-            createSandbox("26.2", listOf(pack))
-        }
+        val error =
+            assertFailsWith<SandboxException> {
+                createSandbox("26.2", listOf(pack))
+            }
 
         assertEquals(DiagnosticCode.INPUT_FORMAT, error.code)
         assertEquals("26.2", error.version)
@@ -318,18 +426,20 @@ class DatapackResourceIndexTest {
 
     @Test
     fun `p0 json resource parse failures report type id location and version`() {
-        val cases = listOf(
-            InvalidJsonResourceCase("loot table", "loot_table"),
-            InvalidJsonResourceCase("predicate", "predicate"),
-            InvalidJsonResourceCase("advancement", "advancement"),
-            InvalidJsonResourceCase("recipe", "recipe"),
-            InvalidJsonResourceCase("item modifier", "item_modifier"),
-        )
+        val cases =
+            listOf(
+                InvalidJsonResourceCase("loot table", "loot_table"),
+                InvalidJsonResourceCase("predicate", "predicate"),
+                InvalidJsonResourceCase("advancement", "advancement"),
+                InvalidJsonResourceCase("recipe", "recipe"),
+                InvalidJsonResourceCase("item modifier", "item_modifier"),
+            )
 
         cases.forEach { case ->
-            val error = assertFailsWith<SandboxException> {
-                createSandbox("26.2", listOf(writeInvalidJsonResourcePack(case.directory)))
-            }
+            val error =
+                assertFailsWith<SandboxException> {
+                    createSandbox("26.2", listOf(writeInvalidJsonResourcePack(case.directory)))
+                }
 
             assertEquals(DiagnosticCode.INPUT_FORMAT, error.code)
             assertEquals("26.2", error.version)
@@ -343,9 +453,10 @@ class DatapackResourceIndexTest {
     fun `advancement semantic validation reports type id location and version`() {
         val pack = writeInvalidAdvancementPack()
 
-        val error = assertFailsWith<SandboxException> {
-            createSandbox("26.2", listOf(pack))
-        }
+        val error =
+            assertFailsWith<SandboxException> {
+                createSandbox("26.2", listOf(pack))
+            }
 
         assertEquals(DiagnosticCode.INPUT_FORMAT, error.code)
         assertEquals("26.2", error.version)
@@ -405,7 +516,12 @@ class DatapackResourceIndexTest {
             """.trimIndent(),
         )
 
-        val tagRoot = root.resolve("data").resolve("demo").resolve("tags").resolve(itemTagDir)
+        val tagRoot =
+            root
+                .resolve("data")
+                .resolve("demo")
+                .resolve("tags")
+                .resolve(itemTagDir)
         Files.createDirectories(tagRoot)
         Files.writeString(
             tagRoot.resolve("debug_items.json"),
@@ -446,7 +562,12 @@ class DatapackResourceIndexTest {
         val functionRoot = root.resolve("data").resolve("demo").resolve("function")
         Files.createDirectories(functionRoot)
         Files.writeString(functionRoot.resolve("$functionName.mcfunction"), "say $message")
-        val tagRoot = root.resolve("data").resolve("minecraft").resolve("tags").resolve("function")
+        val tagRoot =
+            root
+                .resolve("data")
+                .resolve("minecraft")
+                .resolve("tags")
+                .resolve("function")
         Files.createDirectories(tagRoot)
         Files.writeString(
             tagRoot.resolve("load.json"),
@@ -460,7 +581,11 @@ class DatapackResourceIndexTest {
         return root
     }
 
-    private fun writeTagPack(name: String, replace: Boolean, value: String): Path {
+    private fun writeTagPack(
+        name: String,
+        replace: Boolean,
+        value: String,
+    ): Path {
         val root = Files.createTempDirectory("dps-$name-pack")
         Files.writeString(
             root.resolve("pack.mcmeta"),
@@ -473,7 +598,12 @@ class DatapackResourceIndexTest {
             }
             """.trimIndent(),
         )
-        val tagRoot = root.resolve("data").resolve("demo").resolve("tags").resolve("item")
+        val tagRoot =
+            root
+                .resolve("data")
+                .resolve("demo")
+                .resolve("tags")
+                .resolve("item")
         Files.createDirectories(tagRoot)
         Files.writeString(
             tagRoot.resolve("replace_items.json"),
@@ -553,7 +683,10 @@ class DatapackResourceIndexTest {
         return root
     }
 
-    private fun writeRawTagPack(name: String, body: String): Path {
+    private fun writeRawTagPack(
+        name: String,
+        body: String,
+    ): Path {
         val root = Files.createTempDirectory("dps-$name-pack")
         Files.writeString(
             root.resolve("pack.mcmeta"),
@@ -566,16 +699,29 @@ class DatapackResourceIndexTest {
             }
             """.trimIndent(),
         )
-        val tagRoot = root.resolve("data").resolve("demo").resolve("tags").resolve("item")
+        val tagRoot =
+            root
+                .resolve("data")
+                .resolve("demo")
+                .resolve("tags")
+                .resolve("item")
         Files.createDirectories(tagRoot)
         Files.writeString(tagRoot.resolve("replace_items.json"), body)
         return root
     }
 
-    private fun writeRawRegistryResources(root: Path, marker: String) {
+    private fun writeRawRegistryResources(
+        root: Path,
+        marker: String,
+    ) {
         expectedRawKinds.forEach { kind ->
             val idPath = rawResourceId(kind)
-            val file = root.resolve("data").resolve("demo").resolve(kind).resolve("$idPath.json")
+            val file =
+                root
+                    .resolve("data")
+                    .resolve("demo")
+                    .resolve(kind)
+                    .resolve("$idPath.json")
             Files.createDirectories(file.parent)
             Files.writeString(
                 file,
@@ -595,19 +741,25 @@ class DatapackResourceIndexTest {
         layout: ResourceLayout,
         marker: String,
     ): Path {
-        val root = writePack(
-            name = name,
-            packFormat = packFormat,
-            recipeDir = layout.recipeDir,
-            itemModifierDir = layout.itemModifierDir,
-            itemTagDir = layout.itemTagRegistry,
-            recipeMarker = marker,
-        )
+        val root =
+            writePack(
+                name = name,
+                packFormat = packFormat,
+                recipeDir = layout.recipeDir,
+                itemModifierDir = layout.itemModifierDir,
+                itemTagDir = layout.itemTagRegistry,
+                recipeMarker = marker,
+            )
         val functionRoot = root.resolve("data").resolve("demo").resolve(layout.functionDir)
         Files.createDirectories(functionRoot)
         Files.writeString(functionRoot.resolve("load_marker.mcfunction"), "say $marker load")
 
-        val functionTagRoot = root.resolve("data").resolve("minecraft").resolve("tags").resolve(layout.functionTagDir)
+        val functionTagRoot =
+            root
+                .resolve("data")
+                .resolve("minecraft")
+                .resolve("tags")
+                .resolve(layout.functionTagDir)
         Files.createDirectories(functionTagRoot)
         Files.writeString(
             functionTagRoot.resolve("load.json"),
@@ -665,26 +817,67 @@ class DatapackResourceIndexTest {
         return root
     }
 
-    private fun assertP0ResourceMatrix(datapack: Datapack, itemTagRegistry: String, marker: String) {
-        assertEquals("say $marker load", datapack.function(ResourceLocation.parse("demo:load_marker")).lines.single().command)
-        assertEquals(listOf(ResourceLocation.parse("demo:load_marker")), datapack.loadFunctions)
-        assertEquals(1, datapack.lootTable(ResourceLocation.parse("demo:gift")).root.asJsonObject.getAsJsonArray("pools").size())
-        assertEquals(true, datapack.predicate(ResourceLocation.parse("demo:always")).root.asJsonObject.get("value").asBoolean)
-        assertTrue(datapack.advancement(ResourceLocation.parse("demo:tick")).criteria.containsKey("tick"))
-        assertEquals(marker, datapack.recipe(ResourceLocation.parse("demo:marker")).root.asJsonObject.get("marker").asString)
-        assertEquals("item_modifier", datapack.itemModifier(ResourceLocation.parse("demo:mark_item")).kind)
-        assertEquals(listOf("minecraft:stick", "#demo:optional_items"), datapack.tag(itemTagRegistry, ResourceLocation.parse("demo:debug_items")).values.map { it.id })
-
-        val expectedActiveTypes = setOf(
-            "function",
-            "tag/function",
-            "tag/$itemTagRegistry",
-            "loot_table",
-            "predicate",
-            "advancement",
-            "recipe",
-            "item_modifier",
+    private fun assertP0ResourceMatrix(
+        datapack: Datapack,
+        itemTagRegistry: String,
+        marker: String,
+    ) {
+        assertEquals(
+            "say $marker load",
+            datapack
+                .function(ResourceLocation.parse("demo:load_marker"))
+                .lines
+                .single()
+                .command,
         )
+        assertEquals(listOf(ResourceLocation.parse("demo:load_marker")), datapack.loadFunctions)
+        assertEquals(
+            1,
+            datapack
+                .lootTable(ResourceLocation.parse("demo:gift"))
+                .root.asJsonObject
+                .getAsJsonArray("pools")
+                .size(),
+        )
+        assertEquals(
+            true,
+            datapack
+                .predicate(ResourceLocation.parse("demo:always"))
+                .root.asJsonObject
+                .get("value")
+                .asBoolean,
+        )
+        assertTrue(datapack.advancement(ResourceLocation.parse("demo:tick")).criteria.containsKey("tick"))
+        assertEquals(
+            marker,
+            datapack
+                .recipe(ResourceLocation.parse("demo:marker"))
+                .root.asJsonObject
+                .get("marker")
+                .asString,
+        )
+        assertEquals("item_modifier", datapack.itemModifier(ResourceLocation.parse("demo:mark_item")).kind)
+        assertEquals(
+            listOf(
+                "minecraft:stick",
+                "#demo:optional_items",
+            ),
+            datapack.tag(itemTagRegistry, ResourceLocation.parse("demo:debug_items")).values.map {
+                it.id
+            },
+        )
+
+        val expectedActiveTypes =
+            setOf(
+                "function",
+                "tag/function",
+                "tag/$itemTagRegistry",
+                "loot_table",
+                "predicate",
+                "advancement",
+                "recipe",
+                "item_modifier",
+            )
         expectedActiveTypes.forEach { type ->
             assertTrue(
                 datapack.resourceIndex.any { it.type == type && it.active },
@@ -693,9 +886,10 @@ class DatapackResourceIndexTest {
         }
         assertEquals(
             ResourceBehaviorLevel.MODELED,
-            datapack.resourceIndex.single {
-                it.type == "tag/function" && it.id == ResourceLocation.parse("minecraft:load")
-            }.behaviorLevel,
+            datapack.resourceIndex
+                .single {
+                    it.type == "tag/function" && it.id == ResourceLocation.parse("minecraft:load")
+                }.behaviorLevel,
         )
         assertTrue(
             datapack.resourceIndex.any {
@@ -706,7 +900,10 @@ class DatapackResourceIndexTest {
         )
     }
 
-    private fun zipPack(root: Path, output: Path): Path {
+    private fun zipPack(
+        root: Path,
+        output: Path,
+    ): Path {
         ZipOutputStream(Files.newOutputStream(output)).use { zip ->
             Files.walk(root).use { walk ->
                 walk.filter { Files.isRegularFile(it) }.forEach { file ->
@@ -723,23 +920,24 @@ class DatapackResourceIndexTest {
     private companion object {
         val expectedRawKinds = ResourceCatalog.additionalRawJsonTypes
 
-        val explicitRawResourceIds = mapOf(
-            "damage_type" to "debug_damage",
-            "chat_type" to "debug_chat",
-            "dimension" to "debug_dimension",
-            "dimension_type" to "debug_dimension_type",
-            "worldgen/configured_feature" to "debug_feature",
-            "worldgen/placed_feature" to "debug_feature",
-            "worldgen/structure" to "debug_structure",
-            "worldgen/processor_list" to "debug_processor",
-            "enchantment" to "debug_enchantment",
-            "jukebox_song" to "debug_song",
-            "trim_material" to "debug_trim_material",
-            "trim_pattern" to "debug_trim_pattern",
-            "banner_pattern" to "debug_banner",
-            "wolf_variant" to "debug_wolf",
-            "painting_variant" to "debug_painting",
-        )
+        val explicitRawResourceIds =
+            mapOf(
+                "damage_type" to "debug_damage",
+                "chat_type" to "debug_chat",
+                "dimension" to "debug_dimension",
+                "dimension_type" to "debug_dimension_type",
+                "worldgen/configured_feature" to "debug_feature",
+                "worldgen/placed_feature" to "debug_feature",
+                "worldgen/structure" to "debug_structure",
+                "worldgen/processor_list" to "debug_processor",
+                "enchantment" to "debug_enchantment",
+                "jukebox_song" to "debug_song",
+                "trim_material" to "debug_trim_material",
+                "trim_pattern" to "debug_trim_pattern",
+                "banner_pattern" to "debug_banner",
+                "wolf_variant" to "debug_wolf",
+                "painting_variant" to "debug_painting",
+            )
 
         fun rawResourceId(kind: String): String =
             explicitRawResourceIds[kind]
@@ -761,26 +959,28 @@ class DatapackResourceIndexTest {
             val itemTagRegistry: String,
         ) {
             companion object {
-                val current = ResourceLayout(
-                    functionDir = "function",
-                    functionTagDir = "function",
-                    lootTableDir = "loot_table",
-                    predicateDir = "predicate",
-                    advancementDir = "advancement",
-                    recipeDir = "recipe",
-                    itemModifierDir = "item_modifier",
-                    itemTagRegistry = "item",
-                )
-                val legacy = ResourceLayout(
-                    functionDir = "functions",
-                    functionTagDir = "functions",
-                    lootTableDir = "loot_tables",
-                    predicateDir = "predicates",
-                    advancementDir = "advancements",
-                    recipeDir = "recipes",
-                    itemModifierDir = "item_modifiers",
-                    itemTagRegistry = "items",
-                )
+                val current =
+                    ResourceLayout(
+                        functionDir = "function",
+                        functionTagDir = "function",
+                        lootTableDir = "loot_table",
+                        predicateDir = "predicate",
+                        advancementDir = "advancement",
+                        recipeDir = "recipe",
+                        itemModifierDir = "item_modifier",
+                        itemTagRegistry = "item",
+                    )
+                val legacy =
+                    ResourceLayout(
+                        functionDir = "functions",
+                        functionTagDir = "functions",
+                        lootTableDir = "loot_tables",
+                        predicateDir = "predicates",
+                        advancementDir = "advancements",
+                        recipeDir = "recipes",
+                        itemModifierDir = "item_modifiers",
+                        itemTagRegistry = "items",
+                    )
             }
         }
     }

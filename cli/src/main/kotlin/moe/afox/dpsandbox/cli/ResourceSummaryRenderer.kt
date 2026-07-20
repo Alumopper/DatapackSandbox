@@ -1,7 +1,10 @@
 package moe.afox.dpsandbox.cli
 
 object ResourceSummaryRenderer {
-    fun render(version: String, summary: ManifestResourceSummary): List<String> =
+    fun render(
+        version: String,
+        summary: ManifestResourceSummary,
+    ): List<String> =
         buildList {
             add(
                 "resources $version " +
@@ -20,10 +23,11 @@ object ResourceSummaryRenderer {
             )
             summary.overlays.forEach { entry ->
                 val state = if (entry.active) "active" else "overridden"
-                val overlay = listOfNotNull(
-                    entry.overrides?.let { "overrides=$it" },
-                    entry.overriddenBy?.let { "overriddenBy=$it" },
-                ).joinToString(separator = " ").takeIf { it.isNotBlank() }?.let { " $it" }.orEmpty()
+                val overlay =
+                    listOfNotNull(
+                        entry.overrides?.let { "overrides=$it" },
+                        entry.overriddenBy?.let { "overriddenBy=$it" },
+                    ).joinToString(separator = " ").takeIf { it.isNotBlank() }?.let { " $it" }.orEmpty()
                 add("overlay ${entry.type} ${entry.id} ${entry.behaviorLevel.id} $state pack=${entry.pack} file=${entry.file}$overlay")
             }
             summary.missingReferences.forEach { reference ->
@@ -31,7 +35,10 @@ object ResourceSummaryRenderer {
             }
         }
 
-    fun print(version: String, summary: ManifestResourceSummary) {
+    fun print(
+        version: String,
+        summary: ManifestResourceSummary,
+    ) {
         render(version, summary).forEach(::println)
     }
 }

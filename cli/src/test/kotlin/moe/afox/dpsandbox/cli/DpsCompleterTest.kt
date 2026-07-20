@@ -31,8 +31,7 @@ class DpsCompleterTest {
         assertFalse(DpsInlineHintPolicy.multilineDescriptionsEnabled("Linux", override = "off"))
     }
 
-    private fun completer(): DpsCompleter =
-        DpsCompleter { createSandbox("26.1.2", listOf(Path.of("../core/src/test/resources/packs/counter"))) }
+    private fun completer(): DpsCompleter = DpsCompleter { createSandbox("26.1.2", listOf(Path.of("../core/src/test/resources/packs/counter"))) }
 
     private fun emptyCompleter(version: String): DpsCompleter =
         DpsCompleter {
@@ -195,23 +194,24 @@ class DpsCompleterTest {
     @Test
     fun `catalog describes implemented partial root commands`() {
         val commands = DpsCommandCatalog.rootCommands(VersionProfiles.default).associateBy { it.value }
-        val implementedRoots = listOf(
-            "attribute",
-            "datapack",
-            "defaultgamemode",
-            "difficulty",
-            "fillbiome",
-            "forceload",
-            "gamemode",
-            "place",
-            "seed",
-            "setworldspawn",
-            "spawnpoint",
-            "spectate",
-            "spreadplayers",
-            "trigger",
-            "worldborder",
-        )
+        val implementedRoots =
+            listOf(
+                "attribute",
+                "datapack",
+                "defaultgamemode",
+                "difficulty",
+                "fillbiome",
+                "forceload",
+                "gamemode",
+                "place",
+                "seed",
+                "setworldspawn",
+                "spawnpoint",
+                "spectate",
+                "spreadplayers",
+                "trigger",
+                "worldborder",
+            )
 
         assertEquals("read or edit stored entity attributes", commands.getValue("attribute").description)
         assertEquals(CommandBehaviorLevel.MODELED, commands.getValue("attribute").behaviorLevel)
@@ -227,7 +227,11 @@ class DpsCompleterTest {
         }
     }
 
-    private fun assertSuggests(completer: DpsCompleter, line: String, expected: String) {
+    private fun assertSuggests(
+        completer: DpsCompleter,
+        line: String,
+        expected: String,
+    ) {
         val values = completer.suggestions(line).map { it.value }
         assertTrue(expected in values, "Expected '$expected' in suggestions for '$line', got $values")
     }

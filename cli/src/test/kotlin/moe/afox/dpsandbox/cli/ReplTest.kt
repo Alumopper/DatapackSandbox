@@ -15,10 +15,11 @@ class ReplTest {
     fun `prints dashboard and categorized help`() {
         val repl = Repl(createSandbox("26.2", listOf(Path.of("../core/src/test/resources/packs/counter"))))
 
-        val output = captureStdout {
-            repl.handle("status")
-            repl.handle("help")
-        }
+        val output =
+            captureStdout {
+                repl.handle("status")
+                repl.handle("help")
+            }
 
         assertTrue(output.contains("Datapack Sandbox"), output)
         assertTrue(output.contains("profile"), output)
@@ -30,9 +31,10 @@ class ReplTest {
     fun `prints clear feedback for manually entered commands`() {
         val repl = Repl(createSandbox("26.1.2", listOf(Path.of("../core/src/test/resources/packs/counter"))))
 
-        val output = captureStdout {
-            repl.handle("say hello")
-        }
+        val output =
+            captureStdout {
+                repl.handle("say hello")
+            }
 
         assertTrue(output.contains("OK say hello (commands=1, gameTime=0, outputs=+1)"), output)
         assertTrue(output.contains("[0] chat say -> Steve <Server> hello"), output)
@@ -42,9 +44,10 @@ class ReplTest {
     fun `prints keyboard input event feedback`() {
         val repl = Repl(createSandbox("26.1.2", listOf(Path.of("../core/src/test/resources/packs/counter"))))
 
-        val output = captureStdout {
-            repl.handle("event player Steve key_input key.jump release")
-        }
+        val output =
+            captureStdout {
+                repl.handle("event player Steve key_input key.jump release")
+            }
 
         assertTrue(output.contains("OK event player Steve key_input"), output)
         assertTrue(output.contains("input=keyboard:key.jump/release"), output)
@@ -54,9 +57,10 @@ class ReplTest {
     fun `prints block event position feedback`() {
         val repl = Repl(createSandbox("26.1.2", listOf(Path.of("../core/src/test/resources/packs/counter"))))
 
-        val output = captureStdout {
-            repl.handle("event player Steve block_placed minecraft:stone pos=1,64,2")
-        }
+        val output =
+            captureStdout {
+                repl.handle("event player Steve block_placed minecraft:stone pos=1,64,2")
+            }
 
         assertTrue(output.contains("OK event player Steve block_placed"), output)
         assertTrue(output.contains("blockPos=1,64,2"), output)
@@ -66,10 +70,11 @@ class ReplTest {
     fun `inspects player event traces`() {
         val repl = Repl(createSandbox("26.1.2", listOf(Path.of("../core/src/test/resources/packs/counter"))))
 
-        val output = captureStdout {
-            repl.handle("event player Steve block_placed minecraft:stone pos=1,64,2")
-            repl.handle("inspect event-traces")
-        }
+        val output =
+            captureStdout {
+                repl.handle("event player Steve block_placed minecraft:stone pos=1,64,2")
+                repl.handle("inspect event-traces")
+            }
 
         assertTrue(output.contains("\"type\": \"block_placed\""), output)
         assertTrue(output.contains("\"block\": \"minecraft:stone\""), output)
@@ -80,10 +85,11 @@ class ReplTest {
     fun `prints trace events when trace is enabled`() {
         val repl = Repl(createSandbox("26.1.2", listOf(Path.of("../core/src/test/resources/packs/counter"))))
 
-        val output = captureStdout {
-            repl.handle("trace on")
-            repl.handle("say traced")
-        }
+        val output =
+            captureStdout {
+                repl.handle("trace on")
+                repl.handle("say traced")
+            }
 
         assertTrue(output.contains("OK trace on"), output)
         assertTrue(output.contains("trace OK say traced"), output)
@@ -93,13 +99,14 @@ class ReplTest {
     fun `prints last diff and reruns last command`() {
         val repl = Repl(createSandbox("26.1.2", listOf(Path.of("../core/src/test/resources/packs/counter"))))
 
-        val output = captureStdout {
-            repl.handle("scoreboard objectives add runs dummy")
-            repl.handle("scoreboard players add #repl runs 2")
-            repl.handle("diff last")
-            repl.handle("rerun last")
-            repl.handle("inspect score #repl runs")
-        }
+        val output =
+            captureStdout {
+                repl.handle("scoreboard objectives add runs dummy")
+                repl.handle("scoreboard players add #repl runs 2")
+                repl.handle("diff last")
+                repl.handle("rerun last")
+                repl.handle("inspect score #repl runs")
+            }
 
         assertTrue(output.contains("+ /scores/runs"), output)
         assertTrue(output.contains("rerun: scoreboard players add #repl runs 2"), output)
@@ -121,12 +128,13 @@ class ReplTest {
             """.trimIndent(),
         )
 
-        val output = captureStdout {
-            repl.handle("load fixture $fixture")
-            repl.handle("inspect score #fixture ready")
-            repl.handle("reset world")
-            repl.handle("inspect score #fixture ready")
-        }
+        val output =
+            captureStdout {
+                repl.handle("load fixture $fixture")
+                repl.handle("inspect score #fixture ready")
+                repl.handle("reset world")
+                repl.handle("inspect score #fixture ready")
+            }
 
         assertTrue(output.contains("OK load fixture $fixture"), output)
         assertTrue(output.lines().any { it.trim() == "3" }, output)
@@ -140,11 +148,12 @@ class ReplTest {
         sandbox.world.randomSequences["demo:seq"] = 42
         val repl = Repl(sandbox)
 
-        val output = captureStdout {
-            repl.handle("inspect random")
-            repl.handle("inspect random demo:seq")
-            repl.handle("inspect random demo:missing")
-        }
+        val output =
+            captureStdout {
+                repl.handle("inspect random")
+                repl.handle("inspect random demo:seq")
+                repl.handle("inspect random demo:missing")
+            }
 
         assertTrue(output.contains("demo:seq = 42"), output)
         assertTrue(output.lines().any { it.trim() == "42" }, output)
@@ -155,13 +164,14 @@ class ReplTest {
     fun `inspects gamerule state`() {
         val repl = Repl(createSandbox("26.1.2", listOf(Path.of("../core/src/test/resources/packs/counter"))))
 
-        val output = captureStdout {
-            repl.handle("gamerule doDaylightCycle false")
-            repl.handle("gamerule maxEntityCramming 0")
-            repl.handle("inspect gamerule")
-            repl.handle("inspect gamerule doDaylightCycle")
-            repl.handle("inspect gamerule missingRule")
-        }
+        val output =
+            captureStdout {
+                repl.handle("gamerule doDaylightCycle false")
+                repl.handle("gamerule maxEntityCramming 0")
+                repl.handle("inspect gamerule")
+                repl.handle("inspect gamerule doDaylightCycle")
+                repl.handle("inspect gamerule missingRule")
+            }
 
         assertTrue(output.contains("gamerule doDaylightCycle = false"), output)
         assertTrue(output.contains("gamerule maxEntityCramming = 0"), output)
@@ -173,10 +183,11 @@ class ReplTest {
     fun `inspects scheduled function state`() {
         val repl = Repl(createSandbox("26.1.2", listOf(Path.of("../core/src/test/resources/packs/counter"))))
 
-        val output = captureStdout {
-            repl.handle("function demo:main")
-            repl.handle("inspect schedule")
-        }
+        val output =
+            captureStdout {
+                repl.handle("function demo:main")
+                repl.handle("inspect schedule")
+            }
 
         assertTrue(output.contains("scheduled demo:scheduled dueTick=1 remaining=1"), output)
         assertTrue(output.contains("outputs=+"), output)
@@ -186,11 +197,12 @@ class ReplTest {
     fun `inspects forced chunk state`() {
         val repl = Repl(createSandbox("26.1.2", listOf(Path.of("../core/src/test/resources/packs/counter"))))
 
-        val output = captureStdout {
-            repl.handle("forceload add 0 0")
-            repl.handle("forceload add 16 16")
-            repl.handle("inspect forced-chunks")
-        }
+        val output =
+            captureStdout {
+                repl.handle("forceload add 0 0")
+                repl.handle("forceload add 16 16")
+                repl.handle("inspect forced-chunks")
+            }
 
         assertTrue(output.contains("forcedChunks count=2"), output)
         assertTrue(output.contains("forcedChunk 0,0"), output)
@@ -201,17 +213,21 @@ class ReplTest {
     fun `inspects scoreboard UI state`() {
         val repl = Repl(createSandbox("26.1.2", listOf(Path.of("../core/src/test/resources/packs/counter"))))
 
-        val output = captureStdout {
-            repl.handle("scoreboard objectives add health dummy")
-            repl.handle("scoreboard objectives modify health displayname Health Points")
-            repl.handle("scoreboard objectives modify health rendertype hearts")
-            repl.handle("scoreboard objectives modify health displayautoupdate false")
-            repl.handle("scoreboard objectives setdisplay sidebar.team.red health")
-            repl.handle("inspect scoreboard")
-            repl.handle("inspect scoreboard displays")
-        }
+        val output =
+            captureStdout {
+                repl.handle("scoreboard objectives add health dummy")
+                repl.handle("scoreboard objectives modify health displayname Health Points")
+                repl.handle("scoreboard objectives modify health rendertype hearts")
+                repl.handle("scoreboard objectives modify health displayautoupdate false")
+                repl.handle("scoreboard objectives setdisplay sidebar.team.red health")
+                repl.handle("inspect scoreboard")
+                repl.handle("inspect scoreboard displays")
+            }
 
-        assertTrue(output.contains("objective health criteria=dummy displayName=Health Points renderType=hearts displayAutoUpdate=false"), output)
+        assertTrue(
+            output.contains("objective health criteria=dummy displayName=Health Points renderType=hearts displayAutoUpdate=false"),
+            output,
+        )
         assertTrue(output.contains("display sidebar.team.red = health"), output)
     }
 
@@ -219,25 +235,26 @@ class ReplTest {
     fun `inspects team and bossbar UI state`() {
         val repl = Repl(createSandbox("26.1.2", listOf(Path.of("../core/src/test/resources/packs/counter"))))
 
-        val output = captureStdout {
-            repl.handle("team add red Red Team")
-            repl.handle("team join red Steve Alex")
-            repl.handle("team modify red color blue")
-            repl.handle("team modify red friendlyFire false")
-            repl.handle("bossbar add demo:timer Timer")
-            repl.handle("bossbar set demo:timer value 5")
-            repl.handle("bossbar set demo:timer max 20")
-            repl.handle("bossbar set demo:timer color red")
-            repl.handle("bossbar set demo:timer style notched_10")
-            repl.handle("bossbar set demo:timer visible false")
-            repl.handle("bossbar set demo:timer players Steve")
-            repl.handle("inspect team")
-            repl.handle("inspect team red")
-            repl.handle("inspect team missing")
-            repl.handle("inspect bossbar")
-            repl.handle("inspect bossbar demo:timer")
-            repl.handle("inspect bossbar demo:missing")
-        }
+        val output =
+            captureStdout {
+                repl.handle("team add red Red Team")
+                repl.handle("team join red Steve Alex")
+                repl.handle("team modify red color blue")
+                repl.handle("team modify red friendlyFire false")
+                repl.handle("bossbar add demo:timer Timer")
+                repl.handle("bossbar set demo:timer value 5")
+                repl.handle("bossbar set demo:timer max 20")
+                repl.handle("bossbar set demo:timer color red")
+                repl.handle("bossbar set demo:timer style notched_10")
+                repl.handle("bossbar set demo:timer visible false")
+                repl.handle("bossbar set demo:timer players Steve")
+                repl.handle("inspect team")
+                repl.handle("inspect team red")
+                repl.handle("inspect team missing")
+                repl.handle("inspect bossbar")
+                repl.handle("inspect bossbar demo:timer")
+                repl.handle("inspect bossbar demo:missing")
+            }
 
         assertTrue(
             output.contains("team red displayName=Red Team members=[Alex, Steve] options=[color=blue, friendlyFire=false]"),
@@ -259,14 +276,15 @@ class ReplTest {
             AdvancementProgress(linkedMapOf("start" to true, "finish" to false))
         val repl = Repl(sandbox)
 
-        val output = captureStdout {
-            repl.handle("inspect recipes")
-            repl.handle("inspect recipes Steve demo:toast")
-            repl.handle("inspect recipes Steve demo:missing")
-            repl.handle("inspect advancement-progress")
-            repl.handle("inspect advancement-progress Steve demo:root")
-            repl.handle("inspect advancement-progress Steve demo:missing")
-        }
+        val output =
+            captureStdout {
+                repl.handle("inspect recipes")
+                repl.handle("inspect recipes Steve demo:toast")
+                repl.handle("inspect recipes Steve demo:missing")
+                repl.handle("inspect advancement-progress")
+                repl.handle("inspect advancement-progress Steve demo:root")
+                repl.handle("inspect advancement-progress Steve demo:missing")
+            }
 
         assertTrue(output.contains("recipes Steve count=1 values=[demo:toast]"), output)
         assertTrue(output.contains("recipe Steve demo:toast unlocked=true"), output)
@@ -279,16 +297,17 @@ class ReplTest {
     fun `inspects player item slots`() {
         val repl = Repl(createSandbox("26.1.2", listOf(Path.of("../core/src/test/resources/packs/counter"))))
 
-        val output = captureStdout {
-            repl.handle("item replace entity Steve hotbar.0 with minecraft:apple 1")
-            repl.handle("item replace entity Steve hotbar.1 with minecraft:stick 2")
-            repl.handle("item replace entity Steve enderchest.0 with minecraft:ender_pearl 4")
-            repl.handle("inspect items Steve")
-            repl.handle("inspect item Steve hotbar.1")
-            repl.handle("inspect item Steve enderchest.0")
-            repl.handle("inspect item Steve selected")
-            repl.handle("inspect item Steve hotbar.8")
-        }
+        val output =
+            captureStdout {
+                repl.handle("item replace entity Steve hotbar.0 with minecraft:apple 1")
+                repl.handle("item replace entity Steve hotbar.1 with minecraft:stick 2")
+                repl.handle("item replace entity Steve enderchest.0 with minecraft:ender_pearl 4")
+                repl.handle("inspect items Steve")
+                repl.handle("inspect item Steve hotbar.1")
+                repl.handle("inspect item Steve enderchest.0")
+                repl.handle("inspect item Steve selected")
+                repl.handle("inspect item Steve hotbar.8")
+            }
 
         assertTrue(output.contains("items Steve selectedSlot=0 selected=minecraft:applex1"), output)
         assertTrue(output.contains("item Steve inventory.0 minecraft:applex1"), output)
@@ -303,16 +322,17 @@ class ReplTest {
     fun `inspects block and biome state`() {
         val repl = Repl(createSandbox("26.1.2", listOf(Path.of("../core/src/test/resources/packs/counter"))))
 
-        val output = captureStdout {
-            repl.handle("""setblock 0 64 0 minecraft:chest[facing=north]{Items:[{Slot:0b,id:"minecraft:apple",count:1b}]}""")
-            repl.handle("fillbiome 0 64 0 0 64 0 minecraft:forest")
-            repl.handle("inspect blocks")
-            repl.handle("inspect block 0 64 0")
-            repl.handle("inspect block 0,64,1")
-            repl.handle("inspect biomes")
-            repl.handle("inspect biome 0 64 0")
-            repl.handle("inspect biome 0,64,1")
-        }
+        val output =
+            captureStdout {
+                repl.handle("""setblock 0 64 0 minecraft:chest[facing=north]{Items:[{Slot:0b,id:"minecraft:apple",count:1b}]}""")
+                repl.handle("fillbiome 0 64 0 0 64 0 minecraft:forest")
+                repl.handle("inspect blocks")
+                repl.handle("inspect block 0 64 0")
+                repl.handle("inspect block 0,64,1")
+                repl.handle("inspect biomes")
+                repl.handle("inspect biome 0 64 0")
+                repl.handle("inspect biome 0,64,1")
+            }
 
         assertTrue(output.contains("block 0,64,0 id=minecraft:chest properties=[facing=north]"), output)
         assertTrue(output.contains("biome=minecraft:forest"), output)
@@ -326,16 +346,17 @@ class ReplTest {
     fun `inspects entity modeled state`() {
         val repl = Repl(createSandbox("26.1.2", listOf(Path.of("../core/src/test/resources/packs/counter"))))
 
-        val output = captureStdout {
-            repl.handle("""summon minecraft:zombie 1 64 2 {Tags:["mob"],Health:18f}""")
-            repl.handle("item replace entity @e[type=minecraft:zombie,limit=1] weapon.mainhand with minecraft:stick 2")
-            repl.handle("effect give @e[type=minecraft:zombie,limit=1] minecraft:speed 7 2 true")
-            repl.handle("attribute @e[type=minecraft:zombie,limit=1] minecraft:max_health base set 40")
-            repl.handle("inspect entities")
-            repl.handle("inspect entity mob")
-            repl.handle("inspect entity minecraft:zombie")
-            repl.handle("inspect entity missing")
-        }
+        val output =
+            captureStdout {
+                repl.handle("""summon minecraft:zombie 1 64 2 {Tags:["mob"],Health:18f}""")
+                repl.handle("item replace entity @e[type=minecraft:zombie,limit=1] weapon.mainhand with minecraft:stick 2")
+                repl.handle("effect give @e[type=minecraft:zombie,limit=1] minecraft:speed 7 2 true")
+                repl.handle("attribute @e[type=minecraft:zombie,limit=1] minecraft:max_health base set 40")
+                repl.handle("inspect entities")
+                repl.handle("inspect entity mob")
+                repl.handle("inspect entity minecraft:zombie")
+                repl.handle("inspect entity missing")
+            }
 
         assertTrue(output.contains("type=minecraft:zombie pos=1.0,64.0,2.0"), output)
         assertTrue(output.contains("health=18.0 tags=[mob]"), output)
@@ -350,23 +371,24 @@ class ReplTest {
         val sandbox = createSandbox("26.1.2", listOf(Path.of("../core/src/test/resources/packs/counter")))
         val repl = Repl(sandbox)
 
-        val output = captureStdout {
-            repl.handle("time set 6000")
-            repl.handle("weather thunder 120")
-            repl.handle("difficulty hard")
-            repl.handle("defaultgamemode creative")
-            repl.handle("setworldspawn 4 70 5 90")
-            sandbox.world.tickFrozen = true
-            sandbox.world.tickRate = 30.0
-            repl.handle("worldborder center 5 -6")
-            repl.handle("worldborder set 100")
-            repl.handle("worldborder damage buffer 3")
-            repl.handle("worldborder damage amount 0.5")
-            repl.handle("worldborder warning distance 8")
-            repl.handle("worldborder warning time 20")
-            repl.handle("inspect world")
-            repl.handle("inspect worldborder")
-        }
+        val output =
+            captureStdout {
+                repl.handle("time set 6000")
+                repl.handle("weather thunder 120")
+                repl.handle("difficulty hard")
+                repl.handle("defaultgamemode creative")
+                repl.handle("setworldspawn 4 70 5 90")
+                sandbox.world.tickFrozen = true
+                sandbox.world.tickRate = 30.0
+                repl.handle("worldborder center 5 -6")
+                repl.handle("worldborder set 100")
+                repl.handle("worldborder damage buffer 3")
+                repl.handle("worldborder damage amount 0.5")
+                repl.handle("worldborder warning distance 8")
+                repl.handle("worldborder warning time 20")
+                repl.handle("inspect world")
+                repl.handle("inspect worldborder")
+            }
 
         assertTrue(output.contains("world gameTime=0 dayTime=6000 weather=thunder"), output)
         assertTrue(output.contains("weatherDuration=120"), output)
@@ -409,12 +431,13 @@ class ReplTest {
         )
 
         val repl = Repl(createSandbox("26.2", listOf(pack)))
-        val output = captureStdout {
-            repl.handle("inspect raw")
-            repl.handle("inspect raw damage_type")
-            repl.handle("inspect raw damage_type demo:debug_damage")
-            repl.handle("inspect resources damage_type")
-        }
+        val output =
+            captureStdout {
+                repl.handle("inspect raw")
+                repl.handle("inspect raw damage_type")
+                repl.handle("inspect raw damage_type demo:debug_damage")
+                repl.handle("inspect resources damage_type")
+            }
 
         assertTrue(output.contains("damage_type 1"), output)
         assertTrue(output.contains("demo:debug_damage file="), output)
@@ -429,9 +452,10 @@ class ReplTest {
         val second = writeResourceDebugPack(dir, "second", "two", includeMissingLoad = false)
         val repl = Repl(createSandbox("26.2", listOf(first, second)))
 
-        val output = captureStdout {
-            repl.handle("inspect resources")
-        }
+        val output =
+            captureStdout {
+                repl.handle("inspect resources")
+            }
 
         assertTrue(output.contains("resources 26.2 functions=2"), output)
         assertTrue(output.contains("overridden=1"), output)
@@ -447,11 +471,12 @@ class ReplTest {
         val pack = writeResourceDebugPack(dir, "registry", "profile", includeMissingLoad = false)
         val repl = Repl(createSandbox("26.2", listOf(pack)))
 
-        val output = captureStdout {
-            repl.handle("inspect registry damage_types")
-            repl.handle("inspect registry loot_conditions")
-            repl.handle("inspect registry missing")
-        }
+        val output =
+            captureStdout {
+                repl.handle("inspect registry damage_types")
+                repl.handle("inspect registry loot_conditions")
+                repl.handle("inspect registry missing")
+            }
 
         assertTrue(output.contains("registry damage_types count=5 source=profile:26.2"), output)
         assertTrue(output.contains("registry damage_types minecraft:generic source=profile:26.2"), output)
@@ -459,7 +484,12 @@ class ReplTest {
         assertTrue(output.contains("<missing registry group missing>"), output)
     }
 
-    private fun writeResourceDebugPack(root: Path, name: String, marker: String, includeMissingLoad: Boolean): Path {
+    private fun writeResourceDebugPack(
+        root: Path,
+        name: String,
+        marker: String,
+        includeMissingLoad: Boolean,
+    ): Path {
         val pack = root.resolve(name)
         Files.createDirectories(pack)
         Files.writeString(
@@ -494,7 +524,12 @@ class ReplTest {
         )
 
         if (includeMissingLoad) {
-            val tagRoot = pack.resolve("data").resolve("minecraft").resolve("tags").resolve("function")
+            val tagRoot =
+                pack
+                    .resolve("data")
+                    .resolve("minecraft")
+                    .resolve("tags")
+                    .resolve("function")
             Files.createDirectories(tagRoot)
             Files.writeString(tagRoot.resolve("load.json"), """{"values":["demo:missing_load"]}""")
         }
