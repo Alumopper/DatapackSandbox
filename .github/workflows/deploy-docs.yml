@@ -45,7 +45,7 @@ jobs:
       - name: Build docs
         run: npm run docs:build
         env:
-          DOCS_BASE: /DatapackSandbox/
+          DOCS_BASE: /
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
