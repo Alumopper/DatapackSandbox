@@ -1,0 +1,12 @@
+.git
+.gradle
+.idea
+.kotlin
+.opencode
+.venv
+**/build
+**/node_modules
+docs/.vitepress/cache
+docs/.vitepress/dist
+jupyter/dist
+vscode/out

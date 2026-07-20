@@ -14,6 +14,9 @@ docs/public/dps-manifest.schema.json
 *.iml
 
 node_modules/
+packages/vitepress-playground/dist/
+**/playwright-report/
+**/test-results/
 vscode/out/
 vscode/schemas/
 vscode/bin/

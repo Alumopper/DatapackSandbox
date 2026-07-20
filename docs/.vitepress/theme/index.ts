@@ -1,13 +1,19 @@
+import type { Theme } from 'vitepress'
 import { VPCarbon } from 'vitepress-carbon'
-import { h } from 'vue'
+import { defineAsyncComponent, h } from 'vue'
 import HomeCodeShowcase from './components/HomeCodeShowcase.vue'
 import './custom.css'
 
+const PlaygroundDemo = defineAsyncComponent(() => import('./components/PlaygroundDemo.vue'))
+
 export default {
   extends: VPCarbon,
+  enhanceApp({ app }) {
+    app.component('PlaygroundDemo', PlaygroundDemo)
+  },
   Layout() {
     return h(VPCarbon.Layout!, null, {
       'home-hero-after': () => h(HomeCodeShowcase),
     })
   },
-}
+} satisfies Theme

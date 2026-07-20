@@ -1,11 +1,18 @@
 {
+  "name": "datapack-sandbox-workspace",
   "private": true,
   "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
     "sync:doc-assets": "node tools/sync-doc-assets.mjs",
+    "playground:build": "npm run build --workspace @datapack-sandbox/vitepress-playground",
+    "playground:test": "npm run test --workspace @datapack-sandbox/vitepress-playground",
+    "playground:check": "npm run check --workspace @datapack-sandbox/vitepress-playground",
     "predocs:dev": "npm run sync:doc-assets",
     "docs:dev": "vitepress dev docs --host 127.0.0.1",
-    "predocs:build": "npm run sync:doc-assets",
+    "predocs:build": "npm run sync:doc-assets && npm run playground:build",
     "docs:build": "vitepress build docs",
     "predocs:preview": "npm run sync:doc-assets",
     "docs:preview": "vitepress preview docs --host 127.0.0.1"
@@ -16,5 +23,8 @@
     "markdown-it-mathjax3": "^4.3.2",
     "vitepress": "^1.6.4",
     "vitepress-carbon": "1.5.0"
+  },
+  "dependencies": {
+    "@datapack-sandbox/vitepress-playground": "workspace:*"
   }
 }

@@ -1,0 +1,23 @@
+services:
+  playground-api:
+    build:
+      context: ..
+      dockerfile: playground-api/Dockerfile
+    image: datapack-sandbox/playground-api:local
+    environment:
+      DPS_ALLOWED_ORIGINS: ${DPS_ALLOWED_ORIGINS:-http://127.0.0.1:5173,http://localhost:5173}
+      DPS_ALLOWED_PROFILES: ${DPS_ALLOWED_PROFILES:-26.2}
+      DPS_IDLE_TIMEOUT_MS: ${DPS_IDLE_TIMEOUT_MS:-600000}
+      DPS_EXECUTION_TIMEOUT_MS: ${DPS_EXECUTION_TIMEOUT_MS:-5000}
+      DPS_MAX_SESSIONS: ${DPS_MAX_SESSIONS:-64}
+      DPS_PRESETS_FILE: ${DPS_PRESETS_FILE:-}
+    ports:
+      - "8080:8080"
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    volumes:
+      - ./presets:/presets:ro
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped

@@ -265,6 +265,7 @@ tasks.register("releaseCheck") {
         ":testkit:check",
         ":manifest:check",
         ":cli:check",
+        ":playground-api:check",
         ":schema-generator:check",
         apiCheck,
         architectureCheck,
