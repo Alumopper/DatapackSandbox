@@ -122,6 +122,8 @@ internal data class SceneTriangle(
     val tint: Int = 0xffffffff.toInt(),
     val emissive: Boolean = false,
 ) {
+    var lightOverride: Double? = null
+    var seeThrough: Boolean = false
     val normal: Vec3 = (b.position - a.position).cross(c.position - a.position).normalized()
 }
 

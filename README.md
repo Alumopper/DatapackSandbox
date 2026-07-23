@@ -12,9 +12,11 @@ public `SpyglassMC/vanilla-mcdoc` data and the official `@spyglassmc/mcdoc`
 parser to generate NBT schemas for validation.
 
 The optional `renderer` module produces headless, perspective PNGs from the
-modeled world using user-provided Minecraft assets. The native Jupyter Kernel
-runs persistent `mcfunction` cells and displays output, snapshot diffs, and the
-current frame inline. See [Rendering and Jupyter Kernel](docs/rendering-notebook.md).
+modeled world using user-provided Minecraft assets. The standalone JAR also
+offers a GLFW/OpenGL keyboard-and-mouse JVM realtime viewport through `viewport`. The
+native Jupyter Kernel runs persistent `mcfunction` cells and displays output,
+snapshot diffs, and the current frame inline. See
+[Rendering and Jupyter Kernel](docs/rendering-notebook.md).
 
 ## Build
 

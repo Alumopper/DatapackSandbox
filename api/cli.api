@@ -206,6 +206,439 @@ public final class moe.afox.dpsandbox.cli.ExitCodes {
 public final class moe.afox.dpsandbox.cli.ExitCodes$WhenMappings {
   public static final int[] $EnumSwitchMapping$0;
 }
+public final class moe.afox.dpsandbox.cli.GlHudRenderer implements java.lang.AutoCloseable {
+  public static final moe.afox.dpsandbox.cli.GlHudRenderer$Companion Companion;
+  public moe.afox.dpsandbox.cli.GlHudRenderer(moe.afox.dpsandbox.cli.MinecraftClientResources);
+  public final void begin(int, int);
+  public final void rectangle(int, int, int, int, int);
+  public final float textWidth(java.lang.String, float);
+  public static float textWidth$default(moe.afox.dpsandbox.cli.GlHudRenderer, java.lang.String, float, int, java.lang.Object);
+  public final float textHeight(float);
+  public static float textHeight$default(moe.afox.dpsandbox.cli.GlHudRenderer, float, int, java.lang.Object);
+  public final void text(java.lang.String, float, float, int, float);
+  public static void text$default(moe.afox.dpsandbox.cli.GlHudRenderer, java.lang.String, float, float, int, float, int, java.lang.Object);
+  public final void shadowedText(java.lang.String, float, float, int, float);
+  public static void shadowedText$default(moe.afox.dpsandbox.cli.GlHudRenderer, java.lang.String, float, float, int, float, int, java.lang.Object);
+  public final void end();
+  public void close();
+}
+public final class moe.afox.dpsandbox.cli.GlHudRenderer$Companion {
+  public moe.afox.dpsandbox.cli.GlHudRenderer$Companion(kotlin.jvm.internal.DefaultConstructorMarker);
+}
+public final class moe.afox.dpsandbox.cli.GlHudRendererKt {
+}
+public final class moe.afox.dpsandbox.cli.GlMathKt {
+  public static final float[] perspectiveMatrix(double, float, float, float);
+  public static float[] perspectiveMatrix$default(double, float, float, float, int, java.lang.Object);
+  public static final float[] viewMatrix(moe.afox.dpsandbox.render.RealtimeRenderCamera);
+}
+public final class moe.afox.dpsandbox.cli.GlParticleRenderer implements java.lang.AutoCloseable {
+  public static final moe.afox.dpsandbox.cli.GlParticleRenderer$Companion Companion;
+  public moe.afox.dpsandbox.cli.GlParticleRenderer(moe.afox.dpsandbox.cli.MinecraftClientResources);
+  public final void spawn(moe.afox.dpsandbox.core.OutputEvent, long);
+  public static void spawn$default(moe.afox.dpsandbox.cli.GlParticleRenderer, moe.afox.dpsandbox.core.OutputEvent, long, int, java.lang.Object);
+  public final void draw(moe.afox.dpsandbox.render.RealtimeRenderCamera, double, int, int, long);
+  public static void draw$default(moe.afox.dpsandbox.cli.GlParticleRenderer, moe.afox.dpsandbox.render.RealtimeRenderCamera, double, int, int, long, int, java.lang.Object);
+  public void close();
+}
+public final class moe.afox.dpsandbox.cli.GlParticleRenderer$Companion {
+  public moe.afox.dpsandbox.cli.GlParticleRenderer$Companion(kotlin.jvm.internal.DefaultConstructorMarker);
+}
+final class moe.afox.dpsandbox.cli.GlParticleRenderer$GpuParticle {
+  public moe.afox.dpsandbox.cli.GlParticleRenderer$GpuParticle(double, double, double, double, double, double, double, moe.afox.dpsandbox.cli.GlParticleRenderer$ParticleStyle, int[], int);
+  public final double getX();
+  public final double getY();
+  public final double getZ();
+  public final double getVelocityX();
+  public final double getVelocityY();
+  public final double getVelocityZ();
+  public final double getBornSeconds();
+  public final moe.afox.dpsandbox.cli.GlParticleRenderer$ParticleStyle getStyle();
+  public final int[] getSprites();
+  public final int getFrameOffset();
+  public final double component1();
+  public final double component2();
+  public final double component3();
+  public final double component4();
+  public final double component5();
+  public final double component6();
+  public final double component7();
+  public final moe.afox.dpsandbox.cli.GlParticleRenderer$ParticleStyle component8();
+  public final int[] component9();
+  public final int component10();
+  public final moe.afox.dpsandbox.cli.GlParticleRenderer$GpuParticle copy(double, double, double, double, double, double, double, moe.afox.dpsandbox.cli.GlParticleRenderer$ParticleStyle, int[], int);
+  public static moe.afox.dpsandbox.cli.GlParticleRenderer$GpuParticle copy$default(moe.afox.dpsandbox.cli.GlParticleRenderer$GpuParticle, double, double, double, double, double, double, double, moe.afox.dpsandbox.cli.GlParticleRenderer$ParticleStyle, int[], int, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+}
+final class moe.afox.dpsandbox.cli.GlParticleRenderer$ParticleStyle {
+  public moe.afox.dpsandbox.cli.GlParticleRenderer$ParticleStyle(int, float, double, double, double);
+  public moe.afox.dpsandbox.cli.GlParticleRenderer$ParticleStyle(int, float, double, double, double, int, kotlin.jvm.internal.DefaultConstructorMarker);
+  public final int getColor();
+  public final float getSizeWorld();
+  public final double getLifetimeSeconds();
+  public final double getGravity();
+  public final double getRise();
+  public final int component1();
+  public final float component2();
+  public final double component3();
+  public final double component4();
+  public final double component5();
+  public final moe.afox.dpsandbox.cli.GlParticleRenderer$ParticleStyle copy(int, float, double, double, double);
+  public static moe.afox.dpsandbox.cli.GlParticleRenderer$ParticleStyle copy$default(moe.afox.dpsandbox.cli.GlParticleRenderer$ParticleStyle, int, float, double, double, double, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+}
+public final class moe.afox.dpsandbox.cli.GlParticleRendererKt {
+  public static final java.lang.String access$string(com.google.gson.JsonObject, java.lang.String);
+  public static final int access$int(com.google.gson.JsonObject, java.lang.String, int);
+}
+public final class moe.afox.dpsandbox.cli.GlSceneRenderer implements java.lang.AutoCloseable {
+  public moe.afox.dpsandbox.cli.GlSceneRenderer(double);
+  public final double getFieldOfView();
+  public final void setFieldOfView(double);
+  public final int getTriangleCount();
+  public final void updateEnvironment(moe.afox.dpsandbox.cli.JvmViewportEnvironment);
+  public final void updateScene(moe.afox.dpsandbox.render.CompiledRealtimeGpuScene, int);
+  public final void draw(moe.afox.dpsandbox.render.RealtimeRenderCamera, int, int);
+  public void close();
+}
+final class moe.afox.dpsandbox.cli.GlSceneRenderer$GlMesh implements java.lang.AutoCloseable {
+  public static final moe.afox.dpsandbox.cli.GlSceneRenderer$GlMesh$Companion Companion;
+  public moe.afox.dpsandbox.cli.GlSceneRenderer$GlMesh();
+  public final void upload(moe.afox.dpsandbox.render.RealtimeGpuSceneSection, boolean);
+  public final void draw(int, float);
+  public void close();
+}
+public final class moe.afox.dpsandbox.cli.GlSceneRenderer$GlMesh$Companion {
+  public moe.afox.dpsandbox.cli.GlSceneRenderer$GlMesh$Companion(kotlin.jvm.internal.DefaultConstructorMarker);
+}
+public final class moe.afox.dpsandbox.cli.GlSceneRendererKt {
+  public static final int linkGlProgram(java.lang.String, java.lang.String);
+}
+public final class moe.afox.dpsandbox.cli.GlSkyRenderer implements java.lang.AutoCloseable {
+  public moe.afox.dpsandbox.cli.GlSkyRenderer();
+  public final void updateEnvironment(moe.afox.dpsandbox.cli.JvmViewportEnvironment);
+  public final void draw(moe.afox.dpsandbox.render.RealtimeRenderCamera, double, int, int);
+  public void close();
+}
+public final class moe.afox.dpsandbox.cli.GlSkyRendererKt {
+}
+public final class moe.afox.dpsandbox.cli.JvmViewportCamera {
+  public moe.afox.dpsandbox.cli.JvmViewportCamera(double);
+  public final moe.afox.dpsandbox.core.Position getPosition();
+  public final double getYaw();
+  public final double getPitch();
+  public final java.lang.String getDimension();
+  public final double getSpeed();
+  public final boolean getAutomatic();
+  public final void applySuggested(moe.afox.dpsandbox.render.RealtimeRenderCamera);
+  public final void reset(moe.afox.dpsandbox.render.RealtimeRenderCamera);
+  public final void move(double, double, double, double);
+  public final void look(double, double);
+  public final void adjustSpeed(int);
+  public final void setSpeed(double);
+  public final moe.afox.dpsandbox.render.RealtimeRenderCamera snapshot();
+}
+public final class moe.afox.dpsandbox.cli.JvmViewportCommandEditor {
+  public moe.afox.dpsandbox.cli.JvmViewportCommandEditor();
+  public final long getRevision();
+  public final int getSelectedSuggestion();
+  public final moe.afox.dpsandbox.cli.ViewportCommandInspection getInspection();
+  public final java.lang.String getText();
+  public final void append(char);
+  public final void append(java.lang.String);
+  public final void backspace();
+  public final void clear();
+  public final void applyInspection(moe.afox.dpsandbox.cli.ViewportCommandInspection);
+  public final void moveSelection(int);
+  public final boolean completeSelected();
+}
+public final class moe.afox.dpsandbox.cli.JvmViewportCommandEditorKt {
+  public static final java.lang.String applyCompletion(java.lang.String, moe.afox.dpsandbox.cli.CompletionSuggestion);
+}
+public final class moe.afox.dpsandbox.cli.JvmViewportController {
+  public static final moe.afox.dpsandbox.cli.JvmViewportController$Companion Companion;
+  public moe.afox.dpsandbox.cli.JvmViewportController(kotlin.jvm.functions.Function0<moe.afox.dpsandbox.core.DatapackSandbox>, kotlin.jvm.functions.Function1<? super moe.afox.dpsandbox.core.DatapackSandbox, kotlin.Unit>, moe.afox.dpsandbox.render.SandboxRealtimeRenderer, moe.afox.dpsandbox.render.RenderAssets, moe.afox.dpsandbox.cli.JvmViewportOptions, kotlin.jvm.functions.Function2<? super moe.afox.dpsandbox.render.CompiledRealtimeGpuScene, ? super java.lang.Boolean, kotlin.Unit>, kotlin.jvm.functions.Function2<? super java.lang.String, ? super java.lang.Boolean, kotlin.Unit>, kotlin.jvm.functions.Function1<? super java.lang.Boolean, kotlin.Unit>, kotlin.jvm.functions.Function1<? super moe.afox.dpsandbox.core.OutputEvent, kotlin.Unit>, kotlin.jvm.functions.Function1<? super moe.afox.dpsandbox.cli.JvmViewportEnvironment, kotlin.Unit>);
+  public final void start();
+  public final void execute(java.lang.String);
+  public final void inspectCommand(java.lang.String, long, kotlin.jvm.functions.Function1<? super moe.afox.dpsandbox.cli.ViewportCommandInspection, kotlin.Unit>);
+  public final void play();
+  public final void pause();
+  public final void step();
+  public final void reset();
+  public final void saveCheckpoint();
+  public final void restoreCheckpoint();
+  public final void exportPng(java.nio.file.Path);
+  public final void dispatchInput(java.lang.String, java.lang.String, java.lang.String, java.lang.Double, java.lang.Double);
+  public final void updateCamera(moe.afox.dpsandbox.render.RealtimeRenderCamera, boolean);
+  public final void close();
+}
+public final class moe.afox.dpsandbox.cli.JvmViewportController$Companion {
+  public moe.afox.dpsandbox.cli.JvmViewportController$Companion(kotlin.jvm.internal.DefaultConstructorMarker);
+}
+public final class moe.afox.dpsandbox.cli.JvmViewportEnvironment {
+  public moe.afox.dpsandbox.cli.JvmViewportEnvironment(long, java.lang.String);
+  public moe.afox.dpsandbox.cli.JvmViewportEnvironment(long, java.lang.String, int, kotlin.jvm.internal.DefaultConstructorMarker);
+  public final long getDayTime();
+  public final java.lang.String getWeather();
+  public final long component1();
+  public final java.lang.String component2();
+  public final moe.afox.dpsandbox.cli.JvmViewportEnvironment copy(long, java.lang.String);
+  public static moe.afox.dpsandbox.cli.JvmViewportEnvironment copy$default(moe.afox.dpsandbox.cli.JvmViewportEnvironment, long, java.lang.String, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+  public moe.afox.dpsandbox.cli.JvmViewportEnvironment();
+}
+public final class moe.afox.dpsandbox.cli.JvmViewportOptions {
+  public moe.afox.dpsandbox.cli.JvmViewportOptions(java.lang.String, int, int, int, int, boolean, java.lang.String, double, double, double, double);
+  public moe.afox.dpsandbox.cli.JvmViewportOptions(java.lang.String, int, int, int, int, boolean, java.lang.String, double, double, double, double, int, kotlin.jvm.internal.DefaultConstructorMarker);
+  public final java.lang.String getVersion();
+  public final int getWidth();
+  public final int getHeight();
+  public final int getTargetFps();
+  public final int getTickRate();
+  public final boolean getAutoplay();
+  public final java.lang.String getInputPlayer();
+  public final double getFieldOfView();
+  public final double getMoveSpeed();
+  public final double getMouseSensitivity();
+  public final double getUiScale();
+  public final java.lang.String component1();
+  public final int component2();
+  public final int component3();
+  public final int component4();
+  public final int component5();
+  public final boolean component6();
+  public final java.lang.String component7();
+  public final double component8();
+  public final double component9();
+  public final double component10();
+  public final double component11();
+  public final moe.afox.dpsandbox.cli.JvmViewportOptions copy(java.lang.String, int, int, int, int, boolean, java.lang.String, double, double, double, double);
+  public static moe.afox.dpsandbox.cli.JvmViewportOptions copy$default(moe.afox.dpsandbox.cli.JvmViewportOptions, java.lang.String, int, int, int, int, boolean, java.lang.String, double, double, double, double, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+  public moe.afox.dpsandbox.cli.JvmViewportOptions();
+}
+public final class moe.afox.dpsandbox.cli.JvmViewportWindow {
+  public static final moe.afox.dpsandbox.cli.JvmViewportWindow$Companion Companion;
+  public moe.afox.dpsandbox.cli.JvmViewportWindow(kotlin.jvm.functions.Function0<moe.afox.dpsandbox.core.DatapackSandbox>, kotlin.jvm.functions.Function1<? super moe.afox.dpsandbox.core.DatapackSandbox, kotlin.Unit>, moe.afox.dpsandbox.render.RenderAssets, moe.afox.dpsandbox.cli.JvmViewportOptions, java.nio.file.Path);
+  public final void showAndWait();
+}
+final class moe.afox.dpsandbox.cli.JvmViewportWindow$ChatOverlayLine {
+  public moe.afox.dpsandbox.cli.JvmViewportWindow$ChatOverlayLine(java.lang.String, int, long);
+  public final java.lang.String getText();
+  public final int getColor();
+  public final long getCreatedNanos();
+  public final java.lang.String component1();
+  public final int component2();
+  public final long component3();
+  public final moe.afox.dpsandbox.cli.JvmViewportWindow$ChatOverlayLine copy(java.lang.String, int, long);
+  public static moe.afox.dpsandbox.cli.JvmViewportWindow$ChatOverlayLine copy$default(moe.afox.dpsandbox.cli.JvmViewportWindow$ChatOverlayLine, java.lang.String, int, long, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+}
+public final class moe.afox.dpsandbox.cli.JvmViewportWindow$Companion {
+  public moe.afox.dpsandbox.cli.JvmViewportWindow$Companion(kotlin.jvm.internal.DefaultConstructorMarker);
+}
+final class moe.afox.dpsandbox.cli.JvmViewportWindow$SceneUpdate {
+  public moe.afox.dpsandbox.cli.JvmViewportWindow$SceneUpdate(moe.afox.dpsandbox.render.CompiledRealtimeGpuScene, boolean);
+  public final moe.afox.dpsandbox.render.CompiledRealtimeGpuScene getScene();
+  public final boolean getForceResetCamera();
+  public final moe.afox.dpsandbox.render.CompiledRealtimeGpuScene component1();
+  public final boolean component2();
+  public final moe.afox.dpsandbox.cli.JvmViewportWindow$SceneUpdate copy(moe.afox.dpsandbox.render.CompiledRealtimeGpuScene, boolean);
+  public static moe.afox.dpsandbox.cli.JvmViewportWindow$SceneUpdate copy$default(moe.afox.dpsandbox.cli.JvmViewportWindow$SceneUpdate, moe.afox.dpsandbox.render.CompiledRealtimeGpuScene, boolean, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+}
+interface moe.afox.dpsandbox.cli.JvmViewportWindow$SettingAction {
+}
+public final class moe.afox.dpsandbox.cli.JvmViewportWindow$SettingAction$Adjust implements moe.afox.dpsandbox.cli.JvmViewportWindow$SettingAction {
+  public moe.afox.dpsandbox.cli.JvmViewportWindow$SettingAction$Adjust(moe.afox.dpsandbox.cli.JvmViewportWindow$SettingKind, int);
+  public final moe.afox.dpsandbox.cli.JvmViewportWindow$SettingKind getKind();
+  public final int getDirection();
+  public final moe.afox.dpsandbox.cli.JvmViewportWindow$SettingKind component1();
+  public final int component2();
+  public final moe.afox.dpsandbox.cli.JvmViewportWindow$SettingAction$Adjust copy(moe.afox.dpsandbox.cli.JvmViewportWindow$SettingKind, int);
+  public static moe.afox.dpsandbox.cli.JvmViewportWindow$SettingAction$Adjust copy$default(moe.afox.dpsandbox.cli.JvmViewportWindow$SettingAction$Adjust, moe.afox.dpsandbox.cli.JvmViewportWindow$SettingKind, int, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+}
+public final class moe.afox.dpsandbox.cli.JvmViewportWindow$SettingAction$Close implements moe.afox.dpsandbox.cli.JvmViewportWindow$SettingAction {
+  public static final moe.afox.dpsandbox.cli.JvmViewportWindow$SettingAction$Close INSTANCE;
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+}
+final class moe.afox.dpsandbox.cli.JvmViewportWindow$SettingButton {
+  public moe.afox.dpsandbox.cli.JvmViewportWindow$SettingButton(int, int, int, int, java.lang.String, moe.afox.dpsandbox.cli.JvmViewportWindow$SettingAction);
+  public final int getX();
+  public final int getY();
+  public final int getWidth();
+  public final int getHeight();
+  public final java.lang.String getLabel();
+  public final moe.afox.dpsandbox.cli.JvmViewportWindow$SettingAction getAction();
+  public final boolean contains(double, double);
+  public final int component1();
+  public final int component2();
+  public final int component3();
+  public final int component4();
+  public final java.lang.String component5();
+  public final moe.afox.dpsandbox.cli.JvmViewportWindow$SettingAction component6();
+  public final moe.afox.dpsandbox.cli.JvmViewportWindow$SettingButton copy(int, int, int, int, java.lang.String, moe.afox.dpsandbox.cli.JvmViewportWindow$SettingAction);
+  public static moe.afox.dpsandbox.cli.JvmViewportWindow$SettingButton copy$default(moe.afox.dpsandbox.cli.JvmViewportWindow$SettingButton, int, int, int, int, java.lang.String, moe.afox.dpsandbox.cli.JvmViewportWindow$SettingAction, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+}
+final class moe.afox.dpsandbox.cli.JvmViewportWindow$SettingKind extends java.lang.Enum<moe.afox.dpsandbox.cli.JvmViewportWindow$SettingKind> {
+  public static final moe.afox.dpsandbox.cli.JvmViewportWindow$SettingKind SENSITIVITY;
+  public static final moe.afox.dpsandbox.cli.JvmViewportWindow$SettingKind SPEED;
+  public static final moe.afox.dpsandbox.cli.JvmViewportWindow$SettingKind UI_SCALE;
+  public static final moe.afox.dpsandbox.cli.JvmViewportWindow$SettingKind FIELD_OF_VIEW;
+  public static moe.afox.dpsandbox.cli.JvmViewportWindow$SettingKind[] values();
+  public static moe.afox.dpsandbox.cli.JvmViewportWindow$SettingKind valueOf(java.lang.String);
+  public static kotlin.enums.EnumEntries<moe.afox.dpsandbox.cli.JvmViewportWindow$SettingKind> getEntries();
+}
+final class moe.afox.dpsandbox.cli.JvmViewportWindow$SettingRow {
+  public moe.afox.dpsandbox.cli.JvmViewportWindow$SettingRow(java.lang.String, java.lang.String, int);
+  public final java.lang.String getLabel();
+  public final java.lang.String getValue();
+  public final int getY();
+  public final java.lang.String component1();
+  public final java.lang.String component2();
+  public final int component3();
+  public final moe.afox.dpsandbox.cli.JvmViewportWindow$SettingRow copy(java.lang.String, java.lang.String, int);
+  public static moe.afox.dpsandbox.cli.JvmViewportWindow$SettingRow copy$default(moe.afox.dpsandbox.cli.JvmViewportWindow$SettingRow, java.lang.String, java.lang.String, int, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+}
+final class moe.afox.dpsandbox.cli.JvmViewportWindow$StatusMessage {
+  public moe.afox.dpsandbox.cli.JvmViewportWindow$StatusMessage(java.lang.String, boolean);
+  public final java.lang.String getText();
+  public final boolean getError();
+  public final java.lang.String component1();
+  public final boolean component2();
+  public final moe.afox.dpsandbox.cli.JvmViewportWindow$StatusMessage copy(java.lang.String, boolean);
+  public static moe.afox.dpsandbox.cli.JvmViewportWindow$StatusMessage copy$default(moe.afox.dpsandbox.cli.JvmViewportWindow$StatusMessage, java.lang.String, boolean, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+}
+final class moe.afox.dpsandbox.cli.JvmViewportWindow$TitleOverlay {
+  public moe.afox.dpsandbox.cli.JvmViewportWindow$TitleOverlay(java.lang.String, java.lang.String, java.lang.String, int, int, int, int, int, int, long, long);
+  public moe.afox.dpsandbox.cli.JvmViewportWindow$TitleOverlay(java.lang.String, java.lang.String, java.lang.String, int, int, int, int, int, int, long, long, int, kotlin.jvm.internal.DefaultConstructorMarker);
+  public final java.lang.String getTitle();
+  public final java.lang.String getSubtitle();
+  public final java.lang.String getActionbar();
+  public final int getTitleColor();
+  public final int getSubtitleColor();
+  public final int getActionbarColor();
+  public final int getFadeInTicks();
+  public final int getStayTicks();
+  public final int getFadeOutTicks();
+  public final long getTitleShownNanos();
+  public final long getActionbarShownNanos();
+  public final float titleAlpha(long);
+  public final float actionbarAlpha(long);
+  public final java.lang.String component1();
+  public final java.lang.String component2();
+  public final java.lang.String component3();
+  public final int component4();
+  public final int component5();
+  public final int component6();
+  public final int component7();
+  public final int component8();
+  public final int component9();
+  public final long component10();
+  public final long component11();
+  public final moe.afox.dpsandbox.cli.JvmViewportWindow$TitleOverlay copy(java.lang.String, java.lang.String, java.lang.String, int, int, int, int, int, int, long, long);
+  public static moe.afox.dpsandbox.cli.JvmViewportWindow$TitleOverlay copy$default(moe.afox.dpsandbox.cli.JvmViewportWindow$TitleOverlay, java.lang.String, java.lang.String, java.lang.String, int, int, int, int, int, int, long, long, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+  public moe.afox.dpsandbox.cli.JvmViewportWindow$TitleOverlay();
+}
+final class moe.afox.dpsandbox.cli.JvmViewportWindow$ToolbarAction extends java.lang.Enum<moe.afox.dpsandbox.cli.JvmViewportWindow$ToolbarAction> {
+  public static final moe.afox.dpsandbox.cli.JvmViewportWindow$ToolbarAction PLAY;
+  public static final moe.afox.dpsandbox.cli.JvmViewportWindow$ToolbarAction STEP;
+  public static final moe.afox.dpsandbox.cli.JvmViewportWindow$ToolbarAction RESET_VIEW;
+  public static final moe.afox.dpsandbox.cli.JvmViewportWindow$ToolbarAction SAVE_POINT;
+  public static final moe.afox.dpsandbox.cli.JvmViewportWindow$ToolbarAction RETURN;
+  public static final moe.afox.dpsandbox.cli.JvmViewportWindow$ToolbarAction RESET_SANDBOX;
+  public static final moe.afox.dpsandbox.cli.JvmViewportWindow$ToolbarAction EXPORT_PNG;
+  public static final moe.afox.dpsandbox.cli.JvmViewportWindow$ToolbarAction COMMAND;
+  public static final moe.afox.dpsandbox.cli.JvmViewportWindow$ToolbarAction SETTINGS;
+  public static moe.afox.dpsandbox.cli.JvmViewportWindow$ToolbarAction[] values();
+  public static moe.afox.dpsandbox.cli.JvmViewportWindow$ToolbarAction valueOf(java.lang.String);
+  public static kotlin.enums.EnumEntries<moe.afox.dpsandbox.cli.JvmViewportWindow$ToolbarAction> getEntries();
+}
+final class moe.afox.dpsandbox.cli.JvmViewportWindow$ToolbarButton {
+  public moe.afox.dpsandbox.cli.JvmViewportWindow$ToolbarButton(java.lang.String, int, int, moe.afox.dpsandbox.cli.JvmViewportWindow$ToolbarAction);
+  public final java.lang.String getLabel();
+  public final int getX();
+  public final int getWidth();
+  public final moe.afox.dpsandbox.cli.JvmViewportWindow$ToolbarAction getAction();
+  public final java.lang.String component1();
+  public final int component2();
+  public final int component3();
+  public final moe.afox.dpsandbox.cli.JvmViewportWindow$ToolbarAction component4();
+  public final moe.afox.dpsandbox.cli.JvmViewportWindow$ToolbarButton copy(java.lang.String, int, int, moe.afox.dpsandbox.cli.JvmViewportWindow$ToolbarAction);
+  public static moe.afox.dpsandbox.cli.JvmViewportWindow$ToolbarButton copy$default(moe.afox.dpsandbox.cli.JvmViewportWindow$ToolbarButton, java.lang.String, int, int, moe.afox.dpsandbox.cli.JvmViewportWindow$ToolbarAction, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+}
+final class moe.afox.dpsandbox.cli.JvmViewportWindow$ToolbarLayout {
+  public moe.afox.dpsandbox.cli.JvmViewportWindow$ToolbarLayout(java.util.List<moe.afox.dpsandbox.cli.JvmViewportWindow$ToolbarButton>, float);
+  public final java.util.List<moe.afox.dpsandbox.cli.JvmViewportWindow$ToolbarButton> getButtons();
+  public final float getTextScale();
+  public final java.util.List<moe.afox.dpsandbox.cli.JvmViewportWindow$ToolbarButton> component1();
+  public final float component2();
+  public final moe.afox.dpsandbox.cli.JvmViewportWindow$ToolbarLayout copy(java.util.List<moe.afox.dpsandbox.cli.JvmViewportWindow$ToolbarButton>, float);
+  public static moe.afox.dpsandbox.cli.JvmViewportWindow$ToolbarLayout copy$default(moe.afox.dpsandbox.cli.JvmViewportWindow$ToolbarLayout, java.util.List, float, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+}
+final class moe.afox.dpsandbox.cli.JvmViewportWindow$UiRect {
+  public moe.afox.dpsandbox.cli.JvmViewportWindow$UiRect(int, int, int, int);
+  public final int getX();
+  public final int getY();
+  public final int getWidth();
+  public final int getHeight();
+  public final int component1();
+  public final int component2();
+  public final int component3();
+  public final int component4();
+  public final moe.afox.dpsandbox.cli.JvmViewportWindow$UiRect copy(int, int, int, int);
+  public static moe.afox.dpsandbox.cli.JvmViewportWindow$UiRect copy$default(moe.afox.dpsandbox.cli.JvmViewportWindow$UiRect, int, int, int, int, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+}
+public final class moe.afox.dpsandbox.cli.JvmViewportWindow$WhenMappings {
+  public static final int[] $EnumSwitchMapping$0;
+  public static final int[] $EnumSwitchMapping$1;
+}
+final class moe.afox.dpsandbox.cli.JvmViewportWindow$createController$4 extends kotlin.jvm.internal.AdaptedFunctionReference implements kotlin.jvm.functions.Function1<moe.afox.dpsandbox.core.OutputEvent, kotlin.Unit> {
+  public final void invoke(moe.afox.dpsandbox.core.OutputEvent);
+  public java.lang.Object invoke(java.lang.Object);
+}
+final class moe.afox.dpsandbox.cli.JvmViewportWindow$createController$5 extends kotlin.jvm.internal.FunctionReferenceImpl implements kotlin.jvm.functions.Function1<moe.afox.dpsandbox.cli.JvmViewportEnvironment, kotlin.Unit> {
+  public final void invoke(moe.afox.dpsandbox.cli.JvmViewportEnvironment);
+  public java.lang.Object invoke(java.lang.Object);
+}
 public final class moe.afox.dpsandbox.cli.LootCommand extends com.github.ajalt.clikt.core.CliktCommand {
   public moe.afox.dpsandbox.cli.LootCommand();
   public void run();
@@ -226,6 +659,87 @@ public final class moe.afox.dpsandbox.cli.MainKt {
 public final class moe.afox.dpsandbox.cli.ManifestSchemaCommand extends com.github.ajalt.clikt.core.CliktCommand {
   public moe.afox.dpsandbox.cli.ManifestSchemaCommand();
   public void run();
+}
+public final class moe.afox.dpsandbox.cli.MinecraftBitmapFont {
+  public moe.afox.dpsandbox.cli.MinecraftBitmapFont(java.awt.image.BufferedImage, java.util.Map<java.lang.Integer, moe.afox.dpsandbox.cli.MinecraftBitmapGlyph>, moe.afox.dpsandbox.cli.MinecraftBitmapGlyph, java.lang.String);
+  public final java.awt.image.BufferedImage getImage();
+  public final java.util.Map<java.lang.Integer, moe.afox.dpsandbox.cli.MinecraftBitmapGlyph> getGlyphs();
+  public final moe.afox.dpsandbox.cli.MinecraftBitmapGlyph getFallback();
+  public final java.lang.String getSource();
+  public final java.awt.image.BufferedImage component1();
+  public final java.util.Map<java.lang.Integer, moe.afox.dpsandbox.cli.MinecraftBitmapGlyph> component2();
+  public final moe.afox.dpsandbox.cli.MinecraftBitmapGlyph component3();
+  public final java.lang.String component4();
+  public final moe.afox.dpsandbox.cli.MinecraftBitmapFont copy(java.awt.image.BufferedImage, java.util.Map<java.lang.Integer, moe.afox.dpsandbox.cli.MinecraftBitmapGlyph>, moe.afox.dpsandbox.cli.MinecraftBitmapGlyph, java.lang.String);
+  public static moe.afox.dpsandbox.cli.MinecraftBitmapFont copy$default(moe.afox.dpsandbox.cli.MinecraftBitmapFont, java.awt.image.BufferedImage, java.util.Map, moe.afox.dpsandbox.cli.MinecraftBitmapGlyph, java.lang.String, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+}
+public final class moe.afox.dpsandbox.cli.MinecraftBitmapGlyph {
+  public moe.afox.dpsandbox.cli.MinecraftBitmapGlyph(int, int, int, int, float, float, float, float);
+  public final int getX();
+  public final int getY();
+  public final int getWidth();
+  public final int getHeight();
+  public final float getRenderedWidth();
+  public final float getRenderedHeight();
+  public final float getAdvance();
+  public final float getTopOffset();
+  public final int component1();
+  public final int component2();
+  public final int component3();
+  public final int component4();
+  public final float component5();
+  public final float component6();
+  public final float component7();
+  public final float component8();
+  public final moe.afox.dpsandbox.cli.MinecraftBitmapGlyph copy(int, int, int, int, float, float, float, float);
+  public static moe.afox.dpsandbox.cli.MinecraftBitmapGlyph copy$default(moe.afox.dpsandbox.cli.MinecraftBitmapGlyph, int, int, int, int, float, float, float, float, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+}
+public final class moe.afox.dpsandbox.cli.MinecraftClientResources {
+  public static final moe.afox.dpsandbox.cli.MinecraftClientResources$Companion Companion;
+  public moe.afox.dpsandbox.cli.MinecraftClientResources(moe.afox.dpsandbox.render.RenderAssets);
+  public final moe.afox.dpsandbox.cli.MinecraftBitmapFont defaultFont();
+  public final java.util.List<moe.afox.dpsandbox.cli.MinecraftParticleSprite> particleSprites(java.lang.String);
+}
+final class moe.afox.dpsandbox.cli.MinecraftClientResources$BitmapProvider {
+  public moe.afox.dpsandbox.cli.MinecraftClientResources$BitmapProvider(java.lang.String, java.lang.Integer, int, java.util.List<java.lang.String>);
+  public final java.lang.String getFile();
+  public final java.lang.Integer getHeight();
+  public final int getAscent();
+  public final java.util.List<java.lang.String> getCharacters();
+  public final java.lang.String component1();
+  public final java.lang.Integer component2();
+  public final int component3();
+  public final java.util.List<java.lang.String> component4();
+  public final moe.afox.dpsandbox.cli.MinecraftClientResources$BitmapProvider copy(java.lang.String, java.lang.Integer, int, java.util.List<java.lang.String>);
+  public static moe.afox.dpsandbox.cli.MinecraftClientResources$BitmapProvider copy$default(moe.afox.dpsandbox.cli.MinecraftClientResources$BitmapProvider, java.lang.String, java.lang.Integer, int, java.util.List, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+}
+public final class moe.afox.dpsandbox.cli.MinecraftClientResources$Companion {
+  public moe.afox.dpsandbox.cli.MinecraftClientResources$Companion(kotlin.jvm.internal.DefaultConstructorMarker);
+}
+public final class moe.afox.dpsandbox.cli.MinecraftClientResourcesKt {
+  public static final java.lang.String access$string(com.google.gson.JsonObject, java.lang.String);
+  public static final java.lang.Integer access$int(com.google.gson.JsonObject, java.lang.String);
+}
+public final class moe.afox.dpsandbox.cli.MinecraftParticleSprite {
+  public moe.afox.dpsandbox.cli.MinecraftParticleSprite(java.lang.String, java.awt.image.BufferedImage);
+  public final java.lang.String getId();
+  public final java.awt.image.BufferedImage getImage();
+  public final java.lang.String component1();
+  public final java.awt.image.BufferedImage component2();
+  public final moe.afox.dpsandbox.cli.MinecraftParticleSprite copy(java.lang.String, java.awt.image.BufferedImage);
+  public static moe.afox.dpsandbox.cli.MinecraftParticleSprite copy$default(moe.afox.dpsandbox.cli.MinecraftParticleSprite, java.lang.String, java.awt.image.BufferedImage, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
 }
 public final class moe.afox.dpsandbox.cli.OutputRenderer {
   public static final moe.afox.dpsandbox.cli.OutputRenderer INSTANCE;
@@ -325,6 +839,7 @@ public final class moe.afox.dpsandbox.cli.ServeSession {
   public moe.afox.dpsandbox.cli.ServeSession();
   public final void run(java.io.BufferedReader, java.io.BufferedWriter);
 }
+
 public final class moe.afox.dpsandbox.cli.ServeSession$Companion {
   public moe.afox.dpsandbox.cli.ServeSession$Companion(kotlin.jvm.internal.DefaultConstructorMarker);
 }
@@ -379,7 +894,49 @@ public final class moe.afox.dpsandbox.cli.TraceRenderer {
   public final java.lang.String render(moe.afox.dpsandbox.core.CommandTraceEvent);
   public final void print(java.util.List<moe.afox.dpsandbox.core.CommandTraceEvent>);
 }
+final class moe.afox.dpsandbox.cli.Vec3f {
+  public moe.afox.dpsandbox.cli.Vec3f(float, float, float);
+  public final float getX();
+  public final float getY();
+  public final float getZ();
+  public final moe.afox.dpsandbox.cli.Vec3f times(float);
+  public final float dot(moe.afox.dpsandbox.cli.Vec3f);
+  public final moe.afox.dpsandbox.cli.Vec3f cross(moe.afox.dpsandbox.cli.Vec3f);
+  public final moe.afox.dpsandbox.cli.Vec3f normalized();
+  public final moe.afox.dpsandbox.cli.Vec3f normalizedOr(moe.afox.dpsandbox.cli.Vec3f);
+  public final float component1();
+  public final float component2();
+  public final float component3();
+  public final moe.afox.dpsandbox.cli.Vec3f copy(float, float, float);
+  public static moe.afox.dpsandbox.cli.Vec3f copy$default(moe.afox.dpsandbox.cli.Vec3f, float, float, float, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+}
 public final class moe.afox.dpsandbox.cli.VersionCommand extends com.github.ajalt.clikt.core.CliktCommand {
   public moe.afox.dpsandbox.cli.VersionCommand();
   public void run();
+}
+public final class moe.afox.dpsandbox.cli.ViewportCommand extends com.github.ajalt.clikt.core.CliktCommand {
+  public moe.afox.dpsandbox.cli.ViewportCommand();
+  public void run();
+}
+public final class moe.afox.dpsandbox.cli.ViewportCommandInspection {
+  public moe.afox.dpsandbox.cli.ViewportCommandInspection(long, java.util.List<moe.afox.dpsandbox.cli.CompletionSuggestion>, java.lang.String, moe.afox.dpsandbox.core.CommandCheckResult);
+  public final long getRevision();
+  public final java.util.List<moe.afox.dpsandbox.cli.CompletionSuggestion> getSuggestions();
+  public final java.lang.String getHint();
+  public final moe.afox.dpsandbox.core.CommandCheckResult getCheck();
+  public final long component1();
+  public final java.util.List<moe.afox.dpsandbox.cli.CompletionSuggestion> component2();
+  public final java.lang.String component3();
+  public final moe.afox.dpsandbox.core.CommandCheckResult component4();
+  public final moe.afox.dpsandbox.cli.ViewportCommandInspection copy(long, java.util.List<moe.afox.dpsandbox.cli.CompletionSuggestion>, java.lang.String, moe.afox.dpsandbox.core.CommandCheckResult);
+  public static moe.afox.dpsandbox.cli.ViewportCommandInspection copy$default(moe.afox.dpsandbox.cli.ViewportCommandInspection, long, java.util.List, java.lang.String, moe.afox.dpsandbox.core.CommandCheckResult, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+}
+public final class moe.afox.dpsandbox.cli.ViewportCommandKt {
+  public static final moe.afox.dpsandbox.core.DatapackSandbox createViewportSandbox(java.lang.String, java.util.List<? extends java.nio.file.Path>, java.lang.String);
 }

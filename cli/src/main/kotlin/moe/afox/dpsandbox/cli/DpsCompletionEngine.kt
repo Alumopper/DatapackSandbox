@@ -32,6 +32,8 @@ class DpsCompletionEngine(
                 first == "event" -> eventSuggestions(words, context)
                 first in chatTargetCommands && context.wordIndex == 1 -> playerTargets().suggest("players/selectors", appendSpace = true)
                 first == "title" -> titleSuggestions(context)
+                first == "tellraw" -> tellrawSuggestions(context)
+                first == "particle" -> particleSuggestions(context)
                 first == "playsound" -> playSoundSuggestions(context)
                 first == "scoreboard" -> scoreboardSuggestions(words, context)
                 first == "execute" -> executeSuggestions(words, context)
@@ -212,6 +214,33 @@ class DpsCompletionEngine(
         when (context.wordIndex) {
             1 -> playerTargets().suggest("players/selectors", appendSpace = true)
             2 -> listOf("clear", "reset", "title", "subtitle", "actionbar", "times").suggest("title actions", appendSpace = true)
+            3 ->
+                when (context.words.getOrNull(2)) {
+                    "title", "subtitle", "actionbar" -> textComponentTemplates.suggest("text components")
+                    "times" -> titleTimes.suggest("fade-in ticks", appendSpace = true)
+                    else -> emptyList()
+                }
+            4 -> if (context.words.getOrNull(2) == "times") titleTimes.suggest("stay ticks", appendSpace = true) else emptyList()
+            5 -> if (context.words.getOrNull(2) == "times") titleTimes.suggest("fade-out ticks") else emptyList()
+            else -> emptyList()
+        }
+
+    private fun tellrawSuggestions(context: CompletionContext): List<CompletionSuggestion> =
+        when (context.wordIndex) {
+            1 -> playerTargets().suggest("players/selectors", appendSpace = true)
+            2 -> textComponentTemplates.suggest("text components")
+            else -> emptyList()
+        }
+
+    private fun particleSuggestions(context: CompletionContext): List<CompletionSuggestion> =
+        when (context.wordIndex) {
+            1 -> particleTypes.suggest("particles", appendSpace = true)
+            in 2..4 -> coordinateValues.suggest("position", appendSpace = true)
+            in 5..7 -> deltaValues.suggest("spread", appendSpace = true)
+            8 -> speedValues.suggest("speed", appendSpace = true)
+            9 -> particleCounts.suggest("particle count", appendSpace = true)
+            10 -> listOf("normal", "force").suggest("visibility", appendSpace = true)
+            11 -> playerTargets().suggest("players/selectors")
             else -> emptyList()
         }
 
@@ -986,6 +1015,35 @@ class DpsCompletionEngine(
         private val chatTargetCommands = setOf("tellraw", "msg", "tell", "w", "stopsound")
         private val soundSources =
             listOf("master", "music", "record", "weather", "block", "hostile", "neutral", "player", "ambient", "voice")
+        private val textComponentTemplates = listOf("{\"text\":\"\"}", "{\"text\":\"Ready\",\"color\":\"green\"}")
+        private val titleTimes = listOf("10", "20", "60", "70")
+        private val coordinateValues = listOf("~", "0", "^0")
+        private val deltaValues = listOf("0", "0.25", "0.5", "1")
+        private val speedValues = listOf("0", "0.02", "0.1", "1")
+        private val particleCounts = listOf("1", "8", "16", "32", "64")
+        private val particleTypes =
+            listOf(
+                "minecraft:flame",
+                "minecraft:small_flame",
+                "minecraft:smoke",
+                "minecraft:large_smoke",
+                "minecraft:cloud",
+                "minecraft:crit",
+                "minecraft:enchanted_hit",
+                "minecraft:end_rod",
+                "minecraft:portal",
+                "minecraft:reverse_portal",
+                "minecraft:happy_villager",
+                "minecraft:angry_villager",
+                "minecraft:heart",
+                "minecraft:soul",
+                "minecraft:soul_fire_flame",
+                "minecraft:dust",
+                "minecraft:block",
+                "minecraft:block_marker",
+                "minecraft:falling_dust",
+                "minecraft:item",
+            )
         private val eventTypes =
             listOf(
                 "tick",

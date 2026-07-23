@@ -141,7 +141,7 @@ JSON text component 支持 `text`、`score`、`selector`、`translate`、`keybin
 
 | 实体 | 已建模状态与行为 |
 |---|---|
-| `block_display`、`item_display`、`text_display` | 校验展示内容和通用 display 字段，接受分解形式或 16 数字矩阵变换；按 tick 对成组的变换/阴影/文本样式状态插值，并按 `teleport_duration` 对渲染位置和旋转插值。命令读取的逻辑位置会立即到达目标。 |
+| `block_display`、`item_display`、`text_display` | 校验展示内容和通用 display 字段，接受分解形式或 16 数字矩阵变换。分解变换中的平移/缩放使用线性插值，左右旋转四元数使用归一化最短弧 SLERP；矩阵输入按元素线性插值。阴影/文本样式状态按 tick 成组推进，`teleport_duration` 对渲染姿态做线性插值；命令读取的逻辑位置会立即到达目标。 |
 | `armor_stand` | 校验并保存 `Pose`、`Marker`、`Small`、`ShowArms`、`NoBasePlate`、`Invisible`、`DisabledSlots`；snapshot 暴露有效姿态以及普通/小型/Marker 命中箱。Marker 模式拒绝定向攻击、交互和伤害。 |
 | `marker` | 保存任意复合 `data`，可继续充当 selector/计分板逻辑锚点，暴露零尺寸不可交互命中箱，并拒绝伤害。 |
 | `interaction` | 校验 `width`、`height`、`response`、`attack`、`interaction`；定向玩家事件记录 UUID/timestamp，暴露命中箱和 response，并供 `execute on target` / `execute on attacker` 使用。 |

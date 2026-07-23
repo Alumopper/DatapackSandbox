@@ -164,6 +164,16 @@ jobs:
           node-version: 24
           cache: npm
 
+      - name: Set up Java 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: gradle
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
       - name: Install dependencies
         run: npm ci
 
@@ -199,18 +209,8 @@ jobs:
       - name: Install locked dependencies
         run: npm ci
 
-      - name: Install Chromium
-        run: npx playwright install --with-deps chromium
+      - name: Install browser engines
+        run: npx playwright install --with-deps chromium firefox webkit
 
-      - name: Run browser smoke against the local API
+      - name: Run browser-only Worker smoke
         run: npm run test:e2e --workspace @datapack-sandbox/vitepress-playground
-
-  playground-image:
-    name: Playground Docker image
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-
-      - name: Build API image
-        run: docker build -f playground-api/Dockerfile -t datapack-sandbox/playground-api:ci .

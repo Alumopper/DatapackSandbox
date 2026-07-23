@@ -332,7 +332,89 @@ class SandboxRendererTest {
 
         assertEquals(4, frame.metadata.visibleEntities)
         assertEquals(10, frame.metadata.triangles)
-        assertEquals(4, frame.metadata.diagnostics.count { it.code == "ENTITY_APPROXIMATE" })
+        assertEquals(2, frame.metadata.diagnostics.count { it.code == "ENTITY_APPROXIMATE" })
+    }
+
+    @Test
+    fun `display entities render block models item textures styled text transforms and shadows`() {
+        val assets = Files.createTempDirectory("dps-render-displays")
+        writeCubeAssets(assets, "demo", "display_block", 0xff3060ff.toInt())
+        val itemDefinition = assets.resolve("assets/demo/items/display_item.json")
+        val itemModel = assets.resolve("assets/demo/models/item/display_item.json")
+        val itemTexture = assets.resolve("assets/demo/textures/item/display_gem.png")
+        Files.createDirectories(itemDefinition.parent)
+        Files.createDirectories(itemModel.parent)
+        Files.createDirectories(itemTexture.parent)
+        Files.writeString(itemDefinition, """{"model":{"type":"minecraft:model","model":"demo:item/display_item"}}""")
+        Files.writeString(
+            itemModel,
+            """{"parent":"minecraft:item/generated","textures":{"layer0":"demo:item/display_gem"},"display":{"fixed":{"rotation":[0,0,25],"translation":[2,0,0],"scale":[0.8,0.8,0.5]}}}""",
+        )
+        val itemImage = BufferedImage(4, 4, BufferedImage.TYPE_INT_ARGB)
+        for (y in 0 until 4) {
+            for (x in 0 until 4) {
+                itemImage.setRGB(x, y, if ((x + y) % 2 == 0) 0xffff3030.toInt() else 0xffffa030.toInt())
+            }
+        }
+        ImageIO.write(itemImage, "png", itemTexture.toFile())
+        val sandbox = createFunctionSandboxFromString("26.2", "", defaultPlayerName = null)
+        sandbox.world.entities +=
+            SandboxEntity(
+                type = ResourceLocation.parse("minecraft:block_display"),
+                position = Position(-1.25, 64.0, 0.0),
+                nbt =
+                    JsonParser
+                        .parseString(
+                            """{"block_state":{"Name":"demo:display_block"},"transformation":{"translation":[0.0,0.2,0.0],"scale":[0.75,1.25,0.75]},"brightness":{"sky":15,"block":15}}""",
+                        ).asJsonObject,
+            )
+        sandbox.world.entities +=
+            SandboxEntity(
+                type = ResourceLocation.parse("minecraft:item_display"),
+                position = Position(0.5, 65.0, 0.0),
+                nbt =
+                    JsonParser
+                        .parseString(
+                            """{"item":{"id":"demo:display_item","count":1},"item_display":"fixed","billboard":"vertical","brightness":{"sky":15,"block":15}}""",
+                        ).asJsonObject,
+            )
+        sandbox.world.entities +=
+            SandboxEntity(
+                type = ResourceLocation.parse("minecraft:text_display"),
+                position = Position(0.0, 66.1, 0.0),
+                nbt =
+                    JsonParser
+                        .parseString(
+                            """{"text":{"text":"DISPLAY","color":"yellow"},"billboard":"center","line_width":80,"background":-13421773,"text_opacity":224,"shadow":true,"see_through":true,"alignment":"right","shadow_radius":0.35,"shadow_strength":0.8,"brightness":{"sky":15,"block":15}}""",
+                        ).asJsonObject,
+            )
+
+        val frame =
+            SandboxRenderer(RenderAssets(minecraftAssets = assets)).render(
+                sandbox,
+                RenderRequest(
+                    width = 320,
+                    height = 180,
+                    camera = RenderCamera.Fixed(Position(0.0, 65.0, 6.0), yaw = 180.0, pitch = 0.0),
+                    strictAssets = true,
+                ),
+            )
+        val colors = ImageIO.read(ByteArrayInputStream(frame.pngBytes())).rgbPixels().toList()
+
+        assertEquals(3, frame.metadata.visibleEntities)
+        assertEquals(54, frame.metadata.triangles)
+        assertTrue(frame.metadata.diagnostics.isEmpty(), frame.metadata.diagnostics.toString())
+        assertTrue(
+            colors.any { color ->
+                val red = color ushr 16 and 0xff
+                val green = color ushr 8 and 0xff
+                val blue = color and 0xff
+                red > 100 && red > blue * 2 && green > blue
+            },
+            "item/text color missing",
+        )
+        assertTrue(colors.any { color -> (color and 0xff) > 150 && (color ushr 16 and 0xff) < 120 }, "block model color missing")
+        assertTrue(colors.toSet().size > 30, "display rendering should contain textured and antialiased detail")
     }
 
     @Test

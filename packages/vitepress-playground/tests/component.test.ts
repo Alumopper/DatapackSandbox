@@ -1,7 +1,7 @@
 import { flushPromises, mount } from '@vue/test-utils'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import DpsPlayground from '../src/DpsPlayground.vue'
-import { MockWebSocket } from './setup'
+import { MockWorker } from './setup'
 
 const notebook = {
   version: '26.2',
@@ -19,13 +19,14 @@ const CodeCellStub = {
 
 describe('DpsPlayground', () => {
   it('renders notebook cells, execution output, and an inline PNG', async () => {
-    MockWebSocket.responder = (socket, request) => {
+    MockWorker.responder = (worker, request) => {
+      if (request.type === 'transport.connect') worker.emit({ type: 'transport.ready', requestId: request.id })
       if (request.type === 'session.create') {
-        socket.emit({ type: 'session.ready', requestId: request.id, sessionId: 'session-1' })
+        worker.emit({ type: 'session.ready', requestId: request.id, sessionId: 'session-1' })
       }
       if (request.type === 'cell.execute') {
-        socket.emit({ type: 'cell.status', requestId: request.id, cellId: request.cellId, status: 'running' })
-        socket.emit({
+        worker.emit({ type: 'cell.status', requestId: request.id, cellId: request.cellId, status: 'running' })
+        worker.emit({
           type: 'cell.output',
           requestId: request.id,
           cellId: request.cellId,
@@ -33,24 +34,27 @@ describe('DpsPlayground', () => {
           summary: 'Executed 1 command; 0 outputs; 1 state change.',
           result: { commands: 1 },
         })
-        socket.emit({
+        worker.emit({
           type: 'cell.render',
           requestId: request.id,
           cellId: request.cellId,
           mimeType: 'image/png',
-          data: 'iVBORw0KGgo=',
+          bytes: new Uint8Array([137, 80, 78, 71]).buffer,
           width: 16,
           height: 16,
         })
-        socket.emit({ type: 'cell.status', requestId: request.id, cellId: request.cellId, status: 'idle' })
+        worker.emit({ type: 'cell.status', requestId: request.id, cellId: request.cellId, status: 'idle' })
+      }
+      if (request.type === 'animation.capture') {
+        worker.emit({ type: 'animation.frame', requestId: request.id, cellId: request.cellId, result: { frameCount: 1 } })
       }
     }
     const wrapper = mount(DpsPlayground, {
-      props: { notebook, apiUrl: 'https://playground.example.test' },
+      props: { notebook },
       global: { stubs: { CodeCell: CodeCellStub } },
     })
     await flushPromises()
-    expect(wrapper.text()).toContain('Minecraft 26.2')
+    await vi.waitFor(() => expect(wrapper.text()).toContain('Minecraft 26.2'))
     expect(wrapper.find('.dps-markdown h1').text()).toBe('Try it')
     expect(wrapper.find('.dps-markdown script').exists()).toBe(false)
     expect(wrapper.find('.code-cell-stub').text()).toContain('setblock')
@@ -58,28 +62,29 @@ describe('DpsPlayground', () => {
     await wrapper.find('.dps-cell-actions button').trigger('click')
     await flushPromises()
     expect(wrapper.text()).toContain('Executed 1 command')
-    expect(wrapper.find('img.dps-render').attributes('src')).toBe('data:image/png;base64,iVBORw0KGgo=')
+    expect(wrapper.find('img.dps-render').attributes('src')).toMatch(/^blob:test-/)
     wrapper.unmount()
   })
 
   it('shows a clear unavailable state and retry control', async () => {
-    MockWebSocket.failConnections = true
+    MockWorker.failRequests = true
     const wrapper = mount(DpsPlayground, {
-      props: { notebook, apiUrl: 'https://offline.example.test' },
+      props: { notebook },
       global: { stubs: { CodeCell: CodeCellStub } },
     })
     await flushPromises()
-    expect(wrapper.find('.dps-unavailable').text()).toContain('Playground unavailable')
-    expect(wrapper.find('.dps-unavailable button').text()).toContain('Retry')
+    expect(wrapper.find('.dps-unavailable').text()).toContain('Local sandbox unavailable')
+    expect(wrapper.find('.dps-unavailable button').text()).toContain('Restart')
     wrapper.unmount()
   })
 
   it('applies explicit theme and compact layout options', async () => {
-    MockWebSocket.responder = (socket, request) => {
-      if (request.type === 'session.create') socket.emit({ type: 'session.ready', requestId: request.id })
+    MockWorker.responder = (worker, request) => {
+      if (request.type === 'transport.connect') worker.emit({ type: 'transport.ready', requestId: request.id })
+      if (request.type === 'session.create') worker.emit({ type: 'session.ready', requestId: request.id })
     }
     const wrapper = mount(DpsPlayground, {
-      props: { notebook, apiUrl: 'https://playground.example.test', theme: 'dark', layout: 'compact', readOnly: true },
+      props: { notebook, theme: 'dark', layout: 'compact', readOnly: true },
       global: { stubs: { CodeCell: CodeCellStub } },
     })
     await flushPromises()
@@ -90,14 +95,15 @@ describe('DpsPlayground', () => {
 
   it('restores the original example source and resets the sandbox session', async () => {
     const requests: string[] = []
-    MockWebSocket.responder = (socket, request) => {
+    MockWorker.responder = (worker, request) => {
       requests.push(String(request.type))
+      if (request.type === 'transport.connect') worker.emit({ type: 'transport.ready', requestId: request.id })
       if (request.type === 'session.create' || request.type === 'session.reset') {
-        socket.emit({ type: 'session.ready', requestId: request.id, sessionId: 'session-1' })
+        worker.emit({ type: 'session.ready', requestId: request.id, sessionId: 'session-1' })
       }
     }
     const wrapper = mount(DpsPlayground, {
-      props: { notebook, apiUrl: 'https://playground.example.test' },
+      props: { notebook },
       global: { stubs: { CodeCell: CodeCellStub } },
     })
     await flushPromises()

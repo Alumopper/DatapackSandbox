@@ -126,12 +126,21 @@ data class RenderMetadata(
 /** A PNG frame and its deterministic rendering metadata. */
 class RenderedFrame internal constructor(
     pngBytes: ByteArray,
+    rgbaBytes: ByteArray,
     val metadata: RenderMetadata,
 ) {
+    internal constructor(
+        pngBytes: ByteArray,
+        metadata: RenderMetadata,
+    ) : this(pngBytes, PngWriter.decodeRgba(pngBytes), metadata)
+
     private val bytes = pngBytes.copyOf()
+    private val rgba = rgbaBytes.copyOf()
 
     /** Returns a defensive copy of the PNG bytes. */
     fun pngBytes(): ByteArray = bytes.copyOf()
+
+    internal fun rgbaBytes(): ByteArray = rgba.copyOf()
 
     /** Writes the PNG, creating its parent directory when necessary. */
     fun writePng(path: Path) {
@@ -191,6 +200,17 @@ class SandboxRenderer
                     pngEncodeNanos = pngEncodeNanos,
                     renderNanos = System.nanoTime() - started,
                 )
-            return RenderedFrame(pngBytes, metadata)
+            return RenderedFrame(pngBytes, argbToRgba(rasterized), metadata)
+        }
+
+        private fun argbToRgba(pixels: IntArray): ByteArray {
+            val rgba = ByteArray(pixels.size * 4)
+            pixels.forEachIndexed { index, color ->
+                rgba[index * 4] = (color ushr 16).toByte()
+                rgba[index * 4 + 1] = (color ushr 8).toByte()
+                rgba[index * 4 + 2] = color.toByte()
+                rgba[index * 4 + 3] = (color ushr 24).toByte()
+            }
+            return rgba
         }
     }

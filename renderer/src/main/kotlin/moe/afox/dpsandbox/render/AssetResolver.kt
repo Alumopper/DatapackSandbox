@@ -158,11 +158,39 @@ internal class AssetResolver(
         val image = BufferedImage(16, 16, BufferedImage.TYPE_INT_ARGB)
         val hash = id.hashCode()
         val hue = (hash ushr 1 and 0xffff) / 65535f
-        val base = Color.HSBtoRGB(hue, 0.45f, 0.82f) or (0xff shl 24)
-        val dark = Color.HSBtoRGB(hue, 0.55f, 0.48f) or (0xff shl 24)
+        val generatedBase = Color.HSBtoRGB(hue, 0.45f, 0.82f) or (0xff shl 24)
+        val generatedDark = Color.HSBtoRGB(hue, 0.55f, 0.48f) or (0xff shl 24)
+        val (base, dark) =
+            when (id) {
+                "minecraft:item/diamond" -> 0xff7df5e8.toInt() to 0xff29aaa3.toInt()
+                else -> generatedBase to generatedDark
+            }
         for (y in 0 until 16) {
             for (x in 0 until 16) {
-                image.setRGB(x, y, if ((x / 4 + y / 4) % 2 == 0) base else dark)
+                val color =
+                    if (":item/" in id) {
+                        val distance = kotlin.math.abs(x * 2 - 15) + kotlin.math.abs(y * 2 - 15)
+                        when {
+                            distance > 14 -> 0
+                            y < 8 || x in 6..9 -> base
+                            else -> dark
+                        }
+                    } else if (id == "minecraft:block/stone") {
+                        val noise = ((x * 37 + y * 57 + x * y * 11) xor (x shl 3) xor (y shl 5)) and 31
+                        val value = 105 + noise
+                        (0xff shl 24) or ((value + 3) shl 16) or ((value + 2) shl 8) or value
+                    } else if (id == "minecraft:block/diamond_block") {
+                        when {
+                            x == 0 || y == 0 || x == 15 || y == 15 -> 0xff168f8b.toInt()
+                            x == y || x + y == 15 -> 0xffb4fff7.toInt()
+                            else -> 0xff55d8cf.toInt()
+                        }
+                    } else if ((x / 4 + y / 4) % 2 == 0) {
+                        base
+                    } else {
+                        dark
+                    }
+                image.setRGB(x, y, color)
             }
         }
         return TextureData.fromImage("fallback:$id", image)

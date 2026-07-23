@@ -16,12 +16,25 @@ kotlin {
 }
 
 dependencies {
+    val lwjglVersion = "3.4.1"
+
     implementation(project(":core"))
     implementation(project(":renderer"))
     implementation(project(":manifest"))
     implementation("com.github.ajalt.clikt:clikt:5.1.0")
     implementation("com.google.code.gson:gson:2.13.2")
     implementation("org.jline:jline:3.30.6")
+    implementation(platform("org.lwjgl:lwjgl-bom:$lwjglVersion"))
+    implementation("org.lwjgl:lwjgl")
+    implementation("org.lwjgl:lwjgl-glfw")
+    implementation("org.lwjgl:lwjgl-opengl")
+    implementation("org.lwjgl:lwjgl-stb")
+    listOf("natives-windows", "natives-linux", "natives-macos").forEach { classifier ->
+        runtimeOnly("org.lwjgl:lwjgl:$lwjglVersion:$classifier")
+        runtimeOnly("org.lwjgl:lwjgl-glfw:$lwjglVersion:$classifier")
+        runtimeOnly("org.lwjgl:lwjgl-opengl:$lwjglVersion:$classifier")
+        runtimeOnly("org.lwjgl:lwjgl-stb:$lwjglVersion:$classifier")
+    }
 
     testImplementation(kotlin("test"))
     testImplementation("org.junit.jupiter:junit-jupiter:6.1.0")
@@ -474,6 +487,14 @@ smokeCliJarRender.configure {
     }
 }
 
+val smokeCliJarViewportHelp =
+    registerCliJarSmokeTask(
+        name = "smokeCliJarViewportHelp",
+        descriptionText = "Checks that the standalone jar exposes the JVM realtime viewport command without opening a window.",
+        "viewport",
+        "--help",
+    )
+
 tasks.register("smokeCliJar") {
     group = "verification"
     description = "Builds the standalone CLI jar and runs release smoke checks."
@@ -499,6 +520,7 @@ tasks.register("smokeCliJar") {
         smokeCliJarRunDiagnostics,
         smokeCliJarRunLimits,
         smokeCliJarRender,
+        smokeCliJarViewportHelp,
     )
 }
 

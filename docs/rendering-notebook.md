@@ -17,12 +17,23 @@ particles, redstone updates, entity AI, vanilla light maps, and post-processing
 are not inferred when the runtime has not modeled them. Render metadata always
 reports `visualParity=false` and `lightingModel=approximate`.
 
-Players, zombies, and skeletons use recognizable segmented humanoid geometry;
-`block_display` uses its block model and transformation. Dropped items,
-experience orbs, `item_display`, and `text_display` use simplified camera-facing
-planes and report `ENTITY_APPROXIMATE`; the first text-display implementation
-represents text extent but does not reproduce vanilla font layout.
-`marker`/`interaction` remain hidden unless debug rendering is enabled.
+Players, zombies, and skeletons use recognizable segmented humanoid geometry.
+Display entities are modeled explicitly on both JVM and Web: `block_display`
+bakes its blockstate/model, `item_display` resolves modern item definitions,
+extrudes generated-model sprite outlines, and applies model `display`
+transforms, while `text_display` rasterizes readable text. The
+shared path applies the 4x4 transformation, all four billboard modes, display
+contexts, brightness overrides, view/culling bounds, shadows, wrapping,
+alignment, background/opacity, text shadow, see-through depth behavior, and
+tick-based visual/teleport interpolation. Dropped items and experience orbs
+remain approximate; `marker`/`interaction` remain hidden unless debug rendering
+is enabled.
+
+Custom font-provider stacks, multi-layer/special item models, glow outlines,
+the client light map, and post-processing are not a pixel-identical client
+implementation. Supply a matching client JAR or resource pack for referenced
+models, item definitions, font atlases, and textures; otherwise deterministic
+fallback materials are used.
 
 ## Render after a CLI run
 
@@ -74,6 +85,46 @@ Relevant options:
 `--strict` also makes missing or invalid render assets fail. Screenshot output
 can be combined with snapshot, trace, outputs, assertions, and run reports.
 
+## Play in the JVM realtime viewport
+
+The standalone JAR includes a GPU realtime viewport built on GLFW/OpenGL 3.3.
+It keeps command, input, checkpoint, and 20 TPS world mutation on one serialized
+JVM session, while camera frames only update matrices and draw cached GPU scene
+buffers without rerunning the sandbox:
+
+```powershell
+java -jar cli/build/libs/datapack-sandbox-cli.jar viewport `
+  --version 26.2 `
+  --minecraft-assets "D:\.minecraft\versions\26.1.2\26.1.2.jar" `
+  --command "setblock 0 0 2 minecraft:stone"
+```
+
+Click the viewport to capture the mouse. Use WASD for horizontal flight,
+Space/Shift for vertical flight, the wheel for speed, and Escape to release the
+pointer. The toolbar provides play/pause, one-tick stepping, automatic camera
+reset, a reusable checkpoint, sandbox reset, and high-quality PNG export. Press
+`T`, `/`, or click **Command** to open the command console. It provides
+world-aware completion and non-mutating command checks while typing; use Tab to
+accept a completion, Up/Down to select one, and Enter to run. Command output,
+errors, and state-change summaries remain visible in the viewport console.
+
+The default window is 1200x720 with a larger HUD. Click **Settings** or press
+F10 to adjust mouse sensitivity, flight speed, UI scale, and field of view at
+runtime. Their startup values can also be set with `--mouse-sensitivity`,
+`--move-speed`, `--ui-scale`, and `--field-of-view`.
+
+The HUD bakes an antialiased OpenGL atlas from an installed system TrueType
+monospace font. It does not place an opaque slab behind the toolbar, status, or
+console: buttons, individual text rows, and command input use Minecraft-like
+translucent black backplates. The idle console shrinks to its actual message
+count and only expands for completion and check results in command mode.
+
+The JVM viewport intentionally has no touch controls. Keyboard and mouse input
+is recorded through the same `PlayerInput`/`PlayerEvent` model as other JVM
+tests and does not imply vanilla physics, collision, redstone, or entity AI.
+The realtime view uses OpenGL; **Export PNG** still uses the full software
+renderer and remains the quality path instead of capturing the realtime frame.
+
 ## Embed the renderer in a JVM application
 
 Depend on `renderer`; it exposes `core` transitively:
@@ -104,6 +155,31 @@ frame.writePng(Path.of("state.png"))
 
 Rendering first copies an immutable `WorldView`. A successful or failed render
 does not change the sandbox snapshot.
+
+Record reusable sandbox points and animated GIF frames directly on the JVM:
+
+```kotlin
+val saved = sandbox.saveCheckpoint("before-branch")
+
+val gif = SandboxGifRecorder(
+    renderer = renderer,
+    request = RenderRequest(width = 480, height = 270),
+    frameDelayMillis = 200,
+)
+gif.capture(sandbox)
+sandbox.executeCommand("setblock 1 0 2 minecraft:diamond_block")
+gif.capture(sandbox)
+gif.export().writeGif(Path.of("branch.gif"))
+
+sandbox.restoreCheckpoint("before-branch")
+check(sandbox.snapshotString() == saved)
+```
+
+Checkpoints contain the complete modeled world, including players, entities,
+scores, storage, outputs, and traces. They do not copy immutable datapack assets
+or rewind monotonic execution safety budgets. The GIF encoder is shared with the
+browser Worker and produces identical bytes for identical RGBA frames, delays,
+and repeat settings.
 
 ## JSONL editor integration
 

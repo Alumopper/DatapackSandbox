@@ -790,6 +790,43 @@ class SandboxBehaviorTest {
     }
 
     @Test
+    fun `models particle output for realtime viewport consumers`() {
+        val sandbox = createSandbox("26.2", listOf(fixturePack()))
+        sandbox.createPlayer("Steve")
+
+        sandbox.executeCommand(
+            "execute positioned 1 2 3 run particle minecraft:flame ~ ~1 ~ 0.5 0.25 1 0.1 24 force Steve",
+        )
+
+        val output = sandbox.world.outputs.single { it.command == "particle" }
+        val payload = output.payload?.asJsonObject ?: error("missing particle payload")
+        assertEquals("visual", output.channel)
+        assertEquals(listOf("Steve"), output.targets)
+        assertEquals("minecraft:flame", payload.get("particle").asString)
+        assertEquals(1.0, payload.get("x").asDouble)
+        assertEquals(3.0, payload.get("y").asDouble)
+        assertEquals(3.0, payload.get("z").asDouble)
+        assertEquals(0.5, payload.get("deltaX").asDouble)
+        assertEquals(0.25, payload.get("deltaY").asDouble)
+        assertEquals(1.0, payload.get("deltaZ").asDouble)
+        assertEquals(0.1, payload.get("speed").asDouble)
+        assertEquals(24, payload.get("renderCount").asInt)
+        assertEquals("force", payload.get("mode").asString)
+
+        val invalidMode =
+            assertFailsWith<SandboxException> {
+                sandbox.executeCommand("particle minecraft:flame ~ ~ ~ 0 0 0 0 1 hidden")
+            }
+        assertEquals(DiagnosticCode.INPUT_FORMAT, invalidMode.code)
+
+        val invalidCount =
+            assertFailsWith<SandboxException> {
+                sandbox.executeCommand("particle minecraft:flame ~ ~ ~ 0 0 0 0 4097")
+            }
+        assertEquals(DiagnosticCode.INPUT_FORMAT, invalidCount.code)
+    }
+
+    @Test
     fun `records command traces and output source metadata`() {
         val sandbox =
             createFunctionSandboxFromString(

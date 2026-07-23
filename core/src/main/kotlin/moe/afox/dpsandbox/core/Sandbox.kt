@@ -102,6 +102,22 @@ data class ExecutionResult(
     val success: Boolean = commandsExecuted > 0,
 )
 
+/** Non-mutating result of checking one command against a copy of the current sandbox state. */
+data class CommandCheckResult(
+    /** True when the command can execute successfully in the copied state. */
+    val valid: Boolean,
+    /** Number of command lines the check would execute. */
+    val commandsExecuted: Int = 0,
+    /** Number of observable output events the check would produce. */
+    val outputs: Int = 0,
+    /** Number of snapshot changes the check would produce. */
+    val stateChanges: Int = 0,
+    /** Structured diagnostic code when [valid] is false. */
+    val errorCode: DiagnosticCode? = null,
+    /** Human-readable validation message. */
+    val message: String = "",
+)
+
 /**
  * Execution safety limits used to stop runaway tests deterministically.
  */
@@ -185,6 +201,8 @@ class DatapackSandbox(
     private val functionStack = mutableListOf<FunctionTraceFrame>()
     private val placementCommands = SandboxPlacementCommands(this)
     private val itemCommands = SandboxItemCommands(this)
+    private val checkpoints = linkedMapOf<String, SandboxWorld>()
+    private val checkpointNamePattern = Regex("[A-Za-z0-9._-]{1,64}")
 
     init {
         recordDatapackLoadWarnings()
@@ -407,6 +425,57 @@ class DatapackSandbox(
     }
 
     /**
+     * Checks [command] by executing it against an isolated copy of the current world.
+     *
+     * This catches parser, resource, selector, and state-dependent command errors without
+     * changing this sandbox, its traces, outputs, checkpoints, or execution budget.
+     */
+    fun checkCommand(
+        command: String,
+        context: ExecutionContext = ExecutionContext(),
+    ): CommandCheckResult {
+        val normalized = command.trim().removePrefix("/")
+        if (normalized.isBlank()) {
+            return CommandCheckResult(
+                valid = false,
+                errorCode = DiagnosticCode.INPUT_FORMAT,
+                message = "Command must not be blank",
+            )
+        }
+        val preview =
+            DatapackSandbox(
+                profile = profile,
+                datapack = datapack,
+                world = world.checkpointCopy(),
+                unsupportedFeatureMode = unsupportedFeatureMode,
+                limits = limits,
+            )
+        return try {
+            val result = preview.executeCommand(normalized, context = context)
+            val trace = preview.world.traces.lastOrNull()
+            CommandCheckResult(
+                valid = true,
+                commandsExecuted = result.commandsExecuted,
+                outputs = trace?.outputs ?: 0,
+                stateChanges = trace?.snapshotDiffs?.size ?: 0,
+                message = if (result.success) "Command check passed" else "Command is valid; its result would be unsuccessful",
+            )
+        } catch (error: SandboxException) {
+            CommandCheckResult(
+                valid = false,
+                errorCode = error.code,
+                message = error.message,
+            )
+        } catch (error: RuntimeException) {
+            CommandCheckResult(
+                valid = false,
+                errorCode = DiagnosticCode.COMMAND_ERROR,
+                message = error.message ?: error::class.simpleName.orEmpty(),
+            )
+        }
+    }
+
+    /**
      * Returns a deterministic JSON snapshot of the current sandbox state.
      */
     fun snapshotJson(): JsonObject {
@@ -428,6 +497,81 @@ class DatapackSandbox(
         val rendered = JsonValues.render(buildSnapshotJson())
         checkSnapshotSize(rendered)
         return rendered
+    }
+
+    /**
+     * Saves or replaces a reusable named checkpoint of all modeled world state.
+     * Datapack resources and monotonic execution safety budgets are not part of the checkpoint.
+     *
+     * @return the deterministic snapshot text stored for the checkpoint.
+     */
+    @JvmOverloads
+    fun saveCheckpoint(name: String = "default"): String {
+        validateCheckpointName(name)
+        requireCheckpointBoundary()
+        if (name !in checkpoints && checkpoints.size >= 32) {
+            throw SandboxException(
+                DiagnosticCode.COMMAND_ERROR,
+                "Sandbox already has 32 checkpoints",
+                version = profile.id,
+            )
+        }
+        val snapshot = snapshotString()
+        checkpoints[name] = world.checkpointCopy()
+        return snapshot
+    }
+
+    /**
+     * Restores a named checkpoint without consuming it. Repeated restores are supported.
+     *
+     * @return the deterministic snapshot text after restoration.
+     */
+    @JvmOverloads
+    fun restoreCheckpoint(name: String = "default"): String {
+        validateCheckpointName(name)
+        requireCheckpointBoundary()
+        val checkpoint =
+            checkpoints[name]
+                ?: throw SandboxException(
+                    DiagnosticCode.INPUT_FORMAT,
+                    "Unknown checkpoint '$name'",
+                    version = profile.id,
+                )
+        world.restoreCheckpointState(checkpoint)
+        executionCancellationRequested = false
+        lastFunctionReturnValue = null
+        functionStack.clear()
+        return snapshotString()
+    }
+
+    /** Deletes a checkpoint and reports whether it existed. */
+    fun deleteCheckpoint(name: String): Boolean {
+        validateCheckpointName(name)
+        requireCheckpointBoundary()
+        return checkpoints.remove(name) != null
+    }
+
+    /** Returns checkpoint names in stable lexical order. */
+    fun checkpointNames(): List<String> = checkpoints.keys.sorted()
+
+    private fun validateCheckpointName(name: String) {
+        if (!checkpointNamePattern.matches(name)) {
+            throw SandboxException(
+                DiagnosticCode.INPUT_FORMAT,
+                "Checkpoint name must be 1-64 ASCII letters, digits, '.', '_' or '-'",
+                version = profile.id,
+            )
+        }
+    }
+
+    private fun requireCheckpointBoundary() {
+        if (functionDepth != 0 || world.currentCommandSource != null) {
+            throw SandboxException(
+                DiagnosticCode.COMMAND_ERROR,
+                "Checkpoints can only be changed at a command boundary",
+                version = profile.id,
+            )
+        }
     }
 
     /**
@@ -737,7 +881,7 @@ class DatapackSandbox(
                 "teammsg", "tm" -> executeTeamMessage(command, tokens, location, context)
                 "playsound" -> executePlaySound(tokens, location, context)
                 "stopsound" -> executeStopSound(tokens, location, context)
-                "particle" -> executeParticle(command, tokens, location)
+                "particle" -> executeParticle(command, tokens, location, context)
                 "transfer" -> executeTransfer(command, tokens, location, context)
                 else -> handleUnknownCommand(tokens[0].text, command, location)
             }

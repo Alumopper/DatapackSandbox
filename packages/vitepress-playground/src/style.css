@@ -239,6 +239,43 @@
   transform: none;
 }
 
+.dps-file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.dps-import-choice,
+.dps-import-message {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  margin: 0.75rem 1rem 0;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid var(--dps-border);
+  border-radius: 10px;
+  background: var(--dps-panel-soft);
+  color: var(--dps-muted);
+  font-size: 0.86rem;
+}
+
+.dps-import-choice span {
+  flex: 1;
+}
+
+.dps-import-choice select {
+  min-height: 34px;
+  border: 1px solid var(--dps-border);
+  border-radius: 7px;
+  background: var(--dps-panel);
+  color: var(--dps-text);
+  padding: 0 0.5rem;
+}
+
 .dps-unavailable {
   position: relative;
   display: grid;
@@ -280,6 +317,24 @@
   display: grid;
   gap: 14px;
   padding: 20px;
+}
+
+.dps-cell-space {
+  overflow: visible;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.dps-cell-space > .dps-cell-code {
+  width: 100%;
+}
+
+.dps-cell-space .dps-cell-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .dps-cell {
@@ -688,6 +743,19 @@
   .dps-code-editor .cm-tooltip-autocomplete > ul > li {
     min-width: 190px;
   }
+
+  .dps-cell-space .dps-cell-heading {
+    align-items: center;
+    flex-direction: row;
+  }
+
+  .dps-cell-space .dps-cell-actions {
+    display: flex;
+  }
+
+  .dps-cell-space .dps-cell-actions button {
+    width: auto;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -696,5 +764,221 @@
   .dps-playground *::after {
     scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+.dps-viewport {
+  --dps-panel: var(--vp-c-bg, #fff);
+  --dps-panel-soft: var(--vp-c-bg-alt, #f8faf9);
+  --dps-border: var(--vp-c-divider, #d8e0db);
+  --dps-text: var(--vp-c-text-1, #18231e);
+  --dps-muted: var(--vp-c-text-2, #66756d);
+  --dps-accent: var(--vp-c-brand-1, #16845b);
+  overflow: hidden;
+  color: var(--dps-text);
+  background: #09100d;
+  border: 1px solid var(--dps-border);
+  border-radius: 14px;
+}
+
+.dps-playground > .dps-viewport,
+.dps-cell-space > .dps-viewport {
+  margin: 0 20px 20px;
+}
+
+.dps-viewport-toolbar {
+  display: flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 9px;
+  background: var(--dps-panel);
+  border-bottom: 1px solid var(--dps-border);
+}
+
+.dps-viewport-playback {
+  display: flex;
+  gap: 6px;
+}
+
+.dps-viewport button {
+  appearance: none;
+  min-height: 29px;
+  padding: 4px 10px;
+  color: var(--dps-text);
+  font: 680 11px/1.35 var(--vp-font-family-base, system-ui, sans-serif);
+  background: var(--dps-panel-soft);
+  border: 1px solid var(--dps-border);
+  border-radius: 7px;
+  cursor: pointer;
+}
+
+.dps-viewport button:hover:not(:disabled) {
+  color: var(--dps-accent);
+  border-color: var(--dps-accent);
+}
+
+.dps-viewport button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.dps-viewport-stats {
+  color: var(--dps-muted);
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.dps-viewport-stage {
+  position: relative;
+  min-height: 270px;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  background: #09100d;
+}
+
+.dps-viewport-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  outline: none;
+  cursor: grab;
+  touch-action: none;
+}
+
+.dps-viewport-canvas:focus-visible {
+  box-shadow: inset 0 0 0 3px color-mix(in srgb, var(--dps-accent) 65%, transparent);
+}
+
+.dps-viewport-canvas:active {
+  cursor: grabbing;
+}
+
+.dps-viewport-message {
+  position: absolute;
+  inset: 50% auto auto 50%;
+  max-width: min(440px, calc(100% - 36px));
+  padding: 10px 13px;
+  color: #edf7f1;
+  font-size: 12px;
+  text-align: center;
+  background: rgb(5 12 9 / 82%);
+  border: 1px solid rgb(255 255 255 / 18%);
+  border-radius: 9px;
+  transform: translate(-50%, -50%);
+  backdrop-filter: blur(8px);
+}
+
+.dps-viewport-title,
+.dps-viewport-actionbar,
+.dps-viewport-chat {
+  position: absolute;
+  z-index: 2;
+  color: #fff;
+  font-family: ui-monospace, "Cascadia Mono", "Segoe UI", sans-serif;
+  text-shadow: 0 1px 1px #000;
+  pointer-events: none;
+}
+
+.dps-viewport-title {
+  inset: 38% 12px auto;
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  text-align: center;
+}
+
+.dps-viewport-title strong,
+.dps-viewport-title span,
+.dps-viewport-actionbar,
+.dps-viewport-chat span {
+  width: fit-content;
+  max-width: 100%;
+  padding: 2px 6px;
+  overflow-wrap: anywhere;
+  background: rgb(0 0 0 / 60%);
+}
+
+.dps-viewport-title strong {
+  font-size: clamp(24px, 4.5vw, 48px);
+  line-height: 1.08;
+}
+
+.dps-viewport-title span {
+  font-size: clamp(14px, 2.1vw, 22px);
+}
+
+.dps-viewport-actionbar {
+  inset: auto 12px 14% 12px;
+  margin: auto;
+  font-size: clamp(12px, 1.7vw, 17px);
+  text-align: center;
+}
+
+.dps-viewport-chat {
+  inset: auto auto 18px 12px;
+  display: flex;
+  max-width: min(70%, 680px);
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 2px;
+  font-size: clamp(11px, 1.45vw, 15px);
+}
+
+.dps-touch-controls {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding: 18px;
+  pointer-events: none;
+}
+
+.dps-joystick {
+  position: relative;
+  width: 104px;
+  height: 104px;
+  pointer-events: auto;
+  touch-action: none;
+  background: rgb(255 255 255 / 9%);
+  border: 1px solid rgb(255 255 255 / 24%);
+  border-radius: 50%;
+  box-shadow: inset 0 0 24px rgb(0 0 0 / 22%);
+}
+
+.dps-joystick-knob {
+  position: absolute;
+  top: calc(50% - 23px);
+  left: calc(50% - 23px);
+  width: 46px;
+  height: 46px;
+  background: rgb(255 255 255 / 25%);
+  border: 1px solid rgb(255 255 255 / 44%);
+  border-radius: 50%;
+  box-shadow: 0 5px 15px rgb(0 0 0 / 22%);
+}
+
+@media (max-width: 760px) {
+  .dps-playground > .dps-viewport,
+  .dps-cell-space > .dps-viewport {
+    margin: 0 12px 12px;
+  }
+
+  .dps-viewport-stage {
+    min-height: 220px;
+  }
+}
+
+@media (max-width: 480px) {
+  .dps-viewport-toolbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .dps-joystick {
+    width: 88px;
+    height: 88px;
   }
 }

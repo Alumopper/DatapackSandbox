@@ -17,11 +17,11 @@ internal class SoftwareRasterizer {
         val pixels = background(view, request)
         val depth = FloatArray(request.width * request.height) { Float.POSITIVE_INFINITY }
         val projected = scene.triangles.flatMap { project(it, scene.camera, request) }
-        projected.filter { it.source.texture.materialPass != MaterialPass.TRANSLUCENT }.forEach { triangle ->
+        projected.filter { it.source.texture.materialPass != MaterialPass.TRANSLUCENT && !it.source.seeThrough }.forEach { triangle ->
             rasterize(triangle, pixels, depth, request, view, writeDepth = true)
         }
         projected
-            .filter { it.source.texture.materialPass == MaterialPass.TRANSLUCENT }
+            .filter { it.source.texture.materialPass == MaterialPass.TRANSLUCENT || it.source.seeThrough }
             .sortedByDescending { it.averageDepth }
             .forEach { triangle -> rasterize(triangle, pixels, depth, request, view, writeDepth = false) }
         if (request.showHud || request.showDebugOverlay) drawCrosshair(pixels, request.width, request.height)
@@ -118,7 +118,7 @@ internal class SoftwareRasterizer {
         val inverseZa = 1.0 / triangle.a.z
         val inverseZb = 1.0 / triangle.b.z
         val inverseZc = 1.0 / triangle.c.z
-        val brightness = faceBrightness(triangle.source.normal, view)
+        val brightness = triangle.source.lightOverride ?: faceBrightness(triangle.source.normal, view)
 
         for (y in minY..maxY) {
             for (x in minX..maxX) {
@@ -133,7 +133,7 @@ internal class SoftwareRasterizer {
                 val z = (1.0 / inverseZ).toFloat()
                 if (z > request.renderDistance) continue
                 val index = y * width + x
-                if (z >= depth[index]) continue
+                if (!triangle.source.seeThrough && z >= depth[index]) continue
                 val u = (wa * triangle.a.u * inverseZa + wb * triangle.b.u * inverseZb + wc * triangle.c.u * inverseZc) / inverseZ
                 val v = (wa * triangle.a.v * inverseZa + wb * triangle.b.v * inverseZb + wc * triangle.c.v * inverseZc) / inverseZ
                 var color = triangle.source.texture.sample(u, v)
@@ -143,7 +143,7 @@ internal class SoftwareRasterizer {
                 val alpha = color ushr 24 and 0xff
                 if (alpha == 0 || (triangle.source.texture.materialPass == MaterialPass.CUTOUT && alpha < 128)) continue
                 pixels[index] = if (alpha == 255) color else blend(color, pixels[index])
-                if (writeDepth) depth[index] = z
+                if (writeDepth && !triangle.source.seeThrough) depth[index] = z
             }
         }
     }

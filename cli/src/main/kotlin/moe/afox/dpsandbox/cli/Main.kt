@@ -35,6 +35,7 @@ fun main(args: Array<String>) =
     DatapackSandboxCli()
         .subcommands(
             ReplCommand(),
+            ViewportCommand(),
             ServeCommand(),
             CheckCommand(),
             RunCommand(),

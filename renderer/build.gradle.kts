@@ -14,6 +14,7 @@ kotlin {
 
 dependencies {
     api(project(":core"))
+    implementation(project(":renderer-engine"))
     implementation("com.google.code.gson:gson:2.13.2")
 
     testImplementation(kotlin("test"))

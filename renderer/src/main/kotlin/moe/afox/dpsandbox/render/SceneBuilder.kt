@@ -1,15 +1,22 @@
 package moe.afox.dpsandbox.render
 
+import com.google.gson.JsonElement
 import com.google.gson.JsonObject
+import com.google.gson.JsonParser
 import moe.afox.dpsandbox.core.BlockPos
 import moe.afox.dpsandbox.core.DiagnosticCode
 import moe.afox.dpsandbox.core.SandboxException
+import moe.afox.dpsandbox.render.engine.DisplayTextBitmap
+import moe.afox.dpsandbox.render.engine.DisplayTextRasterizer
+import java.io.ByteArrayInputStream
+import javax.imageio.ImageIO
 import kotlin.math.asin
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.floor
 import kotlin.math.max
 import kotlin.math.sin
+import kotlin.math.sqrt
 import kotlin.math.tan
 
 internal class SceneBuilder(
@@ -17,10 +24,14 @@ internal class SceneBuilder(
     private val diagnostics: MutableList<RenderDiagnostic>,
 ) {
     private val diagnosedEntityTypes = mutableSetOf<String>()
+    private val displayTextures = mutableMapOf<String, TextureData>()
+    private var fontAtlasLoaded = false
+    private var fontAtlas: DisplayTextBitmap? = null
 
     fun build(
         view: WorldView,
         request: RenderRequest,
+        cull: Boolean = true,
     ): RenderScene {
         val camera = resolveCamera(view, request.camera)
         val dimensions =
@@ -47,8 +58,12 @@ internal class SceneBuilder(
         if (camera.dimension == OVERWORLD) {
             view.blocks.forEach { block ->
                 val center = Vec3(block.position.x + 0.5, block.position.y + 0.5, block.position.z + 0.5)
-                if (distanceSquared(center, camera.position) <= request.renderDistance * request.renderDistance &&
-                    intersectsFrustum(center, BLOCK_BOUNDING_RADIUS, camera, request)
+                if (
+                    !cull ||
+                    (
+                        distanceSquared(center, camera.position) <= request.renderDistance * request.renderDistance &&
+                            intersectsFrustum(center, BLOCK_BOUNDING_RADIUS, camera, request)
+                    )
                 ) {
                     triangles += modelBaker.bake(block)
                     visibleBlocks += 1
@@ -63,10 +78,46 @@ internal class SceneBuilder(
                 diagnoseEntity(entity.type, "ENTITY_HIDDEN", "Entity is intentionally hidden outside debug rendering")
                 return@forEach
             }
-            val position = Vec3(entity.position.x, entity.position.y, entity.position.z)
-            if (distanceSquared(position, camera.position) > request.renderDistance * request.renderDistance) return@forEach
-            val radius = max(entityWidth(entity.type), entityHeight(entity.type))
-            if (!intersectsFrustum(position + Vec3(0.0, entityHeight(entity.type) / 2.0, 0.0), radius, camera, request)) {
+            val position = entity.renderPosition()
+            val display = entity.type.substringAfter(':').endsWith("_display")
+            val viewRange =
+                if (display) {
+                    entity.nbt
+                        .get("view_range")
+                        ?.asDouble
+                        ?.coerceAtLeast(0.0) ?: 1.0
+                } else {
+                    1.0
+                }
+            val maximumDistance = request.renderDistance * viewRange
+            if (cull && distanceSquared(position, camera.position) > maximumDistance * maximumDistance) return@forEach
+            val cullingWidth =
+                if (display) {
+                    entity.nbt
+                        .get("width")
+                        ?.asDouble
+                        ?.takeIf { it > 0.0 }
+                } else {
+                    null
+                }
+            val cullingHeight =
+                if (display) {
+                    entity.nbt
+                        .get("height")
+                        ?.asDouble
+                        ?.takeIf { it > 0.0 }
+                } else {
+                    null
+                }
+            val radius = max(cullingWidth?.div(2.0) ?: entityWidth(entity.type), cullingHeight ?: entityHeight(entity.type))
+            if (cull &&
+                !intersectsFrustum(
+                    position + Vec3(0.0, (cullingHeight ?: entityHeight(entity.type)) / 2.0, 0.0),
+                    radius,
+                    camera,
+                    request,
+                )
+            ) {
                 return@forEach
             }
             if (entity.type.substringAfter(':') !in MODELED_ENTITIES) {
@@ -157,8 +208,10 @@ internal class SceneBuilder(
         val min = Vec3(points.minOf { it.x }, points.minOf { it.y }, points.minOf { it.z })
         val maxPoint = Vec3(points.maxOf { it.x }, points.maxOf { it.y }, points.maxOf { it.z })
         val target = (min + maxPoint) * 0.5
-        val extent = max(max(maxPoint.x - min.x, maxPoint.y - min.y), maxPoint.z - min.z).coerceAtLeast(3.0)
-        return lookAt(target + Vec3(extent * 1.35, extent * 0.9 + 2.0, extent * 1.35), target, OVERWORLD, "auto:scene")
+        val extent = max(max(maxPoint.x - min.x, maxPoint.y - min.y), maxPoint.z - min.z).coerceAtLeast(1.0)
+        val distance = extent * 1.35 + 1.5
+        val offset = Vec3(1.0, 0.72, 1.0).normalized() * distance
+        return lookAt(target + offset, target, OVERWORLD, "auto:scene")
     }
 
     private fun lookAt(
@@ -180,8 +233,10 @@ internal class SceneBuilder(
     ): List<SceneTriangle> {
         val typePath = entity.type.substringAfter(':')
         if (typePath == "block_display") {
-            blockDisplayTriangles(entity, modelBaker)?.let { return it }
+            blockDisplayTriangles(entity, modelBaker, camera)?.let { return it }
         }
+        if (typePath == "item_display") return displayShadow(entity) + itemDisplayTriangles(entity, camera)
+        if (typePath == "text_display") return displayShadow(entity) + textDisplayTriangles(entity, camera)
         val renderedPosition = entity.renderPosition()
         val texture =
             when (typePath) {
@@ -190,9 +245,6 @@ internal class SceneBuilder(
                 "skeleton" -> resolver.texture("minecraft:entity/skeleton/skeleton")
                 "item" -> resolver.proceduralTexture("item", 0xffffd45a.toInt(), 0xffb86b23.toInt())
                 "experience_orb" -> resolver.proceduralTexture("experience_orb", 0xff9cff3c.toInt(), 0xff3a9c28.toInt())
-                "block_display" -> resolver.proceduralTexture("block_display", 0xff9aa0a6.toInt(), 0xff4f555b.toInt())
-                "item_display" -> itemDisplayTexture(entity)
-                "text_display" -> textDisplayTexture(entity)
                 else -> resolver.proceduralTexture(typePath, 0xffd15b5b.toInt(), 0xff702828.toInt())
             }
         if (typePath in HUMANOID_ENTITIES) return humanoidTriangles(entity, texture, slender = typePath == "skeleton")
@@ -204,18 +256,14 @@ internal class SceneBuilder(
             "experience_orb" ->
                 billboard(center, width, height, texture, camera) +
                     billboard(center, width, height, texture, camera, perpendicular = true)
-            "item_display", "text_display" -> {
-                val plane = billboard(center, width, height, texture, camera)
-                val transformation = entity.renderTransformation()
-                val rotation = entity.renderRotation()
-                val pivot = Vec3(renderedPosition.x, renderedPosition.y, renderedPosition.z)
-                plane.map { triangle -> triangle.transform(pivot, Vec3.ZERO, transformation, rotation) }
-            }
             else -> cuboid(center, width, height, width, texture)
         }
     }
 
-    private fun itemDisplayTexture(entity: RenderEntity): TextureData {
+    private fun itemDisplayAsset(
+        entity: RenderEntity,
+        context: String,
+    ): ItemRenderAsset? {
         val item = entity.special?.getAsJsonObject("content")?.get("item")
         val id =
             when {
@@ -233,20 +281,251 @@ internal class SceneBuilder(
                 else -> null
             }
         if (id != null) {
-            val (namespace, path) = splitResourceId(id)
-            return resolver.texture("$namespace:item/$path")
+            return itemModelAsset(id, context)
         }
-        return resolver.proceduralTexture("item_display", 0xffffb347.toInt(), 0xffb85b00.toInt())
+        return null
     }
 
-    private fun textDisplayTexture(entity: RenderEntity): TextureData {
-        val text =
-            entity.special
-                ?.getAsJsonObject("content")
-                ?.get("text")
-                ?.toString()
-                .orEmpty()
-        return resolver.proceduralTexture("text_display:$text", 0xeeffffff.toInt(), 0xee202020.toInt())
+    private fun itemModelAsset(
+        id: String,
+        context: String,
+    ): ItemRenderAsset {
+        val (namespace, path) = splitResourceId(id)
+        val modelIds = linkedSetOf<String>()
+        collectItemModelIds(resolver.json("assets/$namespace/items/$path.json"), modelIds)
+        modelIds += "$namespace:item/$path"
+        modelIds.forEach { modelId ->
+            val model = resolveItemModel(modelId, linkedSetOf())
+            val reference = model.textures["layer0"] ?: model.textures["particle"] ?: model.textures.values.firstOrNull()
+            resolveTextureReference(reference, model.textures, linkedSetOf())?.let { textureId ->
+                val (textureNamespace, texturePath) = splitResourceId(textureId)
+                if (resolver.bytes("assets/$textureNamespace/textures/$texturePath.png") != null) {
+                    return ItemRenderAsset(resolver.texture(textureId), model.displays[context]?.toItemTransform())
+                }
+            }
+        }
+        return ItemRenderAsset(resolver.texture("$namespace:item/$path"), null)
+    }
+
+    private fun collectItemModelIds(
+        value: JsonElement?,
+        result: MutableSet<String>,
+    ) {
+        when {
+            value == null || value.isJsonNull -> Unit
+            value.isJsonArray -> value.asJsonArray.forEach { collectItemModelIds(it, result) }
+            value.isJsonObject ->
+                value.asJsonObject.entrySet().forEach { (key, child) ->
+                    if (key == "model" && child.isJsonPrimitive && child.asJsonPrimitive.isString) {
+                        result += normalizeResourceId(child.asString)
+                    } else {
+                        collectItemModelIds(child, result)
+                    }
+                }
+        }
+    }
+
+    private fun resolveItemModel(
+        rawId: String,
+        visited: MutableSet<String>,
+    ): ResolvedItemModel {
+        val id = normalizeResourceId(rawId)
+        if (!visited.add(id)) return ResolvedItemModel()
+        val (namespace, path) = splitResourceId(id)
+        val model = resolver.json("assets/$namespace/models/$path.json") ?: return ResolvedItemModel()
+        val textures = linkedMapOf<String, String>()
+        val displays = linkedMapOf<String, JsonObject>()
+        model
+            .get("parent")
+            ?.takeIf { it.isJsonPrimitive }
+            ?.asString
+            ?.let { parent ->
+                val inherited = resolveItemModel(parent, visited)
+                textures.putAll(inherited.textures)
+                displays.putAll(inherited.displays)
+            }
+        model.getAsJsonObject("textures")?.entrySet()?.forEach { (key, value) ->
+            if (value.isJsonPrimitive) textures[key] = value.asString
+        }
+        model.getAsJsonObject("display")?.entrySet()?.forEach { (key, value) ->
+            if (value.isJsonObject) displays[key] = value.asJsonObject
+        }
+        return ResolvedItemModel(textures, displays)
+    }
+
+    private fun JsonObject.toItemTransform(): ItemTransform =
+        ItemTransform(
+            translation = vector("translation", Vec3.ZERO) * (1.0 / 16.0),
+            rotation = vector("rotation", Vec3.ZERO),
+            scale = vector("scale", Vec3(1.0, 1.0, 1.0)),
+        )
+
+    private fun resolveTextureReference(
+        value: String?,
+        textures: Map<String, String>,
+        visited: MutableSet<String>,
+    ): String? {
+        value ?: return null
+        if (!value.startsWith('#')) return normalizeResourceId(value)
+        val key = value.removePrefix("#")
+        if (!visited.add(key)) return null
+        return resolveTextureReference(textures[key], textures, visited)
+    }
+
+    private fun itemDisplayTriangles(
+        entity: RenderEntity,
+        camera: ResolvedCamera,
+    ): List<SceneTriangle> {
+        val context =
+            entity.nbt
+                .get("item_display")
+                ?.takeIf { it.isJsonPrimitive }
+                ?.asString ?: "none"
+        val asset = itemDisplayAsset(entity, context) ?: return emptyList()
+        return generatedItemMesh(asset.texture).map { triangle ->
+            transformDisplayTriangle(
+                triangle,
+                entity,
+                camera,
+                Vec3.ZERO,
+                itemDisplayTransformation(context, asset.transform),
+            )
+        }
+    }
+
+    private fun textDisplayTriangles(
+        entity: RenderEntity,
+        camera: ResolvedCamera,
+    ): List<SceneTriangle> {
+        val content = entity.special?.getAsJsonObject("content")?.get("text")
+        val text = plainText(content)
+        val opacity = entity.special?.get("textOpacity")?.asInt ?: entity.nbt.get("text_opacity")?.asInt ?: 255
+        val background = entity.special?.get("background")?.asInt ?: entity.nbt.get("background")?.asInt ?: 0x40000000
+        val lineWidth = entity.nbt.get("line_width")?.asInt ?: 200
+        val alignment =
+            entity.nbt
+                .get("alignment")
+                ?.takeIf { it.isJsonPrimitive }
+                ?.asString ?: "center"
+        val shadow =
+            entity.nbt
+                .get("shadow")
+                ?.takeIf { it.isJsonPrimitive }
+                ?.asBoolean ?: false
+        val defaultBackground =
+            entity.nbt
+                .get("default_background")
+                ?.takeIf { it.isJsonPrimitive }
+                ?.asBoolean ?: false
+        val seeThrough =
+            entity.nbt
+                .get("see_through")
+                ?.takeIf { it.isJsonPrimitive }
+                ?.asBoolean ?: false
+        val color = textColor(content)
+        val key = "$text|$opacity|$background|$lineWidth|$alignment|$shadow|$defaultBackground|$color"
+        val texture =
+            displayTextures.getOrPut("text:$key") {
+                val bitmap =
+                    DisplayTextRasterizer.render(
+                        text = text,
+                        lineWidth = lineWidth,
+                        alignment = alignment,
+                        background = background,
+                        defaultBackground = defaultBackground,
+                        textOpacity = opacity,
+                        shadow = shadow,
+                        textColor = color,
+                        fontAtlas = displayFontAtlas(),
+                    )
+                texture(bitmap, "text:$key")
+            }
+        val width = texture.width / TEXT_PIXELS_PER_BLOCK
+        val height = texture.height / TEXT_PIXELS_PER_BLOCK
+        return doubleSidedPlane(width, height, texture).map { triangle ->
+            transformDisplayTriangle(triangle, entity, camera, Vec3.ZERO).also { it.seeThrough = seeThrough }
+        }
+    }
+
+    private fun displayFontAtlas(): DisplayTextBitmap? {
+        if (fontAtlasLoaded) return fontAtlas
+        fontAtlasLoaded = true
+        val bytes = resolver.bytes("assets/minecraft/textures/font/ascii.png") ?: return null
+        val image = runCatching { ImageIO.read(ByteArrayInputStream(bytes)) }.getOrNull() ?: return null
+        val pixels = IntArray(image.width * image.height)
+        image.getRGB(0, 0, image.width, image.height, pixels, 0, image.width)
+        return DisplayTextBitmap(image.width, image.height, pixels).also { fontAtlas = it }
+    }
+
+    private fun texture(
+        bitmap: DisplayTextBitmap,
+        id: String,
+    ): TextureData {
+        var transparent = false
+        var partial = false
+        bitmap.pixels.forEach { color ->
+            val alpha = color ushr 24 and 0xff
+            transparent = transparent || alpha == 0
+            partial = partial || alpha in 1..254
+        }
+        val pass =
+            when {
+                partial -> MaterialPass.TRANSLUCENT
+                transparent -> MaterialPass.CUTOUT
+                else -> MaterialPass.OPAQUE
+            }
+        return TextureData(id, bitmap.width, bitmap.height, bitmap.pixels, pass)
+    }
+
+    private fun plainText(value: JsonElement?): String =
+        when {
+            value == null || value.isJsonNull -> ""
+            value.isJsonArray -> value.asJsonArray.joinToString("") { plainText(it) }
+            value.isJsonObject ->
+                buildString {
+                    append(
+                        value.asJsonObject
+                            .get("text")
+                            ?.takeIf { it.isJsonPrimitive }
+                            ?.asString
+                            .orEmpty(),
+                    )
+                    if (isEmpty()) {
+                        append(
+                            value.asJsonObject
+                                .get("translate")
+                                ?.takeIf { it.isJsonPrimitive }
+                                ?.asString
+                                .orEmpty(),
+                        )
+                    }
+                    value.asJsonObject.get("extra")?.let { append(plainText(it)) }
+                }
+            value.isJsonPrimitive -> {
+                val raw = value.asString
+                val parsed =
+                    raw
+                        .trim()
+                        .takeIf { (it.startsWith('{') && it.endsWith('}')) || (it.startsWith('[') && it.endsWith(']')) }
+                        ?.let { runCatching { JsonParser.parseString(it) }.getOrNull() }
+                if (parsed == null) raw else plainText(parsed)
+            }
+            else -> value.toString()
+        }
+
+    private fun textColor(value: JsonElement?): Int {
+        val parsed =
+            when {
+                value?.isJsonObject == true -> value.asJsonObject
+                value?.isJsonPrimitive == true ->
+                    value.asString.trim().takeIf { it.startsWith('{') }?.let {
+                        runCatching { JsonParser.parseString(it).asJsonObject }.getOrNull()
+                    }
+                else -> null
+            }
+        val color = parsed?.get("color")?.takeIf { it.isJsonPrimitive }?.asString ?: return 0xffffffff.toInt()
+        return TEXT_COLORS[color.lowercase()] ?: color.removePrefix("#").toIntOrNull(16)?.let { 0xff000000.toInt() or it }
+            ?: 0xffffffff.toInt()
     }
 
     private fun billboard(
@@ -304,6 +583,7 @@ internal class SceneBuilder(
     private fun blockDisplayTriangles(
         entity: RenderEntity,
         modelBaker: ModelBaker,
+        camera: ResolvedCamera,
     ): List<SceneTriangle>? {
         val blockState =
             entity.special
@@ -329,13 +609,257 @@ internal class SceneBuilder(
         }
         val rendered = entity.renderPosition()
         val base = BlockPos(floor(rendered.x).toInt(), floor(rendered.y).toInt(), floor(rendered.z).toInt())
-        val delta = Vec3(rendered.x - base.x, rendered.y - base.y, rendered.z - base.z)
-        val transformation = entity.renderTransformation()
-        val rotation = entity.renderRotation()
-        val pivot = Vec3(rendered.x, rendered.y, rendered.z)
-        return modelBaker.bake(RenderBlock(base, id, properties)).map { triangle ->
-            triangle.transform(pivot, delta, transformation, rotation)
+        val localBase = Vec3(base.x.toDouble(), base.y.toDouble(), base.z.toDouble())
+        val content =
+            modelBaker.bake(RenderBlock(base, id, properties)).map { triangle ->
+                transformDisplayTriangle(triangle, entity, camera, localBase)
+            }
+        return displayShadow(entity) + content
+    }
+
+    private fun doubleSidedPlane(
+        width: Double,
+        height: Double,
+        texture: TextureData,
+    ): List<SceneTriangle> {
+        val left = -width / 2.0
+        val right = width / 2.0
+        val bottom = -height / 2.0
+        val top = height / 2.0
+        val front =
+            listOf(
+                SceneTriangle(
+                    SceneVertex(Vec3(left, bottom, 0.0), UV[0]),
+                    SceneVertex(Vec3(right, top, 0.0), UV[2]),
+                    SceneVertex(Vec3(left, top, 0.0), UV[3]),
+                    texture,
+                ),
+                SceneTriangle(
+                    SceneVertex(Vec3(left, bottom, 0.0), UV[0]),
+                    SceneVertex(Vec3(right, bottom, 0.0), UV[1]),
+                    SceneVertex(Vec3(right, top, 0.0), UV[2]),
+                    texture,
+                ),
+            )
+        return front + front.map { triangle -> SceneTriangle(triangle.c, triangle.b, triangle.a, triangle.texture) }
+    }
+
+    private fun generatedItemMesh(texture: TextureData): List<SceneTriangle> {
+        val depth = 1.0 / 16.0
+        val frontZ = depth / 2.0
+        val backZ = -frontZ
+        val triangles = mutableListOf<SceneTriangle>()
+        triangles +=
+            itemFace(
+                listOf(
+                    Vec3(-0.5, -0.5, frontZ),
+                    Vec3(0.5, -0.5, frontZ),
+                    Vec3(0.5, 0.5, frontZ),
+                    Vec3(-0.5, 0.5, frontZ),
+                ),
+                texture,
+            )
+        triangles +=
+            itemFace(
+                listOf(
+                    Vec3(0.5, -0.5, backZ),
+                    Vec3(-0.5, -0.5, backZ),
+                    Vec3(-0.5, 0.5, backZ),
+                    Vec3(0.5, 0.5, backZ),
+                ),
+                texture,
+            )
+        val gridWidth = texture.width.coerceAtMost(MAX_ITEM_SPRITE_GRID)
+        val gridHeight = texture.height.coerceAtMost(MAX_ITEM_SPRITE_GRID)
+
+        fun opaque(x: Int, y: Int): Boolean {
+            if (x !in 0 until gridWidth || y !in 0 until gridHeight) return false
+            val sourceX = x * texture.width / gridWidth
+            val sourceY = y * texture.height / gridHeight
+            return texture.pixels[sourceY * texture.width + sourceX] ushr 24 != 0
         }
+        for (y in 0 until gridHeight) {
+            for (x in 0 until gridWidth) {
+                if (!opaque(x, y)) continue
+                val left = -0.5 + x.toDouble() / gridWidth
+                val right = -0.5 + (x + 1.0) / gridWidth
+                val top = 0.5 - y.toDouble() / gridHeight
+                val bottom = 0.5 - (y + 1.0) / gridHeight
+                val uv = Vec2((x + 0.5) / gridWidth, (y + 0.5) / gridHeight)
+                if (!opaque(x - 1, y)) {
+                    triangles +=
+                        sideQuad(
+                            listOf(Vec3(left, bottom, backZ), Vec3(left, bottom, frontZ), Vec3(left, top, frontZ), Vec3(left, top, backZ)),
+                            uv,
+                            texture,
+                        )
+                }
+                if (!opaque(x + 1, y)) {
+                    triangles +=
+                        sideQuad(
+                            listOf(Vec3(right, bottom, frontZ), Vec3(right, bottom, backZ), Vec3(right, top, backZ), Vec3(right, top, frontZ)),
+                            uv,
+                            texture,
+                        )
+                }
+                if (!opaque(x, y - 1)) {
+                    triangles +=
+                        sideQuad(
+                            listOf(Vec3(left, top, frontZ), Vec3(right, top, frontZ), Vec3(right, top, backZ), Vec3(left, top, backZ)),
+                            uv,
+                            texture,
+                        )
+                }
+                if (!opaque(x, y + 1)) {
+                    triangles +=
+                        sideQuad(
+                            listOf(Vec3(left, bottom, backZ), Vec3(right, bottom, backZ), Vec3(right, bottom, frontZ), Vec3(left, bottom, frontZ)),
+                            uv,
+                            texture,
+                        )
+                }
+            }
+        }
+        return triangles
+    }
+
+    private fun itemFace(
+        points: List<Vec3>,
+        texture: TextureData,
+    ): List<SceneTriangle> =
+        listOf(
+            SceneTriangle(SceneVertex(points[0], UV[0]), SceneVertex(points[1], UV[1]), SceneVertex(points[2], UV[2]), texture),
+            SceneTriangle(SceneVertex(points[0], UV[0]), SceneVertex(points[2], UV[2]), SceneVertex(points[3], UV[3]), texture),
+        )
+
+    private fun sideQuad(
+        points: List<Vec3>,
+        uv: Vec2,
+        texture: TextureData,
+    ): List<SceneTriangle> {
+        val vertices = points.map { SceneVertex(it, uv) }
+        return listOf(
+            SceneTriangle(vertices[0], vertices[1], vertices[2], texture),
+            SceneTriangle(vertices[0], vertices[2], vertices[3], texture),
+        )
+    }
+
+    private fun displayShadow(entity: RenderEntity): List<SceneTriangle> {
+        val radius = entity.special?.get("shadowRadius")?.asDouble ?: entity.nbt.get("shadow_radius")?.asDouble ?: 0.0
+        val strength = entity.special?.get("shadowStrength")?.asDouble ?: entity.nbt.get("shadow_strength")?.asDouble ?: 1.0
+        if (radius <= 0.0 || strength <= 0.0) return emptyList()
+        val texture =
+            displayTextures.getOrPut("shadow:${(strength * 1000).toInt()}") {
+                val size = 16
+                val alpha = (strength.coerceIn(0.0, 1.0) * 150).toInt()
+                val pixels =
+                    IntArray(size * size) { index ->
+                        val x = (index % size + 0.5 - size / 2.0) / (size / 2.0)
+                        val y = (index / size + 0.5 - size / 2.0) / (size / 2.0)
+                        ((1.0 - sqrt(x * x + y * y)).coerceIn(0.0, 1.0) * alpha).toInt() shl 24
+                    }
+                TextureData("display-shadow", size, size, pixels, MaterialPass.TRANSLUCENT)
+            }
+        val position = entity.renderPosition()
+        val y = position.y + 0.002
+        val points =
+            listOf(
+                Vec3(position.x - radius, y, position.z - radius),
+                Vec3(position.x - radius, y, position.z + radius),
+                Vec3(position.x + radius, y, position.z + radius),
+                Vec3(position.x + radius, y, position.z - radius),
+            )
+        return listOf(
+            SceneTriangle(SceneVertex(points[0], UV[0]), SceneVertex(points[1], UV[3]), SceneVertex(points[2], UV[2]), texture),
+            SceneTriangle(SceneVertex(points[0], UV[0]), SceneVertex(points[2], UV[2]), SceneVertex(points[3], UV[1]), texture),
+        )
+    }
+
+    private fun transformDisplayTriangle(
+        triangle: SceneTriangle,
+        entity: RenderEntity,
+        camera: ResolvedCamera,
+        localBase: Vec3,
+        contentTransformation: List<Double> = IDENTITY_MATRIX,
+    ): SceneTriangle {
+        val origin = entity.renderPosition()
+        val transformation = entity.renderTransformation()
+
+        fun vertex(value: SceneVertex): SceneVertex {
+            val local = value.position - localBase
+            val content = transform(contentTransformation, local)
+            val model = transform(transformation, content)
+            val oriented = orientDisplay(model, entity, camera)
+            return value.copy(position = origin + oriented)
+        }
+        return triangle
+            .copy(
+                a = vertex(triangle.a),
+                b = vertex(triangle.b),
+                c = vertex(triangle.c),
+            ).also { transformed ->
+                transformed.lightOverride = displayLight(entity)
+                transformed.seeThrough = triangle.seeThrough
+            }
+    }
+
+    private fun orientDisplay(
+        value: Vec3,
+        entity: RenderEntity,
+        camera: ResolvedCamera,
+    ): Vec3 {
+        val billboard =
+            entity.nbt
+                .get("billboard")
+                ?.takeIf { it.isJsonPrimitive }
+                ?.asString ?: "fixed"
+        val origin = entity.renderPosition()
+        val facing = (camera.position - origin).normalized()
+        val horizontalLength = sqrt(facing.x * facing.x + facing.z * facing.z)
+        val lookYaw = Math.toDegrees(atan2(facing.x, facing.z))
+        val lookPitch = -Math.toDegrees(atan2(facing.y, horizontalLength))
+        val renderedRotation = entity.renderRotation()
+        val yaw = if (billboard == "vertical" || billboard == "center") lookYaw else -renderedRotation.first
+        val pitch = if (billboard == "horizontal" || billboard == "center") lookPitch else renderedRotation.second
+        return value.rotateAround(Vec3.ZERO, 'x', pitch).rotateAround(Vec3.ZERO, 'y', yaw)
+    }
+
+    private fun displayLight(entity: RenderEntity): Double? {
+        val brightness =
+            entity.nbt
+                .get("brightness")
+                ?.takeIf { it.isJsonObject }
+                ?.asJsonObject ?: return null
+        val values = listOf("sky", "block").mapNotNull { key -> brightness.get(key)?.takeIf { it.isJsonPrimitive }?.asInt }
+        return values.maxOrNull()?.coerceIn(0, 15)?.div(15.0)
+    }
+
+    private fun itemDisplayTransformation(
+        context: String,
+        model: ItemTransform?,
+    ): List<Double> {
+        val transform =
+            model ?: when (context) {
+                "ground" -> ItemTransform(Vec3(0.0, 0.125, 0.0), Vec3(90.0, 0.0, 0.0), Vec3(0.5, 0.5, 0.5))
+                "head" -> ItemTransform(Vec3(0.0, 0.25, 0.0), Vec3(0.0, 180.0, 0.0), Vec3(0.625, 0.625, 0.625))
+                "gui" -> ItemTransform(Vec3.ZERO, Vec3(30.0, 225.0, 0.0), Vec3(0.625, 0.625, 0.625))
+                "fixed" -> ItemTransform(Vec3.ZERO, Vec3(0.0, 180.0, 0.0), Vec3(0.5, 0.5, 0.5))
+                "thirdperson_lefthand" -> ItemTransform(Vec3(0.0, 0.1875, 0.0), Vec3(75.0, 45.0, 0.0), Vec3(0.55, 0.55, 0.55))
+                "thirdperson_righthand" -> ItemTransform(Vec3(0.0, 0.1875, 0.0), Vec3(75.0, -45.0, 0.0), Vec3(0.55, 0.55, 0.55))
+                "firstperson_lefthand" -> ItemTransform(Vec3(0.1, 0.0, 0.0), Vec3(0.0, 225.0, 0.0), Vec3(0.68, 0.68, 0.68))
+                "firstperson_righthand" -> ItemTransform(Vec3(-0.1, 0.0, 0.0), Vec3(0.0, 135.0, 0.0), Vec3(0.68, 0.68, 0.68))
+                else -> ItemTransform(Vec3.ZERO, Vec3.ZERO, Vec3(1.0, 1.0, 1.0))
+            }
+        return multiplyMatrices(
+            translationMatrix(transform.translation),
+            multiplyMatrices(
+                rotationZMatrix(transform.rotation.z),
+                multiplyMatrices(
+                    rotationYMatrix(transform.rotation.y),
+                    multiplyMatrices(rotationXMatrix(transform.rotation.x), scaleMatrix(transform.scale)),
+                ),
+            ),
+        )
     }
 
     private fun cuboid(
@@ -520,6 +1044,80 @@ internal class SceneBuilder(
             1.0,
         )
 
+    private fun scaleMatrix(value: Double): List<Double> = scaleMatrix(Vec3(value, value, value))
+
+    private fun rotationXMatrix(degrees: Double): List<Double> {
+        val radians = Math.toRadians(degrees)
+        val c = cos(radians)
+        val s = sin(radians)
+        return listOf(
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            c,
+            -s,
+            0.0,
+            0.0,
+            s,
+            c,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+        )
+    }
+
+    private fun rotationYMatrix(degrees: Double): List<Double> {
+        val radians = Math.toRadians(degrees)
+        val c = cos(radians)
+        val s = sin(radians)
+        return listOf(
+            c,
+            0.0,
+            s,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            -s,
+            0.0,
+            c,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+        )
+    }
+
+    private fun rotationZMatrix(degrees: Double): List<Double> {
+        val radians = Math.toRadians(degrees)
+        val c = cos(radians)
+        val s = sin(radians)
+        return listOf(
+            c,
+            -s,
+            0.0,
+            0.0,
+            s,
+            c,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+        )
+    }
+
     private fun rotationMatrix(raw: List<Double>): List<Double> {
         val length = kotlin.math.sqrt(raw.sumOf { it * it })
         val q = if (length <= 1e-12) IDENTITY_QUATERNION else raw.map { it / length }
@@ -575,13 +1173,31 @@ internal class SceneBuilder(
             else -> 0.6
         }
 
+    private data class ItemTransform(
+        val translation: Vec3,
+        val rotation: Vec3,
+        val scale: Vec3,
+    )
+
+    private data class ItemRenderAsset(
+        val texture: TextureData,
+        val transform: ItemTransform?,
+    )
+
+    private data class ResolvedItemModel(
+        val textures: Map<String, String> = emptyMap(),
+        val displays: Map<String, JsonObject> = emptyMap(),
+    )
+
     companion object {
         private const val OVERWORLD = "minecraft:overworld"
         private const val PLAYER_EYE_HEIGHT = 1.62
         private const val BLOCK_BOUNDING_RADIUS = 0.8660254037844386
+        private const val MAX_ITEM_SPRITE_GRID = 64
+        private const val TEXT_PIXELS_PER_BLOCK = 40.0
         private val HIDDEN_ENTITIES = setOf("minecraft:marker", "minecraft:interaction")
         private val HUMANOID_ENTITIES = setOf("player", "zombie", "skeleton")
-        private val MODELED_ENTITIES = HUMANOID_ENTITIES + "block_display"
+        private val MODELED_ENTITIES = HUMANOID_ENTITIES + setOf("block_display", "item_display", "text_display")
         private val DIRECTIONS = listOf("west", "east", "down", "up", "north", "south")
         private val UV = listOf(Vec2(0.0, 1.0), Vec2(1.0, 1.0), Vec2(1.0, 0.0), Vec2(0.0, 0.0))
         private val IDENTITY_QUATERNION = listOf(0.0, 0.0, 0.0, 1.0)
@@ -603,6 +1219,25 @@ internal class SceneBuilder(
                 0.0,
                 0.0,
                 1.0,
+            )
+        private val TEXT_COLORS =
+            mapOf(
+                "black" to 0xff000000.toInt(),
+                "dark_blue" to 0xff0000aa.toInt(),
+                "dark_green" to 0xff00aa00.toInt(),
+                "dark_aqua" to 0xff00aaaa.toInt(),
+                "dark_red" to 0xffaa0000.toInt(),
+                "dark_purple" to 0xffaa00aa.toInt(),
+                "gold" to 0xffffaa00.toInt(),
+                "gray" to 0xffaaaaaa.toInt(),
+                "dark_gray" to 0xff555555.toInt(),
+                "blue" to 0xff5555ff.toInt(),
+                "green" to 0xff55ff55.toInt(),
+                "aqua" to 0xff55ffff.toInt(),
+                "red" to 0xffff5555.toInt(),
+                "light_purple" to 0xffff55ff.toInt(),
+                "yellow" to 0xffffff55.toInt(),
+                "white" to 0xffffffff.toInt(),
             )
     }
 }

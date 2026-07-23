@@ -170,7 +170,7 @@ Special-entity NBT is modeled in every built-in profile from `1.20.4` through
 
 | Entity | Modeled state and behavior |
 |---|---|
-| `block_display`, `item_display`, `text_display` | Validates content and common display fields, accepts decomposed or 16-number transformations, interpolates the grouped transformation/shadow/text-style state over ticks, and interpolates rendered position/rotation for `teleport_duration`. The logical position used by commands changes immediately. |
+| `block_display`, `item_display`, `text_display` | Validates content and common display fields and accepts decomposed or 16-number transformations. Decomposed translation/scale use linear interpolation and left/right quaternions use normalized shortest-arc SLERP; matrix inputs use component-wise linear interpolation. Grouped shadow/text-style state advances over ticks, while `teleport_duration` linearly interpolates the rendered pose. The logical position used by commands changes immediately. |
 | `armor_stand` | Validates and stores `Pose`, `Marker`, `Small`, `ShowArms`, `NoBasePlate`, `Invisible`, and `DisabledSlots`; snapshots expose the effective pose and normal/small/marker hitbox. Marker-mode stands reject targeted attacks/interactions and damage. |
 | `marker` | Stores arbitrary compound `data`, remains selectable as a logic anchor, exposes a zero-sized non-interactable hitbox, and rejects damage. |
 | `interaction` | Validates `width`, `height`, `response`, `attack`, and `interaction`; targeted player events record UUID/timestamp actions, expose hitbox/response metadata, and feed `execute on target` / `execute on attacker`. |

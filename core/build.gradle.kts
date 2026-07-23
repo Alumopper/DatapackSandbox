@@ -25,4 +25,5 @@ dependencies {
 
     testImplementation(kotlin("test"))
     testImplementation("org.junit.jupiter:junit-jupiter:6.1.0")
+    testImplementation(project(":runtime-engine"))
 }

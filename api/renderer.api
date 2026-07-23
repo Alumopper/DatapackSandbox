@@ -46,6 +46,110 @@ public final class moe.afox.dpsandbox.render.AssetResolverKt {
   public static final java.lang.String normalizeResourceId(java.lang.String);
   public static final java.lang.String access$normalizeAssetKey(java.lang.String);
 }
+public final class moe.afox.dpsandbox.render.CompiledRealtimeGpuScene {
+  public static final moe.afox.dpsandbox.render.CompiledRealtimeGpuScene$Companion Companion;
+  public static final int FLOATS_PER_VERTEX;
+  public moe.afox.dpsandbox.render.CompiledRealtimeGpuScene(moe.afox.dpsandbox.render.RealtimeGpuSceneSection, moe.afox.dpsandbox.render.RealtimeGpuSceneSection, moe.afox.dpsandbox.render.RealtimeGpuTextureAtlas, moe.afox.dpsandbox.render.RealtimeRenderCamera, moe.afox.dpsandbox.core.Position, moe.afox.dpsandbox.core.Position, int, int, long, int);
+  public moe.afox.dpsandbox.render.CompiledRealtimeGpuScene(moe.afox.dpsandbox.render.RealtimeGpuSceneSection, moe.afox.dpsandbox.render.RealtimeGpuSceneSection, moe.afox.dpsandbox.render.RealtimeGpuTextureAtlas, moe.afox.dpsandbox.render.RealtimeRenderCamera, moe.afox.dpsandbox.core.Position, moe.afox.dpsandbox.core.Position, int, int, long, int, int, kotlin.jvm.internal.DefaultConstructorMarker);
+  public final moe.afox.dpsandbox.render.RealtimeGpuSceneSection getBlocks();
+  public final moe.afox.dpsandbox.render.RealtimeGpuSceneSection getEntities();
+  public final moe.afox.dpsandbox.render.RealtimeGpuTextureAtlas getAtlas();
+  public final moe.afox.dpsandbox.render.RealtimeRenderCamera getSuggestedCamera();
+  public final moe.afox.dpsandbox.core.Position getBoundsMinimum();
+  public final moe.afox.dpsandbox.core.Position getBoundsMaximum();
+  public final int getVisibleBlocks();
+  public final int getVisibleEntities();
+  public final long getGameTime();
+  public final int getVertexStride();
+  public final moe.afox.dpsandbox.render.RealtimeGpuSceneSection component1();
+  public final moe.afox.dpsandbox.render.RealtimeGpuSceneSection component2();
+  public final moe.afox.dpsandbox.render.RealtimeGpuTextureAtlas component3();
+  public final moe.afox.dpsandbox.render.RealtimeRenderCamera component4();
+  public final moe.afox.dpsandbox.core.Position component5();
+  public final moe.afox.dpsandbox.core.Position component6();
+  public final int component7();
+  public final int component8();
+  public final long component9();
+  public final int component10();
+  public final moe.afox.dpsandbox.render.CompiledRealtimeGpuScene copy(moe.afox.dpsandbox.render.RealtimeGpuSceneSection, moe.afox.dpsandbox.render.RealtimeGpuSceneSection, moe.afox.dpsandbox.render.RealtimeGpuTextureAtlas, moe.afox.dpsandbox.render.RealtimeRenderCamera, moe.afox.dpsandbox.core.Position, moe.afox.dpsandbox.core.Position, int, int, long, int);
+  public static moe.afox.dpsandbox.render.CompiledRealtimeGpuScene copy$default(moe.afox.dpsandbox.render.CompiledRealtimeGpuScene, moe.afox.dpsandbox.render.RealtimeGpuSceneSection, moe.afox.dpsandbox.render.RealtimeGpuSceneSection, moe.afox.dpsandbox.render.RealtimeGpuTextureAtlas, moe.afox.dpsandbox.render.RealtimeRenderCamera, moe.afox.dpsandbox.core.Position, moe.afox.dpsandbox.core.Position, int, int, long, int, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+}
+public final class moe.afox.dpsandbox.render.CompiledRealtimeGpuScene$Companion {
+  public moe.afox.dpsandbox.render.CompiledRealtimeGpuScene$Companion(kotlin.jvm.internal.DefaultConstructorMarker);
+}
+public final class moe.afox.dpsandbox.render.CompiledRealtimeScene {
+  public moe.afox.dpsandbox.render.CompiledRealtimeScene(moe.afox.dpsandbox.render.WorldView, moe.afox.dpsandbox.render.RenderScene, moe.afox.dpsandbox.render.RealtimeRenderCamera, int, int, int, moe.afox.dpsandbox.core.Position, moe.afox.dpsandbox.core.Position);
+  public final moe.afox.dpsandbox.render.WorldView getView$moe_afox_dpsandbox_renderer();
+  public final moe.afox.dpsandbox.render.RenderScene getScene$moe_afox_dpsandbox_renderer();
+  public final moe.afox.dpsandbox.render.RealtimeRenderCamera getSuggestedCamera();
+  public final int getVisibleBlocks();
+  public final int getVisibleEntities();
+  public final int getTriangles();
+  public final moe.afox.dpsandbox.core.Position getBoundsMinimum();
+  public final moe.afox.dpsandbox.core.Position getBoundsMaximum();
+}
+public final class moe.afox.dpsandbox.render.GifAnimationFrame {
+  public moe.afox.dpsandbox.render.GifAnimationFrame(moe.afox.dpsandbox.render.RenderedFrame, int);
+  public moe.afox.dpsandbox.render.GifAnimationFrame(moe.afox.dpsandbox.render.RenderedFrame, int, int, kotlin.jvm.internal.DefaultConstructorMarker);
+  public final moe.afox.dpsandbox.render.RenderedFrame getFrame();
+  public final int getDelayMillis();
+  public final moe.afox.dpsandbox.render.RenderedFrame component1();
+  public final int component2();
+  public final moe.afox.dpsandbox.render.GifAnimationFrame copy(moe.afox.dpsandbox.render.RenderedFrame, int);
+  public static moe.afox.dpsandbox.render.GifAnimationFrame copy$default(moe.afox.dpsandbox.render.GifAnimationFrame, moe.afox.dpsandbox.render.RenderedFrame, int, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+}
+public final class moe.afox.dpsandbox.render.GifRenderApiKt {
+  public static final moe.afox.dpsandbox.render.RenderedAnimation encodeGif(java.util.List<moe.afox.dpsandbox.render.GifAnimationFrame>, int);
+  public static moe.afox.dpsandbox.render.RenderedAnimation encodeGif$default(java.util.List, int, int, java.lang.Object);
+  public static final moe.afox.dpsandbox.render.RenderedAnimation encodeGif(java.util.List<moe.afox.dpsandbox.render.GifAnimationFrame>);
+}
+public final class moe.afox.dpsandbox.render.JvmGpuSceneCompiler {
+  public static final moe.afox.dpsandbox.render.JvmGpuSceneCompiler$Companion Companion;
+  public moe.afox.dpsandbox.render.JvmGpuSceneCompiler(moe.afox.dpsandbox.render.RenderAssets, java.util.Map<java.lang.String, byte[]>);
+  public final moe.afox.dpsandbox.render.CompiledRealtimeGpuScene compile(moe.afox.dpsandbox.core.DatapackSandbox, moe.afox.dpsandbox.render.RenderRequest);
+}
+final class moe.afox.dpsandbox.render.JvmGpuSceneCompiler$AtlasLayout {
+  public moe.afox.dpsandbox.render.JvmGpuSceneCompiler$AtlasLayout(moe.afox.dpsandbox.render.RealtimeGpuTextureAtlas, java.util.Map<java.lang.String, moe.afox.dpsandbox.render.JvmGpuSceneCompiler$Placement>, int);
+  public final moe.afox.dpsandbox.render.RealtimeGpuTextureAtlas getTexture();
+  public final java.util.Map<java.lang.String, moe.afox.dpsandbox.render.JvmGpuSceneCompiler$Placement> getPlacements();
+  public final int getGeometryKey();
+  public final moe.afox.dpsandbox.render.RealtimeGpuTextureAtlas component1();
+  public final java.util.Map<java.lang.String, moe.afox.dpsandbox.render.JvmGpuSceneCompiler$Placement> component2();
+  public final int component3();
+  public final moe.afox.dpsandbox.render.JvmGpuSceneCompiler$AtlasLayout copy(moe.afox.dpsandbox.render.RealtimeGpuTextureAtlas, java.util.Map<java.lang.String, moe.afox.dpsandbox.render.JvmGpuSceneCompiler$Placement>, int);
+  public static moe.afox.dpsandbox.render.JvmGpuSceneCompiler$AtlasLayout copy$default(moe.afox.dpsandbox.render.JvmGpuSceneCompiler$AtlasLayout, moe.afox.dpsandbox.render.RealtimeGpuTextureAtlas, java.util.Map, int, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+}
+public final class moe.afox.dpsandbox.render.JvmGpuSceneCompiler$Companion {
+  public moe.afox.dpsandbox.render.JvmGpuSceneCompiler$Companion(kotlin.jvm.internal.DefaultConstructorMarker);
+}
+final class moe.afox.dpsandbox.render.JvmGpuSceneCompiler$Placement {
+  public moe.afox.dpsandbox.render.JvmGpuSceneCompiler$Placement(int, int, int, int);
+  public final int getX();
+  public final int getY();
+  public final int getWidth();
+  public final int getHeight();
+  public final int component1();
+  public final int component2();
+  public final int component3();
+  public final int component4();
+  public final moe.afox.dpsandbox.render.JvmGpuSceneCompiler$Placement copy(int, int, int, int);
+  public static moe.afox.dpsandbox.render.JvmGpuSceneCompiler$Placement copy$default(moe.afox.dpsandbox.render.JvmGpuSceneCompiler$Placement, int, int, int, int, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+}
+public final class moe.afox.dpsandbox.render.JvmGpuSceneCompiler$WhenMappings {
+  public static final int[] $EnumSwitchMapping$0;
+}
 public final class moe.afox.dpsandbox.render.MaterialPass extends java.lang.Enum<moe.afox.dpsandbox.render.MaterialPass> {
   public static final moe.afox.dpsandbox.render.MaterialPass OPAQUE;
   public static final moe.afox.dpsandbox.render.MaterialPass CUTOUT;
@@ -160,6 +264,82 @@ public final class moe.afox.dpsandbox.render.ModelBakerKt {
 public final class moe.afox.dpsandbox.render.PngWriter {
   public static final moe.afox.dpsandbox.render.PngWriter INSTANCE;
   public final byte[] encode(int[], int, int);
+  public final byte[] decodeRgba(byte[]);
+}
+public final class moe.afox.dpsandbox.render.RealtimeGpuMaterialBatch {
+  public moe.afox.dpsandbox.render.RealtimeGpuMaterialBatch(java.lang.String, int, int, boolean);
+  public final java.lang.String getPass();
+  public final int getIndexOffset();
+  public final int getIndexCount();
+  public final boolean getSeeThrough();
+  public final java.lang.String component1();
+  public final int component2();
+  public final int component3();
+  public final boolean component4();
+  public final moe.afox.dpsandbox.render.RealtimeGpuMaterialBatch copy(java.lang.String, int, int, boolean);
+  public static moe.afox.dpsandbox.render.RealtimeGpuMaterialBatch copy$default(moe.afox.dpsandbox.render.RealtimeGpuMaterialBatch, java.lang.String, int, int, boolean, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+}
+public final class moe.afox.dpsandbox.render.RealtimeGpuSceneSection {
+  public moe.afox.dpsandbox.render.RealtimeGpuSceneSection(float[], int[], java.util.List<moe.afox.dpsandbox.render.RealtimeGpuMaterialBatch>);
+  public final float[] getVertices();
+  public final int[] getIndices();
+  public final java.util.List<moe.afox.dpsandbox.render.RealtimeGpuMaterialBatch> getBatches();
+  public final float[] component1();
+  public final int[] component2();
+  public final java.util.List<moe.afox.dpsandbox.render.RealtimeGpuMaterialBatch> component3();
+  public final moe.afox.dpsandbox.render.RealtimeGpuSceneSection copy(float[], int[], java.util.List<moe.afox.dpsandbox.render.RealtimeGpuMaterialBatch>);
+  public static moe.afox.dpsandbox.render.RealtimeGpuSceneSection copy$default(moe.afox.dpsandbox.render.RealtimeGpuSceneSection, float[], int[], java.util.List, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+}
+public final class moe.afox.dpsandbox.render.RealtimeGpuTextureAtlas {
+  public moe.afox.dpsandbox.render.RealtimeGpuTextureAtlas(int, int, byte[]);
+  public final int getWidth();
+  public final int getHeight();
+  public final byte[] getRgba();
+  public final int component1();
+  public final int component2();
+  public final byte[] component3();
+  public final moe.afox.dpsandbox.render.RealtimeGpuTextureAtlas copy(int, int, byte[]);
+  public static moe.afox.dpsandbox.render.RealtimeGpuTextureAtlas copy$default(moe.afox.dpsandbox.render.RealtimeGpuTextureAtlas, int, int, byte[], int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+}
+public final class moe.afox.dpsandbox.render.RealtimeRenderCamera {
+  public moe.afox.dpsandbox.render.RealtimeRenderCamera(moe.afox.dpsandbox.core.Position, double, double, java.lang.String);
+  public moe.afox.dpsandbox.render.RealtimeRenderCamera(moe.afox.dpsandbox.core.Position, double, double, java.lang.String, int, kotlin.jvm.internal.DefaultConstructorMarker);
+  public final moe.afox.dpsandbox.core.Position getPosition();
+  public final double getYaw();
+  public final double getPitch();
+  public final java.lang.String getDimension();
+  public final moe.afox.dpsandbox.core.Position component1();
+  public final double component2();
+  public final double component3();
+  public final java.lang.String component4();
+  public final moe.afox.dpsandbox.render.RealtimeRenderCamera copy(moe.afox.dpsandbox.core.Position, double, double, java.lang.String);
+  public static moe.afox.dpsandbox.render.RealtimeRenderCamera copy$default(moe.afox.dpsandbox.render.RealtimeRenderCamera, moe.afox.dpsandbox.core.Position, double, double, java.lang.String, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+}
+public final class moe.afox.dpsandbox.render.RealtimeRenderedFrame {
+  public moe.afox.dpsandbox.render.RealtimeRenderedFrame(java.awt.image.BufferedImage, long, int);
+  public final java.awt.image.BufferedImage getImage();
+  public final long getRenderNanos();
+  public final int getTriangles();
+  public final java.awt.image.BufferedImage component1();
+  public final long component2();
+  public final int component3();
+  public final moe.afox.dpsandbox.render.RealtimeRenderedFrame copy(java.awt.image.BufferedImage, long, int);
+  public static moe.afox.dpsandbox.render.RealtimeRenderedFrame copy$default(moe.afox.dpsandbox.render.RealtimeRenderedFrame, java.awt.image.BufferedImage, long, int, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
 }
 public final class moe.afox.dpsandbox.render.RenderAssets {
   public static final moe.afox.dpsandbox.render.RenderAssets$Companion Companion;
@@ -402,10 +582,22 @@ public final class moe.afox.dpsandbox.render.RenderScene {
   public int hashCode();
   public boolean equals(java.lang.Object);
 }
+public final class moe.afox.dpsandbox.render.RenderedAnimation {
+  public moe.afox.dpsandbox.render.RenderedAnimation(byte[], int, int, int, long, int);
+  public final int getWidth();
+  public final int getHeight();
+  public final int getFrameCount();
+  public final long getDurationMillis();
+  public final int getRepeat();
+  public final byte[] gifBytes();
+  public final void writeGif(java.nio.file.Path);
+}
 public final class moe.afox.dpsandbox.render.RenderedFrame {
-  public moe.afox.dpsandbox.render.RenderedFrame(byte[], moe.afox.dpsandbox.render.RenderMetadata);
+  public moe.afox.dpsandbox.render.RenderedFrame(byte[], byte[], moe.afox.dpsandbox.render.RenderMetadata);
   public final moe.afox.dpsandbox.render.RenderMetadata getMetadata();
+  public moe.afox.dpsandbox.render.RenderedFrame(byte[], moe.afox.dpsandbox.render.RenderMetadata);
   public final byte[] pngBytes();
+  public final byte[] rgbaBytes$moe_afox_dpsandbox_renderer();
   public final void writePng(java.nio.file.Path);
 }
 public final class moe.afox.dpsandbox.render.ResolvedCamera {
@@ -426,6 +618,43 @@ public final class moe.afox.dpsandbox.render.ResolvedCamera {
   public int hashCode();
   public boolean equals(java.lang.Object);
 }
+public final class moe.afox.dpsandbox.render.SandboxGifRecorder {
+  public moe.afox.dpsandbox.render.SandboxGifRecorder(moe.afox.dpsandbox.render.SandboxRenderer, moe.afox.dpsandbox.render.RenderRequest, int, int);
+  public moe.afox.dpsandbox.render.SandboxGifRecorder(moe.afox.dpsandbox.render.SandboxRenderer, moe.afox.dpsandbox.render.RenderRequest, int, int, int, kotlin.jvm.internal.DefaultConstructorMarker);
+  public final moe.afox.dpsandbox.render.SandboxRenderer getRenderer();
+  public final moe.afox.dpsandbox.render.RenderRequest getRequest();
+  public final int getFrameDelayMillis();
+  public final int getMaximumFrames();
+  public final int getFrameCount();
+  public final int capture(moe.afox.dpsandbox.core.DatapackSandbox);
+  public final moe.afox.dpsandbox.render.RenderedAnimation export(int);
+  public static moe.afox.dpsandbox.render.RenderedAnimation export$default(moe.afox.dpsandbox.render.SandboxGifRecorder, int, int, java.lang.Object);
+  public final void clear();
+  public moe.afox.dpsandbox.render.SandboxGifRecorder(moe.afox.dpsandbox.render.SandboxRenderer, moe.afox.dpsandbox.render.RenderRequest, int);
+  public moe.afox.dpsandbox.render.SandboxGifRecorder(moe.afox.dpsandbox.render.SandboxRenderer, moe.afox.dpsandbox.render.RenderRequest);
+  public moe.afox.dpsandbox.render.SandboxGifRecorder(moe.afox.dpsandbox.render.SandboxRenderer);
+  public moe.afox.dpsandbox.render.SandboxGifRecorder();
+  public final moe.afox.dpsandbox.render.RenderedAnimation export();
+}
+public final class moe.afox.dpsandbox.render.SandboxRealtimeRenderer {
+  public moe.afox.dpsandbox.render.SandboxRealtimeRenderer(moe.afox.dpsandbox.render.RenderAssets);
+  public final moe.afox.dpsandbox.render.RenderAssets getAssets();
+  public moe.afox.dpsandbox.render.SandboxRealtimeRenderer();
+  public final moe.afox.dpsandbox.render.CompiledRealtimeScene compile(moe.afox.dpsandbox.core.DatapackSandbox, moe.afox.dpsandbox.render.RenderRequest);
+  public static moe.afox.dpsandbox.render.CompiledRealtimeScene compile$default(moe.afox.dpsandbox.render.SandboxRealtimeRenderer, moe.afox.dpsandbox.core.DatapackSandbox, moe.afox.dpsandbox.render.RenderRequest, int, java.lang.Object);
+  public final moe.afox.dpsandbox.render.CompiledRealtimeGpuScene compileGpu(moe.afox.dpsandbox.core.DatapackSandbox, moe.afox.dpsandbox.render.RenderRequest);
+  public static moe.afox.dpsandbox.render.CompiledRealtimeGpuScene compileGpu$default(moe.afox.dpsandbox.render.SandboxRealtimeRenderer, moe.afox.dpsandbox.core.DatapackSandbox, moe.afox.dpsandbox.render.RenderRequest, int, java.lang.Object);
+  public final moe.afox.dpsandbox.render.RealtimeRenderedFrame render(moe.afox.dpsandbox.render.CompiledRealtimeScene, moe.afox.dpsandbox.render.RealtimeRenderCamera, int, int, double, double, boolean);
+  public static moe.afox.dpsandbox.render.RealtimeRenderedFrame render$default(moe.afox.dpsandbox.render.SandboxRealtimeRenderer, moe.afox.dpsandbox.render.CompiledRealtimeScene, moe.afox.dpsandbox.render.RealtimeRenderCamera, int, int, double, double, boolean, int, java.lang.Object);
+  public final moe.afox.dpsandbox.render.CompiledRealtimeScene compile(moe.afox.dpsandbox.core.DatapackSandbox);
+  public final moe.afox.dpsandbox.render.CompiledRealtimeGpuScene compileGpu(moe.afox.dpsandbox.core.DatapackSandbox);
+  public final moe.afox.dpsandbox.render.RealtimeRenderedFrame render(moe.afox.dpsandbox.render.CompiledRealtimeScene, moe.afox.dpsandbox.render.RealtimeRenderCamera, int, int, double, double);
+  public final moe.afox.dpsandbox.render.RealtimeRenderedFrame render(moe.afox.dpsandbox.render.CompiledRealtimeScene, moe.afox.dpsandbox.render.RealtimeRenderCamera, int, int, double);
+  public final moe.afox.dpsandbox.render.RealtimeRenderedFrame render(moe.afox.dpsandbox.render.CompiledRealtimeScene, moe.afox.dpsandbox.render.RealtimeRenderCamera, int, int);
+  public final moe.afox.dpsandbox.render.RealtimeRenderedFrame render(moe.afox.dpsandbox.render.CompiledRealtimeScene, moe.afox.dpsandbox.render.RealtimeRenderCamera, int);
+  public final moe.afox.dpsandbox.render.RealtimeRenderedFrame render(moe.afox.dpsandbox.render.CompiledRealtimeScene, moe.afox.dpsandbox.render.RealtimeRenderCamera);
+  public final moe.afox.dpsandbox.render.RealtimeRenderedFrame render(moe.afox.dpsandbox.render.CompiledRealtimeScene);
+}
 public final class moe.afox.dpsandbox.render.SandboxRenderer {
   public moe.afox.dpsandbox.render.SandboxRenderer(moe.afox.dpsandbox.render.RenderAssets);
   public moe.afox.dpsandbox.render.SandboxRenderer(moe.afox.dpsandbox.render.RenderAssets, int, kotlin.jvm.internal.DefaultConstructorMarker);
@@ -438,10 +667,51 @@ public final class moe.afox.dpsandbox.render.SandboxRenderer {
 public final class moe.afox.dpsandbox.render.SceneBuilder {
   public static final moe.afox.dpsandbox.render.SceneBuilder$Companion Companion;
   public moe.afox.dpsandbox.render.SceneBuilder(moe.afox.dpsandbox.render.AssetResolver, java.util.List<moe.afox.dpsandbox.render.RenderDiagnostic>);
-  public final moe.afox.dpsandbox.render.RenderScene build(moe.afox.dpsandbox.render.WorldView, moe.afox.dpsandbox.render.RenderRequest);
+  public final moe.afox.dpsandbox.render.RenderScene build(moe.afox.dpsandbox.render.WorldView, moe.afox.dpsandbox.render.RenderRequest, boolean);
+  public static moe.afox.dpsandbox.render.RenderScene build$default(moe.afox.dpsandbox.render.SceneBuilder, moe.afox.dpsandbox.render.WorldView, moe.afox.dpsandbox.render.RenderRequest, boolean, int, java.lang.Object);
 }
 public final class moe.afox.dpsandbox.render.SceneBuilder$Companion {
   public moe.afox.dpsandbox.render.SceneBuilder$Companion(kotlin.jvm.internal.DefaultConstructorMarker);
+}
+final class moe.afox.dpsandbox.render.SceneBuilder$ItemRenderAsset {
+  public moe.afox.dpsandbox.render.SceneBuilder$ItemRenderAsset(moe.afox.dpsandbox.render.TextureData, moe.afox.dpsandbox.render.SceneBuilder$ItemTransform);
+  public final moe.afox.dpsandbox.render.TextureData getTexture();
+  public final moe.afox.dpsandbox.render.SceneBuilder$ItemTransform getTransform();
+  public final moe.afox.dpsandbox.render.TextureData component1();
+  public final moe.afox.dpsandbox.render.SceneBuilder$ItemTransform component2();
+  public final moe.afox.dpsandbox.render.SceneBuilder$ItemRenderAsset copy(moe.afox.dpsandbox.render.TextureData, moe.afox.dpsandbox.render.SceneBuilder$ItemTransform);
+  public static moe.afox.dpsandbox.render.SceneBuilder$ItemRenderAsset copy$default(moe.afox.dpsandbox.render.SceneBuilder$ItemRenderAsset, moe.afox.dpsandbox.render.TextureData, moe.afox.dpsandbox.render.SceneBuilder$ItemTransform, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+}
+final class moe.afox.dpsandbox.render.SceneBuilder$ItemTransform {
+  public moe.afox.dpsandbox.render.SceneBuilder$ItemTransform(moe.afox.dpsandbox.render.Vec3, moe.afox.dpsandbox.render.Vec3, moe.afox.dpsandbox.render.Vec3);
+  public final moe.afox.dpsandbox.render.Vec3 getTranslation();
+  public final moe.afox.dpsandbox.render.Vec3 getRotation();
+  public final moe.afox.dpsandbox.render.Vec3 getScale();
+  public final moe.afox.dpsandbox.render.Vec3 component1();
+  public final moe.afox.dpsandbox.render.Vec3 component2();
+  public final moe.afox.dpsandbox.render.Vec3 component3();
+  public final moe.afox.dpsandbox.render.SceneBuilder$ItemTransform copy(moe.afox.dpsandbox.render.Vec3, moe.afox.dpsandbox.render.Vec3, moe.afox.dpsandbox.render.Vec3);
+  public static moe.afox.dpsandbox.render.SceneBuilder$ItemTransform copy$default(moe.afox.dpsandbox.render.SceneBuilder$ItemTransform, moe.afox.dpsandbox.render.Vec3, moe.afox.dpsandbox.render.Vec3, moe.afox.dpsandbox.render.Vec3, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+}
+final class moe.afox.dpsandbox.render.SceneBuilder$ResolvedItemModel {
+  public moe.afox.dpsandbox.render.SceneBuilder$ResolvedItemModel(java.util.Map<java.lang.String, java.lang.String>, java.util.Map<java.lang.String, com.google.gson.JsonObject>);
+  public moe.afox.dpsandbox.render.SceneBuilder$ResolvedItemModel(java.util.Map, java.util.Map, int, kotlin.jvm.internal.DefaultConstructorMarker);
+  public final java.util.Map<java.lang.String, java.lang.String> getTextures();
+  public final java.util.Map<java.lang.String, com.google.gson.JsonObject> getDisplays();
+  public final java.util.Map<java.lang.String, java.lang.String> component1();
+  public final java.util.Map<java.lang.String, com.google.gson.JsonObject> component2();
+  public final moe.afox.dpsandbox.render.SceneBuilder$ResolvedItemModel copy(java.util.Map<java.lang.String, java.lang.String>, java.util.Map<java.lang.String, com.google.gson.JsonObject>);
+  public static moe.afox.dpsandbox.render.SceneBuilder$ResolvedItemModel copy$default(moe.afox.dpsandbox.render.SceneBuilder$ResolvedItemModel, java.util.Map, java.util.Map, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+  public moe.afox.dpsandbox.render.SceneBuilder$ResolvedItemModel();
 }
 public final class moe.afox.dpsandbox.render.SceneTriangle {
   public moe.afox.dpsandbox.render.SceneTriangle(moe.afox.dpsandbox.render.SceneVertex, moe.afox.dpsandbox.render.SceneVertex, moe.afox.dpsandbox.render.SceneVertex, moe.afox.dpsandbox.render.TextureData, int, boolean);
@@ -452,6 +722,10 @@ public final class moe.afox.dpsandbox.render.SceneTriangle {
   public final moe.afox.dpsandbox.render.TextureData getTexture();
   public final int getTint();
   public final boolean getEmissive();
+  public final java.lang.Double getLightOverride();
+  public final void setLightOverride(java.lang.Double);
+  public final boolean getSeeThrough();
+  public final void setSeeThrough(boolean);
   public final moe.afox.dpsandbox.render.Vec3 getNormal();
   public final moe.afox.dpsandbox.render.SceneVertex component1();
   public final moe.afox.dpsandbox.render.SceneVertex component2();

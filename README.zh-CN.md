@@ -4,7 +4,7 @@
 
 内置版本 profile 覆盖 Minecraft Java `1.20.4` 到 `26.2`，默认使用最新 profile `26.2`。项目不嵌入原版服务端运行时，也不分发 Mojang 服务端代码；构建时会使用公开的 `SpyglassMC/vanilla-mcdoc` 资料和官方 `@spyglassmc/mcdoc` 解析器生成 NBT schema，用于运行时校验。
 
-可选的 `renderer` 模块可以读取用户提供的 Minecraft 资产，把已建模世界输出为无窗口透视 PNG。原生 Jupyter Kernel 能连续运行 `mcfunction` 单元，并在单元下方直接显示命令输出、snapshot diff 和当前画面。参见[三维渲染与 Jupyter Kernel](docs/rendering-notebook.zh-CN.md)。
+可选的 `renderer` 模块可以读取用户提供的 Minecraft 资产，把已建模世界输出为无窗口透视 PNG。standalone JAR 还提供基于 GLFW/OpenGL 的 `viewport` JVM 桌面实时视窗，支持键盘和鼠标操作。原生 Jupyter Kernel 能连续运行 `mcfunction` 单元，并在单元下方直接显示命令输出、snapshot diff 和当前画面。参见[三维渲染与 Jupyter Kernel](docs/rendering-notebook.zh-CN.md)。
 
 ## 构建
 

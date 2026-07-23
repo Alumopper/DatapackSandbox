@@ -435,13 +435,68 @@ internal fun DatapackSandbox.executeParticle(
     command: String,
     tokens: List<CommandToken>,
     location: SourceLocation?,
+    context: ExecutionContext,
 ) {
     requireSize(tokens, 2, "particle <name> [pos] [delta] [speed] [count] [force|normal] [viewers]", location)
-    val payload = JsonObject()
-    payload.addProperty("particle", ResourceLocation.parse(tokens[1].text).toString())
-    payload.addProperty("arguments", CommandTokenizer.tailAfter(command, tokens[1]))
-    world.recordOutput("particle", "visual", emptyList(), tokens[1].text, payload)
+    if (tokens.size > 12) {
+        throw SandboxException(
+            DiagnosticCode.INPUT_FORMAT,
+            "Expected: particle <name> [pos] [delta] [speed] [count] [force|normal] [viewers]",
+            location,
+        )
+    }
+    if (tokens.size in 3..4 || tokens.size in 6..7) {
+        throw SandboxException(
+            DiagnosticCode.INPUT_FORMAT,
+            "Particle position and delta arguments must each contain three coordinates",
+            location,
+        )
+    }
+    val particle = ResourceLocation.parse(tokens[1].text)
+    val position = if (tokens.size >= 5) parsePosition(tokens, 2, context, location) else context.position
+    val deltaX = tokens.getOrNull(5)?.text?.let { parseDouble(it, "particle delta x", location) } ?: 0.0
+    val deltaY = tokens.getOrNull(6)?.text?.let { parseDouble(it, "particle delta y", location) } ?: 0.0
+    val deltaZ = tokens.getOrNull(7)?.text?.let { parseDouble(it, "particle delta z", location) } ?: 0.0
+    val speed = tokens.getOrNull(8)?.text?.let { parseDouble(it, "particle speed", location) } ?: 0.0
+    if (speed < 0.0) throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Particle speed must not be negative", location)
+    val requestedCount = tokens.getOrNull(9)?.text?.let { parseInt(it, "particle count", location) } ?: 0
+    if (requestedCount !in 0..MAX_VIEWPORT_PARTICLES_PER_COMMAND) {
+        throw SandboxException(
+            DiagnosticCode.INPUT_FORMAT,
+            "Particle count must be between 0 and $MAX_VIEWPORT_PARTICLES_PER_COMMAND",
+            location,
+        )
+    }
+    val mode = tokens.getOrNull(10)?.text ?: "normal"
+    if (mode !in setOf("normal", "force")) {
+        throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Particle mode must be 'normal' or 'force'", location)
+    }
+    val viewerSelector = tokens.getOrNull(11)?.text
+    val viewers = viewerSelector?.let { resolvePlayers(it, location, context).map { player -> player.name } }.orEmpty()
+    val payload =
+        JsonObject().also { json ->
+            json.addProperty("particle", particle.toString())
+            json.addProperty("arguments", CommandTokenizer.tailAfter(command, tokens[1]))
+            json.addProperty("x", position.x)
+            json.addProperty("y", position.y)
+            json.addProperty("z", position.z)
+            json.addProperty("deltaX", deltaX)
+            json.addProperty("deltaY", deltaY)
+            json.addProperty("deltaZ", deltaZ)
+            json.addProperty("speed", speed)
+            json.addProperty("count", requestedCount)
+            json.addProperty("renderCount", if (requestedCount == 0) 1 else requestedCount)
+            json.addProperty("mode", mode)
+            viewerSelector?.let { json.addProperty("viewerSelector", it) }
+            json.add(
+                "viewers",
+                JsonArray().also { array -> viewers.forEach(array::add) },
+            )
+        }
+    world.recordOutput("particle", "visual", viewers, particle.toString(), payload)
 }
+
+private const val MAX_VIEWPORT_PARTICLES_PER_COMMAND = 4_096
 
 internal fun DatapackSandbox.executeTransfer(
     command: String,

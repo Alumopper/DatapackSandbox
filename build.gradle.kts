@@ -6,6 +6,7 @@ import org.gradle.api.publish.maven.tasks.PublishToMavenRepository
 
 plugins {
     kotlin("jvm") version "2.4.0" apply false
+    kotlin("multiplatform") version "2.4.0" apply false
     id("org.jlleitschuh.gradle.ktlint") version "14.2.0" apply false
 }
 
@@ -102,6 +103,7 @@ subprojects {
 }
 
 val releaseModules = listOf("core", "renderer", "testkit", "manifest", "cli")
+val browserModules = listOf("runtime-engine", "renderer-engine", "browser-runtime")
 
 fun publicApiDump(module: String): String {
     val jar = project(":$module").layout.buildDirectory.file("libs/$module-${project.version}.jar").get().asFile
@@ -166,7 +168,7 @@ val apiCheck = tasks.register("apiCheck") {
 val architectureCheck = tasks.register("architectureCheck") {
     group = "verification"
     description = "Prevents Kotlin source files from growing back into unreviewable God files."
-    val sourceRoots = releaseModules.map { module -> project(":$module").layout.projectDirectory.dir("src") }
+    val sourceRoots = (releaseModules + browserModules).map { module -> project(":$module").layout.projectDirectory.dir("src") }
     inputs.files(sourceRoots)
     doLast {
         val maximumLines = 3_200
@@ -265,7 +267,9 @@ tasks.register("releaseCheck") {
         ":testkit:check",
         ":manifest:check",
         ":cli:check",
-        ":playground-api:check",
+        ":runtime-engine:check",
+        ":renderer-engine:check",
+        ":browser-runtime:check",
         ":schema-generator:check",
         apiCheck,
         architectureCheck,

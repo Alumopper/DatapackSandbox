@@ -305,6 +305,18 @@ export default defineConfigWithTheme<ThemeConfig>({
         return true
       })
       md.renderer.rules.playground_demo = () => '<ClientOnly><PlaygroundDemo /></ClientOnly>\n'
+      md.block.ruler.before('paragraph', 'cell-demo', (state, startLine, _endLine, silent) => {
+        const start = state.bMarks[startLine] + state.tShift[startLine]
+        const end = state.eMarks[startLine]
+        if (state.src.slice(start, end).trim() !== '[[cell-demo]]') return false
+        if (silent) return true
+
+        const token = state.push('cell_demo', '', 0)
+        token.map = [startLine, startLine + 1]
+        state.line = startLine + 1
+        return true
+      })
+      md.renderer.rules.cell_demo = () => '<ClientOnly><CellDemo /></ClientOnly>\n'
     },
   },
   rewrites: {

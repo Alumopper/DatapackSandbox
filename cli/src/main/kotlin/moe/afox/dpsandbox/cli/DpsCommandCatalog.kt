@@ -165,6 +165,9 @@ object DpsCommandCatalog {
             "save-off", "save-on", "stop" -> ""
             "setidletimeout" -> " <minutes>"
             "transfer" -> " <host> [port] [players]"
+            "tellraw" -> " <targets> <json-text>"
+            "title" -> " <targets> <clear|reset|title|subtitle|actionbar|times> ..."
+            "particle" -> " <name> [pos] [delta] [speed] [count] [force|normal] [viewers]"
             else ->
                 baseRootCommands
                     .firstOrNull { it.value == command }

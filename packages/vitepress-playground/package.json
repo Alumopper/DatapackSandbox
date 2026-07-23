@@ -1,7 +1,7 @@
 {
   "name": "@datapack-sandbox/vitepress-playground",
-  "version": "0.1.0",
-  "description": "Persistent MCFunction notebook cells for VitePress sites",
+  "version": "0.2.0",
+  "description": "Persistent, browser-only MCFunction notebook cells for VitePress sites",
   "type": "module",
   "sideEffects": [
     "**/*.css"
@@ -17,14 +17,20 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
+    "./cell": {
+      "types": "./dist/cell.d.ts",
+      "import": "./dist/cell.js"
+    },
     "./style.css": "./dist/style.css"
   },
   "scripts": {
-    "build": "vite build && vue-tsc --emitDeclarationOnly",
+    "prepare:worker": "node scripts/prepare-worker.mjs",
+    "check:size": "node scripts/check-worker-size.mjs",
+    "build": "npm run prepare:worker && vite build && vue-tsc --emitDeclarationOnly",
     "test": "vitest run",
     "test:e2e": "node tests/e2e/prepare.mjs && playwright test",
     "e2e:fixture": "vite --config tests/e2e/vite.config.ts",
-    "check": "vue-tsc --noEmit && vitest run && npm run build && npm pack --dry-run"
+    "check": "npm run prepare:worker && vue-tsc --noEmit && vitest run && vite build && npm run check:size && vue-tsc --emitDeclarationOnly && npm pack --dry-run"
   },
   "peerDependencies": {
     "vue": "^3.5.0"
@@ -37,6 +43,7 @@
     "@codemirror/view": "^6.38.6",
     "@lezer/highlight": "^1.2.3",
     "codemirror": "^6.0.2",
+    "fflate": "0.8.2",
     "markdown-it": "^14.1.0"
   },
   "devDependencies": {

@@ -1,57 +1,51 @@
 import { afterEach, vi } from 'vitest'
 
-export class MockWebSocket {
-  static readonly CONNECTING = 0
-  static readonly OPEN = 1
-  static readonly CLOSING = 2
-  static readonly CLOSED = 3
-  static instances: MockWebSocket[] = []
-  static failConnections = false
-  static responder: ((socket: MockWebSocket, request: Record<string, unknown>) => void) | undefined
+export class MockWorker {
+  static instances: MockWorker[] = []
+  static failRequests = false
+  static responder: ((worker: MockWorker, request: Record<string, unknown>) => void) | undefined
 
   readonly url: string
-  readyState = MockWebSocket.CONNECTING
-  onopen: ((event: Event) => void) | null = null
-  onerror: ((event: Event) => void) | null = null
   onmessage: ((event: MessageEvent) => void) | null = null
-  onclose: ((event: CloseEvent) => void) | null = null
+  onerror: ((event: ErrorEvent) => void) | null = null
+  onmessageerror: ((event: MessageEvent) => void) | null = null
+  terminated = false
 
-  constructor(url: string) {
-    this.url = url
-    MockWebSocket.instances.push(this)
-    queueMicrotask(() => {
-      if (MockWebSocket.failConnections) {
-        this.readyState = MockWebSocket.CLOSED
-        this.onerror?.(new Event('error'))
-      } else {
-        this.readyState = MockWebSocket.OPEN
-        this.onopen?.(new Event('open'))
-      }
-    })
+  constructor(url: string | URL) {
+    this.url = String(url)
+    MockWorker.instances.push(this)
   }
 
-  send(raw: string): void {
-    MockWebSocket.responder?.(this, JSON.parse(raw) as Record<string, unknown>)
+  postMessage(request: Record<string, unknown>): void {
+    if (this.terminated) return
+    if (MockWorker.failRequests) {
+      queueMicrotask(() => this.onerror?.(new ErrorEvent('error', { message: 'Worker failed to start' })))
+      return
+    }
+    MockWorker.responder?.(this, request)
   }
 
   emit(event: Record<string, unknown>): void {
-    this.onmessage?.(new MessageEvent('message', { data: JSON.stringify(event) }))
+    queueMicrotask(() => this.onmessage?.(new MessageEvent('message', { data: event })))
   }
 
-  close(): void {
-    if (this.readyState === MockWebSocket.CLOSED) return
-    this.readyState = MockWebSocket.CLOSED
-    this.onclose?.(new CloseEvent('close'))
+  terminate(): void {
+    this.terminated = true
   }
 }
 
+let blobSequence = 0
 Object.assign(globalThis, {
-  WebSocket: MockWebSocket,
+  Worker: MockWorker,
   ResizeObserver: class {
     observe() {}
     unobserve() {}
     disconnect() {}
   },
+})
+Object.assign(URL, {
+  createObjectURL: vi.fn(() => `blob:test-${++blobSequence}`),
+  revokeObjectURL: vi.fn(),
 })
 
 Object.assign(Range.prototype, {
@@ -60,8 +54,10 @@ Object.assign(Range.prototype, {
 })
 
 afterEach(() => {
-  MockWebSocket.instances = []
-  MockWebSocket.failConnections = false
-  MockWebSocket.responder = undefined
+  MockWorker.instances = []
+  MockWorker.failRequests = false
+  MockWorker.responder = undefined
+  blobSequence = 0
   vi.restoreAllMocks()
+  vi.unstubAllGlobals()
 })
