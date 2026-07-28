@@ -6,6 +6,8 @@
 
 The example above starts a new isolated Worker after the component mounts. User files are read into transferable `ArrayBuffer` values and are never uploaded or written to IndexedDB/OPFS. Refreshing the page discards the session.
 
+The Worker executes the same `:core` runtime used by the JVM CLI, compiled to an ES module with TeaVM. Commands, selectors, scoreboards, storage, entities, scheduling, player events, checkpoints, and snapshots therefore use one implementation on both targets. In-memory datapack imports build the same function, tag, predicate, loot table, advancement, recipe, item modifier, and observed JSON resource models. TeaVM and the generated Worker are build-time artifacts only; the deployed page remains pure frontend.
+
 ## Install
 
 ```bash
@@ -199,6 +201,12 @@ Playback starts paused. It advances display interpolation and world time at 20 T
 the page is hidden. Desktop controls are pointer-lock mouse look, WASD, Space, Shift, and wheel
 speed; touch devices get two joysticks. Input targets `Steve` by default and is recorded in traces
 and snapshots without adding vanilla physics.
+
+The toolbar settings panel adjusts mouse sensitivity, movement speed, and field of view. The same
+values can be supplied through `PlaygroundViewportOptions` as `mouseSensitivity`, `moveSpeed`, and
+`fieldOfView`. Automatic framing is one-shot, so display animation does not drag the camera; use
+**Reset view** to frame the current scene again. The sky follows world time and weather, matching
+the JVM viewport's overworld, Nether, and End shader semantics.
 
 The renderer is a separate lazy WebGL2 chunk. Scene revisions transfer independent static-block,
 entity, index, and atlas buffers; camera movement changes uniforms only. Context loss pauses

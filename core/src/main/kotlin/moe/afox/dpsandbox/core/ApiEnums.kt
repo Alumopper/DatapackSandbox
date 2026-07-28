@@ -16,6 +16,18 @@ enum class OutputChannel(
     WARNING("warning"),
 }
 
+/** Controls the amount of per-command trace data captured while executing a world. */
+enum class CommandTraceMode {
+    /** Records command metadata and full before/after snapshot diffs. */
+    FULL,
+
+    /** Records command metadata without building world snapshots. */
+    BASIC,
+
+    /** Disables command trace records and their snapshot overhead. */
+    OFF,
+}
+
 /**
  * Common vanilla command roots used by trace assertions.
  */

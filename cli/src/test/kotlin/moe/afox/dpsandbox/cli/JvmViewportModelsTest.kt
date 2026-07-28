@@ -1,5 +1,6 @@
 package moe.afox.dpsandbox.cli
 
+import moe.afox.dpsandbox.core.CommandTraceMode
 import moe.afox.dpsandbox.core.Position
 import moe.afox.dpsandbox.render.RealtimeRenderCamera
 import org.junit.jupiter.api.Test
@@ -37,6 +38,19 @@ class JvmViewportModelsTest {
     }
 
     @Test
+    fun `automatic framing is latched instead of following later scene updates`() {
+        val camera = JvmViewportCamera(initialSpeed = 6.0)
+        val initial = RealtimeRenderCamera(Position(1.0, 5.0, -8.0), yaw = 12.0, pitch = -6.0)
+        val movingEntityFrame = RealtimeRenderCamera(Position(20.0, 10.0, 30.0), yaw = 80.0, pitch = 15.0)
+
+        camera.reset(initial)
+        camera.applySuggested(movingEntityFrame)
+
+        assertEquals(initial, camera.snapshot())
+        assertFalse(camera.automatic)
+    }
+
+    @Test
     fun `viewport command editor applies selected completion`() {
         val editor = JvmViewportCommandEditor()
         editor.append("setb")
@@ -59,5 +73,7 @@ class JvmViewportModelsTest {
 
         assertEquals("26.2", sandbox.profile.id)
         assertTrue("Steve" in sandbox.world.players)
+        assertEquals(CommandTraceMode.OFF, sandbox.world.commandTraceMode)
+        assertEquals(Int.MAX_VALUE, sandbox.limits.maxCommands)
     }
 }

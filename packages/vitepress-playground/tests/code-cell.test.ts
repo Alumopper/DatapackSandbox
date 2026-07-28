@@ -1,4 +1,5 @@
 import { completionStatus, startCompletion } from '@codemirror/autocomplete'
+import { Transaction } from '@codemirror/state'
 import { EditorView } from '@codemirror/view'
 import { mount } from '@vue/test-utils'
 import { describe, expect, it, vi } from 'vitest'
@@ -31,6 +32,14 @@ describe('CodeCell', () => {
     startCompletion(view!)
     await vi.waitFor(() => expect(completionStatus(view!.state)).toBe('active'))
     await new Promise((resolve) => setTimeout(resolve, 80))
+    expect(complete).toHaveBeenCalledOnce()
+
+    view!.dispatch({
+      changes: { from: view!.state.doc.length, insert: 'b' },
+      annotations: Transaction.userEvent.of('input.type'),
+    })
+    await new Promise((resolve) => setTimeout(resolve, 220))
+    expect(complete).toHaveBeenCalledOnce()
 
     view!.contentDOM.dispatchEvent(new KeyboardEvent('keydown', {
       key: 'Tab',
@@ -41,6 +50,39 @@ describe('CodeCell', () => {
 
     await vi.waitFor(() => expect(view!.state.doc.toString()).toBe('setblock '))
     expect(wrapper.emitted('update:modelValue')?.at(-1)).toEqual(['setblock '])
+    wrapper.unmount()
+  })
+
+  it('checks user edits without checking the initial or externally replaced preset', async () => {
+    const check = vi.fn(async () => [])
+    const complete = vi.fn(async () => [])
+    const wrapper = mount(CodeCell, {
+      attachTo: document.body,
+      props: {
+        modelValue: 'say initial',
+        cellId: 'lint-gate',
+        readOnly: false,
+        disabled: false,
+        diagnostics: [],
+        complete,
+        check,
+      },
+    })
+    const view = EditorView.findFromDOM(wrapper.get('.cm-editor').element as HTMLElement)!
+    await new Promise((resolve) => setTimeout(resolve, 750))
+    expect(check).not.toHaveBeenCalled()
+
+    view.dispatch({
+      changes: { from: view.state.doc.length, insert: '!' },
+      annotations: Transaction.userEvent.of('input.type'),
+    })
+    await vi.waitFor(() => expect(check).toHaveBeenCalledOnce(), { timeout: 1_500 })
+
+    await wrapper.setProps({ modelValue: 'say preset ' })
+    check.mockClear()
+    await new Promise((resolve) => setTimeout(resolve, 750))
+    expect(check).not.toHaveBeenCalled()
+    expect(complete).not.toHaveBeenCalled()
     wrapper.unmount()
   })
 })

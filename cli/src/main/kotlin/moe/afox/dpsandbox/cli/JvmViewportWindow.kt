@@ -250,7 +250,7 @@ internal class JvmViewportWindow(
         pendingScene.getAndSet(null)?.let { update ->
             try {
                 currentScene = update.scene
-                if (update.forceResetCamera) camera.reset(update.scene.suggestedCamera) else camera.applySuggested(update.scene.suggestedCamera)
+                if (update.forceResetCamera) camera.reset(update.scene.suggestedCamera)
                 controller.updateCamera(camera.snapshot(), camera.automatic)
                 sceneRenderer.updateScene(update.scene, options.tickRate)
                 status =
@@ -941,10 +941,7 @@ internal class JvmViewportWindow(
     }
 
     private fun resetView() {
-        currentScene?.let { scene ->
-            camera.reset(scene.suggestedCamera)
-            controller.updateCamera(camera.snapshot(), camera.automatic)
-        }
+        if (currentScene != null) controller.updateCamera(camera.snapshot(), automatic = true)
     }
 
     private fun exportPng() {

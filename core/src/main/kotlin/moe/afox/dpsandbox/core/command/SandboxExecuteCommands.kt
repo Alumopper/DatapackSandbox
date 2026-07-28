@@ -21,6 +21,7 @@ import moe.afox.dpsandbox.core.SandboxBlock
 import moe.afox.dpsandbox.core.SandboxEntity
 import moe.afox.dpsandbox.core.SandboxException
 import moe.afox.dpsandbox.core.SandboxPlayer
+import moe.afox.dpsandbox.core.ScoreKey
 import moe.afox.dpsandbox.core.SourceLocation
 import moe.afox.dpsandbox.core.SpecialEntitySupport
 import moe.afox.dpsandbox.core.TagKey
@@ -176,22 +177,52 @@ internal fun DatapackSandbox.executeExecute(
             "store" -> {
                 val runIndex = tokens.indexOfFirst { it.text == "run" }
                 if (runIndex < 0) throw SandboxException(DiagnosticCode.INPUT_FORMAT, "execute store requires run", location)
-                val commandsBefore = commandsExecuted
-                val outputsBefore = world.outputs.size
+                val storeIndices = mutableListOf<Int>()
+                var storeIndex = index
+                while (storeIndex < runIndex) {
+                    if (tokens.getOrNull(storeIndex)?.text != "store") {
+                        throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Expected another execute store clause or run", location)
+                    }
+                    requireIndex(tokens, storeIndex + 2, "execute store <result|success> <target> ...", location)
+                    storeIndices += storeIndex + 1
+                    storeIndex +=
+                        when (tokens[storeIndex + 2].text) {
+                            "score", "bossbar" -> 5
+                            "storage", "entity" -> 7
+                            "block" -> 9
+                            else ->
+                                throw SandboxException(
+                                    DiagnosticCode.INPUT_FORMAT,
+                                    "Unsupported execute store target '${tokens[storeIndex + 2].text}'",
+                                    location,
+                                )
+                        }
+                }
+                if (storeIndex != runIndex) {
+                    throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Malformed execute store clause", location)
+                }
                 val rest = CommandTokenizer.tailAfter(command, tokens[runIndex])
-                lastFunctionReturnValue = null
-                val commandSuccess = contexts.map { executeOne(rest, location, it) }.any { it }
-                val commandsRun = (commandsExecuted - commandsBefore).coerceAtLeast(0)
-                val stored =
-                    executeStoreValue(
-                        tokens.getOrNull(index + 1)?.text ?: "result",
-                        commandsRun,
-                        outputsBefore,
-                        lastFunctionReturnValue,
-                        commandSuccess,
-                    )
-                storeExecuteValue(tokens, index + 1, stored, location, contexts.firstOrNull() ?: context)
-                return commandSuccess
+                var anySuccess = false
+                contexts.forEach { storeContext ->
+                    val commandsBefore = commandsExecuted
+                    val outputsBefore = world.outputs.size
+                    lastFunctionReturnValue = null
+                    val commandSuccess = executeOne(rest, location, storeContext)
+                    val commandsRun = (commandsExecuted - commandsBefore).coerceAtLeast(0)
+                    storeIndices.forEach { valueIndex ->
+                        val stored =
+                            executeStoreValue(
+                                tokens[valueIndex].text,
+                                commandsRun,
+                                outputsBefore,
+                                lastFunctionReturnValue,
+                                commandSuccess,
+                            )
+                        storeExecuteValue(tokens, valueIndex, stored, location, storeContext)
+                    }
+                    anySuccess = anySuccess || commandSuccess
+                }
+                return anySuccess
             }
             "if", "unless" -> {
                 val positive = tokens[index].text == "if"
@@ -220,7 +251,7 @@ internal fun DatapackSandbox.evaluateCondition(
             requireIndex(tokens, index + 1, "execute if entity <selector>", location)
             EntitySelectors.select(world, tokens[index + 1].text, context, location).isNotEmpty() to index + 2
         }
-        "score" -> evaluateScoreCondition(tokens, index, location) to nextScoreConditionIndex(tokens, index)
+        "score" -> evaluateScoreCondition(tokens, index, location, context) to nextScoreConditionIndex(tokens, index)
         "data" -> evaluateDataCondition(tokens, index, location, context)
         "block" -> {
             requireSizeFrom(tokens, index, 5, "execute if|unless block <pos> <block>", location)
@@ -413,14 +444,33 @@ internal fun DatapackSandbox.evaluateScoreCondition(
     tokens: List<CommandToken>,
     index: Int,
     location: SourceLocation?,
+    context: ExecutionContext,
 ): Boolean {
     requireSizeFrom(tokens, index, 5, "execute if score <target> <objective> matches <range>", location)
-    val value = world.getScore(tokens[index + 1].text, tokens[index + 2].text)
+    val targets = scoreTargets(tokens[index + 1].text, context, location)
+    if (targets.isEmpty()) return false
+    if (targets.size != 1) {
+        throw SandboxException(DiagnosticCode.COMMAND_ERROR, "Execute score target must resolve to exactly one score holder", location)
+    }
+    val target = targets.single()
+    val objective = tokens[index + 2].text
+    val value = world.scores[ScoreKey(target, objective)] ?: return false
     return when (val operator = tokens[index + 3].text) {
         "matches" -> scoreMatches(value, tokens[index + 4].text, location)
         "=", "<", "<=", ">", ">=" -> {
             requireIndex(tokens, index + 5, "execute if score comparison requires source target and objective", location)
-            val other = world.getScore(tokens[index + 4].text, tokens[index + 5].text)
+            val otherTargets = scoreTargets(tokens[index + 4].text, context, location)
+            if (otherTargets.isEmpty()) return false
+            if (otherTargets.size != 1) {
+                throw SandboxException(
+                    DiagnosticCode.COMMAND_ERROR,
+                    "Execute score comparison target must resolve to exactly one score holder",
+                    location,
+                )
+            }
+            val otherTarget = otherTargets.single()
+            val otherObjective = tokens[index + 5].text
+            val other = world.scores[ScoreKey(otherTarget, otherObjective)] ?: return false
             when (operator) {
                 "=" -> value == other
                 "<" -> value < other
@@ -455,16 +505,25 @@ internal fun DatapackSandbox.executeData(
     tokens: List<CommandToken>,
     location: SourceLocation?,
     context: ExecutionContext,
-) {
+): Boolean {
     requireSize(tokens, 3, "data <modify|get|remove> ...", location)
-    when (tokens[1].text) {
+    return when (tokens[1].text) {
         "modify" -> executeDataModify(command, tokens, location, context)
-        "merge" -> executeDataMerge(command, tokens, location, context)
-        "get" ->
-            executeDataGet(tokens, location, context)?.let {
+        "merge" -> {
+            executeDataMerge(command, tokens, location, context)
+            true
+        }
+        "get" -> {
+            val value = executeDataGet(tokens, location, context)
+            value?.let {
                 world.recordOutput("get", "data", text = JsonValues.render(it), payload = it)
             }
-        "remove" -> executeDataRemove(tokens, location, context)
+            value != null
+        }
+        "remove" -> {
+            executeDataRemove(tokens, location, context)
+            true
+        }
         else -> unsupportedFeature("Unsupported data action '${tokens[1].text}'", profile.id, location)
     }
 }
@@ -474,7 +533,7 @@ internal fun DatapackSandbox.executeDataModify(
     tokens: List<CommandToken>,
     location: SourceLocation?,
     context: ExecutionContext,
-) {
+): Boolean {
     requireSize(tokens, 6, "data modify <storage|entity|block> <target> <path> <set|merge|append|prepend|insert> ...", location)
     val (target, pathIndex) = parseDataTarget(tokens, 2, context, location)
     requireIndex(tokens, pathIndex + 1, "data modify <target> <path> <operation>", location)
@@ -494,22 +553,24 @@ internal fun DatapackSandbox.executeDataModify(
             else -> unsupportedFeature("Unsupported data modify operation '$mutation'", profile.id, location, command)
         }
     requireIndex(tokens, sourceKindIndex, "data modify ... $mutation <value|from> ...", location)
-    val value = readDataModifyValue(command, tokens, sourceKindIndex, context, location)
+    val values = readDataModifyValues(command, tokens, sourceKindIndex, context, location)
+    if (values.isEmpty()) return false
     val before = dataTargetNbtValues(target, location).map { it.deepCopy() }
     mutateDataTarget(target, location) { targetNbt ->
         when (mutation) {
-            "set" -> JsonPaths.set(targetNbt, path, value)
-            "merge" -> JsonPaths.merge(targetNbt, path, value)
-            "append" -> JsonPaths.append(targetNbt, path, value, location)
-            "prepend" -> JsonPaths.prepend(targetNbt, path, value, location)
-            "insert" -> JsonPaths.insert(targetNbt, path, insertIndex ?: 0, value, location)
+            "set" -> JsonPaths.set(targetNbt, path, values.last())
+            "merge" -> values.forEach { JsonPaths.merge(targetNbt, path, it) }
+            "append" -> values.forEach { JsonPaths.append(targetNbt, path, it, location) }
+            "prepend" -> values.asReversed().forEach { JsonPaths.prepend(targetNbt, path, it, location) }
+            "insert" -> values.asReversed().forEach { JsonPaths.insert(targetNbt, path, insertIndex ?: 0, it, location) }
         }
     }
     val after = dataTargetNbtValues(target, location).map { it.deepCopy() }
     recordDataMutationOutput(
         "data modify",
         target,
-        value,
+        values.singleOrNull()
+            ?: JsonArray().also { array -> values.forEach { array.add(it.deepCopy()) } },
         before,
         after,
         JsonObject().also { details ->
@@ -518,27 +579,30 @@ internal fun DatapackSandbox.executeDataModify(
             insertIndex?.let { details.addProperty("insertIndex", it) }
         },
     )
+    return true
 }
 
-internal fun DatapackSandbox.readDataModifyValue(
+internal fun DatapackSandbox.readDataModifyValues(
     command: String,
     tokens: List<CommandToken>,
     sourceKindIndex: Int,
     context: ExecutionContext,
     location: SourceLocation?,
-): JsonElement =
+): List<JsonElement> =
     when (tokens[sourceKindIndex].text) {
         "value" -> {
             requireIndex(tokens, sourceKindIndex + 1, "data modify ... value <value>", location)
-            JsonValues.parse(CommandTokenizer.tailFrom(command, tokens[sourceKindIndex + 1]), location)
+            listOf(JsonValues.parse(CommandTokenizer.tailFrom(command, tokens[sourceKindIndex + 1]), location))
         }
         "from" -> {
             val (sourceTarget, sourcePathIndex) = parseDataTarget(tokens, sourceKindIndex + 1, context, location)
             val sourcePath = tokens.getOrNull(sourcePathIndex)?.text
-            dataTargetNbtValues(sourceTarget, location).firstOrNull()?.let { JsonPaths.get(it, sourcePath)?.deepCopy() }
-                ?: throw SandboxException(DiagnosticCode.COMMAND_ERROR, "Data modify source did not resolve", location)
+            dataTargetNbtValues(sourceTarget, location)
+                .firstOrNull()
+                ?.let { JsonPaths.getAll(it, sourcePath).map { value -> value.deepCopy() } }
+                .orEmpty()
         }
-        "string" -> readDataModifyString(tokens, sourceKindIndex, context, location)
+        "string" -> listOf(readDataModifyString(tokens, sourceKindIndex, context, location))
         else -> unsupportedFeature("Unsupported data modify source '${tokens[sourceKindIndex].text}'", profile.id, location, command)
     }
 

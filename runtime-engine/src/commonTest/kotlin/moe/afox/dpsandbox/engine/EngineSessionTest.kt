@@ -92,6 +92,10 @@ class EngineSessionTest {
             """summon minecraft:text_display 0 1 0 {Tags:[label],text:'{"text":"Hello","color":"red"}',billboard:"center",line_width:80,background:1073741824,text_opacity:200,shadow:true,see_through:true,alignment:"left"}""",
             2,
         )
+        session.executeLine(
+            """summon minecraft:item_display 0 2 0 {Tags:[modeled],item:{id:"minecraft:clay_ball",components:{"minecraft:item_model":"dice:d6"}}}""",
+            3,
+        )
         session.finishExecutionJson()
 
         val block = session.renderEntities().first { it.type == "minecraft:block_display" }.display!!
@@ -107,6 +111,9 @@ class EngineSessionTest {
         assertEquals("left", text.alignment)
         assertEquals(200, text.textOpacity)
         assertEquals(true, text.seeThrough)
+
+        val item = session.renderEntities().first { it.type == "minecraft:item_display" }.display!!
+        assertEquals("dice:d6", item.itemId)
 
         session.beginExecution()
         session.executeLine("""data merge entity @e[tag=label,limit=1] {text:"Changed",alignment:"right"}""", 1)

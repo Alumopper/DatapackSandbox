@@ -6,13 +6,15 @@ export class MockWorker {
   static responder: ((worker: MockWorker, request: Record<string, unknown>) => void) | undefined
 
   readonly url: string
+  readonly options?: WorkerOptions
   onmessage: ((event: MessageEvent) => void) | null = null
   onerror: ((event: ErrorEvent) => void) | null = null
   onmessageerror: ((event: MessageEvent) => void) | null = null
   terminated = false
 
-  constructor(url: string | URL) {
+  constructor(url: string | URL, options?: WorkerOptions) {
     this.url = String(url)
+    this.options = options
     MockWorker.instances.push(this)
   }
 

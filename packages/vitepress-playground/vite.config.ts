@@ -5,7 +5,12 @@ import { resolve } from 'node:path'
 export default defineConfig({
   base: './',
   plugins: [vue()],
-  worker: { format: 'es' },
+  worker: {
+    format: 'es',
+    rollupOptions: {
+      output: { inlineDynamicImports: true },
+    },
+  },
   build: {
     lib: {
       entry: {

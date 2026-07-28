@@ -45,6 +45,7 @@ const props = withDefaults(defineProps<{
   workerUrl?: string
   session?: PlaygroundSessionController
   viewport?: boolean | PlaygroundViewportOptions
+  compact?: boolean
 }>(), {
   version: '26.2',
   cellId: 'example',
@@ -56,6 +57,7 @@ const props = withDefaults(defineProps<{
   showDetails: true,
   dependencies: () => [],
   viewport: false,
+  compact: false,
 })
 
 const emit = defineEmits<{
@@ -276,7 +278,7 @@ async function complete(value: string, cursor: number) {
 }
 
 async function check(value: string): Promise<PlaygroundDiagnostic[]> {
-  if (!sessionController || connection.value !== 'ready' || isBusy.value) return []
+  if (!sessionController || connection.value !== 'ready' || isBusy.value || sessionController.isPlaying) return []
   try {
     return await sessionController.check(props.cellId, value)
   } catch {
@@ -413,12 +415,12 @@ defineExpose({
 <template>
   <section
     class="dps-playground dps-cell-space"
-    :class="`dps-theme-${theme}`"
+    :class="[`dps-theme-${theme}`, { 'dps-cell-space-compact': compact }]"
     :data-state="connection"
     :aria-busy="isBusy"
     aria-label="Datapack Sandbox cell"
   >
-    <article class="dps-cell dps-cell-code">
+    <article class="dps-cell dps-cell-code" :class="{ 'dps-cell-code-compact': compact }">
       <div class="dps-cell-heading">
         <div class="dps-cell-label">MCFunction</div>
         <div class="dps-cell-actions">
@@ -430,11 +432,12 @@ defineExpose({
           >
             {{ connection === 'connecting' ? 'Starting…' : result.hasRun ? 'Rerun' : 'Run' }}
           </button>
-          <button type="button" :disabled="connection !== 'ready' || isBusy" @click="renderCell">Render</button>
-          <button type="button" data-action="checkpoint" :disabled="connection !== 'ready' || isBusy" @click="savePoint">
+          <button v-if="!compact" type="button" :disabled="connection !== 'ready' || isBusy" @click="renderCell">Render</button>
+          <button v-if="!compact" type="button" data-action="checkpoint" :disabled="connection !== 'ready' || isBusy" @click="savePoint">
             Save point
           </button>
           <button
+            v-if="!compact"
             type="button"
             data-action="restore-point"
             :disabled="connection !== 'ready' || isBusy || !hasCheckpoint"
@@ -442,13 +445,14 @@ defineExpose({
           >
             Return
           </button>
-          <button type="button" data-action="capture-frame" :disabled="connection !== 'ready' || isBusy" @click="captureAnimationFrame">
+          <button v-if="!compact" type="button" data-action="capture-frame" :disabled="connection !== 'ready' || isBusy" @click="captureAnimationFrame">
             Add frame<span v-if="animationFrameCount"> ({{ animationFrameCount }})</span>
           </button>
-          <button type="button" data-action="export-gif" :disabled="connection !== 'ready' || isBusy" @click="exportGif">
+          <button v-if="!compact" type="button" data-action="export-gif" :disabled="connection !== 'ready' || isBusy" @click="exportGif">
             Export GIF
           </button>
           <button
+            v-if="!compact"
             type="button"
             :disabled="connection !== 'ready' || isBusy || !hasExampleChanges"
             @click="resetExample"
@@ -478,13 +482,13 @@ defineExpose({
       </div>
       <div v-if="result.summary" class="dps-output">
         <p>{{ result.summary }}</p>
-        <details v-if="showDetails && result.raw">
+        <details v-if="!compact && showDetails && result.raw">
           <summary>Structured result</summary>
           <pre>{{ JSON.stringify(result.raw, null, 2) }}</pre>
         </details>
       </div>
       <img
-        v-if="result.image"
+        v-if="!compact && result.image"
         class="dps-render"
         :src="result.image.src"
         :width="result.image.width"

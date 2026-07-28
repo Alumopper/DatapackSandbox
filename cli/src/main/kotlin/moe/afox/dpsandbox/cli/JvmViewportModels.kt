@@ -59,7 +59,7 @@ internal class JvmViewportCamera(
     }
 
     fun reset(camera: RealtimeRenderCamera) {
-        apply(camera, automatic = true)
+        apply(camera, automatic = false)
     }
 
     fun move(

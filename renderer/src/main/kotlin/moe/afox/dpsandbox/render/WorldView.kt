@@ -1,5 +1,6 @@
 package moe.afox.dpsandbox.render
 
+import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import moe.afox.dpsandbox.core.BlockPos
 import moe.afox.dpsandbox.core.DatapackSandbox
@@ -79,7 +80,15 @@ data class WorldView(
                                         ?.takeIf { it.isJsonObject }
                                         ?.asJsonObject
                                         ?.deepCopy(),
-                                nbt = entity.nbt.deepCopy(),
+                                nbt =
+                                    entity.nbt.deepCopy().also { nbt ->
+                                        if (entity.tags.isNotEmpty()) {
+                                            nbt.add(
+                                                "Tags",
+                                                JsonArray().also { tags -> entity.tags.sorted().forEach(tags::add) },
+                                            )
+                                        }
+                                    },
                                 equipment = entity.equipment.toSortedMap().mapValues { (_, item) -> item.id.toString() },
                             )
                         },

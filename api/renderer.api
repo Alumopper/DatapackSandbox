@@ -5,7 +5,8 @@ public final class moe.afox.dpsandbox.render.AssetResolver {
   public final long getAssetResolveNanos();
   public final java.util.List<java.lang.String> getSourceDescriptions();
   public final com.google.gson.JsonObject json(java.lang.String);
-  public final moe.afox.dpsandbox.render.TextureData texture(java.lang.String);
+  public final moe.afox.dpsandbox.render.TextureData texture(java.lang.String, moe.afox.dpsandbox.render.MaterialPass);
+  public static moe.afox.dpsandbox.render.TextureData texture$default(moe.afox.dpsandbox.render.AssetResolver, java.lang.String, moe.afox.dpsandbox.render.MaterialPass, int, java.lang.Object);
   public final moe.afox.dpsandbox.render.TextureData playerTexture(java.lang.String);
   public final moe.afox.dpsandbox.render.TextureData proceduralTexture(java.lang.String, int, int);
   public final byte[] bytes(java.lang.String);
@@ -162,6 +163,7 @@ public final class moe.afox.dpsandbox.render.ModelBaker {
   public static final moe.afox.dpsandbox.render.ModelBaker$Companion Companion;
   public moe.afox.dpsandbox.render.ModelBaker(moe.afox.dpsandbox.render.AssetResolver, java.util.List<moe.afox.dpsandbox.render.RenderDiagnostic>, java.util.Set<moe.afox.dpsandbox.core.BlockPos>, long, java.util.Map<moe.afox.dpsandbox.core.BlockPos, java.lang.String>);
   public final java.util.List<moe.afox.dpsandbox.render.SceneTriangle> bake(moe.afox.dpsandbox.render.RenderBlock);
+  public final java.util.List<moe.afox.dpsandbox.render.SceneTriangle> bakeItemModel(java.lang.String);
 }
 public final class moe.afox.dpsandbox.render.ModelBaker$Companion {
   public moe.afox.dpsandbox.render.ModelBaker$Companion(kotlin.jvm.internal.DefaultConstructorMarker);
@@ -235,13 +237,26 @@ final class moe.afox.dpsandbox.render.ModelBaker$ModelRef {
   public int hashCode();
   public boolean equals(java.lang.Object);
 }
+final class moe.afox.dpsandbox.render.ModelBaker$ModelTextureBinding {
+  public moe.afox.dpsandbox.render.ModelBaker$ModelTextureBinding(java.lang.String, moe.afox.dpsandbox.render.MaterialPass);
+  public moe.afox.dpsandbox.render.ModelBaker$ModelTextureBinding(java.lang.String, moe.afox.dpsandbox.render.MaterialPass, int, kotlin.jvm.internal.DefaultConstructorMarker);
+  public final java.lang.String getSprite();
+  public final moe.afox.dpsandbox.render.MaterialPass getMaterialPass();
+  public final java.lang.String component1();
+  public final moe.afox.dpsandbox.render.MaterialPass component2();
+  public final moe.afox.dpsandbox.render.ModelBaker$ModelTextureBinding copy(java.lang.String, moe.afox.dpsandbox.render.MaterialPass);
+  public static moe.afox.dpsandbox.render.ModelBaker$ModelTextureBinding copy$default(moe.afox.dpsandbox.render.ModelBaker$ModelTextureBinding, java.lang.String, moe.afox.dpsandbox.render.MaterialPass, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+}
 final class moe.afox.dpsandbox.render.ModelBaker$ResolvedModel {
-  public moe.afox.dpsandbox.render.ModelBaker$ResolvedModel(java.util.Map<java.lang.String, java.lang.String>, java.util.List<moe.afox.dpsandbox.render.ModelBaker$ModelElement>);
-  public final java.util.Map<java.lang.String, java.lang.String> getTextures();
+  public moe.afox.dpsandbox.render.ModelBaker$ResolvedModel(java.util.Map<java.lang.String, moe.afox.dpsandbox.render.ModelBaker$ModelTextureBinding>, java.util.List<moe.afox.dpsandbox.render.ModelBaker$ModelElement>);
+  public final java.util.Map<java.lang.String, moe.afox.dpsandbox.render.ModelBaker$ModelTextureBinding> getTextures();
   public final java.util.List<moe.afox.dpsandbox.render.ModelBaker$ModelElement> getElements();
-  public final java.util.Map<java.lang.String, java.lang.String> component1();
+  public final java.util.Map<java.lang.String, moe.afox.dpsandbox.render.ModelBaker$ModelTextureBinding> component1();
   public final java.util.List<moe.afox.dpsandbox.render.ModelBaker$ModelElement> component2();
-  public final moe.afox.dpsandbox.render.ModelBaker$ResolvedModel copy(java.util.Map<java.lang.String, java.lang.String>, java.util.List<moe.afox.dpsandbox.render.ModelBaker$ModelElement>);
+  public final moe.afox.dpsandbox.render.ModelBaker$ResolvedModel copy(java.util.Map<java.lang.String, moe.afox.dpsandbox.render.ModelBaker$ModelTextureBinding>, java.util.List<moe.afox.dpsandbox.render.ModelBaker$ModelElement>);
   public static moe.afox.dpsandbox.render.ModelBaker$ResolvedModel copy$default(moe.afox.dpsandbox.render.ModelBaker$ResolvedModel, java.util.Map, java.util.List, int, java.lang.Object);
   public java.lang.String toString();
   public int hashCode();
@@ -674,13 +689,15 @@ public final class moe.afox.dpsandbox.render.SceneBuilder$Companion {
   public moe.afox.dpsandbox.render.SceneBuilder$Companion(kotlin.jvm.internal.DefaultConstructorMarker);
 }
 final class moe.afox.dpsandbox.render.SceneBuilder$ItemRenderAsset {
-  public moe.afox.dpsandbox.render.SceneBuilder$ItemRenderAsset(moe.afox.dpsandbox.render.TextureData, moe.afox.dpsandbox.render.SceneBuilder$ItemTransform);
+  public moe.afox.dpsandbox.render.SceneBuilder$ItemRenderAsset(moe.afox.dpsandbox.render.TextureData, moe.afox.dpsandbox.render.SceneBuilder$ItemTransform, java.lang.String);
   public final moe.afox.dpsandbox.render.TextureData getTexture();
   public final moe.afox.dpsandbox.render.SceneBuilder$ItemTransform getTransform();
+  public final java.lang.String getModelId();
   public final moe.afox.dpsandbox.render.TextureData component1();
   public final moe.afox.dpsandbox.render.SceneBuilder$ItemTransform component2();
-  public final moe.afox.dpsandbox.render.SceneBuilder$ItemRenderAsset copy(moe.afox.dpsandbox.render.TextureData, moe.afox.dpsandbox.render.SceneBuilder$ItemTransform);
-  public static moe.afox.dpsandbox.render.SceneBuilder$ItemRenderAsset copy$default(moe.afox.dpsandbox.render.SceneBuilder$ItemRenderAsset, moe.afox.dpsandbox.render.TextureData, moe.afox.dpsandbox.render.SceneBuilder$ItemTransform, int, java.lang.Object);
+  public final java.lang.String component3();
+  public final moe.afox.dpsandbox.render.SceneBuilder$ItemRenderAsset copy(moe.afox.dpsandbox.render.TextureData, moe.afox.dpsandbox.render.SceneBuilder$ItemTransform, java.lang.String);
+  public static moe.afox.dpsandbox.render.SceneBuilder$ItemRenderAsset copy$default(moe.afox.dpsandbox.render.SceneBuilder$ItemRenderAsset, moe.afox.dpsandbox.render.TextureData, moe.afox.dpsandbox.render.SceneBuilder$ItemTransform, java.lang.String, int, java.lang.Object);
   public java.lang.String toString();
   public int hashCode();
   public boolean equals(java.lang.Object);
@@ -700,14 +717,16 @@ final class moe.afox.dpsandbox.render.SceneBuilder$ItemTransform {
   public boolean equals(java.lang.Object);
 }
 final class moe.afox.dpsandbox.render.SceneBuilder$ResolvedItemModel {
-  public moe.afox.dpsandbox.render.SceneBuilder$ResolvedItemModel(java.util.Map<java.lang.String, java.lang.String>, java.util.Map<java.lang.String, com.google.gson.JsonObject>);
-  public moe.afox.dpsandbox.render.SceneBuilder$ResolvedItemModel(java.util.Map, java.util.Map, int, kotlin.jvm.internal.DefaultConstructorMarker);
+  public moe.afox.dpsandbox.render.SceneBuilder$ResolvedItemModel(java.util.Map<java.lang.String, java.lang.String>, java.util.Map<java.lang.String, com.google.gson.JsonObject>, boolean);
+  public moe.afox.dpsandbox.render.SceneBuilder$ResolvedItemModel(java.util.Map, java.util.Map, boolean, int, kotlin.jvm.internal.DefaultConstructorMarker);
   public final java.util.Map<java.lang.String, java.lang.String> getTextures();
   public final java.util.Map<java.lang.String, com.google.gson.JsonObject> getDisplays();
+  public final boolean getHasElements();
   public final java.util.Map<java.lang.String, java.lang.String> component1();
   public final java.util.Map<java.lang.String, com.google.gson.JsonObject> component2();
-  public final moe.afox.dpsandbox.render.SceneBuilder$ResolvedItemModel copy(java.util.Map<java.lang.String, java.lang.String>, java.util.Map<java.lang.String, com.google.gson.JsonObject>);
-  public static moe.afox.dpsandbox.render.SceneBuilder$ResolvedItemModel copy$default(moe.afox.dpsandbox.render.SceneBuilder$ResolvedItemModel, java.util.Map, java.util.Map, int, java.lang.Object);
+  public final boolean component3();
+  public final moe.afox.dpsandbox.render.SceneBuilder$ResolvedItemModel copy(java.util.Map<java.lang.String, java.lang.String>, java.util.Map<java.lang.String, com.google.gson.JsonObject>, boolean);
+  public static moe.afox.dpsandbox.render.SceneBuilder$ResolvedItemModel copy$default(moe.afox.dpsandbox.render.SceneBuilder$ResolvedItemModel, java.util.Map, java.util.Map, boolean, int, java.lang.Object);
   public java.lang.String toString();
   public int hashCode();
   public boolean equals(java.lang.Object);

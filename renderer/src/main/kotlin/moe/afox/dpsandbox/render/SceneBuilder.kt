@@ -199,7 +199,9 @@ internal class SceneBuilder(
         val points =
             buildList {
                 view.blocks.forEach { add(Vec3(it.position.x + 0.5, it.position.y + 0.5, it.position.z + 0.5)) }
-                view.entities.filter { it.dimension == OVERWORLD }.forEach { add(Vec3(it.position.x, it.position.y + 0.9, it.position.z)) }
+                view.entities
+                    .filter { it.dimension == OVERWORLD && contributesToAutoFrame(it) }
+                    .forEach { add(Vec3(it.position.x, it.position.y + 0.9, it.position.z)) }
             }
         if (points.isEmpty()) {
             val target = Vec3(view.worldSpawn.x, view.worldSpawn.y, view.worldSpawn.z)
@@ -213,6 +215,12 @@ internal class SceneBuilder(
         val offset = Vec3(1.0, 0.72, 1.0).normalized() * distance
         return lookAt(target + offset, target, OVERWORLD, "auto:scene")
     }
+
+    private fun contributesToAutoFrame(entity: RenderEntity): Boolean =
+        entity.type.substringAfter(':') != "marker" &&
+            entity.nbt
+                .getAsJsonArray("Tags")
+                ?.none { it.isJsonPrimitive && it.asString == "uuid_marker" } != false
 
     private fun lookAt(
         position: Vec3,
@@ -235,7 +243,7 @@ internal class SceneBuilder(
         if (typePath == "block_display") {
             blockDisplayTriangles(entity, modelBaker, camera)?.let { return it }
         }
-        if (typePath == "item_display") return displayShadow(entity) + itemDisplayTriangles(entity, camera)
+        if (typePath == "item_display") return displayShadow(entity) + itemDisplayTriangles(entity, modelBaker, camera)
         if (typePath == "text_display") return displayShadow(entity) + textDisplayTriangles(entity, camera)
         val renderedPosition = entity.renderPosition()
         val texture =
@@ -265,6 +273,13 @@ internal class SceneBuilder(
         context: String,
     ): ItemRenderAsset? {
         val item = entity.special?.getAsJsonObject("content")?.get("item")
+        val itemObject = item?.takeIf { it.isJsonObject }?.asJsonObject
+        val customModel =
+            itemObject
+                ?.getAsJsonObject("components")
+                ?.get("minecraft:item_model")
+                ?.takeIf { it.isJsonPrimitive }
+                ?.asString
         val id =
             when {
                 item == null -> null
@@ -280,8 +295,8 @@ internal class SceneBuilder(
                             ?.asString
                 else -> null
             }
-        if (id != null) {
-            return itemModelAsset(id, context)
+        if (customModel != null || id != null) {
+            return itemModelAsset(customModel ?: id.orEmpty(), context)
         }
         return null
     }
@@ -300,11 +315,15 @@ internal class SceneBuilder(
             resolveTextureReference(reference, model.textures, linkedSetOf())?.let { textureId ->
                 val (textureNamespace, texturePath) = splitResourceId(textureId)
                 if (resolver.bytes("assets/$textureNamespace/textures/$texturePath.png") != null) {
-                    return ItemRenderAsset(resolver.texture(textureId), model.displays[context]?.toItemTransform())
+                    return ItemRenderAsset(
+                        texture = resolver.texture(textureId),
+                        transform = model.displays[context]?.toItemTransform(),
+                        modelId = modelId.takeIf { model.hasElements },
+                    )
                 }
             }
         }
-        return ItemRenderAsset(resolver.texture("$namespace:item/$path"), null)
+        return ItemRenderAsset(resolver.texture("$namespace:item/$path"), null, null)
     }
 
     private fun collectItemModelIds(
@@ -335,6 +354,7 @@ internal class SceneBuilder(
         val model = resolver.json("assets/$namespace/models/$path.json") ?: return ResolvedItemModel()
         val textures = linkedMapOf<String, String>()
         val displays = linkedMapOf<String, JsonObject>()
+        var hasElements = false
         model
             .get("parent")
             ?.takeIf { it.isJsonPrimitive }
@@ -343,14 +363,16 @@ internal class SceneBuilder(
                 val inherited = resolveItemModel(parent, visited)
                 textures.putAll(inherited.textures)
                 displays.putAll(inherited.displays)
+                hasElements = inherited.hasElements
             }
+        hasElements = hasElements || (model.getAsJsonArray("elements")?.size() ?: 0) > 0
         model.getAsJsonObject("textures")?.entrySet()?.forEach { (key, value) ->
             if (value.isJsonPrimitive) textures[key] = value.asString
         }
         model.getAsJsonObject("display")?.entrySet()?.forEach { (key, value) ->
             if (value.isJsonObject) displays[key] = value.asJsonObject
         }
-        return ResolvedItemModel(textures, displays)
+        return ResolvedItemModel(textures, displays, hasElements)
     }
 
     private fun JsonObject.toItemTransform(): ItemTransform =
@@ -374,6 +396,7 @@ internal class SceneBuilder(
 
     private fun itemDisplayTriangles(
         entity: RenderEntity,
+        modelBaker: ModelBaker,
         camera: ResolvedCamera,
     ): List<SceneTriangle> {
         val context =
@@ -382,12 +405,15 @@ internal class SceneBuilder(
                 ?.takeIf { it.isJsonPrimitive }
                 ?.asString ?: "none"
         val asset = itemDisplayAsset(entity, context) ?: return emptyList()
-        return generatedItemMesh(asset.texture).map { triangle ->
+        val modelTriangles = asset.modelId?.let(modelBaker::bakeItemModel).orEmpty()
+        val triangles = modelTriangles.ifEmpty { generatedItemMesh(asset.texture) }
+        val localBase = if (modelTriangles.isEmpty()) Vec3.ZERO else Vec3(0.5, 0.5, 0.5)
+        return triangles.map { triangle ->
             transformDisplayTriangle(
                 triangle,
                 entity,
                 camera,
-                Vec3.ZERO,
+                localBase,
                 itemDisplayTransformation(context, asset.transform),
             )
         }
@@ -1182,11 +1208,13 @@ internal class SceneBuilder(
     private data class ItemRenderAsset(
         val texture: TextureData,
         val transform: ItemTransform?,
+        val modelId: String?,
     )
 
     private data class ResolvedItemModel(
         val textures: Map<String, String> = emptyMap(),
         val displays: Map<String, JsonObject> = emptyMap(),
+        val hasElements: Boolean = false,
     )
 
     companion object {

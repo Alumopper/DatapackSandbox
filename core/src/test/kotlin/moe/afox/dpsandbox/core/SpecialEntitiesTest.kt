@@ -8,6 +8,43 @@ import kotlin.test.assertTrue
 
 class SpecialEntitiesTest {
     @Test
+    fun `display booleans accept vanilla byte notation`() {
+        val sandbox = emptySandbox("26.2")
+
+        sandbox.executeCommand(
+            """summon minecraft:text_display 0 0 0 {Tags:["text"],text:"hello",shadow:1b,see_through:1b,default_background:0b}""",
+        )
+
+        val text =
+            sandbox.world.entities
+                .single { "text" in it.tags }
+                .fullNbt(sandbox.profile)
+        assertTrue(text.get("shadow").asInt != 0)
+        assertTrue(text.get("see_through").asInt != 0)
+        assertFalse(text.get("default_background").asInt != 0)
+    }
+
+    @Test
+    fun `display entities preserve command runtime data compounds`() {
+        val sandbox = emptySandbox("26.2")
+
+        sandbox.executeCommand(
+            """summon minecraft:item_display 0 0 0 {Tags:["physics"],data:{mass:1000,velocity:[1,2,3]}}""",
+        )
+        sandbox.executeCommand(
+            """data modify entity @e[tag=physics,limit=1] data.sleeping set value 1b""",
+        )
+
+        val data =
+            sandbox.world.entities
+                .single { "physics" in it.tags }
+                .fullNbt(sandbox.profile)
+                .getAsJsonObject("data")
+        assertEquals(1000, data.get("mass").asInt)
+        assertEquals(1, data.get("sleeping").asInt)
+    }
+
+    @Test
     fun `display entities accept and expose block item and text content across supported profiles`() {
         listOf("1.20.4", "26.2").forEach { version ->
             val sandbox = emptySandbox(version)
@@ -21,7 +58,7 @@ class SpecialEntitiesTest {
             sandbox.executeCommand(
                 """summon minecraft:text_display 3 2 3 {Tags:["text"],text:'{"text":"Hello"}',line_width:80,alignment:"center",see_through:true}""",
             )
-            sandbox.executeCommand("item replace entity @e[tag=item,limit=1] inventory.0 with minecraft:apple 2")
+            sandbox.executeCommand("item replace entity @e[tag=item,limit=1] container.0 with minecraft:apple 2")
 
             val block = sandbox.world.entities.single { "block" in it.tags }
             val item = sandbox.world.entities.single { "item" in it.tags }

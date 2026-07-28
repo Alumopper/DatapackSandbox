@@ -45,6 +45,7 @@ declare module '*.mjs' {
     upsertTexture(id: string, width: number, height: number, rgba: Int8Array): void
     upsertRenderAsset(path: string, text: string): void
     snapshot(): string
+    replaceSnapshot(snapshot: string): void
     renderRgba(width: number, height: number): Int8Array
     renderMetadata(width: number, height: number): string
     captureAnimationFrame(width: number, height: number, delayCentiseconds: number): number

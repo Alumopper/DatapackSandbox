@@ -330,11 +330,12 @@ internal fun DatapackSandbox.executeScoreboard(
     command: String,
     tokens: List<CommandToken>,
     location: SourceLocation?,
+    context: ExecutionContext,
 ) {
     requireSize(tokens, 3, "scoreboard <objectives|players> ...", location)
     when (tokens[1].text) {
         "objectives" -> executeObjectives(command, tokens, location)
-        "players" -> executePlayers(tokens, location)
+        "players" -> executePlayers(tokens, location, context)
         else -> unsupportedFeature("Unsupported scoreboard subcommand '${tokens[1].text}'", profile.id, location)
     }
 }
@@ -478,13 +479,14 @@ internal fun DatapackSandbox.recordObjectiveList() {
 internal fun DatapackSandbox.executePlayers(
     tokens: List<CommandToken>,
     location: SourceLocation?,
+    context: ExecutionContext,
 ) {
     requireSize(tokens, 3, "scoreboard players <set|add|remove|get|operation> ...", location)
     when (tokens[2].text) {
         "set", "add", "remove" -> {
             requireSize(tokens, 6, "scoreboard players ${tokens[2].text} <target> <objective> <value>", location)
             val value = parseInt(tokens[5].text, "score value", location)
-            scoreTargets(tokens[3].text, ExecutionContext(), location).forEach { target ->
+            scoreTargets(tokens[3].text, context, location).forEach { target ->
                 when (tokens[2].text) {
                     "set" -> world.setScore(target, tokens[4].text, value)
                     "add" -> world.addScore(target, tokens[4].text, value)
@@ -495,7 +497,7 @@ internal fun DatapackSandbox.executePlayers(
         "get" -> {
             requireSize(tokens, 5, "scoreboard players get <target> <objective>", location)
             val objective = tokens[4].text
-            scoreTargets(tokens[3].text, ExecutionContext(), location).forEach { target ->
+            scoreTargets(tokens[3].text, context, location).forEach { target ->
                 val value = world.getScore(target, objective)
                 world.recordOutput(
                     "scoreboard players get",
@@ -512,7 +514,7 @@ internal fun DatapackSandbox.executePlayers(
         }
         "reset" -> {
             requireSize(tokens, 4, "scoreboard players reset <target> [objective]", location)
-            val targets = scoreTargets(tokens[3].text, ExecutionContext(), location).toSet()
+            val targets = scoreTargets(tokens[3].text, context, location).toSet()
             val objective = tokens.getOrNull(4)?.text
             world.scores.keys
                 .filter { it.target in targets && (objective == null || it.objective == objective) }
@@ -534,7 +536,7 @@ internal fun DatapackSandbox.executePlayers(
             )
         }
         "enable" -> Unit
-        "operation" -> executeScoreOperation(tokens, location)
+        "operation" -> executeScoreOperation(tokens, location, context)
         else -> unsupportedFeature("Unsupported scoreboard players action '${tokens[2].text}'", profile.id, location)
     }
 }
@@ -888,11 +890,21 @@ internal fun DatapackSandbox.randomSequenceSeed(sequence: String): Long = world.
 internal fun DatapackSandbox.executeScoreOperation(
     tokens: List<CommandToken>,
     location: SourceLocation?,
+    context: ExecutionContext,
 ) {
     requireSize(tokens, 8, "scoreboard players operation <target> <objective> <op> <source> <sourceObjective>", location)
     val operation = tokens[5].text
-    val sourceValue = world.getScore(tokens[6].text, tokens[7].text)
-    scoreTargets(tokens[3].text, ExecutionContext(), location).forEach { target ->
+    val sourceTargets = scoreTargets(tokens[6].text, context, location)
+    if (sourceTargets.size != 1) {
+        throw SandboxException(
+            DiagnosticCode.COMMAND_ERROR,
+            "Scoreboard operation source '${tokens[6].text}' must resolve to exactly one target",
+            location,
+        )
+    }
+    val sourceValue = world.getScore(sourceTargets.single(), tokens[7].text)
+    var commandResult: Int? = null
+    scoreTargets(tokens[3].text, context, location).forEach { target ->
         val current = world.getScore(target, tokens[4].text)
         val result =
             when (operation) {
@@ -900,14 +912,20 @@ internal fun DatapackSandbox.executeScoreOperation(
                 "+=" -> current + sourceValue
                 "-=" -> current - sourceValue
                 "*=" -> current * sourceValue
-                "/=" -> if (sourceValue == 0) current else current / sourceValue
-                "%=" -> if (sourceValue == 0) current else current % sourceValue
+                // Vanilla scoreboard arithmetic rounds division toward negative
+                // infinity. Kotlin's Int operators truncate toward zero, which is
+                // observably different for negative fixed-point values and feeds
+                // energy back into datapack physics solvers such as VVE.
+                "/=" -> if (sourceValue == 0) current else Math.floorDiv(current, sourceValue)
+                "%=" -> if (sourceValue == 0) current else Math.floorMod(current, sourceValue)
                 "<" -> minOf(current, sourceValue)
                 ">" -> maxOf(current, sourceValue)
                 else -> unsupportedFeature("Unsupported scoreboard operation '$operation'", profile.id, location)
             }
         world.setScore(target, tokens[4].text, result)
+        commandResult = result
     }
+    lastFunctionReturnValue = commandResult
 }
 
 internal fun DatapackSandbox.scoreTargets(

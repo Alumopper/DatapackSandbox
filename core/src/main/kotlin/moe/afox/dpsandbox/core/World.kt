@@ -881,6 +881,9 @@ data class OutputEvent(
  * entities, players, scores, storage, and output events exist.
  */
 class SandboxWorld {
+    /** Per-command tracing policy. Realtime clients can disable tracing while retaining normal world semantics. */
+    var commandTraceMode: CommandTraceMode = CommandTraceMode.FULL
+
     var gameTime: Long = 0
         private set
     var dayTime: Long = 0

@@ -25,7 +25,13 @@ data class EngineRenderEntity(
     val yaw: Double = 0.0,
     val pitch: Double = 0.0,
     val display: EngineDisplayData? = null,
+    val tags: Set<String> = emptySet(),
 )
+
+internal fun EngineRenderEntity.contributesToAutoFrame(): Boolean =
+    type.substringAfter(':').let { it != "marker" && it != "interaction" && it != "player" } &&
+        "uuid_marker" !in tags &&
+        "math_marker" !in tags
 
 /** Normalized display-entity state shared by JVM differential tests and the browser renderer. */
 data class EngineDisplayData(

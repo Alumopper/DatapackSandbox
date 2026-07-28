@@ -2,7 +2,8 @@
 /// <reference types="vite/client" />
 
 import { Unzip, UnzipInflate, zlibSync } from 'fflate'
-import { BrowserSandboxEngine } from '../.generated/kotlin/datapack-sandbox-browser-runtime.mjs'
+import type { BrowserSandboxEngine } from '../.generated/kotlin/datapack-sandbox-browser-runtime.mjs'
+import type { BrowserCoreSession } from '*datapack-sandbox-core.js'
 import type {
   PlaygroundBrowserLimits,
   PlaygroundEvent,
@@ -50,10 +51,152 @@ interface WorkerRequest {
 
 interface RuntimeLimits extends Required<Omit<PlaygroundBrowserLimits, 'requestTimeoutMs' | 'cancelGraceMs'>> {}
 
+interface ViewportRenderSnapshot {
+  gameTime?: number
+  dayTime?: number
+  weather?: string
+  blocks?: Array<{ id?: string }>
+  entities?: Array<{
+    uuid?: string
+    type?: string
+    x?: number
+    y?: number
+    z?: number
+    tags?: string[]
+    special?: {
+      content?: {
+        blockState?: { Name?: string; name?: string }
+        item?: {
+          id?: string
+          Id?: string
+          components?: Record<string, unknown>
+        }
+      }
+    }
+  }>
+}
+
+interface RealtimeTickResult {
+  gameTime?: number
+  outputs?: PlaygroundOutputEvent[]
+  renderSnapshot?: ViewportRenderSnapshot
+}
+
+class CoreBackedBrowserSandboxEngine {
+  constructor(
+    private readonly core: BrowserCoreSession,
+    private readonly renderer: BrowserSandboxEngine,
+  ) {
+    this.syncRenderSnapshot()
+  }
+
+  beginExecution(): void { this.core.beginExecution() }
+  executeLineSafe(source: string, line: number): string { return this.core.executeLineSafe(source, line) }
+  finishExecution(): string { return this.syncResult(this.core.finishExecution()) }
+  check(source: string): string { return this.core.check(source) }
+  complete(source: string, cursor: number): string { return this.renderer.complete(source, cursor) }
+  interrupt(): void { this.core.interrupt() }
+
+  reset(): void {
+    this.core.reset()
+    this.renderer.reset()
+    this.syncRenderSnapshot()
+  }
+
+  saveCheckpoint(name: string): string { return this.core.saveCheckpoint(name) }
+  restoreCheckpoint(name: string): string {
+    const result = this.core.restoreCheckpoint(name)
+    const parsed = JSON.parse(result) as { ok: boolean }
+    if (parsed.ok) this.syncRenderSnapshot()
+    return result
+  }
+  deleteCheckpoint(name: string): string { return this.core.deleteCheckpoint(name) }
+  checkpointNames(): string { return this.core.checkpointNames() }
+
+  clearFunctions(): void {
+    this.core.clearFunctions()
+    this.renderer.clearFunctions()
+  }
+  clearDatapackEntries(): void {
+    this.core.clearDatapackEntries()
+    this.renderer.clearFunctions()
+  }
+  upsertDatapackEntry(path: string, content: string): void {
+    this.core.upsertDatapackEntry(path, content)
+  }
+  upsertFunction(id: string, source: string): void {
+    this.core.upsertFunction(id, source)
+    this.renderer.upsertFunction(id, source)
+  }
+  setFunctionTag(id: string, valuesCsv: string): void {
+    this.core.setFunctionTag(id, valuesCsv)
+    this.renderer.setFunctionTag(id, valuesCsv)
+  }
+
+  runLoad(): string { return this.syncResult(this.core.runLoad()) }
+  runTicks(count: number, tickFunction: string | null): string { return this.syncResult(this.core.runTicks(count, tickFunction)) }
+  runRealtimeTicks(count: number, tickFunction: string | null): RealtimeTickResult {
+    const result = this.core.runRealtimeTicks(count, tickFunction)
+    const parsed = JSON.parse(result) as RealtimeTickResult
+    if (parsed.renderSnapshot) this.syncSnapshot(JSON.stringify(parsed.renderSnapshot))
+    return parsed
+  }
+  runRealtimeTicksCompact(count: number, tickFunction: string | null): RealtimeTickResult {
+    return JSON.parse(this.core.runRealtimeTicksCompact(count, tickFunction)) as RealtimeTickResult
+  }
+  refreshRenderSnapshot(): ViewportRenderSnapshot {
+    const snapshot = this.core.renderSnapshot()
+    this.syncSnapshot(snapshot)
+    return JSON.parse(snapshot) as ViewportRenderSnapshot
+  }
+  dispatchInput(
+    player: string,
+    device: string,
+    code: string,
+    action: string,
+    x: number | null,
+    y: number | null,
+  ): string {
+    const result = this.core.dispatchInput(player, device, code, action, x ?? Number.NaN, y ?? Number.NaN)
+    this.syncRenderSnapshot()
+    return result
+  }
+
+  snapshot(): string { return this.core.snapshot() }
+  renderSnapshot(): string { return this.renderer.snapshot() }
+  upsertTexture(id: string, width: number, height: number, rgba: Int8Array): void {
+    this.renderer.upsertTexture(id, width, height, rgba)
+  }
+  upsertRenderAsset(path: string, text: string): void { this.renderer.upsertRenderAsset(path, text) }
+  renderRgba(width: number, height: number): Int8Array { return this.renderer.renderRgba(width, height) }
+  renderMetadata(width: number, height: number): string { return this.renderer.renderMetadata(width, height) }
+  captureAnimationFrame(width: number, height: number, delayCentiseconds: number): number {
+    return this.renderer.captureAnimationFrame(width, height, delayCentiseconds)
+  }
+  exportAnimation(repeat: number): Int8Array { return this.renderer.exportAnimation(repeat) }
+  clearAnimation(): void { this.renderer.clearAnimation() }
+  animationFrameCount(): number { return this.renderer.animationFrameCount() }
+  compileRealtimeScene(width: number, height: number): string { return this.renderer.compileRealtimeScene(width, height) }
+  realtimeBlockVertices(): Float32Array { return this.renderer.realtimeBlockVertices() }
+  realtimeBlockIndices(): Int32Array { return this.renderer.realtimeBlockIndices() }
+  realtimeEntityVertices(): Float32Array { return this.renderer.realtimeEntityVertices() }
+  realtimeEntityIndices(): Int32Array { return this.renderer.realtimeEntityIndices() }
+  realtimeAtlasRgba(): Int8Array { return this.renderer.realtimeAtlasRgba() }
+
+  private syncResult(result: string): string {
+    const parsed = JSON.parse(result) as { snapshot?: unknown }
+    if (parsed.snapshot) this.syncSnapshot(JSON.stringify(parsed.snapshot))
+    return result
+  }
+
+  private syncSnapshot(snapshot: string): void { this.renderer.replaceSnapshot(snapshot) }
+  private syncRenderSnapshot(): void { this.syncSnapshot(this.core.renderSnapshot()) }
+}
+
 const scope = self as unknown as DedicatedWorkerGlobalScope
 const encoder = new TextEncoder()
 const decoder = new TextDecoder()
-let engine: BrowserSandboxEngine | undefined
+let engine: CoreBackedBrowserSandboxEngine | undefined
 let version = '26.2'
 let availableProfiles: string[] = []
 let sessionId: string | undefined
@@ -73,6 +216,7 @@ let lastEntitySignature = ''
 let lastAtlasSignature = ''
 let lastSceneResourceRevision = -1
 let resourceRevision = 0
+let preparedRenderTextureSignature = ''
 let playing = false
 let simulationTickRate = 20
 let simulationTickFunction: string | undefined
@@ -80,6 +224,10 @@ let simulationTimer: number | undefined
 let simulationClock = 0
 let droppedTicks = 0
 const datapackLayers: DatapackLayer[] = []
+let runtimeModules: Promise<{
+  BrowserSandboxEngine: typeof import('../.generated/kotlin/datapack-sandbox-browser-runtime.mjs').BrowserSandboxEngine
+  createCoreSession: typeof import('../.generated/datapack-sandbox-core.js').createSession
+}> | undefined
 
 interface FunctionTagValue {
   id: string
@@ -87,20 +235,101 @@ interface FunctionTagValue {
 }
 
 interface FunctionTagDefinition {
+  path: string
   replace: boolean
   values: FunctionTagValue[]
 }
 
 interface DatapackLayer {
   functions: Map<string, string>
+  resources: Map<string, { path: string; content: string }>
   tags: Map<string, FunctionTagDefinition>
 }
 
-scope.addEventListener('message', (message: MessageEvent<WorkerRequest>) => {
-  void dispatch(message.data).catch((error: unknown) => {
-    sendError(message.data, error, 'INTERNAL_ERROR', false)
+scope.addEventListener('error', (event: ErrorEvent) => {
+  event.preventDefault()
+  post({
+    type: 'transport.fatal',
+    error: {
+      code: 'WORKER_RUNTIME_ERROR',
+      message: event.message?.trim()
+        || (event.error == null ? 'Unhandled playground Worker error' : errorMessage(event.error)),
+      recoverable: false,
+      details: {
+        filename: event.filename || undefined,
+        line: event.lineno || undefined,
+        column: event.colno || undefined,
+        stack: event.error instanceof Error ? event.error.stack : undefined,
+      },
+    },
   })
 })
+
+scope.addEventListener('unhandledrejection', (event: PromiseRejectionEvent) => {
+  event.preventDefault()
+  post({
+    type: 'transport.fatal',
+    error: {
+      code: 'WORKER_RUNTIME_ERROR',
+      message: event.reason == null ? 'Unhandled playground Worker promise rejection' : errorMessage(event.reason),
+      recoverable: false,
+      details: { stack: event.reason instanceof Error ? event.reason.stack : undefined },
+    },
+  })
+})
+
+let requestQueue: Promise<void> = Promise.resolve()
+const latestAdvisoryRequests = new Map<string, string | number>()
+
+scope.addEventListener('message', (message: MessageEvent<WorkerRequest>) => {
+  const request = message.data
+  if (request?.type === 'session.interrupt') {
+    // Watchdog interrupts must remain able to reach a long-running command.
+    void dispatchRequest(request)
+    return
+  }
+  const advisoryKey = advisoryRequestKey(request)
+  if (advisoryKey !== undefined) latestAdvisoryRequests.set(advisoryKey, request.id)
+  // Worker message events do not await async listeners. Keep one explicit
+  // queue so scene compilation, cell execution, stepping, and play-state
+  // transitions cannot enter the shared Kotlin/renderer state concurrently.
+  requestQueue = requestQueue.then(
+    () => dispatchRequest(request),
+    () => dispatchRequest(request),
+  )
+})
+
+async function dispatchRequest(request: WorkerRequest): Promise<void> {
+  try {
+    const advisoryKey = advisoryRequestKey(request)
+    if (advisoryKey !== undefined && latestAdvisoryRequests.get(advisoryKey) !== request.id) {
+      finishSupersededAdvisory(request)
+      return
+    }
+    await dispatch(request)
+  } catch (error) {
+    sendError(request, error, 'INTERNAL_ERROR', false)
+  }
+}
+
+function advisoryRequestKey(request: WorkerRequest): string | undefined {
+  if (request?.type !== 'cell.complete' && request?.type !== 'cell.check') return undefined
+  return `${request.type}:${request.cellId ?? ''}`
+}
+
+function finishSupersededAdvisory(request: WorkerRequest): void {
+  if (request.type === 'cell.complete') {
+    post({
+      type: 'cell.output',
+      requestId: request.id,
+      cellId: request.cellId,
+      kind: 'completion',
+      result: { suggestions: [] },
+    })
+  } else {
+    post({ type: 'diagnostic', requestId: request.id, cellId: request.cellId, diagnostics: [] })
+  }
+}
 
 async function dispatch(request: WorkerRequest): Promise<void> {
   if (!request || (typeof request.id !== 'string' && typeof request.id !== 'number') || typeof request.type !== 'string') {
@@ -234,7 +463,14 @@ async function createSession(request: WorkerRequest): Promise<void> {
   pauseSimulation()
   resetViewportTracking()
   datapackLayers.length = 0
-  engine = new BrowserSandboxEngine(
+  const runtime = await loadRuntimeModules()
+  const core = runtime.createCoreSession(
+    version,
+    limits.maximumCommands,
+    limits.maximumOutputEvents,
+    Math.max(limits.maximumOutputBytes, limits.maximumCheckpointBytes),
+  )
+  const renderer = new runtime.BrowserSandboxEngine(
     version,
     profile.commandRoots.join(','),
     profile.registries.blocks.join(','),
@@ -251,10 +487,25 @@ async function createSession(request: WorkerRequest): Promise<void> {
     limits.maximumAnimationFrames,
     limits.maximumAnimationBytes,
   )
+  engine = new CoreBackedBrowserSandboxEngine(core, renderer)
   sessionId = typeof crypto.randomUUID === 'function'
     ? crypto.randomUUID()
     : `browser-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`
   sendReady(request.id, 'created')
+}
+
+function loadRuntimeModules(): Promise<{
+  BrowserSandboxEngine: typeof import('../.generated/kotlin/datapack-sandbox-browser-runtime.mjs').BrowserSandboxEngine
+  createCoreSession: typeof import('../.generated/datapack-sandbox-core.js').createSession
+}> {
+  runtimeModules ??= Promise.all([
+    import('../.generated/kotlin/datapack-sandbox-browser-runtime.mjs'),
+    import('../.generated/datapack-sandbox-core.js'),
+  ]).then(([renderer, core]) => ({
+    BrowserSandboxEngine: renderer.BrowserSandboxEngine,
+    createCoreSession: core.createSession,
+  }))
+  return runtimeModules
 }
 
 async function execute(request: WorkerRequest): Promise<void> {
@@ -268,6 +519,7 @@ async function execute(request: WorkerRequest): Promise<void> {
   activeCellId = cellId
   post({ type: 'cell.status', requestId: request.id, cellId, status: 'running' })
   engine!.beginExecution()
+  let executionError: unknown
   try {
     const lines = source.split(/\r?\n/)
     for (let index = 0; index < lines.length; index += 1) {
@@ -286,13 +538,7 @@ async function execute(request: WorkerRequest): Promise<void> {
           command: outcome.error.command,
         }
         post({ type: 'diagnostic', requestId: request.id, cellId, diagnostics: [diagnostic] })
-        post({
-          type: 'cell.error',
-          requestId: request.id,
-          cellId,
-          error: { code: outcome.error.code, message: outcome.error.message, recoverable: true },
-        })
-        return
+        throw protocolError(outcome.error.code, outcome.error.message)
       }
       await yieldCommandBoundary()
     }
@@ -315,12 +561,29 @@ async function execute(request: WorkerRequest): Promise<void> {
     publishViewportOutputs(result as { outputs?: PlaygroundOutputEvent[] })
     if (renderOptions.auto) await sendRender(request.id, cellId, renderOptions)
   } catch (error) {
-    sendError(request, error, errorMessage(error).includes('output-size') ? 'OUTPUT_LIMIT' : 'COMMAND_ERROR', true)
+    executionError = error
   } finally {
-    busy = false
-    activeCellId = undefined
-    post({ type: 'cell.status', requestId: request.id, cellId, status: 'idle' })
-    await publishViewportScene()
+    try {
+      // Keep the operation busy until its viewport revision has been compiled
+      // and transferred. `cell.status=idle` is the session serialization
+      // boundary; emitting it before this await allows a following play or
+      // execute request to enter the same renderer concurrently.
+      await publishViewportScene()
+    } catch (error) {
+      executionError ??= error
+    } finally {
+      busy = false
+      activeCellId = undefined
+      if (executionError !== undefined) {
+        sendError(
+          request,
+          executionError,
+          errorMessage(executionError).includes('output-size') ? 'OUTPUT_LIMIT' : 'COMMAND_ERROR',
+          true,
+        )
+      }
+      post({ type: 'cell.status', requestId: request.id, cellId, status: 'idle' })
+    }
   }
 }
 
@@ -543,19 +806,29 @@ async function importFiles(request: WorkerRequest): Promise<void> {
 
 function parseDatapackLayer(entries: PlaygroundImportEntry[]): DatapackLayer {
   const functions = new Map<string, string>()
+  const resources = new Map<string, { path: string; content: string }>()
   const tags = new Map<string, FunctionTagDefinition>()
+  const packRoot = datapackRoot(entries)
   for (const entry of entries) {
-    const functionMatch = entry.path.match(/(?:^|\/)data\/([a-z0-9_.-]+)\/function(?:s)?\/(.+)\.mcfunction$/)
+    const datapackPath = datapackEntryPath(entry.path, packRoot)
+    if (!datapackPath) continue
+    const functionMatch = datapackPath.match(/^data\/([a-z0-9_.-]+)\/function(?:s)?\/(.+)\.mcfunction$/)
     if (functionMatch) {
       const id = `${functionMatch[1]}:${functionMatch[2]}`
-      if (functions.has(id)) throw protocolError('IMPORT_CONFLICT', `Duplicate function '${id}' in import`)
-      functions.set(id, decoder.decode(entry.bytes))
+      const content = decoder.decode(entry.bytes)
+      functions.set(id, content)
+      resources.set(`function:${id}`, { path: entry.path, content })
       continue
     }
-    const tagMatch = entry.path.match(/(?:^|\/)data\/([a-z0-9_.-]+)\/tags\/function(?:s)?\/(.+)\.json$/)
-    if (!tagMatch) continue
-    const id = `${tagMatch[1]}:${tagMatch[2]}`
-    if (tags.has(id)) throw protocolError('IMPORT_CONFLICT', `Duplicate function tag '${id}' in import`)
+    const tagMatch = datapackPath.match(/^data\/([a-z0-9_.-]+)\/tags\/([a-z0-9_./-]+?)\/(.+)\.json$/)
+    if (!tagMatch) {
+      if (/^data\/[a-z0-9_.-]+\/.+\.json$/.test(datapackPath)) {
+        resources.set(datapackPath.toLowerCase(), { path: entry.path, content: decoder.decode(entry.bytes) })
+      }
+      continue
+    }
+    const registry = /^functions?$/.test(tagMatch[2]) ? 'function' : tagMatch[2]
+    const id = `${tagMatch[1]}:${registry}/${tagMatch[3]}`
     let parsed: unknown
     try {
       parsed = JSON.parse(decoder.decode(entry.bytes))
@@ -576,34 +849,66 @@ function parseDatapackLayer(entries: PlaygroundImportEntry[]): DatapackLayer {
       }
       throw protocolError('IMPORT_RESOURCE_INVALID', `Function tag '${id}' contains an invalid value`)
     })
-    tags.set(id, { replace: root.replace === true, values })
+    const previous = tags.get(id)
+    tags.set(id, {
+      path: entry.path,
+      replace: previous?.replace === true || root.replace === true,
+      values: root.replace === true ? values : [...previous?.values ?? [], ...values],
+    })
   }
-  return { functions, tags }
+  return { functions, resources, tags }
+}
+
+function datapackRoot(entries: PlaygroundImportEntry[]): string | undefined {
+  const roots = entries
+    .map((entry) => entry.path.replaceAll('\\', '/'))
+    .filter((path) => path.toLowerCase().endsWith('pack.mcmeta'))
+    .map((path) => path.slice(0, -'pack.mcmeta'.length))
+    .sort((left, right) => left.length - right.length || left.localeCompare(right))
+  return roots[0]
+}
+
+function datapackEntryPath(path: string, root: string | undefined): string | undefined {
+  const normalized = path.replaceAll('\\', '/')
+  if (root === undefined) {
+    const data = normalized.indexOf('data/')
+    return data < 0 ? undefined : normalized.slice(data)
+  }
+  return normalized.startsWith(root) ? normalized.slice(root.length) : undefined
 }
 
 function rebuildEffectiveDatapacks(): void {
   const functions = new Map<string, string>()
-  const tags = new Map<string, FunctionTagValue[]>()
+  const resources = new Map<string, { path: string; content: string }>()
+  const tags = new Map<string, { path: string; values: FunctionTagValue[] }>()
   for (const layer of datapackLayers) {
     layer.functions.forEach((source, id) => functions.set(id, source))
+    layer.resources.forEach((resource, id) => resources.set(id, resource))
     layer.tags.forEach((definition, id) => {
-      const values = definition.replace ? [] : [...tags.get(id) ?? []]
+      const values = definition.replace ? [] : [...tags.get(id)?.values ?? []]
       values.push(...definition.values)
-      tags.set(id, values)
+      tags.set(id, { path: definition.path, values })
     })
   }
-  engine!.clearFunctions()
-  functions.forEach((source, id) => engine!.upsertFunction(id, source))
-  tags.forEach((values, id) => {
+  engine!.clearDatapackEntries()
+  resources.forEach(({ path, content }) => engine!.upsertDatapackEntry(path, content))
+  tags.forEach(({ path, values }, id) => {
     const effective: string[] = []
     for (const value of values) {
-      const target = value.id.startsWith('#') ? tags.has(value.id.slice(1)) : functions.has(value.id)
-      if (!target && value.required) {
+      const registry = id.slice(id.indexOf(':') + 1).split('/', 1)[0]
+      const target = registry !== 'function' || (value.id.startsWith('#') ? tags.has(`${value.id.slice(1).replace(':', `:${registry}/`)}`) : functions.has(value.id))
+      if (!target && value.required && registry === 'function') {
         throw protocolError('MISSING_RESOURCE', `Function tag '${id}' references missing function '${value.id}'`)
       }
       if (target && !effective.includes(value.id)) effective.push(value.id)
     }
-    engine!.setFunctionTag(id, effective.join(','))
+    engine!.upsertDatapackEntry(path, JSON.stringify({
+      replace: true,
+      values: effective.map((value) => {
+        const original = values.find((candidate) => candidate.id === value)
+        return original?.required === false ? { id: value, required: false } : value
+      }),
+    }))
   })
 }
 
@@ -624,6 +929,7 @@ function startSimulation(request: WorkerRequest): void {
   }
   simulationTickRate = rate
   simulationTickFunction = request.tickFunction?.trim() || undefined
+  if (!playing) droppedTicks = 0
   playing = true
   simulationClock = performance.now()
   scheduleSimulation()
@@ -669,16 +975,23 @@ async function pumpSimulation(): Promise<void> {
 
 async function advanceSimulation(count: number): Promise<void> {
   requireAvailable()
-  const result = JSON.parse(engine!.runTicks(count, simulationTickFunction ?? null)) as {
-    snapshot?: { gameTime?: number }
-    outputs?: PlaygroundOutputEvent[]
-  }
+  const result = engine!.runRealtimeTicksCompact(count, simulationTickFunction ?? null)
+  const renderSnapshot = viewportSubscribers > 0 ? engine!.refreshRenderSnapshot() : undefined
   publishViewportOutputs(result)
   post({
     type: 'simulation.tick',
-    result: { count, gameTime: result.snapshot?.gameTime, droppedTicks },
+    result: {
+      count,
+      gameTime: result.gameTime,
+      droppedTicks,
+      entities: renderSnapshot?.entities?.map((entity) => ({
+        uuid: entity.uuid,
+        position: [entity.x ?? 0, entity.y ?? 0, entity.z ?? 0],
+        tags: entity.tags ?? [],
+      })),
+    },
   })
-  await publishViewportScene()
+  await publishViewportScene(false, renderSnapshot)
 }
 
 function publishViewportOutputs(result: { outputs?: PlaygroundOutputEvent[] }): void {
@@ -718,14 +1031,13 @@ async function dispatchPlayerInput(request: WorkerRequest): Promise<void> {
   await publishViewportScene()
 }
 
-async function publishViewportScene(force = false): Promise<void> {
+async function publishViewportScene(
+  force = false,
+  suppliedSnapshot?: ViewportRenderSnapshot,
+): Promise<void> {
   if (!engine || viewportSubscribers <= 0) return
-  await prepareRenderTextures()
-  const snapshot = JSON.parse(engine.snapshot()) as {
-    gameTime?: number
-    blocks?: unknown[]
-    entities?: unknown[]
-  }
+  const snapshot = suppliedSnapshot ?? JSON.parse(engine.renderSnapshot()) as ViewportRenderSnapshot
+  await prepareRenderTextures(snapshot)
   const blockSignature = JSON.stringify(snapshot.blocks ?? [])
   const entitySignature = JSON.stringify(snapshot.entities ?? [])
   if (
@@ -738,15 +1050,13 @@ async function publishViewportScene(force = false): Promise<void> {
     vertexStride: number
     camera: PlaygroundViewportScene['camera']
     bounds: PlaygroundViewportScene['bounds']
-    atlas: { width: number; height: number }
+    atlas: { width: number; height: number; signature: number }
     blocks: { batches: PlaygroundSceneBatch[] }
     entities: { batches: PlaygroundSceneBatch[] }
     visibleBlocks: number
     visibleEntities: number
   }
-  const atlasView = engine.realtimeAtlasRgba()
-  const atlasBytes = Uint8Array.from(atlasView, (value) => value & 0xff)
-  const atlasSignature = `${resourceRevision}:${metadata.atlas.width}x${metadata.atlas.height}:${crc32(atlasBytes)}`
+  const atlasSignature = `${resourceRevision}:${metadata.atlas.signature}`
   const includeAtlas = force || atlasSignature !== lastAtlasSignature
   const includeBlocks = force || includeAtlas || blockSignature !== lastBlockSignature
   const includeEntities = force || includeAtlas || entitySignature !== lastEntitySignature
@@ -767,8 +1077,10 @@ async function publishViewportScene(force = false): Promise<void> {
     transfers.push(vertices, indices)
   }
   if (includeAtlas) {
+    const atlasView = engine.realtimeAtlasRgba()
+    const atlasBytes = Uint8Array.from(atlasView, (value) => value & 0xff)
     const rgba = atlasBytes.buffer
-    atlas = { ...metadata.atlas, rgba }
+    atlas = { width: metadata.atlas.width, height: metadata.atlas.height, rgba }
     transfers.push(rgba)
   }
   viewportRevision += 1
@@ -779,6 +1091,11 @@ async function publishViewportScene(force = false): Promise<void> {
     generatedAt: performance.now(),
     vertexStride: metadata.vertexStride,
     camera: metadata.camera,
+    environment: {
+      dayTime: snapshot.dayTime ?? 0,
+      weather: snapshot.weather ?? 'clear',
+      dimension: 'minecraft:overworld',
+    },
     bounds: metadata.bounds,
     blocks,
     entities,
@@ -801,6 +1118,7 @@ function resetViewportTracking(): void {
   lastAtlasSignature = ''
   lastSceneResourceRevision = -1
   resourceRevision = 0
+  preparedRenderTextureSignature = ''
   droppedTicks = 0
 }
 
@@ -822,23 +1140,14 @@ function registerRenderAssets(entries: PlaygroundImportEntry[]): number {
   return registered
 }
 
-async function prepareRenderTextures(): Promise<void> {
+async function prepareRenderTextures(snapshot?: ViewportRenderSnapshot): Promise<void> {
   if (renderAssetFiles.size === 0) return
-  const snapshot = JSON.parse(engine!.snapshot()) as {
-    blocks?: Array<{ id?: string }>
-    entities?: Array<{
-      type?: string
-      special?: {
-        content?: {
-          blockState?: { Name?: string; name?: string }
-          item?: { id?: string; Id?: string }
-        }
-      }
-    }>
-  }
+  const renderWorld = snapshot ?? JSON.parse(engine!.renderSnapshot()) as ViewportRenderSnapshot
+  const textureSignature = renderTextureSignature(renderWorld)
+  if (textureSignature === preparedRenderTextureSignature) return
   const candidates = new Set<string>()
   const modelTextures = new Set<string>()
-  for (const block of snapshot.blocks ?? []) {
+  for (const block of renderWorld.blocks ?? []) {
     if (!block.id) continue
     const [namespace, path] = splitResourceId(block.id)
     candidates.add(`assets/${namespace}/textures/block/${path}.png`)
@@ -852,7 +1161,7 @@ async function prepareRenderTextures(): Promise<void> {
     }
     prepareBlockModelAssets(block.id, modelTextures)
   }
-  for (const entity of snapshot.entities ?? []) {
+  for (const entity of renderWorld.entities ?? []) {
     const type = entity.type?.substring((entity.type?.indexOf(':') ?? -1) + 1)
     if (type === 'zombie') candidates.add('assets/minecraft/textures/entity/zombie/zombie.png')
     if (type === 'skeleton') candidates.add('assets/minecraft/textures/entity/skeleton/skeleton.png')
@@ -861,7 +1170,9 @@ async function prepareRenderTextures(): Promise<void> {
       if (blockId) prepareBlockModelAssets(blockId, modelTextures)
     }
     if (type === 'item_display') {
-      const itemId = entity.special?.content?.item?.id ?? entity.special?.content?.item?.Id
+      const item = entity.special?.content?.item
+      const itemModel = item?.components?.['minecraft:item_model']
+      const itemId = typeof itemModel === 'string' ? itemModel : item?.id ?? item?.Id
       if (itemId) {
         const [namespace, path] = splitResourceId(itemId)
         candidates.add(`assets/${namespace}/textures/item/${path}.png`)
@@ -883,6 +1194,23 @@ async function prepareRenderTextures(): Promise<void> {
     engine!.upsertTexture(textureId, decoded.width, decoded.height, new Int8Array(decoded.rgba.buffer))
     decodedRenderAssets.set(textureId, bytes)
   }
+  preparedRenderTextureSignature = textureSignature
+}
+
+function renderTextureSignature(snapshot: ViewportRenderSnapshot): string {
+  const blocks = new Set((snapshot.blocks ?? []).map((block) => block.id ?? ''))
+  const entities = new Set<string>()
+  for (const entity of snapshot.entities ?? []) {
+    const type = entity.type ?? ''
+    const content = entity.special?.content
+    if (type.endsWith(':block_display')) entities.add(`${type}:${content?.blockState?.Name ?? content?.blockState?.name ?? ''}`)
+    else if (type.endsWith(':item_display')) {
+      const item = content?.item
+      const model = item?.components?.['minecraft:item_model']
+      entities.add(`${type}:${typeof model === 'string' ? model : item?.id ?? item?.Id ?? ''}`)
+    } else entities.add(type)
+  }
+  return `${resourceRevision}|${[...blocks].sort().join(',')}|${[...entities].sort().join(',')}`
 }
 
 function prepareBlockModelAssets(blockId: string, textureIds: Set<string>): void {

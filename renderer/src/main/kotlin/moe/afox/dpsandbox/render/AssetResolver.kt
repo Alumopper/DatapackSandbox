@@ -51,10 +51,14 @@ internal class AssetResolver(
             }
         }
 
-    fun texture(id: String): TextureData =
+    fun texture(
+        id: String,
+        forcedMaterialPass: MaterialPass? = null,
+    ): TextureData =
         measured {
             val normalizedId = normalizeResourceId(id)
-            textureCache.getOrPut(normalizedId) {
+            val cacheId = forcedMaterialPass?.let { "$normalizedId#${it.name.lowercase()}" } ?: normalizedId
+            textureCache.getOrPut(cacheId) {
                 val (namespace, path) = splitResourceId(normalizedId)
                 val key = "assets/$namespace/textures/$path.png"
                 val bytes = bytes(key)
@@ -70,7 +74,9 @@ internal class AssetResolver(
                     missing("MISSING_TEXTURE", "Missing or unreadable texture $normalizedId", key)
                     fallbackTexture(normalizedId)
                 } else {
-                    TextureData.fromImage(normalizedId, animatedFrame(image, key))
+                    TextureData.fromImage(cacheId, animatedFrame(image, key)).let { texture ->
+                        forcedMaterialPass?.let { texture.copy(materialPass = it) } ?: texture
+                    }
                 }
             }
         }

@@ -192,8 +192,16 @@ internal class JvmViewportController(
         next: RealtimeRenderCamera,
         automatic: Boolean,
     ) {
+        val requestAutomaticFrame = automatic && !automaticCamera
         camera = next
         automaticCamera = automatic
+        if (requestAutomaticFrame) {
+            worker.execute {
+                if (automaticCamera && ::sandbox.isInitialized) {
+                    rebuildScene(forceResetCamera = true)
+                }
+            }
+        }
     }
 
     fun close() {
@@ -208,6 +216,8 @@ internal class JvmViewportController(
             forwardedOutputCount = 0
             lastCompiledView = null
             initializeSandbox(sandbox)
+            sandbox.world.outputs.clear()
+            forwardedOutputCount = 0
             if (options.inputPlayer !in sandbox.world.players) sandbox.createPlayer(options.inputPlayer)
             emit("JVM sandbox ready | Minecraft ${sandbox.profile.id}")
             rebuildScene(forceResetCamera)
@@ -244,6 +254,10 @@ internal class JvmViewportController(
                     renderDistance = 1_024.0,
                 ),
             )
+        if (forceResetCamera) {
+            camera = scene.suggestedCamera
+            automaticCamera = false
+        }
         lastCompiledView = capturedView
         sceneSink(scene, forceResetCamera)
     }
@@ -296,9 +310,10 @@ internal class JvmViewportController(
     private fun forwardNewOutputs() {
         val outputs = sandbox.world.outputs
         if (forwardedOutputCount > outputs.size) forwardedOutputCount = outputs.size
-        outputs.subList(forwardedOutputCount, outputs.size).forEach { output ->
+        outputs.subList(forwardedOutputCount, outputs.size).toList().forEach { output ->
             visualSink(output)
             if (output.channel == "visual") return@forEach
+            if (output.channel == "data" && output.source?.functionStack?.isNotEmpty() == true) return@forEach
             val targets =
                 output.targets
                     .takeIf { it.isNotEmpty() }
@@ -306,7 +321,8 @@ internal class JvmViewportController(
                     .orEmpty()
             emit("${output.channel.uppercase()}$targets: ${output.text.ifBlank { output.rawText }}")
         }
-        forwardedOutputCount = outputs.size
+        outputs.clear()
+        forwardedOutputCount = 0
     }
 
     private fun emit(

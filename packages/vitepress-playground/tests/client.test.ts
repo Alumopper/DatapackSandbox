@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { PlaygroundClientError, PlaygroundWorkerClient } from '../src/client'
 import { MockWorker } from './setup'
 
@@ -102,5 +102,109 @@ describe('PlaygroundWorkerClient', () => {
     expect(failure.code).toBe('SESSION_LOST')
     await new Promise((resolve) => setTimeout(resolve, 20))
     expect(MockWorker.instances.length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('preserves Worker error location and active operation when rebuilding', async () => {
+    MockWorker.responder = (worker, request) => {
+      if (request.type === 'transport.connect') worker.emit({ type: 'transport.ready', requestId: request.id })
+      if (request.type === 'session.create') worker.emit({ type: 'session.ready', requestId: request.id, sessionId: 'diagnostics' })
+      if (request.type === 'cell.execute') {
+        queueMicrotask(() => worker.onerror?.(new ErrorEvent('error', {
+          message: 'renderer allocation failed',
+          filename: 'worker-runtime.js',
+          lineno: 42,
+          colno: 7,
+        })))
+      }
+    }
+    const client = new PlaygroundWorkerClient()
+    await client.connect()
+    await client.createSession({ version: '26.2', cells: [] }, {})
+    const failure = await client.execute('cell', 'say crash', {}).catch((error) => error)
+    expect(failure).toBeInstanceOf(PlaygroundClientError)
+    expect(failure.code).toBe('SESSION_LOST')
+    expect(failure.message).toContain('renderer allocation failed at worker-runtime.js:42:7 while handling cell.execute')
+    client.close()
+  })
+
+  it('surfaces a fatal runtime report instead of replacing it with SESSION_LOST', async () => {
+    MockWorker.responder = (worker, request) => {
+      if (request.type === 'transport.connect') worker.emit({ type: 'transport.ready', requestId: request.id })
+      if (request.type === 'session.create') worker.emit({ type: 'session.ready', requestId: request.id, sessionId: 'fatal-report' })
+      if (request.type === 'cell.execute') {
+        worker.emit({
+          type: 'transport.fatal',
+          error: {
+            code: 'WORKER_RUNTIME_ERROR',
+            message: 'Out of memory while compiling the scene',
+            recoverable: false,
+            details: { line: 91 },
+          },
+        })
+      }
+    }
+    const client = new PlaygroundWorkerClient()
+    await client.connect()
+    await client.createSession({ version: '26.2', cells: [] }, {})
+    const failure = await client.execute('cell', 'say crash', {}).catch((error) => error)
+    expect(failure).toBeInstanceOf(PlaygroundClientError)
+    expect(failure.code).toBe('WORKER_RUNTIME_ERROR')
+    expect(failure.message).toBe('Out of memory while compiling the scene')
+    expect(failure.details).toEqual({ line: 91 })
+    client.close()
+  })
+
+  it('diagnoses an opaque startup failure without terminating the replacement Worker', async () => {
+    let connections = 0
+    vi.stubGlobal('fetch', vi.fn(async () => ({
+      ok: false,
+      status: 404,
+      statusText: 'Not Found',
+      headers: new Headers({ 'content-type': 'text/html; charset=utf-8' }),
+      body: null,
+    } as Response)))
+    MockWorker.responder = (worker, request) => {
+      if (request.type === 'transport.connect') {
+        connections += 1
+        if (connections === 1) queueMicrotask(() => worker.onerror?.(new ErrorEvent('error')))
+        else worker.emit({ type: 'transport.ready', requestId: request.id })
+      }
+      if (request.type === 'session.create') {
+        worker.emit({ type: 'session.ready', requestId: request.id, sessionId: 'replacement' })
+      }
+    }
+    const client = new PlaygroundWorkerClient({
+      workerUrl: '/missing-worker.js',
+      workerFactory: (url, options) => new MockWorker(url, options) as unknown as Worker,
+    })
+    const failure = await client.connect().catch((error) => error)
+    expect(failure).toBeInstanceOf(PlaygroundClientError)
+    expect(failure.code).toBe('SESSION_LOST')
+    expect(failure.message).toContain('http://localhost:3000/missing-worker.js returned HTTP 404 Not Found')
+    await vi.waitFor(() => expect(MockWorker.instances).toHaveLength(2))
+    expect(MockWorker.instances[1].terminated).toBe(false)
+    await expect(client.createSession({ version: '26.2', cells: [] }, {})).resolves.toMatchObject({ sessionId: 'replacement' })
+    client.close()
+  })
+
+  it('retries an opaque module-Worker startup failure as a classic Worker', async () => {
+    MockWorker.responder = (worker, request) => {
+      if (request.type !== 'transport.connect') return
+      if (worker.options?.type === 'module') {
+        queueMicrotask(() => worker.onerror?.(new ErrorEvent('error')))
+      } else {
+        worker.emit({ type: 'transport.ready', requestId: request.id })
+      }
+    }
+    // Exercise the package-default asset path as well as an explicit workerUrl:
+    // both must drop `type: module` for the classic fallback.
+    const client = new PlaygroundWorkerClient()
+    await expect(client.connect()).resolves.toBeUndefined()
+    expect(MockWorker.instances).toHaveLength(2)
+    expect(MockWorker.instances[0].options?.type).toBe('module')
+    expect(MockWorker.instances[0].terminated).toBe(true)
+    expect(MockWorker.instances[1].options?.type).toBeUndefined()
+    expect(MockWorker.instances[1].terminated).toBe(false)
+    client.close()
   })
 })

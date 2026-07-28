@@ -2,7 +2,6 @@
 
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
-import com.google.gson.JsonParser
 
 data class ResolvedTextComponent(
     val plain: String,
@@ -48,7 +47,7 @@ object TextComponents {
         location: SourceLocation? = null,
     ): JsonElement =
         try {
-            JsonParser.parseString(raw)
+            JsonValues.parse(raw, location)
         } catch (error: Exception) {
             throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Invalid text component JSON", location, cause = error)
         }

@@ -25,6 +25,7 @@ data class RealtimeTextureAtlas(
     val width: Int,
     val height: Int,
     val rgba: ByteArray,
+    val signature: Int,
 )
 
 /** Raster-backend-neutral scene compiled for a realtime GPU consumer. */
@@ -55,8 +56,10 @@ internal class RealtimeSceneCompiler(
     private var cachedBlockSection: RealtimeSceneSection? = null
     private var cachedAtlasKey: Int? = null
     private var cachedAtlas: AtlasLayout? = null
+    private var textureGeneration = 0
 
     fun invalidate() {
+        textureGeneration += 1
         cachedBlockKey = null
         cachedBlockTriangles = emptyList()
         cachedBlockSectionKey = null
@@ -72,7 +75,7 @@ internal class RealtimeSceneCompiler(
     ): RealtimeRenderScene {
         require(width > 0 && height > 0) { "Realtime viewport dimensions must be positive" }
         val builder = EngineSceneBuilder(textures)
-        val camera = builder.build(world, width, height).camera
+        val camera = builder.camera(world)
         val blockWorld = world.copy(entities = emptyList(), entityCount = 0)
         val entityWorld = world.copy(blocks = emptyList())
         val blockKey = 31 * world.blocks.hashCode() + world.seed.hashCode()
@@ -176,12 +179,12 @@ internal class RealtimeSceneCompiler(
         triangles.forEach { triangle ->
             if (triangle.texture.id !in unique) unique[triangle.texture.id] = triangle.texture
         }
-        val atlasKey = unique.values.fold(1) { hash, texture ->
-            31 * hash + texture.id.hashCode() + 31 * texture.width + 17 * texture.height + texture.pixels.contentHashCode()
+        val atlasKey = unique.values.fold(31 + textureGeneration) { hash, texture ->
+            31 * hash + texture.id.hashCode() + 31 * texture.width + 17 * texture.height + texture.materialPass.hashCode()
         }
         if (cachedAtlasKey == atlasKey) cachedAtlas?.let { return it }
         if (unique.isEmpty()) {
-            return AtlasLayout(RealtimeTextureAtlas(1, 1, byteArrayOf(-1, -1, -1, -1)), emptyMap(), 1).also {
+            return AtlasLayout(RealtimeTextureAtlas(1, 1, byteArrayOf(-1, -1, -1, -1), atlasKey), emptyMap(), 1).also {
                 cachedAtlasKey = atlasKey
                 cachedAtlas = it
             }
@@ -218,7 +221,7 @@ internal class RealtimeSceneCompiler(
             }
         }
         val geometryKey = 31 * targetWidth + atlasHeight + 31 * placements.hashCode()
-        return AtlasLayout(RealtimeTextureAtlas(targetWidth, atlasHeight, rgba), placements, geometryKey).also {
+        return AtlasLayout(RealtimeTextureAtlas(targetWidth, atlasHeight, rgba, atlasKey), placements, geometryKey).also {
             cachedAtlasKey = atlasKey
             cachedAtlas = it
         }
@@ -230,7 +233,9 @@ internal class RealtimeSceneCompiler(
                 add(listOf(block.x.toDouble(), block.y.toDouble(), block.z.toDouble()))
                 add(listOf(block.x + 1.0, block.y + 1.0, block.z + 1.0))
             }
-            world.entities.forEach { entity -> add(listOf(entity.x, entity.y, entity.z)) }
+            world.entities.filter(EngineRenderEntity::contributesToAutoFrame).forEach { entity ->
+                add(listOf(entity.x, entity.y, entity.z))
+            }
         }
         if (points.isEmpty()) return listOf(-0.5, -0.5, -0.5) to listOf(0.5, 0.5, 0.5)
         return listOf(points.minOf { it[0] }, points.minOf { it[1] }, points.minOf { it[2] }) to

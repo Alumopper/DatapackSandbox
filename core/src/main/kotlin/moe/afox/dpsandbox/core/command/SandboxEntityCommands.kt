@@ -14,6 +14,8 @@ import moe.afox.dpsandbox.core.SandboxException
 import moe.afox.dpsandbox.core.SandboxPlayer
 import moe.afox.dpsandbox.core.SourceLocation
 import moe.afox.dpsandbox.core.unsupportedFeature
+import moe.afox.dpsandbox.core.uuidFromLongs
+import java.util.UUID
 
 internal fun DatapackSandbox.executeTag(
     tokens: List<CommandToken>,
@@ -51,15 +53,19 @@ internal fun DatapackSandbox.executeSummon(
         nbtStartIndex = 5
     }
     val nbt =
-        if (tokens.size >
-            nbtStartIndex
-        ) {
+        if (tokens.size > nbtStartIndex) {
             parseSummonNbt(CommandTokenizer.tailFrom(command, tokens[nbtStartIndex]), location)
         } else {
             JsonObject()
         }
     val tags = extractTags(nbt).toMutableSet()
-    val entity = SandboxEntity(type = type, position = position, tags = tags, dimension = context.dimension)
+    val uuid = summonUuid(nbt, location)
+    val entity =
+        if (uuid == null) {
+            SandboxEntity(type = type, position = position, tags = tags, dimension = context.dimension)
+        } else {
+            SandboxEntity(uuid = uuid, type = type, position = position, tags = tags, dimension = context.dimension)
+        }
     val fullNbt = entity.fullNbt(profile, location)
     nbt.entrySet().forEach { (key, value) -> fullNbt.add(key, value.deepCopy()) }
     entity.writeFullNbt(profile, fullNbt, location)
@@ -83,6 +89,27 @@ internal fun DatapackSandbox.executeSummon(
                 entityVariantPayloads(entity.type, fullNbt, location)?.let { payload.add("variantResources", it) }
             },
     )
+}
+
+private fun summonUuid(
+    nbt: JsonObject,
+    location: SourceLocation?,
+): String? {
+    val value = nbt.get("UUID") ?: return null
+    val uuid: String? =
+        when {
+            value.isJsonPrimitive && value.asJsonPrimitive.isString ->
+                runCatching { UUID.fromString(value.asString).toString() }.getOrNull()
+            value.isJsonArray && value.asJsonArray.size() == 4 -> {
+                val parts = value.asJsonArray.map { element -> element.asInt }
+                val most = (parts[0].toLong() shl 32) or (parts[1].toLong() and 0xffffffffL)
+                val least = (parts[2].toLong() shl 32) or (parts[3].toLong() and 0xffffffffL)
+                uuidFromLongs(most, least)
+            }
+            else -> null
+        }
+    return uuid
+        ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Summon UUID must be a UUID string or four-integer array", location)
 }
 
 internal fun DatapackSandbox.entityVariantPayloads(

@@ -3,7 +3,6 @@ package moe.afox.dpsandbox.core
 import com.google.gson.JsonArray
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
-import com.google.gson.JsonParser
 import java.io.InputStreamReader
 import java.nio.charset.StandardCharsets
 
@@ -803,7 +802,7 @@ object NbtSchemas {
         val stream = NbtSchemas::class.java.classLoader.getResourceAsStream("vanilla-nbt-schemas.json") ?: return emptyMap()
         return runCatching {
             InputStreamReader(stream, StandardCharsets.UTF_8).use { reader ->
-                val root = JsonParser.parseReader(reader).asJsonObject
+                val root = JsonValues.parse(reader.readText()).asJsonObject
                 if (root.has("versions") && root.get("versions").isJsonObject) {
                     val schemaSets =
                         root

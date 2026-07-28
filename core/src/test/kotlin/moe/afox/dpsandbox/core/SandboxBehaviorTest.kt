@@ -9,7 +9,120 @@ import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
 
 class SandboxBehaviorTest {
+    @Test
+    fun `command trace modes retain metadata without requiring snapshot diffs`() {
+        val sandbox = createSandbox("26.2", listOf(fixturePack()))
+
+        sandbox.world.commandTraceMode = CommandTraceMode.BASIC
+        sandbox.executeCommand("scoreboard objectives add lightweight dummy")
+        sandbox.executeCommand("scoreboard players set #value lightweight 3")
+        assertEquals(2, sandbox.world.traces.size)
+        assertTrue(sandbox.world.traces.all { it.snapshotDiffs.isEmpty() })
+
+        sandbox.world.commandTraceMode = CommandTraceMode.OFF
+        sandbox.executeCommand("scoreboard players add #value lightweight 2")
+        assertEquals(2, sandbox.world.traces.size)
+        assertEquals(5, sandbox.world.getScore("#value", "lightweight"))
+    }
+
     private fun fixturePack(): Path = Path.of("src/test/resources/packs/counter")
+
+    @Test
+    fun `joins backslash continued mcfunction commands`() {
+        val sandbox =
+            createFunctionSandboxFromString(
+                version = "26.2",
+                functionText =
+                    """
+                    # Compound values in modern datapacks commonly use physical line continuation.
+                    scoreboard objectives add result dummy
+                    data modify storage demo:state value set value {\
+                        position:[1.0d,2.0d,3.0d],\
+                        scale:[1.0f,1.0f,1.0f]\
+                    }
+                    execute if data storage demo:state value.position run \
+                        scoreboard players set #continued result 1
+                    """.trimIndent(),
+                sourceName = "continued.mcfunction",
+            )
+
+        sandbox.runFunction(SingleFunctionDatapack.DEFAULT_ID)
+
+        assertEquals(1, sandbox.world.getScore("#continued", "result"))
+        assertEquals(
+            2.0,
+            sandbox.world.storages[ResourceLocation.parse("demo:state")]
+                ?.getAsJsonObject("value")
+                ?.getAsJsonArray("position")
+                ?.get(1)
+                ?.asDouble,
+        )
+    }
+
+    @Test
+    fun `data commands preserve list wildcard source and store semantics`() {
+        val sandbox = createFunctionSandboxFromString("26.2", "")
+        sandbox.executeCommand("data modify storage demo:state source set value [1,2,3]")
+        sandbox.executeCommand("data modify storage demo:state target set value []")
+        sandbox.executeCommand("data modify storage demo:state target append from storage demo:state source[]")
+        sandbox.executeCommand("scoreboard objectives add values dummy")
+        sandbox.executeCommand("scoreboard players set #value values 5")
+        sandbox.executeCommand(
+            "execute store result storage demo:state source[] int 2 run scoreboard players get #value values",
+        )
+
+        val storage = sandbox.world.storages.getValue(ResourceLocation.parse("demo:state"))
+        assertEquals(listOf(1, 2, 3), storage.getAsJsonArray("target").map { it.asInt })
+        assertEquals(listOf(10, 10, 10), storage.getAsJsonArray("source").map { it.asInt })
+    }
+
+    @Test
+    fun `function macros expand compound arguments and dynamic commands`() {
+        val sandbox =
+            createFunctionSandbox(
+                version = "26.2",
+                functionSources =
+                    listOf(
+                        FunctionSource.text(
+                            "demo:main",
+                            """
+                            scoreboard objectives add values dummy
+                            data modify storage demo:args index set value 2
+                            data modify storage demo:args command set value "scoreboard players set #dynamic values 9"
+                            data modify storage demo:args suffix set value "one"
+                            data modify storage demo:args nested set value {amount:4}
+                            function demo:macro with storage demo:args {}
+                            function demo:nested with storage demo:args nested
+                            """.trimIndent(),
+                        ),
+                        FunctionSource.text(
+                            "demo:macro",
+                            """
+                            ${'$'}data modify storage demo:state picked set value ${'$'}(index)
+                            ${'$'}${'$'}(command)
+                            ${'$'}function demo:target_${'$'}(suffix)
+                            """.trimIndent(),
+                        ),
+                        FunctionSource.text("demo:nested", "${'$'}scoreboard players set #nested values ${'$'}(amount)"),
+                        FunctionSource.text("demo:target_one", "scoreboard players set #target values 1"),
+                    ),
+            )
+
+        sandbox.runFunction("demo:main")
+
+        assertEquals(
+            2,
+            sandbox.world.storages
+                .getValue(ResourceLocation.parse("demo:state"))
+                .get("picked")
+                .asInt,
+        )
+        assertEquals(9, sandbox.world.getScore("#dynamic", "values"))
+        assertEquals(4, sandbox.world.getScore("#nested", "values"))
+        assertEquals(1, sandbox.world.getScore("#target", "values"))
+        val missing = assertFailsWith<SandboxException> { sandbox.runFunction("demo:macro") }
+        assertTrue(missing.message.orEmpty().contains("requires macro arguments"))
+    }
 
     private fun writeRecipeCommandPack(root: Path): Path {
         Files.writeString(
@@ -148,6 +261,20 @@ class SandboxBehaviorTest {
         assertEquals(DiagnosticCode.COMMAND_ERROR, error.code)
         assertTrue(error.message.contains("Command execution count exceeded sandbox limit 2"))
         assertEquals(listOf("<Server> one", "<Server> two"), sandbox.world.outputs.map { it.text })
+    }
+
+    @Test
+    fun `command budget resets between top-level operations`() {
+        val sandbox =
+            createFunctionSandboxFromString(
+                version = "26.2",
+                functionText = "say one\nsay two",
+                limits = SandboxLimits(maxCommands = 2, resetCommandBudgetPerOperation = true),
+            )
+
+        assertEquals(2, sandbox.runFunction(SingleFunctionDatapack.DEFAULT_ID).commandsExecuted)
+        assertEquals(2, sandbox.runFunction(SingleFunctionDatapack.DEFAULT_ID).commandsExecuted)
+        assertEquals(listOf("<Server> one", "<Server> two", "<Server> one", "<Server> two"), sandbox.world.outputs.map { it.text })
     }
 
     @Test
@@ -1180,11 +1307,13 @@ class SandboxBehaviorTest {
         sandbox.executeCommand("data modify storage demo:dst list append from storage demo:src value")
         sandbox.executeCommand("data modify storage demo:dst list prepend from storage demo:src merge")
         sandbox.executeCommand("data modify storage demo:dst list insert 1 from storage demo:src value.foo")
+        sandbox.executeCommand("data modify storage demo:dst {} merge from storage demo:src merge")
         sandbox.executeCommand("data modify storage demo:dst merged merge from storage demo:src merge")
 
         val dst = sandbox.world.storage(ResourceLocation.parse("demo:dst"))
         assertEquals(1, JsonPaths.get(dst, "copied.foo")?.asInt)
         assertEquals(1, JsonPaths.get(dst, "merged.a")?.asInt)
+        assertEquals(1, JsonPaths.get(dst, "a")?.asInt)
         val list = JsonPaths.get(dst, "list")?.asJsonArray ?: error("missing list")
         assertEquals(3, list.size())
         assertEquals(1, list[1].asInt)
@@ -1213,7 +1342,7 @@ class SandboxBehaviorTest {
         val mergedPayload = mergedOutput.payload?.asJsonObject ?: error("missing data modify payload")
         val mergedDetails = mergedPayload.getAsJsonObject("details")
         val mergedResult = mergedPayload.getAsJsonArray("results")[0].asJsonObject
-        assertEquals(6, modifyOutputs.size)
+        assertEquals(7, modifyOutputs.size)
         assertEquals("1", mergedOutput.text)
         assertEquals(listOf("demo:dst"), mergedOutput.targets)
         assertEquals("storage", mergedPayload.get("targetKind").asString)
@@ -1230,11 +1359,9 @@ class SandboxBehaviorTest {
                 .asInt,
         )
 
-        val error =
-            assertFailsWith<SandboxException> {
-                sandbox.executeCommand("data modify storage demo:dst missing set from storage demo:src nope")
-            }
-        assertEquals(DiagnosticCode.COMMAND_ERROR, error.code)
+        val missingSource = sandbox.executeCommand("data modify storage demo:dst missing set from storage demo:src nope")
+        assertEquals(false, missingSource.success)
+        assertEquals(null, JsonPaths.get(dst, "missing"))
     }
 
     @Test

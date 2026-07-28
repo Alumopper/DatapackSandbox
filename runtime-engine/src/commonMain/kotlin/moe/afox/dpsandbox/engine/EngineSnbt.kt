@@ -320,6 +320,7 @@ data class EngineDisplayState(
             val brightness = data.obj("brightness")
             val blockState = data.obj("block_state")
             val item = data.obj("item")
+            val itemComponents = item?.obj("components") ?: item?.obj("Components")
             val textValue = data.values["text"]
             val parsedTransformation = transformation(data.values["transformation"])
             return EngineDisplayState(
@@ -340,7 +341,11 @@ data class EngineDisplayState(
                         ?.values
                         ?.mapValues { (_, value) -> value.stringValue() }
                         .orEmpty(),
-                itemId = item?.string("id") ?: item?.string("Id") ?: if (path == "item_display") "minecraft:air" else null,
+                itemId =
+                    itemComponents?.string("minecraft:item_model")
+                        ?: item?.string("id")
+                        ?: item?.string("Id")
+                        ?: if (path == "item_display") "minecraft:air" else null,
                 itemDisplay = data.string("item_display")?.takeIf { it in ITEM_DISPLAYS } ?: "none",
                 text = plainText(textValue),
                 lineWidth = data.int("line_width") ?: 200,
@@ -514,11 +519,11 @@ data class EngineDisplayState(
     }
 }
 
-private fun EngineDataObject.string(name: String): String? = values[name]?.let(EngineDataValue::stringValue)
+internal fun EngineDataObject.string(name: String): String? = values[name]?.let(EngineDataValue::stringValue)
 
-private fun EngineDataObject.number(name: String): Double? = (values[name] as? EngineDataNumber)?.value
+internal fun EngineDataObject.number(name: String): Double? = (values[name] as? EngineDataNumber)?.value
 
-private fun EngineDataObject.int(name: String): Int? = number(name)?.toInt()
+internal fun EngineDataObject.int(name: String): Int? = number(name)?.toInt()
 
 private fun EngineDataObject.boolean(name: String): Boolean? =
     when (val value = values[name]) {
@@ -528,7 +533,7 @@ private fun EngineDataObject.boolean(name: String): Boolean? =
         else -> null
     }
 
-private fun EngineDataObject.obj(name: String): EngineDataObject? = values[name] as? EngineDataObject
+internal fun EngineDataObject.obj(name: String): EngineDataObject? = values[name] as? EngineDataObject
 
 private fun EngineDataObject.vector(
     name: String,
@@ -553,3 +558,20 @@ internal fun EngineDataValue.numberValue(): Double =
         is EngineDataBoolean -> if (value) 1.0 else 0.0
         else -> 0.0
     }
+
+internal fun EngineDataObject.long(name: String): Long = number(name)?.toLong() ?: 0L
+
+internal fun EngineDataObject.array(name: String): EngineDataArray? = values[name] as? EngineDataArray
+
+internal fun EngineDisplayState.fromRenderedSpecial(special: EngineDataObject?): EngineDisplayState {
+    if (special == null) return this
+    val matrix = special.array("renderTransformation")?.values?.map(EngineDataValue::numberValue)
+    return copy(
+        transformation = matrix?.takeIf { it.size == 16 } ?: transformation,
+        transformationComponents = null,
+        shadowRadius = special.number("shadowRadius") ?: shadowRadius,
+        shadowStrength = special.number("shadowStrength") ?: shadowStrength,
+        textOpacity = special.number("textOpacity")?.toInt() ?: textOpacity,
+        background = special.number("background")?.toInt() ?: background,
+    )
+}

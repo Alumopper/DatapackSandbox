@@ -21,4 +21,21 @@ class SandboxCommandCheckTest {
         assertEquals(before, sandbox.snapshotString())
         assertTrue(sandbox.world.traces.isEmpty())
     }
+
+    @Test
+    fun `function command check validates resource without executing a large body`() {
+        val functionText = (1..2_000).joinToString("\n") { index -> "setblock $index 2 3 minecraft:stone" }
+        val sandbox = createFunctionSandboxFromString("26.2", functionText)
+        val before = sandbox.snapshotString()
+
+        val valid = sandbox.checkCommand("function sandbox:main")
+        val missing = sandbox.checkCommand("function sandbox:missing")
+
+        assertTrue(valid.valid, valid.message)
+        assertEquals(1, valid.commandsExecuted)
+        assertEquals(0, valid.stateChanges)
+        assertFalse(missing.valid)
+        assertEquals(DiagnosticCode.RESOURCE_NOT_FOUND, missing.errorCode)
+        assertEquals(before, sandbox.snapshotString())
+    }
 }

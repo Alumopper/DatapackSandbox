@@ -6,6 +6,7 @@ import kotlin.math.sqrt
 internal data class EngineItemRenderAsset(
     val texture: EngineTexture,
     val transform: EngineItemModelTransform?,
+    val modelId: String?,
 )
 
 internal data class EngineItemModelTransform(
@@ -17,6 +18,7 @@ internal data class EngineItemModelTransform(
 private data class EngineResolvedItemModel(
     val textures: Map<String, String> = emptyMap(),
     val displays: Map<String, EngineJsonObject> = emptyMap(),
+    val hasElements: Boolean = false,
 )
 
 internal class EngineTextureStore {
@@ -24,6 +26,7 @@ internal class EngineTextureStore {
     private val generated = mutableMapOf<String, EngineTexture>()
     private val assetTexts = mutableMapOf<String, String>()
     private val parsedAssets = mutableMapOf<String, EngineJsonObject?>()
+    private val itemAssets = mutableMapOf<String, EngineItemRenderAsset>()
 
     fun register(
         id: String,
@@ -53,6 +56,7 @@ internal class EngineTextureStore {
                 else -> EngineMaterialPass.OPAQUE
             }
         imported[normalizeTextureId(id)] = EngineTexture(id, width, height, pixels, pass)
+        itemAssets.clear()
     }
 
     fun clear() {
@@ -60,6 +64,7 @@ internal class EngineTextureStore {
         generated.clear()
         assetTexts.clear()
         parsedAssets.clear()
+        itemAssets.clear()
     }
 
     fun registerAssetText(
@@ -69,6 +74,7 @@ internal class EngineTextureStore {
         val normalized = path.replace('\\', '/').removePrefix("/")
         assetTexts[normalized] = text
         parsedAssets.remove(normalized)
+        itemAssets.clear()
     }
 
     fun json(path: String): EngineJsonObject? {
@@ -125,6 +131,8 @@ internal class EngineTextureStore {
         id: String,
         context: String,
     ): EngineItemRenderAsset {
+        val cacheKey = "$id|$context"
+        itemAssets[cacheKey]?.let { return it }
         val (namespace, path) = splitResourceId(id)
         val modelIds = linkedSetOf<String>()
         collectItemModelIds(json("assets/$namespace/items/$path.json"), modelIds)
@@ -134,11 +142,17 @@ internal class EngineTextureStore {
             val reference = model.textures["layer0"] ?: model.textures["particle"] ?: model.textures.values.firstOrNull()
             resolveTextureReference(reference, model.textures, linkedSetOf())?.let { textureId ->
                 imported[normalizeTextureId(textureId)]?.let { texture ->
-                    return EngineItemRenderAsset(texture, model.displays[context]?.toItemTransform())
+                    return EngineItemRenderAsset(
+                        texture,
+                        model.displays[context]?.toItemTransform(),
+                        modelId.takeIf { model.hasElements },
+                    ).also { itemAssets[cacheKey] = it }
                 }
             }
         }
-        return EngineItemRenderAsset(imported["$namespace:item/$path"] ?: texture("$namespace:item/$path"), null)
+        return EngineItemRenderAsset(imported["$namespace:item/$path"] ?: texture("$namespace:item/$path"), null, null).also {
+            itemAssets[cacheKey] = it
+        }
     }
 
     fun displayTextTexture(display: EngineDisplayData): EngineTexture {
@@ -277,18 +291,21 @@ internal class EngineTextureStore {
         val model = json("assets/$namespace/models/$path.json") ?: return EngineResolvedItemModel()
         val textures = linkedMapOf<String, String>()
         val displays = linkedMapOf<String, EngineJsonObject>()
+        var hasElements = false
         model.string("parent")?.let { parent ->
             val inherited = resolveItemModel(parent, visited)
             textures.putAll(inherited.textures)
             displays.putAll(inherited.displays)
+            hasElements = inherited.hasElements
         }
+        hasElements = hasElements || !model.arrayValue("elements").isNullOrEmpty()
         model.objectValue("textures")?.values?.forEach { (key, value) ->
             if (value is EngineJsonString) textures[key] = value.value
         }
         model.objectValue("display")?.values?.forEach { (key, value) ->
             if (value is EngineJsonObject) displays[key] = value
         }
-        return EngineResolvedItemModel(textures, displays)
+        return EngineResolvedItemModel(textures, displays, hasElements)
     }
 
     private fun EngineJsonObject.toItemTransform(): EngineItemModelTransform =

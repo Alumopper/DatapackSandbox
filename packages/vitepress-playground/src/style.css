@@ -786,6 +786,34 @@
   margin: 0 20px 20px;
 }
 
+.dps-cell-space-compact > .dps-viewport {
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+}
+
+.dps-cell-space-compact > .dps-cell-code {
+  margin: 0;
+  border: 0;
+  border-bottom: 1px solid var(--dps-border);
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.dps-cell-space-compact .dps-cell-heading {
+  min-height: 36px;
+  padding: 4px 8px 4px 10px;
+  border-radius: 0;
+}
+
+.dps-cell-space-compact .dps-code-editor .cm-scroller {
+  max-height: 220px;
+}
+
+.dps-cell-space-compact .dps-code-editor .cm-content {
+  min-height: 90px;
+}
+
 .dps-viewport-toolbar {
   display: flex;
   min-height: 42px;
@@ -799,7 +827,46 @@
 
 .dps-viewport-playback {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: 6px;
+}
+
+.dps-viewport-settings {
+  font: 680 11px/1.35 var(--vp-font-family-base, system-ui, sans-serif);
+}
+
+.dps-viewport-settings > summary {
+  min-height: 29px;
+  box-sizing: border-box;
+  padding: 6px 10px;
+  white-space: nowrap;
+  list-style: none;
+  background: var(--dps-panel-soft);
+  border: 1px solid var(--dps-border);
+  border-radius: 7px;
+  cursor: pointer;
+}
+
+.dps-viewport-settings > summary::-webkit-details-marker {
+  display: none;
+}
+
+.dps-viewport-settings > div {
+  display: grid;
+  min-width: 190px;
+  gap: 7px;
+  padding: 8px 2px 2px;
+}
+
+.dps-viewport-settings label,
+.dps-viewport-settings label span {
+  display: grid;
+  gap: 2px;
+}
+
+.dps-viewport-settings input {
+  width: 100%;
 }
 
 .dps-viewport button {
@@ -879,6 +946,93 @@
   font-family: ui-monospace, "Cascadia Mono", "Segoe UI", sans-serif;
   text-shadow: 0 1px 1px #000;
   pointer-events: none;
+}
+
+.dps-viewport-command {
+  position: absolute;
+  inset: auto 8px 8px;
+  z-index: 5;
+  color: #fff;
+  font: 14px/1.35 ui-monospace, "Cascadia Mono", "Segoe UI", sans-serif;
+}
+
+.dps-viewport-command > input {
+  display: block;
+  width: 100%;
+  height: 32px;
+  box-sizing: border-box;
+  padding: 5px 8px;
+  color: #fff;
+  font: inherit;
+  caret-color: #fff;
+  outline: 1px solid rgb(255 255 255 / 36%);
+  background: rgb(0 0 0 / 72%);
+  border: 0;
+  border-radius: 0;
+  text-shadow: 1px 1px #000;
+}
+
+.dps-viewport-command > input:focus {
+  outline-color: rgb(255 255 255 / 70%);
+}
+
+.dps-command-suggestions {
+  display: flex;
+  width: min(620px, 100%);
+  max-height: 188px;
+  margin-bottom: 3px;
+  overflow: auto;
+  align-items: stretch;
+  flex-direction: column;
+  background: rgb(0 0 0 / 78%);
+}
+
+.dps-command-suggestions > button {
+  display: flex;
+  width: 100%;
+  min-height: 23px;
+  align-items: baseline;
+  gap: 8px;
+  padding: 3px 7px;
+  overflow: hidden;
+  color: #fff;
+  font: inherit;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+}
+
+.dps-command-suggestions > button[aria-selected="true"],
+.dps-command-suggestions > button:hover {
+  color: #ffff55;
+  background: rgb(255 255 255 / 16%);
+}
+
+.dps-command-suggestions b,
+.dps-command-suggestions small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dps-command-suggestions small {
+  color: #aaa;
+  font-size: 11px;
+}
+
+.dps-command-diagnostic {
+  width: fit-content;
+  max-width: 100%;
+  margin-bottom: 3px;
+  padding: 3px 7px;
+  overflow: hidden;
+  color: #ff5555;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: rgb(0 0 0 / 78%);
 }
 
 .dps-viewport-title {
@@ -964,6 +1118,10 @@
   .dps-playground > .dps-viewport,
   .dps-cell-space > .dps-viewport {
     margin: 0 12px 12px;
+  }
+
+  .dps-cell-space-compact > .dps-viewport {
+    margin: 0;
   }
 
   .dps-viewport-stage {

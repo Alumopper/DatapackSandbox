@@ -50,8 +50,11 @@ object EntitySelectors {
         location: SourceLocation? = null,
     ): List<SandboxEntity> {
         if (!token.startsWith("@")) {
+            val normalizedUuid = normalizeUuid(token)
             return world.players[token]?.let { listOf(it) }
-                ?: world.entities.filter { it.uuid == token }
+                ?: world.entities.filter { entity ->
+                    entity.uuid == token || (normalizedUuid != null && normalizeUuid(entity.uuid) == normalizedUuid)
+                }
         }
 
         val selector = token.substringBefore("[")
@@ -121,7 +124,7 @@ object EntitySelectors {
             result =
                 result.filter { entity ->
                     options.scores.all { (objective, range) ->
-                        range.contains(world.getScore(entity.scoreHolder, objective))
+                        world.scores[ScoreKey(entity.scoreHolder, objective)]?.let(range::contains) == true
                     }
                 }
         }

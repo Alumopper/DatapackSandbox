@@ -12,6 +12,8 @@ import kotlin.math.tan
 internal class EngineSceneBuilder(
     private val textures: EngineTextureStore,
 ) {
+    fun camera(world: EngineRenderWorld): EngineCamera = autoCamera(world)
+
     fun build(
         world: EngineRenderWorld,
         width: Int,
@@ -51,7 +53,7 @@ internal class EngineSceneBuilder(
         val points =
             buildList {
                 world.blocks.forEach { add(EngineVec3(it.x + 0.5, it.y + 0.5, it.z + 0.5)) }
-                world.entities.forEach { add(EngineVec3(it.x, it.y + 0.9, it.z)) }
+                world.entities.filter(EngineRenderEntity::contributesToAutoFrame).forEach { add(EngineVec3(it.x, it.y + 0.9, it.z)) }
             }
         if (points.isEmpty()) {
             val target = EngineVec3.ZERO
@@ -96,11 +98,12 @@ internal class EngineSceneBuilder(
         camera: EngineCamera,
     ): List<EngineSceneTriangle> {
         val type = entity.type.substringAfter(':')
+        if (type == "marker" || type == "interaction" || "uuid_marker" in entity.tags || "math_marker" in entity.tags) return emptyList()
         entity.display?.let { display ->
             val content =
                 when (type) {
                     "block_display" -> blockDisplayTriangles(entity, display, displayModelBaker, camera)
-                    "item_display" -> itemDisplayTriangles(entity, display, camera)
+                    "item_display" -> itemDisplayTriangles(entity, display, displayModelBaker, camera)
                     "text_display" -> textDisplayTriangles(entity, display, camera)
                     else -> emptyList()
                 }
@@ -150,14 +153,18 @@ internal class EngineSceneBuilder(
     private fun itemDisplayTriangles(
         entity: EngineRenderEntity,
         display: EngineDisplayData,
+        modelBaker: EngineModelBaker,
         camera: EngineCamera,
     ): List<EngineSceneTriangle> {
         val item = display.itemId ?: return emptyList()
         if (item == "minecraft:air") return emptyList()
         val asset = textures.itemAsset(item, display.itemDisplay)
         val context = itemDisplayTransformation(display.itemDisplay, asset.transform)
-        return generatedItemMesh(asset.texture).map { triangle ->
-            transformDisplayTriangle(triangle, entity, display, camera, EngineVec3.ZERO, context)
+        val modelTriangles = asset.modelId?.let(modelBaker::bakeItemModel).orEmpty()
+        val triangles = modelTriangles.ifEmpty { generatedItemMesh(asset.texture) }
+        val localBase = if (modelTriangles.isEmpty()) EngineVec3.ZERO else EngineVec3(0.5, 0.5, 0.5)
+        return triangles.map { triangle ->
+            transformDisplayTriangle(triangle, entity, display, camera, localBase, context)
         }
     }
 

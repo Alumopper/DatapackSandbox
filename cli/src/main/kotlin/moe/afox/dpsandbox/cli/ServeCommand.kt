@@ -38,7 +38,9 @@ import java.io.BufferedWriter
 import java.nio.charset.StandardCharsets
 import java.nio.file.Path
 import java.util.Base64
-import java.util.concurrent.Executors
+import java.util.concurrent.ArrayBlockingQueue
+import java.util.concurrent.RejectedExecutionException
+import java.util.concurrent.ThreadPoolExecutor
 import java.util.concurrent.TimeUnit
 import kotlin.io.path.exists
 
@@ -62,6 +64,11 @@ class ServeCommand : CliktCommand(name = "serve") {
 }
 
 internal class ServeSession {
+    private data class RequestLine(
+        val value: String,
+        val exceededLimit: Boolean,
+    )
+
     private class TrackedExecutionException(
         original: SandboxException,
         val partial: JsonObject,
@@ -99,20 +106,53 @@ internal class ServeSession {
         output: BufferedWriter,
     ) {
         output.writeLine(success(JsonNull.INSTANCE, helloJson()))
-        val executor = Executors.newSingleThreadExecutor { runnable -> Thread(runnable, "dps-serve-session") }
+        val executor =
+            ThreadPoolExecutor(
+                1,
+                1,
+                0,
+                TimeUnit.MILLISECONDS,
+                ArrayBlockingQueue(MAX_PENDING_REQUESTS),
+                { runnable -> Thread(runnable, "dps-serve-session") },
+            )
         try {
             while (true) {
-                val line = input.readLine() ?: break
+                val requestLine = input.readRequestLine() ?: break
+                if (requestLine.exceededLimit) {
+                    output.writeLine(
+                        failure(
+                            JsonNull.INSTANCE,
+                            SandboxException(
+                                DiagnosticCode.INPUT_FORMAT,
+                                "Serve request exceeds character limit $MAX_REQUEST_CHARACTERS",
+                            ),
+                        ),
+                    )
+                    continue
+                }
+                val line = requestLine.value
                 if (line.isBlank()) continue
                 if (isInterruptRequest(line)) {
                     output.writeLine(handleLine(line))
                 } else {
-                    executor.submit {
-                        try {
-                            output.writeLine(handleLine(line))
-                        } finally {
-                            sandbox?.clearExecutionCancellation()
+                    try {
+                        executor.execute {
+                            try {
+                                output.writeLine(handleLine(line))
+                            } finally {
+                                sandbox?.clearExecutionCancellation()
+                            }
                         }
+                    } catch (_: RejectedExecutionException) {
+                        output.writeLine(
+                            failure(
+                                requestId(line),
+                                SandboxException(
+                                    DiagnosticCode.INPUT_FORMAT,
+                                    "Serve request queue is full (maximum $MAX_PENDING_REQUESTS pending requests)",
+                                ),
+                            ),
+                        )
                     }
                 }
             }
@@ -121,6 +161,39 @@ internal class ServeSession {
             if (!executor.awaitTermination(30, TimeUnit.SECONDS)) executor.shutdownNow()
         }
     }
+
+    private fun BufferedReader.readRequestLine(): RequestLine? {
+        val line = StringBuilder()
+        var exceededLimit = false
+        var readAny = false
+        while (true) {
+            val next = read()
+            if (next < 0) {
+                if (!readAny) return null
+                break
+            }
+            readAny = true
+            if (next == '\n'.code) break
+            if (line.length < MAX_REQUEST_CHARACTERS) {
+                line.append(next.toChar())
+            } else {
+                exceededLimit = true
+            }
+        }
+        if (!exceededLimit && line.endsWith("\r")) line.setLength(line.length - 1)
+        return RequestLine(line.toString(), exceededLimit)
+    }
+
+    private fun requestId(line: String): JsonElement =
+        try {
+            JsonParser
+                .parseString(line)
+                .takeIf { it.isJsonObject }
+                ?.asJsonObject
+                ?.get("id") ?: JsonNull.INSTANCE
+        } catch (_: Exception) {
+            JsonNull.INSTANCE
+        }
 
     private fun BufferedWriter.writeLine(json: JsonObject) {
         synchronized(this) {
@@ -1002,6 +1075,8 @@ internal class ServeSession {
         }
 
     companion object {
+        private const val MAX_PENDING_REQUESTS = 64
+        private const val MAX_REQUEST_CHARACTERS = 1024 * 1024
         private const val MAX_RENDER_BYTES = 16 * 1024 * 1024
     }
 }

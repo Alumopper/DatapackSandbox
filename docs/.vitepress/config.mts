@@ -1,6 +1,9 @@
 import { defineConfigWithTheme } from 'vitepress'
 import type { ThemeConfig } from 'vitepress-carbon'
 import baseConfig from 'vitepress-carbon/config'
+import { fileURLToPath } from 'node:url'
+
+const repositoryRoot = fileURLToPath(new URL('../..', import.meta.url))
 
 const repository = 'https://github.com/Alumopper/DatapackSandbox'
 const docsBase = (() => {
@@ -281,6 +284,15 @@ const enThemeConfig = {
 } satisfies ThemeConfig
 
 export default defineConfigWithTheme<ThemeConfig>({
+  vite: {
+    server: {
+      fs: {
+        // The playground is a workspace package whose built, self-contained
+        // Worker is loaded from packages/ while VitePress serves docs/.
+        allow: [repositoryRoot],
+      },
+    },
+  },
   extends: baseConfig,
   title: 'Datapack Sandbox',
   description: 'Clean-room Minecraft Java datapack sandbox documentation.',

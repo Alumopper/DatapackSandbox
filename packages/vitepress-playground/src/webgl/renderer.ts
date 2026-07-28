@@ -59,6 +59,8 @@ const DEFAULTS: Required<Pick<PlaygroundViewportOptions,
 export class WebglViewportRenderer {
   private gl?: WebGL2RenderingContext
   private program?: WebGLProgram
+  private skyProgram?: WebGLProgram
+  private skyVao?: WebGLVertexArrayObject
   private particleProgram?: WebGLProgram
   private particleVao?: WebGLVertexArrayObject
   private particleBuffer?: WebGLBuffer
@@ -82,9 +84,11 @@ export class WebglViewportRenderer {
   private statFrameTime = 0
   private pixelRatio = 1
   private automatic = true
+  private needsAutomaticFrame = true
   private speed: number
   private movement: MovementState = { forward: 0, right: 0, up: 0 }
   private particles: ViewportParticle[] = []
+  private environment = { dayTime: 0, weather: 'clear', dimension: 'minecraft:overworld' }
   private particleSequence = 0
   private camera: PlaygroundCameraState = {
     position: [6, 5, 6],
@@ -124,12 +128,16 @@ export class WebglViewportRenderer {
     this.revision = scene.revision
     this.tickRate = scene.tickRate
     this.sceneReceivedAt = performance.now()
+    this.environment = scene.environment
     if (scene.atlas) {
       this.atlas = { width: scene.atlas.width, height: scene.atlas.height, rgba: new Uint8Array(scene.atlas.rgba) }
     }
     if (scene.blocks) this.blockCpu = nextCpuSection(this.blockCpu, scene.blocks, false, scene.vertexStride)
     if (scene.entities) this.entityCpu = nextCpuSection(this.entityCpu, scene.entities, true, scene.vertexStride)
-    if (this.automatic) this.applyAutomaticCamera(scene)
+    if (this.automatic && this.needsAutomaticFrame && scene.visibleBlocks + scene.visibleEntities > 0) {
+      this.applyAutomaticCamera(scene)
+      this.needsAutomaticFrame = false
+    }
     if (this.gl && !this.lost) this.uploadAll()
   }
 
@@ -168,6 +176,7 @@ export class WebglViewportRenderer {
 
   look(deltaYaw: number, deltaPitch: number): void {
     this.automatic = false
+    this.needsAutomaticFrame = false
     this.camera.yaw = normalizeDegrees(this.camera.yaw + deltaYaw)
     this.camera.pitch = clamp(this.camera.pitch + deltaPitch, -89, 89)
     this.emitCamera()
@@ -178,10 +187,22 @@ export class WebglViewportRenderer {
     this.emitCamera()
   }
 
+  setMoveSpeed(speed: number): void {
+    this.speed = clamp(speed, 0.1, 100)
+    this.emitCamera()
+  }
+
+  setFieldOfView(fieldOfView: number): void {
+    this.options.fieldOfView = clamp(fieldOfView, 30, 110)
+  }
+
   resetView(scene?: PlaygroundViewportScene): void {
     this.automatic = true
-    if (scene) this.applyAutomaticCamera(scene)
-    else this.emitCamera()
+    this.needsAutomaticFrame = true
+    if (scene && scene.visibleBlocks + scene.visibleEntities > 0) {
+      this.applyAutomaticCamera(scene)
+      this.needsAutomaticFrame = false
+    } else this.emitCamera()
   }
 
   dispose(): void {
@@ -204,6 +225,8 @@ export class WebglViewportRenderer {
     if (!gl) throw new Error('WebGL2 is unavailable; static PNG rendering remains available.')
     this.gl = gl
     this.program = createProgram(gl, VERTEX_SHADER, FRAGMENT_SHADER)
+    this.skyProgram = createProgram(gl, SKY_VERTEX_SHADER, SKY_FRAGMENT_SHADER)
+    this.skyVao = required(gl.createVertexArray(), 'sky vertex array')
     this.particleProgram = createProgram(gl, PARTICLE_VERTEX_SHADER, PARTICLE_FRAGMENT_SHADER)
     this.particleVao = required(gl.createVertexArray(), 'particle vertex array')
     this.particleBuffer = required(gl.createBuffer(), 'particle vertex buffer')
@@ -271,6 +294,7 @@ export class WebglViewportRenderer {
     gl.viewport(0, 0, this.canvas.width, this.canvas.height)
     gl.clearColor(0.055, 0.085, 0.075, 1)
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
+    this.drawSky()
     gl.useProgram(program)
     const aspect = this.canvas.width / Math.max(1, this.canvas.height)
     const projection = perspective(this.options.fieldOfView * Math.PI / 180, aspect, 0.05, 1_024)
@@ -292,6 +316,29 @@ export class WebglViewportRenderer {
     const interpolation = clamp((now - this.sceneReceivedAt) / (1_000 / this.tickRate), 0, 1)
     this.drawSection(this.entities, interpolation)
     this.drawParticles(projection, view, now)
+  }
+
+  private drawSky(): void {
+    const gl = this.gl
+    const program = this.skyProgram
+    if (!gl || !program || !this.skyVao) return
+    const dayAngle = (positiveModulo(this.environment.dayTime, 24_000) / 24_000 - 0.25) * Math.PI * 2
+    const weather = this.environment.weather === 'thunder' ? 0.9 : this.environment.weather === 'rain' ? 0.62 : 0
+    const dimension = this.environment.dimension.endsWith('the_nether') ? 1 : this.environment.dimension.endsWith('the_end') ? 2 : 0
+    gl.disable(gl.DEPTH_TEST)
+    gl.disable(gl.BLEND)
+    gl.useProgram(program)
+    gl.uniform2f(gl.getUniformLocation(program, 'u_yawPitch'), this.camera.yaw * Math.PI / 180, this.camera.pitch * Math.PI / 180)
+    gl.uniform1f(gl.getUniformLocation(program, 'u_aspect'), this.canvas.width / Math.max(1, this.canvas.height))
+    gl.uniform1f(gl.getUniformLocation(program, 'u_tanHalfFov'), Math.tan(this.options.fieldOfView * Math.PI / 360))
+    gl.uniform1f(gl.getUniformLocation(program, 'u_dayAngle'), dayAngle)
+    gl.uniform1f(gl.getUniformLocation(program, 'u_sunHeight'), Math.cos(dayAngle))
+    gl.uniform1f(gl.getUniformLocation(program, 'u_weather'), weather)
+    gl.uniform1i(gl.getUniformLocation(program, 'u_dimension'), dimension)
+    gl.bindVertexArray(this.skyVao)
+    gl.drawArrays(gl.TRIANGLES, 0, 3)
+    gl.bindVertexArray(null)
+    gl.enable(gl.DEPTH_TEST)
   }
 
   private drawParticles(projection: Float32Array, view: Float32Array, now: number): void {
@@ -359,9 +406,10 @@ export class WebglViewportRenderer {
   private updateCamera(deltaSeconds: number): void {
     if (deltaSeconds <= 0 || (this.movement.forward === 0 && this.movement.right === 0 && this.movement.up === 0)) return
     this.automatic = false
+    this.needsAutomaticFrame = false
     const yaw = this.camera.yaw * Math.PI / 180
     const forward: [number, number, number] = [-Math.sin(yaw), 0, Math.cos(yaw)]
-    const right: [number, number, number] = [Math.cos(yaw), 0, Math.sin(yaw)]
+    const right: [number, number, number] = [-Math.cos(yaw), 0, -Math.sin(yaw)]
     const scale = this.speed * deltaSeconds
     this.camera.position = [
       this.camera.position[0] + (forward[0] * this.movement.forward + right[0] * this.movement.right) * scale,
@@ -425,11 +473,13 @@ export class WebglViewportRenderer {
     this.lost = false
     this.blocks = undefined
     this.entities = undefined
-      this.texture = undefined
-      this.program = undefined
-      this.particleProgram = undefined
-      this.particleVao = undefined
-      this.particleBuffer = undefined
+    this.texture = undefined
+    this.program = undefined
+    this.skyProgram = undefined
+    this.skyVao = undefined
+    this.particleProgram = undefined
+    this.particleVao = undefined
+    this.particleBuffer = undefined
     try {
       this.initialize()
       this.callbacks.contextLost(false)
@@ -446,6 +496,8 @@ export class WebglViewportRenderer {
     deleteSection(gl, this.entities)
     if (this.texture) gl.deleteTexture(this.texture)
     if (this.program) gl.deleteProgram(this.program)
+    if (this.skyVao) gl.deleteVertexArray(this.skyVao)
+    if (this.skyProgram) gl.deleteProgram(this.skyProgram)
     if (this.particleBuffer) gl.deleteBuffer(this.particleBuffer)
     if (this.particleVao) gl.deleteVertexArray(this.particleVao)
     if (this.particleProgram) gl.deleteProgram(this.particleProgram)
@@ -630,6 +682,10 @@ function clamp(value: number, minimum: number, maximum: number): number {
   return Math.min(maximum, Math.max(minimum, value))
 }
 
+function positiveModulo(value: number, modulus: number): number {
+  return (value % modulus + modulus) % modulus
+}
+
 function normalizeDegrees(value: number): number {
   return ((value + 180) % 360 + 360) % 360 - 180
 }
@@ -700,6 +756,72 @@ void main() {
   if (radius > 1.0) discard;
   float edge = 1.0 - smoothstep(0.55, 1.0, radius);
   outColor = vec4(v_color.rgb, v_color.a * edge);
+}`
+
+const SKY_VERTEX_SHADER = `#version 300 es
+precision highp float;
+out vec2 v_ndc;
+void main() {
+  vec2 position = gl_VertexID == 0 ? vec2(-1.0, -1.0)
+    : gl_VertexID == 1 ? vec2(3.0, -1.0) : vec2(-1.0, 3.0);
+  v_ndc = position;
+  gl_Position = vec4(position, 1.0, 1.0);
+}`
+
+const SKY_FRAGMENT_SHADER = `#version 300 es
+precision highp float;
+in vec2 v_ndc;
+uniform vec2 u_yawPitch;
+uniform float u_aspect;
+uniform float u_tanHalfFov;
+uniform float u_dayAngle;
+uniform float u_sunHeight;
+uniform float u_weather;
+uniform int u_dimension;
+out vec4 outColor;
+
+float hash21(vec2 value) {
+  value = fract(value * vec2(123.34, 456.21));
+  value += dot(value, value + 45.32);
+  return fract(value.x * value.y);
+}
+
+void main() {
+  float yaw = u_yawPitch.x;
+  float pitch = u_yawPitch.y;
+  vec3 forward = vec3(-sin(yaw) * cos(pitch), -sin(pitch), cos(yaw) * cos(pitch));
+  vec3 backward = -forward;
+  vec3 right = normalize(cross(vec3(0.0, 1.0, 0.0), backward));
+  vec3 up = normalize(cross(backward, right));
+  vec3 direction = normalize(forward + right * v_ndc.x * u_aspect * u_tanHalfFov + up * v_ndc.y * u_tanHalfFov);
+
+  if (u_dimension == 1) {
+    float glow = 0.5 + 0.5 * max(direction.y, 0.0);
+    outColor = vec4(mix(vec3(0.09, 0.008, 0.006), vec3(0.32, 0.035, 0.018), glow), 1.0);
+    return;
+  }
+  if (u_dimension == 2) {
+    float speck = step(0.9985, hash21(floor(direction.xz * 900.0 / max(0.15, abs(direction.y)))));
+    outColor = vec4(vec3(0.018, 0.008, 0.028) + speck * vec3(0.28, 0.22, 0.38), 1.0);
+    return;
+  }
+
+  float daylight = smoothstep(-0.18, 0.22, u_sunHeight);
+  float horizon = pow(1.0 - clamp(abs(direction.y), 0.0, 1.0), 2.2);
+  vec3 zenith = mix(vec3(0.008, 0.012, 0.045), vec3(0.20, 0.48, 0.86), daylight);
+  vec3 horizonColor = mix(vec3(0.045, 0.055, 0.095), vec3(0.63, 0.78, 0.94), daylight);
+  vec3 color = mix(zenith, horizonColor, horizon);
+  vec3 sunDirection = normalize(vec3(0.18, cos(u_dayAngle), sin(u_dayAngle)));
+  float sun = smoothstep(0.9991, 0.99975, dot(direction, sunDirection)) * daylight * (1.0 - u_weather);
+  float moon = smoothstep(0.9988, 0.99955, dot(direction, -sunDirection)) * (1.0 - daylight) * (1.0 - u_weather);
+  color += sun * vec3(1.0, 0.88, 0.55) + moon * vec3(0.55, 0.62, 0.78);
+  if (direction.y > 0.04) {
+    vec2 starCell = floor(direction.xz / direction.y * 720.0);
+    float star = step(0.9987, hash21(starCell)) * (1.0 - daylight) * (1.0 - u_weather);
+    color += star * vec3(0.75, 0.82, 1.0);
+  }
+  vec3 storm = vec3(dot(color, vec3(0.30, 0.59, 0.11))) * 0.48;
+  outColor = vec4(mix(color, storm, u_weather), 1.0);
 }`
 
 const VERTEX_SHADER = `#version 300 es

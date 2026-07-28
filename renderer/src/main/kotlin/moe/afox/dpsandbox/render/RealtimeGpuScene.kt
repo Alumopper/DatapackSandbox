@@ -228,12 +228,18 @@ internal class JvmGpuSceneCompiler(
                     add(Position(block.position.x.toDouble(), block.position.y.toDouble(), block.position.z.toDouble()))
                     add(Position(block.position.x + 1.0, block.position.y + 1.0, block.position.z + 1.0))
                 }
-                view.entities.forEach { add(it.position) }
+                view.entities.filter(::contributesToAutoFrame).forEach { add(it.position) }
             }
         if (points.isEmpty()) return Position(-0.5, -0.5, -0.5) to Position(0.5, 0.5, 0.5)
         return Position(points.minOf { it.x }, points.minOf { it.y }, points.minOf { it.z }) to
             Position(points.maxOf { it.x }, points.maxOf { it.y }, points.maxOf { it.z })
     }
+
+    private fun contributesToAutoFrame(entity: RenderEntity): Boolean =
+        entity.type.substringAfter(':') != "marker" &&
+            entity.nbt
+                .getAsJsonArray("Tags")
+                ?.none { it.isJsonPrimitive && it.asString == "uuid_marker" } != false
 
     private fun passOrder(triangle: SceneTriangle): Int =
         when (triangle.texture.materialPass) {

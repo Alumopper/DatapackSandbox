@@ -55,6 +55,33 @@ class SoftwareWorldRendererTest {
     }
 
     @Test
+    fun autoFramingIgnoresInternalMarkerEntities() {
+        val world =
+            EngineRenderWorld(
+                blocks = listOf(EngineRenderBlock(0, 100, 0, "minecraft:stone")),
+                entities =
+                    listOf(
+                        EngineRenderEntity(
+                            "uuid",
+                            "minecraft:item",
+                            0.0,
+                            -67.0,
+                            0.0,
+                            tags = setOf("uuid_marker"),
+                        ),
+                        EngineRenderEntity("marker", "minecraft:marker", 0.0, 200.0, 0.0),
+                        EngineRenderEntity("player", "minecraft:player", 0.0, 0.0, 0.0),
+                        EngineRenderEntity("display", "minecraft:item_display", 0.5, 104.0, 0.5),
+                    ),
+            )
+
+        val scene = SoftwareWorldRenderer().compileRealtime(world, 960, 540)
+
+        assertEquals(listOf(0.0, 100.0, 0.0), scene.boundsMinimum)
+        assertEquals(listOf(1.0, 104.0, 1.0), scene.boundsMaximum)
+    }
+
+    @Test
     fun rendersAllDisplayEntityKindsWithSharedGeometryAndReadableText() {
         val world =
             EngineRenderWorld(
@@ -140,7 +167,7 @@ class SoftwareWorldRendererTest {
         val forward = renderer.render(EngineRenderWorld(blocks = blocks), 160, 90)
         val reversed = renderer.render(EngineRenderWorld(blocks = blocks.reversed()), 160, 90)
         assertContentEquals(forward.rgba, reversed.rgba)
-        assertEquals(36, forward.triangles)
+        assertEquals(28, forward.triangles)
     }
 
     @Test
@@ -243,5 +270,45 @@ class SoftwareWorldRendererTest {
                 64,
             )
         assertNotEquals(baseline.rgba.toList(), frame.rgba.toList())
+    }
+
+    @Test
+    fun bakesElementBasedModernItemModelsAsThreeDimensionalGeometry() {
+        val renderer = SoftwareWorldRenderer()
+        renderer.registerAssetText(
+            "assets/dice/items/d6.json",
+            """{"model":{"type":"model","model":"dice:d6"}}""",
+        )
+        renderer.registerAssetText(
+            "assets/dice/models/d6.json",
+            """{"textures":{"body":"dice:item/d6","particle":"dice:item/d6"},"elements":[{"from":[2.5,2.5,2.5],"to":[13.5,13.5,13.5],"faces":{"north":{"texture":"#body"},"east":{"texture":"#body"},"south":{"texture":"#body"},"west":{"texture":"#body"},"up":{"texture":"#body"},"down":{"texture":"#body"}}},{"from":[6.5,14.5,4],"to":[9.5,14.5,10.5],"faces":{"up":{"texture":"#body"}}}]}""",
+        )
+        renderer.registerTexture(
+            "dice:item/d6",
+            2,
+            2,
+            ByteArray(16) { index -> if (index % 4 == 3) -1 else if (index % 4 == 0) 120 else 40 },
+        )
+
+        val frame =
+            renderer.render(
+                EngineRenderWorld(
+                    entities =
+                        listOf(
+                            EngineRenderEntity(
+                                "die",
+                                "minecraft:item_display",
+                                0.0,
+                                0.0,
+                                0.0,
+                                display = EngineDisplayData(itemId = "dice:d6", itemDisplay = "fixed", brightnessSky = 15),
+                            ),
+                        ),
+                ),
+                96,
+                64,
+            )
+
+        assertEquals(14, frame.triangles)
     }
 }

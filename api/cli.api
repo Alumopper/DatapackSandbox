@@ -860,6 +860,18 @@ final class moe.afox.dpsandbox.cli.ServeSession$FunctionSpec {
   public int hashCode();
   public boolean equals(java.lang.Object);
 }
+final class moe.afox.dpsandbox.cli.ServeSession$RequestLine {
+  public moe.afox.dpsandbox.cli.ServeSession$RequestLine(java.lang.String, boolean);
+  public final java.lang.String getValue();
+  public final boolean getExceededLimit();
+  public final java.lang.String component1();
+  public final boolean component2();
+  public final moe.afox.dpsandbox.cli.ServeSession$RequestLine copy(java.lang.String, boolean);
+  public static moe.afox.dpsandbox.cli.ServeSession$RequestLine copy$default(moe.afox.dpsandbox.cli.ServeSession$RequestLine, java.lang.String, boolean, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+}
 final class moe.afox.dpsandbox.cli.ServeSession$SessionConfig {
   public moe.afox.dpsandbox.cli.ServeSession$SessionConfig(java.lang.String, java.util.List<? extends java.nio.file.Path>, java.util.List<moe.afox.dpsandbox.cli.ServeSession$FunctionSpec>, java.lang.String, moe.afox.dpsandbox.core.UnsupportedFeatureMode, moe.afox.dpsandbox.core.SandboxLimits);
   public moe.afox.dpsandbox.cli.ServeSession$SessionConfig(java.lang.String, java.util.List, java.util.List, java.lang.String, moe.afox.dpsandbox.core.UnsupportedFeatureMode, moe.afox.dpsandbox.core.SandboxLimits, int, kotlin.jvm.internal.DefaultConstructorMarker);

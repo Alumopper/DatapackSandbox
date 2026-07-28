@@ -1,6 +1,6 @@
 # @datapack-sandbox/vitepress-playground
 
-Persistent MCFunction notebook cells that execute entirely in an isolated browser Worker. No Java or WebSocket service is required.
+Persistent MCFunction notebook cells that execute entirely in an isolated browser Worker. The Worker runs the same `:core` command engine as the JVM build, compiled to an ES module with TeaVM; no Java or WebSocket service is required at runtime.
 
 ```ts
 import DpsPlayground from '@datapack-sandbox/vitepress-playground'
@@ -67,6 +67,6 @@ const session = new PlaygroundSessionController({ notebook })
 ```
 
 Defaults are 60 FPS, 20 TPS, autoplay off, input player `Steve`, keyboard/touch and pointer lock
-enabled, 70° field of view, movement speed 6, and a dynamic 0.5–2 pixel ratio. Input is observable
+enabled, 70° field of view, movement speed 6, mouse sensitivity 0.12, and a dynamic 0.5–2 pixel ratio. The toolbar settings panel adjusts sensitivity, speed, and field of view. Input is observable
 but does not simulate vanilla physics, collision, entity AI, or redstone. WebGL context loss pauses
 playback and rebuilds GPU resources; PNG/GIF export always stays on the software renderer.

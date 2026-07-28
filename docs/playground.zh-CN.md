@@ -6,6 +6,8 @@
 
 上方示例会在组件挂载后创建一个隔离 Worker。用户文件以可转移 `ArrayBuffer` 读入，不会上传，也不会写入 IndexedDB/OPFS；刷新页面即丢弃会话。
 
+Worker 执行的就是 JVM CLI 使用的同一个 `:core` 运行时，只是在构建阶段通过 TeaVM 编译为 ES 模块。命令、选择器、计分板、storage、实体、调度、玩家事件、检查点和 snapshot 在两个目标上共用一份实现。内存数据包导入会构建相同的 function、tag、predicate、loot table、advancement、recipe、item modifier 及可观察 JSON 资源模型。TeaVM 与生成的 Worker 只参与构建，部署后的页面仍是纯前端。
+
 ## 安装
 
 ```bash
@@ -182,6 +184,9 @@ npm run docs:build
 `#minecraft:tick` 以及可选的 `tickFunction`；卡顿时最多补算 5 tick，页面隐藏时自动暂停。
 桌面端支持指针锁定、鼠标观察、WASD、Space、Shift 和滚轮调速；触屏设备显示双摇杆。
 输入默认记录给 `Steve`，可从 trace 和 snapshot 观察，但不会隐式模拟原版碰撞、玩家物理、实体 AI 或红石。
+
+工具栏中的设置面板可调整鼠标灵敏度、移动速度和视野；也可通过 `PlaygroundViewportOptions` 的
+`mouseSensitivity`、`moveSpeed` 与 `fieldOfView` 传入。自动取景只执行一次，展示实体动画不会再拖着镜头移动；需要重新取景时点击 **Reset view**。天空会读取世界时间和天气，并与 JVM 视窗共用主世界、下界和末地的着色语义。
 
 实时渲染器位于独立的延迟加载 WebGL2 chunk 中。Worker 按 revision 传输独立的方块、实体、索引和
 纹理图集缓冲，镜头移动只更新 uniform。context lost 时暂停播放并在恢复后重建 GPU 资源；静态 PNG

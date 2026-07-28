@@ -31,6 +31,55 @@ class EngineSession(
         entityRegistry = entities.distinct().sorted()
     }
 
+    /** Replaces render-facing state from a snapshot produced by the JVM core. */
+    fun replaceSnapshotJson(snapshot: String) {
+        val root = EngineSnbtParser(snapshot).parseObject()
+        val next =
+            EngineWorld(
+                gameTime = root.long("gameTime"),
+                dayTime = root.long("dayTime"),
+                weather = root.string("weather") ?: "clear",
+                seed = root.long("seed"),
+            )
+        root.array("blocks")?.values.orEmpty().forEach { value ->
+            val block = value as? EngineDataObject ?: return@forEach
+            val x = block.int("x") ?: 0
+            val y = block.int("y") ?: 0
+            val z = block.int("z") ?: 0
+            val id = block.string("id") ?: return@forEach
+            val properties =
+                block.obj("properties")?.values?.mapValues { (_, property) -> property.stringValue() }.orEmpty()
+            next.blocks["$x,$y,$z"] = EngineBlock(x, y, z, id, properties)
+        }
+        root.array("entities")?.values.orEmpty().forEach { value ->
+            val entity = value as? EngineDataObject ?: return@forEach
+            val uuid = entity.string("uuid") ?: return@forEach
+            val type = entity.string("type") ?: return@forEach
+            val special = entity.obj("special")
+            val renderPosition = special?.obj("renderPosition")
+            val data = entity.obj("nbt") ?: EngineDataObject()
+            val tags =
+                entity.array("tags")?.values.orEmpty().mapTo(linkedSetOf()) { tag -> tag.stringValue() }
+            val display = EngineDisplayState.from(type, data)?.fromRenderedSpecial(special)
+            next.entities +=
+                EngineEntity(
+                    uuid = uuid,
+                    type = type,
+                    x = renderPosition?.number("x") ?: entity.number("x") ?: 0.0,
+                    y = renderPosition?.number("y") ?: entity.number("y") ?: 0.0,
+                    z = renderPosition?.number("z") ?: entity.number("z") ?: 0.0,
+                    yaw = renderPosition?.number("yaw") ?: entity.number("yaw") ?: 0.0,
+                    pitch = renderPosition?.number("pitch") ?: entity.number("pitch") ?: 0.0,
+                    tags = tags,
+                    data = data,
+                    display = display,
+                    ageTicks = root.long("gameTime"),
+                )
+        }
+        world = next
+        beforeSections = null
+    }
+
     fun upsertFunction(
         id: String,
         source: String,

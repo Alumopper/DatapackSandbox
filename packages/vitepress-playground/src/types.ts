@@ -36,6 +36,7 @@ export interface PlaygroundViewportOptions {
   showToolbar?: boolean
   fieldOfView?: number
   moveSpeed?: number
+  mouseSensitivity?: number
   minimumPixelRatio?: number
   maximumPixelRatio?: number
 }
@@ -91,6 +92,7 @@ export interface PlaygroundViewportScene {
   generatedAt: number
   vertexStride: number
   camera: { position: [number, number, number]; yaw: number; pitch: number }
+  environment: { dayTime: number; weather: string; dimension: string }
   bounds: { minimum: [number, number, number]; maximum: [number, number, number] }
   blocks?: PlaygroundSceneSection
   entities?: PlaygroundSceneSection

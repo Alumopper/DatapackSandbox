@@ -35,6 +35,7 @@ interface PendingRequest {
   resolve: (event: PlaygroundEvent) => void
   reject: (error: PlaygroundClientError) => void
   terminal: (event: PlaygroundEvent) => boolean
+  operation: string
   timer: number
   graceTimer?: number
 }
@@ -80,6 +81,8 @@ export class PlaygroundWorkerClient {
   private rebuilding = false
   private deferSessionReady = false
   private deferredSessionReady?: PlaygroundEvent
+  private workerMode: 'module' | 'classic' = 'module'
+  private attemptedClassicFallback = false
 
   constructor(private readonly options: PlaygroundWorkerClientOptions = {}) {
     this.requestTimeoutMs = options.limits?.requestTimeoutMs ?? 15_000
@@ -100,8 +103,9 @@ export class PlaygroundWorkerClient {
     if (this.worker) return
     this.closed = false
     this.connectionListeners.forEach((listener) => listener('connecting'))
-    this.worker = this.createWorker()
-    this.attachWorker(this.worker)
+    const worker = this.createWorker()
+    this.worker = worker
+    this.attachWorker(worker)
     try {
       await this.request(
         'transport.connect',
@@ -111,8 +115,8 @@ export class PlaygroundWorkerClient {
       )
       this.connectionListeners.forEach((listener) => listener('open'))
     } catch (error) {
-      this.worker?.terminate()
-      this.worker = undefined
+      worker.terminate()
+      if (this.worker === worker) this.worker = undefined
       this.connectionListeners.forEach((listener) => listener('unavailable', error instanceof Error ? error.message : String(error)))
       throw error
     }
@@ -136,6 +140,7 @@ export class PlaygroundWorkerClient {
           availableProfiles: Object.keys(profileIndex.profiles),
         },
         (event) => event.type === 'session.ready',
+        Math.max(this.requestTimeoutMs, 45_000),
       )
       if (notebook.preset) await this.loadPreset(notebook.preset, (this.options.dependencies?.length ?? 0) > 0)
       await this.loadDependencies()
@@ -330,7 +335,7 @@ export class PlaygroundWorkerClient {
     const id = this.nextId()
     return new Promise((resolve, reject) => {
       const timer = window.setTimeout(() => this.watchdog(id), timeoutMs)
-      this.pending.set(id, { resolve, reject, terminal, timer })
+      this.pending.set(id, { resolve, reject, terminal, operation: type, timer })
       this.worker!.postMessage({ id, type, ...withoutUndefined(fields) }, transfer)
     })
   }
@@ -354,6 +359,15 @@ export class PlaygroundWorkerClient {
       return
     }
     const playgroundEvent = value as PlaygroundEvent
+    if (playgroundEvent.type === 'transport.fatal') {
+      const failure = playgroundEvent.error
+      this.handleWorkerLoss(
+        failure?.message || 'The playground Worker reported an unrecoverable error',
+        failure?.code || 'WORKER_RUNTIME_ERROR',
+        failure?.details,
+      )
+      return
+    }
     if (playgroundEvent.type === 'session.ready' && this.deferSessionReady) {
       this.deferredSessionReady = playgroundEvent
     } else {
@@ -387,15 +401,101 @@ export class PlaygroundWorkerClient {
     worker.onmessage = (event) => this.receive(event)
     worker.onerror = (event) => {
       event.preventDefault()
-      this.handleWorkerLoss(event.message || 'The playground Worker crashed')
+      void this.handleNativeWorkerError(worker, event)
     }
     worker.onmessageerror = () => this.handleWorkerLoss('The playground Worker could not clone a response')
   }
 
-  private handleWorkerLoss(message: string): void {
+  private handleWorkerLoss(message: string, code = 'SESSION_LOST', details?: unknown): void {
     if (this.closed || this.rebuilding) return
-    this.rejectPending(new PlaygroundClientError('SESSION_LOST', message, false))
+    this.rejectPending(new PlaygroundClientError(code, message, false, details))
     void this.rebuild()
+  }
+
+  private async handleNativeWorkerError(worker: Worker, event: ErrorEvent): Promise<void> {
+    if (this.closed || this.rebuilding || this.worker !== worker) return
+    if (this.retryStartupAsClassicWorker()) return
+    const message = await this.describeWorkerError(event)
+    this.handleWorkerLoss(message)
+  }
+
+  private retryStartupAsClassicWorker(): boolean {
+    if (this.attemptedClassicFallback || this.workerMode !== 'module' || this.options.workerFactory) return false
+    const connectRequests = [...this.pending.entries()]
+      .filter(([, pending]) => pending.operation === 'transport.connect')
+      .map(([id]) => id)
+    if (connectRequests.length === 0) return false
+    this.attemptedClassicFallback = true
+    this.workerMode = 'classic'
+    this.worker?.terminate()
+    try {
+      const replacement = this.createWorker()
+      this.worker = replacement
+      this.attachWorker(replacement)
+      connectRequests.forEach((id) => replacement.postMessage({ id, type: 'transport.connect' }))
+      return true
+    } catch {
+      this.worker = undefined
+      return false
+    }
+  }
+
+  private async describeWorkerError(event: ErrorEvent): Promise<string> {
+    const operations = [...new Set([...this.pending.values()].map((pending) => pending.operation))]
+    const location = event.filename
+      ? ` at ${event.filename}${event.lineno ? `:${event.lineno}${event.colno ? `:${event.colno}` : ''}` : ''}`
+      : ''
+    const operation = operations.length > 0 ? ` while handling ${operations.join(', ')}` : ''
+    const message = event.message?.trim()
+    if (message) return `${message}${location}${operation}`
+    const diagnosis = operations.includes('transport.connect')
+      ? await this.diagnoseWorkerAsset()
+      : `Worker URL: ${this.workerAssetUrl()}`
+    return `The playground Worker failed to load or crashed${location}${operation}. ${diagnosis}`
+  }
+
+  private async diagnoseWorkerAsset(): Promise<string> {
+    const workerUrl = this.workerAssetUrl()
+    let parsed: URL
+    try {
+      parsed = new URL(workerUrl, document.baseURI)
+    } catch {
+      return `Worker URL is invalid: ${workerUrl}`
+    }
+    if (parsed.protocol === 'file:') {
+      return `Worker URL uses file:// (${parsed.href}); module Workers require the playground to be served over HTTP(S).`
+    }
+    if (!['http:', 'https:'].includes(parsed.protocol)) {
+      return `Worker URL uses unsupported protocol ${parsed.protocol} (${parsed.href}).`
+    }
+    const controller = new AbortController()
+    const timeout = window.setTimeout(() => controller.abort(), 3_000)
+    try {
+      const response = await fetch(parsed.href, {
+        method: 'GET',
+        cache: 'no-store',
+        credentials: 'same-origin',
+        signal: controller.signal,
+      })
+      const contentType = response.headers.get('content-type')?.split(';', 1)[0]?.trim() || '(missing)'
+      await response.body?.cancel().catch(() => undefined)
+      if (!response.ok) {
+        return `Worker asset ${parsed.href} returned HTTP ${response.status} ${response.statusText || ''} with Content-Type ${contentType}.`
+      }
+      const javascriptMime = /^(?:application|text)\/(?:javascript|ecmascript)$/.test(contentType)
+      if (!javascriptMime) {
+        return `Worker asset ${parsed.href} returned HTTP ${response.status} with invalid module Content-Type ${contentType}; serve it as application/javascript.`
+      }
+      return `Worker asset ${parsed.href} is reachable (HTTP ${response.status}, ${contentType}); check the page Content-Security-Policy worker-src directive and browser module-Worker support.`
+    } catch (error) {
+      return `Worker asset ${parsed.href} could not be fetched from the page: ${error instanceof Error ? error.message : String(error)}. Check CORS and network policy.`
+    } finally {
+      window.clearTimeout(timeout)
+    }
+  }
+
+  private workerAssetUrl(): string {
+    return String(this.options.workerUrl ?? packagedWorkerUrl)
   }
 
   private async rebuild(): Promise<void> {
@@ -426,12 +526,14 @@ export class PlaygroundWorkerClient {
   }
 
   private createWorker(): Worker {
-    const options: WorkerOptions = { type: 'module', name: 'datapack-sandbox' }
+    const options: WorkerOptions = this.workerMode === 'module'
+      ? { type: 'module', name: 'datapack-sandbox' }
+      : { name: 'datapack-sandbox' }
     if (this.options.workerFactory) {
       return this.options.workerFactory(this.options.workerUrl ?? packagedWorkerUrl, options)
     }
     if (this.options.workerUrl) return new Worker(this.options.workerUrl, options)
-    return new Worker(packagedWorkerUrl, { type: 'module', name: 'datapack-sandbox' })
+    return new Worker(packagedWorkerUrl, options)
   }
 
   private async loadPreset(id: string, deferLoad: boolean): Promise<void> {

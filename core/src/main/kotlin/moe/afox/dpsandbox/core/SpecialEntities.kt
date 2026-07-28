@@ -34,6 +34,10 @@ internal object SpecialEntitySupport {
             "width",
             "height",
             "glow_color_override",
+            // VVE and other command-driven runtimes keep their modeled object
+            // payload beside the vanilla display fields. Preserve that compound
+            // just like marker.data so JVM and browser executions share state.
+            "data",
         )
     private val armorStandKeys =
         setOf(
@@ -312,6 +316,7 @@ internal object SpecialEntitySupport {
         nbt: JsonObject,
         location: SourceLocation?,
     ) {
+        nbt.get("data")?.requireObject("display data", location)
         nbt.get("transformation")?.let { DisplayTransformation.parse(it, location) }
         nbt.validateNonNegativeInt("interpolation_duration", location)
         nbt.validateInt("start_interpolation", location)
@@ -550,12 +555,9 @@ internal object SpecialEntitySupport {
         }
 
     private fun uuidToIntArray(raw: String): JsonArray {
-        val uuid = UUID.fromString(raw)
+        val parts = uuidIntArray(raw) ?: throw IllegalArgumentException("Invalid UUID: $raw")
         return JsonArray().also { array ->
-            array.add((uuid.mostSignificantBits shr 32).toInt())
-            array.add(uuid.mostSignificantBits.toInt())
-            array.add((uuid.leastSignificantBits shr 32).toInt())
-            array.add(uuid.leastSignificantBits.toInt())
+            parts.forEach(array::add)
         }
     }
 
@@ -569,7 +571,7 @@ internal object SpecialEntitySupport {
                 val parts = value.asJsonArray.map { it.asInt }
                 val most = (parts[0].toLong() shl 32) or (parts[1].toLong() and 0xffffffffL)
                 val least = (parts[2].toLong() shl 32) or (parts[3].toLong() and 0xffffffffL)
-                UUID(most, least).toString()
+                uuidFromLongs(most, least)
             }
             else -> null
         }
@@ -583,7 +585,13 @@ internal object SpecialEntitySupport {
         key: String,
         location: SourceLocation?,
     ) {
-        get(key)?.let { if (!it.isJsonPrimitive || !it.asJsonPrimitive.isBoolean) inputError("$key must be a boolean", location) }
+        get(key)?.let { value ->
+            val primitive = value.takeIf(JsonElement::isJsonPrimitive)?.asJsonPrimitive
+            val valid =
+                primitive?.isBoolean == true ||
+                    (primitive?.isNumber == true && primitive.asDouble in setOf(0.0, 1.0))
+            if (!valid) inputError("$key must be a boolean or byte 0b/1b", location)
+        }
     }
 
     private fun JsonObject.validateInt(
@@ -1034,7 +1042,14 @@ private fun JsonObject.doubleValue(
 private fun JsonObject.booleanValue(
     key: String,
     fallback: Boolean,
-): Boolean = get(key)?.takeIf { it.isJsonPrimitive && it.asJsonPrimitive.isBoolean }?.asBoolean ?: fallback
+): Boolean =
+    get(key)?.takeIf(JsonElement::isJsonPrimitive)?.asJsonPrimitive?.let { primitive ->
+        when {
+            primitive.isBoolean -> primitive.asBoolean
+            primitive.isNumber && primitive.asDouble in setOf(0.0, 1.0) -> primitive.asDouble != 0.0
+            else -> null
+        }
+    } ?: fallback
 
 private fun vectorJson(
     x: Double,

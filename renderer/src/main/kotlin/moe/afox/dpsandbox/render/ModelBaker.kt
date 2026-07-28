@@ -19,6 +19,13 @@ internal class ModelBaker(
         return refs.flatMap { ref -> bakeModel(ref, block) }
     }
 
+    fun bakeItemModel(modelId: String): List<SceneTriangle> =
+        bakeModel(
+            ModelRef(modelId),
+            RenderBlock(BlockPos(0, 0, 0), "minecraft:air", emptyMap()),
+            fallbackIfEmpty = false,
+        )
+
     private fun resolveBlockState(block: RenderBlock): List<ModelRef> {
         val (namespace, path) = splitResourceId(block.id)
         val key = "assets/$namespace/blockstates/$path.json"
@@ -98,10 +105,11 @@ internal class ModelBaker(
     private fun bakeModel(
         ref: ModelRef,
         block: RenderBlock,
+        fallbackIfEmpty: Boolean = true,
     ): List<SceneTriangle> {
         val modelId = normalizeResourceId(ref.id)
         val model = loadModel(modelId, linkedSetOf())
-        if (model == null || model.elements.isEmpty()) return fallbackCube(block, ref)
+        if (model == null || model.elements.isEmpty()) return if (fallbackIfEmpty) fallbackCube(block, ref) else emptyList()
         val offset = Vec3(block.position.x.toDouble(), block.position.y.toDouble(), block.position.z.toDouble())
         return buildList {
             model.elements.forEach { element ->
@@ -121,8 +129,8 @@ internal class ModelBaker(
                             if (ref.yRotation != 0) value = value.rotateAround(BLOCK_CENTER, 'y', -ref.yRotation.toDouble())
                             value + offset
                         }
-                    val textureId = resolveTexture(face.texture, model.textures, modelId)
-                    val texture = resolver.texture(textureId)
+                    val textureBinding = resolveTexture(face.texture, model.textures, modelId)
+                    val texture = resolver.texture(textureBinding.sprite, textureBinding.materialPass)
                     val uv =
                         rotatedUv(
                             face.rotation + if (ref.uvLock) ref.yRotation else 0,
@@ -174,10 +182,28 @@ internal class ModelBaker(
             return null
         }
         val parent = json.string("parent")?.let { loadModel(it, stack) }
-        val textures = linkedMapOf<String, String>()
+        val textures = linkedMapOf<String, ModelTextureBinding>()
         parent?.textures?.let(textures::putAll)
         json.getAsJsonObjectOrNull("textures")?.entrySet()?.forEach { (name, value) ->
-            if (value.isJsonPrimitive && value.asJsonPrimitive.isString) textures[name] = value.asString
+            when {
+                value.isJsonPrimitive && value.asJsonPrimitive.isString ->
+                    textures[name] = ModelTextureBinding(value.asString)
+                value.isJsonObject -> {
+                    val texture = value.asJsonObject
+                    texture.string("sprite")?.let { sprite ->
+                        textures[name] =
+                            ModelTextureBinding(
+                                sprite = sprite,
+                                materialPass =
+                                    if (texture.boolean("force_translucent") == true) {
+                                        MaterialPass.TRANSLUCENT
+                                    } else {
+                                        null
+                                    },
+                            )
+                    }
+                }
+            }
         }
         val elements =
             json.getAsJsonArrayOrNull("elements")?.mapNotNull { parseElement(it, key) }
@@ -245,23 +271,27 @@ internal class ModelBaker(
 
     private fun resolveTexture(
         raw: String,
-        textures: Map<String, String>,
+        textures: Map<String, ModelTextureBinding>,
         modelId: String,
-    ): String {
+    ): ModelTextureBinding {
         var value = raw
+        var materialPass: MaterialPass? = null
         val visited = linkedSetOf<String>()
         while (value.startsWith('#')) {
             val key = value.removePrefix("#")
             if (!visited.add(key)) {
                 resolver.invalid("TEXTURE_REFERENCE_CYCLE", "Texture reference cycle in $modelId", modelId)
-                return "minecraft:block/missing"
+                return ModelTextureBinding("minecraft:block/missing")
             }
-            value = textures[key] ?: run {
-                resolver.missing("MISSING_TEXTURE_REFERENCE", "Missing texture variable #$key in $modelId", modelId)
-                return "minecraft:block/missing"
-            }
+            val binding =
+                textures[key] ?: run {
+                    resolver.missing("MISSING_TEXTURE_REFERENCE", "Missing texture variable #$key in $modelId", modelId)
+                    return ModelTextureBinding("minecraft:block/missing")
+                }
+            value = binding.sprite
+            materialPass = binding.materialPass ?: materialPass
         }
-        return normalizeResourceId(value)
+        return ModelTextureBinding(normalizeResourceId(value), materialPass)
     }
 
     private fun variantMatches(
@@ -359,8 +389,13 @@ internal class ModelBaker(
     )
 
     private data class ResolvedModel(
-        val textures: Map<String, String>,
+        val textures: Map<String, ModelTextureBinding>,
         val elements: List<ModelElement>,
+    )
+
+    private data class ModelTextureBinding(
+        val sprite: String,
+        val materialPass: MaterialPass? = null,
     )
 
     private data class ModelElement(

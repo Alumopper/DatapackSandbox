@@ -44,6 +44,38 @@ application {
     mainClass.set("moe.afox.dpsandbox.cli.MainKt")
 }
 
+fun JavaExec.configureCliDevelopmentLauncher() {
+    group = "application"
+    mainClass.set(application.mainClass)
+    classpath = sourceSets.main.get().runtimeClasspath
+    workingDir = rootProject.projectDir
+    standardInput = System.`in`
+
+    if (System.getProperty("os.name").lowercase().contains("mac")) {
+        jvmArgs("-XstartOnFirstThread")
+    }
+}
+
+tasks.register<JavaExec>("runCli") {
+    description = "Runs the CLI from source; pass arguments with --args and attach a debugger with --debug-jvm."
+    configureCliDevelopmentLauncher()
+
+    doFirst {
+        if (args.isEmpty()) {
+            args("--help")
+        }
+    }
+}
+
+tasks.register<JavaExec>("runViewport") {
+    description = "Opens the realtime graphical viewport from source; pass viewport options with --args."
+    configureCliDevelopmentLauncher()
+
+    doFirst {
+        setArgs(listOf("viewport") + args)
+    }
+}
+
 tasks.register<Jar>("fatJar") {
     group = "build"
     description = "Builds a standalone CLI jar."

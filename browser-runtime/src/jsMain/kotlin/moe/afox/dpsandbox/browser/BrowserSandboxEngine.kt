@@ -148,6 +148,12 @@ class BrowserSandboxEngine(
 
     fun snapshot(): String = session.snapshotJson()
 
+    fun replaceSnapshot(snapshot: String) {
+        session.replaceSnapshotJson(snapshot)
+        lastFrame = null
+        realtimeScene = null
+    }
+
     fun renderRgba(
         width: Int,
         height: Int,
@@ -200,7 +206,7 @@ class BrowserSandboxEngine(
     ): String {
         val scene = renderer.compileRealtime(renderWorld(), width, height)
         realtimeScene = scene
-        return """{"vertexStride":${scene.vertexStride},"camera":{"position":${numberArray(scene.cameraPosition)},"yaw":${scene.cameraYaw},"pitch":${scene.cameraPitch}},"bounds":{"minimum":${numberArray(scene.boundsMinimum)},"maximum":${numberArray(scene.boundsMaximum)}},"atlas":{"width":${scene.atlas.width},"height":${scene.atlas.height}},"blocks":{"batches":${batchJson(scene.blocks.batches)},"vertices":${scene.blocks.vertices.size},"indices":${scene.blocks.indices.size}},"entities":{"batches":${batchJson(scene.entities.batches)},"vertices":${scene.entities.vertices.size},"indices":${scene.entities.indices.size}},"visibleBlocks":${scene.visibleBlocks},"visibleEntities":${scene.visibleEntities}}"""
+        return """{"vertexStride":${scene.vertexStride},"camera":{"position":${numberArray(scene.cameraPosition)},"yaw":${scene.cameraYaw},"pitch":${scene.cameraPitch}},"bounds":{"minimum":${numberArray(scene.boundsMinimum)},"maximum":${numberArray(scene.boundsMaximum)}},"atlas":{"width":${scene.atlas.width},"height":${scene.atlas.height},"signature":${scene.atlas.signature}},"blocks":{"batches":${batchJson(scene.blocks.batches)},"vertices":${scene.blocks.vertices.size},"indices":${scene.blocks.indices.size}},"entities":{"batches":${batchJson(scene.entities.batches)},"vertices":${scene.entities.vertices.size},"indices":${scene.entities.indices.size}},"visibleBlocks":${scene.visibleBlocks},"visibleEntities":${scene.visibleEntities}}"""
     }
 
     fun realtimeBlockVertices(): FloatArray = requireRealtimeScene().blocks.vertices
@@ -238,6 +244,7 @@ class BrowserSandboxEngine(
                         z = it.z,
                         yaw = it.yaw,
                         pitch = it.pitch,
+                        tags = it.tags,
                         display =
                             it.display?.let { display ->
                                 EngineDisplayData(

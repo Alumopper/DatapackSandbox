@@ -71,6 +71,29 @@ class SandboxRendererTest {
     }
 
     @Test
+    fun `modern object texture bindings select sprites and translucent materials`() {
+        val assets = Files.createTempDirectory("dps-modern-texture-binding")
+        writeCubeAssets(assets, "demo", "glass", 0x803366aa.toInt())
+        val model = assets.resolve("assets/demo/models/block/glass.json")
+        Files.writeString(
+            model,
+            Files.readString(model).replace(
+                "\"all\": \"demo:block/glass\"",
+                "\"all\": {\"sprite\": \"demo:block/glass\", \"force_translucent\": true}",
+            ),
+        )
+        val diagnostics = mutableListOf<RenderDiagnostic>()
+        val resolver = AssetResolver(RenderAssets(minecraftAssets = assets), diagnostics, strict = true)
+        val block = RenderBlock(BlockPos(0, 64, 0), "demo:glass", emptyMap())
+
+        val triangles = ModelBaker(resolver, diagnostics, emptySet(), 0L, emptyMap()).bake(block)
+
+        assertEquals(12, triangles.size)
+        assertTrue(triangles.all { it.texture.materialPass == MaterialPass.TRANSLUCENT })
+        assertTrue(diagnostics.isEmpty(), diagnostics.toString())
+    }
+
+    @Test
     fun `later resource packs override earlier assets`() {
         val base = Files.createTempDirectory("dps-render-base")
         val override = Files.createTempDirectory("dps-render-override")

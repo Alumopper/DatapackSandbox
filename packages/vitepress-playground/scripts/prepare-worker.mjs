@@ -7,7 +7,10 @@ const here = dirname(fileURLToPath(import.meta.url))
 const packageRoot = resolve(here, '..')
 const repoRoot = resolve(packageRoot, '..', '..')
 const wrapper = resolve(repoRoot, process.platform === 'win32' ? 'gradlew.bat' : 'gradlew')
-const result = spawnSync(wrapper, [':browser-runtime:jsBrowserProductionLibraryDistribution'], {
+const result = spawnSync(wrapper, [
+  ':browser-runtime:jsBrowserProductionLibraryDistribution',
+  ':browser-core:generateJavaScript',
+], {
   cwd: repoRoot,
   stdio: 'inherit',
   shell: process.platform === 'win32',
@@ -16,9 +19,11 @@ if (result.status !== 0) process.exit(result.status ?? 1)
 
 const generated = resolve(packageRoot, '.generated')
 const kotlinOutput = resolve(repoRoot, 'browser-runtime', 'build', 'dist', 'js', 'productionLibrary')
+const coreOutput = resolve(repoRoot, 'browser-core', 'build', 'dist', 'js', 'datapack-sandbox-core.js')
 await rm(generated, { recursive: true, force: true })
 await mkdir(generated, { recursive: true })
 await cp(kotlinOutput, resolve(generated, 'kotlin'), { recursive: true })
+await cp(coreOutput, resolve(generated, 'datapack-sandbox-core.js'))
 
 const versionSource = await readFile(resolve(repoRoot, 'core', 'src', 'main', 'kotlin', 'moe', 'afox', 'dpsandbox', 'core', 'VersionProfile.kt'), 'utf8')
 const registrySource = await readFile(resolve(repoRoot, 'core', 'src', 'main', 'kotlin', 'moe', 'afox', 'dpsandbox', 'core', 'RegistryView.kt'), 'utf8')

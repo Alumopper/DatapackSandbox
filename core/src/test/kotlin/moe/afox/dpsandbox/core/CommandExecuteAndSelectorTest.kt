@@ -4,8 +4,121 @@ import java.nio.file.Files
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertTrue
 
 class CommandExecuteAndSelectorTest {
+    @Test
+    fun `scoreboard division and modulo floor negative fixed point values`() {
+        val sandbox =
+            createFunctionSandboxFromString(
+                version = "26.2",
+                functionText = "",
+                functionId = "demo:empty",
+            )
+
+        sandbox.executeCommand("scoreboard objectives add values dummy")
+        sandbox.executeCommand("scoreboard players set #negative values -5")
+        sandbox.executeCommand("scoreboard players set #positive values 5")
+        sandbox.executeCommand("scoreboard players set #divisor values 2")
+        sandbox.executeCommand("scoreboard players operation #negative values /= #divisor values")
+        sandbox.executeCommand("scoreboard players operation #positive values %= #divisor values")
+        sandbox.executeCommand("scoreboard players set #mod_negative values -5")
+        sandbox.executeCommand("scoreboard players operation #mod_negative values %= #divisor values")
+
+        assertEquals(-3, sandbox.world.getScore("#negative", "values"))
+        assertEquals(1, sandbox.world.getScore("#positive", "values"))
+        assertEquals(1, sandbox.world.getScore("#mod_negative", "values"))
+    }
+
+    @Test
+    fun `execute store receives the resulting scoreboard operation value`() {
+        val sandbox =
+            createFunctionSandboxFromString(
+                version = "26.2",
+                functionText = "",
+                functionId = "demo:empty",
+            )
+
+        sandbox.executeCommand("scoreboard objectives add values dummy")
+        sandbox.executeCommand("scoreboard players set #target values 7")
+        sandbox.executeCommand("scoreboard players set #source values 5")
+        sandbox.executeCommand(
+            "execute store result storage demo:result value double 0.1 " +
+                "store result score #copy values run " +
+                "scoreboard players operation #target values += #source values",
+        )
+
+        assertEquals(12, sandbox.world.getScore("#target", "values"))
+        assertEquals(12, sandbox.world.getScore("#copy", "values"))
+        assertEquals(
+            1.2,
+            sandbox.world
+                .storage(ResourceLocation.parse("demo:result"))
+                .get("value")
+                .asDouble,
+            0.000_001,
+        )
+    }
+
+    @Test
+    fun `literal entity targets normalize abbreviated uuids`() {
+        val sandbox =
+            createFunctionSandboxFromString(
+                version = "26.2",
+                functionText = "",
+                functionId = "demo:empty",
+            )
+
+        sandbox.executeCommand("summon marker 0 0 0 {UUID:[I;0,0,0,0],Tags:[\"zero\"]}")
+        sandbox.executeCommand("execute as 0-0-0-0-0 run tag @s add matched")
+
+        assertTrue(
+            sandbox.world.entities
+                .single { "zero" in it.tags }
+                .tags
+                .contains("matched"),
+        )
+    }
+
+    @Test
+    fun `missing scores fail execute conditions and selector score filters`() {
+        val sandbox =
+            createFunctionSandboxFromString(
+                version = "26.2",
+                functionText = "",
+                functionId = "demo:empty",
+            )
+
+        sandbox.executeCommand("scoreboard objectives add state dummy")
+        sandbox.executeCommand("scoreboard objectives add checks dummy")
+        sandbox.executeCommand("execute if score Steve state matches 0 run scoreboard players add #if checks 1")
+        sandbox.executeCommand("execute unless score Steve state matches 0.. run scoreboard players add #unless checks 1")
+        sandbox.executeCommand("execute if entity @a[scores={state=0}] run scoreboard players add #selector checks 1")
+        sandbox.executeCommand("scoreboard players set Steve state 0")
+        sandbox.executeCommand("execute if score Steve state matches 0 run scoreboard players add #if checks 1")
+        sandbox.executeCommand("execute if entity @a[scores={state=0}] run scoreboard players add #selector checks 1")
+
+        sandbox.executeCommand("summon minecraft:item_display 0 64 0 {Tags:[\"score_target\"]}")
+        sandbox.executeCommand(
+            "execute as @e[tag=score_target,limit=1] run scoreboard players set @s state 7",
+        )
+        sandbox.executeCommand(
+            "execute if entity @e[tag=score_target,scores={state=7}] run scoreboard players add #context checks 1",
+        )
+        sandbox.executeCommand(
+            "execute as @e[tag=score_target,limit=1] if score @s state matches 7 run scoreboard players add #self checks 1",
+        )
+        sandbox.executeCommand(
+            "execute as @e[tag=missing] store result entity @s Air short 1 run scoreboard players get #if checks",
+        )
+
+        assertEquals(1, sandbox.world.getScore("#if", "checks"))
+        assertEquals(1, sandbox.world.getScore("#unless", "checks"))
+        assertEquals(1, sandbox.world.getScore("#selector", "checks"))
+        assertEquals(1, sandbox.world.getScore("#context", "checks"))
+        assertEquals(1, sandbox.world.getScore("#self", "checks"))
+    }
+
     @Test
     fun `execute conditions cover predicate dimension biome and loaded state`() {
         val pack = writePredicatePack(Files.createTempDirectory("dps-execute-conditions-pack"))
@@ -291,6 +404,10 @@ class CommandExecuteAndSelectorTest {
         assertEquals(15.0, rotated.get("beforePitch").asDouble)
         assertEquals(30.0, rotated.get("afterYaw").asDouble)
         assertEquals(5.0, rotated.get("afterPitch").asDouble)
+
+        sandbox.executeCommand("""execute rotated -20 12 run rotate @e[tag=anchor,limit=1] ~5 ~-4""")
+        assertEquals(-15.0, anchor.yaw)
+        assertEquals(8.0, anchor.pitch)
     }
 
     @Test
@@ -487,6 +604,27 @@ class CommandExecuteAndSelectorTest {
 
         assertEquals(3, sandbox.world.getScore("#pass", "checks"))
         assertEquals(0, sandbox.world.getScore("#fail", "checks"))
+    }
+
+    @Test
+    fun `execute block condition resolves nested datapack tags and builtin air`() {
+        val pack = Files.createTempDirectory("dps-execute-block-tags")
+        Files.writeString(pack.resolve("pack.mcmeta"), """{"pack":{"pack_format":107.1,"description":"test"}}""")
+        val tags = pack.resolve("data/demo/tags/block")
+        Files.createDirectories(tags)
+        Files.writeString(tags.resolve("nested.json"), """{"values":["minecraft:air","minecraft:glass"]}""")
+        Files.writeString(tags.resolve("pass.json"), """{"values":["#demo:nested"]}""")
+        val sandbox = createSandbox("26.2", listOf(pack))
+
+        sandbox.executeCommand("scoreboard objectives add checks dummy")
+        sandbox.executeCommand("setblock 1 64 0 minecraft:glass")
+        sandbox.executeCommand("setblock 2 64 0 minecraft:stone")
+        sandbox.executeCommand("execute if block 0 64 0 #demo:pass run scoreboard players add #pass checks 1")
+        sandbox.executeCommand("execute if block 1 64 0 #demo:pass run scoreboard players add #pass checks 1")
+        sandbox.executeCommand("execute unless block 2 64 0 #demo:pass run scoreboard players add #pass checks 1")
+        sandbox.executeCommand("execute if block 0 64 0 #minecraft:air run scoreboard players add #pass checks 1")
+
+        assertEquals(4, sandbox.world.getScore("#pass", "checks"))
     }
 
     @Test

@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { PlaygroundClientError } from './client'
 import { PlaygroundSessionController } from './session'
 import type {
   PlaygroundBrowserLimits,
   PlaygroundCameraState,
+  PlaygroundCompletion,
   PlaygroundDependencySource,
+  PlaygroundDiagnostic,
   PlaygroundFrameStats,
   PlaygroundNotebook,
   PlaygroundOutputEvent,
@@ -38,6 +40,7 @@ const emit = defineEmits<{
 }>()
 
 const canvas = ref<HTMLCanvasElement>()
+const commandInput = ref<HTMLInputElement>()
 const status = ref<'connecting' | 'ready' | 'unavailable' | 'context-lost'>('connecting')
 const message = ref('Starting local sandbox…')
 const playing = ref(false)
@@ -47,8 +50,16 @@ const touchVisible = ref(false)
 const chatLines = ref<Array<{ id: number; text: string; color: string }>>([])
 const titleOverlay = ref({ title: '', subtitle: '', titleColor: '#ffffff', subtitleColor: '#ffffff', visible: false })
 const actionbarOverlay = ref({ text: '', color: '#ffffff', visible: false })
+const commandOpen = ref(false)
+const commandSource = ref('')
+const commandSuggestions = ref<PlaygroundCompletion[]>([])
+const commandDiagnostics = ref<PlaygroundDiagnostic[]>([])
+const selectedCommandSuggestion = ref(0)
 const leftKnob = ref({ x: 0, y: 0 })
 const rightKnob = ref({ x: 0, y: 0 })
+const mouseSensitivity = ref(props.options.mouseSensitivity ?? 0.12)
+const configuredMoveSpeed = ref(props.options.moveSpeed ?? 6)
+const configuredFieldOfView = ref(props.options.fieldOfView ?? 70)
 let controller: PlaygroundSessionController | undefined
 let ownsController = false
 let renderer: WebglViewportRenderer | undefined
@@ -63,10 +74,17 @@ let pendingLook = { x: 0, y: 0 }
 let lookTimer: number | undefined
 let titleTimer: number | undefined
 let actionbarTimer: number | undefined
+let commandCompletionTimer: number | undefined
+let commandCheckTimer: number | undefined
+let commandAnalysisRevision = 0
+let commandExecutionErrorShown = false
 let overlaySequence = 0
 let titleTimes = { fadeIn: 10, stay: 70, fadeOut: 20 }
 const pendingVisualOutputs: PlaygroundOutputEvent[] = []
 const pressed = new Set<string>()
+const commandHistory: string[] = []
+let commandHistoryIndex = 0
+const viewportCommandCellId = `viewport-command-${Math.random().toString(36).slice(2)}`
 
 const viewportOptions = computed<Required<Omit<PlaygroundViewportOptions, 'tickFunction'>> & { tickFunction?: string }>(() => ({
   targetFps: props.options.targetFps ?? 60,
@@ -80,6 +98,7 @@ const viewportOptions = computed<Required<Omit<PlaygroundViewportOptions, 'tickF
   showToolbar: props.options.showToolbar ?? true,
   fieldOfView: props.options.fieldOfView ?? 70,
   moveSpeed: props.options.moveSpeed ?? 6,
+  mouseSensitivity: props.options.mouseSensitivity ?? 0.12,
   minimumPixelRatio: props.options.minimumPixelRatio ?? 0.5,
   maximumPixelRatio: props.options.maximumPixelRatio ?? 2,
 }))
@@ -104,13 +123,19 @@ onMounted(async () => {
           droppedTicks: Number(event.result?.droppedTicks ?? 0),
         })
       } else if (event.type === 'cell.error' && event.error) {
-        emit('error', { code: event.error.code, message: event.error.message })
+        if (event.cellId === viewportCommandCellId) {
+          commandExecutionErrorShown = true
+          addChatLine(event.error.message, '#ff5555')
+        }
+        else emit('error', { code: event.error.code, message: event.error.message })
       } else if (event.type === 'session.restore-example') {
         renderer?.resetView(latestScene.value)
       } else if (event.type === 'viewport.output' && event.output) {
         applyViewportOutput(event.output)
       } else if (event.type === 'viewport.clear') {
         clearViewportOutputs()
+      } else if (event.cellId === viewportCommandCellId && event.type === 'cell.output' && event.kind === 'execution') {
+        addChatLine(event.summary || 'Command executed.', '#aaaaaa')
       }
     })
     unsubscribeScene = controller.subscribeScene((scene) => {
@@ -155,6 +180,8 @@ onBeforeUnmount(() => {
   if (lookTimer !== undefined) window.clearTimeout(lookTimer)
   if (titleTimer !== undefined) window.clearTimeout(titleTimer)
   if (actionbarTimer !== undefined) window.clearTimeout(actionbarTimer)
+  if (commandCompletionTimer !== undefined) window.clearTimeout(commandCompletionTimer)
+  if (commandCheckTimer !== undefined) window.clearTimeout(commandCheckTimer)
   if (ownsController) controller?.dispose()
 })
 
@@ -193,6 +220,11 @@ function resetView(): void {
   renderer?.resetView(latestScene.value)
 }
 
+function updateViewportSettings(): void {
+  renderer?.setMoveSpeed(configuredMoveSpeed.value)
+  renderer?.setFieldOfView(configuredFieldOfView.value)
+}
+
 function onCanvasClick(): void {
   canvas.value?.focus()
   if (viewportOptions.value.pointerLock && canvas.value && document.pointerLockElement !== canvas.value) {
@@ -222,6 +254,11 @@ function inputActive(): boolean {
 
 function onKeyDown(event: KeyboardEvent): void {
   if (!viewportOptions.value.keyboard || !inputActive()) return
+  if (event.code === 'KeyT' && !event.ctrlKey && !event.altKey && !event.metaKey) {
+    event.preventDefault()
+    openCommandInput()
+    return
+  }
   const code = KEY_BINDINGS[event.code]
   if (!code) return
   event.preventDefault()
@@ -229,6 +266,135 @@ function onKeyDown(event: KeyboardEvent): void {
   pressed.add(event.code)
   updateMovement()
   void dispatchInput({ device: 'keyboard', code, action: 'press' })
+}
+
+function openCommandInput(): void {
+  releaseAllKeys()
+  if (document.pointerLockElement === canvas.value) document.exitPointerLock()
+  commandOpen.value = true
+  commandSource.value = '/'
+  commandSuggestions.value = []
+  commandDiagnostics.value = []
+  selectedCommandSuggestion.value = 0
+  commandHistoryIndex = commandHistory.length
+  void nextTick(() => commandInput.value?.focus())
+}
+
+function closeCommandInput(): void {
+  commandOpen.value = false
+  commandSuggestions.value = []
+  commandDiagnostics.value = []
+  commandAnalysisRevision += 1
+  if (commandCompletionTimer !== undefined) window.clearTimeout(commandCompletionTimer)
+  if (commandCheckTimer !== undefined) window.clearTimeout(commandCheckTimer)
+  commandCompletionTimer = undefined
+  commandCheckTimer = undefined
+  void nextTick(() => canvas.value?.focus())
+}
+
+function onCommandInput(): void {
+  const revision = ++commandAnalysisRevision
+  commandSuggestions.value = []
+  commandDiagnostics.value = []
+  selectedCommandSuggestion.value = 0
+  if (commandCompletionTimer !== undefined) window.clearTimeout(commandCompletionTimer)
+  if (commandCheckTimer !== undefined) window.clearTimeout(commandCheckTimer)
+  const source = normalizedCommandSource()
+  if (!source) return
+  commandCompletionTimer = window.setTimeout(() => void refreshCommandCompletions(source, revision), 140)
+  commandCheckTimer = window.setTimeout(() => void refreshCommandDiagnostics(source, revision), 550)
+}
+
+async function refreshCommandCompletions(source: string, revision: number): Promise<void> {
+  commandCompletionTimer = undefined
+  try {
+    const suggestions = await controller?.complete(viewportCommandCellId, source, source.length) ?? []
+    if (!commandOpen.value || revision !== commandAnalysisRevision || source !== normalizedCommandSource()) return
+    commandSuggestions.value = suggestions.slice(0, 8)
+    selectedCommandSuggestion.value = 0
+  } catch {
+    // Completion is advisory; command execution still reports authoritative errors.
+  }
+}
+
+async function refreshCommandDiagnostics(source: string, revision: number): Promise<void> {
+  commandCheckTimer = undefined
+  try {
+    const diagnostics = await controller?.check(viewportCommandCellId, source) ?? []
+    if (!commandOpen.value || revision !== commandAnalysisRevision || source !== normalizedCommandSource()) return
+    commandDiagnostics.value = diagnostics.filter((item) => item.severity !== 'ok')
+  } catch {
+    // Diagnostics are advisory; keep typing responsive if the Worker is busy.
+  }
+}
+
+function onCommandKeyDown(event: KeyboardEvent): void {
+  if (event.key === 'Escape') {
+    event.preventDefault()
+    closeCommandInput()
+    return
+  }
+  if (event.key === 'Enter') {
+    event.preventDefault()
+    void executeViewportCommand()
+    return
+  }
+  if (event.key === 'Tab' && commandSuggestions.value.length > 0) {
+    event.preventDefault()
+    applyCommandSuggestion(commandSuggestions.value[selectedCommandSuggestion.value] ?? commandSuggestions.value[0])
+    return
+  }
+  if (event.key === 'ArrowDown' && commandSuggestions.value.length > 0) {
+    event.preventDefault()
+    selectedCommandSuggestion.value = (selectedCommandSuggestion.value + 1) % commandSuggestions.value.length
+    return
+  }
+  if (event.key === 'ArrowUp' && commandSuggestions.value.length > 0) {
+    event.preventDefault()
+    selectedCommandSuggestion.value = (selectedCommandSuggestion.value - 1 + commandSuggestions.value.length) % commandSuggestions.value.length
+    return
+  }
+  if (event.key === 'ArrowUp' && commandHistory.length > 0) {
+    event.preventDefault()
+    commandHistoryIndex = Math.max(0, commandHistoryIndex - 1)
+    commandSource.value = commandHistory[commandHistoryIndex] ?? ''
+    onCommandInput()
+  } else if (event.key === 'ArrowDown' && commandHistoryIndex < commandHistory.length) {
+    event.preventDefault()
+    commandHistoryIndex = Math.min(commandHistory.length, commandHistoryIndex + 1)
+    commandSource.value = commandHistory[commandHistoryIndex] ?? ''
+    onCommandInput()
+  }
+}
+
+function applyCommandSuggestion(suggestion: PlaygroundCompletion): void {
+  const source = normalizedCommandSource()
+  const value = `${source.slice(0, suggestion.start)}${suggestion.value}${suggestion.appendSpace ? ' ' : ''}${source.slice(suggestion.end)}`
+  commandSource.value = `/${value}`
+  onCommandInput()
+  void nextTick(() => {
+    const cursor = suggestion.start + suggestion.value.length + (suggestion.appendSpace ? 1 : 0) + 1
+    commandInput.value?.setSelectionRange(cursor, cursor)
+  })
+}
+
+async function executeViewportCommand(): Promise<void> {
+  const source = normalizedCommandSource().trim()
+  if (!source || !controller) return
+  commandHistory.push(`/${source}`)
+  if (commandHistory.length > 50) commandHistory.shift()
+  closeCommandInput()
+  commandExecutionErrorShown = false
+  try {
+    await controller.execute(viewportCommandCellId, source, { auto: false, width: 960, height: 540 })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    if (!commandExecutionErrorShown) addChatLine(message, '#ff5555')
+  }
+}
+
+function normalizedCommandSource(): string {
+  return commandSource.value.replace(/^\/+/, '')
 }
 
 function onKeyUp(event: KeyboardEvent): void {
@@ -258,7 +424,7 @@ function updateMovement(): void {
 
 function onMouseMove(event: MouseEvent): void {
   if (document.pointerLockElement !== canvas.value) return
-  renderer?.look(-event.movementX * 0.12, event.movementY * 0.12)
+  renderer?.look(-event.movementX * mouseSensitivity.value, event.movementY * mouseSensitivity.value)
   queueLookInput(event.movementX, event.movementY, 'mouse')
 }
 
@@ -323,7 +489,7 @@ function moveRightJoystick(event: PointerEvent): void {
   const dy = event.clientY - rightLast.y
   rightLast = { x: event.clientX, y: event.clientY }
   rightKnob.value = clampedJoystick(dx * 2, dy * 2, 24)
-  renderer?.look(-dx * 0.22, dy * 0.22)
+  renderer?.look(-dx * mouseSensitivity.value * 1.8, dy * mouseSensitivity.value * 1.8)
   queueLookInput(dx, dy, 'touch')
 }
 
@@ -392,11 +558,7 @@ function applyViewportOutput(output: PlaygroundOutputEvent): void {
     return
   }
   if (output.channel === 'chat') {
-    const id = ++overlaySequence
-    chatLines.value = [...chatLines.value.slice(-4), { id, text: output.text || output.rawText || '', color: outputColor(output) }]
-    window.setTimeout(() => {
-      chatLines.value = chatLines.value.filter((line) => line.id !== id)
-    }, 10_000)
+    addChatLine(output.text || output.rawText || '', outputColor(output))
     return
   }
   if (output.channel !== 'title') return
@@ -432,6 +594,14 @@ function applyViewportOutput(output: PlaygroundOutputEvent): void {
   titleOverlay.value.visible = true
   if (titleTimer !== undefined) window.clearTimeout(titleTimer)
   titleTimer = window.setTimeout(() => { titleOverlay.value.visible = false }, (titleTimes.fadeIn + titleTimes.stay + titleTimes.fadeOut) * 50)
+}
+
+function addChatLine(text: string, color: string): void {
+  const id = ++overlaySequence
+  chatLines.value = [...chatLines.value.slice(-4), { id, text, color }]
+  window.setTimeout(() => {
+    chatLines.value = chatLines.value.filter((line) => line.id !== id)
+  }, 10_000)
 }
 
 function visibleToInputPlayer(output: PlaygroundOutputEvent): boolean {
@@ -493,6 +663,23 @@ const TEXT_COLORS: Record<string, string> = {
         </button>
         <button type="button" :disabled="status !== 'ready' || playing" data-action="viewport-step" @click="step">Step</button>
         <button type="button" :disabled="!latestScene" data-action="viewport-reset-view" @click="resetView">Reset view</button>
+        <details class="dps-viewport-settings">
+          <summary>Settings</summary>
+          <div>
+            <label>
+              <span>Mouse {{ mouseSensitivity.toFixed(2) }}</span>
+              <input v-model.number="mouseSensitivity" type="range" min="0.02" max="0.5" step="0.01">
+            </label>
+            <label>
+              <span>Speed {{ configuredMoveSpeed.toFixed(1) }}</span>
+              <input v-model.number="configuredMoveSpeed" type="range" min="0.5" max="30" step="0.5" @input="updateViewportSettings">
+            </label>
+            <label>
+              <span>FOV {{ configuredFieldOfView }}°</span>
+              <input v-model.number="configuredFieldOfView" type="range" min="30" max="110" step="1" @input="updateViewportSettings">
+            </label>
+          </div>
+        </details>
       </div>
       <span class="dps-viewport-stats">
         {{ stats ? `${Math.round(stats.fps)} FPS · ${stats.triangles} tris · ${stats.pixelRatio.toFixed(2)}×` : `${viewportOptions.tickRate} TPS` }}
@@ -521,6 +708,35 @@ const TEXT_COLORS: Record<string, string> = {
       </div>
       <div v-if="chatLines.length" class="dps-viewport-chat" aria-live="polite">
         <span v-for="line in chatLines" :key="line.id" :style="{ color: line.color }">{{ line.text }}</span>
+      </div>
+      <div v-if="commandOpen" class="dps-viewport-command" @mousedown.stop>
+        <div v-if="commandSuggestions.length" class="dps-command-suggestions" role="listbox">
+          <button
+            v-for="(suggestion, index) in commandSuggestions"
+            :key="`${suggestion.start}:${suggestion.end}:${suggestion.value}`"
+            type="button"
+            role="option"
+            :aria-selected="index === selectedCommandSuggestion"
+            @mousedown.prevent="applyCommandSuggestion(suggestion)"
+          >
+            <b>{{ suggestion.value }}</b>
+            <small v-if="suggestion.description">{{ suggestion.description }}</small>
+          </button>
+        </div>
+        <div v-if="commandDiagnostics[0]" class="dps-command-diagnostic" role="status">
+          {{ commandDiagnostics[0].message }}
+        </div>
+        <input
+          ref="commandInput"
+          v-model="commandSource"
+          type="text"
+          spellcheck="false"
+          autocomplete="off"
+          aria-label="Sandbox command"
+          placeholder="/command"
+          @input="onCommandInput"
+          @keydown.stop="onCommandKeyDown"
+        >
       </div>
       <div v-if="touchVisible && viewportOptions.touch" class="dps-touch-controls" aria-label="Touch camera controls">
         <div

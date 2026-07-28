@@ -10,6 +10,38 @@ const CodeCellStub = {
 }
 
 describe('DpsCell', () => {
+  it('keeps a compact viewport cell editable without advanced action chrome', async () => {
+    const requests: Record<string, unknown>[] = []
+    MockWorker.responder = (worker, request) => {
+      requests.push(request)
+      if (request.type === 'transport.connect') worker.emit({ type: 'transport.ready', requestId: request.id })
+      if (request.type === 'session.create') worker.emit({ type: 'session.ready', requestId: request.id, sessionId: 'compact' })
+      if (request.type === 'cell.execute') {
+        worker.emit({
+          type: 'cell.output',
+          requestId: request.id,
+          cellId: request.cellId,
+          kind: 'execution',
+          summary: 'Executed 1 command.',
+          result: { commands: 1 },
+        })
+        worker.emit({ type: 'cell.status', requestId: request.id, cellId: request.cellId, status: 'idle' })
+      }
+    }
+    const wrapper = mount(DpsCell, {
+      props: { modelValue: 'say compact', compact: true, animation: { captureOnExecute: false } },
+      global: { stubs: { CodeCell: CodeCellStub } },
+    })
+    await vi.waitFor(() => expect(wrapper.attributes('data-state')).toBe('ready'))
+
+    expect(wrapper.find('.dps-cell-code').exists()).toBe(true)
+    expect(wrapper.find('.code-cell-stub').text()).toContain('say compact')
+    expect(wrapper.findAll('.dps-cell-actions button')).toHaveLength(1)
+    await (wrapper.vm as unknown as { run(): Promise<void> }).run()
+    expect(requests.map((request) => request.type)).toContain('cell.execute')
+    wrapper.unmount()
+  })
+
   it('embeds only one executable cell and its result', async () => {
     const requests: Record<string, unknown>[] = []
     MockWorker.responder = (worker, request) => {

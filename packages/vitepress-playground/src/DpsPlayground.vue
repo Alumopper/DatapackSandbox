@@ -476,6 +476,7 @@ async function importFiles(kind: PlaygroundImportKind, files: File[]): Promise<v
   sessionAction.value = 'import'
   importMessage.value = 'Reading files into the local Worker…'
   try {
+    await sessionController.connect()
     const isArchive = files.length === 1 && /\.(zip|jar)$/i.test(files[0].name)
     const imported = isArchive
       ? await sessionController.importArchive(kind, files[0].name, await files[0].arrayBuffer())

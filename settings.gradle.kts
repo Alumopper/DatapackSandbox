@@ -18,6 +18,7 @@ include(
     ":runtime-engine",
     ":renderer-engine",
     ":browser-runtime",
+    ":browser-core",
     ":core",
     ":renderer",
     ":testkit",

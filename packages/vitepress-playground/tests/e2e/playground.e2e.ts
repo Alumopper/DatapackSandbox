@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 import { strToU8, zipSync } from 'fflate'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
-import { dirname } from 'node:path'
+import { dirname, resolve } from 'node:path'
 
 test('shares a realtime WebGL viewport with playback, input, and context recovery', async ({ page }) => {
   await page.goto('/?viewport')
@@ -74,6 +74,24 @@ test('embeds the lightweight single-cell surface without notebook controls', asy
   await cell.getByRole('button', { name: 'Reset example', exact: true }).click()
   await expect(cell.locator('.dps-output')).toHaveCount(0)
   await expect(cell.locator('img.dps-render')).toHaveCount(0)
+})
+
+test('matches abbreviated UUID entity targets in the TeaVM core', async ({ page }) => {
+  await page.goto('/?cell=1')
+  const cell = page.locator('.dps-cell-space')
+  await expect(cell).toHaveAttribute('data-state', 'ready', { timeout: 15_000 })
+  const editor = cell.locator('.cm-content')
+  await editor.click()
+  await editor.press(process.platform === 'darwin' ? 'Meta+A' : 'Control+A')
+  await editor.pressSequentially([
+    'summon marker 0 0 0 {UUID:[I;0,0,0,0],Tags:["scratch"]}',
+    'execute as 0-0-0-0-0 run tag @s add matched',
+    'execute if entity @e[tag=scratch,tag=matched] run say UUID_OK',
+  ].join('\n'))
+
+  await cell.getByRole('button', { name: 'Run', exact: true }).click()
+
+  await expect(cell.locator('.dps-output pre')).toContainText('UUID_OK')
 })
 
 test('restores a lightweight checkpoint and downloads a real animated GIF', async ({ page }, testInfo) => {
@@ -167,6 +185,110 @@ test('imports a datapack ZIP into memory and executes its function', async ({ pa
   await editor.pressSequentially('function demo:main')
   await page.getByRole('button', { name: 'Run', exact: true }).click()
   await expect(page.getByText(/Executed 2 commands/)).toBeVisible()
+})
+
+test('matches JVM resource-directory alias precedence inside one datapack', async ({ page }) => {
+  await page.goto('/')
+  const archive = zipSync({
+    'pack.mcmeta': strToU8('{"pack":{"pack_format":107.1,"description":"browser aliases"}}'),
+    'data/demo/function/main.mcfunction': strToU8('say singular'),
+    'data/demo/functions/main.mcfunction': strToU8('say plural'),
+    'data/demo/function/singular_load.mcfunction': strToU8('say singular load'),
+    'data/demo/functions/plural_load.mcfunction': strToU8('say plural load'),
+    'data/minecraft/tags/function/load.json': strToU8('{"values":["demo:singular_load"]}'),
+    'data/minecraft/tags/functions/load.json': strToU8('{"replace":true,"values":["demo:plural_load"]}'),
+  })
+  await page.locator('.dps-file-input').first().setInputFiles({
+    name: 'browser-aliases.zip',
+    mimeType: 'application/zip',
+    buffer: Buffer.from(archive),
+  })
+  await page.getByRole('button', { name: 'Import locally' }).click()
+  await expect(page.getByText(/Imported 7 files \(3 functions\)/)).toBeVisible()
+
+  const editor = page.locator('.cm-content')
+  await editor.click()
+  await editor.press(process.platform === 'darwin' ? 'Meta+A' : 'Control+A')
+  await editor.pressSequentially('function demo:main')
+  await page.getByRole('button', { name: 'Run', exact: true }).click()
+  const output = page.locator('.dps-output pre')
+  await expect(output).toContainText('plural')
+  await expect(output).not.toContainText('singular')
+})
+
+test('executes imported predicates advancements recipes and load tags in the JVM core', async ({ page }) => {
+  await page.goto('/')
+  const archive = zipSync({
+    'pack.mcmeta': strToU8('{"pack":{"pack_format":107.1,"description":"browser resources"}}'),
+    'data/demo/function/load.mcfunction': strToU8('scoreboard objectives add loaded dummy\nscoreboard players set #state loaded 1'),
+    'data/demo/function/main.mcfunction': strToU8([
+      'execute if predicate demo:always run scoreboard players add #state loaded 1',
+      'recipe give Steve demo:marker',
+      'advancement grant Steve only demo:tick',
+      'scoreboard players get #state loaded',
+    ].join('\n')),
+    'data/minecraft/tags/function/load.json': strToU8('{"values":["demo:load"]}'),
+    'data/demo/predicate/always.json': strToU8('true'),
+    'data/demo/advancement/tick.json': strToU8('{"criteria":{"tick":{"trigger":"minecraft:tick"}}}'),
+    'data/demo/recipe/marker.json': strToU8('{"type":"minecraft:crafting_shapeless","ingredients":[],"result":{"id":"minecraft:stone","count":1}}'),
+  })
+  await page.locator('.dps-file-input').first().setInputFiles({
+    name: 'browser-resources.zip',
+    mimeType: 'application/zip',
+    buffer: Buffer.from(archive),
+  })
+  await page.getByRole('button', { name: 'Import locally' }).click()
+  await expect(page.getByText(/Imported 7 files \(2 functions\)/)).toBeVisible()
+
+  const editor = page.locator('.cm-content')
+  await editor.click()
+  await editor.press(process.platform === 'darwin' ? 'Meta+A' : 'Control+A')
+  await editor.pressSequentially('function demo:main')
+  await page.getByRole('button', { name: 'Run', exact: true }).click()
+  await expect(page.getByText(/Executed 6 commands/)).toBeVisible()
+  await expect(page.locator('.dps-output pre')).toContainText('"text": "2"')
+})
+
+test('runs the compiled VVE 3 physics stack entirely in the browser core', async ({ page }, testInfo) => {
+  const packRoot = process.env.DPS_VVE_PACK_ROOT
+  test.skip(!packRoot, 'Set DPS_VVE_PACK_ROOT to the directory containing the compiled VVE dependency packs')
+  test.setTimeout(180_000)
+  await page.goto('/?viewport&vve&width=960&height=540')
+  await expect(page.getByText('Minecraft 26.2')).toBeVisible({ timeout: 30_000 })
+  const directoryInput = page.locator('.dps-file-input').nth(1)
+  for (const pack of ['math3', 'math3-lalib', 'math3-gelib', 'vve3-runtime', 'vve-demo-pack']) {
+    await directoryInput.setInputFiles(resolve(packRoot!, pack))
+    await expect(page.locator('.dps-import-message')).toContainText('Imported', { timeout: 60_000 })
+    await expect(page.getByRole('button', { name: 'Import folder' })).toBeEnabled()
+  }
+  await directoryInput.setInputFiles(resolve(packRoot!, 'vve3-rp'))
+  await expect(page.locator('.dps-import-message')).toContainText('Imported', { timeout: 60_000 })
+  await expect(page.getByRole('button', { name: 'Import folder' })).toBeEnabled()
+
+  const source = [
+    'function math:_init',
+    'function math:_init_la',
+    'function math:_init_ge',
+    'function math:particles/_load_1214',
+    'function vve:_init',
+    'forceload add -1 -1 1 1',
+    'function vve_examples:_consts',
+    'function vve_examples:dice_6/init',
+    'function vve_examples:dice_simulator/init',
+    'function vve_examples:dice_simulator/_start',
+    'function vve_demo:start',
+    'tp Steve 0.5 98 -4.5 0 12',
+    'effect give Steve minecraft:invisibility 1000000 0 true',
+  ].join('\n')
+  const editor = page.locator('.cm-content')
+  await editor.click()
+  await editor.press(process.platform === 'darwin' ? 'Meta+A' : 'Control+A')
+  await editor.pressSequentially(source)
+  await page.getByRole('button', { name: 'Run', exact: true }).click()
+  await expect(page.locator('.dps-output p')).toContainText('Executed', { timeout: 90_000 })
+  await expect(page.locator('.dps-output pre')).toContainText('minecraft:item_display')
+  await page.locator('.dps-viewport').getByRole('button', { name: 'Step' }).click()
+  await page.locator('.dps-playground').screenshot({ path: testInfo.outputPath('vve-browser-core.png') })
 })
 
 test('uses a resource-pack texture in the Worker renderer', async ({ page }) => {

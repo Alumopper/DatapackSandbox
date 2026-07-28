@@ -8,6 +8,7 @@ import moe.afox.dpsandbox.core.command.SandboxItemCommands
 import moe.afox.dpsandbox.core.command.SandboxPlacementCommands
 import moe.afox.dpsandbox.core.command.blockPosOutput
 import moe.afox.dpsandbox.core.command.currentWeatherState
+import moe.afox.dpsandbox.core.command.dataTargetNbtValues
 import moe.afox.dpsandbox.core.command.executeAdvancement
 import moe.afox.dpsandbox.core.command.executeAttribute
 import moe.afox.dpsandbox.core.command.executeBossbar
@@ -58,6 +59,7 @@ import moe.afox.dpsandbox.core.command.executeTransfer
 import moe.afox.dpsandbox.core.command.executeTrigger
 import moe.afox.dpsandbox.core.command.executeWeather
 import moe.afox.dpsandbox.core.command.executeWorldBorder
+import moe.afox.dpsandbox.core.command.parseDataTarget
 import moe.afox.dpsandbox.core.command.scoreTargets
 import kotlin.math.atan2
 import kotlin.math.cos
@@ -132,7 +134,18 @@ data class SandboxLimits(
     val maxOutputEvents: Int = 100_000,
     /** Maximum rendered snapshot size in UTF-8 bytes. */
     val maxSnapshotBytes: Int = 10_000_000,
+    /** Resets [maxCommands] for each top-level operation, suitable for long-lived realtime sessions. */
+    val resetCommandBudgetPerOperation: Boolean = false,
 ) {
+    /** Preserves the original Java constructor shape after adding realtime budget semantics. */
+    constructor(
+        maxCommands: Int,
+        maxFunctionDepth: Int,
+        maxTicksPerRun: Int,
+        maxOutputEvents: Int,
+        maxSnapshotBytes: Int,
+    ) : this(maxCommands, maxFunctionDepth, maxTicksPerRun, maxOutputEvents, maxSnapshotBytes, false)
+
     init {
         require(maxCommands > 0) { "maxCommands must be positive" }
         require(maxFunctionDepth > 0) { "maxFunctionDepth must be positive" }
@@ -197,12 +210,17 @@ class DatapackSandbox(
     @Volatile
     private var executionCancellationRequested = false
     private var functionDepth = 0
+    private var commandBudgetDepth = 0
+    private var commandBudgetStart = 0
+    private var validationOnly = false
     internal var lastFunctionReturnValue: Int? = null
     private val functionStack = mutableListOf<FunctionTraceFrame>()
     private val placementCommands = SandboxPlacementCommands(this)
     private val itemCommands = SandboxItemCommands(this)
     private val checkpoints = linkedMapOf<String, SandboxWorld>()
+    private val commandTokenCache = linkedMapOf<String, List<CommandToken>>()
     private val checkpointNamePattern = Regex("[A-Za-z0-9._-]{1,64}")
+    private val macroArgumentPattern = Regex("\\$\\(([^)]+)\\)")
 
     init {
         recordDatapackLoadWarnings()
@@ -252,11 +270,12 @@ class DatapackSandbox(
      *
      * @return number of command lines executed by load functions.
      */
-    fun runLoad(): ExecutionResult {
-        val before = commandsExecuted
-        datapack.loadFunctions.forEach { runFunction(it) }
-        return ExecutionResult(commandsExecuted - before)
-    }
+    fun runLoad(): ExecutionResult =
+        withCommandBudget {
+            val before = commandsExecuted
+            datapack.loadFunctions.forEach { runFunction(it) }
+            ExecutionResult(commandsExecuted - before)
+        }
 
     /**
      * Advances the sandbox by [count] ticks.
@@ -268,29 +287,30 @@ class DatapackSandbox(
      * @throws SandboxException when [count] is negative.
      * @return number of command lines executed during the ticks.
      */
-    fun runTicks(count: Int): ExecutionResult {
-        if (count < 0) {
-            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Tick count must be non-negative")
-        }
-        if (count > limits.maxTicksPerRun) {
-            throw SandboxException(
-                DiagnosticCode.COMMAND_ERROR,
-                "Tick count $count exceeds sandbox limit ${limits.maxTicksPerRun}",
-                version = profile.id,
-            )
-        }
-        val before = commandsExecuted
-        repeat(count) {
-            checkExecutionCancellation()
-            world.advanceTick()
-            runDueScheduledFunctions()
-            datapack.tickFunctions.forEach { runFunction(it) }
-            world.players.values.forEach { player ->
-                advancements.handle(PlayerEvent(player.name, "tick"))
+    fun runTicks(count: Int): ExecutionResult =
+        withCommandBudget {
+            if (count < 0) {
+                throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Tick count must be non-negative")
             }
+            if (count > limits.maxTicksPerRun) {
+                throw SandboxException(
+                    DiagnosticCode.COMMAND_ERROR,
+                    "Tick count $count exceeds sandbox limit ${limits.maxTicksPerRun}",
+                    version = profile.id,
+                )
+            }
+            val before = commandsExecuted
+            repeat(count) {
+                checkExecutionCancellation()
+                world.advanceTick()
+                runDueScheduledFunctions()
+                datapack.tickFunctions.forEach { runFunction(it) }
+                world.players.values.forEach { player ->
+                    advancements.handle(PlayerEvent(player.name, "tick"))
+                }
+            }
+            ExecutionResult(commandsExecuted - before)
         }
-        return ExecutionResult(commandsExecuted - before)
-    }
 
     /**
      * Runs a loaded function by string resource location.
@@ -311,6 +331,12 @@ class DatapackSandbox(
     fun runFunction(
         id: ResourceLocation,
         context: ExecutionContext = ExecutionContext(),
+    ): ExecutionResult = withCommandBudget { runFunctionWithArguments(id, context, null) }
+
+    private fun runFunctionWithArguments(
+        id: ResourceLocation,
+        context: ExecutionContext,
+        macroArguments: JsonObject?,
     ): ExecutionResult {
         val before = commandsExecuted
         val function = datapack.function(id)
@@ -323,7 +349,6 @@ class DatapackSandbox(
                 version = profile.id,
             )
         }
-
         var returnValue: Int? = null
         try {
             functionStack +=
@@ -336,7 +361,8 @@ class DatapackSandbox(
                 )
             for (line in function.lines) {
                 checkExecutionCancellation(line.location)
-                executeCommand(line.command, line.location, context)
+                val command = expandFunctionMacro(id, line, macroArguments)
+                executeCommand(command, line.location.copy(command = command), context)
             }
         } catch (signal: ReturnSignal) {
             returnValue = signal.value
@@ -348,6 +374,32 @@ class DatapackSandbox(
         val executed = commandsExecuted - before
         val success = returnValue?.let { it > 0 } ?: (executed > 0)
         return ExecutionResult(executed, returnValue, success)
+    }
+
+    private fun expandFunctionMacro(
+        functionId: ResourceLocation,
+        line: FunctionLine,
+        arguments: JsonObject?,
+    ): String {
+        if (!line.command.startsWith('$')) return line.command
+        val values =
+            arguments ?: throw SandboxException(
+                DiagnosticCode.COMMAND_ERROR,
+                "Function '$functionId' requires macro arguments",
+                line.location,
+                profile.id,
+            )
+        return macroArgumentPattern.replace(line.command.drop(1)) { match ->
+            val name = match.groupValues[1]
+            val value =
+                values.get(name) ?: throw SandboxException(
+                    DiagnosticCode.COMMAND_ERROR,
+                    "Function '$functionId' macro argument '$name' is missing",
+                    line.location,
+                    profile.id,
+                )
+            if (value.isJsonPrimitive && value.asJsonPrimitive.isString) value.asString else JsonValues.renderCompact(value)
+        }
     }
 
     /**
@@ -364,6 +416,12 @@ class DatapackSandbox(
         command: String,
         location: SourceLocation? = null,
         context: ExecutionContext = ExecutionContext(),
+    ): ExecutionResult = withCommandBudget { executeCommandWithinBudget(command, location, context) }
+
+    private fun executeCommandWithinBudget(
+        command: String,
+        location: SourceLocation?,
+        context: ExecutionContext,
     ): ExecutionResult {
         checkExecutionCancellation(location)
         val normalized = command.trim().removePrefix("/")
@@ -371,8 +429,13 @@ class DatapackSandbox(
         val runtimeContext = context.copy(predicateEngine = predicates)
         val before = commandsExecuted
         val outputsBefore = world.outputs.size
-        val beforeSnapshot = buildSnapshotJson()
-        checkSnapshotSize(beforeSnapshot)
+        val traceMode = world.commandTraceMode
+        val beforeSnapshot =
+            if (traceMode == CommandTraceMode.FULL) {
+                buildSnapshotJson().also(::checkSnapshotSize)
+            } else {
+                null
+            }
         val source =
             CommandSource(
                 file = location?.file,
@@ -389,8 +452,10 @@ class DatapackSandbox(
         try {
             val commandSuccess = executeOne(normalized, location, runtimeContext)
             checkOutputLimit(location)
-            afterSnapshot = buildSnapshotJson()
-            checkSnapshotSize(afterSnapshot)
+            if (traceMode == CommandTraceMode.FULL) {
+                afterSnapshot = buildSnapshotJson()
+                checkSnapshotSize(afterSnapshot)
+            }
             success = commandSuccess
             return ExecutionResult(commandsExecuted - before, success = commandSuccess)
         } catch (signal: ReturnSignal) {
@@ -404,22 +469,28 @@ class DatapackSandbox(
             errorMessage = error.message ?: error::class.simpleName
             throw error
         } finally {
-            world.traces +=
-                CommandTraceEvent(
-                    tick = world.gameTime,
-                    command = normalized,
-                    root = normalized.substringBefore(' '),
-                    source = source,
-                    executor = runtimeContext.entity?.scoreHolder ?: "Server",
-                    position = runtimeContext.position,
-                    success = success,
-                    commandsExecuted = commandsExecuted - before,
-                    outputs = world.outputs.size - outputsBefore,
-                    outputEvents = world.outputs.drop(outputsBefore),
-                    snapshotDiffs = SnapshotDiff.stateDiff(beforeSnapshot, afterSnapshot ?: buildSnapshotJson()),
-                    errorCode = errorCode,
-                    errorMessage = errorMessage,
-                )
+            if (traceMode != CommandTraceMode.OFF) {
+                world.traces +=
+                    CommandTraceEvent(
+                        tick = world.gameTime,
+                        command = normalized,
+                        root = normalized.substringBefore(' '),
+                        source = source,
+                        executor = runtimeContext.entity?.scoreHolder ?: "Server",
+                        position = runtimeContext.position,
+                        success = success,
+                        commandsExecuted = commandsExecuted - before,
+                        outputs = world.outputs.size - outputsBefore,
+                        outputEvents = world.outputs.drop(outputsBefore),
+                        snapshotDiffs =
+                            beforeSnapshot
+                                ?.let { snapshot ->
+                                    SnapshotDiff.stateDiff(snapshot, afterSnapshot ?: buildSnapshotJson())
+                                }.orEmpty(),
+                        errorCode = errorCode,
+                        errorMessage = errorMessage,
+                    )
+            }
             world.currentCommandSource = previousSource
         }
     }
@@ -428,7 +499,9 @@ class DatapackSandbox(
      * Checks [command] by executing it against an isolated copy of the current world.
      *
      * This catches parser, resource, selector, and state-dependent command errors without
-     * changing this sandbox, its traces, outputs, checkpoints, or execution budget.
+     * changing this sandbox, its traces, outputs, checkpoints, or execution budget. Function
+     * calls validate their resource and macro arguments without executing the function body,
+     * which keeps editor diagnostics bounded for large datapacks.
      */
     fun checkCommand(
         command: String,
@@ -450,6 +523,7 @@ class DatapackSandbox(
                 unsupportedFeatureMode = unsupportedFeatureMode,
                 limits = limits,
             )
+        preview.validationOnly = true
         return try {
             val result = preview.executeCommand(normalized, context = context)
             val trace = preview.world.traces.lastOrNull()
@@ -809,10 +883,16 @@ class DatapackSandbox(
         context: ExecutionContext,
     ): Boolean {
         if (command.isBlank()) return false
-        val tokens = CommandTokenizer.tokenize(command, location)
+        val tokens =
+            commandTokenCache[command]
+                ?: CommandTokenizer.tokenize(command, location).also { parsed ->
+                    if (commandTokenCache.size >= 32_768) {
+                        commandTokenCache.remove(commandTokenCache.keys.first())
+                    }
+                    commandTokenCache[command] = parsed
+                }
         if (tokens.isEmpty()) return false
         countCommand(location)
-
         try {
             when (tokens[0].text) {
                 "ban", "ban-ip", "banlist", "deop", "kick", "op", "pardon", "pardon-ip", "whitelist" ->
@@ -820,7 +900,7 @@ class DatapackSandbox(
                 "function" -> return executeFunction(tokens, location, context).success
                 "return" -> executeReturn(command, tokens, location, context)
                 "attribute" -> executeAttribute(tokens, location, context)
-                "scoreboard" -> executeScoreboard(command, tokens, location)
+                "scoreboard" -> executeScoreboard(command, tokens, location, context)
                 "bossbar" -> executeBossbar(command, tokens, location, context)
                 "clear" -> executeClear(tokens, location, context)
                 "clone" -> executeClone(tokens, location, context)
@@ -830,7 +910,7 @@ class DatapackSandbox(
                 "defaultgamemode" -> executeDefaultGameMode(tokens, location)
                 "difficulty" -> executeDifficulty(tokens, location)
                 "execute" -> return executeExecute(command, tokens, location, context)
-                "data" -> executeData(command, tokens, location, context)
+                "data" -> return executeData(command, tokens, location, context)
                 "effect" -> executeEffect(tokens, location, context)
                 "enchant" -> executeEnchant(tokens, location, context)
                 "experience", "xp" -> executeExperience(tokens, location, context)
@@ -904,7 +984,13 @@ class DatapackSandbox(
     }
 
     private fun countCommand(location: SourceLocation?) {
-        if (commandsExecuted >= limits.maxCommands) {
+        val commandsUsed =
+            if (limits.resetCommandBudgetPerOperation) {
+                commandsExecuted - commandBudgetStart
+            } else {
+                commandsExecuted
+            }
+        if (commandsUsed >= limits.maxCommands) {
             throw SandboxException(
                 DiagnosticCode.COMMAND_ERROR,
                 "Command execution count exceeded sandbox limit ${limits.maxCommands}",
@@ -913,6 +999,17 @@ class DatapackSandbox(
             )
         }
         commandsExecuted += 1
+    }
+
+    private inline fun <T> withCommandBudget(action: () -> T): T {
+        val outermost = commandBudgetDepth == 0
+        if (outermost) commandBudgetStart = commandsExecuted
+        commandBudgetDepth += 1
+        return try {
+            action()
+        } finally {
+            commandBudgetDepth -= 1
+        }
     }
 
     private fun checkOutputLimit(location: SourceLocation?) {
@@ -991,7 +1088,39 @@ class DatapackSandbox(
         context: ExecutionContext,
     ): ExecutionResult {
         requireSize(tokens, 2, "function <id>", location)
-        val result = runFunction(ResourceLocation.parse(tokens[1].text), context)
+        val arguments =
+            if (tokens.getOrNull(2)?.text == "with") {
+                val (target, pathIndex) = parseDataTarget(tokens, 3, context, location)
+                val path = tokens.getOrNull(pathIndex)?.text
+                val argumentValue =
+                    dataTargetNbtValues(target, location).singleOrNull()
+                        ?: throw SandboxException(
+                            DiagnosticCode.COMMAND_ERROR,
+                            "function with requires exactly one data source",
+                            location,
+                        )
+                val selected = if (path == null || path == "{}") argumentValue else JsonPaths.get(argumentValue, path)
+                selected?.takeIf { it.isJsonObject }?.asJsonObject
+                    ?: throw SandboxException(
+                        DiagnosticCode.COMMAND_ERROR,
+                        "function with source must resolve to a compound tag",
+                        location,
+                    )
+            } else {
+                if (tokens.size > 2) {
+                    throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Expected: function <id> [with <source>]", location)
+                }
+                null
+            }
+        val functionId = ResourceLocation.parse(tokens[1].text)
+        if (validationOnly) {
+            val function = datapack.function(functionId)
+            function.lines.forEach { line ->
+                if (line.command.startsWith('$')) expandFunctionMacro(functionId, line, arguments)
+            }
+            return ExecutionResult(commandsExecuted = 1, success = true)
+        }
+        val result = runFunctionWithArguments(functionId, context, arguments)
         lastFunctionReturnValue = result.returnValue
         return result
     }
@@ -1015,7 +1144,15 @@ class DatapackSandbox(
                 lastFunctionReturnValue = null
                 val success = executeOne(rest, location, context)
                 val commandsRun = (commandsExecuted - commandsBefore).coerceAtLeast(0)
-                throw ReturnSignal(executeStoreValue("result", commandsRun, outputsBefore, lastFunctionReturnValue, success))
+                throw ReturnSignal(
+                    executeStoreValue(
+                        "result",
+                        commandsRun,
+                        outputsBefore,
+                        lastFunctionReturnValue,
+                        success,
+                    ),
+                )
             }
             else -> throw ReturnSignal(parseInt(tokens[1].text, "return value", location))
         }
@@ -2071,7 +2208,6 @@ class DatapackSandbox(
         var position: Position? = null
         var directEntity: SandboxEntity? = null
         var causingEntity: SandboxEntity? = null
-
         while (index < tokens.size) {
             when (tokens[index].text) {
                 "at" -> {
@@ -2093,7 +2229,6 @@ class DatapackSandbox(
                 )
             }
         }
-
         return DamageCommandContext(damageSource, position, directEntity, causingEntity)
     }
 
@@ -2224,12 +2359,8 @@ class DatapackSandbox(
         context: ExecutionContext,
     ) {
         requireSize(tokens, 4, "rotate <targets> <yaw> <pitch>", location)
-        val yaw =
-            tokens[2].text.toDoubleOrNull()
-                ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Invalid yaw '${tokens[2].text}'", location)
-        val pitch =
-            tokens[3].text.toDoubleOrNull()
-                ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Invalid pitch '${tokens[3].text}'", location)
+        val yaw = parseRotation(tokens[2].text, context.yaw, "yaw", location)
+        val pitch = parseRotation(tokens[3].text, context.pitch, "pitch", location)
         val rotated =
             EntitySelectors.select(world, tokens[1].text, context, location).map { entity ->
                 val before = Rotation(entity.yaw, entity.pitch)
@@ -2610,15 +2741,21 @@ class DatapackSandbox(
     internal fun isCoordinateToken(raw: String): Boolean =
         raw == "~" || raw.startsWith("~") || raw.startsWith("^") || raw.toDoubleOrNull() != null
 
-    internal fun matchesBlock(
-        pos: BlockPos,
-        rawBlock: String,
-        location: SourceLocation?,
-    ): Boolean {
-        val expected = parseBlockArgument(rawBlock, location)
-        val actual = world.block(pos) ?: return expected.id == ResourceLocation("minecraft", "air")
-        if (actual.id != expected.id) return false
-        return expected.properties.all { (key, value) -> actual.properties[key] == value }
+    internal fun matchesBlock(pos: BlockPos, rawBlock: String, location: SourceLocation?): Boolean {
+        val expected = parseBlockArgument(rawBlock.removePrefix("#"), location)
+        val blockPredicate =
+            JsonObject().also { block ->
+                block.addProperty("blocks", expected.id.toString().let { if (rawBlock.startsWith('#')) "#$it" else it })
+                if (expected.properties.isNotEmpty()) {
+                    block.add("state", JsonObject().also { state -> expected.properties.forEach { state.addProperty(it.key, it.value) } })
+                }
+            }
+        val condition =
+            JsonObject().also { root ->
+                root.addProperty("condition", "minecraft:location_check")
+                root.add("predicate", JsonObject().also { it.add("block", blockPredicate) })
+            }
+        return predicates.testElement(condition, PredicateContext(world = world, origin = Position(pos.x.toDouble(), pos.y.toDouble(), pos.z.toDouble())))
     }
 
     internal fun parseBlockArgument(
@@ -2966,45 +3103,23 @@ class DatapackSandbox(
             else -> entity.uuid
         }
 
-    internal fun parseInt(
-        raw: String,
-        label: String,
-        location: SourceLocation?,
-    ): Int =
-        raw.toIntOrNull()
-            ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Invalid $label: '$raw'", location)
+    internal fun parseInt(raw: String, label: String, location: SourceLocation?): Int =
+        raw.toIntOrNull() ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Invalid $label: '$raw'", location)
 
-    internal fun parseLong(
-        raw: String,
-        label: String,
-        location: SourceLocation?,
-    ): Long =
-        raw.toLongOrNull()
-            ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Invalid $label: '$raw'", location)
+    internal fun parseLong(raw: String, label: String, location: SourceLocation?): Long =
+        raw.toLongOrNull() ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Invalid $label: '$raw'", location)
 
-    internal fun parseDouble(
-        raw: String,
-        label: String,
-        location: SourceLocation?,
-    ): Double =
-        raw.toDoubleOrNull()
-            ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Invalid $label: '$raw'", location)
+    internal fun parseDouble(raw: String, label: String, location: SourceLocation?): Double =
+        raw.toDoubleOrNull() ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Invalid $label: '$raw'", location)
 
-    internal fun parseBoolean(
-        raw: String,
-        label: String,
-        location: SourceLocation?,
-    ): Boolean =
+    internal fun parseBoolean(raw: String, label: String, location: SourceLocation?): Boolean =
         when (raw.lowercase()) {
             "true" -> true
             "false" -> false
             else -> throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Invalid $label: '$raw'", location)
         }
 
-    internal fun parseTimeOfDay(
-        raw: String,
-        location: SourceLocation?,
-    ): Long =
+    internal fun parseTimeOfDay(raw: String, location: SourceLocation?): Long =
         when (raw) {
             "day" -> 1000
             "noon" -> 6000
@@ -3013,10 +3128,7 @@ class DatapackSandbox(
             else -> parseLong(raw, "time value", location)
         }
 
-    internal fun normalizeGameMode(
-        raw: String,
-        location: SourceLocation?,
-    ): String =
+    internal fun normalizeGameMode(raw: String, location: SourceLocation?): String =
         when (raw.lowercase()) {
             "survival", "s", "0" -> "survival"
             "creative", "c", "1" -> "creative"
@@ -3025,10 +3137,7 @@ class DatapackSandbox(
             else -> throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Invalid game mode '$raw'", location)
         }
 
-    internal fun normalizeDifficulty(
-        raw: String,
-        location: SourceLocation?,
-    ): String =
+    internal fun normalizeDifficulty(raw: String, location: SourceLocation?): String =
         when (raw.lowercase()) {
             "peaceful", "p", "0" -> "peaceful"
             "easy", "e", "1" -> "easy"
@@ -3042,18 +3151,11 @@ class DatapackSandbox(
             "minecraft:max_health" -> 20.0
             "minecraft:movement_speed" -> 0.1
             "minecraft:attack_damage" -> 2.0
-            "minecraft:armor", "minecraft:armor_toughness", "minecraft:knockback_resistance" -> 0.0
             else -> 0.0
         }
 
-    internal fun parseIntRange(
-        raw: String,
-        location: SourceLocation?,
-    ): Pair<Int, Int> {
-        if (!raw.contains("..")) {
-            val value = parseInt(raw, "random range", location)
-            return value to value
-        }
+    internal fun parseIntRange(raw: String, location: SourceLocation?): Pair<Int, Int> {
+        if (!raw.contains("..")) return parseInt(raw, "random range", location).let { it to it }
         val minText = raw.substringBefore("..")
         val maxText = raw.substringAfter("..")
         val min = if (minText.isBlank()) Int.MIN_VALUE else parseInt(minText, "random range start", location)
@@ -3078,15 +3180,8 @@ class DatapackSandbox(
             else -> raw.substringAfterLast('.').toIntOrNull()?.coerceAtLeast(0) ?: 0
         }
 
-    internal fun requireSize(
-        tokens: List<CommandToken>,
-        size: Int,
-        usage: String,
-        location: SourceLocation?,
-    ) {
-        if (tokens.size < size) {
-            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Expected: $usage", location)
-        }
+    internal fun requireSize(tokens: List<CommandToken>, size: Int, usage: String, location: SourceLocation?) {
+        if (tokens.size < size) throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Expected: $usage", location)
     }
 
     internal fun requireSizeFrom(
@@ -3096,19 +3191,10 @@ class DatapackSandbox(
         usage: String,
         location: SourceLocation?,
     ) {
-        if (tokens.size < index + size) {
-            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Expected: $usage", location)
-        }
+        if (tokens.size < index + size) throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Expected: $usage", location)
     }
 
-    internal fun requireIndex(
-        tokens: List<CommandToken>,
-        index: Int,
-        usage: String,
-        location: SourceLocation?,
-    ) {
-        if (tokens.size <= index) {
-            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Expected: $usage", location)
-        }
+    internal fun requireIndex(tokens: List<CommandToken>, index: Int, usage: String, location: SourceLocation?) {
+        if (tokens.size <= index) throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Expected: $usage", location)
     }
 }

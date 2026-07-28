@@ -7,7 +7,7 @@ import {
   type CompletionResult,
 } from '@codemirror/autocomplete'
 import { basicSetup } from 'codemirror'
-import { Compartment, EditorState, Prec } from '@codemirror/state'
+import { Compartment, EditorState, Prec, Transaction } from '@codemirror/state'
 import { HighlightStyle, syntaxHighlighting } from '@codemirror/language'
 import { linter, setDiagnostics, type Diagnostic } from '@codemirror/lint'
 import { EditorView, keymap } from '@codemirror/view'
@@ -34,6 +34,7 @@ const emit = defineEmits<{
 const host = ref<HTMLElement>()
 const editable = new Compartment()
 let view: EditorView | undefined
+let hasUserEdited = false
 
 const mcfunctionHighlightStyle = HighlightStyle.define([
   { tag: tags.keyword, color: 'var(--dps-syntax-keyword)', fontWeight: '650' },
@@ -75,6 +76,10 @@ async function completionSource(context: CompletionContext): Promise<CompletionR
   return {
     from: line.from + Math.min(...suggestions.map((item) => item.start), cursor),
     to: line.from + Math.max(...suggestions.map((item) => item.end), cursor),
+    // Let CodeMirror filter the already-fetched token candidates while the
+    // user keeps typing. Without validFor, every keystroke crosses the Worker
+    // boundary and queues another Kotlin completion pass.
+    validFor: /^[\w:#@~.^=+\-[\],]*$/,
     options: suggestions.map((item) => ({
       label: item.value,
       detail: item.description,
@@ -82,6 +87,16 @@ async function completionSource(context: CompletionContext): Promise<CompletionR
       apply: item.appendSpace ? `${item.value} ` : item.value,
     })),
   }
+}
+
+async function lintSource(editor: EditorView): Promise<Diagnostic[]> {
+  // CodeMirror schedules an initial lint pass and another pass for every
+  // programmatic document replacement. Tutorial presets change the editor
+  // this way while a 20 TPS simulation is active, so checking those unchanged
+  // presets can monopolize the shared Worker. Only lint after a real editor
+  // interaction; explicit Run still validates and reports command errors.
+  if (!hasUserEdited) return []
+  return mapDiagnostics(await props.check(editor.state.doc.toString()), editor.state)
 }
 
 onMounted(() => {
@@ -107,13 +122,17 @@ onMounted(() => {
             },
           },
         ])),
-        autocompletion({ override: [completionSource], activateOnTyping: true }),
-        linter(async (editor) => mapDiagnostics(await props.check(editor.state.doc.toString()), editor.state), { delay: 350 }),
+        autocompletion({ override: [completionSource], activateOnTyping: true, activateOnTypingDelay: 140 }),
+        linter(lintSource, { delay: 650 }),
         EditorView.updateListener.of((update) => {
           if (update.docChanged) {
+            const userEdited = update.transactions.some(
+              (transaction) => transaction.annotation(Transaction.userEvent) !== undefined,
+            )
+            if (userEdited) hasUserEdited = true
             emit('update:modelValue', update.state.doc.toString())
             const last = update.state.doc.sliceString(Math.max(0, update.state.selection.main.head - 1), update.state.selection.main.head)
-            if (/[\s:@\[\],=]/.test(last)) startCompletion(update.view)
+            if (userEdited && /[\s:@\[\],=]/.test(last)) startCompletion(update.view)
           }
         }),
         EditorView.theme({
@@ -133,6 +152,7 @@ onMounted(() => {
 
 watch(() => props.modelValue, (value) => {
   if (!view || value === view.state.doc.toString()) return
+  hasUserEdited = false
   view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: value } })
 })
 

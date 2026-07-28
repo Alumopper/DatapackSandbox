@@ -12,6 +12,13 @@ internal class EngineModelBaker(
         return refs.flatMap { bakeModel(it, block) }
     }
 
+    fun bakeItemModel(modelId: String): List<EngineSceneTriangle> =
+        bakeModel(
+            ModelRef(modelId),
+            EngineRenderBlock(0, 0, 0, "minecraft:air"),
+            fallbackIfEmpty = false,
+        )
+
     private fun resolveBlockState(block: EngineRenderBlock): List<ModelRef> {
         val (namespace, path) = splitResourceId(block.id)
         val state = assets.json("assets/$namespace/blockstates/$path.json") ?: return listOf(ModelRef("$namespace:block/$path"))
@@ -72,10 +79,11 @@ internal class EngineModelBaker(
     private fun bakeModel(
         ref: ModelRef,
         block: EngineRenderBlock,
+        fallbackIfEmpty: Boolean = true,
     ): List<EngineSceneTriangle> {
         val modelId = normalizeResourceId(ref.id)
         val model = loadModel(modelId, linkedSetOf())
-        if (model == null || model.elements.isEmpty()) return fallbackCube(block)
+        if (model == null || model.elements.isEmpty()) return if (fallbackIfEmpty) fallbackCube(block) else emptyList()
         val offset = EngineVec3(block.x.toDouble(), block.y.toDouble(), block.z.toDouble())
         return buildList {
             model.elements.forEach { element ->
@@ -187,7 +195,16 @@ internal class EngineModelBaker(
         val (namespace, path) = splitResourceId(block.id)
         val texture = assets.texture("$namespace:block/$path")
         val offset = EngineVec3(block.x.toDouble(), block.y.toDouble(), block.z.toDouble())
-        return DIRECTIONS.flatMap { direction ->
+        val visibleDirections =
+            if (texture.materialPass == EngineMaterialPass.OPAQUE) {
+                DIRECTIONS.filter { direction ->
+                    val adjacent = neighbor(block, direction)
+                    blockKey(adjacent.first, adjacent.second, adjacent.third) !in occupiedBlocks
+                }
+            } else {
+                DIRECTIONS
+            }
+        return visibleDirections.flatMap { direction ->
             val positions = faceVertices(direction, EngineVec3.ZERO, EngineVec3(1.0, 1.0, 1.0)).map { it + offset }
             val uv = rotatedUv(0, listOf(0.0, 0.0, 16.0, 16.0))
             listOf(

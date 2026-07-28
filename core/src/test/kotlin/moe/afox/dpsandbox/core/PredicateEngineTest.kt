@@ -181,17 +181,21 @@ class PredicateEngineTest {
         val world = SandboxWorld()
         world.addObjective("points", "dummy")
         world.setScore("#clock", "points", 4)
+        world.setScore("#min", "points", 3)
+        world.setScore("#max", "points", 5)
         val tool =
             ItemStack(
                 id = ResourceLocation.parse("minecraft:diamond_pickaxe"),
                 components = JsonValues.parse("{\"minecraft:enchantments\":{\"minecraft:fortune\":2}}").asJsonObject,
             )
         val player = SandboxPlayer("Steve")
+        world.setScore(player.scoreHolder, "points", 4)
         val context =
             PredicateContext(
                 world = world,
                 tool = tool,
                 attackingPlayer = player,
+                thisEntity = player,
                 random = Random(0),
             )
         val scoreValue =
@@ -243,12 +247,28 @@ class PredicateEngineTest {
                 """.trimIndent(),
             )
         val killedByPlayer = JsonValues.parse("""{condition: "minecraft:killed_by_player"}""")
+        val dynamicScoreRange =
+            JsonValues.parse(
+                """
+                {
+                  condition: "minecraft:entity_scores",
+                  entity: "this",
+                  scores: {
+                    points: {
+                      min: {type: "minecraft:score", target: {type: "minecraft:fixed", name: "#min"}, score: "points"},
+                      max: {type: "minecraft:score", target: {type: "minecraft:fixed", name: "#max"}, score: "points"}
+                    }
+                  }
+                }
+                """.trimIndent(),
+            )
 
         assertTrue(engine.testElement(scoreValue, context))
         assertTrue(engine.testElement(binomialValue, context))
         assertTrue(engine.testElement(tableBonusPass, context))
         assertFalse(engine.testElement(tableBonusFail, context))
         assertTrue(engine.testElement(killedByPlayer, context))
+        assertTrue(engine.testElement(dynamicScoreRange, context))
         assertFalse(engine.testElement(killedByPlayer, context.copy(attackingPlayer = null)))
     }
 

@@ -15,6 +15,16 @@ const animationHeight = Number(query.get('animationHeight') ?? Math.max(16, Math
 const animationDelayMs = Number(query.get('animationDelayMs') ?? 250)
 const captureOnExecute = query.get('captureOnExecute') !== 'false'
 const viewport = query.has('viewport') ? { autoplay: false, tickRate: 20, pointerLock: true } : false
+const limits = query.has('vve')
+  ? {
+      requestTimeoutMs: 120_000,
+      cancelGraceMs: 5_000,
+      maximumCommands: 100_000,
+      maximumOutputBytes: 16 * 1024 * 1024,
+      maximumOutputEvents: 100_000,
+      maximumCheckpointBytes: 16 * 1024 * 1024,
+    }
+  : undefined
 const dependencySources = query.has('dependencies')
   ? [
       {
@@ -43,6 +53,7 @@ if (query.has('cell')) {
     siteId: 'playwright-cell-smoke',
     dependencies: dependencySources,
     viewport,
+    limits,
   }).mount('#app')
 } else {
   createApp(DpsPlayground, {
@@ -59,6 +70,7 @@ if (query.has('cell')) {
     theme: dark ? 'dark' : 'auto',
     siteId: 'playwright-smoke',
     viewport,
+    limits,
   }).mount('#app')
 }
 

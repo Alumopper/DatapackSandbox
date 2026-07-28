@@ -74,36 +74,43 @@ object MinecraftSaveImporter {
             )
         }
 
-        val dimensionRoot = dimensionRoot(saveRoot, options.dimension)
+        val dimensionRoot = dimensionRoot(saveRoot.toRealPath(), options.dimension)
         val regionCache = mutableMapOf<Path, AnvilRegionFile?>()
-        var chunksRead = 0
-        var blocks = 0
-        var blockEntities = 0
-        var entities = 0
+        try {
+            var chunksRead = 0
+            var blocks = 0
+            var blockEntities = 0
+            var entities = 0
 
-        chunks.forEach { chunk ->
-            var loadedChunk = false
-            if (options.includeBlocks || options.includeBlockEntities) {
-                val region = regionFile(dimensionRoot.resolve("region"), chunk, regionCache)
-                val chunkNbt = region?.readChunk(chunk)
-                if (chunkNbt != null) {
-                    loadedChunk = true
-                    if (options.includeBlocks) blocks += importBlocks(chunkNbt, chunk, world)
-                    if (options.includeBlockEntities) blockEntities += importBlockEntities(chunkNbt, world, profile)
+            chunks.forEach { chunk ->
+                var loadedChunk = false
+                if (options.includeBlocks || options.includeBlockEntities) {
+                    val region = regionFile(dimensionRoot.resolve("region"), chunk, regionCache)
+                    val chunkNbt = region?.readChunk(chunk)
+                    if (chunkNbt != null) {
+                        loadedChunk = true
+                        if (options.includeBlocks) blocks += importBlocks(chunkNbt, chunk, world)
+                        if (options.includeBlockEntities) blockEntities += importBlockEntities(chunkNbt, world, profile)
+                    }
                 }
-            }
-            if (options.includeEntities) {
-                val entityRegion = regionFile(dimensionRoot.resolve("entities"), chunk, regionCache)
-                val entityChunkNbt = entityRegion?.readChunk(chunk)
-                if (entityChunkNbt != null) {
-                    loadedChunk = true
-                    entities += importEntities(entityChunkNbt, world, profile, options.dimension)
+                if (options.includeEntities) {
+                    val entityRegion = regionFile(dimensionRoot.resolve("entities"), chunk, regionCache)
+                    val entityChunkNbt = entityRegion?.readChunk(chunk)
+                    if (entityChunkNbt != null) {
+                        loadedChunk = true
+                        entities += importEntities(entityChunkNbt, world, profile, options.dimension)
+                    }
                 }
+                if (loadedChunk) chunksRead += 1
             }
-            if (loadedChunk) chunksRead += 1
+
+            return MinecraftSaveImportResult(chunksRead, blocks, blockEntities, entities)
+        } finally {
+            regionCache.values
+                .filterNotNull()
+                .distinct()
+                .forEach(AnvilRegionFile::close)
         }
-
-        return MinecraftSaveImportResult(chunksRead, blocks, blockEntities, entities)
     }
 
     private fun importBlocks(
@@ -123,7 +130,10 @@ object MinecraftSaveImporter {
             val states = section.obj("block_states")
             val palette = states?.array("palette") ?: section.array("Palette") ?: return@forEach
             if (palette.size() == 0) return@forEach
-            val packed = states?.array("data") ?: section.array("BlockStates")
+            val packed =
+                (states?.array("data") ?: section.array("BlockStates"))?.let { data ->
+                    LongArray(data.size()) { index -> data[index].asLong }
+                }
             val bits = bitsPerBlock(palette.size())
             for (index in 0 until 4096) {
                 val paletteIndex =
@@ -235,27 +245,43 @@ object MinecraftSaveImporter {
     ): AnvilRegionFile? {
         val regionX = Math.floorDiv(chunk.x, 32)
         val regionZ = Math.floorDiv(chunk.z, 32)
-        val path = regionDir.resolve("r.$regionX.$regionZ.mca")
+        val path = regionDir.resolve("r.$regionX.$regionZ.mca").toAbsolutePath().normalize()
         return cache.getOrPut(path) {
-            if (Files.exists(path)) AnvilRegionFile(path) else null
+            if (!Files.exists(path)) return@getOrPut null
+            val realPath = path.toRealPath()
+            val dimensionRoot = regionDir.parent.toAbsolutePath().normalize()
+            if (!realPath.startsWith(dimensionRoot)) {
+                throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Region file escapes the Minecraft save dimension: $path")
+            }
+            AnvilRegionFile(realPath)
         }
     }
 
     private fun dimensionRoot(
         saveRoot: Path,
         dimension: ResourceLocation,
-    ): Path =
-        when (dimension.toString()) {
-            "minecraft:overworld" -> saveRoot
-            "minecraft:the_nether" -> saveRoot.resolve("DIM-1")
-            "minecraft:the_end" -> saveRoot.resolve("DIM1")
-            else ->
-                saveRoot
-                    .resolve(
-                        "dimensions",
-                    ).resolve(dimension.namespace)
-                    .resolve(dimension.path.replace('/', java.io.File.separatorChar))
+    ): Path {
+        val candidate =
+            when (dimension.toString()) {
+                "minecraft:overworld" -> saveRoot
+                "minecraft:the_nether" -> saveRoot.resolve("DIM-1")
+                "minecraft:the_end" -> saveRoot.resolve("DIM1")
+                else ->
+                    saveRoot
+                        .resolve("dimensions")
+                        .resolve(dimension.namespace)
+                        .resolve(dimension.path.replace('/', java.io.File.separatorChar))
+            }.toAbsolutePath().normalize()
+        if (!candidate.startsWith(saveRoot)) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Dimension '$dimension' escapes the Minecraft save directory")
         }
+        if (!Files.exists(candidate)) return candidate
+        val realCandidate = candidate.toRealPath()
+        if (!realCandidate.startsWith(saveRoot)) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Dimension '$dimension' escapes the Minecraft save directory")
+        }
+        return realCandidate
+    }
 
     private fun sections(chunkNbt: JsonObject): JsonArray =
         chunkNbt.array("sections")
@@ -266,18 +292,23 @@ object MinecraftSaveImporter {
     private fun bitsPerBlock(paletteSize: Int): Int = maxOf(4, ceil(ln(paletteSize.toDouble()) / ln(2.0)).toInt())
 
     private fun packedIndex(
-        data: JsonArray,
+        data: LongArray,
         index: Int,
         bits: Int,
     ): Int {
-        val longs = LongArray(data.size()) { data[it].asLong }
         val bitIndex = index * bits
         val startLong = bitIndex / 64
         val startOffset = bitIndex % 64
+        if (startLong !in data.indices) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Chunk block state data is shorter than its palette requires")
+        }
         val mask = (1L shl bits) - 1L
-        var value = longs[startLong] ushr startOffset
+        var value = data[startLong] ushr startOffset
         if (startOffset + bits > 64) {
-            value = value or (longs[startLong + 1] shl (64 - startOffset))
+            if (startLong + 1 !in data.indices) {
+                throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Chunk block state data is shorter than its palette requires")
+            }
+            value = value or (data[startLong + 1] shl (64 - startOffset))
         }
         return (value and mask).toInt()
     }

@@ -98,4 +98,74 @@ describe('DpsViewport', () => {
     expect(rendererSpies.dispose).toHaveBeenCalled()
     expect(MockWorker.instances[0].terminated).toBe(true)
   })
+
+  it('opens a debounced command console with T and executes the selected completion', async () => {
+    const requests: Record<string, unknown>[] = []
+    MockWorker.responder = (worker, request) => {
+      requests.push(request)
+      if (request.type === 'transport.connect') worker.emit({ type: 'transport.ready', requestId: request.id })
+      if (request.type === 'session.create') worker.emit({ type: 'session.ready', requestId: request.id, sessionId: 'commands' })
+      if (request.type === 'viewport.subscribe') {
+        worker.emit({ type: 'viewport.subscribed', requestId: request.id })
+        worker.emit({
+          type: 'viewport.scene',
+          scene: {
+            revision: 1,
+            tick: 0,
+            tickRate: 20,
+            generatedAt: 0,
+            vertexStride: 12,
+            camera: { position: [0, 2, 4], yaw: 180, pitch: 0 },
+            bounds: { minimum: [0, 0, 0], maximum: [1, 1, 1] },
+            visibleBlocks: 0,
+            visibleEntities: 0,
+          },
+        })
+      }
+      if (request.type === 'cell.complete') {
+        worker.emit({
+          type: 'cell.output',
+          requestId: request.id,
+          cellId: request.cellId,
+          kind: 'completion',
+          result: { suggestions: [{ value: 'function', start: 0, end: 3, appendSpace: true }] },
+        })
+      }
+      if (request.type === 'cell.check') {
+        worker.emit({ type: 'diagnostic', requestId: request.id, cellId: request.cellId, diagnostics: [] })
+      }
+      if (request.type === 'cell.execute') {
+        worker.emit({
+          type: 'cell.output',
+          requestId: request.id,
+          cellId: request.cellId,
+          kind: 'execution',
+          summary: 'Executed 1 command.',
+          result: { commands: 1 },
+        })
+        worker.emit({ type: 'cell.status', requestId: request.id, cellId: request.cellId, status: 'idle' })
+      }
+    }
+    const wrapper = mount(DpsViewport, {
+      attachTo: document.body,
+      props: { notebook: { version: '26.2', cells: [] }, options: { keyboard: true } },
+    })
+    await vi.waitFor(() => expect(wrapper.attributes('data-state')).toBe('ready'))
+
+    const canvas = wrapper.get('canvas').element as HTMLCanvasElement
+    canvas.focus()
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 't', code: 'KeyT', bubbles: true, cancelable: true }))
+    await flushPromises()
+    const input = wrapper.get<HTMLInputElement>('[aria-label="Sandbox command"]')
+    await input.setValue('/fun')
+    await vi.waitFor(() => expect(wrapper.text()).toContain('function'))
+    expect(requests.filter((request) => request.type === 'cell.complete')).toHaveLength(1)
+
+    await input.trigger('keydown', { key: 'Tab' })
+    expect(input.element.value).toBe('/function ')
+    await input.trigger('keydown', { key: 'Enter' })
+    await vi.waitFor(() => expect(requests.some((request) => request.type === 'cell.execute')).toBe(true))
+    expect(wrapper.text()).toContain('Executed 1 command.')
+    wrapper.unmount()
+  })
 })

@@ -9,7 +9,10 @@ import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.types.double
 import com.github.ajalt.clikt.parameters.types.int
 import com.github.ajalt.clikt.parameters.types.path
+import moe.afox.dpsandbox.core.CommandTraceMode
+import moe.afox.dpsandbox.core.DatapackSandbox
 import moe.afox.dpsandbox.core.SandboxException
+import moe.afox.dpsandbox.core.SandboxLimits
 import moe.afox.dpsandbox.core.VersionProfiles
 import moe.afox.dpsandbox.core.createFunctionSandboxFromString
 import moe.afox.dpsandbox.core.createSandbox
@@ -76,8 +79,30 @@ internal fun createViewportSandbox(
     version: String,
     packs: List<Path>,
     inputPlayer: String,
-) = if (packs.isEmpty()) {
-    createFunctionSandboxFromString(version, "", defaultPlayerName = inputPlayer)
-} else {
-    createSandbox(version, packs, defaultPlayerName = inputPlayer)
+): DatapackSandbox {
+    val sandbox =
+        if (packs.isEmpty()) {
+            createFunctionSandboxFromString(
+                version,
+                "",
+                defaultPlayerName = inputPlayer,
+                limits = realtimeViewportLimits(),
+            )
+        } else {
+            createSandbox(
+                version,
+                packs,
+                defaultPlayerName = inputPlayer,
+                limits = realtimeViewportLimits(),
+            )
+        }
+    sandbox.world.commandTraceMode = CommandTraceMode.OFF
+    return sandbox
 }
+
+private fun realtimeViewportLimits() =
+    SandboxLimits(
+        maxCommands = Int.MAX_VALUE,
+        maxFunctionDepth = 256,
+        maxSnapshotBytes = 100_000_000,
+    )

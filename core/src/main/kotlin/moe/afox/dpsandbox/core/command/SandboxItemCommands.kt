@@ -313,8 +313,8 @@ internal class SandboxItemCommands(
         }
 
         if (SpecialEntitySupport.isItemDisplay(entity.type)) {
-            if (rawSlot !in setOf("inventory.0", "contents")) {
-                unsupportedFeature("Item display only exposes slot inventory.0", profile.id, location)
+            if (rawSlot !in setOf("container.0", "inventory.0", "contents")) {
+                unsupportedFeature("Item display only exposes slot container.0", profile.id, location)
             }
             return EntityItemAccess(
                 get = { SpecialEntitySupport.itemDisplayItem(entity)?.copyStack() },

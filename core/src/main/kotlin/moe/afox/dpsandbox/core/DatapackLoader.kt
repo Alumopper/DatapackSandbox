@@ -4,9 +4,7 @@ import com.google.gson.JsonArray
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
-import com.google.gson.JsonPrimitive
-import java.io.ByteArrayInputStream
-import java.io.DataInputStream
+import java.io.BufferedInputStream
 import java.net.URI
 import java.nio.charset.StandardCharsets
 import java.nio.file.FileSystem
@@ -646,16 +644,43 @@ object DatapackLoader {
     private fun readFunctionLines(
         sourceName: String,
         lines: List<String>,
-    ): List<FunctionLine> =
-        lines.mapIndexedNotNull { index, raw ->
+    ): List<FunctionLine> {
+        val result = mutableListOf<FunctionLine>()
+        var continued: StringBuilder? = null
+        var continuedFromLine = 0
+
+        lines.forEachIndexed { index, raw ->
             val stripped = raw.removePrefix("\uFEFF").trim()
-            if (stripped.isEmpty() || stripped.startsWith("#")) {
-                null
-            } else {
-                val command = stripped.removePrefix("/")
-                FunctionLine(command, SourceLocation(file = sourceName, line = index + 1, command = command))
+            if (continued == null && (stripped.isEmpty() || stripped.startsWith("#"))) return@forEachIndexed
+
+            val continues = stripped.endsWith('\\')
+            val fragment = if (continues) stripped.dropLast(1).trimEnd() else stripped
+            val commandBuilder =
+                continued ?: StringBuilder().also {
+                    continued = it
+                    continuedFromLine = index + 1
+                }
+            if (commandBuilder.isNotEmpty() && fragment.isNotEmpty()) commandBuilder.append(' ')
+            commandBuilder.append(fragment)
+
+            if (!continues) {
+                val command = commandBuilder.toString().removePrefix("/")
+                if (command.isNotEmpty()) {
+                    result +=
+                        FunctionLine(
+                            command,
+                            SourceLocation(file = sourceName, line = continuedFromLine, command = command),
+                        )
+                }
+                continued = null
             }
         }
+
+        continued?.toString()?.removePrefix("/")?.takeIf { it.isNotEmpty() }?.let { command ->
+            result += FunctionLine(command, SourceLocation(file = sourceName, line = continuedFromLine, command = command))
+        }
+        return result
+    }
 
     private fun readFunctionTag(
         root: Path,
@@ -868,84 +893,21 @@ object DatapackLoader {
         return resources
     }
 
-    private fun readNbtCompoundJson(file: Path): JsonObject {
-        val bytes = Files.readAllBytes(file)
-        val rawInput = ByteArrayInputStream(bytes)
-        val payloadInput =
-            if (bytes.size >= 2 && bytes[0] == 0x1f.toByte() && bytes[1] == 0x8b.toByte()) {
-                GZIPInputStream(rawInput)
-            } else {
-                rawInput
-            }
-        DataInputStream(payloadInput).use { input ->
-            val rootType = input.readUnsignedByte()
-            if (rootType == NBT_TAG_END) return JsonObject()
-            require(rootType == NBT_TAG_COMPOUND) { "root tag must be a compound, got tag $rootType" }
-            input.readNbtString()
-            return input.readNbtCompoundPayload()
-        }
-    }
-
-    private fun DataInputStream.readNbtPayload(type: Int): JsonElement =
-        when (type) {
-            NBT_TAG_BYTE -> JsonPrimitive(readByte().toInt())
-            NBT_TAG_SHORT -> JsonPrimitive(readShort().toInt())
-            NBT_TAG_INT -> JsonPrimitive(readInt())
-            NBT_TAG_LONG -> JsonPrimitive(readLong())
-            NBT_TAG_FLOAT -> JsonPrimitive(readFloat())
-            NBT_TAG_DOUBLE -> JsonPrimitive(readDouble())
-            NBT_TAG_BYTE_ARRAY ->
-                JsonArray().also { array ->
-                    val size = readInt()
-                    require(size >= 0) { "negative NBT byte array length $size" }
-                    repeat(size) { array.add(readByte().toInt()) }
+    private fun readNbtCompoundJson(file: Path): JsonObject =
+        Files.newInputStream(file).use { fileInput ->
+            val input = BufferedInputStream(fileInput)
+            input.mark(2)
+            val gzip = input.read() == GZIP_MAGIC_FIRST && input.read() == GZIP_MAGIC_SECOND
+            input.reset()
+            val payload = if (gzip) GZIPInputStream(input) else input
+            payload.use {
+                val root = BinaryNbt.read(it).value
+                if (!root.isJsonObject) {
+                    throw SandboxException(DiagnosticCode.INPUT_FORMAT, "NBT root must be a compound")
                 }
-            NBT_TAG_STRING -> JsonPrimitive(readNbtString())
-            NBT_TAG_LIST -> readNbtListPayload()
-            NBT_TAG_COMPOUND -> readNbtCompoundPayload()
-            NBT_TAG_INT_ARRAY ->
-                JsonArray().also { array ->
-                    val size = readInt()
-                    require(size >= 0) { "negative NBT int array length $size" }
-                    repeat(size) { array.add(readInt()) }
-                }
-            NBT_TAG_LONG_ARRAY ->
-                JsonArray().also { array ->
-                    val size = readInt()
-                    require(size >= 0) { "negative NBT long array length $size" }
-                    repeat(size) { array.add(readLong()) }
-                }
-            else -> throw IllegalArgumentException("unsupported NBT tag type $type")
-        }
-
-    private fun DataInputStream.readNbtListPayload(): JsonArray {
-        val elementType = readUnsignedByte()
-        val size = readInt()
-        require(size >= 0) { "negative NBT list length $size" }
-        require(elementType != NBT_TAG_END || size == 0) { "NBT end-tag list must be empty" }
-        return JsonArray().also { array ->
-            repeat(size) {
-                array.add(readNbtPayload(elementType))
+                root.asJsonObject
             }
         }
-    }
-
-    private fun DataInputStream.readNbtCompoundPayload(): JsonObject {
-        val compound = JsonObject()
-        while (true) {
-            val type = readUnsignedByte()
-            if (type == NBT_TAG_END) return compound
-            val name = readNbtString()
-            compound.add(name, readNbtPayload(type))
-        }
-    }
-
-    private fun DataInputStream.readNbtString(): String {
-        val size = readUnsignedShort()
-        val bytes = ByteArray(size)
-        readFully(bytes)
-        return String(bytes, StandardCharsets.UTF_8)
-    }
 
     private fun readTags(
         root: Path,
@@ -1270,19 +1232,8 @@ object DatapackLoader {
             version = profile.id,
         )
 
-    private const val NBT_TAG_END = 0
-    private const val NBT_TAG_BYTE = 1
-    private const val NBT_TAG_SHORT = 2
-    private const val NBT_TAG_INT = 3
-    private const val NBT_TAG_LONG = 4
-    private const val NBT_TAG_FLOAT = 5
-    private const val NBT_TAG_DOUBLE = 6
-    private const val NBT_TAG_BYTE_ARRAY = 7
-    private const val NBT_TAG_STRING = 8
-    private const val NBT_TAG_LIST = 9
-    private const val NBT_TAG_COMPOUND = 10
-    private const val NBT_TAG_INT_ARRAY = 11
-    private const val NBT_TAG_LONG_ARRAY = 12
+    private const val GZIP_MAGIC_FIRST = 0x1f
+    private const val GZIP_MAGIC_SECOND = 0x8b
 
     private fun Map<String, Map<ResourceLocation, RawJsonResource>>.toSortedRawResourceMap(): Map<String, Map<ResourceLocation, RawJsonResource>> =
         toSortedMap().mapValues { (_, resources) -> resources.toSortedMap() }

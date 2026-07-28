@@ -219,6 +219,22 @@ class ServeCommandTest {
         assertFalse(scores.has("runs"), "Command checks must not mutate active scores")
     }
 
+    @Test
+    fun `serve rejects oversized request lines without retaining unbounded input`() {
+        val responses = runServe("x".repeat(1024 * 1024 + 1))
+
+        val failure = responses.last()
+        assertFalse(failure.get("ok").asBoolean)
+        assertTrue(
+            failure
+                .getAsJsonObject("error")
+                .get("message")
+                .asString
+                .contains("request exceeds character limit"),
+            failure.toString(),
+        )
+    }
+
     private fun runServe(input: String): List<com.google.gson.JsonObject> {
         val writer = StringWriter()
         ServeSession().run(StringReader(input).buffered(), writer.buffered())

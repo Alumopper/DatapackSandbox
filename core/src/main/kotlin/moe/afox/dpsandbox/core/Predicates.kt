@@ -136,10 +136,10 @@ class PredicateEngine(
             "random_chance" -> context.random.nextDouble() < root.number("chance", 0.0)
             "random_chance_with_enchanted_bonus", "random_chance_with_looting" -> testRandomChanceWithEnchantedBonus(root, context)
             "table_bonus" -> testTableBonus(root, context)
-            "value_check" -> testRange(numberProviderValue(root.get("value"), context), root.get("range"))
+            "value_check" -> testRange(numberProviderValue(root.get("value"), context), root.get("range"), context)
             "killed_by_player" -> context.attackingPlayer != null
             "survives_explosion" -> true
-            "time_check" -> testRange(context.world.gameTime, root.get("value") ?: root.get("period"))
+            "time_check" -> testRange(context.world.gameTime, root.get("value") ?: root.get("period"), context)
             "weather_check" -> {
                 (root.optionalBoolean("raining")?.let { it == context.weather.raining } ?: true) &&
                     (root.optionalBoolean("thundering")?.let { it == context.weather.thundering } ?: true)
@@ -152,7 +152,7 @@ class PredicateEngine(
                 val entity = resolveEntity(root.string("entity") ?: "this", context)
                 val scores = root.getAsJsonObject("scores") ?: return true
                 scores.entrySet().all { (objective, range) ->
-                    context.world.getScore(entity.scoreHolder, objective).let { testRange(it.toLong(), range) }
+                    context.world.getScore(entity.scoreHolder, objective).let { testRange(it.toLong(), range, context) }
                 }
             }
             "location_check" -> testLocation(root.getAsJsonObject("predicate") ?: JsonObject(), root.getAsJsonObject("offset"), context)
@@ -669,14 +669,24 @@ class PredicateEngine(
         }
         val tag = datapack.tags[TagKey("block", tagId)] ?: datapack.tags[TagKey("blocks", tagId)]
         val result =
-            tag?.values?.any { value ->
-                if (value.id.startsWith("#")) {
-                    val nested = ResourceLocation.parse(value.id.removePrefix("#"))
-                    blockMatchesTag(id, nested, visited)
-                } else {
-                    ResourceLocation.parse(value.id) == id
+            if (tag == null) {
+                tagId == ResourceLocation("minecraft", "air") &&
+                    id in
+                    setOf(
+                        ResourceLocation("minecraft", "air"),
+                        ResourceLocation("minecraft", "cave_air"),
+                        ResourceLocation("minecraft", "void_air"),
+                    )
+            } else {
+                tag.values.any { value ->
+                    if (value.id.startsWith("#")) {
+                        val nested = ResourceLocation.parse(value.id.removePrefix("#"))
+                        blockMatchesTag(id, nested, visited)
+                    } else {
+                        ResourceLocation.parse(value.id) == id
+                    }
                 }
-            } == true
+            }
         visited.remove(tagId)
         return result
     }
@@ -766,20 +776,32 @@ class PredicateEngine(
     private fun testRange(
         actual: Long,
         range: JsonElement?,
-    ): Boolean = testRange(actual.toDouble(), range)
+        context: PredicateContext? = null,
+    ): Boolean = testRange(actual.toDouble(), range, context)
 
     private fun testRange(
         actual: Double,
         range: JsonElement?,
+        context: PredicateContext? = null,
     ): Boolean {
         if (range == null || range.isJsonNull) return true
         if (range.isJsonPrimitive) return actual == range.asDouble
         if (!range.isJsonObject) return false
         val objectRange = range.asJsonObject
-        objectRange.get("min")?.asDouble?.let { if (actual < it) return false }
-        objectRange.get("max")?.asDouble?.let { if (actual > it) return false }
+        objectRange.get("min")?.let { if (actual < rangeBoundValue(it, context)) return false }
+        objectRange.get("max")?.let { if (actual > rangeBoundValue(it, context)) return false }
         return true
     }
+
+    private fun rangeBoundValue(
+        bound: JsonElement,
+        context: PredicateContext?,
+    ): Double =
+        when {
+            bound.isJsonPrimitive -> bound.asDouble
+            bound.isJsonObject && context != null -> numberProviderValue(bound, context)
+            else -> throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Predicate range bound must be a number or number provider")
+        }
 
     private fun containsAll(
         actual: JsonObject,
