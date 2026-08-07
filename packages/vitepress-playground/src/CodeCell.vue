@@ -7,12 +7,13 @@ import {
   type CompletionResult,
 } from '@codemirror/autocomplete'
 import { basicSetup } from 'codemirror'
-import { Compartment, EditorState, Prec, Transaction } from '@codemirror/state'
+import { Compartment, EditorState, Prec, StateEffect, StateField, Transaction } from '@codemirror/state'
 import { HighlightStyle, syntaxHighlighting } from '@codemirror/language'
 import { linter, setDiagnostics, type Diagnostic } from '@codemirror/lint'
-import { EditorView, keymap } from '@codemirror/view'
+import { Decoration, EditorView, keymap, type DecorationSet } from '@codemirror/view'
 import { tags } from '@lezer/highlight'
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { functionReferenceAt, functionReferences } from './function-navigation'
 import { mcfunctionLanguage } from './mcfunction'
 import type { PlaygroundCompletion, PlaygroundDiagnostic } from './types'
 
@@ -24,17 +25,84 @@ const props = defineProps<{
   diagnostics: PlaygroundDiagnostic[]
   complete: (source: string, cursor: number) => Promise<PlaygroundCompletion[]>
   check: (source: string) => Promise<PlaygroundDiagnostic[]>
+  canNavigateBack?: boolean
 }>()
 
 const emit = defineEmits<{
   'update:modelValue': [value: string]
   run: []
+  'open-function': [id: string]
+  'navigate-back': []
 }>()
 
 const host = ref<HTMLElement>()
 const editable = new Compartment()
 let view: EditorView | undefined
 let hasUserEdited = false
+let suppressMouseBack = false
+let mouseBackResetTimer: number | undefined
+
+const setFunctionLinkMode = StateEffect.define<boolean>()
+const functionLinkMode = StateField.define<{ enabled: boolean; decorations: DecorationSet }>({
+  create: () => ({ enabled: false, decorations: Decoration.none }),
+  update: (value, transaction) => {
+    let enabled = value.enabled
+    for (const effect of transaction.effects) {
+      if (effect.is(setFunctionLinkMode)) enabled = effect.value
+    }
+    if (!transaction.docChanged && enabled === value.enabled) return value
+    return {
+      enabled,
+      decorations: enabled ? functionLinkDecorations(transaction.state) : Decoration.none,
+    }
+  },
+  provide: (field) => EditorView.decorations.from(field, (value) => value.decorations),
+})
+
+function functionLinkDecorations(state: EditorState): DecorationSet {
+  return Decoration.set(functionReferences(state.doc.toString()).map((reference) => (
+    Decoration.mark({ class: 'dps-function-link' }).range(reference.from, reference.to)
+  )), true)
+}
+
+function setFunctionLinks(enabled: boolean): void {
+  if (!view || view.state.field(functionLinkMode).enabled === enabled) return
+  view.dispatch({ effects: setFunctionLinkMode.of(enabled) })
+}
+
+function onWindowKeyDown(event: KeyboardEvent): void {
+  if (event.key === 'Control' || event.key === 'Meta') setFunctionLinks(true)
+}
+
+function onWindowKeyUp(event: KeyboardEvent): void {
+  if (event.key === 'Control' || event.key === 'Meta') setFunctionLinks(false)
+}
+
+function onWindowBlur(): void {
+  setFunctionLinks(false)
+}
+
+function editorHasFocus(): boolean {
+  if (!view) return false
+  const activeElement = document.activeElement
+  return view.hasFocus || activeElement === view.dom || (activeElement !== null && view.dom.contains(activeElement))
+}
+
+function onWindowMouseDown(event: MouseEvent): void {
+  if (event.button !== 3 || !editorHasFocus() || !props.canNavigateBack) return
+  event.preventDefault()
+  event.stopPropagation()
+  suppressMouseBack = true
+  if (mouseBackResetTimer !== undefined) window.clearTimeout(mouseBackResetTimer)
+  mouseBackResetTimer = window.setTimeout(() => { suppressMouseBack = false }, 500)
+  emit('navigate-back')
+}
+
+function suppressWindowMouseBack(event: MouseEvent): void {
+  if (event.button !== 3 || !suppressMouseBack) return
+  event.preventDefault()
+  event.stopPropagation()
+}
 
 const mcfunctionHighlightStyle = HighlightStyle.define([
   { tag: tags.keyword, color: 'var(--dps-syntax-keyword)', fontWeight: '650' },
@@ -108,6 +176,7 @@ onMounted(() => {
         basicSetup,
         mcfunctionLanguage,
         syntaxHighlighting(mcfunctionHighlightStyle),
+        functionLinkMode,
         editable.of([EditorView.editable.of(!props.readOnly), EditorState.readOnly.of(props.readOnly)]),
         Prec.high(keymap.of([
           {
@@ -118,6 +187,14 @@ onMounted(() => {
             key: 'Mod-Enter',
             run: () => {
               if (!props.disabled) emit('run')
+              return true
+            },
+          },
+          {
+            key: 'Alt-ArrowLeft',
+            run: () => {
+              if (!props.canNavigateBack) return false
+              emit('navigate-back')
               return true
             },
           },
@@ -135,6 +212,20 @@ onMounted(() => {
             if (userEdited && /[\s:@\[\],=]/.test(last)) startCompletion(update.view)
           }
         }),
+        EditorView.domEventHandlers({
+          mousedown: (event, editor) => {
+            if (event.button !== 0 || (!event.ctrlKey && !event.metaKey)) return false
+            event.preventDefault()
+            const position = editor.posAtCoords({ x: event.clientX, y: event.clientY })
+            if (position !== null) {
+              const reference = functionReferenceAt(editor.state.doc.toString(), position)
+              if (reference) emit('open-function', reference.id)
+            }
+            // Ctrl/Meta is reserved for definition navigation in this editor.
+            // Consume every modified click so CodeMirror cannot add a cursor.
+            return true
+          },
+        }),
         EditorView.theme({
           '&': { minHeight: '72px', backgroundColor: 'transparent' },
           '.cm-scroller': {
@@ -148,6 +239,16 @@ onMounted(() => {
       ],
     }),
   })
+  // Read-only function sources cannot focus CodeMirror's content DOM in every
+  // browser. Keep the editor shell keyboard-focusable so Mouse Back can still
+  // be scoped to the active source viewer instead of browser history.
+  view.dom.tabIndex = 0
+  window.addEventListener('keydown', onWindowKeyDown)
+  window.addEventListener('keyup', onWindowKeyUp)
+  window.addEventListener('blur', onWindowBlur)
+  window.addEventListener('mousedown', onWindowMouseDown, true)
+  window.addEventListener('mouseup', suppressWindowMouseBack, true)
+  window.addEventListener('auxclick', suppressWindowMouseBack, true)
 })
 
 watch(() => props.modelValue, (value) => {
@@ -164,7 +265,16 @@ watch(() => props.diagnostics, (value) => {
   if (view) view.dispatch(setDiagnostics(view.state, mapDiagnostics(value, view.state)))
 }, { deep: true })
 
-onBeforeUnmount(() => view?.destroy())
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', onWindowKeyDown)
+  window.removeEventListener('keyup', onWindowKeyUp)
+  window.removeEventListener('blur', onWindowBlur)
+  window.removeEventListener('mousedown', onWindowMouseDown, true)
+  window.removeEventListener('mouseup', suppressWindowMouseBack, true)
+  window.removeEventListener('auxclick', suppressWindowMouseBack, true)
+  if (mouseBackResetTimer !== undefined) window.clearTimeout(mouseBackResetTimer)
+  view?.destroy()
+})
 </script>
 
 <template>

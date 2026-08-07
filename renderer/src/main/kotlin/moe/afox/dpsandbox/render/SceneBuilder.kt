@@ -8,8 +8,6 @@ import moe.afox.dpsandbox.core.DiagnosticCode
 import moe.afox.dpsandbox.core.SandboxException
 import moe.afox.dpsandbox.render.engine.DisplayTextBitmap
 import moe.afox.dpsandbox.render.engine.DisplayTextRasterizer
-import java.io.ByteArrayInputStream
-import javax.imageio.ImageIO
 import kotlin.math.asin
 import kotlin.math.atan2
 import kotlin.math.cos
@@ -477,7 +475,7 @@ internal class SceneBuilder(
         if (fontAtlasLoaded) return fontAtlas
         fontAtlasLoaded = true
         val bytes = resolver.bytes("assets/minecraft/textures/font/ascii.png") ?: return null
-        val image = runCatching { ImageIO.read(ByteArrayInputStream(bytes)) }.getOrNull() ?: return null
+        val image = BoundedImageReader.read(bytes) ?: return null
         val pixels = IntArray(image.width * image.height)
         image.getRGB(0, 0, image.width, image.height, pixels, 0, image.width)
         return DisplayTextBitmap(image.width, image.height, pixels).also { fontAtlas = it }

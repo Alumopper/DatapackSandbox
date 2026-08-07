@@ -9,7 +9,7 @@ tests, and build-tool smoke tests.
 The fluent testing API is the `testkit` artifact:
 
 ```text
-moe.afox.dpsandbox:testkit:1.0.1
+moe.afox.dpsandbox:testkit:1.0.2
 ```
 
 The `cli` module and `datapack-sandbox-cli.jar` are for command-line use. JVM
@@ -33,7 +33,7 @@ repositories {
 }
 
 dependencies {
-    testImplementation("moe.afox.dpsandbox:testkit:1.0.1")
+    testImplementation("moe.afox.dpsandbox:testkit:1.0.2")
 }
 ```
 
@@ -68,7 +68,7 @@ dependencies {
   <dependency>
     <groupId>moe.afox.dpsandbox</groupId>
     <artifactId>testkit</artifactId>
-    <version>1.0.1</version>
+    <version>1.0.2</version>
     <scope>test</scope>
   </dependency>
 </dependencies>
@@ -158,6 +158,47 @@ paths or `SnapshotDiff.render(...)` for readable failure logs.
 
 `unsupportedFeatureMode` can be `WARN` (default), `IGNORE`, or `ERROR`. Use
 `ERROR` when you want unsupported vanilla commands to fail the test immediately.
+
+## Live Chat Output
+
+QuickTests stay silent by default, including when a datapack runs `say`,
+`tellraw`, or another modeled chat command. Enable live console messages before
+the execution step when you want more context while a unit test runs:
+
+```kotlin
+SandboxQuickTest.singleFunctionText(
+    functionText = """
+        say starting generated function
+        tellraw Steve {"text":"ready","color":"green"}
+    """.trimIndent(),
+    version = "26.2",
+)
+    .printChatOutput()
+    .function()
+    .requirePassed()
+```
+
+This prints the resolved plain text as each chat event is recorded:
+
+```text
+<Server> starting generated function
+ready
+```
+
+Pass a `PrintStream` to route the messages somewhere other than `System.out`,
+or call `stopPrintingChatOutput()` to disable the printer later in the same
+scenario. Structured events are still retained in `outputs()` and the final
+report, and non-chat channels such as titles, sounds, and data output are not
+printed by this option.
+
+Lower-level `DatapackSandbox` users can observe any output channel directly:
+
+```kotlin
+sandbox.world.addOutputListener { output ->
+    if (output.channel == OutputChannel.CHAT.id) println(output.text)
+}
+sandbox.runFunction("demo:main")
+```
 
 ## Version and Pack Metadata
 
@@ -778,3 +819,6 @@ sandbox.runLoad()
 sandbox.executeCommand("scoreboard objectives list")
 sandbox.handlePlayerEvent(PlayerEvents.keyInput("Steve", "key.jump"))
 ```
+
+Use `PlayerEvents.input(...)` when a caller needs to preserve another input
+device name, such as the playground's `touch` controls.

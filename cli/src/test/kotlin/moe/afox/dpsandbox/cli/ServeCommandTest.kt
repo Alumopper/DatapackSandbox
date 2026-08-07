@@ -235,6 +235,100 @@ class ServeCommandTest {
         )
     }
 
+    @Test
+    fun `serve paginates event lists without changing requested offsets`() {
+        val responses =
+            runServe(
+                """
+                {"id":"create","method":"createSandbox","params":{"version":"26.2"}}
+                {"id":"one","method":"runCommand","params":{"command":"say one"}}
+                {"id":"two","method":"runCommand","params":{"command":"say two"}}
+                {"id":"tail","method":"outputs","params":{"from":1}}
+                {"id":"past","method":"outputs","params":{"from":99}}
+                {"id":"negative","method":"outputs","params":{"from":-1}}
+                """.trimIndent(),
+            )
+
+        val tail = responses.byId("tail").getAsJsonObject("result")
+        assertEquals(1, tail.get("from").asInt)
+        assertEquals(2, tail.get("total").asInt)
+        assertEquals(1, tail.getAsJsonArray("outputs").size())
+
+        val past = responses.byId("past").getAsJsonObject("result")
+        assertEquals(99, past.get("from").asInt)
+        assertTrue(past.getAsJsonArray("outputs").isEmpty)
+
+        val negative = responses.byId("negative").getAsJsonObject("result")
+        assertEquals(0, negative.get("from").asInt)
+        assertEquals(2, negative.getAsJsonArray("outputs").size())
+    }
+
+    @Test
+    fun `serve saves restores and lists reusable checkpoints`() {
+        val responses =
+            runServe(
+                """
+                {"id":"create","method":"createSandbox","params":{"version":"26.2"}}
+                {"id":"objective","method":"runCommand","params":{"command":"scoreboard objectives add runs dummy"}}
+                {"id":"initial","method":"runCommand","params":{"command":"scoreboard players set #checkpoint runs 3"}}
+                {"id":"save","method":"saveCheckpoint","params":{"name":"editor"}}
+                {"id":"mutate","method":"runCommand","params":{"command":"scoreboard players set #checkpoint runs 9"}}
+                {"id":"restore","method":"restoreCheckpoint","params":{"name":"editor"}}
+                {"id":"snapshot","method":"snapshot"}
+                {"id":"list","method":"checkpoints"}
+                {"id":"delete","method":"deleteCheckpoint","params":{"name":"editor"}}
+                """.trimIndent(),
+            )
+
+        assertEquals(listOf("editor"), responses.byId("save").resultArray("names"))
+        assertEquals(
+            "restored",
+            responses
+                .byId("restore")
+                .getAsJsonObject("result")
+                .get("action")
+                .asString,
+        )
+        assertEquals(
+            3,
+            responses
+                .byId("snapshot")
+                .getAsJsonObject("result")
+                .getAsJsonObject("scores")
+                .getAsJsonObject("runs")
+                .get("#checkpoint")
+                .asInt,
+        )
+        assertEquals(listOf("editor"), responses.byId("list").resultArray("names"))
+        assertTrue(
+            responses
+                .byId("delete")
+                .getAsJsonObject("result")
+                .get("changed")
+                .asBoolean,
+        )
+        assertTrue(responses.byId("delete").resultArray("names").isEmpty())
+    }
+
+    @Test
+    fun `serve exposes effective function source and editor capabilities`() {
+        val responses =
+            runServe(
+                """
+                {"id":"create","method":"createSandbox","params":{"version":"26.2","functionSources":[{"id":"demo:main","text":"say first\nsay second"}]}}
+                {"id":"source","method":"functionSource","params":{"id":"demo:main"}}
+                """.trimIndent(),
+            )
+
+        val capabilities = responses.first().getAsJsonObject("result").getAsJsonObject("capabilities")
+        assertTrue(capabilities.get("checkpoints").asBoolean)
+        assertTrue(capabilities.get("functionSource").asBoolean)
+        assertTrue(capabilities.get("pagedEvents").asBoolean)
+        val source = responses.byId("source").getAsJsonObject("result")
+        assertEquals("demo:main", source.get("id").asString)
+        assertEquals("say first\nsay second", source.get("source").asString)
+    }
+
     private fun runServe(input: String): List<com.google.gson.JsonObject> {
         val writer = StringWriter()
         ServeSession().run(StringReader(input).buffered(), writer.buffered())
@@ -247,4 +341,7 @@ class ServeCommandTest {
     }
 
     private fun List<com.google.gson.JsonObject>.byId(id: String): com.google.gson.JsonObject = single { response -> response.get("id")?.takeIf { it.isJsonPrimitive }?.asString == id }
+
+    private fun com.google.gson.JsonObject.resultArray(name: String): List<String> =
+        getAsJsonObject("result").getAsJsonArray(name).map { it.asString }
 }

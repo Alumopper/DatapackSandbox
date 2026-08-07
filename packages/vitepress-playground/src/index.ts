@@ -9,7 +9,7 @@ export { DpsCell, DpsPlayground }
 export { PlaygroundClientError, PlaygroundWorkerClient } from './client'
 export type { PlaygroundWorkerClientOptions } from './client'
 export { PlaygroundSessionController } from './session'
-export type { PlaygroundSessionControllerOptions } from './session'
+export type { PlaygroundSessionActivity, PlaygroundSessionControllerOptions } from './session'
 export type {
   PlaygroundBrowserLimits,
   PlaygroundAnimationOptions,
@@ -38,5 +38,6 @@ export type {
   PlaygroundPlayerInput,
   PlaygroundCameraState,
   PlaygroundFrameStats,
+  PlaygroundFunctionSource,
   PlaygroundTheme,
 } from './types'

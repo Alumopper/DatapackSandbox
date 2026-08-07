@@ -5,9 +5,22 @@ import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 class PlayerEventsTest {
+    @Test
+    fun `generic input preserves touch devices and rejects non-finite coordinates`() {
+        val event = PlayerEvents.input("Steve", "touch", "look", "move", 2.5, -1.0)
+
+        assertEquals("touch_input", event.type)
+        assertEquals("touch", event.input?.device)
+        assertEquals(2.5, event.input?.x)
+        assertFailsWith<IllegalArgumentException> {
+            PlayerEvents.input("Steve", "touch", "look", "move", Double.POSITIVE_INFINITY, 0.0)
+        }
+    }
+
     @Test
     fun `shorthand changed dimension event carries from and to dimensions`() {
         val criterion =

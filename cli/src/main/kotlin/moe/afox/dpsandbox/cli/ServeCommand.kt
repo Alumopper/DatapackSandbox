@@ -17,6 +17,7 @@ import moe.afox.dpsandbox.core.FunctionSource
 import moe.afox.dpsandbox.core.OutputEvent
 import moe.afox.dpsandbox.core.PlayerEventTraceEvent
 import moe.afox.dpsandbox.core.Position
+import moe.afox.dpsandbox.core.ResourceLocation
 import moe.afox.dpsandbox.core.SandboxException
 import moe.afox.dpsandbox.core.SandboxLimits
 import moe.afox.dpsandbox.core.SandboxWorld
@@ -97,6 +98,7 @@ internal class ServeSession {
         val limits: SandboxLimits = SandboxLimits(),
     )
 
+    @Volatile
     private var sandbox: DatapackSandbox? = null
     private var config: SessionConfig? = null
     private val gson = GsonBuilder().disableHtmlEscaping().create()
@@ -257,9 +259,14 @@ internal class ServeSession {
             "injectPlayerEvent", "event" -> injectEvent(params)
             "snapshot" -> current().snapshotJson()
             "snapshotString" -> jsonObject("snapshot" to current().snapshotString())
+            "saveCheckpoint" -> saveCheckpoint(params)
+            "restoreCheckpoint" -> restoreCheckpoint(params)
+            "deleteCheckpoint" -> deleteCheckpoint(params)
+            "checkpoints" -> checkpointsJson(current())
             "render", "screenshot" -> render(params)
             "interrupt" -> interrupt()
             "resources" -> resourcesJson(current())
+            "functionSource" -> functionSourceJson(params)
             "outputs" -> outputsJson(current().world.outputs, params.int("from") ?: 0)
             "traces" -> tracesJson(current().world.traces, params.int("from") ?: 0)
             "eventTraces" -> eventTracesJson(current().world.playerEventTraces, params.int("from") ?: 0)
@@ -287,6 +294,12 @@ internal class ServeSession {
                 JsonObject().also { capabilities ->
                     capabilities.addProperty("render", true)
                     capabilities.addProperty("renderMimeType", "image/png")
+                    capabilities.addProperty("checkpoints", true)
+                    capabilities.addProperty("functionSource", true)
+                    capabilities.addProperty("interrupt", true)
+                    capabilities.addProperty("eventTraces", true)
+                    capabilities.addProperty("pagedEvents", true)
+                    capabilities.addProperty("richOutput", true)
                 },
             )
             json.add("versions", JsonArray().also { versions -> VersionProfiles.all.forEach { versions.add(it.id) } })
@@ -401,6 +414,60 @@ internal class ServeSession {
                 },
             )
         }
+
+    private fun saveCheckpoint(params: JsonObject): JsonObject {
+        val box = current()
+        val name = params.string("name") ?: "default"
+        box.saveCheckpoint(name)
+        return checkpointResultJson(box, name, "saved")
+    }
+
+    private fun restoreCheckpoint(params: JsonObject): JsonObject {
+        val box = current()
+        val name = params.string("name") ?: "default"
+        box.restoreCheckpoint(name)
+        return checkpointResultJson(box, name, "restored")
+    }
+
+    private fun deleteCheckpoint(params: JsonObject): JsonObject {
+        val box = current()
+        val name = params.string("name") ?: "default"
+        return checkpointResultJson(box, name, "deleted", box.deleteCheckpoint(name))
+    }
+
+    private fun checkpointResultJson(
+        box: DatapackSandbox,
+        name: String,
+        action: String,
+        changed: Boolean = true,
+    ): JsonObject =
+        checkpointsJson(box).also { json ->
+            json.addProperty("name", name)
+            json.addProperty("action", action)
+            json.addProperty("changed", changed)
+            json.add("state", stateJson(box))
+        }
+
+    private fun checkpointsJson(box: DatapackSandbox): JsonObject =
+        JsonObject().also { json ->
+            json.add("names", stringArray(box.checkpointNames()))
+        }
+
+    private fun functionSourceJson(params: JsonObject): JsonObject {
+        val id = ResourceLocation.parse(params.requiredString("id"))
+        val function =
+            current().datapack.functions[id]
+                ?: throw SandboxException(
+                    DiagnosticCode.RESOURCE_NOT_FOUND,
+                    "Unknown function '$id'",
+                    version = current().profile.id,
+                )
+        return JsonObject().also { json ->
+            json.addProperty("id", id.toString())
+            function.lines.firstNotNullOfOrNull { it.location.file }?.let { json.addProperty("file", it) }
+            json.addProperty("source", function.lines.joinToString("\n") { it.command })
+        }
+    }
 
     private fun create(params: JsonObject): JsonObject {
         val version = params.string("version") ?: VersionProfiles.default.id
@@ -793,6 +860,7 @@ internal class ServeSession {
             json.addProperty("traces", box.world.traces.size)
             json.addProperty("eventTraces", box.world.playerEventTraces.size)
             json.addProperty("functions", box.datapack.functions.size)
+            json.add("checkpoints", stringArray(box.checkpointNames()))
             json.add("resources", resourcesJson(box).getAsJsonObject("summary"))
         }
 
@@ -888,31 +956,37 @@ internal class ServeSession {
     private fun outputsJson(
         outputs: List<OutputEvent>,
         from: Int,
-    ): JsonObject =
-        JsonObject().also { json ->
-            json.addProperty("from", from.coerceAtLeast(0))
-            json.addProperty("total", outputs.size)
-            json.add("outputs", JsonArray().also { array -> outputs.drop(from.coerceAtLeast(0)).forEach { array.add(it.toJson()) } })
-        }
+    ): JsonObject = pagedEventsJson("outputs", outputs, from, OutputEvent::toJson)
 
     private fun tracesJson(
         traces: List<CommandTraceEvent>,
         from: Int,
-    ): JsonObject =
-        JsonObject().also { json ->
-            json.addProperty("from", from.coerceAtLeast(0))
-            json.addProperty("total", traces.size)
-            json.add("traces", JsonArray().also { array -> traces.drop(from.coerceAtLeast(0)).forEach { array.add(it.toJson()) } })
-        }
+    ): JsonObject = pagedEventsJson("traces", traces, from, CommandTraceEvent::toJson)
 
     private fun eventTracesJson(
         traces: List<PlayerEventTraceEvent>,
         from: Int,
+    ): JsonObject = pagedEventsJson("eventTraces", traces, from, PlayerEventTraceEvent::toJson)
+
+    private inline fun <T> pagedEventsJson(
+        name: String,
+        events: List<T>,
+        from: Int,
+        encode: (T) -> JsonObject,
     ): JsonObject =
         JsonObject().also { json ->
-            json.addProperty("from", from.coerceAtLeast(0))
-            json.addProperty("total", traces.size)
-            json.add("eventTraces", JsonArray().also { array -> traces.drop(from.coerceAtLeast(0)).forEach { array.add(it.toJson()) } })
+            val requestedStart = from.coerceAtLeast(0)
+            json.addProperty("from", requestedStart)
+            json.addProperty("total", events.size)
+            json.add(
+                name,
+                JsonArray().also { array ->
+                    // Indexing avoids the full tail copy performed by List.drop.
+                    for (index in requestedStart.coerceAtMost(events.size) until events.size) {
+                        array.add(encode(events[index]))
+                    }
+                },
+            )
         }
 
     private fun manifestResultJson(result: ManifestResult): JsonObject =

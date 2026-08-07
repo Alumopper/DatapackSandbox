@@ -7,7 +7,7 @@
 fluent 测试 API 对应的是 `testkit` artifact：
 
 ```text
-moe.afox.dpsandbox:testkit:1.0.1
+moe.afox.dpsandbox:testkit:1.0.2
 ```
 
 `cli` 模块和 `datapack-sandbox-cli.jar` 面向命令行使用。JVM 测试应依赖 `testkit`，它会传递引入底层 `core` runtime；不要把 standalone CLI jar 当作库依赖。
@@ -26,7 +26,7 @@ repositories {
 }
 
 dependencies {
-    testImplementation("moe.afox.dpsandbox:testkit:1.0.1")
+    testImplementation("moe.afox.dpsandbox:testkit:1.0.2")
 }
 ```
 
@@ -58,7 +58,7 @@ dependencies {
   <dependency>
     <groupId>moe.afox.dpsandbox</groupId>
     <artifactId>testkit</artifactId>
-    <version>1.0.1</version>
+    <version>1.0.2</version>
     <scope>test</scope>
   </dependency>
 </dependencies>
@@ -128,6 +128,41 @@ println(report.traces.single().command)
 - `WARN`：默认行为，未支持命令记录 warning 并继续。
 - `IGNORE`：静默跳过未支持命令。
 - `ERROR`：严格模式，遇到未支持命令立即失败。
+
+## 实时聊天输出
+
+QuickTest 默认保持静默，即使数据包执行 `say`、`tellraw` 或其他已建模的聊天命令也不会写控制台。需要在单元测试运行期间直接查看消息时，请在执行步骤之前启用输出：
+
+```kotlin
+SandboxQuickTest.singleFunctionText(
+    functionText = """
+        say starting generated function
+        tellraw Steve {"text":"ready","color":"green"}
+    """.trimIndent(),
+    version = "26.2",
+)
+    .printChatOutput()
+    .function()
+    .requirePassed()
+```
+
+每个聊天事件被记录时，控制台都会立即打印解析后的纯文本：
+
+```text
+<Server> starting generated function
+ready
+```
+
+可以传入 `PrintStream`，把消息写到 `System.out` 之外的目标；也可以在同一场景中调用 `stopPrintingChatOutput()` 停止后续打印。结构化事件仍会保留在 `outputs()` 和最终报告中。title、sound、data 等非聊天 channel 不会由此选项打印。
+
+使用底层 `DatapackSandbox` 时，可以直接监听任意输出 channel：
+
+```kotlin
+sandbox.world.addOutputListener { output ->
+    if (output.channel == OutputChannel.CHAT.id) println(output.text)
+}
+sandbox.runFunction("demo:main")
+```
 
 ## 版本与 pack 元数据
 
@@ -725,3 +760,5 @@ sandbox.runLoad()
 sandbox.executeCommand("scoreboard objectives list")
 sandbox.handlePlayerEvent(PlayerEvents.keyInput("Steve", "key.jump"))
 ```
+
+调用方需要保留其他输入设备名称时可使用 `PlayerEvents.input(...)`，例如游乐场触控操作使用的 `touch`。

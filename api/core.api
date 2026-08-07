@@ -1,4 +1,4 @@
-# Public JVM API for moe.afox.dpsandbox:core:1.0.1
+# Public JVM API for moe.afox.dpsandbox:core:1.0.2
 public final class moe.afox.dpsandbox.core.AdvancementCriterionFailure {
   public moe.afox.dpsandbox.core.AdvancementCriterionFailure(moe.afox.dpsandbox.core.ResourceLocation, java.lang.String, java.lang.String);
   public final moe.afox.dpsandbox.core.ResourceLocation getAdvancement();
@@ -2079,12 +2079,18 @@ public final class moe.afox.dpsandbox.core.PlayerEventType extends java.lang.Enu
 }
 public final class moe.afox.dpsandbox.core.PlayerEvents {
   public static final moe.afox.dpsandbox.core.PlayerEvents INSTANCE;
+  public static final moe.afox.dpsandbox.core.PlayerEvent input(java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.Double, java.lang.Double, java.lang.String);
+  public static moe.afox.dpsandbox.core.PlayerEvent input$default(java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.Double, java.lang.Double, java.lang.String, int, java.lang.Object);
   public static final moe.afox.dpsandbox.core.PlayerEvent shorthand(java.lang.String, java.lang.String, java.lang.String, java.lang.String);
   public static moe.afox.dpsandbox.core.PlayerEvent shorthand$default(java.lang.String, java.lang.String, java.lang.String, java.lang.String, int, java.lang.Object);
   public static final moe.afox.dpsandbox.core.PlayerEvent keyInput(java.lang.String, java.lang.String, java.lang.String, java.lang.String);
   public static moe.afox.dpsandbox.core.PlayerEvent keyInput$default(java.lang.String, java.lang.String, java.lang.String, java.lang.String, int, java.lang.Object);
   public static final moe.afox.dpsandbox.core.PlayerEvent mouseInput(java.lang.String, java.lang.String, java.lang.String, java.lang.Double, java.lang.Double, java.lang.String);
   public static moe.afox.dpsandbox.core.PlayerEvent mouseInput$default(java.lang.String, java.lang.String, java.lang.String, java.lang.Double, java.lang.Double, java.lang.String, int, java.lang.Object);
+  public static final moe.afox.dpsandbox.core.PlayerEvent input(java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.Double, java.lang.Double);
+  public static final moe.afox.dpsandbox.core.PlayerEvent input(java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.Double);
+  public static final moe.afox.dpsandbox.core.PlayerEvent input(java.lang.String, java.lang.String, java.lang.String, java.lang.String);
+  public static final moe.afox.dpsandbox.core.PlayerEvent input(java.lang.String, java.lang.String, java.lang.String);
   public static final moe.afox.dpsandbox.core.PlayerEvent shorthand(java.lang.String, java.lang.String, java.lang.String);
   public static final moe.afox.dpsandbox.core.PlayerEvent shorthand(java.lang.String, java.lang.String);
   public static final moe.afox.dpsandbox.core.PlayerEvent keyInput(java.lang.String, java.lang.String, java.lang.String);
@@ -2873,6 +2879,7 @@ public final class moe.afox.dpsandbox.core.SandboxWorld {
   public final moe.afox.dpsandbox.core.CommandSource getCurrentCommandSource();
   public final void setCurrentCommandSource(moe.afox.dpsandbox.core.CommandSource);
   public final void advanceTick();
+  public final java.util.List<moe.afox.dpsandbox.core.ScheduledFunction> takeScheduledFunctionsDueBy$moe_afox_dpsandbox_core(long);
   public final void setGameTime(long);
   public final void setDayTime(long);
   public final void addDayTime(long);
@@ -2888,6 +2895,8 @@ public final class moe.afox.dpsandbox.core.SandboxWorld {
   public final moe.afox.dpsandbox.core.SandboxBlock block(moe.afox.dpsandbox.core.BlockPos);
   public final moe.afox.dpsandbox.core.SandboxBlock requireBlock(moe.afox.dpsandbox.core.BlockPos);
   public final void setBlock(moe.afox.dpsandbox.core.BlockPos, moe.afox.dpsandbox.core.SandboxBlock);
+  public final boolean addOutputListener(java.util.function.Consumer<moe.afox.dpsandbox.core.OutputEvent>);
+  public final boolean removeOutputListener(java.util.function.Consumer<moe.afox.dpsandbox.core.OutputEvent>);
   public final void recordOutput(java.lang.String, java.lang.String, java.util.List<java.lang.String>, java.lang.String, com.google.gson.JsonElement, java.util.List<moe.afox.dpsandbox.core.OutputTextSegment>, moe.afox.dpsandbox.core.CommandSource, java.lang.String);
   public static void recordOutput$default(moe.afox.dpsandbox.core.SandboxWorld, java.lang.String, java.lang.String, java.util.List, java.lang.String, com.google.gson.JsonElement, java.util.List, moe.afox.dpsandbox.core.CommandSource, java.lang.String, int, java.lang.Object);
   public final com.google.gson.JsonObject snapshot(moe.afox.dpsandbox.core.VersionProfile);

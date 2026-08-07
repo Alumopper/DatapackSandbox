@@ -10,6 +10,93 @@ const CodeCellStub = {
 }
 
 describe('DpsCell', () => {
+  it('shares a named sandbox while keeping editors and results independent', async () => {
+    const executions: Record<string, unknown>[] = []
+    let firstRequest: Record<string, unknown> | undefined
+    MockWorker.responder = (worker, request) => {
+      if (request.type === 'transport.connect') worker.emit({ type: 'transport.ready', requestId: request.id })
+      if (request.type === 'session.create') worker.emit({ type: 'session.ready', requestId: request.id, sessionId: 'named' })
+      if (request.type === 'cell.execute') {
+        executions.push(request)
+        if (request.source === 'say first') {
+          firstRequest = request
+          return
+        }
+        worker.emit({
+          type: 'cell.output', requestId: request.id, cellId: request.cellId, kind: 'execution',
+          summary: `Executed ${request.source}.`, result: { source: request.source },
+        })
+        worker.emit({ type: 'cell.status', requestId: request.id, cellId: request.cellId, status: 'idle' })
+      }
+    }
+    const first = mount(DpsCell, {
+      props: { modelValue: 'say first', sandboxId: 'shared-world', animation: { captureOnExecute: false } },
+      global: { stubs: { CodeCell: CodeCellStub } },
+    })
+    const second = mount(DpsCell, {
+      props: { modelValue: 'say second', sandboxId: ' shared-world ', animation: { captureOnExecute: false } },
+      global: { stubs: { CodeCell: CodeCellStub } },
+    })
+    await vi.waitFor(() => {
+      expect(first.attributes('data-state')).toBe('ready')
+      expect(second.attributes('data-state')).toBe('ready')
+    })
+
+    expect(MockWorker.instances).toHaveLength(1)
+    expect(first.find('.code-cell-stub').text()).toBe('say first')
+    expect(second.find('.code-cell-stub').text()).toBe('say second')
+    await first.get('.dps-cell-actions button:first-child').trigger('click')
+    await vi.waitFor(() => expect(firstRequest).toBeDefined())
+    await flushPromises()
+    expect(second.get('.dps-cell-actions button:first-child').attributes()).toHaveProperty('disabled')
+    await (second.vm as unknown as { run(): Promise<void> }).run()
+    expect(executions).toHaveLength(1)
+
+    MockWorker.instances[0].emit({
+      type: 'cell.output', requestId: firstRequest!.id, cellId: firstRequest!.cellId, kind: 'execution',
+      summary: 'Executed say first.', result: { source: 'say first' },
+    })
+    MockWorker.instances[0].emit({
+      type: 'cell.status', requestId: firstRequest!.id, cellId: firstRequest!.cellId, status: 'idle',
+    })
+    await vi.waitFor(() => expect(first.text()).toContain('Executed say first.'))
+    expect(second.text()).not.toContain('Executed say first.')
+    await vi.waitFor(() => expect(second.get('.dps-cell-actions button:first-child').attributes()).not.toHaveProperty('disabled'))
+    await second.get('.dps-cell-actions button:first-child').trigger('click')
+    await vi.waitFor(() => expect(second.text()).toContain('Executed say second.'))
+    expect(executions[0].cellId).not.toBe(executions[1].cellId)
+
+    first.unmount()
+    expect(MockWorker.instances[0].terminated).toBe(false)
+    second.unmount()
+    expect(MockWorker.instances[0].terminated).toBe(true)
+  })
+
+  it('gives playgrounds without a sandbox id separate workers', async () => {
+    MockWorker.responder = (worker, request) => {
+      if (request.type === 'transport.connect') worker.emit({ type: 'transport.ready', requestId: request.id })
+      if (request.type === 'session.create') worker.emit({ type: 'session.ready', requestId: request.id })
+    }
+    const first = mount(DpsCell, {
+      props: { modelValue: 'say one' },
+      global: { stubs: { CodeCell: CodeCellStub } },
+    })
+    const second = mount(DpsCell, {
+      props: { modelValue: 'say two' },
+      global: { stubs: { CodeCell: CodeCellStub } },
+    })
+    await vi.waitFor(() => {
+      expect(first.attributes('data-state')).toBe('ready')
+      expect(second.attributes('data-state')).toBe('ready')
+    })
+    expect(MockWorker.instances).toHaveLength(2)
+    expect(first.attributes('data-sandbox-id')).toBeUndefined()
+    expect(second.attributes('data-sandbox-id')).toBeUndefined()
+    first.unmount()
+    second.unmount()
+    expect(MockWorker.instances.every((worker) => worker.terminated)).toBe(true)
+  })
+
   it('keeps a compact viewport cell editable without advanced action chrome', async () => {
     const requests: Record<string, unknown>[] = []
     MockWorker.responder = (worker, request) => {
@@ -39,6 +126,49 @@ describe('DpsCell', () => {
     expect(wrapper.findAll('.dps-cell-actions button')).toHaveLength(1)
     await (wrapper.vm as unknown as { run(): Promise<void> }).run()
     expect(requests.map((request) => request.type)).toContain('cell.execute')
+    wrapper.unmount()
+  })
+
+  it('shows compact command outputs as readable expandable entries', async () => {
+    MockWorker.responder = (worker, request) => {
+      if (request.type === 'transport.connect') worker.emit({ type: 'transport.ready', requestId: request.id })
+      if (request.type === 'session.create') worker.emit({ type: 'session.ready', requestId: request.id, sessionId: 'readable-output' })
+      if (request.type === 'cell.execute') {
+        worker.emit({
+          type: 'cell.output',
+          requestId: request.id,
+          cellId: request.cellId,
+          kind: 'execution',
+          summary: 'Executed 1 command; 1 output; 0 state changes.',
+          result: {
+            commands: 1,
+            outputs: [{
+              tick: 4,
+              command: 'scoreboard players get #value demo',
+              channel: 'query',
+              targets: ['Steve'],
+              text: '42',
+            }],
+          },
+        })
+        worker.emit({ type: 'cell.status', requestId: request.id, cellId: request.cellId, status: 'idle' })
+      }
+    }
+    const wrapper = mount(DpsCell, {
+      props: { modelValue: 'scoreboard players get #value demo', compact: true, animation: { captureOnExecute: false } },
+      global: { stubs: { CodeCell: CodeCellStub } },
+    })
+    await vi.waitFor(() => expect(wrapper.attributes('data-state')).toBe('ready'))
+    await (wrapper.vm as unknown as { run(): Promise<void> }).run()
+    await vi.waitFor(() => expect(wrapper.find('.dps-command-outputs').exists()).toBe(true))
+    expect(wrapper.get('.dps-command-outputs summary').text()).toBe('Command outputs (1)')
+    const details = wrapper.get('.dps-command-outputs')
+    ;(details.element as HTMLDetailsElement).open = true
+    await details.trigger('toggle')
+    await flushPromises()
+    expect(wrapper.get('.dps-command-output').text()).toContain('scoreboard players get #value demo')
+    expect(wrapper.get('.dps-command-output').text()).toContain('42')
+    expect(wrapper.find('.dps-structured-output').exists()).toBe(false)
     wrapper.unmount()
   })
 
@@ -198,11 +328,7 @@ describe('DpsCell', () => {
 
   it('loads ordered datapack and resource-pack dependencies before ready', async () => {
     const requests: Record<string, unknown>[] = []
-    const fetchMock = vi.fn(async () => ({
-      ok: true,
-      status: 200,
-      arrayBuffer: async () => new Uint8Array([80, 75, 3, 4]).buffer,
-    } as Response))
+    const fetchMock = vi.fn(async () => new Response(new Uint8Array([80, 75, 3, 4]), { status: 200 }))
     vi.stubGlobal('fetch', fetchMock)
     MockWorker.responder = (worker, request) => {
       requests.push(request)

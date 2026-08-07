@@ -131,7 +131,7 @@ Depend on `renderer`; it exposes `core` transitively:
 
 ```kotlin
 dependencies {
-    implementation("moe.afox.dpsandbox:renderer:1.0.1")
+    implementation("moe.afox.dpsandbox:renderer:1.0.2")
 }
 ```
 

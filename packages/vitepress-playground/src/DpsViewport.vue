@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { PlaygroundClientError } from './client'
+import { acquirePageSandbox, normalizedSandboxId } from './page-sandbox'
 import { PlaygroundSessionController } from './session'
 import type {
   PlaygroundBrowserLimits,
@@ -19,6 +20,7 @@ import type { WebglViewportRenderer } from './webgl/renderer'
 
 const props = withDefaults(defineProps<{
   session?: PlaygroundSessionController
+  sandboxId?: string
   notebook?: PlaygroundNotebook
   dependencies?: PlaygroundDependencySource[]
   workerUrl?: string
@@ -44,6 +46,7 @@ const commandInput = ref<HTMLInputElement>()
 const status = ref<'connecting' | 'ready' | 'unavailable' | 'context-lost'>('connecting')
 const message = ref('Starting local sandbox…')
 const playing = ref(false)
+const sessionBusy = ref(false)
 const latestScene = ref<PlaygroundViewportScene>()
 const stats = ref<PlaygroundFrameStats>()
 const touchVisible = ref(false)
@@ -62,9 +65,11 @@ const configuredMoveSpeed = ref(props.options.moveSpeed ?? 6)
 const configuredFieldOfView = ref(props.options.fieldOfView ?? 70)
 let controller: PlaygroundSessionController | undefined
 let ownsController = false
+let releasePageSandbox: (() => void) | undefined
 let renderer: WebglViewportRenderer | undefined
 let unsubscribeScene: (() => void) | undefined
 let unsubscribeEvents: (() => void) | undefined
+let unsubscribeActivity: (() => void) | undefined
 let disposed = false
 let leftPointer: number | undefined
 let rightPointer: number | undefined
@@ -85,6 +90,7 @@ const pressed = new Set<string>()
 const commandHistory: string[] = []
 let commandHistoryIndex = 0
 const viewportCommandCellId = `viewport-command-${Math.random().toString(36).slice(2)}`
+const effectiveSandboxId = computed(() => props.session ? undefined : normalizedSandboxId(props.sandboxId))
 
 const viewportOptions = computed<Required<Omit<PlaygroundViewportOptions, 'tickFunction'>> & { tickFunction?: string }>(() => ({
   targetFps: props.options.targetFps ?? 60,
@@ -108,8 +114,7 @@ const rightKnobStyle = computed(() => ({ transform: `translate(${rightKnob.value
 
 onMounted(async () => {
   try {
-    controller = props.session ?? createOwnedSession()
-    ownsController = !props.session
+    controller = resolveSession()
     unsubscribeEvents = controller.onEvent((event) => {
       if (event.type === 'session.ready') {
         status.value = 'ready'
@@ -138,6 +143,9 @@ onMounted(async () => {
         addChatLine(event.summary || 'Command executed.', '#aaaaaa')
       }
     })
+    unsubscribeActivity = controller.onActivity((activity) => {
+      if (!disposed) sessionBusy.value = activity.busy
+    })
     unsubscribeScene = controller.subscribeScene((scene) => {
       latestScene.value = scene
       renderer?.updateScene(scene)
@@ -164,6 +172,7 @@ onMounted(async () => {
     installInputListeners()
     touchVisible.value = viewportOptions.value.touch && matchMedia('(any-pointer: coarse)').matches
     status.value = 'ready'
+    message.value = ''
     if (viewportOptions.value.autoplay) await controller.play(viewportOptions.value.tickRate, viewportOptions.value.tickFunction)
   } catch (error) {
     unavailable(error)
@@ -176,6 +185,7 @@ onBeforeUnmount(() => {
   removeInputListeners()
   unsubscribeScene?.()
   unsubscribeEvents?.()
+  unsubscribeActivity?.()
   renderer?.dispose()
   if (lookTimer !== undefined) window.clearTimeout(lookTimer)
   if (titleTimer !== undefined) window.clearTimeout(titleTimer)
@@ -183,23 +193,42 @@ onBeforeUnmount(() => {
   if (commandCompletionTimer !== undefined) window.clearTimeout(commandCompletionTimer)
   if (commandCheckTimer !== undefined) window.clearTimeout(commandCheckTimer)
   if (ownsController) controller?.dispose()
+  releasePageSandbox?.()
 })
+
+function resolveSession(): PlaygroundSessionController {
+  if (props.session) return props.session
+  if (effectiveSandboxId.value) {
+    const lease = acquirePageSandbox(
+      effectiveSandboxId.value,
+      props.notebook ? ownedSessionOptions(props.notebook) : undefined,
+    )
+    releasePageSandbox = lease.release
+    return lease.controller
+  }
+  ownsController = true
+  return createOwnedSession()
+}
 
 function createOwnedSession(): PlaygroundSessionController {
   if (!props.notebook) {
     throw new PlaygroundClientError('NOTEBOOK_REQUIRED', 'DpsViewport requires either a session or a notebook', false)
   }
-  return new PlaygroundSessionController({
-    notebook: props.notebook,
+  return new PlaygroundSessionController(ownedSessionOptions(props.notebook))
+}
+
+function ownedSessionOptions(notebook: PlaygroundNotebook) {
+  return {
+    notebook,
     dependencies: props.dependencies,
     workerUrl: props.workerUrl,
     limits: props.limits,
     render: { auto: false, width: 960, height: 540 },
-  })
+  }
 }
 
 async function togglePlay(): Promise<void> {
-  if (!controller) return
+  if (!controller || sessionBusy.value) return
   try {
     if (playing.value) await controller.pause()
     else await controller.play(viewportOptions.value.tickRate, viewportOptions.value.tickFunction)
@@ -209,6 +238,7 @@ async function togglePlay(): Promise<void> {
 }
 
 async function step(): Promise<void> {
+  if (sessionBusy.value) return
   try {
     await controller?.step()
   } catch (error) {
@@ -380,7 +410,7 @@ function applyCommandSuggestion(suggestion: PlaygroundCompletion): void {
 
 async function executeViewportCommand(): Promise<void> {
   const source = normalizedCommandSource().trim()
-  if (!source || !controller) return
+  if (!source || !controller || sessionBusy.value) return
   commandHistory.push(`/${source}`)
   if (commandHistory.length > 50) commandHistory.shift()
   closeCommandInput()
@@ -424,7 +454,7 @@ function updateMovement(): void {
 
 function onMouseMove(event: MouseEvent): void {
   if (document.pointerLockElement !== canvas.value) return
-  renderer?.look(-event.movementX * mouseSensitivity.value, event.movementY * mouseSensitivity.value)
+  renderer?.look(event.movementX * mouseSensitivity.value, event.movementY * mouseSensitivity.value)
   queueLookInput(event.movementX, event.movementY, 'mouse')
 }
 
@@ -489,7 +519,7 @@ function moveRightJoystick(event: PointerEvent): void {
   const dy = event.clientY - rightLast.y
   rightLast = { x: event.clientX, y: event.clientY }
   rightKnob.value = clampedJoystick(dx * 2, dy * 2, 24)
-  renderer?.look(-dx * mouseSensitivity.value * 1.8, dy * mouseSensitivity.value * 1.8)
+  renderer?.look(dx * mouseSensitivity.value * 1.8, dy * mouseSensitivity.value * 1.8)
   queueLookInput(dx, dy, 'touch')
 }
 
@@ -655,13 +685,13 @@ const TEXT_COLORS: Record<string, string> = {
 </script>
 
 <template>
-  <section class="dps-viewport" :data-state="status" aria-label="Datapack Sandbox realtime viewport">
+  <section class="dps-viewport" :data-state="status" :data-sandbox-id="effectiveSandboxId" aria-label="Datapack Sandbox realtime viewport">
     <div v-if="viewportOptions.showToolbar" class="dps-viewport-toolbar">
       <div class="dps-viewport-playback">
-        <button type="button" :disabled="status !== 'ready'" data-action="viewport-play" @click="togglePlay">
+        <button type="button" :disabled="status !== 'ready' || sessionBusy" data-action="viewport-play" @click="togglePlay">
           {{ playing ? 'Pause' : 'Play' }}
         </button>
-        <button type="button" :disabled="status !== 'ready' || playing" data-action="viewport-step" @click="step">Step</button>
+        <button type="button" :disabled="status !== 'ready' || playing || sessionBusy" data-action="viewport-step" @click="step">Step</button>
         <button type="button" :disabled="!latestScene" data-action="viewport-reset-view" @click="resetView">Reset view</button>
         <details class="dps-viewport-settings">
           <summary>Settings</summary>

@@ -55,4 +55,21 @@ class MinecraftClientResourcesTest {
         assertTrue((' '..'~').all { font.glyphs.containsKey(it.code) })
         assertEquals("minecraft:flame", resources.particleSprites("minecraft:flame").single().id)
     }
+
+    @Test
+    fun `resource references cannot escape a directory resource pack`() {
+        val pack = Files.createDirectory(tempDirectory.resolve("pack"))
+        val particleDirectory = pack.resolve("assets/minecraft/particles")
+        Files.createDirectories(particleDirectory)
+        Files.writeString(
+            particleDirectory.resolve("escaped.json"),
+            """{"textures":["minecraft:../../../../../outside"]}""",
+        )
+        val outside = BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB)
+        ImageIO.write(outside, "png", tempDirectory.resolve("outside.png").toFile())
+
+        val resources = MinecraftClientResources(RenderAssets(resourcePacks = listOf(pack)))
+
+        assertTrue(resources.particleSprites("minecraft:escaped").isEmpty())
+    }
 }

@@ -1,4 +1,4 @@
-import { createApp } from 'vue'
+import { createApp, defineComponent, h, ref } from 'vue'
 import { strToU8, zipSync } from 'fflate'
 import DpsCell from '../../../src/DpsCell.vue'
 import DpsPlayground from '../../../src/DpsPlayground.vue'
@@ -32,7 +32,8 @@ const dependencySources = query.has('dependencies')
         name: 'dependency-data.zip',
         url: archiveUrl({
           'pack.mcmeta': strToU8('{"pack":{"pack_format":107.1,"description":"cell dependency"}}'),
-          'data/demo/function/dependency.mcfunction': strToU8('setblock 0 0 2 minecraft:stone'),
+          'data/demo/function/dependency.mcfunction': strToU8('function demo:nested'),
+          'data/demo/function/nested.mcfunction': strToU8('setblock 0 0 2 minecraft:stone'),
         }),
       },
       {
@@ -44,7 +45,31 @@ const dependencySources = query.has('dependencies')
       },
     ]
   : []
-if (query.has('cell')) {
+if (query.has('shared')) {
+  createApp(defineComponent({
+    setup() {
+      const builder = ref('scoreboard objectives add shared dummy\nscoreboard players set #value shared 7')
+      const inspector = ref('scoreboard players get #value shared')
+      const cellProps = {
+        version,
+        sandboxId: 'playwright-shared-world',
+        animation: { captureOnExecute: false },
+      }
+      return () => h('div', { class: 'shared-sandbox-fixture' }, [
+        h('div', { 'data-editor': 'builder' }, [h(DpsCell, {
+          ...cellProps,
+          modelValue: builder.value,
+          'onUpdate:modelValue': (value: string) => { builder.value = value },
+        })]),
+        h('div', { 'data-editor': 'inspector' }, [h(DpsCell, {
+          ...cellProps,
+          modelValue: inspector.value,
+          'onUpdate:modelValue': (value: string) => { inspector.value = value },
+        })]),
+      ])
+    },
+  })).mount('#app')
+} else if (query.has('cell')) {
   createApp(DpsCell, {
     modelValue: query.has('dependencies') ? 'function demo:dependency' : 'setblock 0 0 2 minecraft:stone',
     version,

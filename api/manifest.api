@@ -1,4 +1,4 @@
-# Public JVM API for moe.afox.dpsandbox:manifest:1.0.1
+# Public JVM API for moe.afox.dpsandbox:manifest:1.0.2
 public final class moe.afox.dpsandbox.cli.ExistingSandboxManifestResult {
   public moe.afox.dpsandbox.cli.ExistingSandboxManifestResult(moe.afox.dpsandbox.cli.ManifestResult, moe.afox.dpsandbox.core.DatapackSandbox);
   public final moe.afox.dpsandbox.cli.ManifestResult getResult();

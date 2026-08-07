@@ -5,7 +5,7 @@ export default DpsCell
 export { DpsCell }
 export { PlaygroundClientError } from './client'
 export { PlaygroundSessionController } from './session'
-export type { PlaygroundSessionControllerOptions } from './session'
+export type { PlaygroundSessionActivity, PlaygroundSessionControllerOptions } from './session'
 export type {
   PlaygroundBrowserLimits,
   PlaygroundAnimationOptions,
@@ -13,6 +13,7 @@ export type {
   PlaygroundDiagnostic,
   PlaygroundDependencySource,
   PlaygroundErrorData,
+  PlaygroundFunctionSource,
   PlaygroundRenderOptions,
   PlaygroundTheme,
   PlaygroundViewportOptions,

@@ -13,7 +13,7 @@ plugins {
 
 allprojects {
     group = "moe.afox.dpsandbox"
-    version = "1.0.1"
+    version = "1.0.2"
 }
 
 val mavenRepositoryBaseUrl = providers

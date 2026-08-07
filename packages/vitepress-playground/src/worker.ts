@@ -1,9 +1,11 @@
 /// <reference lib="webworker" />
 /// <reference types="vite/client" />
 
-import { Unzip, UnzipInflate, zlibSync } from 'fflate'
+import { zlibSync } from 'fflate'
 import type { BrowserSandboxEngine } from '../.generated/kotlin/datapack-sandbox-browser-runtime.mjs'
 import type { BrowserCoreSession } from '*datapack-sandbox-core.js'
+import { extractZipEntries, normalizeImportEntries } from './archive'
+import { decodePngTexture, inspectPngTexture } from './png'
 import type {
   PlaygroundBrowserLimits,
   PlaygroundEvent,
@@ -42,6 +44,7 @@ interface WorkerRequest {
   repeat?: number
   tickRate?: number
   tickFunction?: string
+  functionId?: string
   input?: PlaygroundPlayerInput
   deferLoad?: boolean
   runLoad?: boolean
@@ -196,6 +199,7 @@ class CoreBackedBrowserSandboxEngine {
 const scope = self as unknown as DedicatedWorkerGlobalScope
 const encoder = new TextEncoder()
 const decoder = new TextDecoder()
+const MAX_JAVA_INT = 2_147_483_647
 let engine: CoreBackedBrowserSandboxEngine | undefined
 let version = '26.2'
 let availableProfiles: string[] = []
@@ -281,8 +285,12 @@ scope.addEventListener('unhandledrejection', (event: PromiseRejectionEvent) => {
 let requestQueue: Promise<void> = Promise.resolve()
 const latestAdvisoryRequests = new Map<string, string | number>()
 
-scope.addEventListener('message', (message: MessageEvent<WorkerRequest>) => {
-  const request = message.data
+scope.addEventListener('message', (message: MessageEvent<unknown>) => {
+  if (!message.data || typeof message.data !== 'object') {
+    sendError({}, protocolError('INVALID_REQUEST', 'Worker request must be an object'), 'INVALID_REQUEST', true)
+    return
+  }
+  const request = message.data as WorkerRequest
   if (request?.type === 'session.interrupt') {
     // Watchdog interrupts must remain able to reach a long-running command.
     void dispatchRequest(request)
@@ -300,8 +308,8 @@ scope.addEventListener('message', (message: MessageEvent<WorkerRequest>) => {
 })
 
 async function dispatchRequest(request: WorkerRequest): Promise<void> {
+  const advisoryKey = advisoryRequestKey(request)
   try {
-    const advisoryKey = advisoryRequestKey(request)
     if (advisoryKey !== undefined && latestAdvisoryRequests.get(advisoryKey) !== request.id) {
       finishSupersededAdvisory(request)
       return
@@ -309,6 +317,12 @@ async function dispatchRequest(request: WorkerRequest): Promise<void> {
     await dispatch(request)
   } catch (error) {
     sendError(request, error, 'INTERNAL_ERROR', false)
+  } finally {
+    // Cell ids are page-owned and unbounded. Retain only advisory requests that
+    // still have a newer queued successor, otherwise the tracker would leak ids.
+    if (advisoryKey !== undefined && latestAdvisoryRequests.get(advisoryKey) === request.id) {
+      latestAdvisoryRequests.delete(advisoryKey)
+    }
   }
 }
 
@@ -350,6 +364,9 @@ async function dispatch(request: WorkerRequest): Promise<void> {
       return
     case 'cell.check':
       check(request)
+      return
+    case 'session.function.read':
+      readFunction(request)
       return
     case 'cell.render':
       await render(request)
@@ -780,10 +797,10 @@ async function importFiles(request: WorkerRequest): Promise<void> {
   let entries = supplied
   if (request.archive) {
     if (supplied.length !== 1) throw protocolError('INVALID_REQUEST', 'Archive imports must contain exactly one file')
-    entries = await extractZip(supplied[0].bytes, kind)
+    entries = await extractZipEntries(supplied[0].bytes, kind, limits)
   }
   if (entries.length > limits.maximumImportFiles) throw protocolError('IMPORT_FILE_LIMIT', `Import exceeds the ${limits.maximumImportFiles} file limit`)
-  const normalized = normalizeEntries(entries)
+  const normalized = normalizeImportEntries(entries)
   const totalBytes = normalized.reduce((total, entry) => total + entry.bytes.byteLength, 0)
   if (totalBytes > limits.maximumImportBytes) throw protocolError('IMPORT_SIZE_LIMIT', `Import exceeds the ${limits.maximumImportBytes} byte limit`)
   let functions = 0
@@ -857,6 +874,26 @@ function parseDatapackLayer(entries: PlaygroundImportEntry[]): DatapackLayer {
     })
   }
   return { functions, resources, tags }
+}
+
+function readFunction(request: WorkerRequest): void {
+  requireSession()
+  const reference = normalizeFunctionReference(requiredString(request.functionId, 'functionId'))
+  if (reference.startsWith('#')) {
+    throw protocolError('FUNCTION_TAG_NOT_BROWSABLE', `Function tag '${reference}' does not have one source file`)
+  }
+  for (let index = datapackLayers.length - 1; index >= 0; index -= 1) {
+    const resource = datapackLayers[index].resources.get(`function:${reference}`)
+    if (!resource) continue
+    post({
+      type: 'session.function',
+      requestId: request.id,
+      kind: 'source',
+      result: { id: reference, path: resource.path, source: resource.content },
+    })
+    return
+  }
+  throw protocolError('FUNCTION_NOT_FOUND', `Function '${reference}' is not loaded in this sandbox`)
 }
 
 function datapackRoot(entries: PlaygroundImportEntry[]): string | undefined {
@@ -1019,6 +1056,9 @@ async function dispatchPlayerInput(request: WorkerRequest): Promise<void> {
     throw protocolError('INPUT_INVALID', 'Player input requires a supported device')
   }
   const player = input.player?.trim() || 'Steve'
+  if ((input.x !== undefined && !Number.isFinite(input.x)) || (input.y !== undefined && !Number.isFinite(input.y))) {
+    throw protocolError('INPUT_INVALID', 'Player input coordinates must be finite numbers')
+  }
   const result = JSON.parse(engine!.dispatchInput(
     player,
     input.device,
@@ -1276,27 +1316,32 @@ function collectModelIds(value: unknown, result: Set<string>): void {
 }
 
 async function decodeTexture(bytes: Uint8Array): Promise<{ width: number; height: number; rgba: Uint8ClampedArray } | undefined> {
-  if (typeof createImageBitmap !== 'function' || typeof OffscreenCanvas === 'undefined') return undefined
-  try {
-    const copy = new Uint8Array(bytes.byteLength)
-    copy.set(bytes)
-    const bitmap = await createImageBitmap(new Blob([copy], { type: 'image/png' }))
-    const width = bitmap.width
-    const height = bitmap.height > width && bitmap.height % width === 0 ? width : bitmap.height
-    const canvas = new OffscreenCanvas(width, height)
-    const context = canvas.getContext('2d', { willReadFrequently: true })
-    if (!context) {
-      bitmap.close()
-      return undefined
+  const metadata = inspectPngTexture(bytes, limits.maximumImportBytes)
+  if (!metadata) return undefined
+  if (typeof createImageBitmap === 'function' && typeof OffscreenCanvas !== 'undefined') {
+    let bitmap: ImageBitmap | undefined
+    try {
+      const copy = new Uint8Array(bytes.byteLength)
+      copy.set(bytes)
+      bitmap = await createImageBitmap(new Blob([copy], { type: 'image/png' }))
+      if (bitmap.width !== metadata.width || bitmap.height !== metadata.sourceHeight) {
+        return undefined
+      }
+      const canvas = new OffscreenCanvas(metadata.width, metadata.displayHeight)
+      const context = canvas.getContext('2d', { willReadFrequently: true })
+      if (context) {
+        context.imageSmoothingEnabled = false
+        context.drawImage(bitmap, 0, 0)
+        const rgba = context.getImageData(0, 0, metadata.width, metadata.displayHeight).data
+        return { width: metadata.width, height: metadata.displayHeight, rgba }
+      }
+    } catch {
+      // Native decoder failures use the same bounded fallback as Workers without canvas APIs.
+    } finally {
+      bitmap?.close()
     }
-    context.imageSmoothingEnabled = false
-    context.drawImage(bitmap, 0, 0)
-    const rgba = context.getImageData(0, 0, width, height).data
-    bitmap.close()
-    return { width, height, rgba }
-  } catch {
-    return undefined
   }
+  return decodePngTexture(bytes, limits.maximumImportBytes)
 }
 
 function textureIdFromAssetPath(path: string): string | undefined {
@@ -1311,161 +1356,6 @@ function splitResourceId(id: string): [string, string] {
 
 function normalizeResourceId(id: string): string {
   return id.includes(':') ? id : `minecraft:${id}`
-}
-
-function normalizeEntries(entries: PlaygroundImportEntry[]): PlaygroundImportEntry[] {
-  const seen = new Set<string>()
-  return entries.map((entry) => {
-    const path = normalizePath(entry.path)
-    if (seen.has(path)) throw protocolError('IMPORT_CONFLICT', `Duplicate imported path '${path}'`)
-    seen.add(path)
-    if (!(entry.bytes instanceof ArrayBuffer)) throw protocolError('INVALID_REQUEST', `Imported entry '${path}' has no ArrayBuffer`)
-    return { path, bytes: entry.bytes }
-  })
-}
-
-function normalizePath(raw: string): string {
-  const portable = raw.replaceAll('\\', '/')
-  if (!portable || portable.startsWith('/') || /^[A-Za-z]:($|\/)/.test(portable) || portable.includes('\0')) {
-    throw protocolError('IMPORT_PATH_INVALID', `Absolute or invalid imported path '${raw}'`)
-  }
-  const parts = portable.split('/').filter(Boolean)
-  if (parts.length === 0 || parts.some((part) => part === '.' || part === '..' || /[\u0000-\u001f]/.test(part))) {
-    throw protocolError('IMPORT_PATH_INVALID', `Imported path traversal is not allowed: '${raw}'`)
-  }
-  return parts.join('/')
-}
-
-async function extractZip(bytes: ArrayBuffer, kind: PlaygroundImportKind): Promise<PlaygroundImportEntry[]> {
-  if (bytes.byteLength > limits.maximumImportBytes) throw protocolError('IMPORT_SIZE_LIMIT', 'Compressed archive exceeds the import-size limit')
-  preflightZip(new Uint8Array(bytes), kind)
-  return await new Promise((resolve, reject) => {
-    const result: PlaygroundImportEntry[] = []
-    let inflated = 0
-    let files = 0
-    let pending = 0
-    let inputFinished = false
-    let settled = false
-    const finish = () => {
-      if (!settled && inputFinished && pending === 0) {
-        settled = true
-        resolve(result)
-      }
-    }
-    const fail = (error: unknown) => {
-      if (!settled) {
-        settled = true
-        reject(error)
-      }
-    }
-    const unzip = new Unzip((file) => {
-      if (settled || file.name.endsWith('/') || (kind === 'client-jar' && !file.name.startsWith('assets/'))) return
-      files += 1
-      if (files > limits.maximumImportFiles) {
-        fail(protocolError('IMPORT_FILE_LIMIT', `Archive exceeds the ${limits.maximumImportFiles} file limit`))
-        return
-      }
-      pending += 1
-      const chunks: Uint8Array[] = []
-      let length = 0
-      file.ondata = (error, chunk, final) => {
-        if (error) {
-          fail(error)
-          return
-        }
-        inflated += chunk.length
-        length += chunk.length
-        if (inflated > limits.maximumImportBytes) {
-          fail(protocolError('IMPORT_SIZE_LIMIT', `Expanded archive exceeds the ${limits.maximumImportBytes} byte limit`))
-          return
-        }
-        chunks.push(chunk)
-        if (final) {
-          const joined = new Uint8Array(length)
-          let offset = 0
-          for (const value of chunks) {
-            joined.set(value, offset)
-            offset += value.length
-          }
-          result.push({ path: file.name, bytes: joined.buffer })
-          pending -= 1
-          finish()
-        }
-      }
-      if (kind === 'client-jar') queueMicrotask(() => {
-        if (!settled) file.start()
-      })
-      else file.start()
-    })
-    unzip.register(UnzipInflate)
-    const input = new Uint8Array(bytes)
-    let inputOffset = 0
-    const pushNextChunk = () => {
-      if (settled) return
-      try {
-        const end = Math.min(input.length, inputOffset + 256 * 1024)
-        unzip.push(input.subarray(inputOffset, end), end === input.length)
-        inputOffset = end
-        if (end === input.length) {
-          inputFinished = true
-          finish()
-        } else {
-          setTimeout(pushNextChunk, 0)
-        }
-      } catch (error) {
-        fail(protocolError('IMPORT_ARCHIVE_INVALID', errorMessage(error)))
-      }
-    }
-    pushNextChunk()
-  })
-}
-
-function preflightZip(bytes: Uint8Array, kind: PlaygroundImportKind): void {
-  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
-  const minimum = Math.max(0, bytes.length - 65_557)
-  let end = -1
-  for (let offset = bytes.length - 22; offset >= minimum; offset -= 1) {
-    if (view.getUint32(offset, true) === 0x06054b50) {
-      end = offset
-      break
-    }
-  }
-  if (end < 0) throw protocolError('IMPORT_ARCHIVE_INVALID', 'ZIP end-of-directory record is missing')
-  const entries = view.getUint16(end + 10, true)
-  const centralSize = view.getUint32(end + 12, true)
-  const centralOffset = view.getUint32(end + 16, true)
-  if (entries === 0xffff || centralSize === 0xffffffff || centralOffset === 0xffffffff) {
-    throw protocolError('IMPORT_ARCHIVE_INVALID', 'ZIP64 imports are not supported in the browser playground')
-  }
-  if (kind !== 'client-jar' && entries > limits.maximumImportFiles) {
-    throw protocolError('IMPORT_FILE_LIMIT', `Archive exceeds the ${limits.maximumImportFiles} file limit`)
-  }
-  if (centralOffset + centralSize > end || centralOffset + 46 > bytes.length) {
-    throw protocolError('IMPORT_ARCHIVE_INVALID', 'ZIP central directory is outside the archive')
-  }
-  let offset = centralOffset
-  let expanded = 0
-  let includedFiles = 0
-  for (let index = 0; index < entries; index += 1) {
-    if (offset + 46 > bytes.length || view.getUint32(offset, true) !== 0x02014b50) {
-      throw protocolError('IMPORT_ARCHIVE_INVALID', 'ZIP central directory entry is invalid')
-    }
-    const nameLength = view.getUint16(offset + 28, true)
-    const extraLength = view.getUint16(offset + 30, true)
-    const commentLength = view.getUint16(offset + 32, true)
-    const name = decoder.decode(bytes.subarray(offset + 46, offset + 46 + nameLength))
-    if (kind !== 'client-jar' || name.startsWith('assets/')) {
-      includedFiles += 1
-      expanded += view.getUint32(offset + 24, true)
-      if (includedFiles > limits.maximumImportFiles) {
-        throw protocolError('IMPORT_FILE_LIMIT', `Archive exceeds the ${limits.maximumImportFiles} file limit`)
-      }
-      if (expanded > limits.maximumImportBytes) {
-        throw protocolError('IMPORT_SIZE_LIMIT', `Expanded archive exceeds the ${limits.maximumImportBytes} byte limit`)
-      }
-    }
-    offset += 46 + nameLength + extraLength + commentLength
-  }
 }
 
 async function rgbaToPng(rgba: Uint8ClampedArray, width: number, height: number): Promise<ArrayBuffer> {
@@ -1575,7 +1465,8 @@ function requiredString(value: unknown, name: string): string {
 function normalizeRender(value: PlaygroundRenderOptions = {}): Required<PlaygroundRenderOptions> {
   const width = value.width ?? 960
   const height = value.height ?? 540
-  if (width < 16 || height < 16 || width > limits.maximumRenderWidth || height > limits.maximumRenderHeight) {
+  if (!Number.isSafeInteger(width) || !Number.isSafeInteger(height)
+    || width < 16 || height < 16 || width > limits.maximumRenderWidth || height > limits.maximumRenderHeight) {
     throw protocolError('RENDER_SIZE_LIMIT', `Render size ${width}x${height} exceeds the configured limit`)
   }
   return { auto: value.auto ?? false, width, height }
@@ -1599,11 +1490,11 @@ function normalizeLimits(value: PlaygroundBrowserLimits = {}): RuntimeLimits {
 }
 
 function positive(value: number | undefined, fallback: number): number {
-  return Number.isInteger(value) && (value ?? 0) > 0 ? value! : fallback
+  return Number.isSafeInteger(value) && (value ?? 0) > 0 && value! <= MAX_JAVA_INT ? value! : fallback
 }
 
 function bounded(value: number | undefined, fallback: number, minimum: number, maximum: number): number {
-  return Number.isInteger(value) && value! >= minimum && value! <= maximum ? value! : fallback
+  return Number.isSafeInteger(value) && value! >= minimum && value! <= maximum ? value! : fallback
 }
 
 function yieldCommandBoundary(): Promise<void> {
@@ -1615,7 +1506,7 @@ function protocolError(code: string, message: string): Error & { code: string; r
 }
 
 function sendError(
-  request: Pick<WorkerRequest, 'id' | 'cellId'>,
+  request: { id?: unknown; cellId?: unknown },
   error: unknown,
   fallbackCode: string,
   fallbackRecoverable: boolean,
@@ -1623,8 +1514,8 @@ function sendError(
   const candidate = error as { code?: unknown; recoverable?: unknown }
   post({
     type: 'cell.error',
-    requestId: request.id,
-    cellId: request.cellId,
+    requestId: typeof request.id === 'string' || typeof request.id === 'number' ? request.id : undefined,
+    cellId: typeof request.cellId === 'string' ? request.cellId : undefined,
     error: {
       code: typeof candidate?.code === 'string' ? candidate.code : fallbackCode,
       message: errorMessage(error),

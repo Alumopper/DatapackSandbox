@@ -2582,11 +2582,10 @@ class DatapackSandbox(
         }
 
     private fun runDueScheduledFunctions() {
-        val due = world.scheduledFunctions.filter { it.dueTick <= world.gameTime }
-        world.scheduledFunctions.removeAll(due.toSet())
-        due.sortedWith(compareBy<ScheduledFunction> { it.dueTick }.thenBy { it.id.toString() }).forEach {
-            runFunction(it.id)
-        }
+        world
+            .takeScheduledFunctionsDueBy(world.gameTime)
+            .sortedWith(compareBy<ScheduledFunction> { it.dueTick }.thenBy { it.id.toString() })
+            .forEach { runFunction(it.id) }
     }
 
     internal fun scoreMatches(

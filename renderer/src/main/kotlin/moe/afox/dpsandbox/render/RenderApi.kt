@@ -74,6 +74,9 @@ data class RenderRequest
             require(height in MIN_IMAGE_SIZE..MAX_IMAGE_SIZE) {
                 "Render height must be between $MIN_IMAGE_SIZE and $MAX_IMAGE_SIZE: $height"
             }
+            require(width.toLong() * height <= MAX_IMAGE_PIXELS) {
+                "Render image must not exceed $MAX_IMAGE_PIXELS pixels: ${width}x$height"
+            }
             require(fieldOfViewDegrees in 10.0..150.0) { "Render field of view must be between 10 and 150 degrees" }
             require(nearPlane.isFinite() && nearPlane > 0.0) { "Render near plane must be positive and finite" }
             require(renderDistance.isFinite() && renderDistance > nearPlane) {
@@ -84,6 +87,7 @@ data class RenderRequest
         companion object {
             const val MIN_IMAGE_SIZE = 64
             const val MAX_IMAGE_SIZE = 8192
+            private const val MAX_IMAGE_PIXELS = 16L * 1024L * 1024L
         }
     }
 

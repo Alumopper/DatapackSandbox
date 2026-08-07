@@ -2,7 +2,9 @@ package moe.afox.dpsandbox.core
 
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
+import java.io.PrintStream
 import java.nio.file.Path
+import java.util.function.Consumer
 
 /**
  * Fluent API for a single datapack sandbox test.
@@ -18,6 +20,7 @@ class SandboxQuickTest private constructor(
 ) {
     private val failures = mutableListOf<String>()
     private val initialSnapshot: JsonElement = sandbox.snapshotJson()
+    private var chatOutputPrinter: Consumer<OutputEvent>? = null
 
     /**
      * Runs all functions referenced by `#minecraft:load`.
@@ -81,6 +84,41 @@ class SandboxQuickTest private constructor(
     fun command(command: String): SandboxQuickTest =
         apply {
             sandbox.executeCommand(command)
+        }
+
+    /**
+     * Prints future chat output events to [printStream] as they are recorded.
+     *
+     * This includes modeled `say`, `tellraw`, `me`, private-message, and team
+     * chat commands. Call this before [load], [ticks], [function], or [command].
+     * Calling it again replaces the printer previously installed by this
+     * scenario. Output recording and assertions remain unchanged.
+     *
+     * @return this scenario for fluent chaining.
+     */
+    @JvmOverloads
+    fun printChatOutput(printStream: PrintStream = System.out): SandboxQuickTest =
+        apply {
+            stopPrintingChatOutput()
+            val listener =
+                Consumer<OutputEvent> { output ->
+                    if (output.channel == OutputChannel.CHAT.id) {
+                        printStream.println(output.text.ifBlank { output.rawText })
+                    }
+                }
+            sandbox.world.addOutputListener(listener)
+            chatOutputPrinter = listener
+        }
+
+    /**
+     * Disables the chat output printer installed by [printChatOutput].
+     *
+     * @return this scenario for fluent chaining.
+     */
+    fun stopPrintingChatOutput(): SandboxQuickTest =
+        apply {
+            chatOutputPrinter?.let(sandbox.world::removeOutputListener)
+            chatOutputPrinter = null
         }
 
     /**

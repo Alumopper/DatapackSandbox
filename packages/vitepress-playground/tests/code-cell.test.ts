@@ -85,4 +85,58 @@ describe('CodeCell', () => {
     expect(complete).not.toHaveBeenCalled()
     wrapper.unmount()
   })
+
+  it('uses Ctrl as definition-link mode without creating extra cursors and maps Mouse Back to the caller', async () => {
+    const source = 'function demo:main\ndata get storage demo:state value'
+    const wrapper = mount(CodeCell, {
+      attachTo: document.body,
+      props: {
+        modelValue: source,
+        cellId: 'navigation',
+        readOnly: false,
+        disabled: false,
+        diagnostics: [],
+        complete: async () => [],
+        check: async () => [],
+        canNavigateBack: true,
+      },
+    })
+    const view = EditorView.findFromDOM(wrapper.get('.cm-editor').element as HTMLElement)!
+    view.focus()
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Control', ctrlKey: true, bubbles: true }))
+    await vi.waitFor(() => expect(wrapper.findAll('.dps-function-link')).toHaveLength(1))
+    expect(wrapper.get('.dps-function-link').text()).toBe('demo:main')
+
+    const originalRanges = view.state.selection.ranges.length
+    vi.spyOn(view, 'posAtCoords').mockReturnValue(source.indexOf('demo:state') + 2)
+    view.contentDOM.dispatchEvent(new MouseEvent('mousedown', {
+      button: 0,
+      ctrlKey: true,
+      bubbles: true,
+      cancelable: true,
+    }))
+    expect(view.state.selection.ranges).toHaveLength(originalRanges)
+    expect(wrapper.emitted('open-function')).toBeUndefined()
+
+    vi.mocked(view.posAtCoords).mockReturnValue(source.indexOf('demo:main') + 2)
+    view.contentDOM.dispatchEvent(new MouseEvent('mousedown', {
+      button: 0,
+      ctrlKey: true,
+      bubbles: true,
+      cancelable: true,
+    }))
+    expect(wrapper.emitted('open-function')?.at(-1)).toEqual(['demo:main'])
+
+    view.contentDOM.blur()
+    view.dom.focus()
+    expect(document.activeElement).toBe(view.dom)
+    const mouseBack = new MouseEvent('mousedown', { button: 3, bubbles: true, cancelable: true })
+    window.dispatchEvent(mouseBack)
+    expect(mouseBack.defaultPrevented).toBe(true)
+    expect(wrapper.emitted('navigate-back')).toHaveLength(1)
+
+    window.dispatchEvent(new KeyboardEvent('keyup', { key: 'Control', bubbles: true }))
+    await vi.waitFor(() => expect(wrapper.find('.dps-function-link').exists()).toBe(false))
+    wrapper.unmount()
+  })
 })

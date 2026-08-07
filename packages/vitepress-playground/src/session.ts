@@ -5,6 +5,7 @@ import type {
   PlaygroundCompletion,
   PlaygroundDiagnostic,
   PlaygroundEvent,
+  PlaygroundFunctionSource,
   PlaygroundImportEntry,
   PlaygroundImportKind,
   PlaygroundImportResult,
@@ -20,9 +21,17 @@ export interface PlaygroundSessionControllerOptions extends PlaygroundWorkerClie
   siteId?: string
 }
 
+export interface PlaygroundSessionActivity {
+  busy: boolean
+  operation?: string
+  cellId?: string
+  pending: number
+}
+
 type SessionEventListener = (event: PlaygroundEvent) => void
 type SceneListener = (scene: PlaygroundViewportScene) => void
 type ConnectionListener = (state: 'connecting' | 'open' | 'closed' | 'unavailable', message?: string) => void
+type ActivityListener = (activity: PlaygroundSessionActivity) => void
 
 /**
  * Shared owner for one local Worker world. Vue components can subscribe to this
@@ -35,12 +44,15 @@ export class PlaygroundSessionController {
 
   private readonly listeners = new Set<SessionEventListener>()
   private readonly sceneListeners = new Set<SceneListener>()
+  private readonly activityListeners = new Set<ActivityListener>()
   private connectPromise?: Promise<void>
   private mutation: Promise<unknown> = Promise.resolve()
   private viewportSubscribed = false
   private disposed = false
   private connected = false
   private playing = false
+  private pendingExclusiveOperations = 0
+  private activeOperation?: { operation: string; cellId?: string }
   private readonly onVisibilityChange = () => {
     if (typeof document !== 'undefined' && document.hidden && this.playing) void this.pause()
   }
@@ -79,6 +91,12 @@ export class PlaygroundSessionController {
     return this.client.onConnection(listener)
   }
 
+  onActivity(listener: ActivityListener): () => void {
+    this.activityListeners.add(listener)
+    listener(this.activity())
+    return () => this.activityListeners.delete(listener)
+  }
+
   async connect(): Promise<void> {
     this.assertActive()
     if (this.connected) return
@@ -96,7 +114,7 @@ export class PlaygroundSessionController {
   }
 
   execute(cellId: string, source: string, render = this.renderOptions): Promise<PlaygroundEvent> {
-    return this.serialized(() => this.client.execute(cellId, source, render))
+    return this.serialized('execute', cellId, () => this.client.execute(cellId, source, render))
   }
 
   complete(cellId: string, source: string, cursor: number): Promise<PlaygroundCompletion[]> {
@@ -107,8 +125,12 @@ export class PlaygroundSessionController {
     return this.client.check(cellId, source)
   }
 
+  readFunction(functionId: string): Promise<PlaygroundFunctionSource> {
+    return this.client.readFunction(functionId)
+  }
+
   render(cellId: string, render = this.renderOptions): Promise<PlaygroundEvent> {
-    return this.serialized(() => this.client.render(cellId, render))
+    return this.serialized('render', cellId, () => this.client.render(cellId, render))
   }
 
   interrupt(): Promise<PlaygroundEvent> {
@@ -116,74 +138,74 @@ export class PlaygroundSessionController {
   }
 
   captureAnimationFrame(cellId: string, render: PlaygroundRenderOptions, delayMs = 250): Promise<PlaygroundEvent> {
-    return this.serialized(() => this.client.captureAnimationFrame(cellId, render, delayMs))
+    return this.serialized('capture-animation-frame', cellId, () => this.client.captureAnimationFrame(cellId, render, delayMs))
   }
 
   exportAnimation(cellId: string, repeat = 0): Promise<PlaygroundEvent> {
-    return this.serialized(() => this.client.exportAnimation(cellId, repeat))
+    return this.serialized('export-animation', cellId, () => this.client.exportAnimation(cellId, repeat))
   }
 
   clearAnimation(): Promise<PlaygroundEvent> {
-    return this.serialized(() => this.client.clearAnimation())
+    return this.serialized('clear-animation', undefined, () => this.client.clearAnimation())
   }
 
   async reset(): Promise<PlaygroundEvent> {
     await this.pause()
-    return await this.serialized(() => this.client.reset())
+    return await this.serialized('reset', undefined, () => this.client.reset())
   }
 
   async restoreExample(): Promise<PlaygroundEvent> {
     await this.pause()
-    const ready = await this.serialized(() => this.client.reset(true))
+    const ready = await this.serialized('restore-example', undefined, () => this.client.reset(true))
     this.emit({ type: 'session.restore-example', sessionId: ready.sessionId })
     return ready
   }
 
   saveCheckpoint(name = 'default'): Promise<PlaygroundCheckpoint> {
-    return this.serialized(() => this.client.saveCheckpoint(name))
+    return this.serialized('save-checkpoint', undefined, () => this.client.saveCheckpoint(name))
   }
 
   async restoreCheckpoint(name = 'default'): Promise<PlaygroundCheckpoint> {
     await this.pause()
-    return await this.serialized(() => this.client.restoreCheckpoint(name))
+    return await this.serialized('restore-checkpoint', undefined, () => this.client.restoreCheckpoint(name))
   }
 
   deleteCheckpoint(name = 'default'): Promise<boolean> {
-    return this.serialized(() => this.client.deleteCheckpoint(name))
+    return this.serialized('delete-checkpoint', undefined, () => this.client.deleteCheckpoint(name))
   }
 
   listCheckpoints(): Promise<string[]> {
-    return this.client.listCheckpoints()
+    return this.serialized('list-checkpoints', undefined, () => this.client.listCheckpoints())
   }
 
   importEntries(kind: PlaygroundImportKind, entries: PlaygroundImportEntry[]): Promise<PlaygroundImportResult> {
-    return this.serialized(() => this.client.importEntries(kind, entries))
+    return this.serialized('import', undefined, () => this.client.importEntries(kind, entries))
   }
 
   importArchive(kind: PlaygroundImportKind, name: string, bytes: ArrayBuffer): Promise<PlaygroundImportResult> {
-    return this.serialized(() => this.client.importArchive(kind, name, bytes))
+    return this.serialized('import', undefined, () => this.client.importArchive(kind, name, bytes))
   }
 
   async play(tickRate = 20, tickFunction?: string): Promise<PlaygroundEvent> {
-    const event = await this.serialized(() => this.client.play(tickRate, tickFunction))
+    const event = await this.serialized('play', undefined, () => this.client.play(tickRate, tickFunction))
     this.playing = true
     return event
   }
 
   async pause(): Promise<PlaygroundEvent | undefined> {
     if (!this.connected || !this.playing) return undefined
-    const event = await this.serialized(() => this.client.pause())
+    const event = await this.serialized('pause', undefined, () => this.client.pause())
     this.playing = false
     return event
   }
 
   async step(): Promise<PlaygroundEvent> {
     if (this.playing) await this.pause()
-    return await this.serialized(() => this.client.step())
+    return await this.serialized('step', undefined, () => this.client.step())
   }
 
   dispatchInput(input: PlaygroundPlayerInput): Promise<PlaygroundEvent> {
-    return this.serialized(() => this.client.dispatchInput(input))
+    return this.serialized('player-input', undefined, () => this.client.dispatchInput(input), false)
   }
 
   subscribeScene(listener: SceneListener): () => void {
@@ -211,6 +233,10 @@ export class PlaygroundSessionController {
     this.connected = false
     this.listeners.clear()
     this.sceneListeners.clear()
+    this.pendingExclusiveOperations = 0
+    this.activeOperation = undefined
+    this.emitActivity()
+    this.activityListeners.clear()
     if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', this.onVisibilityChange)
     this.client.close()
   }
@@ -242,11 +268,49 @@ export class PlaygroundSessionController {
     this.listeners.forEach((listener) => listener(event))
   }
 
-  private serialized<T>(action: () => Promise<T>): Promise<T> {
+  private serialized<T>(
+    operation: string,
+    cellId: string | undefined,
+    action: () => Promise<T>,
+    exclusive = true,
+  ): Promise<T> {
     this.assertActive()
-    const next = this.mutation.then(action, action)
+    if (exclusive) {
+      this.pendingExclusiveOperations += 1
+      this.emitActivity()
+    }
+    const invoke = async () => {
+      if (exclusive) {
+        this.activeOperation = { operation, cellId }
+        this.emitActivity()
+      }
+      try {
+        return await action()
+      } finally {
+        if (exclusive) {
+          this.pendingExclusiveOperations -= 1
+          this.activeOperation = undefined
+          this.emitActivity()
+        }
+      }
+    }
+    const next = this.mutation.then(invoke, invoke)
     this.mutation = next.then(() => undefined, () => undefined)
     return next
+  }
+
+  private activity(): PlaygroundSessionActivity {
+    return {
+      busy: this.pendingExclusiveOperations > 0,
+      operation: this.activeOperation?.operation,
+      cellId: this.activeOperation?.cellId,
+      pending: this.pendingExclusiveOperations,
+    }
+  }
+
+  private emitActivity(): void {
+    const activity = this.activity()
+    this.activityListeners.forEach((listener) => listener(activity))
   }
 
   private assertActive(): void {

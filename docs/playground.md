@@ -67,7 +67,9 @@ Dependencies are fetched in declaration order before `ready`; later packs overri
 
 Each successful execution records a GIF frame by default. **Add frame** captures the current world without executing source; **Export GIF** downloads all recorded frames. **Save point** records the complete modeled world, outputs, and traces, while **Return** restores that point without consuming it. Datapack/resource-pack inputs and safety-budget counters are session configuration rather than checkpoint state.
 
-Each `DpsCell` owns an isolated local Worker session, supports completion and diagnostics, and runs with <kbd>Ctrl/⌘</kbd>+<kbd>Enter</kbd>. It additionally exposes `savePoint()`, `returnToPoint()`, `captureAnimationFrame()`, and `exportGif()`, and emits `gif` and `checkpoint` alongside `ready`, `executed`, and `error`.
+Without `sandbox-id`, each `DpsCell` owns an isolated local Worker session. It supports completion and diagnostics and runs with <kbd>Ctrl/⌘</kbd>+<kbd>Enter</kbd>. It additionally exposes `savePoint()`, `returnToPoint()`, `captureAnimationFrame()`, and `exportGif()`, and emits `gif` and `checkpoint` alongside `ready`, `executed`, and `error`.
+
+Execution summaries include an expandable **Command outputs** list with the command, readable text, channel, tick, and targets; the structured JSON remains available separately. Hold <kbd>Ctrl</kbd>/<kbd>⌘</kbd> and click the resource id after any `function` command to open the effective imported `.mcfunction` source. Nested calls form a breadcrumb stack; **Back** or <kbd>Alt</kbd>+<kbd>←</kbd> returns one caller level. Function resolution follows the same pack priority as execution.
 
 ## Component API
 
@@ -85,6 +87,7 @@ Each `DpsCell` owns an isolated local Worker session, supports completion and di
 | `limits` | `PlaygroundBrowserLimits` | browser defaults | Per-instance stability budgets and watchdog timings. |
 | `worker-url` | `string` | packaged asset | Override only when self-hosting the Worker artifact. |
 | `site-id` | `string` | omitted | Optional embedding-site label carried in session creation. |
+| `sandbox-id` | `string` | omitted | Page-local world id. Equal non-empty ids share one serialized session; omission creates an independent sandbox. |
 
 `ready(sessionId)` fires after the local session and optional preset are ready. `error({ code, message })` reports execution, import, integrity, and lifecycle failures.
 
@@ -161,14 +164,14 @@ Each component owns exactly one Worker. Multiple components never share world st
 
 `PlaygroundWorkerClient` replaces the removed WebSocket `PlaygroundClient` export. It preserves request ids, request names, event names, and stable error objects. Supported requests are:
 
-- `session.create`, `session.reset`, `session.interrupt`, `session.close`, and `session.import`
+- `session.create`, `session.reset`, `session.interrupt`, `session.close`, `session.import`, and `session.function.read`
 - `session.checkpoint.save`, `.restore`, `.delete`, and `.list`
 - `cell.execute`, `cell.complete`, `cell.check`, and `cell.render`
 - `animation.capture`, `animation.export`, and `animation.clear`
 
 Execution emits `cell.status`, `cell.output`, `diagnostic`, `cell.render`, and `cell.error`. Render events use `bytes: ArrayBuffer` with `mimeType: image/png`; GIF exports use the same transferable shape with `mimeType: image/gif`. Neither format uses base64.
 
-Common codes include `INVALID_REQUEST`, `PROFILE_NOT_ALLOWED`, `CELL_TOO_LARGE`, `COMMAND_LIMIT`, `OUTPUT_LIMIT`, `RENDER_SIZE_LIMIT`, `BUSY`, `INTERRUPTED`, `SESSION_LOST`, `CHECKPOINT_NOT_FOUND`, `CHECKPOINT_LIMIT`, `ANIMATION_EMPTY`, `ANIMATION_FRAME_LIMIT`, `ANIMATION_SIZE_LIMIT`, `IMPORT_PATH_INVALID`, `IMPORT_CONFLICT`, `IMPORT_FILE_LIMIT`, `IMPORT_SIZE_LIMIT`, and `PRESET_INTEGRITY_FAILED`.
+Common codes include `INVALID_REQUEST`, `PROFILE_NOT_ALLOWED`, `CELL_TOO_LARGE`, `COMMAND_LIMIT`, `OUTPUT_LIMIT`, `RENDER_SIZE_LIMIT`, `BUSY`, `INTERRUPTED`, `SESSION_LOST`, `FUNCTION_NOT_FOUND`, `FUNCTION_TAG_NOT_BROWSABLE`, `CHECKPOINT_NOT_FOUND`, `CHECKPOINT_LIMIT`, `ANIMATION_EMPTY`, `ANIMATION_FRAME_LIMIT`, `ANIMATION_SIZE_LIMIT`, `IMPORT_PATH_INVALID`, `IMPORT_CONFLICT`, `IMPORT_FILE_LIMIT`, `IMPORT_SIZE_LIMIT`, and `PRESET_INTEGRITY_FAILED`.
 
 ## Rendering boundary
 
@@ -196,6 +199,21 @@ Pass `viewport` to `DpsPlayground` or `DpsCell`, or mount `DpsViewport` directly
 const session = new PlaygroundSessionController({ notebook })
 ```
 
+For declarative page-local sharing, set the same `sandbox-id` on multiple components:
+
+```vue
+<DpsCell v-model="builder" sandbox-id="tutorial-world" />
+<DpsCell v-model="inspector" sandbox-id="tutorial-world" :viewport="true" />
+```
+
+Each editor retains independent source, diagnostics, and output. Commands, rendering, imports,
+checkpoints, resets, and viewport state target the same Worker world, and session operations are
+serialized so only one editor operates on it at a time. The first mounted component initializes the
+version, preset, and dependencies; later components with that ID must use the same Minecraft
+version. The shared Worker is disposed after the last matching component unmounts. Omitting
+`sandbox-id` always creates a unique, component-owned sandbox. An explicit `session` takes
+precedence over `sandbox-id`.
+
 Playback starts paused. It advances display interpolation and world time at 20 TPS, executes
 `#minecraft:tick` plus an optional `tickFunction`, catches up at most five ticks, and pauses while
 the page is hidden. Desktop controls are pointer-lock mouse look, WASD, Space, Shift, and wheel
@@ -215,4 +233,5 @@ the shared software renderer.
 
 The controller exposes `connect`, `execute`, `reset`, `restoreExample`, checkpoint and import
 methods, `play`, `pause`, `step`, `dispatchInput`, scene subscription, and `dispose`. Viewport events
-are `play-state`, `camera-change`, `input`, `frame-stats`, and `context-lost`.
+are `play-state`, `camera-change`, `input`, `frame-stats`, and `context-lost`. `onActivity` observes
+the shared exclusive-operation queue used to coordinate multiple editors.

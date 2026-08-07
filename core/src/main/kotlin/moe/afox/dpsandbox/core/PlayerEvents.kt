@@ -82,6 +82,31 @@ data class PlayerEvent(
  */
 object PlayerEvents {
     /**
+     * Creates a generic device input event while preserving the caller's
+     * device name. Browser touch controls use this instead of masquerading as
+     * keyboard input.
+     */
+    @JvmStatic
+    @JvmOverloads
+    fun input(
+        playerName: String,
+        device: String,
+        code: String,
+        action: String = "press",
+        x: Double? = null,
+        y: Double? = null,
+        type: String = "${device}_input",
+    ): PlayerEvent {
+        require(device.isNotBlank()) { "Input device must not be blank" }
+        require(x?.isFinite() != false && y?.isFinite() != false) { "Input coordinates must be finite numbers" }
+        return PlayerEvent(
+            playerName = playerName,
+            type = type.replace('-', '_'),
+            input = PlayerInput(device = device, code = code, action = action, x = x, y = y),
+        )
+    }
+
+    /**
      * Creates a player event from the compact CLI/REPL shape.
      *
      * @param playerName Target player name.
@@ -131,12 +156,7 @@ object PlayerEvents {
         key: String,
         action: String = "press",
         type: String = "key_input",
-    ): PlayerEvent =
-        PlayerEvent(
-            playerName = playerName,
-            type = type.replace('-', '_'),
-            input = PlayerInput(device = "keyboard", code = key, action = action),
-        )
+    ): PlayerEvent = input(playerName, "keyboard", key, action, type = type)
 
     /**
      * Creates a mouse input event.
@@ -152,12 +172,7 @@ object PlayerEvents {
         x: Double? = null,
         y: Double? = null,
         type: String = "mouse_input",
-    ): PlayerEvent =
-        PlayerEvent(
-            playerName = playerName,
-            type = type.replace('-', '_'),
-            input = PlayerInput(device = "mouse", code = button, action = action, x = x, y = y),
-        )
+    ): PlayerEvent = input(playerName, "mouse", button, action, x, y, type)
 
     private fun vanillaVisibleEvent(
         playerName: String,

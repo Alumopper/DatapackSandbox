@@ -3,6 +3,7 @@ import * as fs from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
 import * as vscode from "vscode";
+import { BoundedTextBuffer } from "./boundedTextBuffer";
 import { buildCheckArgs, buildRunArgs } from "./commands";
 import { inferFunctionContext } from "./functionContext";
 import { ManifestReport, RunReport } from "./model";
@@ -49,15 +50,23 @@ export class CliRunner {
     if ((forcePack || context.packRoot) && context.packRoot) packs.unshift(context.packRoot);
     const version = overrides.version?.trim() || this.config().get<string>("defaultVersion", "").trim() || undefined;
     const args = buildRunArgs(context.file, context.id, reportFile, version, [...new Set(packs)], this.config().get<string[]>("traceFilter", []), overrides.strict ?? this.config().get<boolean>("strict", false));
-    const processResult = await this.runJar(args);
-    return { ...processResult, report: await readRunReport(reportFile) };
+    try {
+      const processResult = await this.runJar(args);
+      return { ...processResult, report: await readRunReport(reportFile) };
+    } finally {
+      await removeTemporaryReport(reportFile);
+    }
   }
 
   async checkManifest(file: string, strict: boolean): Promise<CliResult<ManifestReport[]>> {
     const reportFile = await this.tempFile("manifest-report.json");
     const args = buildCheckArgs(file, reportFile, strict, this.config().get<string[]>("traceFilter", []));
-    const processResult = await this.runJar(args);
-    return { ...processResult, report: await readManifestReport(reportFile) };
+    try {
+      const processResult = await this.runJar(args);
+      return { ...processResult, report: await readManifestReport(reportFile) };
+    } finally {
+      await removeTemporaryReport(reportFile);
+    }
   }
 
   async runJar(args: string[]): Promise<{ exitCode: number; stdout: string; stderr: string }> {
@@ -76,12 +85,29 @@ export class CliRunner {
     if (log) this.output.appendLine(`> ${command} ${args.map(quote).join(" ")}`);
     return new Promise((resolve, reject) => {
       const child = spawn(command, args, { cwd, windowsHide: true });
-      let stdout = ""; let stderr = "";
-      child.stdout.on("data", (chunk) => { const text = chunk.toString(); stdout += text; if (log) this.output.append(text); });
-      child.stderr.on("data", (chunk) => { const text = chunk.toString(); stderr += text; if (log) this.output.append(text); });
+      const stdout = new BoundedTextBuffer();
+      const stderr = new BoundedTextBuffer();
+      child.stdout.setEncoding("utf8");
+      child.stderr.setEncoding("utf8");
+      child.stdout.on("data", (text: string) => {
+        stdout.append(text);
+        if (log) this.output.append(text);
+      });
+      child.stderr.on("data", (text: string) => {
+        stderr.append(text);
+        if (log) this.output.append(text);
+      });
       child.on("error", reject);
-      child.on("close", (code) => resolve({ exitCode: code ?? -1, stdout, stderr }));
+      child.on("close", (code) => resolve({ exitCode: code ?? -1, stdout: stdout.toString(), stderr: stderr.toString() }));
     });
+  }
+}
+
+async function removeTemporaryReport(reportFile: string): Promise<void> {
+  try {
+    await fs.rm(reportFile, { force: true });
+  } catch {
+    // A successful run result is more useful than failing because temp cleanup was denied.
   }
 }
 

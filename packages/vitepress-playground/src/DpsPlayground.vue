@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import MarkdownIt from 'markdown-it'
 import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import CodeCell from './CodeCell.vue'
+import ExecutionOutput from './ExecutionOutput.vue'
+import FunctionSourceViewer from './FunctionSourceViewer.vue'
 import { PlaygroundClientError } from './client'
+import { acquirePageSandbox, createComponentScopeId, normalizedSandboxId } from './page-sandbox'
 import { PlaygroundSessionController } from './session'
 import type {
   PlaygroundBrowserLimits,
@@ -44,6 +46,7 @@ const props = withDefaults(defineProps<{
   animation?: PlaygroundAnimationOptions
   checkpointName?: string
   siteId?: string
+  sandboxId?: string
   presets?: PlaygroundPresetRegistry
   allowImport?: boolean
   limits?: PlaygroundBrowserLimits
@@ -80,6 +83,7 @@ const results = reactive<Record<string, CellResult>>({})
 const connection = ref<'connecting' | 'ready' | 'unavailable' | 'closed'>('connecting')
 const connectionMessage = ref('Starting local browser sandbox…')
 const runningAll = ref(false)
+const sessionBusy = ref(false)
 const sessionAction = ref<'reset' | 'restore' | 'import' | 'checkpoint' | 'restore-point' | 'capture' | 'gif'>()
 const hasCheckpoint = ref(false)
 const animationFrameCount = ref(0)
@@ -90,10 +94,14 @@ const pendingImportKind = ref<PlaygroundImportKind>('datapack')
 const importMessage = ref('')
 let sessionController: PlaygroundSessionController | undefined
 let ownsSession = false
+let releasePageSandbox: (() => void) | undefined
 let unsubscribeEvents: (() => void) | undefined
 let unsubscribeConnection: (() => void) | undefined
+let unsubscribeActivity: (() => void) | undefined
 let disposed = false
 let stopRunAll = false
+const componentScopeId = createComponentScopeId()
+const effectiveSandboxId = computed(() => props.session ? undefined : normalizedSandboxId(props.sandboxId))
 
 const rootClasses = computed(() => [
   `dps-theme-${props.theme}`,
@@ -101,7 +109,7 @@ const rootClasses = computed(() => [
   { 'dps-is-busy': isBusy.value },
 ])
 const hasRunningCell = computed(() => Object.values(results).some((item) => item.status === 'running' || item.status === 'interrupting'))
-const isBusy = computed(() => hasRunningCell.value || runningAll.value || sessionAction.value !== undefined)
+const isBusy = computed(() => sessionBusy.value || hasRunningCell.value || runningAll.value || sessionAction.value !== undefined)
 const hasExampleChanges = computed(() => {
   const initial = normalizeCells(props.notebook.cells)
   const sourceChanged = initial.length !== cells.value.length || initial.some((cell, index) => {
@@ -132,56 +140,91 @@ function cellResult(id: string): CellResult {
 }
 
 async function connect(): Promise<void> {
-  unsubscribeEvents?.()
-  unsubscribeConnection?.()
-  if (ownsSession) sessionController?.dispose()
+  releaseCurrentSession()
   connection.value = 'connecting'
   hasCheckpoint.value = false
   animationFrameCount.value = 0
   connectionMessage.value = 'Starting local browser sandbox…'
-  const next = props.session ?? new PlaygroundSessionController({
-    notebook: props.notebook,
-    render: effectiveRender(),
-    siteId: props.siteId,
-    workerUrl: props.workerUrl,
-    limits: props.limits,
-    presets: props.presets,
-  })
-  sessionController = next
-  ownsSession = !props.session
-  unsubscribeEvents = next.onEvent(handleEvent)
-  unsubscribeConnection = next.onConnection((state, message) => {
-    if (sessionController !== next || disposed) return
-    if (state === 'connecting') {
-      connection.value = 'connecting'
-      connectionMessage.value = message ?? 'Starting local browser sandbox…'
-      hasCheckpoint.value = false
-      animationFrameCount.value = 0
-    } else if (state === 'closed') {
-      connection.value = 'closed'
-      connectionMessage.value = message ?? 'Local sandbox closed.'
-    } else if (state === 'unavailable') {
-      connection.value = 'unavailable'
-      connectionMessage.value = message ?? 'Local sandbox unavailable.'
-    }
-  })
+  let next: PlaygroundSessionController | undefined
   try {
+    const options = {
+      notebook: props.notebook,
+      render: effectiveRender(),
+      siteId: props.siteId,
+      workerUrl: props.workerUrl,
+      limits: props.limits,
+      presets: props.presets,
+    }
+    if (props.session) {
+      next = props.session
+    } else if (effectiveSandboxId.value) {
+      const lease = acquirePageSandbox(effectiveSandboxId.value, options)
+      next = lease.controller
+      releasePageSandbox = lease.release
+    } else {
+      next = new PlaygroundSessionController(options)
+      ownsSession = true
+    }
+    sessionController = next
+    unsubscribeEvents = next.onEvent(handleEvent)
+    unsubscribeConnection = next.onConnection((state, message) => {
+      if (sessionController !== next || disposed) return
+      if (state === 'connecting') {
+        connection.value = 'connecting'
+        connectionMessage.value = message ?? 'Starting local browser sandbox…'
+        hasCheckpoint.value = false
+        animationFrameCount.value = 0
+      } else if (state === 'closed') {
+        connection.value = 'closed'
+        connectionMessage.value = message ?? 'Local sandbox closed.'
+      } else if (state === 'unavailable') {
+        connection.value = 'unavailable'
+        connectionMessage.value = message ?? 'Local sandbox unavailable.'
+      }
+    })
+    unsubscribeActivity = next.onActivity((activity) => {
+      if (sessionController === next && !disposed) sessionBusy.value = activity.busy
+    })
     await next.connect()
     connection.value = 'ready'
   } catch (error) {
-    if (sessionController !== next || disposed) return
+    if (disposed || (next && sessionController !== next)) return
     setUnavailable(error)
   }
 }
 
+function releaseCurrentSession(): void {
+  unsubscribeEvents?.()
+  unsubscribeConnection?.()
+  unsubscribeActivity?.()
+  unsubscribeEvents = undefined
+  unsubscribeConnection = undefined
+  unsubscribeActivity = undefined
+  if (ownsSession) sessionController?.dispose()
+  releasePageSandbox?.()
+  ownsSession = false
+  releasePageSandbox = undefined
+  sessionController = undefined
+  sessionBusy.value = false
+}
+
+function sessionCellId(cellId: string): string {
+  return `${componentScopeId}:${cellId}`
+}
+
+function localCellId(cellId: string | undefined): string | undefined {
+  const prefix = `${componentScopeId}:`
+  return cellId?.startsWith(prefix) ? cellId.slice(prefix.length) : undefined
+}
+
 async function runCell(cell: LocalCell): Promise<void> {
-  if (cell.type !== 'code' || !sessionController || connection.value !== 'ready') return
+  if (cell.type !== 'code' || !sessionController || connection.value !== 'ready' || sessionBusy.value) return
   const result = cellResult(cell.id)
   result.error = undefined
   result.diagnostics = []
   result.status = 'running'
   try {
-    await sessionController.execute(cell.id, cell.source, effectiveRender())
+    await sessionController.execute(sessionCellId(cell.id), cell.source, effectiveRender())
     result.hasRun = true
     if (effectiveAnimation().captureOnExecute) await captureFrame(cell.id)
   } catch (error) {
@@ -215,7 +258,7 @@ async function interrupt(): Promise<void> {
 }
 
 async function reset(): Promise<void> {
-  if (!sessionController || connection.value !== 'ready' || sessionAction.value) return
+  if (!sessionController || connection.value !== 'ready' || isBusy.value) return
   stopRunAll = true
   sessionAction.value = 'reset'
   try {
@@ -231,7 +274,7 @@ async function reset(): Promise<void> {
 }
 
 async function restoreExample(): Promise<void> {
-  if (sessionAction.value) return
+  if (isBusy.value) return
   stopRunAll = true
   sessionAction.value = 'restore'
   try {
@@ -248,9 +291,9 @@ async function restoreExample(): Promise<void> {
 }
 
 async function renderCell(cell: LocalCell): Promise<void> {
-  if (!sessionController || cell.type !== 'code') return
+  if (!sessionController || cell.type !== 'code' || isBusy.value) return
   try {
-    await sessionController.render(cell.id, { ...effectiveRender(), auto: false })
+    await sessionController.render(sessionCellId(cell.id), { ...effectiveRender(), auto: false })
   } catch (error) {
     handleClientError(cell.id, error)
   }
@@ -278,7 +321,7 @@ async function returnToPoint(): Promise<void> {
     clearResults()
     emit('checkpoint', { kind: 'restored', ...checkpoint })
     const firstCodeCell = cells.value.find((cell) => cell.type === 'code')
-    if (firstCodeCell) await sessionController.render(firstCodeCell.id, { ...effectiveRender(), auto: false })
+    if (firstCodeCell) await sessionController.render(sessionCellId(firstCodeCell.id), { ...effectiveRender(), auto: false })
   } catch (error) {
     handleClientError(undefined, error)
   } finally {
@@ -291,7 +334,7 @@ async function captureFrame(cellId = 'notebook'): Promise<boolean> {
   try {
     const options = effectiveAnimation()
     const event = await sessionController.captureAnimationFrame(
-      cellId,
+      sessionCellId(cellId),
       { auto: false, width: options.width, height: options.height },
       options.delayMs,
     )
@@ -318,7 +361,7 @@ async function exportGif(): Promise<void> {
   sessionAction.value = 'gif'
   try {
     if (animationFrameCount.value === 0 && !await captureFrame()) return
-    const event = await sessionController.exportAnimation('notebook', effectiveAnimation().repeat)
+    const event = await sessionController.exportAnimation(sessionCellId('notebook'), effectiveAnimation().repeat)
     if (!event.bytes) throw new PlaygroundClientError('ANIMATION_EXPORT_FAILED', 'Worker returned no GIF bytes')
     const frameCount = Number(event.result?.frameCount ?? animationFrameCount.value)
     const url = URL.createObjectURL(new Blob([event.bytes], { type: 'image/gif' }))
@@ -338,7 +381,7 @@ async function exportGif(): Promise<void> {
 async function complete(cellId: string, source: string, cursor: number) {
   if (!sessionController || connection.value !== 'ready' || isBusy.value) return []
   try {
-    return await sessionController.complete(cellId, source, cursor)
+    return await sessionController.complete(sessionCellId(cellId), source, cursor)
   } catch {
     return []
   }
@@ -347,10 +390,17 @@ async function complete(cellId: string, source: string, cursor: number) {
 async function check(cellId: string, source: string): Promise<PlaygroundDiagnostic[]> {
   if (!sessionController || connection.value !== 'ready' || isBusy.value) return []
   try {
-    return await sessionController.check(cellId, source)
+    return await sessionController.check(sessionCellId(cellId), source)
   } catch {
     return []
   }
+}
+
+async function resolveFunction(id: string) {
+  if (!sessionController || connection.value !== 'ready') {
+    throw new PlaygroundClientError('SESSION_LOST', 'The sandbox is not ready to open function sources')
+  }
+  return await sessionController.readFunction(id)
 }
 
 function handleEvent(event: PlaygroundEvent): void {
@@ -360,7 +410,9 @@ function handleEvent(event: PlaygroundEvent): void {
     if (event.sessionId) emit('ready', event.sessionId)
   }
   if (event.cellId) {
-    const result = cellResult(event.cellId)
+    const cellId = localCellId(event.cellId)
+    if (!cellId) return
+    const result = cellResult(cellId)
     if (event.type === 'cell.status' && (event.status === 'running' || event.status === 'interrupting' || event.status === 'idle')) {
       result.status = event.status
     } else if (event.type === 'cell.output' && event.kind === 'execution') {
@@ -515,13 +567,16 @@ watch(() => props.session, () => {
   if (!disposed) void connect()
 })
 
+watch(() => props.sandboxId, () => {
+  clearResults()
+  if (!disposed && !props.session) void connect()
+})
+
 onMounted(() => void connect())
 onBeforeUnmount(() => {
   disposed = true
   clearResults()
-  unsubscribeEvents?.()
-  unsubscribeConnection?.()
-  if (ownsSession) sessionController?.dispose()
+  releaseCurrentSession()
 })
 
 defineExpose({ savePoint, returnToPoint, addAnimationFrame, exportGif })
@@ -542,6 +597,7 @@ function normalizeCells(input: PlaygroundCell[]): LocalCell[] {
     class="dps-playground"
     :class="rootClasses"
     :aria-busy="isBusy"
+    :data-sandbox-id="effectiveSandboxId"
     aria-label="Datapack Sandbox playground"
     @dragover.prevent
     @drop.prevent="onDrop"
@@ -638,13 +694,13 @@ function normalizeCells(input: PlaygroundCell[]): LocalCell[] {
               <span>MCFunction</span>
             </div>
             <div class="dps-cell-actions">
-              <button class="dps-button-primary" type="button" :disabled="connection !== 'ready' || cellResult(cell.id).status !== 'idle'" @click="runCell(cell)">
+              <button class="dps-button-primary" type="button" :disabled="connection !== 'ready' || isBusy || cellResult(cell.id).status !== 'idle'" @click="runCell(cell)">
                 {{ cellResult(cell.id).hasRun ? 'Rerun' : 'Run' }}
               </button>
               <button type="button" :disabled="connection !== 'ready' || isBusy" @click="renderCell(cell)">Render</button>
             </div>
           </div>
-          <CodeCell
+          <FunctionSourceViewer
             :model-value="cell.source"
             :cell-id="cell.id"
             :read-only="readOnly"
@@ -652,13 +708,10 @@ function normalizeCells(input: PlaygroundCell[]): LocalCell[] {
             :diagnostics="cellResult(cell.id).diagnostics"
             :complete="(source, cursor) => complete(cell.id, source, cursor)"
             :check="(source) => check(cell.id, source)"
+            :resolve-function="resolveFunction"
             @update:model-value="(source) => updateSource(cell, source)"
             @run="runCell(cell)"
           />
-          <div v-if="!readOnly" class="dps-editor-hint">
-            <span><kbd>Tab</kbd> accept suggestion</span>
-            <span><kbd>Ctrl/⌘</kbd> + <kbd>Enter</kbd> run cell</span>
-          </div>
           <div v-if="cellResult(cell.id).status !== 'idle'" class="dps-status" role="status">
             {{ cellResult(cell.id).status === 'interrupting' ? 'Interrupting…' : 'Running…' }}
           </div>
@@ -666,13 +719,11 @@ function normalizeCells(input: PlaygroundCell[]): LocalCell[] {
             <strong>{{ cellResult(cell.id).error?.code }}</strong>
             <span>{{ cellResult(cell.id).error?.message }}</span>
           </div>
-          <div v-if="cellResult(cell.id).summary" class="dps-output">
-            <p>{{ cellResult(cell.id).summary }}</p>
-            <details v-if="cellResult(cell.id).raw">
-              <summary>Structured result</summary>
-              <pre>{{ JSON.stringify(cellResult(cell.id).raw, null, 2) }}</pre>
-            </details>
-          </div>
+          <ExecutionOutput
+            v-if="cellResult(cell.id).summary"
+            :summary="cellResult(cell.id).summary!"
+            :raw="cellResult(cell.id).raw"
+          />
           <img
             v-if="cellResult(cell.id).image"
             class="dps-render"

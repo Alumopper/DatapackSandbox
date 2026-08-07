@@ -50,10 +50,12 @@ Object.assign(URL, {
   revokeObjectURL: vi.fn(),
 })
 
-Object.assign(Range.prototype, {
-  getBoundingClientRect: () => new DOMRect(),
-  getClientRects: () => [],
-})
+if (typeof Range !== 'undefined' && typeof DOMRect !== 'undefined') {
+  Object.assign(Range.prototype, {
+    getBoundingClientRect: () => new DOMRect(),
+    getClientRects: () => [],
+  })
+}
 
 afterEach(() => {
   MockWorker.instances = []

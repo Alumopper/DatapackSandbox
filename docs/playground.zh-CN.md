@@ -67,7 +67,9 @@ const source = ref('say 轻量嵌入示例')
 
 默认每次成功执行都会记录一帧 GIF。**Add frame** 不执行源码，只记录当前世界；**Export GIF** 下载全部已记录帧。**Save point** 保存完整的建模世界、输出和 trace，**Return** 可重复回到该点。数据包、资源包和单调递增的安全预算属于会话配置，不属于检查点状态。
 
-每个 `DpsCell` 仍拥有隔离的本地 Worker 会话，并保留补全、诊断及 <kbd>Ctrl/⌘</kbd>+<kbd>Enter</kbd> 执行。组件还公开 `savePoint()`、`returnToPoint()`、`captureAnimationFrame()`、`exportGif()`，并在 `ready`、`executed`、`error` 之外触发 `gif` 和 `checkpoint` 事件。
+未提供 `sandbox-id` 时，每个 `DpsCell` 都拥有隔离的本地 Worker 会话，并保留补全、诊断及 <kbd>Ctrl/⌘</kbd>+<kbd>Enter</kbd> 执行。组件还公开 `savePoint()`、`returnToPoint()`、`captureAnimationFrame()`、`exportGif()`，并在 `ready`、`executed`、`error` 之外触发 `gif` 和 `checkpoint` 事件。
+
+执行摘要下方新增可展开的 **Command outputs**：逐条显示命令、可读文本、通道、tick 和目标，结构化 JSON 仍单独保留。按住 <kbd>Ctrl</kbd>/<kbd>⌘</kbd> 点击 `function` 命令后的资源 ID，可以在当前 cell 内打开按数据包优先级生效的 `.mcfunction` 源码。继续点击嵌套调用会形成面包屑调用栈；使用 **Back** 或 <kbd>Alt</kbd>+<kbd>←</kbd> 返回上一层调用者。
 
 ## 组件 API
 
@@ -85,6 +87,7 @@ const source = ref('say 轻量嵌入示例')
 | `limits` | `PlaygroundBrowserLimits` | 浏览器默认值 | 每实例稳定性预算和 watchdog 时序。 |
 | `worker-url` | `string` | 包内资源 | 仅在自行托管 Worker 构建物时覆盖。 |
 | `site-id` | `string` | 省略 | 创建会话时携带的嵌入站点标签。 |
+| `sandbox-id` | `string` | 省略 | 页面内世界 ID；相同非空 ID 共用串行会话，省略时创建独立沙盒。 |
 
 本地会话及可选 preset 就绪后触发 `ready(sessionId)`；执行、导入、完整性校验或生命周期失败会触发 `error({ code, message })`。
 
@@ -153,14 +156,14 @@ interface PlaygroundNotebook {
 
 `PlaygroundWorkerClient` 替换已经移除的 WebSocket `PlaygroundClient` 导出，同时保留 request id、请求名、事件名和稳定错误对象。支持的请求包括：
 
-- `session.create`、`session.reset`、`session.interrupt`、`session.close`、`session.import`
+- `session.create`、`session.reset`、`session.interrupt`、`session.close`、`session.import`、`session.function.read`
 - `session.checkpoint.save`、`.restore`、`.delete`、`.list`
 - `cell.execute`、`cell.complete`、`cell.check`、`cell.render`
 - `animation.capture`、`animation.export`、`animation.clear`
 
 执行会发送 `cell.status`、`cell.output`、`diagnostic`、`cell.render` 和 `cell.error`。PNG 使用 `bytes: ArrayBuffer` 与 `mimeType: image/png`；GIF 导出使用相同的 transferable 结构和 `mimeType: image/gif`，两者都不使用 base64。
 
-常见错误码包括 `INVALID_REQUEST`、`PROFILE_NOT_ALLOWED`、`CELL_TOO_LARGE`、`COMMAND_LIMIT`、`OUTPUT_LIMIT`、`RENDER_SIZE_LIMIT`、`BUSY`、`INTERRUPTED`、`SESSION_LOST`、`CHECKPOINT_NOT_FOUND`、`CHECKPOINT_LIMIT`、`ANIMATION_EMPTY`、`ANIMATION_FRAME_LIMIT`、`ANIMATION_SIZE_LIMIT`、`IMPORT_PATH_INVALID`、`IMPORT_CONFLICT`、`IMPORT_FILE_LIMIT`、`IMPORT_SIZE_LIMIT` 和 `PRESET_INTEGRITY_FAILED`。
+常见错误码包括 `INVALID_REQUEST`、`PROFILE_NOT_ALLOWED`、`CELL_TOO_LARGE`、`COMMAND_LIMIT`、`OUTPUT_LIMIT`、`RENDER_SIZE_LIMIT`、`BUSY`、`INTERRUPTED`、`SESSION_LOST`、`FUNCTION_NOT_FOUND`、`FUNCTION_TAG_NOT_BROWSABLE`、`CHECKPOINT_NOT_FOUND`、`CHECKPOINT_LIMIT`、`ANIMATION_EMPTY`、`ANIMATION_FRAME_LIMIT`、`ANIMATION_SIZE_LIMIT`、`IMPORT_PATH_INVALID`、`IMPORT_CONFLICT`、`IMPORT_FILE_LIMIT`、`IMPORT_SIZE_LIMIT` 和 `PRESET_INTEGRITY_FAILED`。
 
 ## 渲染边界
 
@@ -179,6 +182,19 @@ npm run docs:build
 
 可向 `DpsPlayground` 或 `DpsCell` 传入 `viewport`，也可单独挂载 `DpsViewport`。共享
 `PlaygroundSessionController` 后，多个组件会连接到同一个由 Worker 持有的世界。
+
+若不想手动创建 controller，可在同一页面的多个组件上使用相同的 `sandbox-id`：
+
+```vue
+<DpsCell v-model="builder" sandbox-id="tutorial-world" />
+<DpsCell v-model="inspector" sandbox-id="tutorial-world" :viewport="true" />
+```
+
+每个编辑器的源码、诊断和输出互相独立，但命令、渲染、导入、检查点、重置和视窗状态都作用于
+同一个 Worker 世界。会话操作通过同一互斥队列串行执行，因此同一时刻只有一个编辑器操作沙盒。
+同 ID 下第一个挂载的组件负责初始化版本、preset 和依赖，后续组件必须使用相同的 Minecraft
+版本；最后一个同 ID 组件卸载后 Worker 才会销毁。未提供 `sandbox-id` 的组件始终拥有独立且唯一
+的沙盒。若同时传入显式 `session`，以 `session` 为准。
 
 播放默认关闭。开始播放后以 20 TPS 推进世界时间和展示实体插值，执行
 `#minecraft:tick` 以及可选的 `tickFunction`；卡顿时最多补算 5 tick，页面隐藏时自动暂停。

@@ -83,6 +83,30 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       void vscode.window.showInformationMessage(`Datapack Sandbox started with Minecraft ${state.version}.`);
     })),
     vscode.commands.registerCommand("datapackSandbox.stopSandbox", () => { activeSandbox.stop(); void vscode.window.showInformationMessage("Datapack Sandbox stopped."); }),
+    vscode.commands.registerCommand("datapackSandbox.saveCheckpoint", () => safe(async () => {
+      const name = await promptCheckpointName();
+      if (!name) return;
+      await activeSandbox.saveCheckpoint(name);
+      void vscode.window.showInformationMessage(`Datapack Sandbox checkpoint '${name}' saved.`);
+    })),
+    vscode.commands.registerCommand("datapackSandbox.restoreCheckpoint", () => safe(async () => {
+      const name = await pickCheckpoint(activeSandbox, "Restore Datapack Sandbox Checkpoint");
+      if (!name) return;
+      await activeSandbox.restoreCheckpoint(name);
+      void vscode.window.showInformationMessage(`Datapack Sandbox checkpoint '${name}' restored.`);
+    })),
+    vscode.commands.registerCommand("datapackSandbox.deleteCheckpoint", () => safe(async () => {
+      const name = await pickCheckpoint(activeSandbox, "Delete Datapack Sandbox Checkpoint");
+      if (!name) return;
+      await activeSandbox.deleteCheckpoint(name);
+      void vscode.window.showInformationMessage(`Datapack Sandbox checkpoint '${name}' deleted.`);
+    })),
+    vscode.commands.registerCommand("datapackSandbox.renderActiveSandbox", () => safe(() => renderActiveSandbox(activeSandbox))),
+    vscode.commands.registerCommand("datapackSandbox.interrupt", () => safe(async () => {
+      await activeSandbox.interrupt();
+      void vscode.window.showInformationMessage("Datapack Sandbox interrupt requested.");
+    })),
+    vscode.commands.registerCommand("datapackSandbox.openFunctionSource", () => safe(() => openFunctionSource(activeSandbox))),
     vscode.commands.registerCommand("datapackSandbox.reloadTests", () => tests.discover()),
     vscode.commands.registerCommand("datapackSandbox.refreshResources", () => safe(() => resources.refresh())),
     vscode.commands.registerCommand("datapackSandbox.generateManifest", (uri?: vscode.Uri) => safe(() => generateManifest(uri, activeSandbox))),
@@ -111,6 +135,59 @@ async function generateManifest(uri: vscode.Uri | undefined, activeSandbox: Acti
   const manifest = { version, ...(context.packRoot ? { packs: [path.relative(path.dirname(destination.fsPath), context.packRoot) || "."] } : {}), steps: [{ mcfunction: path.relative(path.dirname(destination.fsPath), target.fsPath).replace(/\\/g, "/") }], assertions: [] };
   await fs.writeFile(destination.fsPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
   await vscode.window.showTextDocument(destination);
+}
+
+async function promptCheckpointName(): Promise<string | undefined> {
+  return vscode.window.showInputBox({
+    title: "Save Datapack Sandbox Checkpoint",
+    prompt: "Checkpoint names may contain letters, numbers, dots, underscores, and hyphens.",
+    value: "default",
+    validateInput: (value) => /^[A-Za-z0-9._-]{1,64}$/.test(value) ? undefined : "Use 1–64 letters, numbers, dots, underscores, or hyphens.",
+  });
+}
+
+async function pickCheckpoint(activeSandbox: ActiveSandboxService, title: string): Promise<string | undefined> {
+  const names = await activeSandbox.checkpointNames();
+  if (!names.length) {
+    void vscode.window.showInformationMessage("The active Datapack Sandbox has no checkpoints.");
+    return undefined;
+  }
+  return vscode.window.showQuickPick(names, { title, placeHolder: "Choose a reusable in-memory checkpoint" });
+}
+
+async function renderActiveSandbox(activeSandbox: ActiveSandboxService): Promise<void> {
+  const root = vscode.workspace.workspaceFolders?.[0]?.uri ?? vscode.Uri.file(process.cwd());
+  const destination = await vscode.window.showSaveDialog({
+    defaultUri: vscode.Uri.joinPath(root, "datapack-sandbox.png"),
+    filters: { "PNG image": ["png"] },
+    title: "Render Active Datapack Sandbox",
+  });
+  if (!destination) return;
+  const frame = await activeSandbox.render();
+  await vscode.workspace.fs.writeFile(destination, Buffer.from(frame.data, "base64"));
+  await vscode.commands.executeCommand("vscode.open", destination);
+  void vscode.window.showInformationMessage(`Rendered ${frame.width}×${frame.height} PNG with the bundled JAR.`);
+}
+
+async function openFunctionSource(activeSandbox: ActiveSandboxService): Promise<void> {
+  const resources = await activeSandbox.resources();
+  const id = await vscode.window.showQuickPick(resources.functionIds ?? [], {
+    title: "Open Loaded Datapack Function",
+    placeHolder: "Choose the effective function resolved by the JAR sandbox",
+  });
+  if (!id) return;
+  const source = await activeSandbox.functionSource(id);
+  if (source.file && !source.file.startsWith("<")) {
+    try {
+      await vscode.workspace.fs.stat(vscode.Uri.file(source.file));
+      await vscode.window.showTextDocument(vscode.Uri.file(source.file), { preview: true });
+      return;
+    } catch {
+      // ZIP and synthetic sources are opened as read-only virtual documents below.
+    }
+  }
+  const document = await vscode.workspace.openTextDocument({ language: "mcfunction", content: source.source });
+  await vscode.window.showTextDocument(document, { preview: true });
 }
 
 function resolveUri(uri?: vscode.Uri, suffix?: string): vscode.Uri | undefined {

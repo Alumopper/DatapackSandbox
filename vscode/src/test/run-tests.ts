@@ -1,7 +1,9 @@
 import * as assert from "node:assert/strict";
 import * as path from "node:path";
+import { BoundedTextBuffer } from "../boundedTextBuffer";
 import { buildCheckArgs, buildRunArgs } from "../commands";
 import { DebugValueStore, findInitialTraceIndex } from "../debugValues";
+import { appendEventPage } from "../eventPages";
 import { discoverManifestPaths, inferFunctionContext, isManifest } from "../functionContext";
 import { TraceEvent } from "../model";
 import { parseManifestReport, parseRunReport } from "../reports";
@@ -19,9 +21,31 @@ const tests: Array<[string, () => void]> = [
   ["discovers and sorts manifest paths", () => { assert.deepEqual(discoverManifestPaths(["z.dps.json", "notes.json", "a.dps.json"]), ["a.dps.json", "z.dps.json"]); }],
   ["constructs run arguments", () => { assert.deepEqual(buildRunArgs("main.mcfunction", "demo:main", "report.json", "26.2", ["pack"], ["errors"], true), ["run", "--version", "26.2", "--report-file", "report.json", "--trace-filter", "errors", "--pack", "pack", "--mcfunction", "demo:main=main.mcfunction", "--mcfunction-id", "demo:main", "--strict"]); }],
   ["omits version when CLI default is requested", () => { assert.deepEqual(buildRunArgs("main.mcfunction", "demo:main", "report.json", undefined, [], [], false), ["run", "--report-file", "report.json", "--mcfunction", "demo:main=main.mcfunction", "--mcfunction-id", "demo:main"]); }],
+  ["bounds captured child-process output while preserving its tail", () => {
+    const output = new BoundedTextBuffer(8);
+    output.append("first-");
+    output.append("second");
+    assert.equal(output.toString(), "[earlier output omitted]\nt-second");
+  }],
+  ["does not mark an exactly full output buffer as truncated", () => {
+    const output = new BoundedTextBuffer(4);
+    output.append("full");
+    assert.equal(output.toString(), "full");
+  }],
+  ["validates child-process output limits", () => {
+    assert.throws(() => new BoundedTextBuffer(0), RangeError);
+  }],
   ["constructs manifest arguments", () => { assert.deepEqual(buildCheckArgs("test.dps.json", "report.json", false, []), ["check", "test.dps.json", "--report-file", "report.json", "--snapshot-diff-on-fail"]); }],
   ["parses run reports", () => { assert.equal(parseRunReport('{"version":"26.2","passed":true}').passed, true); assert.throws(() => parseRunReport("[]")); }],
   ["parses manifest reports", () => { assert.equal(parseManifestReport('[{"path":"a.dps.json","passed":false}]')[0].path, "a.dps.json"); assert.throws(() => parseManifestReport("{}")); }],
+  ["appends incremental serve event pages", () => {
+    assert.deepEqual(appendEventPage(["first"], { from: 1, total: 2, items: ["second"] }), ["first", "second"]);
+  }],
+  ["detects replaced or inconsistent serve event history", () => {
+    assert.equal(appendEventPage(["stale"], { from: 1, total: 0, items: [] }), undefined);
+    assert.equal(appendEventPage([], { from: 2, total: 2, items: [] }), undefined);
+    assert.equal(appendEventPage([], { from: 0, total: 0, items: ["overflow"] }), undefined);
+  }],
   ["runs to the first configured breakpoint", () => {
     const file = path.resolve("data/demo/function/main.mcfunction");
     const traces: TraceEvent[] = [1, 2, 3].map((line) => ({ tick: 0, command: `line ${line}`, root: "demo:main", success: true, commandsExecuted: 1, outputs: 0, source: { file, line } }));

@@ -2,7 +2,7 @@
   "name": "datapack-sandbox-vscode",
   "displayName": "Datapack Sandbox",
   "description": "Run, test, debug, and inspect Datapack Sandbox scenarios from VS Code.",
-  "version": "0.3.2",
+  "version": "0.4.0",
   "publisher": "Alumopper",
   "author": {
     "name": "Alumopper",
@@ -30,7 +30,13 @@
     "onCommand:datapackSandbox.runManifest",
     "onCommand:datapackSandbox.runManifestStrict",
     "onCommand:datapackSandbox.debugManifestTrace",
-    "onCommand:datapackSandbox.openSandboxPanel"
+    "onCommand:datapackSandbox.openSandboxPanel",
+    "onCommand:datapackSandbox.saveCheckpoint",
+    "onCommand:datapackSandbox.restoreCheckpoint",
+    "onCommand:datapackSandbox.deleteCheckpoint",
+    "onCommand:datapackSandbox.renderActiveSandbox",
+    "onCommand:datapackSandbox.interrupt",
+    "onCommand:datapackSandbox.openFunctionSource"
   ],
   "main": "./out/extension.js",
   "scripts": {
@@ -56,6 +62,12 @@
       { "command": "datapackSandbox.startSandbox", "title": "Datapack Sandbox: Start Sandbox" },
       { "command": "datapackSandbox.stopSandbox", "title": "Datapack Sandbox: Stop Sandbox" },
       { "command": "datapackSandbox.openSandboxPanel", "title": "Datapack Sandbox: Open Sandbox Panel" },
+      { "command": "datapackSandbox.saveCheckpoint", "title": "Datapack Sandbox: Save Checkpoint" },
+      { "command": "datapackSandbox.restoreCheckpoint", "title": "Datapack Sandbox: Restore Checkpoint" },
+      { "command": "datapackSandbox.deleteCheckpoint", "title": "Datapack Sandbox: Delete Checkpoint" },
+      { "command": "datapackSandbox.renderActiveSandbox", "title": "Datapack Sandbox: Render Active Sandbox to PNG" },
+      { "command": "datapackSandbox.interrupt", "title": "Datapack Sandbox: Interrupt Active Execution" },
+      { "command": "datapackSandbox.openFunctionSource", "title": "Datapack Sandbox: Open Loaded Function Source" },
       { "command": "datapackSandbox.reloadTests", "title": "Datapack Sandbox: Reload Manifest Tests" },
       { "command": "datapackSandbox.generateManifest", "title": "Datapack Sandbox: Generate Manifest For Current Function" },
       { "command": "datapackSandbox.refreshResources", "title": "Datapack Sandbox: Refresh Resources" }
@@ -111,6 +123,49 @@
           "default": "temporary",
           "enumDescriptions": ["Create an isolated sandbox for each run or debug session.", "Use the currently active persistent sandbox."],
           "description": "Default target used by Run and Debug commands. Temporary preserves the original isolated behavior."
+        },
+        "datapackSandbox.render.width": {
+          "type": "integer",
+          "default": 960,
+          "minimum": 16,
+          "maximum": 4096,
+          "description": "Width of PNG frames rendered by the bundled JAR."
+        },
+        "datapackSandbox.render.height": {
+          "type": "integer",
+          "default": 540,
+          "minimum": 16,
+          "maximum": 4096,
+          "description": "Height of PNG frames rendered by the bundled JAR."
+        },
+        "datapackSandbox.render.fieldOfView": {
+          "type": "number",
+          "default": 70,
+          "minimum": 1,
+          "maximum": 179,
+          "description": "Vertical field of view used by JAR rendering."
+        },
+        "datapackSandbox.render.distance": {
+          "type": "number",
+          "default": 128,
+          "exclusiveMinimum": 0,
+          "description": "Maximum modeled render distance in blocks."
+        },
+        "datapackSandbox.render.minecraftAssetsPath": {
+          "type": "string",
+          "default": "",
+          "description": "Optional Minecraft client asset directory or jar used only for local rendering."
+        },
+        "datapackSandbox.render.resourcePackPaths": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": [],
+          "description": "Workspace-relative or absolute resource-pack paths passed to the JAR renderer."
+        },
+        "datapackSandbox.render.strictAssets": {
+          "type": "boolean",
+          "default": false,
+          "description": "Fail rendering when configured client or resource-pack assets cannot be resolved."
         }
       }
     },

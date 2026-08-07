@@ -182,6 +182,12 @@ export interface PlaygroundCompletion {
   behavior?: string
 }
 
+export interface PlaygroundFunctionSource {
+  id: string
+  path: string
+  source: string
+}
+
 export interface PlaygroundOutputEvent {
   tick: number
   command: string

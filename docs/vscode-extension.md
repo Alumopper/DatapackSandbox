@@ -4,7 +4,7 @@ Datapack Sandbox for VS Code brings running, testing, trace debugging, and sandb
 
 ## Install
 
-The extension requires VS Code 1.95 or newer and Java 25. The distributable VSIX bundles the Datapack Sandbox CLI, so users do not need to clone the repository or run Gradle.
+The extension requires VS Code 1.95 or newer and Java 25. The distributable VSIX bundles the Datapack Sandbox CLI JAR, so users do not need to clone the repository or run Gradle. All sandbox execution, validation, checkpoints, and rendering remain in the JVM JAR; the extension does not use the browser runtime.
 
 Choose **Install from VSIX...** in the Extensions view and select:
 
@@ -26,7 +26,8 @@ Set `datapackSandbox.javaPath` when Java 25 is not available on `PATH`.
 2. Click **DPS** in the status bar.
 3. Confirm the Minecraft profile and datapack paths, then choose **Start sandbox**.
 4. Enter a command. The panel provides completions based on the active sandbox and checks the command in an isolated copy that does not mutate the active world.
-5. Use the Inspector to browse output, traces, snapshots, resources, players, entities, scores, and diagnostics.
+5. Use the Inspector to browse rich output, command and player-event traces, snapshots, resources, players, entities, scores, and diagnostics. Event history is fetched incrementally from the JAR.
+6. Use **Save point** and **Return** for reusable world checkpoints, **Render PNG** for the JVM renderer, and **Interrupt** to stop a long execution at a command boundary.
 
 Use `↑` and `↓` to move through suggestions and `Tab` or `Enter` to accept one. Inspector JSON is expandable, and traces with source locations can open the corresponding `.mcfunction` line.
 
@@ -58,6 +59,13 @@ Use these Command Palette entries to control the active sandbox:
 - `Datapack Sandbox: Open Sandbox Panel`
 - `Datapack Sandbox: Run Current Mcfunction in Active Sandbox`
 - `Datapack Sandbox: Debug Current File in Active Sandbox`
+- `Datapack Sandbox: Save Checkpoint`
+- `Datapack Sandbox: Restore Checkpoint`
+- `Datapack Sandbox: Render Active Sandbox to PNG`
+- `Datapack Sandbox: Open Loaded Function Source`
+- `Datapack Sandbox: Interrupt Active Execution`
+
+The panel displays resolved output text segments and structured payloads. Function commands in trace data can open the effective source selected by datapack priority, including a read-only document for ZIP-backed or synthetic functions.
 
 ## Run and Test
 
@@ -101,6 +109,12 @@ To stop on the first trace event, set `stopOnEntry` explicitly:
 | `datapackSandbox.strict` | `false` | Enable strict Run/Debug checks |
 | `datapackSandbox.defaultExecutionTarget` | `temporary` | Default Run/Debug target |
 | `datapackSandbox.cliJarPath` | empty | Custom CLI JAR; empty uses the bundled CLI |
+| `datapackSandbox.render.width` / `.height` | `960` / `540` | PNG dimensions used by the JAR renderer |
+| `datapackSandbox.render.fieldOfView` | `70` | Render camera field of view |
+| `datapackSandbox.render.distance` | `128` | Modeled render distance in blocks |
+| `datapackSandbox.render.minecraftAssetsPath` | empty | Optional local Minecraft client assets or JAR |
+| `datapackSandbox.render.resourcePackPaths` | `[]` | Additional local resource packs |
+| `datapackSandbox.render.strictAssets` | `false` | Fail when configured render assets cannot be resolved |
 
 ## Troubleshooting
 

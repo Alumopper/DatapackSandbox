@@ -1,6 +1,8 @@
 import { defineConfig, devices } from '@playwright/test'
 
 const executablePath = process.env.PLAYWRIGHT_EXECUTABLE_PATH
+const e2ePort = Number(process.env.DPS_PLAYGROUND_E2E_PORT ?? 14173)
+const e2eUrl = `http://127.0.0.1:${e2ePort}`
 
 export default defineConfig({
   testDir: './tests/e2e',
@@ -8,7 +10,7 @@ export default defineConfig({
   timeout: 30_000,
   fullyParallel: false,
   use: {
-    baseURL: 'http://127.0.0.1:14173',
+    baseURL: e2eUrl,
     trace: 'retain-on-failure',
   },
   projects: [
@@ -24,7 +26,7 @@ export default defineConfig({
   ],
   webServer: {
     command: 'npm run e2e:fixture',
-    url: 'http://127.0.0.1:14173',
+    url: e2eUrl,
     reuseExistingServer: true,
     timeout: 30_000,
   },

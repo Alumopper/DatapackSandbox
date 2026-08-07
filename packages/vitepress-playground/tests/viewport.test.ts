@@ -8,6 +8,7 @@ const rendererSpies = vi.hoisted(() => ({
   resetView: vi.fn(),
   dispose: vi.fn(),
   handleOutput: vi.fn(),
+  look: vi.fn(),
 }))
 
 vi.mock('../src/webgl/renderer', () => ({
@@ -17,14 +18,61 @@ vi.mock('../src/webgl/renderer', () => ({
     dispose = rendererSpies.dispose
     handleOutput = rendererSpies.handleOutput
     setMovement() {}
-    look() {}
+    look = rendererSpies.look
     adjustSpeed() {}
   },
 }))
 
 describe('DpsViewport', () => {
   beforeEach(() => {
+    vi.clearAllMocks()
     vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: false, addEventListener() {}, removeEventListener() {} })))
+  })
+
+  it('turns the camera right when the locked mouse moves right', async () => {
+    MockWorker.responder = (worker, request) => {
+      if (request.type === 'transport.connect') worker.emit({ type: 'transport.ready', requestId: request.id })
+      if (request.type === 'session.create') worker.emit({ type: 'session.ready', requestId: request.id, sessionId: 'mouse-direction' })
+      if (request.type === 'viewport.subscribe') worker.emit({ type: 'viewport.subscribed', requestId: request.id })
+    }
+    const wrapper = mount(DpsViewport, {
+      attachTo: document.body,
+      props: { notebook: { version: '26.2', cells: [] }, options: { mouseSensitivity: 0.12 } },
+    })
+    await vi.waitFor(() => expect(wrapper.attributes('data-state')).toBe('ready'))
+    const canvas = wrapper.get('canvas').element as HTMLCanvasElement
+    Object.defineProperty(document, 'pointerLockElement', { configurable: true, value: canvas })
+    const movement = new MouseEvent('mousemove', { bubbles: true })
+    Object.defineProperties(movement, {
+      movementX: { value: 10 },
+      movementY: { value: -2 },
+    })
+    document.dispatchEvent(movement)
+    expect(rendererSpies.look).toHaveBeenCalledWith(1.2, -0.24)
+    Object.defineProperty(document, 'pointerLockElement', { configurable: true, value: null })
+    wrapper.unmount()
+  })
+
+  it('joins a page-local named sandbox and reference-counts its Worker', async () => {
+    MockWorker.responder = (worker, request) => {
+      if (request.type === 'transport.connect') worker.emit({ type: 'transport.ready', requestId: request.id })
+      if (request.type === 'session.create') worker.emit({ type: 'session.ready', requestId: request.id, sessionId: 'shared-viewports' })
+      if (request.type === 'viewport.subscribe') worker.emit({ type: 'viewport.subscribed', requestId: request.id })
+      if (request.type === 'viewport.unsubscribe') worker.emit({ type: 'viewport.unsubscribed', requestId: request.id })
+    }
+    const props = { notebook: { version: '26.2', cells: [] }, sandboxId: 'viewport-world' }
+    const first = mount(DpsViewport, { props })
+    await vi.waitFor(() => expect(first.attributes('data-state')).toBe('ready'))
+    const second = mount(DpsViewport, { props })
+    await vi.waitFor(() => expect(second.attributes('data-state')).toBe('ready'))
+    expect(MockWorker.instances).toHaveLength(1)
+    expect(first.attributes('data-sandbox-id')).toBe('viewport-world')
+    expect(second.attributes('data-sandbox-id')).toBe('viewport-world')
+    expect(second.find('.dps-viewport-message').exists()).toBe(false)
+    first.unmount()
+    expect(MockWorker.instances[0].terminated).toBe(false)
+    second.unmount()
+    expect(MockWorker.instances[0].terminated).toBe(true)
   })
 
   it('runs as a standalone lazy viewport and cleans up its owned session', async () => {

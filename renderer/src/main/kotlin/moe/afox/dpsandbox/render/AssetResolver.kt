@@ -6,11 +6,9 @@ import moe.afox.dpsandbox.core.DiagnosticCode
 import moe.afox.dpsandbox.core.SandboxException
 import java.awt.Color
 import java.awt.image.BufferedImage
-import java.io.ByteArrayInputStream
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.zip.ZipFile
-import javax.imageio.ImageIO
 
 internal class AssetResolver(
     assets: RenderAssets,
@@ -63,13 +61,7 @@ internal class AssetResolver(
                 val key = "assets/$namespace/textures/$path.png"
                 val bytes = bytes(key)
                 val image =
-                    bytes?.let {
-                        try {
-                            ImageIO.read(ByteArrayInputStream(it))
-                        } catch (_: Exception) {
-                            null
-                        }
-                    }
+                    bytes?.let(BoundedImageReader::read)
                 if (image == null) {
                     missing("MISSING_TEXTURE", "Missing or unreadable texture $normalizedId", key)
                     fallbackTexture(normalizedId)
@@ -85,12 +77,7 @@ internal class AssetResolver(
         measured {
             val path = name?.lowercase()?.let(playerSkins::get)
             if (path != null) {
-                val image =
-                    try {
-                        ImageIO.read(path.toFile())
-                    } catch (_: Exception) {
-                        null
-                    }
+                val image = BoundedImageReader.read(path)
                 if (image != null) return@measured TextureData.fromImage("player:${name.orEmpty().lowercase()}", image)
                 invalid("INVALID_PLAYER_SKIN", "Player skin is not a readable PNG", path.toString())
             }
@@ -281,26 +268,28 @@ internal class AssetResolver(
             if (!candidate.startsWith(normalizedRoot) || !Files.isRegularFile(candidate)) return null
             val realRoot = normalizedRoot.toRealPath()
             val realCandidate = candidate.toRealPath()
-            if (!realCandidate.startsWith(realRoot) || Files.size(realCandidate) > MAX_ASSET_BYTES) return null
-            return Files.readAllBytes(realCandidate)
+            if (!realCandidate.startsWith(realRoot) || Files.size(realCandidate) > BoundedImageReader.MAX_ENCODED_BYTES) return null
+            return Files.newInputStream(realCandidate).use { input ->
+                input
+                    .readNBytes((BoundedImageReader.MAX_ENCODED_BYTES + 1).toInt())
+                    .takeIf { it.size <= BoundedImageReader.MAX_ENCODED_BYTES }
+            }
         }
 
         private fun readZip(key: String): ByteArray? =
             try {
                 ZipFile(path.toFile()).use { zip ->
                     val entry = zip.getEntry(key) ?: return null
-                    if (entry.isDirectory || entry.size > MAX_ASSET_BYTES) return null
+                    if (entry.isDirectory || entry.size > BoundedImageReader.MAX_ENCODED_BYTES) return null
                     zip.getInputStream(entry).use { input ->
-                        input.readNBytes((MAX_ASSET_BYTES + 1).toInt()).takeIf { it.size <= MAX_ASSET_BYTES }
+                        input
+                            .readNBytes((BoundedImageReader.MAX_ENCODED_BYTES + 1).toInt())
+                            .takeIf { it.size <= BoundedImageReader.MAX_ENCODED_BYTES }
                     }
                 }
             } catch (_: Exception) {
                 null
             }
-
-        companion object {
-            private const val MAX_ASSET_BYTES = 64L * 1024L * 1024L
-        }
     }
 
     private data class AnimatedFrame(

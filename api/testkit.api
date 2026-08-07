@@ -1,4 +1,4 @@
-# Public JVM API for moe.afox.dpsandbox:testkit:1.0.1
+# Public JVM API for moe.afox.dpsandbox:testkit:1.0.2
 public final class moe.afox.dpsandbox.core.DatapackSandboxTestApi {
   public static final moe.afox.dpsandbox.core.DatapackSandboxTestApi INSTANCE;
   public static final moe.afox.dpsandbox.core.SandboxQuickTest scenario(java.util.List<? extends java.nio.file.Path>, java.lang.String, java.lang.String, moe.afox.dpsandbox.core.UnsupportedFeatureMode);
@@ -51,6 +51,9 @@ public final class moe.afox.dpsandbox.core.SandboxQuickTest {
   public final moe.afox.dpsandbox.core.SandboxQuickTest function(java.lang.String);
   public final moe.afox.dpsandbox.core.SandboxQuickTest function();
   public final moe.afox.dpsandbox.core.SandboxQuickTest command(java.lang.String);
+  public final moe.afox.dpsandbox.core.SandboxQuickTest printChatOutput(java.io.PrintStream);
+  public static moe.afox.dpsandbox.core.SandboxQuickTest printChatOutput$default(moe.afox.dpsandbox.core.SandboxQuickTest, java.io.PrintStream, int, java.lang.Object);
+  public final moe.afox.dpsandbox.core.SandboxQuickTest stopPrintingChatOutput();
   public final moe.afox.dpsandbox.core.SandboxQuickTest world(kotlin.jvm.functions.Function1<? super moe.afox.dpsandbox.core.SandboxWorldSetup, kotlin.Unit>);
   public final moe.afox.dpsandbox.core.SandboxQuickTest setupWorld(moe.afox.dpsandbox.core.SandboxWorldSetup);
   public final moe.afox.dpsandbox.core.SandboxQuickTest importSave(java.nio.file.Path, java.lang.Iterable<moe.afox.dpsandbox.core.ChunkPos>, java.lang.String, boolean, boolean, boolean);
@@ -191,6 +194,7 @@ public final class moe.afox.dpsandbox.core.SandboxQuickTest {
   public static java.util.List matchingOutputs$default(moe.afox.dpsandbox.core.SandboxQuickTest, moe.afox.dpsandbox.core.OutputChannel, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, com.google.gson.JsonElement, int, java.lang.Object);
   public final moe.afox.dpsandbox.core.SandboxQuickTestReport report();
   public final moe.afox.dpsandbox.core.SandboxQuickTestReport requirePassed();
+  public final moe.afox.dpsandbox.core.SandboxQuickTest printChatOutput();
   public final moe.afox.dpsandbox.core.SandboxQuickTest importSave(java.nio.file.Path, java.lang.Iterable<moe.afox.dpsandbox.core.ChunkPos>, java.lang.String, boolean, boolean);
   public final moe.afox.dpsandbox.core.SandboxQuickTest importSave(java.nio.file.Path, java.lang.Iterable<moe.afox.dpsandbox.core.ChunkPos>, java.lang.String, boolean);
   public final moe.afox.dpsandbox.core.SandboxQuickTest importSave(java.nio.file.Path, java.lang.Iterable<moe.afox.dpsandbox.core.ChunkPos>, java.lang.String);

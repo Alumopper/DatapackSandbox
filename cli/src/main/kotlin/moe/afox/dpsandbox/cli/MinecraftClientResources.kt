@@ -36,7 +36,7 @@ internal class MinecraftClientResources(
                 ?.mapNotNull { textureId ->
                     val (textureNamespace, texturePath) = splitResourceId(textureId)
                     val bytes = bytes("assets/$textureNamespace/textures/particle/$texturePath.png") ?: return@mapNotNull null
-                    val image = runCatching { ImageIO.read(ByteArrayInputStream(bytes)) }.getOrNull() ?: return@mapNotNull null
+                    val image = readBoundedImage(bytes) ?: return@mapNotNull null
                     MinecraftParticleSprite(textureId, firstAnimationFrame(image))
                 }.orEmpty()
         }
@@ -51,7 +51,7 @@ internal class MinecraftClientResources(
             } ?: return null
         val (namespace, path) = splitResourceId(provider.file)
         val imageBytes = bytes("assets/$namespace/textures/${path.removeSuffix(".png")}.png") ?: return null
-        val image = runCatching { ImageIO.read(ByteArrayInputStream(imageBytes)) }.getOrNull() ?: return null
+        val image = readBoundedImage(imageBytes) ?: return null
         val rows = provider.characters.size
         val columns = provider.characters.maxOfOrNull { it.codePointCount(0, it.length) } ?: return null
         if (rows == 0 || columns == 0 || image.width % columns != 0 || image.height % rows != 0) return null
@@ -143,31 +143,64 @@ internal class MinecraftClientResources(
     }
 
     private fun bytes(key: String): ByteArray? =
-        synchronized(byteCache) {
-            if (byteCache.containsKey(key)) {
-                byteCache[key]
-            } else {
-                sources.asReversed().firstNotNullOfOrNull { source -> readSource(source, key) }.also { byteCache[key] = it }
+        normalizeAssetKey(key)?.let { safeKey ->
+            synchronized(byteCache) {
+                if (byteCache.containsKey(safeKey)) {
+                    byteCache[safeKey]
+                } else {
+                    sources
+                        .asReversed()
+                        .firstNotNullOfOrNull { source -> readSource(source, safeKey) }
+                        .also { byteCache[safeKey] = it }
+                }
             }
         }
 
-    private fun json(key: String): JsonObject? =
-        bytes(key)?.let { raw ->
-            runCatching { JsonParser.parseString(raw.toString(Charsets.UTF_8)).asJsonObject }.getOrNull()
-        }
+    private fun normalizeAssetKey(key: String): String? {
+        val portable = key.replace('\\', '/')
+        if (portable.isBlank() || portable.startsWith('/') || DRIVE_PREFIX.matches(portable)) return null
+        val parts = portable.split('/')
+        if (parts.any { it.isBlank() || it == "." || it == ".." || it.any(Char::isISOControl) }) return null
+        return parts.joinToString("/")
+    }
 
     private fun readSource(
         source: Path,
         key: String,
     ): ByteArray? =
         if (Files.isDirectory(source)) {
-            source.resolve(key.replace('/', source.fileSystem.separator.first())).takeIf(Files::isRegularFile)?.let(Files::readAllBytes)
+            runCatching {
+                val realRoot = source.toRealPath()
+                val relative = if (realRoot.fileName?.toString() == "assets") key.removePrefix("assets/") else key
+                val candidate = realRoot.resolve(relative.replace('/', source.fileSystem.separator.first())).normalize()
+                if (!candidate.startsWith(realRoot) || !Files.isRegularFile(candidate)) {
+                    null
+                } else {
+                    val realCandidate = candidate.toRealPath()
+                    if (!realCandidate.startsWith(realRoot) || Files.size(realCandidate) > MAX_ASSET_BYTES) {
+                        null
+                    } else {
+                        Files.newInputStream(realCandidate).use { input ->
+                            input.readNBytes((MAX_ASSET_BYTES + 1).toInt()).takeIf { it.size <= MAX_ASSET_BYTES }
+                        }
+                    }
+                }
+            }.getOrNull()
         } else {
             runCatching {
                 ZipFile(source.toFile()).use { zip ->
-                    zip.getEntry(key)?.let { entry -> zip.getInputStream(entry).use { it.readAllBytes() } }
+                    val entry = zip.getEntry(key) ?: return@use null
+                    if (entry.isDirectory || entry.size > MAX_ASSET_BYTES) return@use null
+                    zip.getInputStream(entry).use { input ->
+                        input.readNBytes((MAX_ASSET_BYTES + 1).toInt()).takeIf { it.size <= MAX_ASSET_BYTES }
+                    }
                 }
             }.getOrNull()
+        }
+
+    private fun json(key: String): JsonObject? =
+        bytes(key)?.let { raw ->
+            runCatching { JsonParser.parseString(raw.toString(Charsets.UTF_8)).asJsonObject }.getOrNull()
         }
 
     private fun opaqueWidth(
@@ -192,6 +225,34 @@ internal class MinecraftClientResources(
             image
         }
 
+    private fun readBoundedImage(bytes: ByteArray): BufferedImage? =
+        runCatching {
+            ByteArrayInputStream(bytes).use { input ->
+                ImageIO.createImageInputStream(input)?.use { imageInput ->
+                    val readers = ImageIO.getImageReaders(imageInput)
+                    if (!readers.hasNext()) return@use null
+                    val reader = readers.next()
+                    try {
+                        reader.setInput(imageInput, true, true)
+                        val width = reader.getWidth(0)
+                        val height = reader.getHeight(0)
+                        if (!validImageDimensions(width, height)) return@use null
+                        reader.read(0)?.takeIf { validImageDimensions(it.width, it.height) }
+                    } finally {
+                        reader.dispose()
+                    }
+                }
+            }
+        }.getOrNull()
+
+    private fun validImageDimensions(
+        width: Int,
+        height: Int,
+    ): Boolean =
+        width in 1..MAX_IMAGE_DIMENSION &&
+            height in 1..MAX_IMAGE_DIMENSION &&
+            width.toLong() * height <= MAX_IMAGE_PIXELS
+
     private fun normalizeResourceId(id: String): String = if (':' in id) id else "minecraft:$id"
 
     private fun splitResourceId(id: String): Pair<String, String> = id.substringBefore(':') to id.substringAfter(':')
@@ -205,6 +266,10 @@ internal class MinecraftClientResources(
 
     companion object {
         private const val DEFAULT_ASCENT = 7
+        private const val MAX_ASSET_BYTES = 64L * 1024L * 1024L
+        private const val MAX_IMAGE_PIXELS = 16L * 1024L * 1024L
+        private const val MAX_IMAGE_DIMENSION = 16_384
+        private val DRIVE_PREFIX = Regex("^[A-Za-z]:($|/)")
     }
 }
 

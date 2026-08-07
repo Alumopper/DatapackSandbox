@@ -5,7 +5,11 @@ import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import java.io.BufferedInputStream
+import java.io.ByteArrayOutputStream
 import java.net.URI
+import java.nio.ByteBuffer
+import java.nio.charset.CharacterCodingException
+import java.nio.charset.CodingErrorAction
 import java.nio.charset.StandardCharsets
 import java.nio.file.FileSystem
 import java.nio.file.FileSystems
@@ -14,6 +18,7 @@ import java.nio.file.Path
 import java.security.MessageDigest
 import java.util.LinkedHashMap
 import java.util.zip.GZIPInputStream
+import java.util.zip.ZipFile
 import kotlin.io.path.exists
 import kotlin.io.path.extension
 import kotlin.io.path.isDirectory
@@ -64,6 +69,11 @@ object DatapackLoader {
     )
 
     private const val MAX_LOAD_CACHE_ENTRIES = 16
+    private const val MAX_PACK_ENTRIES = 100_000
+    private const val MAX_PACK_ARCHIVE_BYTES = 512L * 1024L * 1024L
+    private const val MAX_PACK_EXPANDED_BYTES = 512L * 1024L * 1024L
+    private const val MAX_PACK_ENTRY_BYTES = 64L * 1024L * 1024L
+    private const val MAX_TEXT_RESOURCE_BYTES = 16L * 1024L * 1024L
 
     private val loadCache =
         object : LinkedHashMap<LoadCacheKey, Datapack>(MAX_LOAD_CACHE_ENTRIES, 0.75f, true) {
@@ -365,13 +375,23 @@ object DatapackLoader {
         }
         if (normalized.isDirectory()) {
             val files = mutableListOf<FileFingerprint>()
+            val realRoot = normalized.toRealPath()
+            var entries = 0
+            var expandedBytes = 0L
             Files.walk(normalized).use { walk ->
-                walk.filter { it.isRegularFile() }.forEach { file ->
-                    files +=
-                        FileFingerprint(
-                            relativePath = file.relativeTo(normalized).toString().replace('\\', '/'),
-                            hash = sha256(file),
-                        )
+                walk.forEach { file ->
+                    entries++
+                    if (file.isRegularFile()) {
+                        validateDirectoryEntry(normalized, realRoot, file)
+                        expandedBytes = validatePackEntry(normalized, file.toString(), Files.size(file), entries, expandedBytes)
+                        files +=
+                            FileFingerprint(
+                                relativePath = file.relativeTo(normalized).toString().replace('\\', '/'),
+                                hash = sha256(file),
+                            )
+                    } else {
+                        expandedBytes = validatePackEntry(normalized, file.toString(), null, entries, expandedBytes)
+                    }
                 }
             }
             return PackFingerprint(
@@ -382,6 +402,14 @@ object DatapackLoader {
             )
         }
         if (normalized.isRegularFile() && normalized.extension.lowercase() == "zip") {
+            val archiveBytes = Files.size(normalized)
+            if (archiveBytes > MAX_PACK_ARCHIVE_BYTES) {
+                throw SandboxException(
+                    DiagnosticCode.INPUT_FORMAT,
+                    "Datapack archive '$normalized' exceeds the $MAX_PACK_ARCHIVE_BYTES-byte archive limit",
+                )
+            }
+            validateZipContents(normalized)
             return PackFingerprint(
                 path = normalized.toString(),
                 type = "zip",
@@ -389,6 +417,89 @@ object DatapackLoader {
             )
         }
         throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Datapack path must be a directory or .zip file: $normalized")
+    }
+
+    private fun validateZipContents(file: Path) {
+        try {
+            ZipFile(file.toFile()).use { zip ->
+                val entries = zip.entries()
+                val paths = hashSetOf<String>()
+                var entryCount = 0
+                var expandedBytes = 0L
+                while (entries.hasMoreElements()) {
+                    val entry = entries.nextElement()
+                    val path = normalizedArchiveEntry(file, entry.name)
+                    if (!paths.add(path)) {
+                        throw SandboxException(
+                            DiagnosticCode.INPUT_FORMAT,
+                            "Datapack '$file' contains duplicate archive path '$path'",
+                        )
+                    }
+                    entryCount++
+                    expandedBytes =
+                        validatePackEntry(file, entry.name, entry.size.takeUnless { entry.isDirectory }, entryCount, expandedBytes)
+                }
+            }
+        } catch (error: SandboxException) {
+            throw error
+        } catch (error: Exception) {
+            throw SandboxException(
+                DiagnosticCode.INPUT_FORMAT,
+                "Invalid datapack archive '$file': ${error.message}",
+                cause = error,
+            )
+        }
+    }
+
+    private fun validateDirectoryEntry(
+        pack: Path,
+        realRoot: Path,
+        file: Path,
+    ) {
+        val realFile = file.toRealPath()
+        if (!realFile.startsWith(realRoot)) {
+            throw SandboxException(
+                DiagnosticCode.INPUT_FORMAT,
+                "Datapack '$pack' entry '$file' resolves outside the datapack directory",
+            )
+        }
+    }
+
+    private fun normalizedArchiveEntry(
+        pack: Path,
+        name: String,
+    ): String {
+        fun reject(): Nothing =
+            throw SandboxException(
+                DiagnosticCode.INPUT_FORMAT,
+                "Datapack '$pack' contains unsafe archive path '$name'",
+            )
+
+        val portable = name.replace('\\', '/').removeSuffix("/")
+        if (portable.isEmpty() || portable.startsWith('/') || (portable.length >= 2 && portable[1] == ':')) reject()
+        val parts = portable.split('/')
+        if (parts.any { part -> part.isEmpty() || part == "." || part == ".." || part.any(Char::isISOControl) }) reject()
+        return parts.joinToString("/")
+    }
+
+    private fun validatePackEntry(
+        pack: Path,
+        name: String,
+        size: Long?,
+        entryCount: Int,
+        expandedBytes: Long,
+    ): Long {
+        fun reject(reason: String): Nothing =
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Datapack '$pack' $reason")
+
+        if (entryCount > MAX_PACK_ENTRIES) reject("contains more than $MAX_PACK_ENTRIES entries")
+        if (size == null) return expandedBytes
+        if (size < 0L) reject("entry '$name' has an unknown expanded size")
+        if (size > MAX_PACK_ENTRY_BYTES) reject("entry '$name' exceeds the $MAX_PACK_ENTRY_BYTES-byte single-entry limit")
+        if (size > MAX_PACK_EXPANDED_BYTES - expandedBytes) {
+            reject("expanded content exceeds the $MAX_PACK_EXPANDED_BYTES-byte limit")
+        }
+        return expandedBytes + size
     }
 
     private fun sha256(file: Path): String {
@@ -491,7 +602,7 @@ object DatapackLoader {
             )
         }
         try {
-            val element = JsonParser.parseString(Files.readString(meta, StandardCharsets.UTF_8))
+            val element = JsonParser.parseString(readUtf8(meta))
             if (!element.isJsonObject || !element.asJsonObject.has("pack")) {
                 throw IllegalArgumentException("pack.mcmeta must contain a top-level 'pack' object")
             }
@@ -606,7 +717,7 @@ object DatapackLoader {
                                 functions[id] =
                                     DatapackFunction(
                                         id,
-                                        readFunctionLines(file.toString(), Files.readAllLines(file, StandardCharsets.UTF_8)),
+                                        readFunctionLines(file.toString(), readUtf8Lines(file)),
                                     )
                             }
                     }
@@ -636,7 +747,7 @@ object DatapackLoader {
                     version = profile.id,
                 )
             }
-            return readFunctionLines(normalized.toString(), Files.readAllLines(normalized, StandardCharsets.UTF_8))
+            return readFunctionLines(normalized.toString(), readUtf8Lines(normalized))
         }
         return readFunctionLines(source.sourceName, source.content.orEmpty().lines())
     }
@@ -695,7 +806,7 @@ object DatapackLoader {
         return candidates.filter { it.exists() }.map { tagPath ->
             val json =
                 try {
-                    val parsed = JsonParser.parseString(Files.readString(tagPath, StandardCharsets.UTF_8))
+                    val parsed = JsonParser.parseString(readUtf8(tagPath))
                     if (!parsed.isJsonObject) {
                         throw IllegalArgumentException("Function tag must be a JSON object")
                     }
@@ -946,7 +1057,7 @@ object DatapackLoader {
                             val key = TagKey(registry, ResourceLocation(namespace, idPath))
                             val json =
                                 try {
-                                    JsonParser.parseString(Files.readString(file, StandardCharsets.UTF_8)).asJsonObject
+                                    JsonParser.parseString(readUtf8(file)).asJsonObject
                                 } catch (error: Exception) {
                                     throw SandboxException(
                                         code = DiagnosticCode.INPUT_FORMAT,
@@ -1070,7 +1181,7 @@ object DatapackLoader {
                                     }
                                 val element =
                                     try {
-                                        JsonParser.parseString(Files.readString(file, StandardCharsets.UTF_8))
+                                        JsonParser.parseString(readUtf8(file))
                                     } catch (error: Exception) {
                                         throw SandboxException(
                                             code = DiagnosticCode.INPUT_FORMAT,
@@ -1088,6 +1199,48 @@ object DatapackLoader {
         }
         return resources
     }
+
+    private fun readUtf8Lines(file: Path): List<String> = readUtf8(file).lineSequence().toList()
+
+    private fun readUtf8(file: Path): String {
+        val declaredSize = Files.size(file)
+        if (declaredSize > MAX_TEXT_RESOURCE_BYTES) throw textResourceLimit(file)
+        return Files.newInputStream(file).use { input ->
+            ByteArrayOutputStream(declaredSize.toInt()).use { output ->
+                val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+                var consumed = 0L
+                while (true) {
+                    val count = input.read(buffer)
+                    if (count < 0) break
+                    if (count.toLong() > MAX_TEXT_RESOURCE_BYTES - consumed) throw textResourceLimit(file)
+                    output.write(buffer, 0, count)
+                    consumed += count
+                }
+                try {
+                    // String(byte[], UTF_8) replaces malformed input. Resource files must
+                    // instead fail deterministically, matching Files.readString semantics.
+                    StandardCharsets.UTF_8
+                        .newDecoder()
+                        .onMalformedInput(CodingErrorAction.REPORT)
+                        .onUnmappableCharacter(CodingErrorAction.REPORT)
+                        .decode(ByteBuffer.wrap(output.toByteArray()))
+                        .toString()
+                } catch (error: CharacterCodingException) {
+                    throw SandboxException(
+                        DiagnosticCode.INPUT_FORMAT,
+                        "Datapack text resource '$file' is not valid UTF-8",
+                        cause = error,
+                    )
+                }
+            }
+        }
+    }
+
+    private fun textResourceLimit(file: Path): SandboxException =
+        SandboxException(
+            DiagnosticCode.INPUT_FORMAT,
+            "Datapack text resource '$file' exceeds the $MAX_TEXT_RESOURCE_BYTES-byte limit",
+        )
 
     private fun parseAdvancement(
         resource: ResourceJson,

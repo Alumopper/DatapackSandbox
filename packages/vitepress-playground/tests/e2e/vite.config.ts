@@ -8,7 +8,7 @@ export default defineConfig({
   worker: { format: 'es' },
   server: {
     host: '127.0.0.1',
-    port: 14173,
+    port: Number(process.env.DPS_PLAYGROUND_E2E_PORT ?? 14173),
     strictPort: true,
   },
 })

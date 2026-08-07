@@ -1,7 +1,8 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
 import { inferFunctionContext, isManifest } from "./functionContext";
-import { DiagnosticReport, ManifestReport, OutputEvent, RunReport, SnapshotDiff, TraceEvent } from "./model";
+import { CheckpointResult, DiagnosticReport, FunctionSource, ManifestReport, OutputEvent, RenderResult, ResourceReport, RunReport, SnapshotDiff, TraceEvent } from "./model";
+import { configuredRenderOptions } from "./renderOptions";
 import { SandboxClient } from "./sandboxClient";
 
 interface TrackedResult {
@@ -39,6 +40,46 @@ export class ActiveSandboxService {
   }
 
   stop(): void { this.client.close(); }
+
+  async saveCheckpoint(name = "default"): Promise<CheckpointResult> {
+    this.requireActive();
+    return this.client.request<CheckpointResult>("saveCheckpoint", { name });
+  }
+
+  async restoreCheckpoint(name = "default"): Promise<CheckpointResult> {
+    this.requireActive();
+    return this.client.request<CheckpointResult>("restoreCheckpoint", { name });
+  }
+
+  async deleteCheckpoint(name = "default"): Promise<CheckpointResult> {
+    this.requireActive();
+    return this.client.request<CheckpointResult>("deleteCheckpoint", { name });
+  }
+
+  async checkpointNames(): Promise<string[]> {
+    this.requireActive();
+    return (await this.client.request<{ names: string[] }>("checkpoints")).names;
+  }
+
+  async resources(): Promise<ResourceReport> {
+    this.requireActive();
+    return this.client.request<ResourceReport>("resources");
+  }
+
+  async render(): Promise<RenderResult> {
+    this.requireActive();
+    return this.client.request<RenderResult>("render", configuredRenderOptions());
+  }
+
+  async interrupt(): Promise<void> {
+    this.requireActive();
+    await this.client.request("interrupt");
+  }
+
+  async functionSource(id: string): Promise<FunctionSource> {
+    this.requireActive();
+    return this.client.request<FunctionSource>("functionSource", { id });
+  }
 
   requireActive(): void {
     if (!this.active) throw new Error("No active Datapack Sandbox. Run 'Datapack Sandbox: Start Sandbox' first.");

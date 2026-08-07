@@ -1,4 +1,4 @@
-# Public JVM API for moe.afox.dpsandbox:renderer:1.0.1
+# Public JVM API for moe.afox.dpsandbox:renderer:1.0.2
 public final class moe.afox.dpsandbox.render.AssetResolver {
   public moe.afox.dpsandbox.render.AssetResolver(moe.afox.dpsandbox.render.RenderAssets, java.util.List<moe.afox.dpsandbox.render.RenderDiagnostic>, boolean, long, java.util.Map<java.lang.String, byte[]>);
   public moe.afox.dpsandbox.render.AssetResolver(moe.afox.dpsandbox.render.RenderAssets, java.util.List, boolean, long, java.util.Map, int, kotlin.jvm.internal.DefaultConstructorMarker);
@@ -26,7 +26,6 @@ final class moe.afox.dpsandbox.render.AssetResolver$AnimatedFrame {
   public boolean equals(java.lang.Object);
 }
 final class moe.afox.dpsandbox.render.AssetResolver$AssetSource {
-  public static final moe.afox.dpsandbox.render.AssetResolver$AssetSource$Companion Companion;
   public moe.afox.dpsandbox.render.AssetResolver$AssetSource(java.nio.file.Path, java.lang.String);
   public final java.nio.file.Path getPath();
   public final java.lang.String getKind();
@@ -39,13 +38,18 @@ final class moe.afox.dpsandbox.render.AssetResolver$AssetSource {
   public int hashCode();
   public boolean equals(java.lang.Object);
 }
-public final class moe.afox.dpsandbox.render.AssetResolver$AssetSource$Companion {
-  public moe.afox.dpsandbox.render.AssetResolver$AssetSource$Companion(kotlin.jvm.internal.DefaultConstructorMarker);
-}
 public final class moe.afox.dpsandbox.render.AssetResolverKt {
   public static final kotlin.Pair<java.lang.String, java.lang.String> splitResourceId(java.lang.String);
   public static final java.lang.String normalizeResourceId(java.lang.String);
   public static final java.lang.String access$normalizeAssetKey(java.lang.String);
+}
+public final class moe.afox.dpsandbox.render.BoundedImageReader {
+  public static final moe.afox.dpsandbox.render.BoundedImageReader INSTANCE;
+  public static final long MAX_ENCODED_BYTES;
+  public static final long MAX_PIXELS;
+  public static final int MAX_DIMENSION;
+  public final java.awt.image.BufferedImage read(byte[]);
+  public final java.awt.image.BufferedImage read(java.nio.file.Path);
 }
 public final class moe.afox.dpsandbox.render.CompiledRealtimeGpuScene {
   public static final moe.afox.dpsandbox.render.CompiledRealtimeGpuScene$Companion Companion;

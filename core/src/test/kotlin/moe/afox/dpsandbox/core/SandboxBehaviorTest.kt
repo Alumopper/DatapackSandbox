@@ -206,6 +206,36 @@ class SandboxBehaviorTest {
     }
 
     @Test
+    fun `runs only due scheduled functions in deterministic order`() {
+        val sandbox =
+            createFunctionSandbox(
+                version = "26.2",
+                functionSources =
+                    listOf(
+                        FunctionSource.text("demo:first", "say first"),
+                        FunctionSource.text("demo:second", "say second"),
+                        FunctionSource.text("demo:future", "say future"),
+                    ),
+            )
+        sandbox.world.scheduledFunctions += ScheduledFunction(ResourceLocation.parse("demo:second"), 1)
+        sandbox.world.scheduledFunctions += ScheduledFunction(ResourceLocation.parse("demo:future"), 2)
+        sandbox.world.scheduledFunctions += ScheduledFunction(ResourceLocation.parse("demo:first"), 1)
+
+        sandbox.runTicks(1)
+
+        assertEquals(
+            listOf("first", "second"),
+            sandbox.world.outputs
+                .filter { it.channel == "chat" }
+                .map { it.rawText },
+        )
+        assertEquals(
+            listOf(ScheduledFunction(ResourceLocation.parse("demo:future"), 2)),
+            sandbox.world.scheduledFunctions,
+        )
+    }
+
+    @Test
     fun `warns for unsupported command branches by default`() {
         val sandbox = createSandbox("26.1.2", listOf(fixturePack()))
 

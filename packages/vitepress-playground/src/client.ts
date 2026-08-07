@@ -5,6 +5,7 @@ import type {
   PlaygroundDependencySource,
   PlaygroundDiagnostic,
   PlaygroundEvent,
+  PlaygroundFunctionSource,
   PlaygroundImportEntry,
   PlaygroundImportKind,
   PlaygroundImportResult,
@@ -18,6 +19,7 @@ import profileIndex from '../.generated/profiles/index.json'
 
 const packagedWorkerUrl = new URL(defaultWorkerUrl, import.meta.url).href
 const profileFiles = import.meta.glob('../.generated/profiles/[0-9]*.json', { import: 'default' })
+const DEFAULT_MAXIMUM_IMPORT_BYTES = 64 * 1024 * 1024
 
 interface GeneratedProfile {
   id: string
@@ -172,6 +174,15 @@ export class PlaygroundWorkerClient {
   async check(cellId: string, source: string): Promise<PlaygroundDiagnostic[]> {
     const event = await this.request('cell.check', { cellId, source }, (candidate) => candidate.type === 'diagnostic')
     return event.diagnostics ?? []
+  }
+
+  async readFunction(functionId: string): Promise<PlaygroundFunctionSource> {
+    const event = await this.request(
+      'session.function.read',
+      { functionId },
+      (candidate) => candidate.type === 'session.function' && candidate.kind === 'source',
+    )
+    return event.result as unknown as PlaygroundFunctionSource
   }
 
   render(cellId: string, render: PlaygroundRenderOptions): Promise<PlaygroundEvent> {
@@ -546,7 +557,7 @@ export class PlaygroundWorkerClient {
       throw new PlaygroundClientError('PRESET_FETCH_FAILED', `Unable to fetch preset '${id}'`, true, error)
     }
     if (!response.ok) throw new PlaygroundClientError('PRESET_FETCH_FAILED', `Preset '${id}' returned HTTP ${response.status}`)
-    const bytes = await response.arrayBuffer()
+    const bytes = await this.readImportResponse(response, `Preset '${id}'`)
     if (preset.sha256) {
       if (!crypto.subtle) throw new PlaygroundClientError('PRESET_INTEGRITY_UNAVAILABLE', 'SHA-256 verification is unavailable', false)
       const actual = toHex(await crypto.subtle.digest('SHA-256', bytes))
@@ -575,7 +586,7 @@ export class PlaygroundWorkerClient {
           `Dependency '${dependency.url}' returned HTTP ${response.status}`,
         )
       }
-      const bytes = await response.arrayBuffer()
+      const bytes = await this.readImportResponse(response, `Dependency '${dependency.url}'`)
       if (dependency.sha256) {
         if (!crypto.subtle) {
           throw new PlaygroundClientError('DEPENDENCY_INTEGRITY_UNAVAILABLE', 'SHA-256 verification is unavailable', false)
@@ -602,6 +613,62 @@ export class PlaygroundWorkerClient {
   private workerLimits(): PlaygroundBrowserLimits {
     const { requestTimeoutMs: _, cancelGraceMs: __, ...workerLimits } = this.options.limits ?? {}
     return workerLimits
+  }
+
+  private async readImportResponse(response: Response, source: string): Promise<ArrayBuffer> {
+    const maximumBytes = this.maximumImportBytes()
+    const declaredLength = Number(response.headers.get('content-length'))
+    if (Number.isFinite(declaredLength) && declaredLength > maximumBytes) {
+      await response.body?.cancel().catch(() => undefined)
+      throw this.importSizeError(source, maximumBytes)
+    }
+
+    // Chunked responses do not have a trustworthy Content-Length. Enforce the
+    // limit while reading so a remote preset cannot allocate an unbounded buffer.
+    if (!response.body) {
+      const bytes = await response.arrayBuffer()
+      if (bytes.byteLength > maximumBytes) throw this.importSizeError(source, maximumBytes)
+      return bytes
+    }
+    const reader = response.body.getReader()
+    const chunks: Uint8Array[] = []
+    let total = 0
+    try {
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        if (value.byteLength > maximumBytes - total) {
+          await reader.cancel().catch(() => undefined)
+          throw this.importSizeError(source, maximumBytes)
+        }
+        chunks.push(value)
+        total += value.byteLength
+      }
+    } finally {
+      reader.releaseLock()
+    }
+    const bytes = new Uint8Array(total)
+    let offset = 0
+    for (const chunk of chunks) {
+      bytes.set(chunk, offset)
+      offset += chunk.byteLength
+    }
+    return bytes.buffer
+  }
+
+  private maximumImportBytes(): number {
+    const configured = this.options.limits?.maximumImportBytes
+    return typeof configured === 'number' && Number.isInteger(configured) && configured > 0
+      ? configured
+      : DEFAULT_MAXIMUM_IMPORT_BYTES
+  }
+
+  private importSizeError(source: string, maximumBytes: number): PlaygroundClientError {
+    return new PlaygroundClientError(
+      'IMPORT_SIZE_LIMIT',
+      `${source} exceeds the ${maximumBytes} byte import limit`,
+      false,
+    )
   }
 
   private nextId(): string {

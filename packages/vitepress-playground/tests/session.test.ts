@@ -4,6 +4,38 @@ import type { PlaygroundViewportScene } from '../src/types'
 import { MockWorker } from './setup'
 
 describe('PlaygroundSessionController', () => {
+  it('serializes editor operations and publishes shared busy state', async () => {
+    const requests: Record<string, unknown>[] = []
+    const activities: Array<{ busy: boolean; pending: number; cellId?: string }> = []
+    MockWorker.responder = (worker, request) => {
+      requests.push(request)
+      if (request.type === 'transport.connect') worker.emit({ type: 'transport.ready', requestId: request.id })
+      if (request.type === 'session.create') worker.emit({ type: 'session.ready', requestId: request.id, sessionId: 'serialized' })
+    }
+    const controller = new PlaygroundSessionController({ notebook: { version: '26.2', cells: [] } })
+    controller.onActivity((activity) => activities.push(activity))
+    await controller.connect()
+
+    const first = controller.execute('editor-a', 'say first')
+    const second = controller.execute('editor-b', 'say second')
+    await vi.waitFor(() => expect(requests.filter((request) => request.type === 'cell.execute')).toHaveLength(1))
+    expect(activities.at(-1)).toMatchObject({ busy: true, pending: 2, cellId: 'editor-a' })
+
+    const firstRequest = requests.find((request) => request.type === 'cell.execute')!
+    MockWorker.instances[0].emit({
+      type: 'cell.status', requestId: firstRequest.id, cellId: firstRequest.cellId, status: 'idle',
+    })
+    await vi.waitFor(() => expect(requests.filter((request) => request.type === 'cell.execute')).toHaveLength(2))
+    const secondRequest = requests.filter((request) => request.type === 'cell.execute')[1]
+    MockWorker.instances[0].emit({
+      type: 'cell.status', requestId: secondRequest.id, cellId: secondRequest.cellId, status: 'idle',
+    })
+    await Promise.all([first, second])
+
+    expect(activities.at(-1)).toEqual({ busy: false, operation: undefined, cellId: undefined, pending: 0 })
+    controller.dispose()
+  })
+
   it('shares one Worker across scene, simulation, input, and reset operations', async () => {
     const requests: Record<string, unknown>[] = []
     const scene: PlaygroundViewportScene = {

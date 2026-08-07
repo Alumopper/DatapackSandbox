@@ -18,6 +18,32 @@ const CodeCellStub = {
 }
 
 describe('DpsPlayground', () => {
+  it('joins notebook playgrounds with the same sandbox id', async () => {
+    MockWorker.responder = (worker, request) => {
+      if (request.type === 'transport.connect') worker.emit({ type: 'transport.ready', requestId: request.id })
+      if (request.type === 'session.create') worker.emit({ type: 'session.ready', requestId: request.id, sessionId: 'notebooks' })
+    }
+    const first = mount(DpsPlayground, {
+      props: { notebook, sandboxId: 'notebook-world' },
+      global: { stubs: { CodeCell: CodeCellStub } },
+    })
+    const second = mount(DpsPlayground, {
+      props: { notebook, sandboxId: 'notebook-world' },
+      global: { stubs: { CodeCell: CodeCellStub } },
+    })
+    await vi.waitFor(() => {
+      expect(first.text()).toContain('Minecraft 26.2')
+      expect(second.text()).toContain('Minecraft 26.2')
+    })
+    expect(MockWorker.instances).toHaveLength(1)
+    expect(first.attributes('data-sandbox-id')).toBe('notebook-world')
+    expect(second.attributes('data-sandbox-id')).toBe('notebook-world')
+    first.unmount()
+    expect(MockWorker.instances[0].terminated).toBe(false)
+    second.unmount()
+    expect(MockWorker.instances[0].terminated).toBe(true)
+  })
+
   it('renders notebook cells, execution output, and an inline PNG', async () => {
     MockWorker.responder = (worker, request) => {
       if (request.type === 'transport.connect') worker.emit({ type: 'transport.ready', requestId: request.id })

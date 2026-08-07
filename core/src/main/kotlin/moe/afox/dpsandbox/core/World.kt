@@ -4,6 +4,7 @@ import com.google.gson.JsonArray
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 import java.util.UUID
+import java.util.function.Consumer
 
 /**
  * Integer block position in the sandbox world.
@@ -907,6 +908,10 @@ class SandboxWorld {
     val blocks: MutableMap<BlockPos, SandboxBlock> = linkedMapOf()
     val scheduledFunctions: MutableList<ScheduledFunction> = mutableListOf()
     val outputs: MutableList<OutputEvent> = mutableListOf()
+
+    // Output dispatch is hot while listener registration is rare. Replacing the
+    // immutable snapshot on writes avoids allocating a defensive copy per event.
+    private var outputListeners: List<Consumer<OutputEvent>> = emptyList()
     val traces: MutableList<CommandTraceEvent> = mutableListOf()
     val playerEventTraces: MutableList<PlayerEventTraceEvent> = mutableListOf()
     val bossbars: MutableMap<ResourceLocation, SandboxBossbar> = linkedMapOf()
@@ -926,6 +931,18 @@ class SandboxWorld {
         dayTime = (dayTime + 1).floorMod(24000)
         if (weatherDuration > 0) weatherDuration -= 1
         entities.forEach { entity -> entity.ageTicks += 1 }
+    }
+
+    internal fun takeScheduledFunctionsDueBy(tick: Long): List<ScheduledFunction> {
+        val due = mutableListOf<ScheduledFunction>()
+        val iterator = scheduledFunctions.iterator()
+        while (iterator.hasNext()) {
+            val entry = iterator.next()
+            if (entry.dueTick > tick) continue
+            due += entry
+            iterator.remove()
+        }
+        return due
     }
 
     /**
@@ -1057,6 +1074,32 @@ class SandboxWorld {
     }
 
     /**
+     * Registers a listener that is called synchronously for each future output event.
+     *
+     * Listeners are runtime observers: they are not included in snapshots or
+     * checkpoints. Registering the same listener instance more than once has no
+     * effect.
+     *
+     * @return `true` when the listener was added, or `false` when it was already registered.
+     */
+    fun addOutputListener(listener: Consumer<OutputEvent>): Boolean {
+        if (listener in outputListeners) return false
+        outputListeners = outputListeners + listener
+        return true
+    }
+
+    /**
+     * Stops a previously registered [listener] from receiving future output events.
+     *
+     * @return `true` when the listener was registered and removed.
+     */
+    fun removeOutputListener(listener: Consumer<OutputEvent>): Boolean {
+        if (listener !in outputListeners) return false
+        outputListeners = outputListeners - listener
+        return true
+    }
+
+    /**
      * Records an observable command output event.
      *
      * These events are used by REPL rendering, snapshots, manifest assertions,
@@ -1072,7 +1115,7 @@ class SandboxWorld {
         source: CommandSource? = currentCommandSource,
         rawText: String = text,
     ) {
-        outputs +=
+        val event =
             OutputEvent(
                 tick = gameTime,
                 command = command,
@@ -1084,6 +1127,8 @@ class SandboxWorld {
                 source = source,
                 rawText = rawText,
             )
+        outputs += event
+        outputListeners.forEach { it.accept(event) }
     }
 
     /**

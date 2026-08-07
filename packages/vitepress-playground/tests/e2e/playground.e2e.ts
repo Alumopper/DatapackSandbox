@@ -76,6 +76,25 @@ test('embeds the lightweight single-cell surface without notebook controls', asy
   await expect(cell.locator('img.dps-render')).toHaveCount(0)
 })
 
+test('shares a named sandbox across independent editors on one page', async ({ page }) => {
+  await page.goto('/?shared=1')
+  const builder = page.locator('[data-editor="builder"]')
+  const inspector = page.locator('[data-editor="inspector"]')
+  await expect(builder.locator('.dps-cell-space')).toHaveAttribute('data-state', 'ready', { timeout: 15_000 })
+  await expect(inspector.locator('.dps-cell-space')).toHaveAttribute('data-state', 'ready', { timeout: 15_000 })
+  await expect(builder.locator('.dps-cell-space')).toHaveAttribute('data-sandbox-id', 'playwright-shared-world')
+  await expect(inspector.locator('.dps-cell-space')).toHaveAttribute('data-sandbox-id', 'playwright-shared-world')
+
+  await builder.getByRole('button', { name: 'Run', exact: true }).click()
+  await expect(builder.getByText(/Executed 2 commands/)).toBeVisible()
+  await expect(inspector.locator('.dps-output')).toHaveCount(0)
+  await inspector.getByRole('button', { name: 'Run', exact: true }).click()
+  await inspector.locator('.dps-command-outputs summary').click()
+  await expect(inspector.locator('.dps-command-output')).toContainText('7')
+  await expect(inspector.locator('.dps-output pre')).toContainText('"text": "7"')
+  await expect(builder.locator('.cm-content')).toContainText('scoreboard players set #value shared 7')
+})
+
 test('matches abbreviated UUID entity targets in the TeaVM core', async ({ page }) => {
   await page.goto('/?cell=1')
   const cell = page.locator('.dps-cell-space')
@@ -139,10 +158,45 @@ test('loads lightweight dependencies before ready and keeps them after reset', a
   const cell = page.locator('.dps-cell-space')
   await expect(cell).toHaveAttribute('data-state', 'ready', { timeout: 15_000 })
   await cell.getByRole('button', { name: 'Run', exact: true }).click()
-  await expect(cell.getByText(/Executed 2 commands/)).toBeVisible()
+  await expect(cell.getByText(/Executed 3 commands/)).toBeVisible()
   await cell.getByRole('button', { name: 'Reset example', exact: true }).click()
   await cell.getByRole('button', { name: 'Run', exact: true }).click()
-  await expect(cell.getByText(/Executed 2 commands/)).toBeVisible()
+  await expect(cell.getByText(/Executed 3 commands/)).toBeVisible()
+})
+
+test('opens imported function sources with modifier-click and returns through callers', async ({ page }) => {
+  await page.goto('/?cell=1&dependencies=1')
+  const cell = page.locator('.dps-cell-space')
+  await expect(cell).toHaveAttribute('data-state', 'ready', { timeout: 15_000 })
+
+  const modifier = process.platform === 'darwin' ? 'Meta' : 'Control'
+  const dependencyLink = cell.locator('.cm-line').getByText('demo:dependency', { exact: true })
+  await dependencyLink.hover()
+  await page.keyboard.down(modifier)
+  await expect(dependencyLink).toHaveCSS('cursor', 'pointer')
+  await expect(dependencyLink).toHaveCSS('text-decoration-line', 'underline')
+  await dependencyLink.click()
+  await page.keyboard.up(modifier)
+  await expect(cell.locator('.dps-function-navigation')).toContainText('demo:dependency')
+  await expect(cell.locator('.cm-content')).toContainText('function demo:nested')
+
+  await page.keyboard.down(modifier)
+  await cell.locator('.cm-line').getByText('demo:nested', { exact: true }).click()
+  await page.keyboard.up(modifier)
+  await expect(cell.locator('.dps-function-navigation')).toContainText('demo:nested')
+  await expect(cell.locator('.cm-content')).toContainText('setblock 0 0 2 minecraft:stone')
+
+  const currentUrl = page.url()
+  await cell.locator('.cm-editor').focus()
+  await page.evaluate(() => {
+    window.dispatchEvent(new MouseEvent('mousedown', { button: 3, bubbles: true, cancelable: true }))
+    window.dispatchEvent(new MouseEvent('mouseup', { button: 3, bubbles: true, cancelable: true }))
+    window.dispatchEvent(new MouseEvent('auxclick', { button: 3, bubbles: true, cancelable: true }))
+  })
+  await expect(cell.locator('.cm-content')).toContainText('function demo:nested')
+  expect(page.url()).toBe(currentUrl)
+  await cell.getByRole('button', { name: /Back/ }).click()
+  await expect(cell.locator('.cm-content')).toContainText('function demo:dependency')
 })
 
 test('shows the explicit Worker failure state', async ({ page }, testInfo) => {

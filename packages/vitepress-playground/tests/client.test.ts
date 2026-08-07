@@ -18,6 +18,14 @@ describe('PlaygroundWorkerClient', () => {
           result: { suggestions: [{ value: 'minecraft:stone', start: 0, end: 2 }] },
         })
       }
+      if (request.type === 'session.function.read') {
+        worker.emit({
+          type: 'session.function',
+          requestId: request.id,
+          kind: 'source',
+          result: { id: request.functionId, path: 'data/demo/function/main.mcfunction', source: 'say source' },
+        })
+      }
     }
     const client = new PlaygroundWorkerClient()
     await client.connect()
@@ -26,6 +34,11 @@ describe('PlaygroundWorkerClient', () => {
     await expect(client.complete('cell', 'mi', 2)).resolves.toEqual([
       { value: 'minecraft:stone', start: 0, end: 2 },
     ])
+    await expect(client.readFunction('demo:main')).resolves.toEqual({
+      id: 'demo:main',
+      path: 'data/demo/function/main.mcfunction',
+      source: 'say source',
+    })
     expect(MockWorker.instances).toHaveLength(1)
     client.close()
     expect(MockWorker.instances[0].terminated).toBe(true)
@@ -205,6 +218,38 @@ describe('PlaygroundWorkerClient', () => {
     expect(MockWorker.instances[0].terminated).toBe(true)
     expect(MockWorker.instances[1].options?.type).toBeUndefined()
     expect(MockWorker.instances[1].terminated).toBe(false)
+    client.close()
+  })
+
+  it('cancels a chunked preset response when it exceeds the Worker import limit', async () => {
+    let cancelled = false
+    const chunks = [new Uint8Array([1, 2, 3]), new Uint8Array([4, 5, 6])]
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(new ReadableStream<Uint8Array>({
+      pull(controller) {
+        const chunk = chunks.shift()
+        if (chunk) controller.enqueue(chunk)
+      },
+      cancel() {
+        cancelled = true
+      },
+    }))))
+    MockWorker.responder = (worker, request) => {
+      if (request.type === 'transport.connect') worker.emit({ type: 'transport.ready', requestId: request.id })
+      if (request.type === 'session.create') {
+        worker.emit({ type: 'session.ready', requestId: request.id, sessionId: 'bounded-fetch' })
+      }
+    }
+    const client = new PlaygroundWorkerClient({
+      limits: { maximumImportBytes: 4 },
+      presets: { oversized: { url: '/oversized.zip' } },
+    })
+    await client.connect()
+
+    const failure = await client.createSession({ version: '26.2', preset: 'oversized', cells: [] }, {}).catch((error) => error)
+
+    expect(failure).toBeInstanceOf(PlaygroundClientError)
+    expect(failure.code).toBe('IMPORT_SIZE_LIMIT')
+    expect(cancelled).toBe(true)
     client.close()
   })
 })

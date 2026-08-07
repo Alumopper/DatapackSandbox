@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import CodeCell from './CodeCell.vue'
+import ExecutionOutput from './ExecutionOutput.vue'
+import FunctionSourceViewer from './FunctionSourceViewer.vue'
 import { PlaygroundClientError } from './client'
+import { acquirePageSandbox, createComponentScopeId, normalizedSandboxId } from './page-sandbox'
 import { PlaygroundSessionController } from './session'
 import type {
   PlaygroundBrowserLimits,
@@ -40,6 +42,7 @@ const props = withDefaults(defineProps<{
   checkpointName?: string
   showDetails?: boolean
   siteId?: string
+  sandboxId?: string
   limits?: PlaygroundBrowserLimits
   dependencies?: PlaygroundDependencySource[]
   workerUrl?: string
@@ -81,7 +84,8 @@ const result = reactive<CellResult>({ status: 'idle', diagnostics: [], hasRun: f
 const sessionAction = ref<'render' | 'reset' | 'checkpoint' | 'restore' | 'capture' | 'gif'>()
 const hasCheckpoint = ref(false)
 const animationFrameCount = ref(0)
-const isBusy = computed(() => result.status !== 'idle' || sessionAction.value !== undefined)
+const sessionBusy = ref(false)
+const isBusy = computed(() => sessionBusy.value || result.status !== 'idle' || sessionAction.value !== undefined)
 const hasExampleChanges = computed(() => (
   source.value !== initialSource.value
   || result.hasRun
@@ -96,51 +100,85 @@ const hasExampleChanges = computed(() => (
 const pendingModelValues = new Set<string>()
 let sessionController: PlaygroundSessionController | undefined
 let ownsSession = false
+let releasePageSandbox: (() => void) | undefined
 let unsubscribeEvents: (() => void) | undefined
 let unsubscribeConnection: (() => void) | undefined
+let unsubscribeActivity: (() => void) | undefined
 let disposed = false
+const componentScopeId = createComponentScopeId()
+const effectiveSandboxId = computed(() => props.session ? undefined : normalizedSandboxId(props.sandboxId))
 const viewportOptions = computed<PlaygroundViewportOptions>(() => props.viewport === true ? {} : props.viewport || {})
 
 async function connect(): Promise<void> {
-  unsubscribeEvents?.()
-  unsubscribeConnection?.()
-  if (ownsSession) sessionController?.dispose()
+  releaseCurrentSession()
   connection.value = 'connecting'
   hasCheckpoint.value = false
   animationFrameCount.value = 0
   result.error = undefined
-  const next = props.session ?? new PlaygroundSessionController({
-    notebook: {
-      version: props.version,
-      cells: [{ id: props.cellId, type: 'code', source: source.value }],
-    },
-    render: effectiveRender(),
-    siteId: props.siteId,
-    workerUrl: props.workerUrl,
-    limits: props.limits,
-    dependencies: props.dependencies,
-  })
-  sessionController = next
-  ownsSession = !props.session
-  unsubscribeEvents = next.onEvent(handleEvent)
-  unsubscribeConnection = next.onConnection((state) => {
-    if (sessionController !== next || disposed) return
-    if (state === 'connecting') {
-      connection.value = 'connecting'
-      hasCheckpoint.value = false
-      animationFrameCount.value = 0
-    }
-    if (state === 'closed') connection.value = 'closed'
-    if (state === 'unavailable') connection.value = 'unavailable'
-  })
+  let next: PlaygroundSessionController | undefined
   try {
+    const options = {
+      notebook: {
+        version: props.version,
+        cells: [{ id: props.cellId, type: 'code' as const, source: source.value }],
+      },
+      render: effectiveRender(),
+      siteId: props.siteId,
+      workerUrl: props.workerUrl,
+      limits: props.limits,
+      dependencies: props.dependencies,
+    }
+    if (props.session) {
+      next = props.session
+    } else if (effectiveSandboxId.value) {
+      const lease = acquirePageSandbox(effectiveSandboxId.value, options)
+      next = lease.controller
+      releasePageSandbox = lease.release
+    } else {
+      next = new PlaygroundSessionController(options)
+      ownsSession = true
+    }
+    sessionController = next
+    unsubscribeEvents = next.onEvent(handleEvent)
+    unsubscribeConnection = next.onConnection((state) => {
+      if (sessionController !== next || disposed) return
+      if (state === 'connecting') {
+        connection.value = 'connecting'
+        hasCheckpoint.value = false
+        animationFrameCount.value = 0
+      }
+      if (state === 'closed') connection.value = 'closed'
+      if (state === 'unavailable') connection.value = 'unavailable'
+    })
+    unsubscribeActivity = next.onActivity((activity) => {
+      if (sessionController === next && !disposed) sessionBusy.value = activity.busy
+    })
     await next.connect()
     connection.value = 'ready'
   } catch (error) {
-    if (sessionController !== next || disposed) return
+    if (disposed || (next && sessionController !== next)) return
     handleClientError(error, 'WORKER_UNAVAILABLE')
     connection.value = 'unavailable'
   }
+}
+
+function releaseCurrentSession(): void {
+  unsubscribeEvents?.()
+  unsubscribeConnection?.()
+  unsubscribeActivity?.()
+  unsubscribeEvents = undefined
+  unsubscribeConnection = undefined
+  unsubscribeActivity = undefined
+  if (ownsSession) sessionController?.dispose()
+  releasePageSandbox?.()
+  ownsSession = false
+  releasePageSandbox = undefined
+  sessionController = undefined
+  sessionBusy.value = false
+}
+
+function sessionCellId(cellId = props.cellId): string {
+  return `${componentScopeId}:${cellId}`
 }
 
 async function run(): Promise<void> {
@@ -152,7 +190,7 @@ async function run(): Promise<void> {
   result.diagnostics = []
   result.status = 'running'
   try {
-    await sessionController.execute(props.cellId, source.value, effectiveRender())
+    await sessionController.execute(sessionCellId(), source.value, effectiveRender())
     result.hasRun = true
     if (effectiveAnimation().captureOnExecute) await captureAnimationFrame()
   } catch (error) {
@@ -185,7 +223,7 @@ async function returnToPoint(): Promise<void> {
     const checkpoint = await sessionController.restoreCheckpoint(props.checkpointName)
     clearResult()
     emit('checkpoint', { kind: 'restored', ...checkpoint })
-    await sessionController.render(props.cellId, { ...effectiveRender(), auto: false })
+    await sessionController.render(sessionCellId(), { ...effectiveRender(), auto: false })
   } catch (error) {
     handleClientError(error, 'CHECKPOINT_FAILED')
   } finally {
@@ -200,7 +238,7 @@ async function captureAnimationFrame(): Promise<boolean> {
   try {
     const options = effectiveAnimation()
     const event = await sessionController.captureAnimationFrame(
-      props.cellId,
+      sessionCellId(),
       { auto: false, width: options.width, height: options.height },
       options.delayMs,
     )
@@ -220,7 +258,7 @@ async function exportGif(): Promise<void> {
   result.error = undefined
   try {
     if (animationFrameCount.value === 0 && !await captureAnimationFrame()) return
-    const event = await sessionController.exportAnimation(props.cellId, effectiveAnimation().repeat)
+    const event = await sessionController.exportAnimation(sessionCellId(), effectiveAnimation().repeat)
     if (!event.bytes) throw new PlaygroundClientError('ANIMATION_EXPORT_FAILED', 'Worker returned no GIF bytes')
     const frameCount = Number(event.result?.frameCount ?? animationFrameCount.value)
     const url = URL.createObjectURL(new Blob([event.bytes], { type: 'image/gif' }))
@@ -242,7 +280,7 @@ async function renderCell(): Promise<void> {
   sessionAction.value = 'render'
   result.error = undefined
   try {
-    await sessionController.render(props.cellId, { ...effectiveRender(), auto: false })
+    await sessionController.render(sessionCellId(), { ...effectiveRender(), auto: false })
   } catch (error) {
     handleClientError(error, 'RENDER_ERROR')
   } finally {
@@ -271,7 +309,7 @@ async function resetExample(): Promise<void> {
 async function complete(value: string, cursor: number) {
   if (!sessionController || connection.value !== 'ready' || isBusy.value) return []
   try {
-    return await sessionController.complete(props.cellId, value, cursor)
+    return await sessionController.complete(sessionCellId(), value, cursor)
   } catch {
     return []
   }
@@ -280,10 +318,17 @@ async function complete(value: string, cursor: number) {
 async function check(value: string): Promise<PlaygroundDiagnostic[]> {
   if (!sessionController || connection.value !== 'ready' || isBusy.value || sessionController.isPlaying) return []
   try {
-    return await sessionController.check(props.cellId, value)
+    return await sessionController.check(sessionCellId(), value)
   } catch {
     return []
   }
+}
+
+async function resolveFunction(id: string) {
+  if (!sessionController || connection.value !== 'ready') {
+    throw new PlaygroundClientError('SESSION_LOST', 'The sandbox is not ready to open function sources')
+  }
+  return await sessionController.readFunction(id)
 }
 
 function updateSource(value: string): void {
@@ -297,7 +342,7 @@ function handleEvent(event: PlaygroundEvent): void {
     connection.value = 'ready'
     if (event.sessionId) emit('ready', event.sessionId)
   }
-  if (event.cellId !== props.cellId) return
+  if (event.cellId !== sessionCellId()) return
   if (event.type === 'cell.status' && (event.status === 'running' || event.status === 'interrupting' || event.status === 'idle')) {
     result.status = event.status
   } else if (event.type === 'cell.output' && event.kind === 'execution') {
@@ -391,13 +436,16 @@ watch(() => props.session, () => {
   if (!disposed) void connect()
 })
 
+watch(() => props.sandboxId, () => {
+  clearResult()
+  if (!disposed && !props.session) void connect()
+})
+
 onMounted(() => void connect())
 onBeforeUnmount(() => {
   disposed = true
   revokeImage()
-  unsubscribeEvents?.()
-  unsubscribeConnection?.()
-  if (ownsSession) sessionController?.dispose()
+  releaseCurrentSession()
 })
 
 defineExpose({
@@ -418,6 +466,7 @@ defineExpose({
     :class="[`dps-theme-${theme}`, { 'dps-cell-space-compact': compact }]"
     :data-state="connection"
     :aria-busy="isBusy"
+    :data-sandbox-id="effectiveSandboxId"
     aria-label="Datapack Sandbox cell"
   >
     <article class="dps-cell dps-cell-code" :class="{ 'dps-cell-code-compact': compact }">
@@ -461,7 +510,7 @@ defineExpose({
           </button>
         </div>
       </div>
-      <CodeCell
+      <FunctionSourceViewer
         :model-value="source"
         :cell-id="cellId"
         :read-only="readOnly"
@@ -469,6 +518,8 @@ defineExpose({
         :diagnostics="result.diagnostics"
         :complete="complete"
         :check="check"
+        :resolve-function="resolveFunction"
+        :compact="compact"
         @update:model-value="updateSource"
         @run="run"
       />
@@ -480,13 +531,13 @@ defineExpose({
         <strong>{{ result.error.code }}</strong>
         <span>{{ result.error.message }}</span>
       </div>
-      <div v-if="result.summary" class="dps-output">
-        <p>{{ result.summary }}</p>
-        <details v-if="!compact && showDetails && result.raw">
-          <summary>Structured result</summary>
-          <pre>{{ JSON.stringify(result.raw, null, 2) }}</pre>
-        </details>
-      </div>
+      <ExecutionOutput
+        v-if="result.summary"
+        :summary="result.summary"
+        :raw="result.raw"
+        :show-readable="showDetails"
+        :show-structured="!compact && showDetails"
+      />
       <img
         v-if="!compact && result.image"
         class="dps-render"

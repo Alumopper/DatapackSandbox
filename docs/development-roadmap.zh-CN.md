@@ -361,7 +361,7 @@
   - fat jar smoke test、Windows/Linux 命令测试、README 示例测试。
   - standalone jar smoke 已覆盖 schema 导出与防漂移检查、示例 manifest、命令/资源/版本文档中英检查、资源索引、diff、benchmark、README loot/event/stdin 示例、run 断言简写、执行边界和预期失败命令的 diagnostic 断言。
   - `releaseCheck` 聚合全部 JVM 模块检查、schema 可复现性、API/架构门禁、standalone CLI smoke、release jar/sources jar/javadoc jar、Maven POM 生成检查和非 snapshot 语义版本检查；CI 在 Linux 和 Windows 矩阵上运行该门禁。
-  - Maven 发布准备已完成：统一坐标 `moe.afox.dpsandbox`、release 版本号 `1.0.1`、`maven-publish` publication、源码包、文档包、POM 元数据和带凭据校验的远端仓库配置均可检查。
+  - Maven 发布准备已完成：统一坐标 `moe.afox.dpsandbox`、release 版本号 `1.0.2`、`maven-publish` publication、源码包、文档包、POM 元数据和带凭据校验的远端仓库配置均可检查。
 
 验收标准：
 
@@ -410,4 +410,4 @@ P2 1.0 收口状态：
 2. `0.3`：`execute/data/loot/item` 高频路径补齐，命令生成器测试模板可用。
 3. `0.4`：玩家事件和 world fixture 大幅增强，examples 覆盖主要使用场景。
 4. `0.5`：多版本 profile 更新流程稳定，P0/P1 资源覆盖完成。
-5. `1.0`：核心 API 稳定、CLI 行为稳定、文档示例可验证、CI 覆盖完整，适合作为数据包本地回归测试工具长期使用；当前发布版本标记为 `1.0.1`。
+5. `1.0`：核心 API 稳定、CLI 行为稳定、文档示例可验证、CI 覆盖完整，适合作为数据包本地回归测试工具长期使用；当前发布版本标记为 `1.0.2`。

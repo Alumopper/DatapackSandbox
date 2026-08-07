@@ -2,10 +2,14 @@ import { ChildProcessWithoutNullStreams, spawn } from "node:child_process";
 import * as readline from "node:readline";
 import * as vscode from "vscode";
 import { CliRunner } from "./cli";
+import { ServeHello } from "./model";
 
 interface Pending { method: string; resolve(value: unknown): void; reject(error: Error): void; }
 interface ServeError { code?: string; message?: string; version?: string; command?: string; location?: { file?: string; line?: number; command?: string }; }
 interface Response { id: string | null; ok: boolean; result?: unknown; error?: ServeError; }
+
+const MAX_DIAGNOSTIC_TEXT = 64 * 1024;
+const MAX_INVALID_RESPONSE_PREVIEW = 4 * 1024;
 
 export interface SandboxErrorDetails {
   title: string;
@@ -31,9 +35,9 @@ export class SandboxClient implements vscode.Disposable {
   private child?: ChildProcessWithoutNullStreams;
   private sequence = 0;
   private readonly pending = new Map<string, Pending>();
-  private hello?: unknown;
+  private hello?: ServeHello;
   private state?: Record<string, unknown>;
-  private startup?: { promise: Promise<unknown>; resolve(value: unknown): void; reject(error: Error): void; timer: NodeJS.Timeout };
+  private startup?: { promise: Promise<ServeHello>; resolve(value: ServeHello): void; reject(error: Error): void; timer: NodeJS.Timeout };
   private startupStderr = "";
   private readonly stateEmitter = new vscode.EventEmitter<Record<string, unknown> | undefined>();
   readonly onDidChangeState = this.stateEmitter.event;
@@ -41,8 +45,10 @@ export class SandboxClient implements vscode.Disposable {
   constructor(private readonly cli: CliRunner, private readonly output: vscode.OutputChannel) {}
   get activeState(): Record<string, unknown> | undefined { return this.state; }
   get hasActiveSandbox(): boolean { return Boolean(this.state); }
+  get capabilities(): Readonly<Record<string, boolean | string>> { return this.hello?.capabilities ?? {}; }
+  supports(capability: string): boolean { return this.capabilities[capability] === true; }
 
-  async start(): Promise<unknown> {
+  async start(): Promise<ServeHello> {
     if (this.child && this.hello) return this.hello;
     if (this.startup) return this.startup.promise;
     let jar: string;
@@ -61,9 +67,9 @@ export class SandboxClient implements vscode.Disposable {
     this.child = child;
     this.hello = undefined;
     this.startupStderr = "";
-    let resolveStartup!: (value: unknown) => void;
+    let resolveStartup!: (value: ServeHello) => void;
     let rejectStartup!: (error: Error) => void;
-    const promise = new Promise<unknown>((resolve, reject) => { resolveStartup = resolve; rejectStartup = reject; });
+    const promise = new Promise<ServeHello>((resolve, reject) => { resolveStartup = resolve; rejectStartup = reject; });
     const timer = setTimeout(() => this.stop(new SandboxClientError({
       title: "Datapack Sandbox took too long to start",
       message: "The CLI did not become ready within 15 seconds.",
@@ -71,7 +77,13 @@ export class SandboxClient implements vscode.Disposable {
       hint: "Confirm that Java 25 is installed, then check the Datapack Sandbox output channel.",
     })), 15000);
     this.startup = { promise, resolve: resolveStartup, reject: rejectStartup, timer };
-    child.stderr.on("data", (chunk) => { const text = chunk.toString(); this.startupStderr += text; this.output.append(text); });
+    child.stderr.on("data", (chunk) => {
+      const text = chunk.toString();
+      // Custom JARs can write indefinitely. Keep only the diagnostic tail used
+      // by startup/exit errors while still streaming the full text to VS Code.
+      this.startupStderr = `${this.startupStderr}${text}`.slice(-MAX_DIAGNOSTIC_TEXT);
+      this.output.append(text);
+    });
     child.once("error", (error: NodeJS.ErrnoException) => {
       if (this.child !== child) return;
       this.stop(new SandboxClientError({
@@ -97,9 +109,15 @@ export class SandboxClient implements vscode.Disposable {
   async request<T>(method: string, params: Record<string, unknown> = {}): Promise<T> {
     await this.start();
     const id = String(++this.sequence);
+    const payload = `${JSON.stringify({ id, method, params })}\n`;
+    const child = this.child;
+    if (!child || child.stdin.destroyed) throw new Error("Datapack Sandbox CLI is not writable");
     return new Promise<T>((resolve, reject) => {
       this.pending.set(id, { method, resolve: (value) => resolve(value as T), reject });
-      this.child?.stdin.write(`${JSON.stringify({ id, method, params })}\n`);
+      child.stdin.write(payload, (error) => {
+        if (!error || !this.pending.delete(id)) return;
+        reject(error);
+      });
     });
   }
 
@@ -113,9 +131,21 @@ export class SandboxClient implements vscode.Disposable {
   dispose(): void { this.stop(new Error("Datapack Sandbox client disposed")); this.stateEmitter.dispose(); }
 
   private receive(line: string): void {
-    let response: Response;
-    try { response = JSON.parse(line) as Response; } catch { this.output.appendLine(`[serve] invalid JSON: ${line}`); return; }
+    let parsed: unknown;
+    try { parsed = JSON.parse(line); } catch {
+      this.logInvalidResponse("invalid JSON", line);
+      return;
+    }
+    if (!isServeResponse(parsed)) {
+      this.logInvalidResponse("invalid response", line);
+      return;
+    }
+    const response = parsed;
     if (response.id === null) {
+      if (!isServeHello(response.result)) {
+        this.stop(new Error("Datapack Sandbox CLI returned an invalid serve handshake"));
+        return;
+      }
       this.hello = response.result;
       const startup = this.startup;
       if (startup) {
@@ -139,6 +169,10 @@ export class SandboxClient implements vscode.Disposable {
   }
 
   private setState(state: Record<string, unknown>): void { this.state = state; this.stateEmitter.fire(state); }
+  private logInvalidResponse(reason: string, line: string): void {
+    const suffix = line.length > MAX_INVALID_RESPONSE_PREVIEW ? "…" : "";
+    this.output.appendLine(`[serve] ${reason}: ${line.slice(0, MAX_INVALID_RESPONSE_PREVIEW)}${suffix}`);
+  }
   private stop(error: Error): void {
     const child = this.child; this.child = undefined; child?.kill();
     this.hello = undefined;
@@ -147,6 +181,23 @@ export class SandboxClient implements vscode.Disposable {
     for (const pending of this.pending.values()) pending.reject(error);
     this.pending.clear(); this.state = undefined; this.stateEmitter.fire(undefined);
   }
+}
+
+function isServeResponse(value: unknown): value is Response {
+  if (!value || typeof value !== "object") return false;
+  const response = value as Partial<Response>;
+  return (response.id === null || typeof response.id === "string") && typeof response.ok === "boolean";
+}
+
+function isServeHello(value: unknown): value is ServeHello {
+  if (!value || typeof value !== "object") return false;
+  const hello = value as Partial<ServeHello>;
+  return hello.protocol === "dps-jsonl"
+    && typeof hello.defaultVersion === "string"
+    && Array.isArray(hello.versions)
+    && hello.versions.every((version) => typeof version === "string")
+    && Boolean(hello.capabilities && typeof hello.capabilities === "object")
+    && Object.values(hello.capabilities ?? {}).every((capability) => typeof capability === "boolean" || typeof capability === "string");
 }
 
 function requestError(method: string, error?: ServeError): SandboxClientError {
@@ -160,6 +211,12 @@ function requestError(method: string, error?: ServeError): SandboxClientError {
     applyWorldFixture: "World fixture could not be applied",
     injectPlayerEvent: "Player event could not be injected",
     tick: "Sandbox ticks could not be advanced",
+    render: "Sandbox frame could not be rendered",
+    saveCheckpoint: "Sandbox checkpoint could not be saved",
+    restoreCheckpoint: "Sandbox checkpoint could not be restored",
+    deleteCheckpoint: "Sandbox checkpoint could not be deleted",
+    functionSource: "Function source could not be opened",
+    interrupt: "Sandbox execution could not be interrupted",
   };
   const hints: Record<string, string> = {
     INPUT_FORMAT: "Check the selected Minecraft profile, command syntax, and input paths.",
