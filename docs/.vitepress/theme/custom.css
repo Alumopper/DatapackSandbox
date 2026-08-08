@@ -76,12 +76,12 @@ body {
 
 .VPNavBarTitle .logo {
   transition: transform 180ms ease, filter 180ms ease;
-  filter: drop-shadow(0 6px 16px rgba(31, 209, 143, 0.18));
+  filter: drop-shadow(0 4px 12px rgba(31, 209, 143, 0.16));
 }
 
 .VPNavBarTitle:hover .logo {
-  transform: translateY(-1px) rotate(-2deg) scale(1.04);
-  filter: drop-shadow(0 8px 22px rgba(31, 209, 143, 0.3));
+  transform: translateY(-1px) scale(1.04);
+  filter: drop-shadow(0 6px 16px rgba(31, 209, 143, 0.24));
 }
 
 .VPNavBarTitle .nav-bar-title-text {
@@ -150,8 +150,8 @@ body {
 }
 
 .VPHero {
-  padding-top: 212px !important;
-  padding-bottom: 84px !important;
+  padding-top: 150px !important;
+  padding-bottom: 72px !important;
 }
 
 .VPHero .container {
@@ -179,7 +179,7 @@ body {
   margin: 0 10px 1px 0;
   border-radius: 50%;
   background: var(--dps-green);
-  box-shadow: 0 0 18px var(--dps-green);
+  box-shadow: 0 0 10px var(--dps-green);
   content: "";
 }
 
@@ -219,11 +219,11 @@ body {
 
 .VPButton.brand {
   border-color: transparent !important;
-  box-shadow: 0 10px 32px rgba(37, 218, 148, 0.2);
+  box-shadow: 0 6px 20px rgba(37, 218, 148, 0.16);
 }
 
 .VPButton.brand:hover {
-  box-shadow: 0 14px 40px rgba(37, 218, 148, 0.3);
+  box-shadow: 0 10px 26px rgba(37, 218, 148, 0.24);
 }
 
 .VPButton.alt {
@@ -235,27 +235,25 @@ body {
 .VPHero .image-container {
   width: 390px;
   height: 390px;
-  transform: translateX(50px) translateY(-50px);
 }
 
 .VPHero .image-bg {
   width: 340px;
   height: 340px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(37, 218, 148, 0.19), rgba(37, 218, 148, 0.04) 52%, transparent 72%);
-  filter: blur(2px);
+  background: radial-gradient(circle, rgba(37, 218, 148, 0.16), rgba(37, 218, 148, 0.035) 52%, transparent 72%);
 }
 
 .VPHero .image-src {
   width: 300px;
   height: 300px;
-  filter: drop-shadow(0 34px 70px rgba(0, 0, 0, 0.38));
+  filter: drop-shadow(0 24px 48px rgba(0, 0, 0, 0.32));
   animation: dps-float 7s ease-in-out infinite;
 }
 
 @keyframes dps-float {
-  0%, 100% { transform: translateY(-50%) rotate(-1deg) translateX(-50%); }
-  50% { transform: translateY(var(-50%-12px)) rotate(1deg) translateX(-50%); }
+  0%, 100% { transform: translateX(-50%) translateY(-50%) rotate(-1deg); }
+  50% { transform: translateX(-50%) translateY(calc(-50% - 12px)) rotate(1deg); }
 }
 
 .VPFeatures {
@@ -294,7 +292,6 @@ body {
   width: 44px;
   height: 2px;
   background: var(--dps-green);
-  box-shadow: 0 0 16px rgba(39, 217, 149, 0.5);
   content: "";
 }
 
@@ -420,7 +417,7 @@ body {
   border: 1px solid rgba(91, 236, 169, 0.25);
   border-radius: 16px;
   background: #07110e;
-  box-shadow: 0 34px 90px rgba(0, 0, 0, 0.36), 0 0 0 1px rgba(0, 0, 0, 0.22) inset;
+  box-shadow: 0 22px 60px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(0, 0, 0, 0.22) inset;
 }
 
 .terminal-card::after {
@@ -660,7 +657,7 @@ body {
   border: 1px solid rgba(152, 220, 187, 0.15);
   border-radius: 11px;
   background: #08130f;
-  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.18);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.14);
 }
 
 .vp-doc div[class*='language-'] pre,

@@ -284,7 +284,19 @@ const enThemeConfig = {
 } satisfies ThemeConfig
 
 export default defineConfigWithTheme<ThemeConfig>({
+  ...baseConfig,
   vite: {
+    ...baseConfig.vite,
+    plugins: (baseConfig.vite?.plugins ?? []).filter((entry) => {
+      const plugins = Array.isArray(entry) ? entry : [entry]
+      return !plugins.some(
+        (plugin) =>
+          plugin &&
+          typeof plugin === 'object' &&
+          'name' in plugin &&
+          String(plugin.name).startsWith('vitepress-plugin-llms'),
+      )
+    }),
     server: {
       fs: {
         // The playground is a workspace package whose built, self-contained
@@ -293,7 +305,6 @@ export default defineConfigWithTheme<ThemeConfig>({
       },
     },
   },
-  extends: baseConfig,
   title: 'Datapack Sandbox',
   description: 'Clean-room Minecraft Java datapack sandbox documentation.',
   lang: 'zh-CN',
@@ -304,6 +315,9 @@ export default defineConfigWithTheme<ThemeConfig>({
   markdown: {
     html: false,
     lineNumbers: true,
+    headers: {
+      level: [2, 3],
+    },
     config(md) {
       md.block.ruler.before('paragraph', 'playground-demo', (state, startLine, _endLine, silent) => {
         const start = state.bMarks[startLine] + state.tShift[startLine]
