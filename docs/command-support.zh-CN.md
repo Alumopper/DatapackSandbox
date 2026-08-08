@@ -1,10 +1,10 @@
 # 命令支持状态
 
-默认 profile：Minecraft Java `26.2`。兼容 profile 覆盖到 `1.20.4`。
+默认 profile：Minecraft Java `26.2`，兼容 profile 覆盖到 `1.20.4`。
 
-这个沙盒不嵌入原版服务端。这里的“支持”表示：命令会按沙盒当前建模的、数据包可见状态执行，并产生确定性结果。网络、权限、世界生成、客户端 UI、红石、实体 AI、完整战斗系统和真实服务端生命周期不在运行时范围内。
+这个沙盒不嵌入原版服务端。“支持”在这里的意思是：命令会按沙盒当前建模的数据包可见状态执行，并产生确定性结果。网络、权限、世界生成、客户端 UI、红石、实体 AI、完整战斗系统和真实服务端生命周期都不在运行时范围内。
 
-未支持的原版根命令默认不会让运行失败。默认策略是 `warn`：记录 warning 输出事件并继续执行。需要严格验证时可以使用 CLI `--unsupported error`、清单 `"unsupported": "error"` 或 API `UnsupportedFeatureMode.ERROR`；需要静默跳过时使用 `ignore`。用于检查命令生成器输出时，`run --strict` 和 `check --strict` 会同时启用 unsupported error 和直接缺失资源引用失败；`check --strict` 还会在执行前校验 manifest schema。
+未支持的原版根命令默认不会让运行失败。默认策略是 `warn`：记录 warning 输出事件并继续执行。需要严格验证时，可以用 CLI `--unsupported error`、清单 `"unsupported": "error"` 或 API `UnsupportedFeatureMode.ERROR`；想静默跳过则用 `ignore`。检查命令生成器输出时，`run --strict` 和 `check --strict` 会同时启用 unsupported error 和直接缺失资源引用失败；`check --strict` 还会在执行前校验 manifest schema。
 
 ## 状态说明
 
@@ -129,11 +129,20 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar commands --json --output build
 
 JSON text component 支持 `text`、`score`、`selector`、`translate`、`keybind`、基础 `nbt`、`extra` 和常见格式字段。沙盒会同时保存纯文本和分段 metadata，例如颜色、粗体、斜体等。
 
-## Selector
+## 选择器（Selector）
 
 已实现 selector：`@s`、`@a`、`@p`、`@e`、`@n`。
 
-已实现选项：`type`、`tag`、`name`、`gamemode`、`team`、`nbt`、`predicate`、`scores`、`advancements`、`level`、`x_rotation`、`y_rotation`、`limit`、`sort`、`distance`、`x`、`y`、`z`、`dx`、`dy`、`dz`；score 和等级过滤支持 `scores={kills=1..,deaths=..0}`、`level=..5` 这类整数范围，advancement 过滤按玩家当前进度支持整体完成或 criterion 布尔匹配，NBT 过滤使用包含式对象匹配和数值等值比较，predicate 过滤会把候选实体作为 `this` 上下文并使用候选实体的位置/维度交给已加载数据包 predicate 引擎评估，支持 `!` 取反，旋转过滤支持带符号数值范围；`sort=random` 使用基于原点的确定性顺序，便于重复测试。未支持的 selector 选项会按当前 unsupported 策略产生诊断或 warning。
+已实现选项：`type`、`tag`、`name`、`gamemode`、`team`、`nbt`、`predicate`、`scores`、`advancements`、`level`、`x_rotation`、`y_rotation`、`limit`、`sort`、`distance`、`x`、`y`、`z`、`dx`、`dy`、`dz`。
+
+- score 和等级过滤支持 `scores={kills=1..,deaths=..0}`、`level=..5` 这类整数范围；
+- advancement 过滤按玩家当前进度支持整体完成或 criterion 布尔匹配；
+- NBT 过滤使用包含式对象匹配和数值等值比较；
+- predicate 过滤会把候选实体作为 `this` 上下文，并用候选实体的位置/维度交给已加载数据包 predicate 引擎评估，支持 `!` 取反；
+- 旋转过滤支持带符号数值范围；
+- `sort=random` 使用基于原点的确定性顺序，便于重复测试。
+
+未支持的 selector 选项会按当前 unsupported 策略产生诊断或 warning。
 
 ## 特殊实体
 
@@ -146,10 +155,7 @@ JSON text component 支持 `text`、`score`、`selector`、`translate`、`keybin
 | `marker` | 保存任意复合 `data`，可继续充当 selector/计分板逻辑锚点，暴露零尺寸不可交互命中箱，并拒绝伤害。 |
 | `interaction` | 校验 `width`、`height`、`response`、`attack`、`interaction`；定向玩家事件记录 UUID/timestamp，暴露命中箱和 response，并供 `execute on target` / `execute on attacker` 使用。 |
 
-实体 snapshot 会把派生状态放在 `entities[*].special`。display 包含
-`renderTransformation`、`renderPosition`、插值进度、`cullingBox`、零尺寸游戏
-`hitbox` 和已保存内容；盔甲架和 interaction 则包含有效游戏命中箱。定向玩家事件
-表示客户端已经解析完成的一次命中；沙盒不会从玩家视线做 raycast，也不绘制客户端模型或文本。
+实体 snapshot 会把派生状态放在 `entities[*].special`：display 包含 `renderTransformation`、`renderPosition`、插值进度、`cullingBox`、零尺寸游戏 `hitbox` 和已保存内容；盔甲架和 interaction 则包含有效游戏命中箱。定向玩家事件表示客户端已经解析完成的一次命中；沙盒不会从玩家视线做 raycast，也不绘制客户端模型或文本。
 
 ## 世界与 NBT 说明
 

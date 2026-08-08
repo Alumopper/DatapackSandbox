@@ -1,6 +1,6 @@
 # 快速开始
 
-这一页帮你完成第一次有效运行：先选最合适的入口，再执行一段最小测试，最后知道失败时应该检查哪里。完整参数和边界说明留给后续参考页。
+这一页带你完成第一次有效运行：先选好入口，再跑一段最小测试，最后知道失败时该去哪里查。完整参数和边界说明留到后续参考页。
 
 ## 先选入口
 
@@ -12,7 +12,7 @@
 | 验证某个玩家交互是否触发 advancement、predicate 或函数链 | player event | [玩家事件](/runtime/player-events) |
 | 排查 pack format、版本 profile 或命令支持差异 | version profile + warning | [版本 Profile](/resources/version-profile) |
 
-如果你已经在 JVM 项目中写测试，优先从 `SandboxQuickTest.singleFunctionText(...)` 开始。它不要求完整数据包目录，几行代码就能确认运行时、版本 profile 和断言链是否配置正确。
+如果你本来就在 JVM 项目里写测试，优先从 `SandboxQuickTest.singleFunctionText(...)` 开始。它不需要完整数据包目录，几行代码就能确认运行时、版本 profile 和断言链是否配置正确。
 
 如果你只是想立即体验 CLI，可先构建 fat jar，然后打开交互式 REPL：
 
@@ -37,7 +37,7 @@ dependencies {
 }
 ```
 
-项目使用 Java 25 toolchain 构建。运行测试的 JDK 需要和 artifact 要求匹配；如果 Gradle 报 toolchain 或 classfile 版本错误，先检查本地 JDK，而不是先怀疑数据包。
+项目使用 Java 25 toolchain 构建，运行测试的 JDK 需要和 artifact 要求匹配。如果 Gradle 报 toolchain 或 classfile 版本错误，先检查本地 JDK，而不是先怀疑数据包。
 
 ## 第一个测试
 
@@ -100,7 +100,7 @@ src/test/resources/
     minimal-player.json
 ```
 
-如果你只是测试生成器产物，可以把生成输出写到 `build/generated-datapacks/...`，再由 QuickTest 或 manifest 加载该目录。这样 CI 中失败时可以把生成结果作为 artifact 保存。
+如果你只是测试生成器产物，可以把生成输出写到 `build/generated-datapacks/...`，再由 QuickTest 或 manifest 加载该目录。这样 CI 失败时就能把生成结果作为 artifact 存下来。
 
 ## 版本与格式先按 warning 处理
 
