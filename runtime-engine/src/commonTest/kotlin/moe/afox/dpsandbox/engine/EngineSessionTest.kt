@@ -4,8 +4,148 @@ import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 class EngineSessionTest {
+    @Test
+    fun completesNestedCommandChildrenWithoutRepeatingCommittedLiterals() {
+        val environment = completionEnvironment()
+
+        assertCompletion(environment, "execute ", "as", "if", "positioned", "run", "store")
+        assertCompletion(environment, "scoreboard players ", "add", "get", "operation", "reset", "set")
+        assertCompletion(environment, "scoreboard objectives ", "add", "modify", "setdisplay")
+
+        assertFalse("execute" in completionValues(environment, "execute "))
+        assertFalse("players" in completionValues(environment, "scoreboard players "))
+        assertFalse("objectives" in completionValues(environment, "scoreboard objectives "))
+    }
+
+    @Test
+    fun walksExecuteConditionsStoresAndRunRedirects() {
+        val environment = completionEnvironment()
+        val cases =
+            mapOf(
+                "execute as " to "@s",
+                "execute as @s " to "run",
+                "execute positioned " to "as",
+                "execute positioned as " to "@s",
+                "execute positioned 0 0 0 " to "if",
+                "execute facing entity @s " to "eyes",
+                "execute if " to "score",
+                "execute if score " to "@s",
+                "execute if score @s " to "runs",
+                "execute if score @s runs " to "matches",
+                "execute if score @s runs matches " to "0..",
+                "execute if biome 0 64 0 " to "minecraft:plains",
+                "execute if data entity @s " to "path",
+                "execute store " to "result",
+                "execute store result " to "score",
+                "execute store result score " to "@s",
+                "execute store result score @s " to "runs",
+                "execute store result block 0 0 0 " to "path",
+                "execute run " to "scoreboard",
+                "execute run scoreboard players " to "operation",
+            )
+
+        cases.forEach { (source, expected) -> assertCompletion(environment, source, expected) }
+    }
+
+    @Test
+    fun completesEveryModeledBrowserCommandFamily() {
+        val environment = completionEnvironment()
+        val cases =
+            mapOf(
+                "setblock 0 0 0 " to "minecraft:stone",
+                "fill 0 0 0 1 1 1 " to "minecraft:stone",
+                "summon " to "minecraft:zombie",
+                "give Steve " to "minecraft:apple",
+                "clear Steve " to "minecraft:apple",
+                "function " to "demo:main",
+                "kill " to "@e",
+                "tag @e " to "add",
+                "data " to "modify",
+                "data modify storage demo:state path " to "set",
+                "data get storage demo:state " to "path",
+                "tellraw Steve " to "{\"text\":\"\"}",
+                "title Steve " to "actionbar",
+                "particle " to "minecraft:flame",
+                "time " to "set",
+                "weather " to "thunder",
+                "gamerule " to "doDaylightCycle",
+                "tp " to "@s",
+                "return " to "run",
+                "tick " to "step",
+                "advancement " to "grant",
+                "attribute " to "@s",
+                "attribute @s " to "minecraft:max_health",
+                "bossbar " to "set",
+                "clone 0 0 0 1 1 1 2 2 2 " to "replace",
+                "damage @s 1 " to "minecraft:generic",
+                "effect " to "give",
+                "enchant " to "@s",
+                "experience " to "add",
+                "fillbiome 0 0 0 1 1 1 " to "minecraft:plains",
+                "forceload " to "remove",
+                "gamemode " to "survival",
+                "item " to "replace",
+                "item replace entity @s hotbar.0 from " to "entity",
+                "item replace entity @s hotbar.0 from entity @s " to "weapon.mainhand",
+                "place " to "structure",
+                "playsound " to "minecraft:block.note_block.harp",
+                "random " to "value",
+                "recipe " to "give",
+                "ride @s " to "mount",
+                "rotate " to "@s",
+                "schedule " to "function",
+                "spawnpoint " to "@s",
+                "spectate " to "@e",
+                "spreadplayers 0 0 1 5 " to "true",
+                "team " to "modify",
+                "trigger " to "runs",
+                "worldborder " to "warning",
+            )
+
+        cases.forEach { (source, expected) -> assertCompletion(environment, source, expected) }
+        assertCompletion(environment, "scoreboard players display ", "name", "numberformat")
+        assertTrue(completionValues(environment, "title @s reset ").isEmpty())
+        assertTrue(completionValues(environment, "worldborder get ").isEmpty())
+    }
+
+    @Test
+    fun auditsEveryProfileRootAndKeepsVersionSpecificRootsScoped() {
+        val environment = completionEnvironment()
+        val terminalRoots = setOf("reload", "save-off", "save-on", "seed", "stop")
+
+        environment.roots.forEach { root ->
+            val children = completionValues(environment, "$root ")
+            if (root != "help") assertFalse(root in children, "Committed root '$root' must not repeat itself: $children")
+            if (root !in terminalRoots) {
+                assertTrue(children.isNotEmpty(), "Expected a next-token completion for '$root '")
+            }
+        }
+
+        val legacy = environment.copy(roots = environment.roots - "transfer")
+        assertFalse("transfer" in completionValues(legacy, "tran"))
+        assertTrue(completionValues(legacy, "transfer ").isEmpty())
+    }
+
+    @Test
+    fun completionRangesReplaceOnlyTheActiveToken() {
+        val environment = completionEnvironment()
+        val partial = EngineCommandCompletion.complete("scoreboard pla", 14, environment).single { it.value == "players" }
+        assertEquals(11, partial.start)
+        assertEquals(14, partial.end)
+
+        val child = EngineCommandCompletion.complete("scoreboard players ", 19, environment).first()
+        assertEquals(19, child.start)
+        assertEquals(19, child.end)
+
+        val slash = EngineCommandCompletion.complete("/exec", 5, environment).single { it.value == "/execute" }
+        assertEquals(0, slash.start)
+        assertEquals(5, slash.end)
+    }
+
     @Test
     fun persistsStateAcrossExecutionsAndKeepsChecksNonMutating() {
         val session = EngineSession("26.2")
@@ -22,6 +162,46 @@ class EngineSessionTest {
         session.executeLine("scoreboard players add #browser runs 2", 1)
         assertContains(session.finishExecutionJson(), "\"#browser\":3")
     }
+
+    private fun completionEnvironment(): EngineCompletionEnvironment =
+        EngineCompletionEnvironment(
+            roots = fullCommandRoots,
+            blocks = listOf("minecraft:stone"),
+            items = listOf("minecraft:apple"),
+            entities = listOf("minecraft:zombie"),
+            functions = listOf("demo:main"),
+            functionTags = listOf("demo:load"),
+            objectives = listOf("runs"),
+            scoreHolders = listOf("#value", "Steve"),
+            storages = listOf("demo:state"),
+            tags = listOf("mob"),
+            gamerules = listOf("doDaylightCycle"),
+        )
+
+    private val fullCommandRoots =
+        """
+        advancement attribute ban ban-ip banlist bossbar clear clone damage data datapack debug
+        defaultgamemode deop difficulty effect enchant execute experience fill fillbiome forceload
+        function gamemode gamerule give help item jfr kick kill list locate loot me msg op pardon
+        pardon-ip particle perf place playsound publish random recipe reload return ride rotate save-all
+        save-off save-on say schedule scoreboard seed setblock setidletimeout setworldspawn spawnpoint
+        spectate spreadplayers stop stopsound summon tag team teammsg tell tellraw tick time title tm tp
+        transfer trigger w weather whitelist worldborder xp
+        """.trimIndent().split(Regex("\\s+"))
+
+    private fun assertCompletion(
+        environment: EngineCompletionEnvironment,
+        source: String,
+        vararg expected: String,
+    ) {
+        val values = completionValues(environment, source)
+        expected.forEach { value -> assertTrue(value in values, "Expected '$value' for '$source', got $values") }
+    }
+
+    private fun completionValues(
+        environment: EngineCompletionEnvironment,
+        source: String,
+    ): List<String> = EngineCommandCompletion.complete(source, source.length, environment).map { it.value }
 
     @Test
     fun emitsRealtimeViewportOutputShapes() {

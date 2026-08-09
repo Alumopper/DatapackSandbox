@@ -9,7 +9,7 @@ tests, and build-tool smoke tests.
 The fluent testing API is the `testkit` artifact:
 
 ```text
-moe.afox.dpsandbox:testkit:1.0.2
+moe.afox.dpsandbox:testkit:1.1.0
 ```
 
 The `cli` module and `datapack-sandbox-cli.jar` are for command-line use. JVM
@@ -33,7 +33,7 @@ repositories {
 }
 
 dependencies {
-    testImplementation("moe.afox.dpsandbox:testkit:1.0.2")
+    testImplementation("moe.afox.dpsandbox:testkit:1.1.0")
 }
 ```
 
@@ -68,7 +68,7 @@ dependencies {
   <dependency>
     <groupId>moe.afox.dpsandbox</groupId>
     <artifactId>testkit</artifactId>
-    <version>1.0.2</version>
+    <version>1.1.0</version>
     <scope>test</scope>
   </dependency>
 </dependencies>

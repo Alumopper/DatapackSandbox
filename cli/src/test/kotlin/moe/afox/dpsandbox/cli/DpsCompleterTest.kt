@@ -63,6 +63,7 @@ class DpsCompleterTest {
 
         assertSuggests(completer, "attr", "attribute")
         assertSuggests(completer, "attribute Steve ", "minecraft:generic.max_health")
+        assertSuggests(completer, "attribute Steve ", "minecraft:max_health")
         assertSuggests(completer, "attribute Steve minecraft:generic.max_health ", "base")
         assertSuggests(completer, "attribute Steve minecraft:generic.max_health base ", "set")
         assertSuggests(completer, "bo", "bossbar")
@@ -88,6 +89,8 @@ class DpsCompleterTest {
         assertSuggests(completer, "scoreboard objectives setdisplay ", "sidebar")
         assertSuggests(completer, "scoreboard players ", "list")
         assertSuggests(completer, "scoreboard players ", "reset")
+        assertSuggests(completer, "scoreboard players display ", "numberformat")
+        assertFalse("players" in completer.suggestions("scoreboard players ").map { it.value })
         assertSuggests(completer, "schedule ", "clear")
         assertSuggests(completer, "advancement grant Steve ", "everything")
         assertSuggests(completer, "execute store result ", "score")
@@ -96,6 +99,9 @@ class DpsCompleterTest {
         assertSuggests(completer, "execute unless ", "loaded")
         assertSuggests(completer, "execute if dimension ", "minecraft:overworld")
         assertSuggests(completer, "execute if biome 0 64 0 ", "minecraft:plains")
+        assertSuggests(completer, "execute if score Steve runs ", "matches")
+        assertSuggests(completer, "execute if score Steve runs matches ", "0..")
+        assertSuggests(completer, "execute run scoreboard players ", "operation")
         assertSuggests(completer, "data modify storage demo:dst path set ", "from")
         assertSuggests(completer, "data modify storage demo:dst path set from ", "storage")
         assertSuggests(completer, "give Steve ", "minecraft:apple")
@@ -134,6 +140,13 @@ class DpsCompleterTest {
         assertSuggests(completer, "inspect ", "event-traces")
         assertSuggests(completer, "inspect resources ", "function")
         assertSuggests(completer, "inspect registry ", "damage_types")
+
+        val scoreSandbox = createSandbox("26.1.2", listOf(Path.of("../core/src/test/resources/packs/counter")))
+        scoreSandbox.executeCommand("scoreboard objectives add runs dummy")
+        scoreSandbox.executeCommand("scoreboard players set #counter runs 1")
+        val scoreCompleter = DpsCompleter { scoreSandbox }
+        assertSuggests(scoreCompleter, "scoreboard players operation Steve runs = ", "#counter")
+        assertSuggests(scoreCompleter, "scoreboard players operation Steve runs = #counter ", "runs")
 
         val randomSandbox = createSandbox("26.1.2", listOf(Path.of("../core/src/test/resources/packs/counter")))
         randomSandbox.world.randomSequences["demo:seq"] = 42

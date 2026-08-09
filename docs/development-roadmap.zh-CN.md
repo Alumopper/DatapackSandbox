@@ -2,7 +2,7 @@
 
 本文记录 Datapack Sandbox 的开发计划与当前进度。项目定位是：不嵌入、不复刻 Mojang 原版服务端，而是在洁净室、确定性、可测试的前提下，尽量完整地模拟数据包能看到的资源、命令、输入、输出和状态变化。它的服务对象是单元调试、随手小测、命令生成器产物验证、CI 回归和多版本兼容检查。
 
-当前已完成 1.0，发布版本 `1.0.2`。`core` 运行时、`cli` 工具、REPL、`.dps.json` 清单、quick-test API、输出事件、世界 fixture、常用命令模型、loot/predicate/advancement/player event，以及 Minecraft Java `1.20.4` 到 `26.2` 的版本 profile 都已就绪。本文档同时充当 1.0 的完成状态记录：后续开发应在这些稳定接口上增量演进，而不是另起一套并行系统。
+当前已完成 1.0，发布版本 `1.1.0`。`core` 运行时、`cli` 工具、REPL、`.dps.json` 清单、quick-test API、输出事件、世界 fixture、常用命令模型、loot/predicate/advancement/player event，以及 Minecraft Java `1.20.4` 到 `26.2` 的版本 profile 都已就绪。本文档同时充当 1.0 的完成状态记录：后续开发应在这些稳定接口上增量演进，而不是另起一套并行系统。
 
 开发节奏：按阶段推进，每完成一个可验证的闭环提交一次，并随功能进展更新版本号。
 
@@ -190,7 +190,7 @@ CLI `run` 支持 `--world`（小型 JSON fixture）、`--assert`/`--assert-file`
 - **性能基准**：`benchmark` CLI 提供内置 smoke/CI 基准，覆盖 scoreboard 批量写入、大 storage merge、函数调用链、批量 manifest 执行，可选 `--pack` 测量 pack 加载、`--loot-table` 抽样 loot，并可写 JSON artifact。
 - **缓存**：`DatapackLoader` 提供目录/zip 解析缓存（键为版本 profile + 内容指纹，命中返回深拷贝），`clearCache()` 供 REPL/watch 强制 reload；NBT schema 按 classpath 一次性加载并按 profile 复用；版本 profile、文档表和 registry 目录集中在不可变对象中；`ManifestSchemaValidator` 对 JSON Schema lazy 缓存。
 - **错误边界**：`SandboxLimits` 可配置函数递归深度、sandbox 实例累计命令数、单次 `runTicks` 最大 tick 数、保留输出事件数和渲染后 snapshot 大小；CLI `run`/`check` 暴露 `--max-commands`、`--max-function-depth`、`--max-ticks-per-run`、`--max-output-events`、`--max-snapshot-bytes` 直接收紧执行边界。
-- **发布质量**：fat jar smoke（schema 导出与防漂移、示例 manifest、命令/资源/版本文档中英检查、资源索引、diff、benchmark、README 示例、run 断言简写、执行边界、diagnostic 断言）、Windows/Linux 命令测试。`releaseCheck` 聚合全部 JVM 模块检查、schema 可复现性、API/架构门禁、standalone CLI smoke、release jar/sources jar/javadoc jar、Maven POM 生成检查和非 snapshot 语义版本检查；CI 在 Linux 和 Windows 矩阵上运行。Maven 发布使用统一坐标 `moe.afox.dpsandbox`、版本 `1.0.2`，包含源码包、文档包、POM 元数据和带凭据校验的远端仓库配置。
+- **发布质量**：fat jar smoke（schema 导出与防漂移、示例 manifest、命令/资源/版本文档中英检查、资源索引、diff、benchmark、README 示例、run 断言简写、执行边界、diagnostic 断言）、Windows/Linux 命令测试。`releaseCheck` 聚合全部 JVM 模块检查、schema 可复现性、API/架构门禁、standalone CLI smoke、release jar/sources jar/javadoc jar、Maven POM 生成检查和非 snapshot 语义版本检查；CI 在 Linux 和 Windows 矩阵上运行。Maven 发布使用统一坐标 `moe.afox.dpsandbox`、版本 `1.1.0`，包含源码包、文档包、POM 元数据和带凭据校验的远端仓库配置。
 
 验收标准：
 
@@ -220,4 +220,4 @@ CLI `run` 支持 `--world`（小型 JSON fixture）、`--assert`/`--assert-file`
 2. `0.3`：`execute`/`data`/`loot`/`item` 高频路径补齐，命令生成器测试模板可用。
 3. `0.4`：玩家事件和 world fixture 大幅增强，examples 覆盖主要使用场景。
 4. `0.5`：多版本 profile 更新流程稳定，P0/P1 资源覆盖完成。
-5. `1.0`：核心 API 稳定、CLI 行为稳定、文档示例可验证、CI 覆盖完整，可作为数据包本地回归测试工具长期使用；当前发布版本为 `1.0.2`。
+5. `1.0`：核心 API 稳定、CLI 行为稳定、文档示例可验证、CI 覆盖完整，可作为数据包本地回归测试工具长期使用；当前发布版本为 `1.1.0`。

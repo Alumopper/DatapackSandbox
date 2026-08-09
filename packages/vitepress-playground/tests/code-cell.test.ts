@@ -53,6 +53,44 @@ describe('CodeCell', () => {
     wrapper.unmount()
   })
 
+  it('keeps Enter as a newline while completion is active', async () => {
+    const source = 'scoreboard objectives add runs '
+    const wrapper = mount(CodeCell, {
+      attachTo: document.body,
+      props: {
+        modelValue: source,
+        cellId: 'multiline-completion',
+        readOnly: false,
+        disabled: false,
+        diagnostics: [],
+        complete: async () => [{
+          value: 'dummy',
+          description: 'Objective criterion',
+          group: 'value',
+          start: source.length,
+          end: source.length,
+          appendSpace: true,
+        }],
+        check: async () => [],
+      },
+    })
+    const view = EditorView.findFromDOM(wrapper.get('.cm-editor').element as HTMLElement)!
+    view.dispatch({ selection: { anchor: source.length } })
+    startCompletion(view)
+    await vi.waitFor(() => expect(completionStatus(view.state)).toBe('active'))
+
+    view.contentDOM.dispatchEvent(new KeyboardEvent('keydown', {
+      key: 'Enter',
+      code: 'Enter',
+      bubbles: true,
+      cancelable: true,
+    }))
+
+    await vi.waitFor(() => expect(view.state.doc.toString()).toBe(`${source}\n`))
+    expect(view.state.doc.toString()).not.toContain('dummy')
+    wrapper.unmount()
+  })
+
   it('checks user edits without checking the initial or externally replaced preset', async () => {
     const check = vi.fn(async () => [])
     const complete = vi.fn(async () => [])

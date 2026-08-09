@@ -1,4 +1,4 @@
-# Public JVM API for moe.afox.dpsandbox:testkit:1.0.2
+# Public JVM API for moe.afox.dpsandbox:testkit:1.1.0
 public final class moe.afox.dpsandbox.core.DatapackSandboxTestApi {
   public static final moe.afox.dpsandbox.core.DatapackSandboxTestApi INSTANCE;
   public static final moe.afox.dpsandbox.core.SandboxQuickTest scenario(java.util.List<? extends java.nio.file.Path>, java.lang.String, java.lang.String, moe.afox.dpsandbox.core.UnsupportedFeatureMode);

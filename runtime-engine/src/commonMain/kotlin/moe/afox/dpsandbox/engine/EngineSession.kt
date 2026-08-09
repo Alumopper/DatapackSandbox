@@ -250,59 +250,37 @@ class EngineSession(
         source: String,
         cursor: Int,
     ): String {
-        val bounded = cursor.coerceIn(0, source.length)
-        val before = source.substring(0, bounded)
-        val start = before.indexOfLast(Char::isWhitespace).let { if (it < 0) 0 else it + 1 }
-        val prefix = before.substring(start)
-        val words = tokenize(before)
-        val wordIndex = if (before.lastOrNull()?.isWhitespace() == true) words.size else (words.size - 1).coerceAtLeast(0)
+        val scoreHolders =
+            (world.scores.values.flatMap { it.keys } + world.inventories.keys)
+                .distinct()
+                .sorted()
         val candidates =
-            when {
-                words.size <= 1 && !before.endsWith(' ') -> commandRoots.sorted()
-                words.firstOrNull() == "setblock" && wordIndex == 4 -> blockRegistry
-                words.firstOrNull() == "summon" && wordIndex == 1 -> entityRegistry
-                words.firstOrNull() == "give" && wordIndex == 2 -> itemRegistry
-                words.firstOrNull() == "function" && wordIndex == 1 -> functions.keys.sorted()
-                words.firstOrNull() == "weather" -> listOf("clear", "rain", "thunder")
-                words.firstOrNull() == "time" -> listOf("add", "query", "set")
-                words.firstOrNull() == "scoreboard" && words.size == 2 -> listOf("objectives", "players")
-                words.firstOrNull() == "particle" ->
-                    when (wordIndex) {
-                        1 -> PARTICLE_TYPES
-                        in 2..4 -> listOf("~", "0")
-                        in 5..7 -> listOf("0", "0.25", "0.5", "1")
-                        8 -> listOf("0", "0.02", "0.1", "1")
-                        9 -> listOf("1", "8", "16", "32", "64")
-                        10 -> listOf("normal", "force")
-                        11 -> listOf("@a", "@s", "Steve")
-                        else -> emptyList()
-                    }
-                words.firstOrNull() == "tellraw" ->
-                    when (wordIndex) {
-                        1 -> listOf("@a", "@s", "Steve")
-                        2 -> TEXT_COMPONENT_TEMPLATES
-                        else -> emptyList()
-                    }
-                words.firstOrNull() == "title" ->
-                    when (wordIndex) {
-                        1 -> listOf("@a", "@s", "Steve")
-                        2 -> listOf("clear", "reset", "title", "subtitle", "actionbar", "times")
-                        3 -> if (words.getOrNull(2) == "times") listOf("10", "20", "60", "70") else TEXT_COMPONENT_TEMPLATES
-                        4, 5 -> if (words.getOrNull(2) == "times") listOf("10", "20", "60", "70") else emptyList()
-                        else -> emptyList()
-                    }
-                else -> emptyList()
-            }
-        val filtered = candidates.filter { it.startsWith(prefix, ignoreCase = true) }.take(100)
+            EngineCommandCompletion.complete(
+                source,
+                cursor,
+                EngineCompletionEnvironment(
+                    roots = commandRoots.sorted(),
+                    blocks = blockRegistry,
+                    items = itemRegistry,
+                    entities = entityRegistry,
+                    functions = functions.keys.sorted(),
+                    functionTags = functionTags.keys.sorted(),
+                    objectives = world.objectives.keys.sorted(),
+                    scoreHolders = scoreHolders,
+                    storages = world.storages.keys.sorted(),
+                    tags = world.entities.flatMap { it.tags }.distinct().sorted(),
+                    gamerules = world.gamerules.keys.sorted(),
+                ),
+            )
         return JsonText.array(
-            filtered.map { value ->
+            candidates.map { candidate ->
                 JsonText.obj(
-                    "value" to JsonText.quote(value),
-                    "description" to JsonText.quote(if (words.size <= 1) "Minecraft command" else "sandbox value"),
-                    "group" to JsonText.quote(if (words.size <= 1) "command" else "value"),
-                    "appendSpace" to "true",
-                    "start" to start.toString(),
-                    "end" to bounded.toString(),
+                    "value" to JsonText.quote(candidate.value),
+                    "description" to JsonText.quote(candidate.description),
+                    "group" to JsonText.quote(candidate.group),
+                    "appendSpace" to candidate.appendSpace.toString(),
+                    "start" to candidate.start.toString(),
+                    "end" to candidate.end.toString(),
                     "behavior" to JsonText.quote("modeled"),
                 )
             },

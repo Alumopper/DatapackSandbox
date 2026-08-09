@@ -4,6 +4,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 
 test('shares a realtime WebGL viewport with playback, input, and context recovery', async ({ page }) => {
+  test.slow()
   await page.goto('/?viewport')
   const viewport = page.locator('.dps-viewport')
   const canvas = viewport.locator('canvas')
@@ -80,6 +81,27 @@ test('embeds the lightweight single-cell surface without notebook controls', asy
   await cell.getByRole('button', { name: 'Reset example', exact: true }).click()
   await expect(cell.locator('.dps-output')).toHaveCount(0)
   await expect(cell.locator('img.dps-render')).toHaveCount(0)
+})
+
+test('walks nested command completions without repeating parent literals', async ({ page }) => {
+  await page.goto('/?cell=1')
+  const cell = page.locator('.dps-cell-space')
+  await expect(cell).toHaveAttribute('data-state', 'ready', { timeout: 15_000 })
+  const editor = cell.locator('.cm-content')
+  const labels = page.locator('.cm-tooltip-autocomplete .cm-completionLabel')
+  const replaceCommand = async (source: string, expected: string[]) => {
+    await editor.click()
+    await editor.press(process.platform === 'darwin' ? 'Meta+A' : 'Control+A')
+    await editor.pressSequentially(source)
+    await expect.poll(() => labels.allTextContents()).toEqual(expect.arrayContaining(expected))
+  }
+
+  await replaceCommand('execute ', ['as', 'if', 'positioned', 'run', 'store'])
+  await replaceCommand('scoreboard players ', ['add', 'get', 'operation', 'reset', 'set'])
+  await expect.poll(() => labels.allTextContents()).not.toContain('players')
+  await replaceCommand('execute if score @s runs ', ['matches', '<', '=', '>'])
+  await replaceCommand('execute run scoreboard players ', ['add', 'operation', 'set'])
+  await expect.poll(() => labels.allTextContents()).not.toContain('players')
 })
 
 test('shares a named sandbox across independent editors on one page', async ({ page }) => {

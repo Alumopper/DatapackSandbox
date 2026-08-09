@@ -1,4 +1,4 @@
-# Public JVM API for moe.afox.dpsandbox:cli:1.0.2
+# Public JVM API for moe.afox.dpsandbox:cli:1.1.0
 public final class moe.afox.dpsandbox.cli.AdvancementCommand extends com.github.ajalt.clikt.core.CliktCommand {
   public moe.afox.dpsandbox.cli.AdvancementCommand();
   public void run();

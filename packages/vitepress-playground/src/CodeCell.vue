@@ -2,11 +2,14 @@
 import {
   acceptCompletion,
   autocompletion,
+  closeCompletion,
+  completionStatus,
   startCompletion,
   type CompletionContext,
   type CompletionResult,
 } from '@codemirror/autocomplete'
 import { basicSetup } from 'codemirror'
+import { insertNewlineAndIndent } from '@codemirror/commands'
 import { Compartment, EditorState, Prec, StateEffect, StateField, Transaction } from '@codemirror/state'
 import { HighlightStyle, syntaxHighlighting } from '@codemirror/language'
 import { linter, setDiagnostics, type Diagnostic } from '@codemirror/lint'
@@ -180,6 +183,14 @@ onMounted(() => {
         editable.of([EditorView.editable.of(!props.readOnly), EditorState.readOnly.of(props.readOnly)]),
         Prec.high(keymap.of([
           {
+            key: 'Enter',
+            run: (editor) => {
+              if (completionStatus(editor.state) === null) return false
+              closeCompletion(editor)
+              return insertNewlineAndIndent(editor)
+            },
+          },
+          {
             key: 'Tab',
             run: acceptCompletion,
           },
@@ -199,7 +210,14 @@ onMounted(() => {
             },
           },
         ])),
-        autocompletion({ override: [completionSource], activateOnTyping: true, activateOnTypingDelay: 140 }),
+        autocompletion({
+          override: [completionSource],
+          activateOnTyping: true,
+          activateOnTypingDelay: 140,
+          // The editor advertises Tab as the acceptance key. Disable the
+          // higher-priority Enter binding so multiline commands keep newlines.
+          defaultKeymap: false,
+        }),
         linter(lintSource, { delay: 650 }),
         EditorView.updateListener.of((update) => {
           if (update.docChanged) {

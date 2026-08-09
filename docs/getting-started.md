@@ -33,7 +33,7 @@ repositories {
 }
 
 dependencies {
-    testImplementation("moe.afox.dpsandbox:testkit:1.0.2")
+    testImplementation("moe.afox.dpsandbox:testkit:1.1.0")
 }
 ```
 

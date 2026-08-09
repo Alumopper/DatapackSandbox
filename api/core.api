@@ -1,4 +1,4 @@
-# Public JVM API for moe.afox.dpsandbox:core:1.0.2
+# Public JVM API for moe.afox.dpsandbox:core:1.1.0
 public final class moe.afox.dpsandbox.core.AdvancementCriterionFailure {
   public moe.afox.dpsandbox.core.AdvancementCriterionFailure(moe.afox.dpsandbox.core.ResourceLocation, java.lang.String, java.lang.String);
   public final moe.afox.dpsandbox.core.ResourceLocation getAdvancement();

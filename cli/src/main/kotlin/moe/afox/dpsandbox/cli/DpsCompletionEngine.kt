@@ -282,6 +282,7 @@ class DpsCompletionEngine(
                 listOf(
                     "set",
                     "add",
+                    "display",
                     "remove",
                     "get",
                     "reset",
@@ -289,10 +290,26 @@ class DpsCompletionEngine(
                     "enable",
                     "operation",
                 ).suggest("player score actions", appendSpace = true)
-            words.getOrNull(1) == "players" && context.wordIndex == 3 -> scoreTargets().suggest("score holders", appendSpace = true)
-            words.getOrNull(1) == "players" && context.wordIndex == 4 -> scoreboardObjectives().suggest("objectives", appendSpace = true)
+            words.getOrNull(1) == "players" && words.getOrNull(2) == "display" && context.wordIndex == 3 ->
+                listOf("name", "numberformat").suggest("display fields", appendSpace = true)
+            words.getOrNull(1) == "players" && words.getOrNull(2) == "display" && context.wordIndex == 4 ->
+                scoreTargets().suggest("score holders", appendSpace = true)
+            words.getOrNull(1) == "players" && words.getOrNull(2) == "display" && context.wordIndex == 5 ->
+                if (words.getOrNull(3) == "name") {
+                    textComponentTemplates.suggest("display names")
+                } else {
+                    listOf("blank", "fixed", "styled").suggest("number formats")
+                }
+            words.getOrNull(1) == "players" && words.getOrNull(2) != "display" && context.wordIndex == 3 ->
+                scoreTargets().suggest("score holders", appendSpace = true)
+            words.getOrNull(1) == "players" && words.getOrNull(2) != "display" && context.wordIndex == 4 ->
+                scoreboardObjectives().suggest("objectives", appendSpace = true)
             words.getOrNull(1) == "players" && words.getOrNull(2) == "operation" && context.wordIndex == 5 ->
-                listOf("=", "+=", "-=", "*=", "/=", "%=", "<", ">").suggest("score operations", appendSpace = true)
+                listOf("=", "+=", "-=", "*=", "/=", "%=", "<", ">", "><").suggest("score operations", appendSpace = true)
+            words.getOrNull(1) == "players" && words.getOrNull(2) == "operation" && context.wordIndex == 6 ->
+                scoreTargets().suggest("source score holders", appendSpace = true)
+            words.getOrNull(1) == "players" && words.getOrNull(2) == "operation" && context.wordIndex == 7 ->
+                scoreboardObjectives().suggest("source objectives")
             else -> emptyList()
         }
 
@@ -300,10 +317,56 @@ class DpsCompletionEngine(
         words: List<String>,
         context: CompletionContext,
     ): List<CompletionSuggestion> {
+        val runIndex = words.indexOfLast { it == "run" }
+        if (runIndex >= 1) {
+            val nestedBuffer =
+                buildString {
+                    append(words.drop(runIndex + 1).joinToString(" "))
+                    if (context.endsWithWhitespace) append(' ')
+                }
+            return suggestions(nestedBuffer)
+        }
+        val conditionIndex = words.take(context.wordIndex).indexOfLast { it == "if" || it == "unless" }
+        if (conditionIndex >= 1 && words.getOrNull(conditionIndex + 1) == "score") {
+            when (context.wordIndex - conditionIndex) {
+                2 -> return scoreTargets().suggest("score holders", appendSpace = true)
+                3 -> return scoreboardObjectives().suggest("objectives", appendSpace = true)
+                4 -> return listOf("<", "<=", "=", ">", ">=", "matches").suggest("score comparisons", appendSpace = true)
+                5 ->
+                    return if (words.getOrNull(conditionIndex + 4) == "matches") {
+                        listOf("0", "0..", "..0", "0..10").suggest("score ranges", appendSpace = true)
+                    } else {
+                        scoreTargets().suggest("source score holders", appendSpace = true)
+                    }
+                6 -> return scoreboardObjectives().suggest("source objectives", appendSpace = true)
+            }
+        }
+        val storeIndex = words.take(context.wordIndex).indexOfLast { it == "store" }
+        if (storeIndex >= 1 && words.getOrNull(storeIndex + 2) == "score") {
+            when (context.wordIndex - storeIndex) {
+                3 -> return scoreTargets().suggest("score holders", appendSpace = true)
+                4 -> return scoreboardObjectives().suggest("objectives", appendSpace = true)
+            }
+        }
         val previous = words.getOrNull(context.wordIndex - 1)
         val beforePrevious = words.getOrNull(context.wordIndex - 2)
         return when {
             previous in setOf("as", "at") -> entityTargets().suggest("entities/selectors", appendSpace = true)
+            previous == "align" -> listOf("x", "xy", "xyz", "xz", "y", "yz", "z").suggest("axes", appendSpace = true)
+            previous == "anchored" -> listOf("eyes", "feet").suggest("anchors", appendSpace = true)
+            previous == "facing" -> (listOf("entity") + coordinateValues).suggest("facing targets", appendSpace = true)
+            beforePrevious == "facing" && previous == "entity" -> entityTargets().suggest("entities/selectors", appendSpace = true)
+            previous == "on" ->
+                listOf("attacker", "controller", "leasher", "origin", "owner", "passengers", "target", "vehicle")
+                    .suggest("entity relations", appendSpace = true)
+            previous == "positioned" -> (listOf("as", "over") + coordinateValues).suggest("positions", appendSpace = true)
+            beforePrevious == "positioned" && previous == "as" -> entityTargets().suggest("entities/selectors", appendSpace = true)
+            previous == "rotated" -> (listOf("as") + coordinateValues).suggest("rotations", appendSpace = true)
+            beforePrevious == "rotated" && previous == "as" -> entityTargets().suggest("entities/selectors", appendSpace = true)
+            previous == "summon" ->
+                sandbox()
+                    .profile.registryView.entityTypes
+                    .mapResource("entity types")
             previous == "run" -> DpsCommandCatalog.rootCommands(sandbox().profile)
             previous in
                 setOf(
@@ -369,6 +432,8 @@ class DpsCompletionEngine(
                     "facing",
                     "in",
                     "rotated",
+                    "on",
+                    "summon",
                     "store",
                     "if",
                     "unless",
@@ -1088,11 +1153,16 @@ class DpsCompletionEngine(
         private val difficulties = listOf("peaceful", "easy", "normal", "hard")
         private val attributes =
             listOf(
+                "minecraft:armor",
+                "minecraft:attack_damage",
                 "minecraft:generic.max_health",
                 "minecraft:generic.movement_speed",
                 "minecraft:generic.attack_damage",
                 "minecraft:generic.armor",
                 "minecraft:generic.scale",
+                "minecraft:max_health",
+                "minecraft:movement_speed",
+                "minecraft:scale",
             )
         private val bossbarColors = listOf("pink", "blue", "red", "green", "yellow", "purple", "white")
         private val bossbarStyles = listOf("progress", "notched_6", "notched_10", "notched_12", "notched_20")

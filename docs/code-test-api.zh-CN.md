@@ -7,7 +7,7 @@
 fluent 测试 API 对应的是 `testkit` artifact：
 
 ```text
-moe.afox.dpsandbox:testkit:1.0.2
+moe.afox.dpsandbox:testkit:1.1.0
 ```
 
 `cli` 模块和 `datapack-sandbox-cli.jar` 面向命令行使用。JVM 测试应依赖 `testkit`，它会传递引入底层 `core` runtime；不要把 standalone CLI jar 当作库依赖。
@@ -26,7 +26,7 @@ repositories {
 }
 
 dependencies {
-    testImplementation("moe.afox.dpsandbox:testkit:1.0.2")
+    testImplementation("moe.afox.dpsandbox:testkit:1.1.0")
 }
 ```
 
@@ -58,7 +58,7 @@ dependencies {
   <dependency>
     <groupId>moe.afox.dpsandbox</groupId>
     <artifactId>testkit</artifactId>
-    <version>1.0.2</version>
+    <version>1.1.0</version>
     <scope>test</scope>
   </dependency>
 </dependencies>

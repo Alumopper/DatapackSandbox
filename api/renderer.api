@@ -1,4 +1,4 @@
-# Public JVM API for moe.afox.dpsandbox:renderer:1.0.2
+# Public JVM API for moe.afox.dpsandbox:renderer:1.1.0
 public final class moe.afox.dpsandbox.render.AssetResolver {
   public moe.afox.dpsandbox.render.AssetResolver(moe.afox.dpsandbox.render.RenderAssets, java.util.List<moe.afox.dpsandbox.render.RenderDiagnostic>, boolean, long, java.util.Map<java.lang.String, byte[]>);
   public moe.afox.dpsandbox.render.AssetResolver(moe.afox.dpsandbox.render.RenderAssets, java.util.List, boolean, long, java.util.Map, int, kotlin.jvm.internal.DefaultConstructorMarker);

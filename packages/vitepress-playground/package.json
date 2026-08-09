@@ -1,6 +1,6 @@
 {
   "name": "@datapack-sandbox/vitepress-playground",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Persistent, browser-only MCFunction notebook cells for VitePress sites",
   "keywords": [
     "minecraft",
@@ -61,6 +61,7 @@
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.20.0",
+    "@codemirror/commands": "^6.10.4",
     "@codemirror/language": "^6.11.3",
     "@codemirror/lint": "^6.9.2",
     "@codemirror/state": "^6.5.2",
