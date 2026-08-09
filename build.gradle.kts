@@ -159,7 +159,8 @@ val apiCheck = tasks.register("apiCheck") {
             val baseline = layout.projectDirectory.file("api/$module.api").asFile
             require(baseline.isFile) { "Missing API baseline ${baseline.absolutePath}; run ./gradlew apiDump" }
             val actual = publicApiDump(module)
-            require(baseline.readText() == actual) {
+            val expected = baseline.readText().replace("\r\n", "\n").replace('\r', '\n')
+            require(expected == actual) {
                 "Public API for :$module changed. Review compatibility and run ./gradlew apiDump when intentional."
             }
         }

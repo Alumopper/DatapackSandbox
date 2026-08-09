@@ -42,9 +42,9 @@ class JupyterKernelIntegrationTest(unittest.TestCase):
                 self.assertIn("image/png", first_bundle)
                 self.assertIn("text/html", first_bundle)
                 self.assertTrue(first_bundle["image/png"].startswith("iVBOR"))
-                self.assertEqual(2, first_message(first, "display_data")["metadata"]["datapack-sandbox"]["commands"])
-                self.assertEqual(2, first_message(first, "execute_result")["metadata"]["datapack-sandbox"]["commands"])
-                self.assertEqual(1, first_message(second, "display_data")["metadata"]["datapack-sandbox"]["commands"])
+                self.assertEqual(2, first_message(first, "display_data")["content"]["metadata"]["datapack-sandbox"]["commands"])
+                self.assertEqual(2, first_message(first, "execute_result")["content"]["metadata"]["datapack-sandbox"]["commands"])
+                self.assertEqual(1, first_message(second, "display_data")["content"]["metadata"]["datapack-sandbox"]["commands"])
                 self.assertIn("commands=1", second_bundle["text/plain"])
 
                 error_messages = execute(client, "scoreboard objectives add")
