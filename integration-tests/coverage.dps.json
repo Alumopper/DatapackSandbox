@@ -1,0 +1,21 @@
+{
+  "version": "26.2",
+  "packs": ["../examples/coverage/pack"],
+  "coverage": {
+    "minimumLine": 100,
+    "minimumFunction": 100,
+    "include": "demo:*"
+  },
+  "steps": [
+    { "function": "demo:main" }
+  ],
+  "assertions": [
+    {
+      "output": {
+        "command": "say",
+        "contains": "coverage main reached",
+        "count": 1
+      }
+    }
+  ]
+}
