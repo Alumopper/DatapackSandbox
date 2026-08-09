@@ -192,6 +192,10 @@ public final class moe.afox.dpsandbox.core.SandboxQuickTest {
   public static java.util.List matchingOutputs$default(moe.afox.dpsandbox.core.SandboxQuickTest, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, com.google.gson.JsonElement, int, java.lang.Object);
   public final java.util.List<moe.afox.dpsandbox.core.OutputEvent> matchingOutputs(moe.afox.dpsandbox.core.OutputChannel, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, com.google.gson.JsonElement);
   public static java.util.List matchingOutputs$default(moe.afox.dpsandbox.core.SandboxQuickTest, moe.afox.dpsandbox.core.OutputChannel, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, java.lang.String, com.google.gson.JsonElement, int, java.lang.Object);
+  public final moe.afox.dpsandbox.core.DatapackCoverageReport coverageReport(moe.afox.dpsandbox.core.DatapackCoverageOptions);
+  public static moe.afox.dpsandbox.core.DatapackCoverageReport coverageReport$default(moe.afox.dpsandbox.core.SandboxQuickTest, moe.afox.dpsandbox.core.DatapackCoverageOptions, int, java.lang.Object);
+  public final moe.afox.dpsandbox.core.SandboxQuickTest assertCoverage(moe.afox.dpsandbox.core.DatapackCoverageOptions);
+  public static moe.afox.dpsandbox.core.SandboxQuickTest assertCoverage$default(moe.afox.dpsandbox.core.SandboxQuickTest, moe.afox.dpsandbox.core.DatapackCoverageOptions, int, java.lang.Object);
   public final moe.afox.dpsandbox.core.SandboxQuickTestReport report();
   public final moe.afox.dpsandbox.core.SandboxQuickTestReport requirePassed();
   public final moe.afox.dpsandbox.core.SandboxQuickTest printChatOutput();
@@ -457,6 +461,8 @@ public final class moe.afox.dpsandbox.core.SandboxQuickTest {
   public final java.util.List<moe.afox.dpsandbox.core.OutputEvent> matchingOutputs(java.lang.String, java.lang.String);
   public final java.util.List<moe.afox.dpsandbox.core.OutputEvent> matchingOutputs(java.lang.String);
   public final java.util.List<moe.afox.dpsandbox.core.OutputEvent> matchingOutputs();
+  public final moe.afox.dpsandbox.core.DatapackCoverageReport coverageReport();
+  public final moe.afox.dpsandbox.core.SandboxQuickTest assertCoverage();
   public static final moe.afox.dpsandbox.core.SandboxQuickTest create(java.util.List<? extends java.nio.file.Path>, java.lang.String, java.lang.String, moe.afox.dpsandbox.core.UnsupportedFeatureMode);
   public static final moe.afox.dpsandbox.core.SandboxQuickTestMatrix matrix(java.util.Map<java.lang.String, ? extends java.util.List<? extends java.nio.file.Path>>, java.lang.String, moe.afox.dpsandbox.core.UnsupportedFeatureMode);
   public static final moe.afox.dpsandbox.core.SandboxQuickTest singleFunction(java.nio.file.Path, java.lang.String, java.lang.String, java.lang.String, moe.afox.dpsandbox.core.UnsupportedFeatureMode, java.util.List<? extends java.nio.file.Path>);

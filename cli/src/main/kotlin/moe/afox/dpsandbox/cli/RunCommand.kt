@@ -69,6 +69,12 @@ class RunCommand : CliktCommand(name = "run") {
     private val traceFilters by option("--trace-filter").multiple()
     private val outputsFile by option("--outputs-file").path()
     private val reportFile by option("--report-file").path()
+    private val coverage by option("--coverage").flag(default = false)
+    private val coverageFile by option("--coverage-file").path()
+    private val minimumLineCoverage by option("--minimum-line-coverage", "--min-line-coverage", "--min-coverage").double()
+    private val minimumFunctionCoverage by option("--minimum-function-coverage", "--min-function-coverage").double()
+    private val coverageIncludes by option("--coverage-include").multiple()
+    private val coverageExcludes by option("--coverage-exclude").multiple()
     private val screenshotFile by option("--screenshot-file").path()
     private val minecraftAssets by option("--minecraft-assets").path(mustExist = true)
     private val renderResourcePacks by option("--resource-pack").path(mustExist = true).multiple()
@@ -103,6 +109,13 @@ class RunCommand : CliktCommand(name = "run") {
     override fun run() {
         try {
             val limits = sandboxLimits(maxCommands, maxFunctionDepth, maxTicksPerRun, maxOutputEvents, maxSnapshotBytes)
+            val coverageOptions =
+                coverageOptions(
+                    minimumLineCoverage,
+                    minimumFunctionCoverage,
+                    coverageIncludes,
+                    coverageExcludes,
+                )
             val effectiveUnsupportedMode = if (strict) UnsupportedFeatureMode.ERROR else unsupportedFeatureMode(unsupported)
             val stdinText = if (stdin) String(System.`in`.readAllBytes(), StandardCharsets.UTF_8) else null
             val stdinAsFunction = stdinText?.takeIf { stdinMode == "function" }
@@ -129,6 +142,12 @@ class RunCommand : CliktCommand(name = "run") {
                     eventTraceFile != null ||
                     outputsFile != null ||
                     reportFile != null ||
+                    coverage ||
+                    coverageFile != null ||
+                    minimumLineCoverage != null ||
+                    minimumFunctionCoverage != null ||
+                    coverageIncludes.isNotEmpty() ||
+                    coverageExcludes.isNotEmpty() ||
                     screenshotFile != null ||
                     resources
             val sandbox =
@@ -218,17 +237,32 @@ class RunCommand : CliktCommand(name = "run") {
             }
             outputsFile?.let { writeOutputsFile(it, sandbox.world.outputs) }
             val resourceSummary = ManifestRunner.summarizeResources(sandbox)
+            val coverageReport = sandbox.coverageReport(coverageOptions)
             if (resources) {
                 ResourceSummaryRenderer.print(sandbox.profile.id, resourceSummary)
             }
+            if (coverage) CoverageRenderer.print(sandbox.profile.id, coverageReport)
+            coverageFile?.let { writeCoverageFile(it, coverageReport) }
             val assertionFailures =
                 ManifestRunner.evaluateAssertions(parseAssertions(), sandbox, beforeSnapshot) +
                     if (failOnMissingResources || strict) {
                         ManifestRunner.missingResourceFailures(resourceSummary)
                     } else {
                         emptyList()
-                    }
-            reportFile?.let { writeRunReportFile(it, sandbox, total, assertionFailures, traces, beforeSnapshot, resourceSummary) }
+                    } +
+                    coverageReport.thresholdFailures(coverageOptions)
+            reportFile?.let {
+                writeRunReportFile(
+                    it,
+                    sandbox,
+                    total,
+                    assertionFailures,
+                    traces,
+                    beforeSnapshot,
+                    resourceSummary,
+                    coverageReport,
+                )
+            }
             screenshotFile?.let { output ->
                 if (requireRenderAssets && minecraftAssets == null && renderResourcePacks.isEmpty()) {
                     throw SandboxException(

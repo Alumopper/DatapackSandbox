@@ -39,6 +39,40 @@ class SandboxQuickTestTest {
     }
 
     @Test
+    fun `quick tests expose and assert datapack coverage`() {
+        val scenario =
+            SandboxQuickTest
+                .create(listOf(fixturePack()), version = "26.1.2")
+                .load()
+        val loadOnly =
+            scenario.coverageReport(
+                DatapackCoverageOptions(
+                    minimumLinePercentage = 100.0,
+                    minimumFunctionPercentage = 100.0,
+                    includes = listOf("demo:load"),
+                ),
+            )
+
+        assertEquals(3, loadOnly.coveredLines)
+        assertEquals(3, loadOnly.totalLines)
+        assertEquals(1, loadOnly.coveredFunctions)
+        assertEquals(1, loadOnly.totalFunctions)
+
+        val report =
+            scenario
+                .assertCoverage(
+                    DatapackCoverageOptions(
+                        minimumLinePercentage = 100.0,
+                        minimumFunctionPercentage = 100.0,
+                        includes = listOf("demo:*"),
+                    ),
+                ).report()
+        assertTrue(!report.passed)
+        assertTrue(report.failures.any { "3/11 lines" in it }, report.failures.toString())
+        assertTrue(report.failures.any { "1/4 functions" in it }, report.failures.toString())
+    }
+
+    @Test
     fun `quick reports expose resource diagnostics`() {
         val dir = Files.createTempDirectory("dps-quick-resources")
         val first = writeResourceDiagnosticPack(dir.resolve("first"), "one", includeMissingLoad = true)

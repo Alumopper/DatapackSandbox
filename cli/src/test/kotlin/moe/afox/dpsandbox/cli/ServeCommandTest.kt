@@ -105,6 +105,36 @@ class ServeCommandTest {
     }
 
     @Test
+    fun `serve exposes filtered coverage and reset`() {
+        val responses =
+            runServe(
+                """
+                {"id":"create","method":"createSandbox","params":{"version":"26.2","functionSources":[{"id":"demo:main","text":"say first\nsay second"},{"id":"demo:unused","text":"say unused"}]}}
+                {"id":"run","method":"runFunction","params":{"id":"demo:main"}}
+                {"id":"coverage","method":"coverage","params":{"minimumLine":100,"include":"demo:*"}}
+                {"id":"reset","method":"resetCoverage"}
+                {"id":"after","method":"coverage","params":{"include":"demo:main"}}
+                """.trimIndent(),
+            )
+
+        val coverage = responses.byId("coverage").getAsJsonObject("result")
+        assertTrue(!coverage.get("passed").asBoolean)
+        assertEquals(2, coverage.get("coveredLines").asInt)
+        assertEquals(3, coverage.get("totalLines").asInt)
+        assertTrue("below required 100.00%" in coverage.getAsJsonArray("failures")[0].asString)
+        assertTrue(
+            responses
+                .byId("reset")
+                .getAsJsonObject("result")
+                .get("reset")
+                .asBoolean,
+        )
+        val after = responses.byId("after").getAsJsonObject("result")
+        assertEquals(0, after.get("coveredLines").asInt)
+        assertEquals(2, after.get("totalLines").asInt)
+    }
+
+    @Test
     fun `serve updates function source while preserving active world`() {
         val responses =
             runServe(
@@ -324,6 +354,7 @@ class ServeCommandTest {
         assertTrue(capabilities.get("checkpoints").asBoolean)
         assertTrue(capabilities.get("functionSource").asBoolean)
         assertTrue(capabilities.get("pagedEvents").asBoolean)
+        assertTrue(capabilities.get("coverage").asBoolean)
         val source = responses.byId("source").getAsJsonObject("result")
         assertEquals("demo:main", source.get("id").asString)
         assertEquals("say first\nsay second", source.get("source").asString)

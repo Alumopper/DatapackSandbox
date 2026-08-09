@@ -2,6 +2,15 @@
 
 Persistent MCFunction notebook cells that execute entirely in an isolated browser Worker. The Worker runs the same `:core` command engine as the JVM build, compiled to an ES module with TeaVM; no Java or WebSocket service is required at runtime.
 
+## Installation
+
+```bash
+npm install @datapack-sandbox/vitepress-playground
+```
+
+The package requires Vue 3.5 or newer as a peer dependency. It ships the browser runtime, Worker,
+TypeScript declarations, and styles; consumers do not need Java or Gradle.
+
 ```ts
 import DpsPlayground from '@datapack-sandbox/vitepress-playground'
 import '@datapack-sandbox/vitepress-playground/style.css'

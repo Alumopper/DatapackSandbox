@@ -6,6 +6,8 @@ import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import moe.afox.dpsandbox.core.BlockPos
 import moe.afox.dpsandbox.core.CommandTraceEvent
+import moe.afox.dpsandbox.core.DatapackCoverageOptions
+import moe.afox.dpsandbox.core.DatapackCoverageReport
 import moe.afox.dpsandbox.core.DatapackMissingResourceReference
 import moe.afox.dpsandbox.core.DatapackResourceSummary
 import moe.afox.dpsandbox.core.DatapackSandbox
@@ -60,6 +62,7 @@ data class ManifestAttemptResult(
     val snapshot: JsonObject? = null,
     val snapshotDiffs: List<SnapshotDiffEntry> = emptyList(),
     val resourceSummary: ManifestResourceSummary? = null,
+    val coverage: DatapackCoverageReport? = null,
 )
 
 data class ExistingSandboxManifestResult(
@@ -75,6 +78,7 @@ data class ManifestOptions(
     val failOnMissingResources: Boolean = false,
     val unsupportedFeatureMode: UnsupportedFeatureMode = UnsupportedFeatureMode.WARN,
     val limits: SandboxLimits = SandboxLimits(),
+    val coverage: DatapackCoverageOptions = DatapackCoverageOptions(),
 )
 
 internal data class ManifestDiagnostic(
@@ -152,6 +156,7 @@ object ManifestRunner {
             options.copy(
                 seed = document.root.get("seed")?.asLong ?: options.seed,
                 failOnMissingResources = document.root.get("failOnMissingResources")?.asBoolean ?: options.failOnMissingResources,
+                coverage = coverageOptions(document.root, options.coverage),
             )
         val attempts =
             configs.map { config ->
@@ -196,6 +201,7 @@ object ManifestRunner {
             options.copy(
                 seed = document.root.get("seed")?.asLong ?: initialSandbox.world.seed,
                 failOnMissingResources = document.root.get("failOnMissingResources")?.asBoolean ?: options.failOnMissingResources,
+                coverage = coverageOptions(document.root, options.coverage),
             )
         var sandbox = initialSandbox
         sandbox.world.seed = effectiveOptions.seed
@@ -266,6 +272,8 @@ object ManifestRunner {
         }
         val resourceSummary = summarizeResources(sandbox)
         if (effectiveOptions.failOnMissingResources) failures += missingResourceFailures(resourceSummary)
+        val coverage = sandbox.coverageReport(effectiveOptions.coverage)
+        failures += coverage.thresholdFailures(effectiveOptions.coverage)
         val finalSnapshot = sandbox.snapshotJson()
         val attempt =
             ManifestAttemptResult(
@@ -279,6 +287,7 @@ object ManifestRunner {
                 snapshot = finalSnapshot,
                 snapshotDiffs = SnapshotDiff.stateDiff(beforeSnapshot, finalSnapshot),
                 resourceSummary = resourceSummary,
+                coverage = coverage,
             )
         return ExistingSandboxManifestResult(
             result =
@@ -414,6 +423,8 @@ object ManifestRunner {
                     }
             }
         }
+        val coverage = sandbox.coverageReport(options.coverage)
+        failures += coverage.thresholdFailures(options.coverage)
         if (failures.isNotEmpty() && options.snapshotOnFail) {
             failures += "snapshot: ${sandbox.snapshotString()}"
         }
@@ -436,6 +447,7 @@ object ManifestRunner {
             snapshot = finalSnapshot,
             snapshotDiffs = SnapshotDiff.stateDiff(beforeSnapshot, finalSnapshot),
             resourceSummary = resourceSummary,
+            coverage = coverage,
         )
     }
 
@@ -531,7 +543,7 @@ object ManifestRunner {
         included: List<ResolvedManifest>,
     ): JsonObject {
         val root = json.deepCopy()
-        listOf("version", "versions", "unsupported", "seed", "failOnMissingResources").forEach { key ->
+        listOf("version", "versions", "unsupported", "seed", "failOnMissingResources", "coverage").forEach { key ->
             if (!root.has(key)) {
                 included.firstOrNull { it.root.has(key) }?.let { root.add(key, it.root.get(key).deepCopy()) }
             }
@@ -545,6 +557,70 @@ object ManifestRunner {
         }
         return root
     }
+
+    private fun coverageOptions(
+        root: JsonObject,
+        defaults: DatapackCoverageOptions,
+    ): DatapackCoverageOptions {
+        val element = root.get("coverage") ?: return defaults
+        if (!element.isJsonObject) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Manifest 'coverage' must be an object")
+        }
+        val coverage = element.asJsonObject
+        val manifestMinimumLine = coveragePercentage(coverage, "minimumLine")
+        val manifestMinimumFunction = coveragePercentage(coverage, "minimumFunction")
+        val includes = if (coverage.has("include")) coveragePatterns(coverage.get("include"), "include") else defaults.includes
+        val excludes = (defaults.excludes + coveragePatterns(coverage.get("exclude"), "exclude")).distinct()
+        return try {
+            DatapackCoverageOptions(
+                minimumLinePercentage = stricterCoverageMinimum(defaults.minimumLinePercentage, manifestMinimumLine),
+                minimumFunctionPercentage = stricterCoverageMinimum(defaults.minimumFunctionPercentage, manifestMinimumFunction),
+                includes = includes,
+                excludes = excludes,
+            )
+        } catch (error: IllegalArgumentException) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, error.message ?: "Invalid manifest coverage options", cause = error)
+        }
+    }
+
+    private fun coveragePercentage(
+        coverage: JsonObject,
+        name: String,
+    ): Double? {
+        val value = coverage.get(name) ?: return null
+        if (!value.isJsonPrimitive || !value.asJsonPrimitive.isNumber) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Manifest coverage '$name' must be a number")
+        }
+        return value.asDouble
+    }
+
+    private fun coveragePatterns(
+        value: JsonElement?,
+        name: String,
+    ): List<String> {
+        if (value == null) return emptyList()
+        val elements =
+            when {
+                value.isJsonPrimitive && value.asJsonPrimitive.isString -> listOf(value)
+                value.isJsonArray && value.asJsonArray.size() > 0 -> value.asJsonArray.toList()
+                else ->
+                    throw SandboxException(
+                        DiagnosticCode.INPUT_FORMAT,
+                        "Manifest coverage '$name' must be a string or non-empty array of strings",
+                    )
+            }
+        return elements.map { pattern ->
+            if (!pattern.isJsonPrimitive || !pattern.asJsonPrimitive.isString || pattern.asString.isBlank()) {
+                throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Manifest coverage '$name' entries must be non-blank strings")
+            }
+            pattern.asString
+        }
+    }
+
+    private fun stricterCoverageMinimum(
+        first: Double?,
+        second: Double?,
+    ): Double? = listOfNotNull(first, second).maxOrNull()
 
     private fun mergeManifestPacks(packs: List<JsonElement>): JsonElement {
         if (packs.none { it.isJsonObject }) {

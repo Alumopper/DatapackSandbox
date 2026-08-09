@@ -425,6 +425,104 @@ class CheckCommandTest {
             },
         )
         assertTrue(attempt.getAsJsonObject("resources").get("functions").asInt > 0)
+        assertTrue(attempt.has("coverage"), attempt.toString())
+    }
+
+    @Test
+    fun `check prints and writes per-attempt coverage`() {
+        val dir = Files.createTempDirectory("dps-check-coverage")
+        val coverageFile = dir.resolve("coverage.json")
+        val reportFile = dir.resolve("report.json")
+        val pack =
+            Path
+                .of("../core/src/test/resources/packs/counter")
+                .toAbsolutePath()
+                .normalize()
+                .toString()
+                .replace("\\", "\\\\")
+        val manifest = dir.resolve("coverage.dps.json")
+        Files.writeString(
+            manifest,
+            """
+            {
+              "version": "26.1.2",
+              "packs": ["$pack"],
+              "coverage": {
+                "minimumLine": 100,
+                "minimumFunction": 100,
+                "include": "demo:main"
+              },
+              "steps": [{ "function": "demo:main" }],
+              "assertions": []
+            }
+            """.trimIndent(),
+        )
+
+        val output =
+            captureStdout {
+                main(
+                    arrayOf(
+                        "check",
+                        manifest.toString(),
+                        "--coverage",
+                        "--coverage-file",
+                        coverageFile.toString(),
+                        "--report-file",
+                        reportFile.toString(),
+                    ),
+                )
+            }
+
+        assertTrue("PASS $manifest" in output, output)
+        assertTrue("COVERAGE 26.1.2 lines=100.00% (4/4) functions=100.00% (1/1)" in output, output)
+        assertTrue("coverage written: $coverageFile" in output, output)
+        val coverageAttempt =
+            JsonParser
+                .parseString(Files.readString(coverageFile))
+                .asJsonArray[0]
+                .asJsonObject
+                .getAsJsonArray("attempts")[0]
+                .asJsonObject
+        assertEquals("26.1.2", coverageAttempt.get("version").asString)
+        assertEquals(100.0, coverageAttempt.getAsJsonObject("coverage").get("linePercentage").asDouble)
+        val reportAttempt =
+            JsonParser
+                .parseString(Files.readString(reportFile))
+                .asJsonArray[0]
+                .asJsonObject
+                .getAsJsonArray("attempts")[0]
+                .asJsonObject
+        assertTrue(reportAttempt.has("coverage"), reportAttempt.toString())
+    }
+
+    @Test
+    fun `check command line coverage threshold cannot be weakened by manifest`() {
+        val dir = Files.createTempDirectory("dps-check-coverage-threshold")
+        val pack =
+            Path
+                .of("../core/src/test/resources/packs/counter")
+                .toAbsolutePath()
+                .normalize()
+                .toString()
+                .replace("\\", "\\\\")
+        val manifest = dir.resolve("coverage-threshold.dps.json")
+        Files.writeString(
+            manifest,
+            """
+            {
+              "version": "26.1.2",
+              "packs": ["$pack"],
+              "coverage": { "minimumLine": 10, "include": "demo:*" },
+              "steps": [{ "function": "demo:main" }],
+              "assertions": []
+            }
+            """.trimIndent(),
+        )
+
+        val result = runCliProcess("check", manifest.toString(), "--min-coverage", "90")
+
+        assertEquals(ExitCodes.ASSERTION_FAILED, result.exitCode, result.output)
+        assertTrue("below required 90.00%" in result.output, result.output)
     }
 
     @Test

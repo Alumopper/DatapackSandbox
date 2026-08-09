@@ -266,6 +266,8 @@ internal class ServeSession {
             "render", "screenshot" -> render(params)
             "interrupt" -> interrupt()
             "resources" -> resourcesJson(current())
+            "coverage" -> coverageJson(params)
+            "resetCoverage" -> resetCoverage()
             "functionSource" -> functionSourceJson(params)
             "outputs" -> outputsJson(current().world.outputs, params.int("from") ?: 0)
             "traces" -> tracesJson(current().world.traces, params.int("from") ?: 0)
@@ -300,6 +302,7 @@ internal class ServeSession {
                     capabilities.addProperty("eventTraces", true)
                     capabilities.addProperty("pagedEvents", true)
                     capabilities.addProperty("richOutput", true)
+                    capabilities.addProperty("coverage", true)
                 },
             )
             json.add("versions", JsonArray().also { versions -> VersionProfiles.all.forEach { versions.add(it.id) } })
@@ -393,6 +396,27 @@ internal class ServeSession {
                 },
             )
         }
+    }
+
+    private fun coverageJson(params: JsonObject): JsonObject {
+        val options =
+            coverageOptions(
+                minimumLinePercentage = params.double("minimumLine"),
+                minimumFunctionPercentage = params.double("minimumFunction"),
+                includes = params.stringArray("include"),
+                excludes = params.stringArray("exclude"),
+            )
+        val report = current().coverageReport(options)
+        val failures = report.thresholdFailures(options)
+        return report.toCoverageJson().also { json ->
+            json.add("failures", stringArray(failures))
+            json.addProperty("passed", failures.isEmpty())
+        }
+    }
+
+    private fun resetCoverage(): JsonObject {
+        current().resetCoverage()
+        return JsonObject().also { it.addProperty("reset", true) }
     }
 
     private fun versionsJson(): JsonObject =
@@ -1025,6 +1049,7 @@ internal class ServeSession {
                                 item.add("traces", JsonArray().also { array -> attempt.traces.forEach { array.add(it.toJson()) } })
                                 attempt.snapshot?.let { item.add("snapshot", it.deepCopy()) }
                                 item.add("snapshotDiffs", SnapshotDiff.toJson(attempt.snapshotDiffs))
+                                attempt.coverage?.let { item.add("coverage", it.toCoverageJson()) }
                             },
                         )
                     }

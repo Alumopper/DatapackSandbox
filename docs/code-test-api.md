@@ -156,6 +156,37 @@ tests or `snapshotDiffs()`/`report.snapshotDiffs` for inspection. Lower-level
 code can still call `SnapshotDiff.diff(before, after)` for stable JSON Pointer
 paths or `SnapshotDiff.render(...)` for readable failure logs.
 
+## Datapack Coverage
+
+`SandboxQuickTest.coverageReport(...)` returns executable-line and
+function-invocation coverage for active loaded `.mcfunction` resources.
+`assertCoverage(...)` collects threshold failures into the fluent scenario:
+
+```kotlin
+import moe.afox.dpsandbox.core.DatapackCoverageOptions
+
+val scenario = SandboxQuickTest.create(listOf(Path.of("packs/counter")))
+    .load()
+    .ticks(20)
+    .function("demo:main")
+
+val options = DatapackCoverageOptions(
+    minimumLinePercentage = 85.0,
+    minimumFunctionPercentage = 75.0,
+    includes = listOf("demo:*"),
+    excludes = listOf("demo:generated/*"),
+)
+
+scenario.assertCoverage(options).requirePassed()
+println(scenario.coverageReport(options).linePercentage)
+```
+
+Comments and blank lines do not enter the denominator. Reaching a command line
+records a hit even when that command later fails, and every line retains a
+cumulative hit count. The lower-level `DatapackSandbox` exposes the same
+`coverageReport(options)` API plus `resetCoverage()`. Matrix tests can apply the
+assertion with `forEachScenario { assertCoverage(options) }`.
+
 `unsupportedFeatureMode` can be `WARN` (default), `IGNORE`, or `ERROR`. Use
 `ERROR` when you want unsupported vanilla commands to fail the test immediately.
 

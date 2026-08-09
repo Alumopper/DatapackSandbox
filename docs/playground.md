@@ -21,6 +21,8 @@ import DpsPlayground from '@datapack-sandbox/vitepress-playground'
 import '@datapack-sandbox/vitepress-playground/style.css'
 ```
 
+To match the component to an existing site, see [Playground CSS customization](/en/guide/playground-styling) for the supported theme variables, dark-mode selectors, scoped-style pattern, and structural hooks.
+
 ```vue
 <DpsPlayground
   :notebook="{

@@ -155,7 +155,7 @@ smoke tasks.
 ## `.dps.json` Manifests
 
 Manifests may contain `version` or `versions`, `unsupported`, `seed`,
-`failOnMissingResources`, `packs`, `world`, `include`, `steps`, and
+`failOnMissingResources`, `coverage`, `packs`, `world`, `include`, `steps`, and
 `assertions`. The JSON Schema is available at:
 
 ```text
@@ -178,8 +178,8 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar check ./sandbox-cases --valida
 `include` accepts a relative manifest path string or an array of paths. Included
 manifests are applied before the including manifest. Their `world`, `steps`, and
 `assertions` are concatenated in order, and their `version`/`versions`, `packs`,
-`unsupported`, `seed`, and `failOnMissingResources` fields act as defaults when the
-including manifest omits them. Relative paths inside included world setup and
+`unsupported`, `seed`, `failOnMissingResources`, and `coverage` fields act as
+defaults when the including manifest omits them. Relative paths inside included world setup and
 steps are resolved from the included file's directory. Assertion failures from
 included manifests keep the included file path and JSON Pointer in the failure
 prefix, so shared assertions can be located directly from CI logs.
@@ -195,6 +195,36 @@ advancement reward resources, predicate references in predicate/loot/item
 modifier resources, or nested loot tables.
 The same missing references are always present in structured check reports and
 `check --verbose` resource summaries.
+
+Use top-level `coverage` to fail a manifest when loaded datapack functions do
+not meet executable-line or function-invocation thresholds:
+
+```json
+{
+  "coverage": {
+    "minimumLine": 85,
+    "minimumFunction": 75,
+    "include": ["demo:*", "shared:public/*"],
+    "exclude": "demo:generated/*"
+  }
+}
+```
+
+Coverage denominators contain active loaded `.mcfunction` resources only.
+Blank lines and comments are ignored. A command line is covered when execution
+reaches it, even if macro expansion or the command then fails; lines skipped by
+`return` remain uncovered. Function coverage records invocation, while line
+entries also retain hit counts. `include` and `exclude` accept a string or array
+of full resource-id globs where `*` matches any characters and `?` matches one.
+An empty selected function/line set is 100% by convention.
+
+Every `run --report-file` and `check --report-file` artifact includes detailed
+coverage. Use `--coverage` for a console summary and `--coverage-file <file>` for
+a dedicated JSON artifact. Both `run` and `check` accept
+`--minimum-line-coverage` (aliases `--min-line-coverage` and `--min-coverage`),
+`--minimum-function-coverage`, `--coverage-include`, and
+`--coverage-exclude`. CLI minima and manifest minima combine using the stricter
+value.
 
 Inside `world`, `fixture`, `fixtures`, and `extends` accept a relative world
 fixture path string or an array of paths. Referenced files may contain either a

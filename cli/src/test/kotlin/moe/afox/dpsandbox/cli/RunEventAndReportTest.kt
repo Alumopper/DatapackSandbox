@@ -303,6 +303,73 @@ class RunEventAndReportTest : RunCommandTestSupport() {
         assertTrue("\"resources\"" in reportJson, reportJson)
         assertTrue("\"functions\": 1" in reportJson, reportJson)
         assertTrue("\"missingReferences\": []" in reportJson, reportJson)
+        assertTrue("\"coverage\"" in reportJson, reportJson)
+        assertTrue("\"linePercentage\": 100.0" in reportJson, reportJson)
+        assertTrue("\"hits\": 1" in reportJson, reportJson)
+    }
+
+    @Test
+    fun `run prints and writes filtered coverage reports`() {
+        val coverageFile = Files.createTempFile("dps-cli-coverage", ".json")
+
+        val output =
+            captureStdout {
+                main(
+                    arrayOf(
+                        "run",
+                        "--version",
+                        "26.2",
+                        "--mcfunction-text",
+                        "say covered",
+                        "--mcfunction-text",
+                        "demo:unused=say unused",
+                        "--coverage",
+                        "--coverage-file",
+                        coverageFile.toString(),
+                        "--minimum-line-coverage",
+                        "50",
+                        "--minimum-function-coverage",
+                        "50",
+                    ),
+                )
+            }
+
+        assertTrue("COVERAGE 26.2 lines=50.00% (1/2) functions=50.00% (1/2)" in output, output)
+        assertTrue("demo:unused lines=0/1 invocations=0 uncovered=1" in output, output)
+        assertTrue("coverage written: $coverageFile" in output, output)
+        val coverage = JsonParser.parseString(Files.readString(coverageFile)).asJsonObject
+        assertEquals(1, coverage.get("coveredLines").asInt)
+        assertEquals(2, coverage.get("totalLines").asInt)
+        assertEquals(50.0, coverage.get("linePercentage").asDouble)
+        val functions = coverage.getAsJsonArray("functions").map { it.asJsonObject }
+        val unused = functions.single { it.get("id").asString == "demo:unused" }
+        assertEquals(0, unused.get("invocations").asInt)
+        assertTrue(
+            !unused
+                .getAsJsonArray("lines")[0]
+                .asJsonObject
+                .get("covered")
+                .asBoolean,
+        )
+    }
+
+    @Test
+    fun `run coverage thresholds fail with assertion exit code`() {
+        val result =
+            runCliProcess(
+                "run",
+                "--version",
+                "26.2",
+                "--mcfunction-text",
+                "say covered",
+                "--mcfunction-text",
+                "demo:unused=say unused",
+                "--min-coverage",
+                "51",
+            )
+
+        assertEquals(ExitCodes.ASSERTION_FAILED, result.exitCode, result.output)
+        assertTrue("coverage line percentage 50.00% is below required 51.00% (1/2 lines)" in result.output, result.output)
     }
 
     @Test

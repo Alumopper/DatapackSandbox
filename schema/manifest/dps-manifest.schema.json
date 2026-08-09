@@ -24,6 +24,7 @@
     },
     "seed": { "type": "integer" },
     "failOnMissingResources": { "type": "boolean" },
+    "coverage": { "$ref": "#/$defs/coverage" },
     "packs": {
       "oneOf": [
         { "$ref": "#/$defs/stringArray" },
@@ -56,6 +57,31 @@
     "stringArray": {
       "type": "array",
       "items": { "type": "string" },
+      "minItems": 1
+    },
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "minimumLine": { "type": "number", "minimum": 0, "maximum": 100 },
+        "minimumFunction": { "type": "number", "minimum": 0, "maximum": 100 },
+        "include": {
+          "oneOf": [
+            { "type": "string", "minLength": 1 },
+            { "$ref": "#/$defs/coveragePatternArray" }
+          ]
+        },
+        "exclude": {
+          "oneOf": [
+            { "type": "string", "minLength": 1 },
+            { "$ref": "#/$defs/coveragePatternArray" }
+          ]
+        }
+      }
+    },
+    "coveragePatternArray": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
       "minItems": 1
     },
     "position": {

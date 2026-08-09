@@ -215,12 +215,12 @@ class DatapackSandbox(
     private var validationOnly = false
     internal var lastFunctionReturnValue: Int? = null
     private val functionStack = mutableListOf<FunctionTraceFrame>()
+    private val coverageTracker = DatapackCoverageTracker(datapack)
     private val placementCommands = SandboxPlacementCommands(this)
     private val itemCommands = SandboxItemCommands(this)
     private val checkpoints = linkedMapOf<String, SandboxWorld>()
     private val commandTokenCache = linkedMapOf<String, List<CommandToken>>()
     private val checkpointNamePattern = Regex("[A-Za-z0-9._-]{1,64}")
-    private val macroArgumentPattern = Regex("\\$\\(([^)]+)\\)")
 
     init {
         recordDatapackLoadWarnings()
@@ -351,6 +351,7 @@ class DatapackSandbox(
         }
         var returnValue: Int? = null
         try {
+            coverageTracker.recordInvocation(id)
             functionStack +=
                 FunctionTraceFrame(
                     id,
@@ -359,9 +360,10 @@ class DatapackSandbox(
                         ?.location
                         ?.file,
                 )
-            for (line in function.lines) {
+            for ((lineIndex, line) in function.lines.withIndex()) {
                 checkExecutionCancellation(line.location)
-                val command = expandFunctionMacro(id, line, macroArguments)
+                coverageTracker.recordLine(id, lineIndex, function.lines.size)
+                val command = FunctionMacroExpander.expand(profile, id, line, macroArguments)
                 executeCommand(command, line.location.copy(command = command), context)
             }
         } catch (signal: ReturnSignal) {
@@ -376,31 +378,13 @@ class DatapackSandbox(
         return ExecutionResult(executed, returnValue, success)
     }
 
-    private fun expandFunctionMacro(
-        functionId: ResourceLocation,
-        line: FunctionLine,
-        arguments: JsonObject?,
-    ): String {
-        if (!line.command.startsWith('$')) return line.command
-        val values =
-            arguments ?: throw SandboxException(
-                DiagnosticCode.COMMAND_ERROR,
-                "Function '$functionId' requires macro arguments",
-                line.location,
-                profile.id,
-            )
-        return macroArgumentPattern.replace(line.command.drop(1)) { match ->
-            val name = match.groupValues[1]
-            val value =
-                values.get(name) ?: throw SandboxException(
-                    DiagnosticCode.COMMAND_ERROR,
-                    "Function '$functionId' macro argument '$name' is missing",
-                    line.location,
-                    profile.id,
-                )
-            if (value.isJsonPrimitive && value.asJsonPrimitive.isString) value.asString else JsonValues.renderCompact(value)
-        }
-    }
+    /** Returns cumulative executable-line and function-invocation coverage. */
+    @JvmOverloads
+    fun coverageReport(options: DatapackCoverageOptions = DatapackCoverageOptions()): DatapackCoverageReport =
+        coverageTracker.report(options)
+
+    /** Clears cumulative coverage counters without changing world or datapack state. */
+    fun resetCoverage() = coverageTracker.reset()
 
     /**
      * Executes one raw Minecraft command.
@@ -1116,7 +1100,7 @@ class DatapackSandbox(
         if (validationOnly) {
             val function = datapack.function(functionId)
             function.lines.forEach { line ->
-                if (line.command.startsWith('$')) expandFunctionMacro(functionId, line, arguments)
+                if (line.command.startsWith('$')) FunctionMacroExpander.expand(profile, functionId, line, arguments)
             }
             return ExecutionResult(commandsExecuted = 1, success = true)
         }

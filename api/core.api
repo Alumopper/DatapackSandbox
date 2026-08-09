@@ -588,6 +588,54 @@ public final class moe.afox.dpsandbox.core.Datapack {
   public int hashCode();
   public boolean equals(java.lang.Object);
 }
+public final class moe.afox.dpsandbox.core.DatapackCoverageKt {
+  public static final double coveragePercentage(int, int);
+  public static final boolean coverageGlobMatches(java.lang.String, java.lang.String);
+  public static final void access$validatePercentage(java.lang.String, java.lang.Double);
+  public static final java.lang.String access$formatCoveragePercentage(double);
+}
+public final class moe.afox.dpsandbox.core.DatapackCoverageOptions {
+  public moe.afox.dpsandbox.core.DatapackCoverageOptions(java.lang.Double, java.lang.Double, java.util.List<java.lang.String>, java.util.List<java.lang.String>);
+  public moe.afox.dpsandbox.core.DatapackCoverageOptions(java.lang.Double, java.lang.Double, java.util.List, java.util.List, int, kotlin.jvm.internal.DefaultConstructorMarker);
+  public final java.lang.Double getMinimumLinePercentage();
+  public final java.lang.Double getMinimumFunctionPercentage();
+  public final java.util.List<java.lang.String> getIncludes();
+  public final java.util.List<java.lang.String> getExcludes();
+  public final java.lang.Double component1();
+  public final java.lang.Double component2();
+  public final java.util.List<java.lang.String> component3();
+  public final java.util.List<java.lang.String> component4();
+  public final moe.afox.dpsandbox.core.DatapackCoverageOptions copy(java.lang.Double, java.lang.Double, java.util.List<java.lang.String>, java.util.List<java.lang.String>);
+  public static moe.afox.dpsandbox.core.DatapackCoverageOptions copy$default(moe.afox.dpsandbox.core.DatapackCoverageOptions, java.lang.Double, java.lang.Double, java.util.List, java.util.List, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+  public moe.afox.dpsandbox.core.DatapackCoverageOptions();
+}
+public final class moe.afox.dpsandbox.core.DatapackCoverageReport {
+  public moe.afox.dpsandbox.core.DatapackCoverageReport(java.util.List<moe.afox.dpsandbox.core.DatapackFunctionCoverage>);
+  public final java.util.List<moe.afox.dpsandbox.core.DatapackFunctionCoverage> getFunctions();
+  public final int getCoveredLines();
+  public final int getTotalLines();
+  public final double getLinePercentage();
+  public final int getCoveredFunctions();
+  public final int getTotalFunctions();
+  public final double getFunctionPercentage();
+  public final java.util.List<java.lang.String> thresholdFailures(moe.afox.dpsandbox.core.DatapackCoverageOptions);
+  public final java.util.List<moe.afox.dpsandbox.core.DatapackFunctionCoverage> component1();
+  public final moe.afox.dpsandbox.core.DatapackCoverageReport copy(java.util.List<moe.afox.dpsandbox.core.DatapackFunctionCoverage>);
+  public static moe.afox.dpsandbox.core.DatapackCoverageReport copy$default(moe.afox.dpsandbox.core.DatapackCoverageReport, java.util.List, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+}
+public final class moe.afox.dpsandbox.core.DatapackCoverageTracker {
+  public moe.afox.dpsandbox.core.DatapackCoverageTracker(moe.afox.dpsandbox.core.Datapack);
+  public final void recordInvocation(moe.afox.dpsandbox.core.ResourceLocation);
+  public final void recordLine(moe.afox.dpsandbox.core.ResourceLocation, int, int);
+  public final moe.afox.dpsandbox.core.DatapackCoverageReport report(moe.afox.dpsandbox.core.DatapackCoverageOptions);
+  public final void reset();
+}
 public final class moe.afox.dpsandbox.core.DatapackFunction {
   public moe.afox.dpsandbox.core.DatapackFunction(moe.afox.dpsandbox.core.ResourceLocation, java.util.List<moe.afox.dpsandbox.core.FunctionLine>);
   public final moe.afox.dpsandbox.core.ResourceLocation getId();
@@ -600,10 +648,45 @@ public final class moe.afox.dpsandbox.core.DatapackFunction {
   public int hashCode();
   public boolean equals(java.lang.Object);
 }
+public final class moe.afox.dpsandbox.core.DatapackFunctionCoverage {
+  public moe.afox.dpsandbox.core.DatapackFunctionCoverage(moe.afox.dpsandbox.core.ResourceLocation, java.lang.String, long, java.util.List<moe.afox.dpsandbox.core.DatapackLineCoverage>);
+  public final moe.afox.dpsandbox.core.ResourceLocation getId();
+  public final java.lang.String getFile();
+  public final long getInvocations();
+  public final java.util.List<moe.afox.dpsandbox.core.DatapackLineCoverage> getLines();
+  public final boolean getCovered();
+  public final int getCoveredLines();
+  public final int getTotalLines();
+  public final double getLinePercentage();
+  public final moe.afox.dpsandbox.core.ResourceLocation component1();
+  public final java.lang.String component2();
+  public final long component3();
+  public final java.util.List<moe.afox.dpsandbox.core.DatapackLineCoverage> component4();
+  public final moe.afox.dpsandbox.core.DatapackFunctionCoverage copy(moe.afox.dpsandbox.core.ResourceLocation, java.lang.String, long, java.util.List<moe.afox.dpsandbox.core.DatapackLineCoverage>);
+  public static moe.afox.dpsandbox.core.DatapackFunctionCoverage copy$default(moe.afox.dpsandbox.core.DatapackFunctionCoverage, moe.afox.dpsandbox.core.ResourceLocation, java.lang.String, long, java.util.List, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+}
 public final class moe.afox.dpsandbox.core.DatapackKt {
   public static final java.util.List access$missingPredicateReferences(moe.afox.dpsandbox.core.ResourceLocation, com.google.gson.JsonElement, java.util.Set);
   public static final java.util.List access$missingLootTableReferences(moe.afox.dpsandbox.core.ResourceLocation, com.google.gson.JsonObject, java.util.Set, java.util.Set);
   public static final java.util.List access$missingItemModifierReferences(moe.afox.dpsandbox.core.ResourceLocation, com.google.gson.JsonElement, java.util.Set);
+}
+public final class moe.afox.dpsandbox.core.DatapackLineCoverage {
+  public moe.afox.dpsandbox.core.DatapackLineCoverage(int, java.lang.String, long);
+  public final int getLine();
+  public final java.lang.String getCommand();
+  public final long getHits();
+  public final boolean getCovered();
+  public final int component1();
+  public final java.lang.String component2();
+  public final long component3();
+  public final moe.afox.dpsandbox.core.DatapackLineCoverage copy(int, java.lang.String, long);
+  public static moe.afox.dpsandbox.core.DatapackLineCoverage copy$default(moe.afox.dpsandbox.core.DatapackLineCoverage, int, java.lang.String, long, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
 }
 public final class moe.afox.dpsandbox.core.DatapackLoader {
   public static final moe.afox.dpsandbox.core.DatapackLoader INSTANCE;
@@ -850,6 +933,9 @@ public final class moe.afox.dpsandbox.core.DatapackSandbox {
   public final moe.afox.dpsandbox.core.ExecutionResult runFunction(java.lang.String);
   public final moe.afox.dpsandbox.core.ExecutionResult runFunction(moe.afox.dpsandbox.core.ResourceLocation, moe.afox.dpsandbox.core.ExecutionContext);
   public static moe.afox.dpsandbox.core.ExecutionResult runFunction$default(moe.afox.dpsandbox.core.DatapackSandbox, moe.afox.dpsandbox.core.ResourceLocation, moe.afox.dpsandbox.core.ExecutionContext, int, java.lang.Object);
+  public final moe.afox.dpsandbox.core.DatapackCoverageReport coverageReport(moe.afox.dpsandbox.core.DatapackCoverageOptions);
+  public static moe.afox.dpsandbox.core.DatapackCoverageReport coverageReport$default(moe.afox.dpsandbox.core.DatapackSandbox, moe.afox.dpsandbox.core.DatapackCoverageOptions, int, java.lang.Object);
+  public final void resetCoverage();
   public final moe.afox.dpsandbox.core.ExecutionResult executeCommand(java.lang.String, moe.afox.dpsandbox.core.SourceLocation, moe.afox.dpsandbox.core.ExecutionContext);
   public static moe.afox.dpsandbox.core.ExecutionResult executeCommand$default(moe.afox.dpsandbox.core.DatapackSandbox, java.lang.String, moe.afox.dpsandbox.core.SourceLocation, moe.afox.dpsandbox.core.ExecutionContext, int, java.lang.Object);
   public final moe.afox.dpsandbox.core.CommandCheckResult checkCommand(java.lang.String, moe.afox.dpsandbox.core.ExecutionContext);
@@ -920,6 +1006,7 @@ public final class moe.afox.dpsandbox.core.DatapackSandbox {
   public final void requireSize$moe_afox_dpsandbox_core(java.util.List<moe.afox.dpsandbox.core.CommandToken>, int, java.lang.String, moe.afox.dpsandbox.core.SourceLocation);
   public final void requireSizeFrom$moe_afox_dpsandbox_core(java.util.List<moe.afox.dpsandbox.core.CommandToken>, int, int, java.lang.String, moe.afox.dpsandbox.core.SourceLocation);
   public final void requireIndex$moe_afox_dpsandbox_core(java.util.List<moe.afox.dpsandbox.core.CommandToken>, int, java.lang.String, moe.afox.dpsandbox.core.SourceLocation);
+  public final moe.afox.dpsandbox.core.DatapackCoverageReport coverageReport();
   public final java.lang.String saveCheckpoint();
   public final java.lang.String restoreCheckpoint();
 }
@@ -1255,6 +1342,10 @@ public final class moe.afox.dpsandbox.core.FunctionLine {
   public int hashCode();
   public boolean equals(java.lang.Object);
 }
+public final class moe.afox.dpsandbox.core.FunctionMacroExpander {
+  public static final moe.afox.dpsandbox.core.FunctionMacroExpander INSTANCE;
+  public final java.lang.String expand(moe.afox.dpsandbox.core.VersionProfile, moe.afox.dpsandbox.core.ResourceLocation, moe.afox.dpsandbox.core.FunctionLine, com.google.gson.JsonObject);
+}
 public final class moe.afox.dpsandbox.core.FunctionSource {
   public static final moe.afox.dpsandbox.core.FunctionSource$Companion Companion;
   public final moe.afox.dpsandbox.core.ResourceLocation getId();
@@ -1266,6 +1357,7 @@ public final class moe.afox.dpsandbox.core.FunctionSource {
   public static final moe.afox.dpsandbox.core.FunctionSource text(java.lang.String, java.lang.String);
   public moe.afox.dpsandbox.core.FunctionSource(moe.afox.dpsandbox.core.ResourceLocation, java.lang.String, java.nio.file.Path, java.lang.String, kotlin.jvm.internal.DefaultConstructorMarker);
 }
+
 public final class moe.afox.dpsandbox.core.FunctionSource$Companion {
   public final moe.afox.dpsandbox.core.FunctionSource text(java.lang.String, java.lang.String, java.lang.String);
   public static moe.afox.dpsandbox.core.FunctionSource text$default(moe.afox.dpsandbox.core.FunctionSource$Companion, java.lang.String, java.lang.String, java.lang.String, int, java.lang.Object);
@@ -1350,7 +1442,6 @@ public final class moe.afox.dpsandbox.core.LootCondition {
   public int hashCode();
   public boolean equals(java.lang.Object);
 }
-
 public final class moe.afox.dpsandbox.core.LootContext {
   public moe.afox.dpsandbox.core.LootContext(moe.afox.dpsandbox.core.ResourceLocation, moe.afox.dpsandbox.core.PredicateContext, long, moe.afox.dpsandbox.core.ItemStack, double);
   public moe.afox.dpsandbox.core.LootContext(moe.afox.dpsandbox.core.ResourceLocation, moe.afox.dpsandbox.core.PredicateContext, long, moe.afox.dpsandbox.core.ItemStack, double, int, kotlin.jvm.internal.DefaultConstructorMarker);
@@ -2910,6 +3001,7 @@ public final class moe.afox.dpsandbox.core.SandboxWorld$snapshot$$inlined$compar
   public moe.afox.dpsandbox.core.SandboxWorld$snapshot$$inlined$compareBy$2();
   public final int compare(T, T);
 }
+
 public final class moe.afox.dpsandbox.core.SandboxWorld$snapshot$$inlined$thenBy$1<T> implements java.util.Comparator {
   public moe.afox.dpsandbox.core.SandboxWorld$snapshot$$inlined$thenBy$1(java.util.Comparator);
   public final int compare(T, T);
@@ -3139,7 +3231,6 @@ public final class moe.afox.dpsandbox.core.ScoreKey implements java.lang.Compara
   public boolean equals(java.lang.Object);
   public int compareTo(java.lang.Object);
 }
-
 final class moe.afox.dpsandbox.core.ScoreKey$compareTo$1 extends kotlin.jvm.internal.PropertyReference1Impl {
   public static final moe.afox.dpsandbox.core.ScoreKey$compareTo$1 INSTANCE;
   public java.lang.Object get(java.lang.Object);

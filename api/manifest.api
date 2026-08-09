@@ -36,8 +36,8 @@ final class moe.afox.dpsandbox.cli.ManifestAssertionEvaluator$ManifestEffectExpe
   public boolean equals(java.lang.Object);
 }
 public final class moe.afox.dpsandbox.cli.ManifestAttemptResult {
-  public moe.afox.dpsandbox.cli.ManifestAttemptResult(java.lang.String, java.util.List<? extends java.nio.file.Path>, boolean, java.util.List<java.lang.String>, java.util.List<moe.afox.dpsandbox.core.OutputEvent>, java.util.List<moe.afox.dpsandbox.core.CommandTraceEvent>, java.util.List<moe.afox.dpsandbox.core.PlayerEventTraceEvent>, com.google.gson.JsonObject, java.util.List<moe.afox.dpsandbox.core.SnapshotDiffEntry>, moe.afox.dpsandbox.core.DatapackResourceSummary);
-  public moe.afox.dpsandbox.cli.ManifestAttemptResult(java.lang.String, java.util.List, boolean, java.util.List, java.util.List, java.util.List, java.util.List, com.google.gson.JsonObject, java.util.List, moe.afox.dpsandbox.core.DatapackResourceSummary, int, kotlin.jvm.internal.DefaultConstructorMarker);
+  public moe.afox.dpsandbox.cli.ManifestAttemptResult(java.lang.String, java.util.List<? extends java.nio.file.Path>, boolean, java.util.List<java.lang.String>, java.util.List<moe.afox.dpsandbox.core.OutputEvent>, java.util.List<moe.afox.dpsandbox.core.CommandTraceEvent>, java.util.List<moe.afox.dpsandbox.core.PlayerEventTraceEvent>, com.google.gson.JsonObject, java.util.List<moe.afox.dpsandbox.core.SnapshotDiffEntry>, moe.afox.dpsandbox.core.DatapackResourceSummary, moe.afox.dpsandbox.core.DatapackCoverageReport);
+  public moe.afox.dpsandbox.cli.ManifestAttemptResult(java.lang.String, java.util.List, boolean, java.util.List, java.util.List, java.util.List, java.util.List, com.google.gson.JsonObject, java.util.List, moe.afox.dpsandbox.core.DatapackResourceSummary, moe.afox.dpsandbox.core.DatapackCoverageReport, int, kotlin.jvm.internal.DefaultConstructorMarker);
   public final java.lang.String getVersion();
   public final java.util.List<java.nio.file.Path> getPacks();
   public final boolean getPassed();
@@ -48,6 +48,7 @@ public final class moe.afox.dpsandbox.cli.ManifestAttemptResult {
   public final com.google.gson.JsonObject getSnapshot();
   public final java.util.List<moe.afox.dpsandbox.core.SnapshotDiffEntry> getSnapshotDiffs();
   public final moe.afox.dpsandbox.core.DatapackResourceSummary getResourceSummary();
+  public final moe.afox.dpsandbox.core.DatapackCoverageReport getCoverage();
   public final java.lang.String component1();
   public final java.util.List<java.nio.file.Path> component2();
   public final boolean component3();
@@ -58,8 +59,9 @@ public final class moe.afox.dpsandbox.cli.ManifestAttemptResult {
   public final com.google.gson.JsonObject component8();
   public final java.util.List<moe.afox.dpsandbox.core.SnapshotDiffEntry> component9();
   public final moe.afox.dpsandbox.core.DatapackResourceSummary component10();
-  public final moe.afox.dpsandbox.cli.ManifestAttemptResult copy(java.lang.String, java.util.List<? extends java.nio.file.Path>, boolean, java.util.List<java.lang.String>, java.util.List<moe.afox.dpsandbox.core.OutputEvent>, java.util.List<moe.afox.dpsandbox.core.CommandTraceEvent>, java.util.List<moe.afox.dpsandbox.core.PlayerEventTraceEvent>, com.google.gson.JsonObject, java.util.List<moe.afox.dpsandbox.core.SnapshotDiffEntry>, moe.afox.dpsandbox.core.DatapackResourceSummary);
-  public static moe.afox.dpsandbox.cli.ManifestAttemptResult copy$default(moe.afox.dpsandbox.cli.ManifestAttemptResult, java.lang.String, java.util.List, boolean, java.util.List, java.util.List, java.util.List, java.util.List, com.google.gson.JsonObject, java.util.List, moe.afox.dpsandbox.core.DatapackResourceSummary, int, java.lang.Object);
+  public final moe.afox.dpsandbox.core.DatapackCoverageReport component11();
+  public final moe.afox.dpsandbox.cli.ManifestAttemptResult copy(java.lang.String, java.util.List<? extends java.nio.file.Path>, boolean, java.util.List<java.lang.String>, java.util.List<moe.afox.dpsandbox.core.OutputEvent>, java.util.List<moe.afox.dpsandbox.core.CommandTraceEvent>, java.util.List<moe.afox.dpsandbox.core.PlayerEventTraceEvent>, com.google.gson.JsonObject, java.util.List<moe.afox.dpsandbox.core.SnapshotDiffEntry>, moe.afox.dpsandbox.core.DatapackResourceSummary, moe.afox.dpsandbox.core.DatapackCoverageReport);
+  public static moe.afox.dpsandbox.cli.ManifestAttemptResult copy$default(moe.afox.dpsandbox.cli.ManifestAttemptResult, java.lang.String, java.util.List, boolean, java.util.List, java.util.List, java.util.List, java.util.List, com.google.gson.JsonObject, java.util.List, moe.afox.dpsandbox.core.DatapackResourceSummary, moe.afox.dpsandbox.core.DatapackCoverageReport, int, java.lang.Object);
   public java.lang.String toString();
   public int hashCode();
   public boolean equals(java.lang.Object);
@@ -106,8 +108,8 @@ public final class moe.afox.dpsandbox.cli.ManifestJsonKt {
   public static final java.lang.String manifestPrimitiveString(com.google.gson.JsonElement);
 }
 public final class moe.afox.dpsandbox.cli.ManifestOptions {
-  public moe.afox.dpsandbox.cli.ManifestOptions(long, boolean, boolean, boolean, boolean, moe.afox.dpsandbox.core.UnsupportedFeatureMode, moe.afox.dpsandbox.core.SandboxLimits);
-  public moe.afox.dpsandbox.cli.ManifestOptions(long, boolean, boolean, boolean, boolean, moe.afox.dpsandbox.core.UnsupportedFeatureMode, moe.afox.dpsandbox.core.SandboxLimits, int, kotlin.jvm.internal.DefaultConstructorMarker);
+  public moe.afox.dpsandbox.cli.ManifestOptions(long, boolean, boolean, boolean, boolean, moe.afox.dpsandbox.core.UnsupportedFeatureMode, moe.afox.dpsandbox.core.SandboxLimits, moe.afox.dpsandbox.core.DatapackCoverageOptions);
+  public moe.afox.dpsandbox.cli.ManifestOptions(long, boolean, boolean, boolean, boolean, moe.afox.dpsandbox.core.UnsupportedFeatureMode, moe.afox.dpsandbox.core.SandboxLimits, moe.afox.dpsandbox.core.DatapackCoverageOptions, int, kotlin.jvm.internal.DefaultConstructorMarker);
   public final long getSeed();
   public final boolean getVerbose();
   public final boolean getSnapshotOnFail();
@@ -115,6 +117,7 @@ public final class moe.afox.dpsandbox.cli.ManifestOptions {
   public final boolean getFailOnMissingResources();
   public final moe.afox.dpsandbox.core.UnsupportedFeatureMode getUnsupportedFeatureMode();
   public final moe.afox.dpsandbox.core.SandboxLimits getLimits();
+  public final moe.afox.dpsandbox.core.DatapackCoverageOptions getCoverage();
   public final long component1();
   public final boolean component2();
   public final boolean component3();
@@ -122,8 +125,9 @@ public final class moe.afox.dpsandbox.cli.ManifestOptions {
   public final boolean component5();
   public final moe.afox.dpsandbox.core.UnsupportedFeatureMode component6();
   public final moe.afox.dpsandbox.core.SandboxLimits component7();
-  public final moe.afox.dpsandbox.cli.ManifestOptions copy(long, boolean, boolean, boolean, boolean, moe.afox.dpsandbox.core.UnsupportedFeatureMode, moe.afox.dpsandbox.core.SandboxLimits);
-  public static moe.afox.dpsandbox.cli.ManifestOptions copy$default(moe.afox.dpsandbox.cli.ManifestOptions, long, boolean, boolean, boolean, boolean, moe.afox.dpsandbox.core.UnsupportedFeatureMode, moe.afox.dpsandbox.core.SandboxLimits, int, java.lang.Object);
+  public final moe.afox.dpsandbox.core.DatapackCoverageOptions component8();
+  public final moe.afox.dpsandbox.cli.ManifestOptions copy(long, boolean, boolean, boolean, boolean, moe.afox.dpsandbox.core.UnsupportedFeatureMode, moe.afox.dpsandbox.core.SandboxLimits, moe.afox.dpsandbox.core.DatapackCoverageOptions);
+  public static moe.afox.dpsandbox.cli.ManifestOptions copy$default(moe.afox.dpsandbox.cli.ManifestOptions, long, boolean, boolean, boolean, boolean, moe.afox.dpsandbox.core.UnsupportedFeatureMode, moe.afox.dpsandbox.core.SandboxLimits, moe.afox.dpsandbox.core.DatapackCoverageOptions, int, java.lang.Object);
   public java.lang.String toString();
   public int hashCode();
   public boolean equals(java.lang.Object);

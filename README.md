@@ -198,6 +198,15 @@ traces, the final snapshot, snapshot diffs, and resource summary details:
 java -jar cli/build/libs/datapack-sandbox-cli.jar run --pack ./my_pack --function demo:main --report-file run-report.json
 ```
 
+Measure executable `.mcfunction` lines and function invocations, print missed
+lines, write a detailed JSON artifact, and fail CI below a threshold:
+
+```bash
+java -jar cli/build/libs/datapack-sandbox-cli.jar run --pack ./my_pack --function demo:main \
+  --coverage --coverage-file coverage.json --min-coverage 85 \
+  --minimum-function-coverage 75 --coverage-include 'demo:*'
+```
+
 Use `--trace-filter root=scoreboard`, `--trace-filter score=#clock`,
 `--trace-filter output=generated ok`, `--trace-filter output-payload=id=demo:ruin`,
 or `--trace-filter selector=Steve` to keep only the relevant trace events in both
@@ -331,6 +340,22 @@ For CI artifacts, `check` can also write command traces:
 ```bash
 java -jar cli/build/libs/datapack-sandbox-cli.jar check ./sandbox-cases --trace-filter root=scoreboard --trace-file check-trace.jsonl --outputs-file check-outputs.jsonl --report-file check-report.json
 ```
+
+Manifest checks can own the same CI gate. Detailed coverage is also embedded in
+every run/check report:
+
+```json
+{
+  "coverage": {
+    "minimumLine": 85,
+    "minimumFunction": 75,
+    "include": "demo:*",
+    "exclude": "demo:generated/*"
+  }
+}
+```
+
+See `examples/coverage/coverage.dps.json` for a complete runnable pack.
 
 For ad hoc checks without a full manifest, `run` can apply a manifest-style
 world fixture, override its seed, and evaluate one or more inline JSON

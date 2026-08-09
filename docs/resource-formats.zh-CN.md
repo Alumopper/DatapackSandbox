@@ -299,6 +299,7 @@ Items[{Slot:0b}].id
 - `unsupported`
 - `seed`
 - `failOnMissingResources`
+- `coverage`
 - `packs`
 - `world`
 - `steps`
@@ -323,11 +324,28 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar schema --check schema/manifest
 java -jar cli/build/libs/datapack-sandbox-cli.jar check ./sandbox-cases --validate-schema
 ```
 
-`include` 可以写一个相对清单路径，也可以写路径数组。被 include 的清单会先应用；它们的 `world`、`steps` 和 `assertions` 按顺序拼接，`version`/`versions`、`packs`、`unsupported`、`seed` 和 `failOnMissingResources` 会在当前清单省略这些字段时作为默认值。include 文件里的 world setup 和 step 相对路径按 include 文件所在目录解析；来自 include 文件的断言失败会在前缀中保留来源 manifest 文件路径和 JSON Pointer，方便从 CI 日志直接定位公共断言。
+`include` 可以写一个相对清单路径，也可以写路径数组。被 include 的清单会先应用；它们的 `world`、`steps` 和 `assertions` 按顺序拼接，`version`/`versions`、`packs`、`unsupported`、`seed`、`failOnMissingResources` 和 `coverage` 会在当前清单省略这些字段时作为默认值。include 文件里的 world setup 和 step 相对路径按 include 文件所在目录解析；来自 include 文件的断言失败会在前缀中保留来源 manifest 文件路径和 JSON Pointer，方便从 CI 日志直接定位公共断言。
 
 顶层 `"seed"` 设置 manifest 默认的确定性 world seed 和 loot seed；`world.seed` fixture 值会覆盖这个顶层默认 world seed。
 
 顶层设置 `"failOnMissingResources": true`，或在 CLI 使用 `check --fail-on-missing-resources`，可以在已加载资源直接引用缺失的 load/tick 函数、advancement parent/reward、predicate/loot/item modifier 资源中的 predicate reference 或嵌套 loot table 资源时让 manifest 失败。同一批缺失引用始终会出现在结构化 check report 和 `check --verbose` 资源摘要中。
+
+顶层 `coverage` 可检查已加载数据包函数的可执行行覆盖率和函数调用覆盖率：
+
+```json
+{
+  "coverage": {
+    "minimumLine": 85,
+    "minimumFunction": 75,
+    "include": ["demo:*", "shared:public/*"],
+    "exclude": "demo:generated/*"
+  }
+}
+```
+
+分母只包含当前加载后生效的 `.mcfunction` 资源；空行和注释不计入。执行到某一命令行即视为命中，即使随后 macro 展开或命令本身报错；被 `return` 跳过的行仍未覆盖。函数覆盖率按是否调用统计，每行还会保存命中次数。`include` 和 `exclude` 可写一个字符串或字符串数组，按完整资源 ID 做 glob 匹配：`*` 匹配任意字符，`?` 匹配一个字符。筛选结果为空时，覆盖率按 100% 处理。
+
+`run --report-file` 和 `check --report-file` 始终包含详细 coverage。使用 `--coverage` 打印摘要，使用 `--coverage-file <file>` 单独写出 JSON artifact。`run` 与 `check` 都支持 `--minimum-line-coverage`（别名 `--min-line-coverage`、`--min-coverage`）、`--minimum-function-coverage`、`--coverage-include` 和 `--coverage-exclude`；CLI 与 manifest 同时给出最低值时采用更严格者。
 
 在 `world` 内部，`fixture`、`fixtures` 和 `extends` 可以写一个相对 world fixture 路径，也可以写路径数组。被引用文件既可以是裸 world fixture 对象，也可以是顶层 `{ "world": { ... } }` 对象。它们先于当前 `world` 应用，因此标量字段、同坐标方块、同名玩家/team/bossbar、score 和 storage 都可以被当前 manifest 局部覆盖。嵌套 fixture 的相对路径按被引用文件所在目录解析；循环引用会作为输入格式错误失败。
 

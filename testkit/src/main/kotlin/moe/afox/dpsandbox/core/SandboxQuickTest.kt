@@ -2869,6 +2869,21 @@ class SandboxQuickTest private constructor(
         return "actual scoreboard displays: $rendered$suffix"
     }
 
+    /** Returns cumulative datapack function and executable-line coverage for this scenario. */
+    @JvmOverloads
+    fun coverageReport(options: DatapackCoverageOptions = DatapackCoverageOptions()): DatapackCoverageReport =
+        sandbox.coverageReport(options)
+
+    /**
+     * Collects line and function coverage threshold failures without stopping fluent execution.
+     * Call [requirePassed] to turn collected failures into an assertion error.
+     */
+    @JvmOverloads
+    fun assertCoverage(options: DatapackCoverageOptions = DatapackCoverageOptions()): SandboxQuickTest =
+        apply {
+            failures += sandbox.coverageReport(options).thresholdFailures(options)
+        }
+
     /**
      * Builds an immutable report for the current scenario state.
      */

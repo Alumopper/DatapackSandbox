@@ -21,6 +21,8 @@ import DpsPlayground from '@datapack-sandbox/vitepress-playground'
 import '@datapack-sandbox/vitepress-playground/style.css'
 ```
 
+如需让控件融入现有网站，请参阅 [Playground CSS 样式定制](/guide/playground-styling)，其中列出了主题变量、深色模式选择器、scoped style 写法和结构类钩子。
+
 ```vue
 <DpsPlayground
   :notebook="{

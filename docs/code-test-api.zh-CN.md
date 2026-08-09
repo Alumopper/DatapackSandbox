@@ -123,6 +123,31 @@ println(report.traces.single().command)
 
 需要比较两个状态时，fluent 测试可直接用 `assertSnapshotDiff(...)`，检查时可读取 `snapshotDiffs()` 或 `report.snapshotDiffs`。更底层的代码仍可用 `SnapshotDiff.diff(before, after)` 获得稳定 JSON Pointer 路径差异，或用 `SnapshotDiff.render(...)` 输出适合测试失败日志的文本。
 
+## 数据包覆盖率
+
+`SandboxQuickTest.coverageReport(...)` 会返回当前生效 `.mcfunction` 资源的可执行行覆盖率和函数调用覆盖率；`assertCoverage(...)` 可把未达到阈值的结果收集到 fluent 场景中：
+
+```kotlin
+import moe.afox.dpsandbox.core.DatapackCoverageOptions
+
+val scenario = SandboxQuickTest.create(listOf(Path.of("packs/counter")))
+    .load()
+    .ticks(20)
+    .function("demo:main")
+
+val options = DatapackCoverageOptions(
+    minimumLinePercentage = 85.0,
+    minimumFunctionPercentage = 75.0,
+    includes = listOf("demo:*"),
+    excludes = listOf("demo:generated/*"),
+)
+
+scenario.assertCoverage(options).requirePassed()
+println(scenario.coverageReport(options).linePercentage)
+```
+
+注释和空行不计入分母；只要执行到某条命令行就会记录命中，即使命令随后失败，每行还会保存累计命中次数。底层 `DatapackSandbox` 提供相同的 `coverageReport(options)`，并可用 `resetCoverage()` 清空计数。矩阵测试可写 `forEachScenario { assertCoverage(options) }`。
+
 `unsupportedFeatureMode` 可选值：
 
 - `WARN`：默认行为，未支持命令记录 warning 并继续。

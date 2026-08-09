@@ -9,12 +9,14 @@ import com.github.ajalt.clikt.parameters.options.default
 import com.github.ajalt.clikt.parameters.options.flag
 import com.github.ajalt.clikt.parameters.options.multiple
 import com.github.ajalt.clikt.parameters.options.option
+import com.github.ajalt.clikt.parameters.types.double
 import com.github.ajalt.clikt.parameters.types.int
 import com.github.ajalt.clikt.parameters.types.long
 import com.github.ajalt.clikt.parameters.types.path
 import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import moe.afox.dpsandbox.core.CommandTraceEvent
+import moe.afox.dpsandbox.core.DatapackCoverageReport
 import moe.afox.dpsandbox.core.DatapackSandbox
 import moe.afox.dpsandbox.core.DiagnosticCode
 import moe.afox.dpsandbox.core.JsonValues
@@ -88,6 +90,12 @@ class CheckCommand : CliktCommand(name = "check") {
     private val traceFilters by option("--trace-filter").multiple()
     private val outputsFile by option("--outputs-file").path()
     private val reportFile by option("--report-file").path()
+    private val coverage by option("--coverage").flag(default = false)
+    private val coverageFile by option("--coverage-file").path()
+    private val minimumLineCoverage by option("--minimum-line-coverage", "--min-line-coverage", "--min-coverage").double()
+    private val minimumFunctionCoverage by option("--minimum-function-coverage", "--min-function-coverage").double()
+    private val coverageIncludes by option("--coverage-include").multiple()
+    private val coverageExcludes by option("--coverage-exclude").multiple()
     private val seed by option("--seed").long().default(0)
     private val unsupported by option("--unsupported").default("warn")
     private val maxCommands by option("--max-commands").int()
@@ -99,6 +107,13 @@ class CheckCommand : CliktCommand(name = "check") {
     override fun run() {
         try {
             val limits = sandboxLimits(maxCommands, maxFunctionDepth, maxTicksPerRun, maxOutputEvents, maxSnapshotBytes)
+            val coverageOptions =
+                coverageOptions(
+                    minimumLineCoverage,
+                    minimumFunctionCoverage,
+                    coverageIncludes,
+                    coverageExcludes,
+                )
             val manifests = ManifestRunner.discover(inputs)
             if (validateSchema || strict) {
                 val schemaFailures = manifests.flatMap(ManifestSchemaValidator::validateFileTree)
@@ -128,6 +143,7 @@ class CheckCommand : CliktCommand(name = "check") {
                             failOnMissingResources = failOnMissingResources || strict,
                             unsupportedFeatureMode = if (strict) UnsupportedFeatureMode.ERROR else unsupportedFeatureMode(unsupported),
                             limits = limits,
+                            coverage = coverageOptions,
                         ),
                     )
                 val resultTraces = TraceFilters.apply(result.traces, traceFilters)
@@ -156,6 +172,11 @@ class CheckCommand : CliktCommand(name = "check") {
                         OutputRenderer.print(result.outputs)
                     }
                 }
+                if (coverage) {
+                    result.attempts.forEach { attempt ->
+                        attempt.coverage?.let { CoverageRenderer.print(attempt.version, it) }
+                    }
+                }
                 if (trace && resultTraces.isNotEmpty()) {
                     TraceRenderer.print(resultTraces)
                 }
@@ -164,6 +185,7 @@ class CheckCommand : CliktCommand(name = "check") {
                     eventTraceFile?.let { writeEventTraceFile(it, eventTraces) }
                     outputsFile?.let { writeOutputsFile(it, outputs) }
                     reportFile?.let { writeManifestReportFile(it, results) }
+                    coverageFile?.let { writeManifestCoverageFile(it, results) }
                     exitProcess(ExitCodes.ASSERTION_FAILED)
                 }
             }
@@ -171,6 +193,7 @@ class CheckCommand : CliktCommand(name = "check") {
             eventTraceFile?.let { writeEventTraceFile(it, eventTraces) }
             outputsFile?.let { writeOutputsFile(it, outputs) }
             reportFile?.let { writeManifestReportFile(it, results) }
+            coverageFile?.let { writeManifestCoverageFile(it, results) }
             if (failed) exitProcess(ExitCodes.ASSERTION_FAILED)
         } catch (error: SandboxException) {
             println(ConsoleStyle.diagnostic(error.render()))
@@ -223,6 +246,7 @@ internal fun writeRunReportFile(
     traces: List<CommandTraceEvent>,
     beforeSnapshot: JsonObject,
     resourceSummary: ManifestResourceSummary,
+    coverage: DatapackCoverageReport,
 ) {
     val json =
         JsonObject().also { report ->
@@ -257,6 +281,7 @@ internal fun writeRunReportFile(
             report.add("snapshot", snapshot)
             report.add("snapshotDiffs", SnapshotDiff.toJson(SnapshotDiff.stateDiff(beforeSnapshot, snapshot)))
             report.add("resources", resourceSummary.toReportJson())
+            report.add("coverage", coverage.toCoverageJson())
         }
     Files.writeString(path, JsonValues.render(json), StandardCharsets.UTF_8)
     println(ConsoleStyle.green("report written: $path"))
@@ -342,6 +367,7 @@ internal fun ManifestAttemptResult.toReportJson(): JsonObject =
         snapshot?.let { json.add("snapshot", it.deepCopy()) }
         json.add("snapshotDiffs", SnapshotDiff.toJson(snapshotDiffs))
         resourceSummary?.let { json.add("resources", it.toReportJson()) }
+        coverage?.let { json.add("coverage", it.toCoverageJson()) }
     }
 
 internal fun diagnosticsFromTraces(

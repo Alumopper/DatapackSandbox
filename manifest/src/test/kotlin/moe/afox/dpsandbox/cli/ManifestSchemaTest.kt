@@ -16,6 +16,22 @@ class ManifestSchemaTest : ManifestRunnerTestSupport() {
     }
 
     @Test
+    fun `manifest schema documents coverage thresholds and filters`() {
+        val schema = JsonParser.parseString(Files.readString(Path.of("../schema/manifest/dps-manifest.schema.json"))).asJsonObject
+        val coverageReference = schema.getAsJsonObject("properties").getAsJsonObject("coverage")
+        val coverage = schema.getAsJsonObject("\$defs").getAsJsonObject("coverage")
+        val properties = coverage.getAsJsonObject("properties")
+
+        assertEquals("#/\$defs/coverage", coverageReference.get("\$ref").asString)
+        assertEquals(0.0, properties.getAsJsonObject("minimumLine").get("minimum").asDouble)
+        assertEquals(100.0, properties.getAsJsonObject("minimumLine").get("maximum").asDouble)
+        assertEquals(0.0, properties.getAsJsonObject("minimumFunction").get("minimum").asDouble)
+        assertEquals(100.0, properties.getAsJsonObject("minimumFunction").get("maximum").asDouble)
+        assertEquals(2, properties.getAsJsonObject("include").getAsJsonArray("oneOf").size())
+        assertEquals(2, properties.getAsJsonObject("exclude").getAsJsonArray("oneOf").size())
+    }
+
+    @Test
     fun `manifest schema documents includes`() {
         val schema = JsonParser.parseString(Files.readString(Path.of("../schema/manifest/dps-manifest.schema.json"))).asJsonObject
         val include = schema.getAsJsonObject("properties").getAsJsonObject("include")
