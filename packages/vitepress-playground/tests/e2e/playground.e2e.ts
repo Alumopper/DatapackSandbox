@@ -8,6 +8,12 @@ test('shares a realtime WebGL viewport with playback, input, and context recover
   const viewport = page.locator('.dps-viewport')
   const canvas = viewport.locator('canvas')
   await expect(canvas).toBeVisible()
+  await expect(viewport).toHaveAttribute('data-state', /^(ready|unavailable)$/)
+  const state = await viewport.getAttribute('data-state')
+  if (state === 'unavailable') {
+    const message = await viewport.locator('.dps-viewport-message').textContent()
+    test.skip(message?.startsWith('WebGL2 is unavailable') ?? false, message ?? 'WebGL2 is unavailable')
+  }
   await expect(viewport).toHaveAttribute('data-state', 'ready')
 
   await page.getByRole('button', { name: 'Run all' }).click()
