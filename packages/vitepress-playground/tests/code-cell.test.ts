@@ -53,6 +53,47 @@ describe('CodeCell', () => {
     wrapper.unmount()
   })
 
+  it('applies structured completion ranges without appending a space', async () => {
+    const source = 'tellraw @s {"co'
+    const start = source.indexOf('"co')
+    const complete = vi.fn(async () => [{
+      value: '"color":',
+      description: 'Text component field',
+      group: 'text component',
+      start,
+      end: source.length,
+      appendSpace: false,
+    }])
+    const wrapper = mount(CodeCell, {
+      attachTo: document.body,
+      props: {
+        modelValue: source,
+        cellId: 'structured-completion',
+        readOnly: false,
+        disabled: false,
+        diagnostics: [],
+        complete,
+        check: async () => [],
+      },
+    })
+    const view = EditorView.findFromDOM(wrapper.get('.cm-editor').element as HTMLElement)!
+    view.dispatch({ selection: { anchor: source.length } })
+    startCompletion(view)
+    await vi.waitFor(() => expect(completionStatus(view.state)).toBe('active'))
+    await new Promise((resolve) => setTimeout(resolve, 80))
+
+    view.contentDOM.dispatchEvent(new KeyboardEvent('keydown', {
+      key: 'Tab',
+      code: 'Tab',
+      bubbles: true,
+      cancelable: true,
+    }))
+
+    await vi.waitFor(() => expect(view.state.doc.toString()).toBe('tellraw @s {"color":'))
+    expect(view.state.doc.toString()).not.toMatch(/:\s$/)
+    wrapper.unmount()
+  })
+
   it('refetches a truncated completion batch as the prefix narrows', async () => {
     const complete = vi.fn(async (source: string) => {
       if (source === 's') {

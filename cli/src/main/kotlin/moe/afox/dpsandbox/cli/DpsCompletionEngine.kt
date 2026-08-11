@@ -2,11 +2,47 @@
 
 import moe.afox.dpsandbox.core.DatapackSandbox
 import moe.afox.dpsandbox.core.ResourceLocation
+import moe.afox.dpsandbox.engine.EngineCommandCompletion
+import moe.afox.dpsandbox.engine.EngineCompletionEnvironment
 
 class DpsCompletionEngine(
     private val sandbox: () -> DatapackSandbox,
 ) {
     fun suggestions(
+        buffer: String,
+        cursor: Int = buffer.length,
+    ): List<CompletionSuggestion> = rangedSuggestions(buffer, cursor).map(RangedCompletionSuggestion::suggestion)
+
+    internal fun rangedSuggestions(
+        buffer: String,
+        cursor: Int = buffer.length,
+    ): List<RangedCompletionSuggestion> {
+        val boundedCursor = cursor.coerceIn(0, buffer.length)
+        val context = CompletionContext.parse(buffer, boundedCursor)
+        val box = sandbox()
+        if (context.first.isNotBlank() && box.profile.commands.hasRoot(context.first)) {
+            return EngineCommandCompletion
+                .complete(buffer, boundedCursor, box.completionEnvironment())
+                .map { candidate ->
+                    RangedCompletionSuggestion(
+                        suggestion =
+                            CompletionSuggestion(
+                                value = candidate.value,
+                                description = candidate.description,
+                                group = candidate.group,
+                                appendSpace = candidate.appendSpace,
+                                behaviorLevel = CommandBehaviorLevel.MODELED,
+                            ),
+                        start = candidate.start,
+                        end = candidate.end,
+                    )
+                }
+        }
+        val start = (boundedCursor - context.prefix.length).coerceAtLeast(0)
+        return legacySuggestions(buffer, boundedCursor).map { RangedCompletionSuggestion(it, start, boundedCursor) }
+    }
+
+    private fun legacySuggestions(
         buffer: String,
         cursor: Int = buffer.length,
     ): List<CompletionSuggestion> {
@@ -82,6 +118,60 @@ class DpsCompletionEngine(
                 else -> emptyList()
             }
         return context.filter(options)
+    }
+
+    private fun DatapackSandbox.completionEnvironment(): EngineCompletionEnvironment {
+        val registries = profile.registryView
+
+        fun resources(kind: String): List<String> =
+            datapack.rawResources[kind]
+                .orEmpty()
+                .keys
+                .map { it.toString() }
+                .sorted()
+        return EngineCompletionEnvironment(
+            roots = profile.commands.roots.sorted(),
+            blocks = registries.blocks.map { it.toString() }.sorted(),
+            items = registries.items.map { it.toString() }.sorted(),
+            entities = registries.entityTypes.map { it.toString() }.sorted(),
+            functions =
+                datapack.functions.keys
+                    .map { it.toString() }
+                    .sorted(),
+            functionTags =
+                datapack.tags.keys
+                    .filter { it.registry == "function" || it.registry == "functions" }
+                    .map { it.id.toString() }
+                    .sorted(),
+            objectives = world.objectives.keys.sorted(),
+            scoreHolders = (world.players.keys + world.scores.keys.map { it.target }).distinct().sorted(),
+            storages =
+                world.storages.keys
+                    .map { it.toString() }
+                    .sorted(),
+            tags =
+                world.entities
+                    .flatMap { it.tags }
+                    .distinct()
+                    .sorted(),
+            gamerules = world.gamerules.keys.sorted(),
+            biomes = registries.biomes.map { it.toString() }.sorted(),
+            damageTypes = registries.damageTypes.map { it.toString() }.sorted(),
+            enchantments = registries.enchantments.map { it.toString() }.sorted(),
+            effects = registries.effects.map { it.toString() }.sorted(),
+            dimensions = registries.dimensions.map { it.toString() }.sorted(),
+            advancements =
+                datapack.advancements.keys
+                    .map { it.toString() }
+                    .sorted(),
+            recipes =
+                datapack.recipes.keys
+                    .map { it.toString() }
+                    .sorted(),
+            structures = resources("worldgen/structure"),
+            configuredFeatures = resources("worldgen/configured_feature"),
+            templatePools = resources("worldgen/template_pool"),
+        )
     }
 
     fun inlineHint(

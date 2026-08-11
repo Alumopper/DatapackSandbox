@@ -4,7 +4,7 @@ import moe.afox.dpsandbox.core.CommandCheckResult
 
 internal data class ViewportCommandInspection(
     val revision: Long,
-    val suggestions: List<CompletionSuggestion>,
+    val suggestions: List<RangedCompletionSuggestion>,
     val hint: String,
     val check: CommandCheckResult?,
 )
@@ -80,4 +80,14 @@ internal fun applyCompletion(
     val base = buffer.dropLast(prefixLength)
     val suffix = if (suggestion.appendSpace) " " else ""
     return base + suggestion.value + suffix
+}
+
+internal fun applyCompletion(
+    buffer: String,
+    completion: RangedCompletionSuggestion,
+): String {
+    val start = completion.start.coerceIn(0, buffer.length)
+    val end = completion.end.coerceIn(start, buffer.length)
+    val suffix = if (completion.appendSpace) " " else ""
+    return buffer.substring(0, start) + completion.value + suffix + buffer.substring(end)
 }

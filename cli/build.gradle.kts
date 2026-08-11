@@ -19,6 +19,7 @@ dependencies {
     val lwjglVersion = "3.4.1"
 
     implementation(project(":core"))
+    implementation(project(":runtime-engine"))
     implementation(project(":renderer"))
     implementation(project(":manifest"))
     implementation("com.github.ajalt.clikt:clikt:5.1.0")

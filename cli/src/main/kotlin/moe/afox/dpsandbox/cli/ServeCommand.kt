@@ -742,21 +742,20 @@ internal class ServeSession {
         val engine = DpsCompletionEngine { current() }
         val buffer = params.string("buffer") ?: ""
         val cursor = (params.int("cursor") ?: buffer.length).coerceIn(0, buffer.length)
-        val context = CompletionContext.parse(buffer, cursor)
-        val start = (cursor - context.prefix.length).coerceAtLeast(0)
         return JsonObject().also { json ->
             json.add(
                 "suggestions",
                 JsonArray().also { array ->
-                    engine.suggestions(buffer, cursor).forEach { suggestion ->
+                    engine.rangedSuggestions(buffer, cursor).forEach { completion ->
+                        val suggestion = completion.suggestion
                         array.add(
                             JsonObject().also { item ->
                                 item.addProperty("value", suggestion.value)
                                 item.addProperty("description", suggestion.description)
                                 item.addProperty("group", suggestion.group)
                                 item.addProperty("appendSpace", suggestion.appendSpace)
-                                item.addProperty("start", start)
-                                item.addProperty("end", cursor)
+                                item.addProperty("start", completion.start)
+                                item.addProperty("end", completion.end)
                                 suggestion.behaviorLevel?.let { item.addProperty("behavior", it.id) }
                             },
                         )

@@ -161,6 +161,8 @@ public final class moe.afox.dpsandbox.cli.DpsCompletionEngine {
   public moe.afox.dpsandbox.cli.DpsCompletionEngine(kotlin.jvm.functions.Function0<moe.afox.dpsandbox.core.DatapackSandbox>);
   public final java.util.List<moe.afox.dpsandbox.cli.CompletionSuggestion> suggestions(java.lang.String, int);
   public static java.util.List suggestions$default(moe.afox.dpsandbox.cli.DpsCompletionEngine, java.lang.String, int, int, java.lang.Object);
+  public final java.util.List<moe.afox.dpsandbox.cli.RangedCompletionSuggestion> rangedSuggestions$moe_afox_dpsandbox_cli(java.lang.String, int);
+  public static java.util.List rangedSuggestions$moe_afox_dpsandbox_cli$default(moe.afox.dpsandbox.cli.DpsCompletionEngine, java.lang.String, int, int, java.lang.Object);
   public final java.lang.String inlineHint(java.lang.String, int);
   public static java.lang.String inlineHint$default(moe.afox.dpsandbox.cli.DpsCompletionEngine, java.lang.String, int, int, java.lang.Object);
   public final java.util.List<org.jline.utils.AttributedString> multilineHints(java.lang.String, int);
@@ -369,6 +371,7 @@ public final class moe.afox.dpsandbox.cli.JvmViewportCommandEditor {
 }
 public final class moe.afox.dpsandbox.cli.JvmViewportCommandEditorKt {
   public static final java.lang.String applyCompletion(java.lang.String, moe.afox.dpsandbox.cli.CompletionSuggestion);
+  public static final java.lang.String applyCompletion(java.lang.String, moe.afox.dpsandbox.cli.RangedCompletionSuggestion);
 }
 public final class moe.afox.dpsandbox.cli.JvmViewportController {
   public static final moe.afox.dpsandbox.cli.JvmViewportController$Companion Companion;
@@ -761,6 +764,23 @@ public final class moe.afox.dpsandbox.cli.PlayerEventTextParserKt {
   public static final moe.afox.dpsandbox.core.PlayerEvent parsePlayerEventText(java.lang.String, java.lang.String);
   public static final moe.afox.dpsandbox.core.PlayerEvent parsePlayerEventArgs(java.util.List<java.lang.String>, java.lang.String);
 }
+public final class moe.afox.dpsandbox.cli.RangedCompletionSuggestion {
+  public moe.afox.dpsandbox.cli.RangedCompletionSuggestion(moe.afox.dpsandbox.cli.CompletionSuggestion, int, int);
+  public final moe.afox.dpsandbox.cli.CompletionSuggestion getSuggestion();
+  public final int getStart();
+  public final int getEnd();
+  public final java.lang.String getValue();
+  public final java.lang.String getDescription();
+  public final boolean getAppendSpace();
+  public final moe.afox.dpsandbox.cli.CompletionSuggestion component1();
+  public final int component2();
+  public final int component3();
+  public final moe.afox.dpsandbox.cli.RangedCompletionSuggestion copy(moe.afox.dpsandbox.cli.CompletionSuggestion, int, int);
+  public static moe.afox.dpsandbox.cli.RangedCompletionSuggestion copy$default(moe.afox.dpsandbox.cli.RangedCompletionSuggestion, moe.afox.dpsandbox.cli.CompletionSuggestion, int, int, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+}
 public final class moe.afox.dpsandbox.cli.RegistryInspection {
   public static final moe.afox.dpsandbox.cli.RegistryInspection INSTANCE;
   public final java.util.List<java.lang.String> getGroupNames();
@@ -837,11 +857,11 @@ public final class moe.afox.dpsandbox.cli.ResourcesCommand extends com.github.aj
   public moe.afox.dpsandbox.cli.ResourcesCommand();
   public void run();
 }
+
 public final class moe.afox.dpsandbox.cli.RunCommand extends com.github.ajalt.clikt.core.CliktCommand {
   public moe.afox.dpsandbox.cli.RunCommand();
   public void run();
 }
-
 public final class moe.afox.dpsandbox.cli.ServeCommand extends com.github.ajalt.clikt.core.CliktCommand {
   public moe.afox.dpsandbox.cli.ServeCommand();
   public void run();
@@ -945,16 +965,16 @@ public final class moe.afox.dpsandbox.cli.ViewportCommand extends com.github.aja
   public void run();
 }
 public final class moe.afox.dpsandbox.cli.ViewportCommandInspection {
-  public moe.afox.dpsandbox.cli.ViewportCommandInspection(long, java.util.List<moe.afox.dpsandbox.cli.CompletionSuggestion>, java.lang.String, moe.afox.dpsandbox.core.CommandCheckResult);
+  public moe.afox.dpsandbox.cli.ViewportCommandInspection(long, java.util.List<moe.afox.dpsandbox.cli.RangedCompletionSuggestion>, java.lang.String, moe.afox.dpsandbox.core.CommandCheckResult);
   public final long getRevision();
-  public final java.util.List<moe.afox.dpsandbox.cli.CompletionSuggestion> getSuggestions();
+  public final java.util.List<moe.afox.dpsandbox.cli.RangedCompletionSuggestion> getSuggestions();
   public final java.lang.String getHint();
   public final moe.afox.dpsandbox.core.CommandCheckResult getCheck();
   public final long component1();
-  public final java.util.List<moe.afox.dpsandbox.cli.CompletionSuggestion> component2();
+  public final java.util.List<moe.afox.dpsandbox.cli.RangedCompletionSuggestion> component2();
   public final java.lang.String component3();
   public final moe.afox.dpsandbox.core.CommandCheckResult component4();
-  public final moe.afox.dpsandbox.cli.ViewportCommandInspection copy(long, java.util.List<moe.afox.dpsandbox.cli.CompletionSuggestion>, java.lang.String, moe.afox.dpsandbox.core.CommandCheckResult);
+  public final moe.afox.dpsandbox.cli.ViewportCommandInspection copy(long, java.util.List<moe.afox.dpsandbox.cli.RangedCompletionSuggestion>, java.lang.String, moe.afox.dpsandbox.core.CommandCheckResult);
   public static moe.afox.dpsandbox.cli.ViewportCommandInspection copy$default(moe.afox.dpsandbox.cli.ViewportCommandInspection, long, java.util.List, java.lang.String, moe.afox.dpsandbox.core.CommandCheckResult, int, java.lang.Object);
   public java.lang.String toString();
   public int hashCode();

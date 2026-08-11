@@ -142,7 +142,7 @@ function mapDiagnostics(items: PlaygroundDiagnostic[], state: EditorState): Diag
 async function completionSource(context: CompletionContext): Promise<CompletionResult | null> {
   const line = context.state.doc.lineAt(context.pos)
   const cursor = context.pos - line.from
-  const prefix = line.text.slice(0, cursor).match(/[\w:#@~.^=+\-[\],]*$/)?.[0] ?? ''
+  const prefix = line.text.slice(0, cursor).match(/[^\s]*$/)?.[0] ?? ''
   if (!context.explicit && prefix.length === 0) return null
   const suggestions = await props.complete(context.state.doc.toString(), context.pos)
   if (suggestions.length === 0) return null
@@ -159,7 +159,8 @@ async function completionSource(context: CompletionContext): Promise<CompletionR
   // Let CodeMirror filter complete result sets locally. A full 100-item batch
   // may have been truncated by the engine, so continuing to type must query
   // again or late-sorting values (for example minecraft:sulfur) stay hidden.
-  if (suggestions.length < maximumCompletionBatch) result.validFor = /^[\w:#@~.^=+\-[\],]*$/
+  const structured = suggestions.some((item) => item.group === 'selector' || item.group === 'nbt' || item.group === 'text component')
+  if (!structured && suggestions.length < maximumCompletionBatch) result.validFor = /^[\w:#@~.^=+\-[\],]*$/
   return result
 }
 
@@ -238,7 +239,7 @@ onMounted(() => {
             if (userEdited) hasUserEdited = true
             emit('update:modelValue', update.state.doc.toString())
             const last = update.state.doc.sliceString(Math.max(0, update.state.selection.main.head - 1), update.state.selection.main.head)
-            if (userEdited && /[\s:@\[\],=]/.test(last)) startCompletion(update.view)
+            if (userEdited && /[\s:@\[\]{},="']/.test(last)) startCompletion(update.view)
           }
         }),
         EditorView.domEventHandlers({

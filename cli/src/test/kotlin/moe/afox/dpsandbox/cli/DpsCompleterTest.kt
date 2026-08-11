@@ -6,6 +6,10 @@ import moe.afox.dpsandbox.core.DatapackSandbox
 import moe.afox.dpsandbox.core.ResourceLocation
 import moe.afox.dpsandbox.core.VersionProfiles
 import moe.afox.dpsandbox.core.createSandbox
+import org.jline.reader.Candidate
+import org.jline.reader.LineReader
+import org.jline.reader.impl.DefaultParser
+import java.lang.reflect.Proxy
 import java.nio.file.Path
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -188,6 +192,47 @@ class DpsCompleterTest {
         val completer = completer()
 
         assertSuggests(completer, "/fun", "/function")
+    }
+
+    @Test
+    fun `JVM completion matches structured selector NBT and text component ranges`() {
+        val sandbox =
+            DatapackSandbox(
+                profile = VersionProfiles.get("26.2"),
+                datapack = Datapack(emptyMap(), emptyList(), emptyList()),
+            )
+        sandbox.createPlayer("Steve")
+        sandbox.executeCommand("scoreboard objectives add runs dummy")
+        val engine = DpsCompletionEngine { sandbox }
+
+        val selectorSource = "execute as @e[ty"
+        val selector = engine.rangedSuggestions(selectorSource).single { it.value == "type=" }
+        assertEquals(selectorSource.indexOf("ty"), selector.start)
+        assertFalse(selector.appendSpace)
+
+        val nbtSource = "summon minecraft:zombie 0 0 0 {NoG"
+        val nbt = engine.rangedSuggestions(nbtSource).single { it.value == "NoGravity:" }
+        assertEquals(nbtSource.indexOf("NoG"), nbt.start)
+        assertFalse(nbt.appendSpace)
+
+        val textSource = "tellraw @s {\"co"
+        val text = engine.rangedSuggestions(textSource).single { it.value == "\"color\":" }
+        assertEquals(textSource.indexOf("\"co"), text.start)
+        assertFalse(text.appendSpace)
+
+        assertTrue(engine.suggestions("execute as @e[type=minecraft:zo").any { it.value == "minecraft:zombie" })
+        assertTrue(engine.suggestions("execute as @e[scores={ru").any { it.value == "runs=" })
+        assertTrue(engine.suggestions("tellraw @s {\"color\":\"gr").any { it.value == "\"green\"" })
+
+        val completer = DpsCompleter { sandbox }
+        val reader =
+            Proxy.newProxyInstance(LineReader::class.java.classLoader, arrayOf(LineReader::class.java)) { _, method, _ ->
+                error("Unexpected LineReader call: ${method.name}")
+            } as LineReader
+        val candidates = mutableListOf<Candidate>()
+        completer.complete(reader, DefaultParser().parse(selectorSource, selectorSource.length), candidates)
+        val jlineCandidate = candidates.single { it.value() == "@e[type=" }
+        assertEquals(null, jlineCandidate.suffix())
     }
 
     @Test

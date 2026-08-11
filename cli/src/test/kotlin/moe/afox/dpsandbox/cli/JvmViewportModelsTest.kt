@@ -57,7 +57,14 @@ class JvmViewportModelsTest {
         editor.applyInspection(
             ViewportCommandInspection(
                 revision = editor.revision,
-                suggestions = listOf(CompletionSuggestion("setblock", appendSpace = true)),
+                suggestions =
+                    listOf(
+                        RangedCompletionSuggestion(
+                            CompletionSuggestion("setblock", appendSpace = true),
+                            start = 0,
+                            end = 4,
+                        ),
+                    ),
                 hint = "",
                 check = null,
             ),
@@ -65,6 +72,30 @@ class JvmViewportModelsTest {
 
         assertTrue(editor.completeSelected())
         assertEquals("setblock ", editor.text)
+    }
+
+    @Test
+    fun `viewport command editor applies structured completion ranges without spaces`() {
+        val editor = JvmViewportCommandEditor()
+        editor.append("execute as @e[ty")
+        editor.applyInspection(
+            ViewportCommandInspection(
+                revision = editor.revision,
+                suggestions =
+                    listOf(
+                        RangedCompletionSuggestion(
+                            CompletionSuggestion("type=", appendSpace = false),
+                            start = 14,
+                            end = 16,
+                        ),
+                    ),
+                hint = "",
+                check = null,
+            ),
+        )
+
+        assertTrue(editor.completeSelected())
+        assertEquals("execute as @e[type=", editor.text)
     }
 
     @Test

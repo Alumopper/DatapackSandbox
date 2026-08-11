@@ -1,6 +1,6 @@
 package moe.afox.dpsandbox.engine
 
-internal data class EngineCompletionEnvironment(
+data class EngineCompletionEnvironment(
     val roots: List<String>,
     val blocks: List<String>,
     val items: List<String>,
@@ -35,7 +35,7 @@ internal data class EngineCompletionEnvironment(
     val timelines: List<String> = emptyList(),
 )
 
-internal data class EngineCompletionCandidate(
+data class EngineCompletionCandidate(
     val value: String,
     val description: String,
     val group: String,
@@ -45,14 +45,14 @@ internal data class EngineCompletionCandidate(
 )
 
 /**
- * A small clean-room command tree used by the offline browser runtime.
+ * A clean-room command tree shared by the offline browser runtime and JVM clients.
  *
  * The previous implementation selected branches from the total token count.
  * That made a completed literal such as `scoreboard players` look like the
  * still-being-typed `players` argument. This completer instead walks only the
  * committed tokens before the cursor, mirroring Brigadier's child-node model.
  */
-internal object EngineCommandCompletion {
+object EngineCommandCompletion {
     fun complete(
         source: String,
         cursor: Int,
@@ -60,6 +60,7 @@ internal object EngineCommandCompletion {
     ): List<EngineCompletionCandidate> {
         val input = CompletionInput.parse(source, cursor)
         val options = commandCandidates(input.committed, environment)
+        StructuredCommandCompletion.complete(input.prefix, input.start, input.end, options, environment)?.let { return it }
         val rootSlash = input.committed.isEmpty() && input.prefix.startsWith('/')
         val prefix = if (rootSlash) input.prefix.removePrefix("/") else input.prefix
         return options
@@ -97,7 +98,7 @@ internal object EngineCommandCompletion {
             "give" -> giveCandidates(tokens, environment)
             "clear" -> clearCandidates(tokens, environment)
             "function" -> if (tokens.size == 1) functionIds(environment).options("functions") else emptyList()
-            "kill" -> if (tokens.size == 1) targetOptions(environment) else emptyList()
+            "kill" -> if (tokens.size == 1) targetOptions(environment, terminal = true) else emptyList()
             "tag" -> tagCandidates(tokens, environment)
             "tellraw" -> tellrawCandidates(tokens, environment)
             "title" -> titleCandidates(tokens, environment)
@@ -159,7 +160,7 @@ internal object EngineCommandCompletion {
                 when (tokens.size) {
                     3 -> listOf("objective").options("objective names")
                     4 -> (environment.scoreboardCriteria + listOf("dummy", "trigger")).distinct().options("objective criteria")
-                    5 -> TEXT_COMPONENTS.options("display names", terminal = true)
+                    5 -> TEXT_COMPONENTS.options("display names", terminal = true, syntax = CompletionSyntax.TEXT_COMPONENT)
                     else -> emptyList()
                 }
             "remove" -> if (tokens.size == 3) environment.objectives.options("objectives") else emptyList()
@@ -170,6 +171,7 @@ internal object EngineCommandCompletion {
                     5 ->
                         when (tokens[4]) {
                             "displayautoupdate" -> BOOLEANS.options("booleans")
+                            "displayname" -> TEXT_COMPONENTS.options("display names", terminal = true, syntax = CompletionSyntax.TEXT_COMPONENT)
                             "numberformat" -> listOf("blank", "fixed", "styled").options("number formats")
                             "rendertype" -> listOf("hearts", "integer").options("render types")
                             else -> emptyList()
@@ -214,7 +216,7 @@ internal object EngineCommandCompletion {
             "display" ->
                 when (tokens.size) {
                     4 -> scoreTargets(environment)
-                    5 -> if (tokens[3] == "name") TEXT_COMPONENTS.options("display names", terminal = true) else listOf("blank", "fixed", "styled").options("number formats", terminal = true)
+                    5 -> if (tokens[3] == "name") TEXT_COMPONENTS.options("display names", terminal = true, syntax = CompletionSyntax.TEXT_COMPONENT) else listOf("blank", "fixed", "styled").options("number formats", terminal = true)
                     else -> emptyList()
                 }
             else -> emptyList()
@@ -453,7 +455,7 @@ internal object EngineCommandCompletion {
         if (tokens.size == targetEnd) {
             return when (tokens[1]) {
                 "get", "modify", "remove" -> NBT_PATHS.options("NBT paths")
-                "merge" -> NBT_COMPOUNDS.options("NBT compounds", terminal = true)
+                "merge" -> NBT_COMPOUNDS.options("NBT compounds", terminal = true, syntax = CompletionSyntax.NBT)
                 else -> emptyList()
             }
         }
@@ -463,6 +465,9 @@ internal object EngineCommandCompletion {
         val operation = tokens[targetEnd + 1]
         val sourceIndex = targetEnd + if (operation == "insert") 3 else 2
         if (tokens.size == sourceIndex) return listOf("from", "string", "value").options("data sources")
+        if (tokens.size == sourceIndex + 1 && tokens[sourceIndex] == "value") {
+            return NBT_VALUES.options("NBT values", terminal = true, syntax = CompletionSyntax.NBT)
+        }
         if (tokens.size == sourceIndex + 1 && tokens[sourceIndex] in setOf("from", "string")) return DATA_TARGETS.options("source targets")
         return emptyList()
     }
@@ -497,7 +502,7 @@ internal object EngineCommandCompletion {
         when (tokens.size) {
             1 -> environment.entities.options("entity types")
             in 2..4 -> COORDINATES.options("summon position")
-            5 -> NBT_COMPOUNDS.options("entity NBT", terminal = true)
+            5 -> NBT_COMPOUNDS.options("entity NBT", terminal = true, syntax = CompletionSyntax.NBT)
             else -> emptyList()
         }
 
@@ -540,7 +545,7 @@ internal object EngineCommandCompletion {
     ): List<Option> =
         when (tokens.size) {
             1 -> playerTargets(environment)
-            2 -> TEXT_COMPONENTS.options("text components", terminal = true)
+            2 -> TEXT_COMPONENTS.options("text components", terminal = true, syntax = CompletionSyntax.TEXT_COMPONENT)
             else -> emptyList()
         }
 
@@ -555,7 +560,7 @@ internal object EngineCommandCompletion {
                 when (tokens[2]) {
                     "times" -> TICK_VALUES.options("fade-in ticks")
                     "clear", "reset" -> emptyList()
-                    else -> TEXT_COMPONENTS.options("text components", terminal = true)
+                    else -> TEXT_COMPONENTS.options("text components", terminal = true, syntax = CompletionSyntax.TEXT_COMPONENT)
                 }
             4, 5 -> if (tokens[2] == "times") TICK_VALUES.options("title times", terminal = tokens.size == 5) else emptyList()
             else -> emptyList()
@@ -625,9 +630,9 @@ internal object EngineCommandCompletion {
         tokens: List<String>,
         environment: EngineCompletionEnvironment,
     ): List<Option> {
-        if (tokens.size == 1) return (targetValues(environment) + COORDINATES).distinct().options("targets/positions")
+        if (tokens.size == 1) return targetOrCoordinates(environment, "targets/positions")
         val destinationIndex = if (tokens[1].startsWith("@") || tokens[1] in environment.scoreHolders) 2 else 1
-        if (tokens.size == destinationIndex) return (targetValues(environment) + COORDINATES).distinct().options("destination")
+        if (tokens.size == destinationIndex) return targetOrCoordinates(environment, "destination")
         if (tokens[destinationIndex].startsWith("@") || tokens[destinationIndex] in environment.scoreHolders) return emptyList()
         if (tokens.size in destinationIndex + 1..destinationIndex + 2) return COORDINATES.options("destination")
         if (tokens.size == destinationIndex + 3) return (listOf("facing") + ROTATIONS).options("rotation/facing")
@@ -711,12 +716,13 @@ internal object EngineCommandCompletion {
         val ids = listOf("minecraft:bossbar").options("bossbars")
         if (tokens.size == 2 && tokens[1] != "list") return ids
         return when {
-            tokens.size == 3 && tokens[1] == "add" -> TEXT_COMPONENTS.options("bossbar names", terminal = true)
+            tokens.size == 3 && tokens[1] == "add" -> TEXT_COMPONENTS.options("bossbar names", terminal = true, syntax = CompletionSyntax.TEXT_COMPONENT)
             tokens.size == 3 && tokens[1] == "get" -> listOf("max", "players", "value", "visible").options("bossbar fields", terminal = true)
             tokens.size == 3 && tokens[1] == "set" -> listOf("color", "max", "name", "players", "style", "value", "visible").options("bossbar fields")
             tokens.size == 4 && tokens[1] == "set" ->
                 when (tokens[3]) {
                     "color" -> BOSSBAR_COLORS.options("bossbar colors", terminal = true)
+                    "name" -> TEXT_COMPONENTS.options("bossbar names", terminal = true, syntax = CompletionSyntax.TEXT_COMPONENT)
                     "players" -> playerTargets(environment, terminal = true)
                     "style" -> BOSSBAR_STYLES.options("bossbar styles", terminal = true)
                     "visible" -> BOOLEANS.options("booleans", terminal = true)
@@ -891,7 +897,7 @@ internal object EngineCommandCompletion {
         when (tokens.size) {
             1 -> targetOptions(environment)
             2 -> (listOf("facing") + ROTATIONS).options("rotation/facing")
-            3 -> if (tokens[2] == "facing") (targetValues(environment) + COORDINATES).distinct().options("facing target") else ROTATIONS.options("pitch", terminal = true)
+            3 -> if (tokens[2] == "facing") targetOrCoordinates(environment, "facing target") else ROTATIONS.options("pitch", terminal = true)
             else -> emptyList()
         }
 
@@ -949,11 +955,17 @@ internal object EngineCommandCompletion {
             return if (tokens[1] == "leave") playerTargets(environment, terminal = true) else listOf("team").options("teams")
         }
         return when (tokens[1]) {
+            "add" -> if (tokens.size == 3) TEXT_COMPONENTS.options("team display names", terminal = true, syntax = CompletionSyntax.TEXT_COMPONENT) else emptyList()
             "join" -> if (tokens.size == 3) playerTargets(environment, terminal = true) else emptyList()
             "modify" ->
                 when (tokens.size) {
                     3 -> TEAM_OPTIONS.options("team options")
-                    4 -> (BOOLEANS + GAME_MODES + BOSSBAR_COLORS).options("team option values", terminal = true)
+                    4 ->
+                        if (tokens[3] in setOf("displayName", "prefix", "suffix")) {
+                            TEXT_COMPONENTS.options("team text components", terminal = true, syntax = CompletionSyntax.TEXT_COMPONENT)
+                        } else {
+                            (BOOLEANS + GAME_MODES + BOSSBAR_COLORS).options("team option values", terminal = true)
+                        }
                     else -> emptyList()
                 }
             else -> emptyList()
@@ -1128,29 +1140,44 @@ internal object EngineCommandCompletion {
     private fun playerTargets(
         environment: EngineCompletionEnvironment,
         terminal: Boolean = false,
-    ): List<Option> = (environment.scoreHolders + listOf("@a", "@p", "@s", "Steve")).distinct().options("players/selectors", terminal = terminal)
+    ): List<Option> =
+        (environment.scoreHolders + listOf("@a", "@n", "@p", "@r", "@s", "Steve"))
+            .distinct()
+            .options("players/selectors", terminal = terminal, syntax = CompletionSyntax.TARGET)
 
     private fun targetValues(environment: EngineCompletionEnvironment): List<String> =
-        (environment.scoreHolders + listOf("@a", "@e", "@n", "@p", "@s", "Steve") + environment.entities).distinct()
+        (environment.scoreHolders + listOf("@a", "@e", "@n", "@p", "@r", "@s", "Steve") + environment.entities).distinct()
 
-    private fun targetOptions(environment: EngineCompletionEnvironment): List<Option> = targetValues(environment).options("entities/selectors")
+    private fun targetOptions(
+        environment: EngineCompletionEnvironment,
+        terminal: Boolean = false,
+    ): List<Option> = targetValues(environment).options("entities/selectors", terminal = terminal, syntax = CompletionSyntax.TARGET)
+
+    private fun targetOrCoordinates(
+        environment: EngineCompletionEnvironment,
+        description: String,
+    ): List<Option> = targetValues(environment).options(description, syntax = CompletionSyntax.TARGET) + COORDINATES.options(description)
 
     private fun scoreTargets(environment: EngineCompletionEnvironment): List<Option> =
-        (environment.scoreHolders + listOf("*", "#value", "@a", "@e", "@p", "@s", "Steve")).distinct().options("score holders")
+        (environment.scoreHolders + listOf("*", "#value", "@a", "@e", "@n", "@p", "@r", "@s", "Steve"))
+            .distinct()
+            .options("score holders", syntax = CompletionSyntax.TARGET)
 
     private fun Iterable<String>.options(
         description: String,
         group: String = "value",
         terminal: Boolean = false,
-    ): List<Option> = map { Option(it, description, group, appendSpace = !terminal) }
+        syntax: CompletionSyntax = CompletionSyntax.PLAIN,
+    ): List<Option> = map { Option(it, description, group, appendSpace = !terminal, syntax = syntax) }
 
     private fun List<String>.withFallback(fallback: List<String>): List<String> = ifEmpty { fallback }
 
-    private data class Option(
+    internal data class Option(
         val value: String,
         val description: String,
         val group: String,
         val appendSpace: Boolean,
+        val syntax: CompletionSyntax,
     )
 
     private data class ParseStep(
@@ -1216,6 +1243,7 @@ internal object EngineCommandCompletion {
     private val TICK_VALUES = listOf("1", "10", "20", "100")
     private val NBT_PATHS = listOf("path", "Items", "Pos[0]")
     private val NBT_COMPOUNDS = listOf("{}")
+    private val NBT_VALUES = listOf("{}", "[]", "\"\"", "0", "false", "true")
     private val DATA_TARGETS = listOf("block", "entity", "storage")
     private val NBT_NUMBER_TYPES = listOf("byte", "double", "float", "int", "long", "short")
     private val DIMENSIONS = listOf("minecraft:overworld", "minecraft:the_end", "minecraft:the_nether")

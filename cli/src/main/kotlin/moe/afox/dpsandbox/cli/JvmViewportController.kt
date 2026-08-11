@@ -85,7 +85,7 @@ internal class JvmViewportController(
             val completion = DpsCompletionEngine { sandbox }
             val context = CompletionContext.parse(command)
             val exactRoot = DpsCommandCatalog.rootCommands(sandbox.profile).any { it.value == context.first }
-            val suggestions = completion.suggestions(command).take(MAX_VIEWPORT_SUGGESTIONS)
+            val suggestions = completion.rangedSuggestions(command).take(MAX_VIEWPORT_SUGGESTIONS)
             val check = if (command.isNotBlank() && exactRoot) sandbox.checkCommand(command) else null
             sink(
                 ViewportCommandInspection(

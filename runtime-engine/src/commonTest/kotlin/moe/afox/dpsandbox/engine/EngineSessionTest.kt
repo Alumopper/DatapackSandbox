@@ -147,6 +147,67 @@ class EngineSessionTest {
     }
 
     @Test
+    fun completesTargetSelectorKeysValuesAndScoreMapsWithoutSpaces() {
+        val environment = completionEnvironment()
+
+        val keySource = "execute as @e[ty"
+        val key = EngineCommandCompletion.complete(keySource, keySource.length, environment).single { it.value == "type=" }
+        assertEquals(keySource.indexOf("ty"), key.start)
+        assertEquals(keySource.length, key.end)
+        assertFalse(key.appendSpace)
+
+        val typeSource = "execute as @e[type=minecraft:zo"
+        val type = EngineCommandCompletion.complete(typeSource, typeSource.length, environment).single { it.value == "minecraft:zombie" }
+        assertEquals(typeSource.indexOf("minecraft:zo"), type.start)
+        assertFalse(type.appendSpace)
+
+        assertCompletion(environment, "execute as @e[tag=mo", "mob")
+        assertCompletion(environment, "execute as @e[scores={ru", "runs=")
+        assertCompletion(environment, "execute as @e[sort=ne", "nearest")
+        assertCompletion(environment, "tp @e[ty", "type=")
+
+        val terminalSelector = EngineCommandCompletion.complete("kill @e[", 8, environment).single { it.value == "]" }
+        assertFalse(terminalSelector.appendSpace)
+    }
+
+    @Test
+    fun completesSnbtFieldsNestedFieldsAndValuesWithoutTokenSpaces() {
+        val environment = completionEnvironment()
+
+        val fieldSource = "summon minecraft:zombie 0 0 0 {NoG"
+        val field = EngineCommandCompletion.complete(fieldSource, fieldSource.length, environment).single { it.value == "NoGravity:" }
+        assertEquals(fieldSource.indexOf("NoG"), field.start)
+        assertFalse(field.appendSpace)
+
+        assertCompletion(environment, "summon minecraft:zombie 0 0 0 {NoGravity:t", "true")
+        assertCompletion(environment, "summon minecraft:zombie 0 0 0 {transformation:{sca", "scale:")
+        assertCompletion(environment, "summon minecraft:zombie 0 0 0 {Tags:[\"m", "\"mob\"")
+        assertCompletion(environment, "data modify storage demo:state path set value {Ta", "Tags:")
+    }
+
+    @Test
+    fun completesTextComponentFieldsAndTypedValuesWithoutTokenSpaces() {
+        val environment = completionEnvironment()
+
+        val keySource = "tellraw @s {\"co"
+        val key = EngineCommandCompletion.complete(keySource, keySource.length, environment).single { it.value == "\"color\":" }
+        assertEquals(keySource.indexOf("\"co"), key.start)
+        assertFalse(key.appendSpace)
+
+        val valueSource = "tellraw @s {\"color\":\"gr"
+        val value = EngineCommandCompletion.complete(valueSource, valueSource.length, environment).single { it.value == "\"green\"" }
+        assertEquals(valueSource.indexOf("\"gr"), value.start)
+        assertFalse(value.appendSpace)
+
+        assertCompletion(environment, "tellraw @s {\"bo", "\"bold\":")
+        assertCompletion(environment, "tellraw @s {\"bold\":t", "true")
+        assertCompletion(environment, "tellraw @s {\"selector\":\"@", "\"@s\"")
+        assertCompletion(environment, "scoreboard objectives modify runs displayname {\"te", "\"text\":")
+        assertCompletion(environment, "bossbar set minecraft:bossbar name {\"co", "\"color\":")
+        assertCompletion(environment, "team modify red prefix {\"bo", "\"bold\":")
+    }
+
+    @Test
     fun persistsStateAcrossExecutionsAndKeepsChecksNonMutating() {
         val session = EngineSession("26.2")
         session.configure(listOf("setblock", "scoreboard"), listOf("minecraft:stone"), emptyList(), emptyList())
