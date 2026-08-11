@@ -1,0 +1,79 @@
+{
+  "version": "26.2",
+  "unsupported": "error",
+  "packs": ["../examples/single-function/pack"],
+  "steps": [
+    {
+      "commands": [
+        "scoreboard objectives add test dummy",
+        "data merge storage demo:test {target:4,source:4,nested:{value:1},removable:1}",
+        "execute store success score #copy test run data modify storage demo:test target set from storage demo:test source",
+        "data modify storage demo:test target set value 4",
+        "data modify storage demo:test nested merge value {value:1}",
+        "data merge storage demo:test {target:4}",
+        "data remove storage demo:test missing"
+      ]
+    }
+  ],
+  "assertions": [
+    {
+      "score": {
+        "target": "#copy",
+        "objective": "test",
+        "equals": 0
+      }
+    },
+    {
+      "storage": {
+        "id": "demo:test",
+        "path": "target",
+        "equals": 4
+      }
+    },
+    {
+      "trace": {
+        "command": "execute store success score #copy test run data modify storage demo:test target set from storage demo:test source",
+        "success": false,
+        "outputs": 1,
+        "count": 1
+      }
+    },
+    {
+      "trace": {
+        "command": "data modify storage demo:test target set value 4",
+        "success": false,
+        "count": 1
+      }
+    },
+    {
+      "trace": {
+        "command": "data modify storage demo:test nested merge value {value:1}",
+        "success": false,
+        "count": 1
+      }
+    },
+    {
+      "trace": {
+        "command": "data merge storage demo:test {target:4}",
+        "success": false,
+        "count": 1
+      }
+    },
+    {
+      "trace": {
+        "command": "data remove storage demo:test missing",
+        "success": false,
+        "count": 1
+      }
+    },
+    {
+      "output": {
+        "command": "data modify",
+        "text": "0",
+        "payloadPath": "changed",
+        "payloadEquals": 0,
+        "count": 3
+      }
+    }
+  ]
+}
