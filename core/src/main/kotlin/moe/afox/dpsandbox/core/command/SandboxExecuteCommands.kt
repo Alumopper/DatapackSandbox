@@ -509,10 +509,7 @@ internal fun DatapackSandbox.executeData(
     requireSize(tokens, 3, "data <modify|get|remove> ...", location)
     return when (tokens[1].text) {
         "modify" -> executeDataModify(command, tokens, location, context)
-        "merge" -> {
-            executeDataMerge(command, tokens, location, context)
-            true
-        }
+        "merge" -> executeDataMerge(command, tokens, location, context)
         "get" -> {
             val value = executeDataGet(tokens, location, context)
             value?.let {
@@ -520,10 +517,7 @@ internal fun DatapackSandbox.executeData(
             }
             value != null
         }
-        "remove" -> {
-            executeDataRemove(tokens, location, context)
-            true
-        }
+        "remove" -> executeDataRemove(tokens, location, context)
         else -> unsupportedFeature("Unsupported data action '${tokens[1].text}'", profile.id, location)
     }
 }
@@ -566,7 +560,7 @@ internal fun DatapackSandbox.executeDataModify(
         }
     }
     val after = dataTargetNbtValues(target, location).map { it.deepCopy() }
-    recordDataMutationOutput(
+    return recordDataMutationOutput(
         "data modify",
         target,
         values.singleOrNull()
@@ -578,8 +572,7 @@ internal fun DatapackSandbox.executeDataModify(
             details.addProperty("path", path)
             insertIndex?.let { details.addProperty("insertIndex", it) }
         },
-    )
-    return true
+    ) > 0
 }
 
 internal fun DatapackSandbox.readDataModifyValues(
@@ -652,7 +645,7 @@ internal fun DatapackSandbox.executeDataMerge(
     tokens: List<CommandToken>,
     location: SourceLocation?,
     context: ExecutionContext,
-) {
+): Boolean {
     requireSize(tokens, 4, "data merge <storage|entity|block> <target> <nbt>", location)
     val (target, valueIndex) = parseDataTarget(tokens, 2, context, location)
     requireIndex(tokens, valueIndex, "data merge <target> <nbt>", location)
@@ -660,7 +653,7 @@ internal fun DatapackSandbox.executeDataMerge(
     val before = dataTargetNbtValues(target, location).map { it.deepCopy() }
     mutateDataTarget(target, location) { JsonPaths.merge(it, null, value) }
     val after = dataTargetNbtValues(target, location).map { it.deepCopy() }
-    recordDataMutationOutput("data merge", target, value, before, after)
+    return recordDataMutationOutput("data merge", target, value, before, after) > 0
 }
 
 internal fun DatapackSandbox.executeDataGet(
@@ -691,7 +684,7 @@ internal fun DatapackSandbox.executeDataRemove(
     tokens: List<CommandToken>,
     location: SourceLocation?,
     context: ExecutionContext,
-) {
+): Boolean {
     requireSize(tokens, 4, "data remove <storage|entity|block> <target> <path>", location)
     val (target, pathIndex) = parseDataTarget(tokens, 2, context, location)
     requireIndex(tokens, pathIndex, "data remove <target> <path>", location)
@@ -699,7 +692,7 @@ internal fun DatapackSandbox.executeDataRemove(
     val before = dataTargetNbtValues(target, location).map { it.deepCopy() }
     mutateDataTarget(target, location) { JsonPaths.remove(it, path) }
     val after = dataTargetNbtValues(target, location).map { it.deepCopy() }
-    recordDataMutationOutput(
+    return recordDataMutationOutput(
         "data remove",
         target,
         null,
@@ -709,7 +702,7 @@ internal fun DatapackSandbox.executeDataRemove(
             details.addProperty("operation", "remove")
             details.addProperty("path", path)
         },
-    )
+    ) > 0
 }
 
 internal fun DatapackSandbox.parseDataTarget(
@@ -754,7 +747,7 @@ internal fun DatapackSandbox.recordDataMutationOutput(
     before: List<JsonObject>,
     after: List<JsonObject>,
     details: JsonObject? = null,
-) {
+): Int {
     val targetNames = dataTargetNames(target)
     val changed = before.zip(after).count { (beforeValue, afterValue) -> beforeValue != afterValue }
     world.recordOutput(
@@ -788,6 +781,7 @@ internal fun DatapackSandbox.recordDataMutationOutput(
                 )
             },
     )
+    return changed
 }
 
 internal fun DatapackSandbox.dataTargetKind(target: DataTargetSpec): String =

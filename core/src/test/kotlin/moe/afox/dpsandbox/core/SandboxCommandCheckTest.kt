@@ -38,4 +38,22 @@ class SandboxCommandCheckTest {
         assertEquals(DiagnosticCode.RESOURCE_NOT_FOUND, missing.errorCode)
         assertEquals(before, sandbox.snapshotString())
     }
+
+    @Test
+    fun `command sequence check shares preview state without changing the live world`() {
+        val sandbox = createFunctionSandboxFromString("26.2", "")
+        val before = sandbox.snapshotString()
+
+        val results =
+            sandbox.checkCommands(
+                listOf(
+                    "scoreboard objectives add qwq dummy",
+                    "scoreboard players set #value qwq 1",
+                ),
+            )
+
+        assertTrue(results.all(CommandCheckResult::valid), results.joinToString { it.message })
+        assertEquals(before, sandbox.snapshotString())
+        assertTrue(sandbox.world.traces.isEmpty())
+    }
 }

@@ -940,6 +940,7 @@ public final class moe.afox.dpsandbox.core.DatapackSandbox {
   public static moe.afox.dpsandbox.core.ExecutionResult executeCommand$default(moe.afox.dpsandbox.core.DatapackSandbox, java.lang.String, moe.afox.dpsandbox.core.SourceLocation, moe.afox.dpsandbox.core.ExecutionContext, int, java.lang.Object);
   public final moe.afox.dpsandbox.core.CommandCheckResult checkCommand(java.lang.String, moe.afox.dpsandbox.core.ExecutionContext);
   public static moe.afox.dpsandbox.core.CommandCheckResult checkCommand$default(moe.afox.dpsandbox.core.DatapackSandbox, java.lang.String, moe.afox.dpsandbox.core.ExecutionContext, int, java.lang.Object);
+  public final java.util.List<moe.afox.dpsandbox.core.CommandCheckResult> checkCommands(java.util.List<java.lang.String>);
   public final com.google.gson.JsonObject snapshotJson();
   public final java.lang.String snapshotString();
   public final java.lang.String saveCheckpoint(java.lang.String);
@@ -2402,7 +2403,8 @@ public final class moe.afox.dpsandbox.core.RegistryView {
   public java.lang.String toString();
   public int hashCode();
   public boolean equals(java.lang.Object);
-  public static final moe.afox.dpsandbox.core.RegistryView access$getVanilla262$cp();
+  public static final kotlin.Lazy access$getCommandCatalog$delegate$cp();
+  public static final kotlin.Lazy access$getVanilla262$delegate$cp();
   public static final moe.afox.dpsandbox.core.RegistryView access$getVanilla2612$cp();
   public static final moe.afox.dpsandbox.core.RegistryView access$getVanilla1204$cp();
 }
@@ -2410,8 +2412,8 @@ public final class moe.afox.dpsandbox.core.RegistryView$Companion {
   public final moe.afox.dpsandbox.core.RegistryView getVanilla262();
   public final moe.afox.dpsandbox.core.RegistryView getVanilla2612();
   public final moe.afox.dpsandbox.core.RegistryView getVanilla1204();
+  public static final java.util.Set access$catalogIds(moe.afox.dpsandbox.core.RegistryView$Companion, java.lang.String, java.lang.String...);
   public moe.afox.dpsandbox.core.RegistryView$Companion(kotlin.jvm.internal.DefaultConstructorMarker);
-  public static final java.util.Set access$ids(moe.afox.dpsandbox.core.RegistryView$Companion, java.lang.String...);
 }
 public final class moe.afox.dpsandbox.core.ResolvedTextComponent {
   public moe.afox.dpsandbox.core.ResolvedTextComponent(java.lang.String, java.util.List<moe.afox.dpsandbox.core.OutputTextSegment>);

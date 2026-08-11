@@ -121,15 +121,23 @@ public final class BrowserCoreSession {
         ensureSandbox();
         JsonArray diagnostics = new JsonArray();
         String[] lines = source.split("\\r?\\n", -1);
+        List<String> commands = new ArrayList<>();
+        List<Integer> lineNumbers = new ArrayList<>();
         for (int index = 0; index < lines.length; index++) {
             String command = normalizeCommand(lines[index]);
             if (command.isBlank() || command.startsWith("#")) {
                 continue;
             }
-            CommandCheckResult result = sandbox.checkCommand(command, new ExecutionContext());
+            commands.add(command);
+            lineNumbers.add(index + 1);
+        }
+        List<CommandCheckResult> results = sandbox.checkCommands(commands);
+        for (int index = 0; index < results.size(); index++) {
+            CommandCheckResult result = results.get(index);
             if (!result.getValid()) {
+                String command = commands.get(index);
                 JsonObject diagnostic = new JsonObject();
-                diagnostic.addProperty("line", index + 1);
+                diagnostic.addProperty("line", lineNumbers.get(index));
                 diagnostic.addProperty("from", 0);
                 diagnostic.addProperty("to", command.length());
                 diagnostic.addProperty("severity", "error");

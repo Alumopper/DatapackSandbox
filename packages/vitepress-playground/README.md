@@ -11,6 +11,25 @@ npm install @datapack-sandbox/vitepress-playground
 The package requires Vue 3.5 or newer as a peer dependency. It ships the browser runtime, Worker,
 TypeScript declarations, and styles; consumers do not need Java or Gradle.
 
+Exclude the package from Vite's development dependency pre-bundle so the packaged Worker's URL
+remains relative to the published `dist` module. The package-name exclusion also covers `/cell`:
+
+```ts
+// .vitepress/config.mts
+import { defineConfig } from 'vitepress'
+
+export default defineConfig({
+  vite: {
+    optimizeDeps: {
+      exclude: ['@datapack-sandbox/vitepress-playground'],
+    },
+  },
+})
+```
+
+After adding this to an existing site, restart `vitepress dev` with `--force` once to invalidate its
+old dependency cache. See Vite's [`optimizeDeps.exclude` documentation](https://vite.dev/config/dep-optimization-options#optimizedeps-exclude).
+
 ```ts
 import DpsPlayground from '@datapack-sandbox/vitepress-playground'
 import '@datapack-sandbox/vitepress-playground/style.css'

@@ -77,6 +77,51 @@ class SandboxBehaviorTest {
     }
 
     @Test
+    fun `unchanged data mutations fail and store success zero`() {
+        val sandbox = createFunctionSandboxFromString("26.2", "")
+        sandbox.executeCommand("scoreboard objectives add test dummy")
+        sandbox.executeCommand("data merge storage demo:test {target:4,source:4,nested:{value:1},removable:1}")
+
+        val unchangedCopy =
+            sandbox.executeCommand(
+                "execute store success score #copy test run " +
+                    "data modify storage demo:test target set from storage demo:test source",
+            )
+
+        assertEquals(false, unchangedCopy.success)
+        assertEquals(0, sandbox.world.getScore("#copy", "test"))
+        val unchangedTrace = sandbox.world.traces.last()
+        assertEquals(false, unchangedTrace.success)
+        assertEquals(
+            0,
+            unchangedTrace.outputEvents
+                .single()
+                .payload
+                ?.asJsonObject
+                ?.get("changed")
+                ?.asInt,
+        )
+
+        sandbox.executeCommand("data modify storage demo:test source set value 5")
+        val changedCopy =
+            sandbox.executeCommand(
+                "execute store success score #copy test run " +
+                    "data modify storage demo:test target set from storage demo:test source",
+            )
+
+        assertEquals(true, changedCopy.success)
+        assertEquals(1, sandbox.world.getScore("#copy", "test"))
+        val storage = sandbox.world.storage(ResourceLocation.parse("demo:test"))
+        assertEquals(5, JsonPaths.get(storage, "target")?.asInt)
+
+        assertEquals(false, sandbox.executeCommand("data modify storage demo:test target set value 5").success)
+        assertEquals(false, sandbox.executeCommand("data modify storage demo:test nested merge value {value:1}").success)
+        assertEquals(false, sandbox.executeCommand("data merge storage demo:test {target:5}").success)
+        assertEquals(false, sandbox.executeCommand("data remove storage demo:test missing").success)
+        assertEquals(true, sandbox.executeCommand("data remove storage demo:test removable").success)
+    }
+
+    @Test
     fun `function macros expand compound arguments and dynamic commands`() {
         val sandbox =
             createFunctionSandbox(

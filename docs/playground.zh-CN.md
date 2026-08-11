@@ -14,6 +14,23 @@ Worker 执行的就是 JVM CLI 使用的同一个 `:core` 运行时，只是在�
 npm install @datapack-sandbox/vitepress-playground
 ```
 
+请把该包排除在 Vite 的开发依赖预构建之外，使 Worker 的相对 URL 始终以已发布的 `dist` 模块为基准。根包名同时覆盖 `/cell` 子入口：
+
+```ts
+// .vitepress/config.mts
+import { defineConfig } from 'vitepress'
+
+export default defineConfig({
+  vite: {
+    optimizeDeps: {
+      exclude: ['@datapack-sandbox/vitepress-playground'],
+    },
+  },
+})
+```
+
+这里使用的是 [Vite 官方的 `optimizeDeps.exclude` 配置](https://vite.dev/config/dep-optimization-options#optimizedeps-exclude)。如果网站已经启动过开发服务器，修改后请带 `--force` 重启一次 `vitepress dev`，使旧的依赖缓存失效。
+
 在 VitePress 主题或仅客户端 Vue 组件中导入：
 
 ```ts
@@ -212,5 +229,7 @@ npm run docs:build
 `frame-stats` 与 `context-lost`。
 
 直接部署生成的静态目录。带内容 hash 的 Worker/profile 资源可使用长期 immutable 缓存，HTML 入口保持常规重新验证。自定义 `worker-url` 必须同源，或返回允许 ES module Worker 的响应头。不再涉及 Java 运行时、反向代理 Upgrade、API Origin 白名单或 Docker 服务。
+
+如果本地开发出现 **Local sandbox unavailable**，且失败的 Worker URL 中包含 `/deps/assets/worker-`，说明该包仍被依赖预构建。请加入[安装](#安装)一节中的 `optimizeDeps.exclude`，停止旧开发服务器，再使用 `--force` 重启。生产构建不需要手动复制 Worker。
 
 目标浏览器需支持 ES module Worker、transferable `ArrayBuffer`、`createImageBitmap`/OffscreenCanvas、Blob URL，以及用于可选 preset 完整性校验的 Web Crypto。

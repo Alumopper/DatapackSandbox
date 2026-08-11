@@ -1,6 +1,6 @@
 {
   "name": "@datapack-sandbox/vitepress-playground",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Persistent, browser-only MCFunction notebook cells for VitePress sites",
   "keywords": [
     "minecraft",
@@ -49,8 +49,9 @@
     "check:size": "node scripts/check-worker-size.mjs",
     "build": "npm run prepare:worker && vite build && vue-tsc --emitDeclarationOnly",
     "test": "vitest run",
-    "test:e2e": "node tests/e2e/prepare.mjs && playwright test",
+    "test:e2e": "npm run build && npm ci --workspaces=false --prefix tests/consumer && node tests/consumer/prepare.mjs && playwright test",
     "e2e:fixture": "vite --config tests/e2e/vite.config.ts",
+    "e2e:consumer": "node tests/consumer/node_modules/vite/bin/vite.js --force --config tests/consumer/vite.config.ts",
     "check:package": "node scripts/check-package.mjs",
     "check:release-tag": "node scripts/check-release-tag.mjs",
     "check": "npm run prepare:worker && vue-tsc --noEmit && vitest run && vite build && npm run check:size && vue-tsc --emitDeclarationOnly && npm run check:package",

@@ -491,7 +491,8 @@ export class PlaygroundWorkerClient {
       const contentType = response.headers.get('content-type')?.split(';', 1)[0]?.trim() || '(missing)'
       await response.body?.cancel().catch(() => undefined)
       if (!response.ok) {
-        return `Worker asset ${parsed.href} returned HTTP ${response.status} ${response.statusText || ''} with Content-Type ${contentType}.`
+        const viteHint = viteDependencyOptimizerHint(parsed)
+        return `Worker asset ${parsed.href} returned HTTP ${response.status} ${response.statusText || ''} with Content-Type ${contentType}.${viteHint}`
       }
       const javascriptMime = /^(?:application|text)\/(?:javascript|ecmascript)$/.test(contentType)
       if (!javascriptMime) {
@@ -688,6 +689,16 @@ function dependencyName(url: string, index: number): string {
   } catch {
     return `dependency-${index + 1}.zip`
   }
+}
+
+function viteDependencyOptimizerHint(workerUrl: URL): string {
+  const viteWorkerCache =
+    /(?:\/\.vitepress\/cache|\/node_modules\/\.vite)\/deps(?:_temp_[^/]*)?\/assets\/worker-[^/]+\.js$/
+  if (!viteWorkerCache.test(workerUrl.pathname)) return ''
+  return [
+    ' Vite moved the package into its optimized dependency cache without copying the Worker.',
+    " Add '@datapack-sandbox/vitepress-playground' to vite.optimizeDeps.exclude and restart the dev server with --force.",
+  ].join('')
 }
 
 function toHex(bytes: ArrayBuffer): string {

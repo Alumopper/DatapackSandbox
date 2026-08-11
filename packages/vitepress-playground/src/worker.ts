@@ -4,6 +4,7 @@
 import { zlibSync } from 'fflate'
 import type { BrowserSandboxEngine } from '../.generated/kotlin/datapack-sandbox-browser-runtime.mjs'
 import type { BrowserCoreSession } from '*datapack-sandbox-core.js'
+import commandCatalog from '../.generated/vanilla-command-catalog-26.2.json'
 import { extractZipEntries, normalizeImportEntries } from './archive'
 import { decodePngTexture, inspectPngTexture } from './png'
 import type {
@@ -24,8 +25,38 @@ interface GeneratedProfile {
   dataVersion: number
   dataPackFormat: string
   commandRoots: string[]
-  registries: { blocks: string[]; items: string[]; entityTypes: string[] }
 }
+
+interface GeneratedCommandCatalog {
+  commandRoots: string[]
+  blocks: string[]
+  items: string[]
+  entityTypes: string[]
+  biomes: string[]
+  biomeTags: string[]
+  damageTypes: string[]
+  enchantments: string[]
+  effects: string[]
+  dimensions: string[]
+  attributes: string[]
+  particles: string[]
+  sounds: string[]
+  gamerules: string[]
+  scoreboardCriteria: string[]
+  advancements: string[]
+  recipes: string[]
+  pointOfInterestTypes: string[]
+  pointOfInterestTypeTags: string[]
+  structures: string[]
+  structureTags: string[]
+  configuredFeatures: string[]
+  templatePools: string[]
+  testInstances: string[]
+  worldClocks: string[]
+  timelines: string[]
+}
+
+const completions = commandCatalog as GeneratedCommandCatalog
 
 interface WorkerRequest {
   id: string | number
@@ -489,10 +520,32 @@ async function createSession(request: WorkerRequest): Promise<void> {
   )
   const renderer = new runtime.BrowserSandboxEngine(
     version,
-    profile.commandRoots.join(','),
-    profile.registries.blocks.join(','),
-    profile.registries.items.join(','),
-    profile.registries.entityTypes.join(','),
+    (version === '26.2' ? completions.commandRoots : profile.commandRoots).join(','),
+    completions.blocks.join(','),
+    completions.items.join(','),
+    completions.entityTypes.join(','),
+    completions.biomes.join(','),
+    completions.biomeTags.join(','),
+    completions.damageTypes.join(','),
+    completions.enchantments.join(','),
+    completions.effects.join(','),
+    completions.dimensions.join(','),
+    completions.attributes.join(','),
+    completions.particles.join(','),
+    completions.sounds.join(','),
+    completions.gamerules.join(','),
+    completions.scoreboardCriteria.join(','),
+    completions.advancements.join(','),
+    completions.recipes.join(','),
+    completions.pointOfInterestTypes.join(','),
+    completions.pointOfInterestTypeTags.join(','),
+    completions.structures.join(','),
+    completions.structureTags.join(','),
+    completions.configuredFeatures.join(','),
+    completions.templatePools.join(','),
+    completions.testInstances.join(','),
+    completions.worldClocks.join(','),
+    completions.timelines.join(','),
     limits.maximumCellBytes,
     limits.maximumOutputBytes,
     limits.maximumCommands,

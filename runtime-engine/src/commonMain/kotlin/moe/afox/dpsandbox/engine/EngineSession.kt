@@ -11,6 +11,28 @@ class EngineSession(
     private var blockRegistry: List<String> = emptyList()
     private var itemRegistry: List<String> = emptyList()
     private var entityRegistry: List<String> = emptyList()
+    private var biomeRegistry: List<String> = emptyList()
+    private var biomeTagRegistry: List<String> = emptyList()
+    private var damageTypeRegistry: List<String> = emptyList()
+    private var enchantmentRegistry: List<String> = emptyList()
+    private var effectRegistry: List<String> = emptyList()
+    private var dimensionRegistry: List<String> = emptyList()
+    private var attributeRegistry: List<String> = emptyList()
+    private var particleRegistry: List<String> = emptyList()
+    private var soundRegistry: List<String> = emptyList()
+    private var gameruleRegistry: List<String> = emptyList()
+    private var scoreboardCriteriaRegistry: List<String> = emptyList()
+    private var advancementRegistry: List<String> = emptyList()
+    private var recipeRegistry: List<String> = emptyList()
+    private var pointOfInterestTypeRegistry: List<String> = emptyList()
+    private var pointOfInterestTypeTagRegistry: List<String> = emptyList()
+    private var structureRegistry: List<String> = emptyList()
+    private var structureTagRegistry: List<String> = emptyList()
+    private var configuredFeatureRegistry: List<String> = emptyList()
+    private var templatePoolRegistry: List<String> = emptyList()
+    private var testInstanceRegistry: List<String> = emptyList()
+    private var worldClockRegistry: List<String> = emptyList()
+    private var timelineRegistry: List<String> = emptyList()
     private var beforeSections: Map<String, String>? = null
     private val operationOutputs = mutableListOf<EngineOutput>()
     private val operationTrace = mutableListOf<String>()
@@ -24,14 +46,58 @@ class EngineSession(
         blocks: Iterable<String>,
         items: Iterable<String>,
         entities: Iterable<String>,
+        biomes: Iterable<String> = emptyList(),
+        biomeTags: Iterable<String> = emptyList(),
+        damageTypes: Iterable<String> = emptyList(),
+        enchantments: Iterable<String> = emptyList(),
+        effects: Iterable<String> = emptyList(),
+        dimensions: Iterable<String> = emptyList(),
+        attributes: Iterable<String> = emptyList(),
+        particles: Iterable<String> = emptyList(),
+        sounds: Iterable<String> = emptyList(),
+        gamerules: Iterable<String> = emptyList(),
+        scoreboardCriteria: Iterable<String> = emptyList(),
+        advancements: Iterable<String> = emptyList(),
+        recipes: Iterable<String> = emptyList(),
+        pointOfInterestTypes: Iterable<String> = emptyList(),
+        pointOfInterestTypeTags: Iterable<String> = emptyList(),
+        structures: Iterable<String> = emptyList(),
+        structureTags: Iterable<String> = emptyList(),
+        configuredFeatures: Iterable<String> = emptyList(),
+        templatePools: Iterable<String> = emptyList(),
+        testInstances: Iterable<String> = emptyList(),
+        worldClocks: Iterable<String> = emptyList(),
+        timelines: Iterable<String> = emptyList(),
     ) {
         commandRoots = roots.toSet()
         blockRegistry = blocks.distinct().sorted()
         itemRegistry = items.distinct().sorted()
         entityRegistry = entities.distinct().sorted()
+        biomeRegistry = biomes.distinct().sorted()
+        biomeTagRegistry = biomeTags.distinct().sorted()
+        damageTypeRegistry = damageTypes.distinct().sorted()
+        enchantmentRegistry = enchantments.distinct().sorted()
+        effectRegistry = effects.distinct().sorted()
+        dimensionRegistry = dimensions.distinct().sorted()
+        attributeRegistry = attributes.distinct().sorted()
+        particleRegistry = particles.distinct().sorted()
+        soundRegistry = sounds.distinct().sorted()
+        gameruleRegistry = gamerules.distinct().sorted()
+        scoreboardCriteriaRegistry = scoreboardCriteria.distinct().sorted()
+        advancementRegistry = advancements.distinct().sorted()
+        recipeRegistry = recipes.distinct().sorted()
+        pointOfInterestTypeRegistry = pointOfInterestTypes.distinct().sorted()
+        pointOfInterestTypeTagRegistry = pointOfInterestTypeTags.distinct().sorted()
+        structureRegistry = structures.distinct().sorted()
+        structureTagRegistry = structureTags.distinct().sorted()
+        configuredFeatureRegistry = configuredFeatures.distinct().sorted()
+        templatePoolRegistry = templatePools.distinct().sorted()
+        testInstanceRegistry = testInstances.distinct().sorted()
+        worldClockRegistry = worldClocks.distinct().sorted()
+        timelineRegistry = timelines.distinct().sorted()
     }
 
-    /** Replaces render-facing state from a snapshot produced by the JVM core. */
+    /** Replaces modeled state from a snapshot produced by the JVM core. */
     fun replaceSnapshotJson(snapshot: String) {
         val root = EngineSnbtParser(snapshot).parseObject()
         val next =
@@ -41,6 +107,35 @@ class EngineSession(
                 weather = root.string("weather") ?: "clear",
                 seed = root.long("seed"),
             )
+        root.obj("objectives")?.values.orEmpty().forEach { (name, criteria) ->
+            next.objectives[name] = criteria.stringValue()
+        }
+        root.obj("scores")?.values.orEmpty().forEach { (objective, rawScores) ->
+            val scores = rawScores as? EngineDataObject ?: return@forEach
+            next.scores[objective] =
+                scores.values.mapValuesTo(linkedMapOf()) { (_, value) -> value.numberValue().toInt() }
+        }
+        root.obj("storage")?.values.orEmpty().forEach { (id, value) ->
+            next.storages[id] = value.stringValue()
+        }
+        root.obj("gamerules")?.values.orEmpty().forEach { (name, value) ->
+            next.gamerules[name] = value.stringValue()
+        }
+        root.obj("players")?.values.orEmpty().forEach { (name, rawPlayer) ->
+            val player = rawPlayer as? EngineDataObject ?: return@forEach
+            val inventory = linkedMapOf<String, Int>()
+            val coreInventory = player.array("inventory")
+            if (coreInventory != null) {
+                coreInventory.values.forEach { rawStack ->
+                    val stack = rawStack as? EngineDataObject ?: return@forEach
+                    val id = stack.string("id") ?: return@forEach
+                    inventory[id] = (inventory[id] ?: 0) + (stack.int("count") ?: stack.int("Count") ?: 1)
+                }
+            } else {
+                player.values.forEach { (id, count) -> inventory[id] = count.numberValue().toInt() }
+            }
+            next.inventories[name] = inventory
+        }
         root.array("blocks")?.values.orEmpty().forEach { value ->
             val block = value as? EngineDataObject ?: return@forEach
             val x = block.int("x") ?: 0
@@ -232,7 +327,34 @@ class EngineSession(
         validateSourceSize(source)
         val scratch = EngineSession(version, limits, world.copyWorld())
         scratch.functions.putAll(functions)
-        scratch.configure(commandRoots, blockRegistry, itemRegistry, entityRegistry)
+        scratch.configure(
+            roots = commandRoots,
+            blocks = blockRegistry,
+            items = itemRegistry,
+            entities = entityRegistry,
+            biomes = biomeRegistry,
+            biomeTags = biomeTagRegistry,
+            damageTypes = damageTypeRegistry,
+            enchantments = enchantmentRegistry,
+            effects = effectRegistry,
+            dimensions = dimensionRegistry,
+            attributes = attributeRegistry,
+            particles = particleRegistry,
+            sounds = soundRegistry,
+            gamerules = gameruleRegistry,
+            scoreboardCriteria = scoreboardCriteriaRegistry,
+            advancements = advancementRegistry,
+            recipes = recipeRegistry,
+            pointOfInterestTypes = pointOfInterestTypeRegistry,
+            pointOfInterestTypeTags = pointOfInterestTypeTagRegistry,
+            structures = structureRegistry,
+            structureTags = structureTagRegistry,
+            configuredFeatures = configuredFeatureRegistry,
+            templatePools = templatePoolRegistry,
+            testInstances = testInstanceRegistry,
+            worldClocks = worldClockRegistry,
+            timelines = timelineRegistry,
+        )
         val diagnostics = mutableListOf<EngineDiagnostic>()
         scratch.beginExecution()
         source.lineSequence().forEachIndexed { index, raw ->
@@ -250,14 +372,26 @@ class EngineSession(
         source: String,
         cursor: Int,
     ): String {
+        val boundedCursor = cursor.coerceIn(0, source.length)
+        val lineStart =
+            if (boundedCursor == 0) {
+                0
+            } else {
+                source.lastIndexOf('\n', boundedCursor - 1).let { if (it < 0) 0 else it + 1 }
+            }
+        val rawLineEnd = source.indexOf('\n', boundedCursor).let { if (it < 0) source.length else it }
+        val lineEnd = if (rawLineEnd > lineStart && source[rawLineEnd - 1] == '\r') rawLineEnd - 1 else rawLineEnd
+        val lineSource = source.substring(lineStart, lineEnd)
+        val lineCursor = (boundedCursor - lineStart).coerceIn(0, lineSource.length)
+        val editContext = completionContextBefore(source, lineStart)
         val scoreHolders =
-            (world.scores.values.flatMap { it.keys } + world.inventories.keys)
+            (world.scores.values.flatMap { it.keys } + world.inventories.keys + editContext.scoreHolders)
                 .distinct()
                 .sorted()
         val candidates =
             EngineCommandCompletion.complete(
-                source,
-                cursor,
+                lineSource,
+                lineCursor,
                 EngineCompletionEnvironment(
                     roots = commandRoots.sorted(),
                     blocks = blockRegistry,
@@ -265,11 +399,32 @@ class EngineSession(
                     entities = entityRegistry,
                     functions = functions.keys.sorted(),
                     functionTags = functionTags.keys.sorted(),
-                    objectives = world.objectives.keys.sorted(),
+                    objectives = editContext.objectives.sorted(),
                     scoreHolders = scoreHolders,
-                    storages = world.storages.keys.sorted(),
-                    tags = world.entities.flatMap { it.tags }.distinct().sorted(),
-                    gamerules = world.gamerules.keys.sorted(),
+                    storages = editContext.storages.sorted(),
+                    tags = (world.entities.flatMap { it.tags } + editContext.tags).distinct().sorted(),
+                    gamerules = (gameruleRegistry + editContext.gamerules).distinct().sorted(),
+                    biomes = biomeRegistry,
+                    biomeTags = biomeTagRegistry,
+                    damageTypes = damageTypeRegistry,
+                    enchantments = enchantmentRegistry,
+                    effects = effectRegistry,
+                    dimensions = dimensionRegistry,
+                    attributes = attributeRegistry,
+                    particles = particleRegistry,
+                    sounds = soundRegistry,
+                    scoreboardCriteria = scoreboardCriteriaRegistry,
+                    advancements = advancementRegistry,
+                    recipes = recipeRegistry,
+                    pointOfInterestTypes = pointOfInterestTypeRegistry,
+                    pointOfInterestTypeTags = pointOfInterestTypeTagRegistry,
+                    structures = structureRegistry,
+                    structureTags = structureTagRegistry,
+                    configuredFeatures = configuredFeatureRegistry,
+                    templatePools = templatePoolRegistry,
+                    testInstances = testInstanceRegistry,
+                    worldClocks = worldClockRegistry,
+                    timelines = timelineRegistry,
                 ),
             )
         return JsonText.array(
@@ -279,12 +434,41 @@ class EngineSession(
                     "description" to JsonText.quote(candidate.description),
                     "group" to JsonText.quote(candidate.group),
                     "appendSpace" to candidate.appendSpace.toString(),
-                    "start" to candidate.start.toString(),
-                    "end" to candidate.end.toString(),
+                    "start" to (lineStart + candidate.start).toString(),
+                    "end" to (lineStart + candidate.end).toString(),
                     "behavior" to JsonText.quote("modeled"),
                 )
             },
         )
+    }
+
+    private fun completionContextBefore(
+        source: String,
+        lineStart: Int,
+    ): EditCompletionContext {
+        val objectives = world.objectives.keys.toMutableSet()
+        val scoreHolders = mutableSetOf<String>()
+        val storages = world.storages.keys.toMutableSet()
+        val gamerules = world.gamerules.keys.toMutableSet()
+        val tags = mutableSetOf<String>()
+        source.substring(0, lineStart).lineSequence().forEach { rawLine ->
+            val command = rawLine.removePrefix("\uFEFF").trim().removePrefix("/")
+            if (command.isBlank() || command.startsWith('#')) return@forEach
+            val tokens = runCatching { tokenize(command) }.getOrNull() ?: return@forEach
+            when {
+                tokens.size >= 4 && tokens.take(3) == listOf("scoreboard", "objectives", "add") -> objectives += tokens[3]
+                tokens.size >= 4 && tokens.take(3) == listOf("scoreboard", "objectives", "remove") -> objectives -= tokens[3]
+                tokens.size >= 4 && tokens.take(2) == listOf("scoreboard", "players") -> scoreHolders += tokens[3]
+                tokens.size >= 4 && tokens[0] == "data" && tokens[2] == "storage" -> {
+                    if (tokens[1] == "remove") storages -= tokens[3] else storages += tokens[3]
+                }
+                tokens.size >= 2 && tokens[0] == "gamerule" -> gamerules += tokens[1]
+                tokens.size >= 4 && tokens[0] == "tag" -> {
+                    if (tokens[2] == "remove") tags -= tokens[3] else if (tokens[2] == "add") tags += tokens[3]
+                }
+            }
+        }
+        return EditCompletionContext(objectives, scoreHolders, storages, gamerules, tags)
     }
 
     fun snapshotJson(): String = world.snapshotJson()
@@ -977,4 +1161,12 @@ class EngineSession(
 private data class EngineCheckpoint(
     val world: EngineWorld,
     val uuidSequence: Long,
+)
+
+private data class EditCompletionContext(
+    val objectives: Set<String>,
+    val scoreHolders: Set<String>,
+    val storages: Set<String>,
+    val gamerules: Set<String>,
+    val tags: Set<String>,
 )

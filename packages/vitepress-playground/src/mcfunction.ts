@@ -10,7 +10,7 @@ const parser: StreamParser<McfunctionState> = {
   token(stream, state) {
     if (stream.sol()) state.firstToken = true
     if (stream.eatSpace()) return null
-    if (stream.peek() === '#') {
+    if (state.firstToken && stream.peek() === '#') {
       stream.skipToEnd()
       return 'comment'
     }

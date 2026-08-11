@@ -1,4 +1,4 @@
-import { completionStatus, startCompletion } from '@codemirror/autocomplete'
+import { completionStatus, selectedCompletionIndex, startCompletion } from '@codemirror/autocomplete'
 import { Transaction } from '@codemirror/state'
 import { EditorView } from '@codemirror/view'
 import { mount } from '@vue/test-utils'
@@ -50,6 +50,114 @@ describe('CodeCell', () => {
 
     await vi.waitFor(() => expect(view!.state.doc.toString()).toBe('setblock '))
     expect(wrapper.emitted('update:modelValue')?.at(-1)).toEqual(['setblock '])
+    wrapper.unmount()
+  })
+
+  it('refetches a truncated completion batch as the prefix narrows', async () => {
+    const complete = vi.fn(async (source: string) => {
+      if (source === 's') {
+        return Array.from({ length: 100 }, (_, index) => ({
+          value: `stone_${index}`,
+          description: 'Truncated block catalog',
+          group: 'value',
+          start: 0,
+          end: 1,
+          appendSpace: true,
+        }))
+      }
+      return [{
+        value: 'sulfur',
+        description: 'Narrowed block catalog',
+        group: 'value',
+        start: 0,
+        end: source.length,
+        appendSpace: true,
+      }]
+    })
+    const wrapper = mount(CodeCell, {
+      attachTo: document.body,
+      props: {
+        modelValue: 's',
+        cellId: 'truncated-completion',
+        readOnly: false,
+        disabled: false,
+        diagnostics: [],
+        complete,
+        check: async () => [],
+      },
+    })
+    const view = EditorView.findFromDOM(wrapper.get('.cm-editor').element as HTMLElement)!
+    view.dispatch({ selection: { anchor: 1 } })
+    startCompletion(view)
+    await vi.waitFor(() => expect(completionStatus(view.state)).toBe('active'))
+
+    view.dispatch({
+      changes: { from: 1, insert: 'u' },
+      selection: { anchor: 2 },
+      annotations: Transaction.userEvent.of('input.type'),
+    })
+
+    await vi.waitFor(() => expect(complete).toHaveBeenCalledWith('su', 2))
+    wrapper.unmount()
+  })
+
+  it('passes the full cell context and selects candidates with the arrow keys', async () => {
+    const source = 'scoreboard objectives add qwq dummy\nset'
+    const start = source.lastIndexOf('set')
+    const complete = vi.fn(async () => [
+      {
+        value: 'setblock',
+        description: 'Place a block',
+        group: 'command',
+        start,
+        end: source.length,
+        appendSpace: true,
+      },
+      {
+        value: 'setworldspawn',
+        description: 'Set the world spawn',
+        group: 'command',
+        start,
+        end: source.length,
+        appendSpace: true,
+      },
+    ])
+    const wrapper = mount(CodeCell, {
+      attachTo: document.body,
+      props: {
+        modelValue: source,
+        cellId: 'contextual-completion',
+        readOnly: false,
+        disabled: false,
+        diagnostics: [],
+        complete,
+        check: async () => [],
+      },
+    })
+    const view = EditorView.findFromDOM(wrapper.get('.cm-editor').element as HTMLElement)!
+    view.dispatch({ selection: { anchor: source.length } })
+    startCompletion(view)
+    await vi.waitFor(() => expect(completionStatus(view.state)).toBe('active'))
+    expect(complete).toHaveBeenCalledWith(source, source.length)
+    await new Promise((resolve) => setTimeout(resolve, 80))
+
+    view.contentDOM.dispatchEvent(new KeyboardEvent('keydown', {
+      key: 'ArrowDown',
+      code: 'ArrowDown',
+      bubbles: true,
+      cancelable: true,
+    }))
+    await vi.waitFor(() => expect(selectedCompletionIndex(view.state)).toBe(1))
+    view.contentDOM.dispatchEvent(new KeyboardEvent('keydown', {
+      key: 'Tab',
+      code: 'Tab',
+      bubbles: true,
+      cancelable: true,
+    }))
+
+    await vi.waitFor(() => expect(view.state.doc.toString()).toBe(
+      'scoreboard objectives add qwq dummy\nsetworldspawn ',
+    ))
     wrapper.unmount()
   })
 

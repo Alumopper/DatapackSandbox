@@ -28,6 +28,14 @@ class VersionProfileTest {
         assertEquals("107.1", profile.dataPackFormat.toString())
         assertEquals(listOf("function", "functions"), profile.resourceDirectories.functions)
         assertTrue(profile.commands.hasRoot("transfer"))
+        assertTrue(profile.commands.hasRoot("dialog"))
+        assertTrue(profile.commands.hasRoot("test"))
+        assertTrue(profile.commands.hasRoot("waypoint"))
+        assertTrue(profile.registryView.blocks.size > 1_000)
+        assertTrue(profile.registryView.items.size > 1_500)
+        assertTrue(profile.registryView.entityTypes.size > 150)
+        assertTrue(ResourceLocation.parse("minecraft:sulfur") in profile.registryView.blocks)
+        assertTrue(ResourceLocation.parse("minecraft:copper_golem") in profile.registryView.entityTypes)
     }
 
     @Test

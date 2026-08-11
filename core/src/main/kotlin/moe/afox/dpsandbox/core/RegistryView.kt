@@ -1,5 +1,9 @@
 ﻿package moe.afox.dpsandbox.core
 
+import com.google.gson.JsonObject
+import java.io.InputStreamReader
+import java.nio.charset.StandardCharsets
+
 data class RegistryView(
     val items: Set<ResourceLocation>,
     val blocks: Set<ResourceLocation>,
@@ -25,19 +29,53 @@ data class RegistryView(
             id in dimensions
 
     companion object {
-        val vanilla262 =
+        private val commandCatalog: JsonObject? by lazy {
+            val stream = RegistryView::class.java.classLoader.getResourceAsStream(COMMAND_CATALOG_RESOURCE) ?: return@lazy null
+            runCatching {
+                InputStreamReader(stream, StandardCharsets.UTF_8).use { reader ->
+                    JsonValues.parse(reader.readText()).asJsonObject
+                }
+            }.getOrNull()
+        }
+
+        private fun catalogIds(
+            name: String,
+            vararg fallback: String,
+        ): Set<ResourceLocation> =
+            commandCatalog
+                ?.get(name)
+                ?.takeIf { it.isJsonArray }
+                ?.asJsonArray
+                ?.mapNotNull { it.takeIf { value -> value.isJsonPrimitive }?.asString }
+                ?.takeIf { it.isNotEmpty() }
+                ?.map { ResourceLocation.parse(it) }
+                ?.toSortedSet()
+                ?: fallback.map { ResourceLocation.parse(it) }.toSortedSet()
+
+        val vanilla262 by lazy {
             RegistryView(
-                items = ids("air", "stone", "diamond", "stick", "carrot_on_a_stick", "apple", "experience_bottle"),
-                blocks = ids("air", "stone", "dirt", "grass_block", "diamond_ore", "chest"),
-                entityTypes = ids("player", "marker", "zombie", "skeleton", "item", "minecraft:experience_orb"),
-                biomes = ids("plains", "forest", "desert"),
-                damageTypes = ids("generic", "player_attack", "mob_attack", "fall", "out_of_world"),
-                enchantments = ids("sharpness", "fortune", "looting", "unbreaking"),
-                effects = ids("speed", "strength", "regeneration", "poison"),
-                dimensions = ids("overworld", "the_nether", "the_end"),
-                lootContextTypes = ids("empty", "block", "entity", "chest", "fishing", "advancement_reward", "advancement_entity"),
+                items = catalogIds("items", "air", "stone", "diamond", "stick", "carrot_on_a_stick", "apple", "experience_bottle"),
+                blocks = catalogIds("blocks", "air", "stone", "dirt", "grass_block", "diamond_ore", "chest"),
+                entityTypes = catalogIds("entityTypes", "player", "marker", "zombie", "skeleton", "item", "experience_orb"),
+                biomes = catalogIds("biomes", "plains", "forest", "desert"),
+                damageTypes = catalogIds("damageTypes", "generic", "player_attack", "mob_attack", "fall", "out_of_world"),
+                enchantments = catalogIds("enchantments", "sharpness", "fortune", "looting", "unbreaking"),
+                effects = catalogIds("effects", "speed", "strength", "regeneration", "poison"),
+                dimensions = catalogIds("dimensions", "overworld", "the_nether", "the_end"),
+                lootContextTypes =
+                    catalogIds(
+                        "lootContextTypes",
+                        "empty",
+                        "block",
+                        "entity",
+                        "chest",
+                        "fishing",
+                        "advancement_reward",
+                        "advancement_entity",
+                    ),
                 advancementTriggers =
-                    ids(
+                    catalogIds(
+                        "advancementTriggers",
                         "impossible",
                         "tick",
                         "inventory_changed",
@@ -59,7 +97,8 @@ data class RegistryView(
                         "effects_changed",
                     ),
                 lootConditions =
-                    ids(
+                    catalogIds(
+                        "lootConditions",
                         "all_of",
                         "any_of",
                         "inverted",
@@ -81,7 +120,8 @@ data class RegistryView(
                         "survives_explosion",
                     ),
                 lootFunctions =
-                    ids(
+                    catalogIds(
+                        "lootFunctions",
                         "set_count",
                         "set_item",
                         "set_components",
@@ -103,11 +143,12 @@ data class RegistryView(
                         "sequence",
                     ),
             )
+        }
 
         val vanilla2612 = vanilla262.copy()
         val vanilla1204 = vanilla2612.copy()
 
-        private fun ids(vararg values: String): Set<ResourceLocation> = values.map { ResourceLocation.parse(it) }.toSortedSet()
+        private const val COMMAND_CATALOG_RESOURCE = "vanilla-command-catalog-26.2.json"
     }
 }
 

@@ -167,7 +167,7 @@ describe('PlaygroundWorkerClient', () => {
     client.close()
   })
 
-  it('diagnoses an opaque startup failure without terminating the replacement Worker', async () => {
+  it('diagnoses a Worker lost from Vite dependency optimization without terminating its replacement', async () => {
     let connections = 0
     vi.stubGlobal('fetch', vi.fn(async () => ({
       ok: false,
@@ -187,13 +187,16 @@ describe('PlaygroundWorkerClient', () => {
       }
     }
     const client = new PlaygroundWorkerClient({
-      workerUrl: '/missing-worker.js',
+      workerUrl: '/datapack-index/.vitepress/cache/deps/assets/worker-missing.js',
       workerFactory: (url, options) => new MockWorker(url, options) as unknown as Worker,
     })
     const failure = await client.connect().catch((error) => error)
     expect(failure).toBeInstanceOf(PlaygroundClientError)
     expect(failure.code).toBe('SESSION_LOST')
-    expect(failure.message).toContain('http://localhost:3000/missing-worker.js returned HTTP 404 Not Found')
+    expect(failure.message).toContain('worker-missing.js returned HTTP 404 Not Found')
+    expect(failure.message).toContain("vite.optimizeDeps.exclude")
+    expect(failure.message).toContain("'@datapack-sandbox/vitepress-playground'")
+    expect(failure.message).toContain('--force')
     await vi.waitFor(() => expect(MockWorker.instances).toHaveLength(2))
     expect(MockWorker.instances[1].terminated).toBe(false)
     await expect(client.createSession({ version: '26.2', cells: [] }, {})).resolves.toMatchObject({ sessionId: 'replacement' })

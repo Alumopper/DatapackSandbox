@@ -163,6 +163,97 @@ class EngineSessionTest {
         assertContains(session.finishExecutionJson(), "\"#browser\":3")
     }
 
+    @Test
+    fun completesObjectivesDeclaredEarlierInTheEditorWithoutExecutingThem() {
+        val session = EngineSession("26.2")
+        session.configure(listOf("scoreboard"), emptyList(), emptyList(), emptyList())
+        val source =
+            "scoreboard objectives add qwq dummy\n" +
+                "scoreboard players set #browser qw"
+
+        assertEquals("[]", session.checkJson("${source}q 1"))
+        val completion = session.completionJson(source, source.length)
+        assertContains(completion, "\"value\":\"qwq\"")
+        assertContains(completion, "\"start\":${source.lastIndexOf("qw")}")
+        assertFalse("\"qwq\"" in session.snapshotJson())
+    }
+
+    @Test
+    fun restoresCompletionStateFromTheCoreSnapshot() {
+        val core = EngineSession("26.2")
+        core.configure(listOf("scoreboard", "data", "gamerule"), emptyList(), emptyList(), emptyList())
+        core.beginExecution()
+        core.executeLine("scoreboard objectives add qwq dummy", 1)
+        core.executeLine("scoreboard players set #browser qwq 1", 2)
+        core.executeLine("data merge storage demo:state {}", 3)
+        core.executeLine("gamerule keepInventory true", 4)
+        core.finishExecutionJson()
+
+        val renderer = EngineSession("26.2")
+        renderer.configure(listOf("scoreboard", "data", "gamerule"), emptyList(), emptyList(), emptyList())
+        renderer.replaceSnapshotJson(core.snapshotJson())
+
+        val scoreSource = "scoreboard players get #browser "
+        val storageSource = "data get storage "
+        val gameruleSource = "gamerule keep"
+        assertContains(renderer.completionJson(scoreSource, scoreSource.length), "\"value\":\"qwq\"")
+        assertContains(renderer.completionJson(storageSource, storageSource.length), "\"value\":\"demo:state\"")
+        assertContains(renderer.completionJson(gameruleSource, gameruleSource.length), "\"value\":\"keepInventory\"")
+    }
+
+    @Test
+    fun usesConfiguredVanillaCatalogsForCommandArguments() {
+        val environment =
+            completionEnvironment().copy(
+                blocks = listOf("minecraft:copper_block"),
+                biomes = listOf("minecraft:pale_garden"),
+                biomeTags = listOf("#minecraft:is_overworld"),
+                damageTypes = listOf("minecraft:outside_border"),
+                enchantments = listOf("minecraft:wind_burst"),
+                effects = listOf("minecraft:weaving"),
+                attributes = listOf("minecraft:burning_time"),
+                particles = listOf("minecraft:trial_spawner_detection"),
+                sounds = listOf("minecraft:block.copper_bulb.turn_on"),
+                scoreboardCriteria = listOf("minecraft.mined:minecraft:copper_block"),
+                advancements = listOf("minecraft:adventure/heart_transplanter"),
+                recipes = listOf("minecraft:copper_chest"),
+                pointOfInterestTypes = listOf("minecraft:home"),
+                pointOfInterestTypeTags = listOf("#minecraft:village"),
+                structures = listOf("minecraft:trial_chambers"),
+                structureTags = listOf("#minecraft:stronghold_biased_to"),
+                configuredFeatures = listOf("minecraft:ore_sulfur_lower"),
+                templatePools = listOf("minecraft:village/plains/town_centers"),
+                testInstances = listOf("minecraft:always_pass"),
+                worldClocks = listOf("minecraft:overworld"),
+                timelines = listOf("minecraft:day"),
+            )
+
+        assertCompletion(environment, "setblock 0 0 0 minecraft:copp", "minecraft:copper_block")
+        assertCompletion(environment, "fillbiome 0 0 0 1 1 1 minecraft:pale", "minecraft:pale_garden")
+        assertCompletion(environment, "damage @s 1 minecraft:out", "minecraft:outside_border")
+        assertCompletion(environment, "enchant @s minecraft:wind", "minecraft:wind_burst")
+        assertCompletion(environment, "effect give @s minecraft:weav", "minecraft:weaving")
+        assertCompletion(environment, "attribute @s minecraft:burn", "minecraft:burning_time")
+        assertCompletion(environment, "particle minecraft:trial", "minecraft:trial_spawner_detection")
+        assertCompletion(environment, "playsound minecraft:block.copper", "minecraft:block.copper_bulb.turn_on")
+        assertCompletion(environment, "locate biome #minecraft:is_", "#minecraft:is_overworld")
+        assertCompletion(environment, "locate poi minecraft:ho", "minecraft:home")
+        assertCompletion(environment, "locate structure #minecraft:strong", "#minecraft:stronghold_biased_to")
+        assertCompletion(environment, "place feature minecraft:ore_su", "minecraft:ore_sulfur_lower")
+        assertCompletion(environment, "place jigsaw minecraft:village/plains/to", "minecraft:village/plains/town_centers")
+        assertCompletion(environment, "place structure minecraft:trial", "minecraft:trial_chambers")
+        assertCompletion(environment, "recipe give @s minecraft:copp", "minecraft:copper_chest")
+        assertCompletion(environment, "advancement grant @s only minecraft:adventure/he", "minecraft:adventure/heart_transplanter")
+        assertCompletion(environment, "test run minecraft:alw", "minecraft:always_pass")
+        assertCompletion(environment, "time of minecraft:ov", "minecraft:overworld")
+        assertCompletion(environment, "time query minecraft:d", "minecraft:day")
+        assertCompletion(
+            environment,
+            "scoreboard objectives add copper minecraft.mined:minecraft:copp",
+            "minecraft.mined:minecraft:copper_block",
+        )
+    }
+
     private fun completionEnvironment(): EngineCompletionEnvironment =
         EngineCompletionEnvironment(
             roots = fullCommandRoots,
@@ -176,6 +267,15 @@ class EngineSessionTest {
             storages = listOf("demo:state"),
             tags = listOf("mob"),
             gamerules = listOf("doDaylightCycle"),
+            biomes = listOf("minecraft:plains"),
+            damageTypes = listOf("minecraft:generic"),
+            enchantments = listOf("minecraft:sharpness"),
+            effects = listOf("minecraft:speed"),
+            dimensions = listOf("minecraft:overworld"),
+            attributes = listOf("minecraft:max_health"),
+            particles = listOf("minecraft:flame"),
+            sounds = listOf("minecraft:block.note_block.harp"),
+            scoreboardCriteria = listOf("dummy", "trigger"),
         )
 
     private val fullCommandRoots =
@@ -186,7 +286,7 @@ class EngineSessionTest {
         pardon-ip particle perf place playsound publish random recipe reload return ride rotate save-all
         save-off save-on say schedule scoreboard seed setblock setidletimeout setworldspawn spawnpoint
         spectate spreadplayers stop stopsound summon tag team teammsg tell tellraw tick time title tm tp
-        transfer trigger w weather whitelist worldborder xp
+        test transfer trigger w weather whitelist worldborder xp
         """.trimIndent().split(Regex("\\s+"))
 
     private fun assertCompletion(

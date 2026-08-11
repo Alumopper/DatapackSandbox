@@ -10,6 +10,17 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class BrowserCoreSessionTest {
     @Test
+    void checksEditorCommandsInOrderWithoutMutatingTheSession() {
+        BrowserCoreSession session = new BrowserCoreSession("26.2", 10_000, 1_000, 4_000_000);
+
+        assertEquals("[]", session.check(
+                "scoreboard objectives add qwq dummy\nscoreboard players set #value qwq 1"));
+
+        JsonObject snapshot = JsonParser.parseString(session.renderSnapshot()).getAsJsonObject();
+        assertFalse(snapshot.has("scores"));
+    }
+
+    @Test
     void realtimeTicksReturnTheFinalWorldWithoutTraceOrSnapshotDiffs() {
         BrowserCoreSession session = new BrowserCoreSession("26.2", 10_000, 1_000, 4_000_000);
         session.upsertFunction("demo:tick", "say realtime");

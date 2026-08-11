@@ -20,33 +20,20 @@ if (result.status !== 0) process.exit(result.status ?? 1)
 const generated = resolve(packageRoot, '.generated')
 const kotlinOutput = resolve(repoRoot, 'browser-runtime', 'build', 'dist', 'js', 'productionLibrary')
 const coreOutput = resolve(repoRoot, 'browser-core', 'build', 'dist', 'js', 'datapack-sandbox-core.js')
+const commandCatalog = resolve(repoRoot, 'schema', 'vanilla', 'vanilla-command-catalog-26.2.json')
 await rm(generated, { recursive: true, force: true })
 await mkdir(generated, { recursive: true })
 await cp(kotlinOutput, resolve(generated, 'kotlin'), { recursive: true })
 await cp(coreOutput, resolve(generated, 'datapack-sandbox-core.js'))
+await cp(commandCatalog, resolve(generated, 'vanilla-command-catalog-26.2.json'))
 
 const versionSource = await readFile(resolve(repoRoot, 'core', 'src', 'main', 'kotlin', 'moe', 'afox', 'dpsandbox', 'core', 'VersionProfile.kt'), 'utf8')
-const registrySource = await readFile(resolve(repoRoot, 'core', 'src', 'main', 'kotlin', 'moe', 'afox', 'dpsandbox', 'core', 'RegistryView.kt'), 'utf8')
 const commonRootStart = versionSource.indexOf('val commonRoots =')
 const commonRootEnd = versionSource.indexOf('val minecraft1204 = CommandProfile', commonRootStart)
 if (commonRootStart < 0 || commonRootEnd < 0) throw new Error('Unable to locate the JVM command catalog')
 const commonRoots = [...versionSource.slice(commonRootStart, commonRootEnd).matchAll(/"([a-z0-9-]+)"/g)].map((match) => match[1])
 
-function registry(name) {
-  const match = registrySource.match(new RegExp(`${name}\\s*=\\s*ids\\(([^)]*)\\)`, 's'))
-  if (!match) throw new Error(`Unable to locate JVM registry ${name}`)
-  return [...match[1].matchAll(/"([^"]+)"/g)]
-    .map((item) => item[1])
-    .map((id) => id.includes(':') ? id : `minecraft:${id}`)
-    .sort()
-}
-
-const registries = {
-  blocks: registry('blocks'),
-  items: registry('items'),
-  entityTypes: registry('entityTypes'),
-}
-const profilePattern = /val\s+\w+\s*=\s*profile\("([^"]+)",\s*java\s*=\s*(\d+),\s*data\s*=\s*(\d+),\s*pack\s*=\s*"([^"]+)"/g
+const profilePattern = /val\s+\w+\s*=\s*profile\(\s*"([^"]+)",\s*java\s*=\s*(\d+),\s*data\s*=\s*(\d+),\s*pack\s*=\s*"([^"]+)"/g
 const profiles = {}
 for (const match of versionSource.matchAll(profilePattern)) {
   const [, id, javaMajor, dataVersion, dataPackFormat] = match
@@ -56,7 +43,6 @@ for (const match of versionSource.matchAll(profilePattern)) {
     dataVersion: Number(dataVersion),
     dataPackFormat,
     commandRoots: id === '1.20.4' ? commonRoots : [...commonRoots, 'transfer'].sort(),
-    registries,
   }
 }
 if (!profiles['26.2']) throw new Error('Generated profile catalog is missing 26.2')

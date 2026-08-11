@@ -12,6 +12,27 @@ internal data class EngineCompletionEnvironment(
     val storages: List<String>,
     val tags: List<String>,
     val gamerules: List<String>,
+    val biomes: List<String> = emptyList(),
+    val biomeTags: List<String> = emptyList(),
+    val damageTypes: List<String> = emptyList(),
+    val enchantments: List<String> = emptyList(),
+    val effects: List<String> = emptyList(),
+    val dimensions: List<String> = emptyList(),
+    val attributes: List<String> = emptyList(),
+    val particles: List<String> = emptyList(),
+    val sounds: List<String> = emptyList(),
+    val scoreboardCriteria: List<String> = emptyList(),
+    val advancements: List<String> = emptyList(),
+    val recipes: List<String> = emptyList(),
+    val pointOfInterestTypes: List<String> = emptyList(),
+    val pointOfInterestTypeTags: List<String> = emptyList(),
+    val structures: List<String> = emptyList(),
+    val structureTags: List<String> = emptyList(),
+    val configuredFeatures: List<String> = emptyList(),
+    val templatePools: List<String> = emptyList(),
+    val testInstances: List<String> = emptyList(),
+    val worldClocks: List<String> = emptyList(),
+    val timelines: List<String> = emptyList(),
 )
 
 internal data class EngineCompletionCandidate(
@@ -81,7 +102,7 @@ internal object EngineCommandCompletion {
             "tellraw" -> tellrawCandidates(tokens, environment)
             "title" -> titleCandidates(tokens, environment)
             "particle" -> particleCandidates(tokens, environment)
-            "time" -> timeCandidates(tokens)
+            "time" -> timeCandidates(tokens, environment)
             "weather" -> if (tokens.size == 1) listOf("clear", "rain", "thunder").options("weather states") else emptyList()
             "gamerule" -> gameruleCandidates(tokens, environment)
             "tp", "teleport" -> teleportCandidates(tokens, environment)
@@ -95,7 +116,7 @@ internal object EngineCommandCompletion {
             "effect" -> effectCandidates(tokens, environment)
             "enchant" -> enchantCandidates(tokens, environment)
             "experience", "xp" -> experienceCandidates(tokens, environment)
-            "fillbiome" -> fillBiomeCandidates(tokens)
+            "fillbiome" -> fillBiomeCandidates(tokens, environment)
             "forceload" -> forceLoadCandidates(tokens)
             "gamemode" -> gameModeCandidates(tokens, environment)
             "item" -> itemCandidates(tokens, environment)
@@ -137,7 +158,7 @@ internal object EngineCommandCompletion {
             "add" ->
                 when (tokens.size) {
                     3 -> listOf("objective").options("objective names")
-                    4 -> listOf("dummy", "trigger").options("objective criteria")
+                    4 -> (environment.scoreboardCriteria + listOf("dummy", "trigger")).distinct().options("objective criteria")
                     5 -> TEXT_COMPONENTS.options("display names", terminal = true)
                     else -> emptyList()
                 }
@@ -222,7 +243,7 @@ internal object EngineCommandCompletion {
                     index += 2
                 }
                 "in" -> {
-                    if (index + 1 >= tokens.size) return DIMENSIONS.options("dimensions")
+                    if (index + 1 >= tokens.size) return environment.dimensions.withFallback(DIMENSIONS).options("dimensions")
                     index += 2
                 }
                 "on" -> {
@@ -312,9 +333,9 @@ internal object EngineCommandCompletion {
             "entity" -> required(tokens, index + 2, targetOptions(environment), index + 3)
             "predicate" -> required(tokens, index + 2, listOf("minecraft:entity_properties").options("predicates"), index + 3)
             "function" -> required(tokens, index + 2, functionIds(environment).options("functions/tags"), index + 3)
-            "dimension" -> required(tokens, index + 2, DIMENSIONS.options("dimensions"), index + 3)
+            "dimension" -> required(tokens, index + 2, environment.dimensions.withFallback(DIMENSIONS).options("dimensions"), index + 3)
             "loaded" -> coordinates(tokens, index + 2, 3, index + 5)
-            "biome" -> coordinatesThen(tokens, index + 2, 3, BIOMES.options("biomes"), index + 6)
+            "biome" -> coordinatesThen(tokens, index + 2, 3, environment.biomes.withFallback(BIOMES).options("biomes"), index + 6)
             "block" -> coordinatesThen(tokens, index + 2, 3, environment.blocks.options("blocks"), index + 6)
             "blocks" -> {
                 val positions = coordinates(tokens, index + 2, 9, index + 11)
@@ -545,7 +566,7 @@ internal object EngineCommandCompletion {
         environment: EngineCompletionEnvironment,
     ): List<Option> =
         when (tokens.size) {
-            1 -> PARTICLES.options("particles")
+            1 -> environment.particles.withFallback(PARTICLES).options("particles")
             in 2..4 -> COORDINATES.options("position")
             in 5..7 -> listOf("0", "0.25", "0.5", "1").options("spread")
             8 -> listOf("0", "0.02", "0.1", "1").options("speed")
@@ -555,14 +576,37 @@ internal object EngineCommandCompletion {
             else -> emptyList()
         }
 
-    private fun timeCandidates(tokens: List<String>): List<Option> =
+    private fun timeCandidates(
+        tokens: List<String>,
+        environment: EngineCompletionEnvironment,
+    ): List<Option> =
         when (tokens.size) {
-            1 -> listOf("add", "query", "set").options("time actions")
+            1 -> listOf("add", "of", "pause", "query", "rate", "resume", "set").options("time actions")
             2 ->
                 when (tokens[1]) {
-                    "query" -> listOf("day", "daytime", "gametime").options("time queries", terminal = true)
+                    "of" -> environment.worldClocks.options("world clocks")
+                    "query" -> (listOf("gametime", "time") + environment.timelines).options("time queries", terminal = true)
+                    "rate" -> listOf("1", "20").options("clock rates", terminal = true)
                     "set" -> listOf("day", "midnight", "night", "noon").options("time values", terminal = true)
                     else -> TICK_VALUES.options("time values", terminal = true)
+                }
+            3 ->
+                if (tokens[1] == "of") {
+                    listOf("add", "pause", "query", "rate", "resume", "set").options("world clock actions")
+                } else {
+                    emptyList()
+                }
+            4 ->
+                if (tokens[1] == "of") {
+                    when (tokens[3]) {
+                        "query" -> (listOf("time") + environment.timelines).options("clock queries", terminal = true)
+                        "rate" -> listOf("1", "20").options("clock rates", terminal = true)
+                        "set" -> listOf("day", "midnight", "night", "noon").options("time values", terminal = true)
+                        "add" -> TICK_VALUES.options("time values", terminal = true)
+                        else -> emptyList()
+                    }
+                } else {
+                    emptyList()
                 }
             else -> emptyList()
         }
@@ -629,9 +673,9 @@ internal object EngineCommandCompletion {
             1 -> listOf("grant", "revoke", "test").options("advancement actions")
             2 -> playerTargets(environment)
             3 ->
-                if (tokens[1] == "test") listOf("minecraft:story/root").options("advancements", terminal = true)
+                if (tokens[1] == "test") environment.advancements.options("advancements", terminal = true)
                 else listOf("everything", "from", "only", "through", "until").options("advancement modes")
-            4 -> listOf("minecraft:story/root").options("advancements", terminal = true)
+            4 -> environment.advancements.options("advancements", terminal = true)
             else -> emptyList()
         }
 
@@ -641,7 +685,7 @@ internal object EngineCommandCompletion {
     ): List<Option> =
         when (tokens.size) {
             1 -> targetOptions(environment)
-            2 -> ATTRIBUTES.options("attributes")
+            2 -> environment.attributes.withFallback(ATTRIBUTES).options("attributes")
             3 -> listOf("base", "get", "modifier").options("attribute actions")
             4 ->
                 when (tokens[3]) {
@@ -701,7 +745,7 @@ internal object EngineCommandCompletion {
         when (tokens.size) {
             1 -> targetOptions(environment)
             2 -> INTEGER_VALUES.options("damage amounts")
-            3 -> DAMAGE_TYPES.options("damage types")
+            3 -> environment.damageTypes.withFallback(DAMAGE_TYPES).options("damage types")
             4 -> listOf("at", "by").options("damage sources")
             5 -> if (tokens[4] == "by") targetOptions(environment) else COORDINATES.options("damage position")
             6 -> if (tokens[4] == "at") COORDINATES.options("damage position") else listOf("from").options("damage cause")
@@ -716,7 +760,7 @@ internal object EngineCommandCompletion {
         when (tokens.size) {
             1 -> listOf("clear", "give").options("effect actions")
             2 -> targetOptions(environment)
-            3 -> EFFECTS.options("effects")
+            3 -> environment.effects.withFallback(EFFECTS).options("effects")
             4, 5 -> INTEGER_VALUES.options(if (tokens.size == 4) "durations" else "amplifiers")
             6 -> BOOLEANS.options("hide particles", terminal = true)
             else -> emptyList()
@@ -728,7 +772,7 @@ internal object EngineCommandCompletion {
     ): List<Option> =
         when (tokens.size) {
             1 -> playerTargets(environment)
-            2 -> ENCHANTMENTS.options("enchantments")
+            2 -> environment.enchantments.withFallback(ENCHANTMENTS).options("enchantments")
             3 -> INTEGER_VALUES.options("enchantment levels", terminal = true)
             else -> emptyList()
         }
@@ -745,12 +789,15 @@ internal object EngineCommandCompletion {
             else -> emptyList()
         }
 
-    private fun fillBiomeCandidates(tokens: List<String>): List<Option> =
+    private fun fillBiomeCandidates(
+        tokens: List<String>,
+        environment: EngineCompletionEnvironment,
+    ): List<Option> =
         when (tokens.size) {
             in 1..6 -> COORDINATES.options("biome positions")
-            7 -> BIOMES.options("biomes")
+            7 -> environment.biomes.withFallback(BIOMES).options("biomes")
             8 -> listOf("replace").options("biome filters")
-            9 -> BIOMES.options("filter biomes", terminal = true)
+            9 -> environment.biomes.withFallback(BIOMES).options("filter biomes", terminal = true)
             else -> emptyList()
         }
 
@@ -807,7 +854,7 @@ internal object EngineCommandCompletion {
         environment: EngineCompletionEnvironment,
     ): List<Option> =
         when (tokens.size) {
-            1 -> SOUNDS.options("sounds")
+            1 -> environment.sounds.withFallback(SOUNDS).options("sounds")
             2 -> SOUND_SOURCES.options("sound sources")
             3 -> playerTargets(environment)
             in 4..6 -> COORDINATES.options("sound position")
@@ -822,7 +869,7 @@ internal object EngineCommandCompletion {
         when (tokens.size) {
             1 -> listOf("give", "take").options("recipe actions")
             2 -> playerTargets(environment)
-            3 -> listOf("*", "minecraft:bread", "minecraft:stick").options("recipes", terminal = true)
+            3 -> (listOf("*") + environment.recipes).options("recipes", terminal = true)
             else -> emptyList()
         }
 
@@ -956,9 +1003,9 @@ internal object EngineCommandCompletion {
             "locate" ->
                 if (tokens.size == 2) {
                     when (tokens[1]) {
-                        "biome" -> BIOMES.options("biomes", terminal = true)
-                        "poi" -> listOf("minecraft:home", "minecraft:meeting").options("points of interest", terminal = true)
-                        else -> listOf("minecraft:village", "#minecraft:stronghold_biased_to").options("structures", terminal = true)
+                        "biome" -> (environment.biomes + environment.biomeTags).withFallback(BIOMES).options("biomes", terminal = true)
+                        "poi" -> (environment.pointOfInterestTypes + environment.pointOfInterestTypeTags).options("points of interest", terminal = true)
+                        else -> (environment.structures + environment.structureTags).options("structures", terminal = true)
                     }
                 } else {
                     emptyList()
@@ -967,9 +1014,10 @@ internal object EngineCommandCompletion {
             "place" ->
                 if (tokens.size == 2) {
                     when (tokens[1]) {
-                        "feature" -> listOf("minecraft:ore_coal_upper").options("configured features")
-                        "jigsaw" -> listOf("minecraft:village/plains/town_centers").options("template pools")
-                        else -> listOf("minecraft:village_plains").options("structures/templates")
+                        "feature" -> environment.configuredFeatures.options("configured features")
+                        "jigsaw" -> environment.templatePools.options("template pools")
+                        "structure" -> environment.structures.options("structures")
+                        else -> environment.structures.options("structures/templates")
                     }
                 } else if (tokens.size in 3..5) {
                     COORDINATES.options("placement position", terminal = tokens.size >= 5)
@@ -983,10 +1031,16 @@ internal object EngineCommandCompletion {
                     else -> emptyList()
                 }
             "setworldspawn" -> if (tokens.size in 2..3) COORDINATES.options("spawn position") else if (tokens.size == 4) ROTATIONS.options("spawn angle", terminal = true) else emptyList()
+            "test" ->
+                if (tokens.size == 2 && tokens[1] in setOf("locate", "run", "runmultiple", "verify")) {
+                    environment.testInstances.options("test instances", terminal = true)
+                } else {
+                    emptyList()
+                }
             "stopsound" ->
                 when (tokens.size) {
                     2 -> SOUND_SOURCES.options("sound sources")
-                    3 -> SOUNDS.options("sounds", terminal = true)
+                    3 -> environment.sounds.withFallback(SOUNDS).options("sounds", terminal = true)
                     else -> emptyList()
                 }
             "transfer" ->
@@ -1089,6 +1143,8 @@ internal object EngineCommandCompletion {
         group: String = "value",
         terminal: Boolean = false,
     ): List<Option> = map { Option(it, description, group, appendSpace = !terminal) }
+
+    private fun List<String>.withFallback(fallback: List<String>): List<String> = ifEmpty { fallback }
 
     private data class Option(
         val value: String,
@@ -1213,6 +1269,26 @@ internal object EngineCommandCompletion {
             "place" to listOf("feature", "jigsaw", "structure", "template"),
             "publish" to listOf("false", "true"),
             "random" to listOf("reset", "roll", "value"),
+            "test" to
+                listOf(
+                    "clearall",
+                    "clearthat",
+                    "clearthese",
+                    "create",
+                    "locate",
+                    "pos",
+                    "resetclosest",
+                    "resetthat",
+                    "resetthese",
+                    "run",
+                    "runclosest",
+                    "runfailed",
+                    "runmultiple",
+                    "runthat",
+                    "runthese",
+                    "stop",
+                    "verify",
+                ),
             "whitelist" to listOf("add", "list", "off", "on", "reload", "remove"),
         )
 }

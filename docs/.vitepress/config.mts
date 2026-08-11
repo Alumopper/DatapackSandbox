@@ -291,6 +291,15 @@ export default defineConfigWithTheme<ThemeConfig>({
   ...baseConfig,
   vite: {
     ...baseConfig.vite,
+    optimizeDeps: {
+      ...baseConfig.vite?.optimizeDeps,
+      // Keep the packaged Worker URL relative to the package's dist module.
+      // Vite's dep optimizer relocates import.meta.url without its Worker.
+      exclude: [
+        ...(baseConfig.vite?.optimizeDeps?.exclude ?? []),
+        '@datapack-sandbox/vitepress-playground',
+      ],
+    },
     plugins: (baseConfig.vite?.plugins ?? []).filter((entry) => {
       const plugins = Array.isArray(entry) ? entry : [entry]
       return !plugins.some(

@@ -18,11 +18,16 @@ class VersionProfileDiffTest {
         assertEquals(ValueChange("1.20.4:1.20.4", "26.2:26.2"), diff.nbtSchema)
         assertTrue("function" in diff.resourceDirectories.getValue("functions").added)
         assertTrue("transfer" in diff.commandRoots.added)
+        assertTrue("dialog" in diff.commandRoots.added)
+        assertTrue("waypoint" in diff.commandRoots.added)
 
         val rendered = VersionProfileDiffs.render(diff)
         assertTrue("profile diff 1.20.4 -> 26.2" in rendered, rendered)
         assertTrue("pack_format: 26 -> 107.1" in rendered, rendered)
         assertTrue("nbt_schema: 1.20.4:1.20.4 -> 26.2:26.2" in rendered, rendered)
-        assertTrue("command_roots: added=transfer" in rendered, rendered)
+        assertTrue(
+            "command_roots: added=dialog,fetchprofile,stopwatch,swing,teleport,test,transfer,unpublish,version,waypoint" in rendered,
+            rendered,
+        )
     }
 }

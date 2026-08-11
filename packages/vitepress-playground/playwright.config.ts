@@ -3,6 +3,8 @@ import { defineConfig, devices } from '@playwright/test'
 const executablePath = process.env.PLAYWRIGHT_EXECUTABLE_PATH
 const e2ePort = Number(process.env.DPS_PLAYGROUND_E2E_PORT ?? 14173)
 const e2eUrl = `http://127.0.0.1:${e2ePort}`
+const consumerE2ePort = Number(process.env.DPS_PLAYGROUND_CONSUMER_E2E_PORT ?? 14174)
+const consumerE2eUrl = `http://127.0.0.1:${consumerE2ePort}/datapack-index/`
 
 export default defineConfig({
   testDir: './tests/e2e',
@@ -35,10 +37,18 @@ export default defineConfig({
     },
     { name: 'webkit', use: { ...devices['Desktop Safari'] } },
   ],
-  webServer: {
-    command: 'npm run e2e:fixture',
-    url: e2eUrl,
-    reuseExistingServer: true,
-    timeout: 30_000,
-  },
+  webServer: [
+    {
+      command: 'npm run e2e:fixture',
+      url: e2eUrl,
+      reuseExistingServer: true,
+      timeout: 30_000,
+    },
+    {
+      command: 'npm run e2e:consumer',
+      url: consumerE2eUrl,
+      reuseExistingServer: true,
+      timeout: 30_000,
+    },
+  ],
 })

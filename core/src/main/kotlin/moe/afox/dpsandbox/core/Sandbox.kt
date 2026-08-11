@@ -490,6 +490,32 @@ class DatapackSandbox(
     fun checkCommand(
         command: String,
         context: ExecutionContext = ExecutionContext(),
+    ): CommandCheckResult = validationPreview().checkCommandInPlace(command, context)
+
+    /**
+     * Checks [commands] in order against one isolated preview world.
+     *
+     * State produced by a valid earlier command is visible to later commands, which makes this
+     * suitable for editor diagnostics over a multi-line command cell. The live sandbox is never
+     * changed.
+     */
+    fun checkCommands(commands: List<String>): List<CommandCheckResult> {
+        val preview = validationPreview()
+        return commands.map { command -> preview.checkCommandInPlace(command, ExecutionContext()) }
+    }
+
+    private fun validationPreview(): DatapackSandbox =
+        DatapackSandbox(
+            profile = profile,
+            datapack = datapack,
+            world = world.checkpointCopy(),
+            unsupportedFeatureMode = unsupportedFeatureMode,
+            limits = limits,
+        ).also { it.validationOnly = true }
+
+    private fun checkCommandInPlace(
+        command: String,
+        context: ExecutionContext,
     ): CommandCheckResult {
         val normalized = command.trim().removePrefix("/")
         if (normalized.isBlank()) {
@@ -499,18 +525,9 @@ class DatapackSandbox(
                 message = "Command must not be blank",
             )
         }
-        val preview =
-            DatapackSandbox(
-                profile = profile,
-                datapack = datapack,
-                world = world.checkpointCopy(),
-                unsupportedFeatureMode = unsupportedFeatureMode,
-                limits = limits,
-            )
-        preview.validationOnly = true
         return try {
-            val result = preview.executeCommand(normalized, context = context)
-            val trace = preview.world.traces.lastOrNull()
+            val result = executeCommand(normalized, context = context)
+            val trace = world.traces.lastOrNull()
             CommandCheckResult(
                 valid = true,
                 commandsExecuted = result.commandsExecuted,

@@ -14,6 +14,23 @@ The Worker executes the same `:core` runtime used by the JVM CLI, compiled to an
 npm install @datapack-sandbox/vitepress-playground
 ```
 
+Keep the package out of Vite's development dependency pre-bundle so its relative Worker URL stays anchored to the published `dist` module. The root package entry also covers the `/cell` export:
+
+```ts
+// .vitepress/config.mts
+import { defineConfig } from 'vitepress'
+
+export default defineConfig({
+  vite: {
+    optimizeDeps: {
+      exclude: ['@datapack-sandbox/vitepress-playground'],
+    },
+  },
+})
+```
+
+This uses [Vite's documented `optimizeDeps.exclude` option](https://vite.dev/config/dep-optimization-options#optimizedeps-exclude). After changing an existing site, restart `vitepress dev` with `--force` once to invalidate its previous dependency cache.
+
 Register the component in a VitePress theme or import it from a client-only Vue component:
 
 ```ts
@@ -189,6 +206,8 @@ npm run docs:build
 ```
 
 Deploy the generated static directory. Keep content-hashed Worker/profile assets cacheable with a long immutable lifetime, while the HTML entry uses normal revalidation. A custom `worker-url` must be same-origin or served with headers that allow a module Worker. No Java runtime, reverse-proxy upgrade configuration, API origin allowlist, or Docker service is involved.
+
+If local development reports **Local sandbox unavailable** and the failed Worker URL contains `/deps/assets/worker-`, the package is still being dependency-pre-bundled. Add the `optimizeDeps.exclude` configuration from [Install](#install), stop the old dev server, and restart it with `--force`. A production build does not need a manually copied Worker.
 
 Modern browsers must support module Workers, transferable `ArrayBuffer`, `createImageBitmap`/`OffscreenCanvas`, Blob URLs, and Web Crypto for optional preset integrity checks.
 

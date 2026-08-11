@@ -4,6 +4,7 @@ import {
   autocompletion,
   closeCompletion,
   completionStatus,
+  moveCompletionSelection,
   startCompletion,
   type CompletionContext,
   type CompletionResult,
@@ -44,6 +45,7 @@ let view: EditorView | undefined
 let hasUserEdited = false
 let suppressMouseBack = false
 let mouseBackResetTimer: number | undefined
+const maximumCompletionBatch = 100
 
 const setFunctionLinkMode = StateEffect.define<boolean>()
 const functionLinkMode = StateField.define<{ enabled: boolean; decorations: DecorationSet }>({
@@ -142,15 +144,11 @@ async function completionSource(context: CompletionContext): Promise<CompletionR
   const cursor = context.pos - line.from
   const prefix = line.text.slice(0, cursor).match(/[\w:#@~.^=+\-[\],]*$/)?.[0] ?? ''
   if (!context.explicit && prefix.length === 0) return null
-  const suggestions = await props.complete(line.text, cursor)
+  const suggestions = await props.complete(context.state.doc.toString(), context.pos)
   if (suggestions.length === 0) return null
-  return {
-    from: line.from + Math.min(...suggestions.map((item) => item.start), cursor),
-    to: line.from + Math.max(...suggestions.map((item) => item.end), cursor),
-    // Let CodeMirror filter the already-fetched token candidates while the
-    // user keeps typing. Without validFor, every keystroke crosses the Worker
-    // boundary and queues another Kotlin completion pass.
-    validFor: /^[\w:#@~.^=+\-[\],]*$/,
+  const result: CompletionResult = {
+    from: Math.min(...suggestions.map((item) => item.start), context.pos),
+    to: Math.max(...suggestions.map((item) => item.end), context.pos),
     options: suggestions.map((item) => ({
       label: item.value,
       detail: item.description,
@@ -158,6 +156,11 @@ async function completionSource(context: CompletionContext): Promise<CompletionR
       apply: item.appendSpace ? `${item.value} ` : item.value,
     })),
   }
+  // Let CodeMirror filter complete result sets locally. A full 100-item batch
+  // may have been truncated by the engine, so continuing to type must query
+  // again or late-sorting values (for example minecraft:sulfur) stay hidden.
+  if (suggestions.length < maximumCompletionBatch) result.validFor = /^[\w:#@~.^=+\-[\],]*$/
+  return result
 }
 
 async function lintSource(editor: EditorView): Promise<Diagnostic[]> {
@@ -193,6 +196,14 @@ onMounted(() => {
           {
             key: 'Tab',
             run: acceptCompletion,
+          },
+          {
+            key: 'ArrowDown',
+            run: moveCompletionSelection(true),
+          },
+          {
+            key: 'ArrowUp',
+            run: moveCompletionSelection(false),
           },
           {
             key: 'Mod-Enter',

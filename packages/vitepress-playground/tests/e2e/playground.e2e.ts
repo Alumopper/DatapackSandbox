@@ -3,6 +3,34 @@ import { strToU8, zipSync } from 'fflate'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 
+const consumerE2ePort = Number(process.env.DPS_PLAYGROUND_CONSUMER_E2E_PORT ?? 14174)
+
+test('loads the packaged Worker from a Vite site with a non-root base', async ({ page }) => {
+  const workerResponses: Array<{ url: string; status: number; contentType: string }> = []
+  page.on('response', (response) => {
+    if (!/\/worker-[^/]+\.js$/.test(new URL(response.url()).pathname)) return
+    workerResponses.push({
+      url: response.url(),
+      status: response.status(),
+      contentType: response.headers()['content-type'] ?? '',
+    })
+  })
+
+  await page.goto(`http://127.0.0.1:${consumerE2ePort}/datapack-index/`)
+  const playground = page.locator('.dps-playground')
+  await expect(playground.locator('.dps-connection')).toHaveAttribute('data-state', 'ready', { timeout: 15_000 })
+  await expect(playground.locator('.dps-unavailable')).toHaveCount(0)
+  await playground.getByRole('button', { name: 'Run', exact: true }).click()
+  await expect(playground.getByText(/Executed 1 command/)).toBeVisible()
+
+  expect(workerResponses.some((response) => response.status === 200)).toBe(true)
+  expect(workerResponses.filter((response) => response.status === 200))
+    .toEqual(expect.arrayContaining([
+      expect.objectContaining({ contentType: expect.stringMatching(/javascript/) }),
+    ]))
+  expect(workerResponses.some((response) => /\/deps\/assets\/worker-/.test(response.url))).toBe(false)
+})
+
 test('shares a realtime WebGL viewport with playback, input, and context recovery', async ({ page }) => {
   test.slow()
   await page.goto('/?viewport')
@@ -102,6 +130,57 @@ test('walks nested command completions without repeating parent literals', async
   await replaceCommand('execute if score @s runs ', ['matches', '<', '=', '>'])
   await replaceCommand('execute run scoreboard players ', ['add', 'operation', 'set'])
   await expect.poll(() => labels.allTextContents()).not.toContain('players')
+})
+
+test('uses edited and executed scoreboard context and navigates completions with arrows', async ({ page }) => {
+  await page.goto('/?cell=1')
+  const cell = page.locator('.dps-cell-space')
+  await expect(cell).toHaveAttribute('data-state', 'ready', { timeout: 15_000 })
+  const editor = cell.locator('.cm-content')
+  const labels = page.locator('.cm-tooltip-autocomplete .cm-completionLabel')
+  const selectedLabel = page.locator('.cm-tooltip-autocomplete [role="option"][aria-selected="true"] .cm-completionLabel')
+
+  await editor.click()
+  await editor.press(process.platform === 'darwin' ? 'Meta+A' : 'Control+A')
+  await editor.pressSequentially(
+    'scoreboard objectives add qwq dummy\nscoreboard players set #value qw',
+  )
+  await expect.poll(() => labels.allTextContents()).toContain('qwq')
+  await page.waitForTimeout(100)
+  await editor.press('Tab')
+  await expect(editor).toContainText('scoreboard players set #value qwq ')
+  await editor.pressSequentially('1')
+  await cell.getByRole('button', { name: 'Run', exact: true }).click()
+  await expect(cell.getByText(/Executed 2 commands/)).toBeVisible()
+
+  await editor.click()
+  await editor.press(process.platform === 'darwin' ? 'Meta+A' : 'Control+A')
+  await editor.pressSequentially('scoreboard players get #value qw')
+  await expect.poll(() => labels.allTextContents()).toContain('qwq')
+
+  await editor.press(process.platform === 'darwin' ? 'Meta+A' : 'Control+A')
+  await editor.pressSequentially('scoreboard ')
+  await expect(selectedLabel).toHaveText('objectives')
+  await page.waitForTimeout(100)
+  await editor.press('ArrowDown')
+  await expect(selectedLabel).toHaveText('players')
+  await editor.press('ArrowUp')
+  await expect(selectedLabel).toHaveText('objectives')
+
+  const expectCatalogCompletion = async (source: string, expected: string) => {
+    await editor.press(process.platform === 'darwin' ? 'Meta+A' : 'Control+A')
+    await editor.pressSequentially(source)
+    await expect.poll(() => labels.allTextContents()).toContain(expected)
+  }
+  await expectCatalogCompletion('setblock 0 0 0 minecraft:sulf', 'minecraft:sulfur')
+  await expectCatalogCompletion('summon minecraft:copper_g', 'minecraft:copper_golem')
+  await expectCatalogCompletion(
+    'scoreboard objectives add mined minecraft.mined:minecraft:sulf',
+    'minecraft.mined:minecraft:sulfur',
+  )
+  await expectCatalogCompletion('gamerule max_mine', 'max_minecart_speed')
+  await expectCatalogCompletion('recipe give @s minecraft:chiseled_sulf', 'minecraft:chiseled_sulfur')
+  await expectCatalogCompletion('locate structure minecraft:trial_', 'minecraft:trial_chambers')
 })
 
 test('shares a named sandbox across independent editors on one page', async ({ page }) => {

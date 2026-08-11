@@ -226,7 +226,21 @@ data class CommandProfile(
         val minecraft1204 = CommandProfile(commonRoots)
         val modern = CommandProfile(commonRoots + "transfer")
         val minecraft2612 = modern
-        val minecraft262 = modern
+        val minecraft262 =
+            CommandProfile(
+                modern.roots +
+                    setOf(
+                        "dialog",
+                        "fetchprofile",
+                        "stopwatch",
+                        "swing",
+                        "teleport",
+                        "test",
+                        "unpublish",
+                        "version",
+                        "waypoint",
+                    ),
+            )
     }
 }
 
@@ -269,7 +283,15 @@ object VersionProfiles {
     val minecraft261 = profile("26.1", java = 25, data = 4786, pack = "101.1")
     val minecraft2611 = profile("26.1.1", java = 25, data = 4788, pack = "101.1")
     val minecraft2612 = profile("26.1.2", java = 25, data = 4790, pack = "101.1", registryView = RegistryView.vanilla2612)
-    val minecraft262 = profile("26.2", java = 25, data = 4903, pack = "107.1", registryView = RegistryView.vanilla262)
+    val minecraft262 =
+        profile(
+            "26.2",
+            java = 25,
+            data = 4903,
+            pack = "107.1",
+            registryView = RegistryView.vanilla262,
+            commands = CommandProfile.minecraft262,
+        )
 
     val default: VersionProfile = minecraft262
     val all: List<VersionProfile> =
@@ -315,6 +337,7 @@ object VersionProfiles {
         pack: String,
         legacy: Boolean = false,
         registryView: RegistryView = RegistryView.vanilla262,
+        commands: CommandProfile? = null,
     ): VersionProfile =
         VersionProfile(
             id = id,
@@ -323,7 +346,7 @@ object VersionProfiles {
             dataPackFormat = DataPackFormat.of(pack),
             description = "Minecraft Java $id datapack profile",
             resourceDirectories = if (legacy) ResourceDirectoryProfile.legacyPlural else ResourceDirectoryProfile.currentWithLegacyAliases,
-            commands = if (legacy) CommandProfile.minecraft1204 else CommandProfile.modern,
+            commands = commands ?: if (legacy) CommandProfile.minecraft1204 else CommandProfile.modern,
             registryView = registryView,
         )
 }
