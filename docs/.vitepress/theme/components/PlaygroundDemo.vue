@@ -36,11 +36,13 @@ summon minecraft:text_display 0 2 2 {text:'{"text":"DISPLAY ENTITY","color":"yel
   ],
 }
 const notebook = computed(() => lang.value.startsWith('zh') ? chineseNotebook : englishNotebook)
+const playgroundLocale = computed(() => lang.value.startsWith('zh') ? 'zh-CN' as const : 'en' as const)
 </script>
 
 <template>
   <DpsPlayground
     :notebook="notebook"
+    :locale="playgroundLocale"
     :render="{ auto: true, width: 960, height: 540 }"
     :viewport="{ autoplay: false, tickRate: 20 }"
     site-id="documentation-example"

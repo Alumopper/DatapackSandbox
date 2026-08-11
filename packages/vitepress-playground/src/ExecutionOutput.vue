@@ -1,21 +1,31 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import type { PlaygroundOutputEvent } from './types'
+import { resolvePlaygroundLabels } from './localization'
+import type { PlaygroundLabels, PlaygroundLocale, PlaygroundOutputEvent } from './types'
 
 const props = withDefaults(defineProps<{
   summary: string
   raw?: unknown
   showReadable?: boolean
   showStructured?: boolean
+  locale?: PlaygroundLocale
+  labels?: Partial<PlaygroundLabels>
 }>(), {
   showReadable: true,
   showStructured: true,
+  locale: 'en',
+  labels: () => ({}),
 })
 
 const outputs = computed(() => executionOutputs(props.raw))
 const readableOpen = ref(false)
 const visibleOutputCount = ref(100)
 const visibleOutputs = computed(() => outputs.value.slice(0, visibleOutputCount.value))
+const ui = computed(() => resolvePlaygroundLabels(props.locale, props.labels))
+const showMoreOutputs = computed(() => ui.value.showMoreOutputs.replace(
+  '{count}',
+  String(Math.max(0, outputs.value.length - visibleOutputCount.value)),
+))
 
 function toggleReadable(event: Event): void {
   readableOpen.value = (event.currentTarget as HTMLDetailsElement).open
@@ -44,7 +54,7 @@ function outputText(output: PlaygroundOutputEvent): string {
   <div class="dps-output">
     <p>{{ summary }}</p>
     <details v-if="showReadable && outputs.length" class="dps-command-outputs" @toggle="toggleReadable">
-      <summary>Command outputs ({{ outputs.length }})</summary>
+      <summary>{{ ui.commandOutputs }} ({{ outputs.length }})</summary>
       <ol v-if="readableOpen">
         <li v-for="(output, index) in visibleOutputs" :key="`${output.tick}:${index}:${output.command}`" class="dps-command-output">
           <div class="dps-command-output-heading">
@@ -61,11 +71,11 @@ function outputText(output: PlaygroundOutputEvent): string {
         type="button"
         @click="visibleOutputCount += 100"
       >
-        Show more ({{ outputs.length - visibleOutputCount }} remaining)
+        {{ showMoreOutputs }}
       </button>
     </details>
     <details v-if="showStructured && raw" class="dps-structured-output">
-      <summary>Structured result</summary>
+      <summary>{{ ui.structuredResult }}</summary>
       <pre>{{ JSON.stringify(raw, null, 2) }}</pre>
     </details>
   </div>

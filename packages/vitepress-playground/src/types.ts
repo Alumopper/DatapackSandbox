@@ -161,6 +161,45 @@ export interface PlaygroundImportResult {
 
 export type PlaygroundTheme = 'auto' | 'light' | 'dark'
 export type PlaygroundLayout = 'notebook' | 'compact'
+export type PlaygroundLocale = 'en' | 'zh-CN'
+
+export interface PlaygroundLabels {
+  run: string
+  rerun: string
+  starting: string
+  render: string
+  runAll: string
+  interrupt: string
+  savePoint: string
+  returnToPoint: string
+  addFrame: string
+  exportGif: string
+  resetSandbox: string
+  restoreExample: string
+  resetExample: string
+  importFiles: string
+  importFolder: string
+  restartSandbox: string
+  more: string
+  moreActions: string
+  importLocally: string
+  cancel: string
+  resetSandboxTitle: string
+  restoreExampleTitle: string
+  play: string
+  pause: string
+  step: string
+  resetView: string
+  settings: string
+  mouseSensitivity: string
+  moveSpeed: string
+  fieldOfView: string
+  back: string
+  backToCallerTitle: string
+  commandOutputs: string
+  structuredResult: string
+  showMoreOutputs: string
+}
 
 export type PlaygroundAction =
   | 'run'

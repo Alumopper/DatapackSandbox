@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import CodeCell from './CodeCell.vue'
-import type { PlaygroundCompletion, PlaygroundDiagnostic, PlaygroundFunctionSource } from './types'
+import { resolvePlaygroundLabels } from './localization'
+import type { PlaygroundCompletion, PlaygroundDiagnostic, PlaygroundFunctionSource, PlaygroundLabels, PlaygroundLocale } from './types'
 
 const props = withDefaults(defineProps<{
   modelValue: string
@@ -13,8 +14,12 @@ const props = withDefaults(defineProps<{
   check: (source: string) => Promise<PlaygroundDiagnostic[]>
   resolveFunction: (id: string) => Promise<PlaygroundFunctionSource>
   compact?: boolean
+  locale?: PlaygroundLocale
+  labels?: Partial<PlaygroundLabels>
 }>(), {
   compact: false,
+  locale: 'en',
+  labels: () => ({}),
 })
 
 const emit = defineEmits<{
@@ -28,6 +33,7 @@ const loadingReference = ref('')
 const active = computed(() => stack.value.at(-1))
 const displayedSource = computed(() => active.value?.source ?? props.modelValue)
 const displayedId = computed(() => active.value?.id ?? props.cellId)
+const ui = computed(() => resolvePlaygroundLabels(props.locale, props.labels))
 
 async function openFunction(id: string): Promise<void> {
   if (loadingReference.value) return
@@ -60,7 +66,7 @@ function run(): void {
 <template>
   <div class="dps-function-viewer" :data-definition-depth="stack.length">
     <nav v-if="active" class="dps-function-navigation" aria-label="Function call navigation">
-      <button type="button" data-action="function-back" title="Back to caller (Alt+Left)" @click="goBack">← Back</button>
+      <button type="button" data-action="function-back" :title="ui.backToCallerTitle" @click="goBack">← {{ ui.back }}</button>
       <div class="dps-function-breadcrumbs">
         <button type="button" @click="goToDepth(0)">{{ cellId }}</button>
         <template v-for="(item, index) in stack" :key="`${index}:${item.id}`">

@@ -141,6 +141,11 @@ describe('DpsViewport', () => {
     await flushPromises()
     await wrapper.get('[data-action="viewport-step"]').trigger('click')
     await flushPromises()
+    await wrapper.setProps({ locale: 'zh-CN', labels: { step: '前进一刻' } })
+    expect(wrapper.get('[data-action="viewport-play"]').text()).toBe('播放')
+    expect(wrapper.get('[data-action="viewport-step"]').text()).toBe('前进一刻')
+    expect(wrapper.get('[data-action="viewport-reset-view"]').text()).toBe('重置视角')
+    expect(wrapper.get('.dps-viewport-settings summary').text()).toBe('设置')
     wrapper.unmount()
 
     expect(rendererSpies.dispose).toHaveBeenCalled()

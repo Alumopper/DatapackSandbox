@@ -6,6 +6,7 @@ import PlaygroundActions from './PlaygroundActions.vue'
 import { PlaygroundClientError } from './client'
 import { acquirePageSandbox, createComponentScopeId, normalizedSandboxId } from './page-sandbox'
 import { PlaygroundSessionController } from './session'
+import { resolvePlaygroundLabels } from './localization'
 import type { PlaygroundActionItem } from './action-bar'
 import type {
   PlaygroundActionConfig,
@@ -20,6 +21,8 @@ import type {
   PlaygroundCameraState,
   PlaygroundPlayerInput,
   PlaygroundFrameStats,
+  PlaygroundLabels,
+  PlaygroundLocale,
 } from './types'
 
 interface CellResult {
@@ -53,6 +56,8 @@ const props = withDefaults(defineProps<{
   viewport?: boolean | PlaygroundViewportOptions
   compact?: boolean
   actions?: PlaygroundActionConfig
+  locale?: PlaygroundLocale
+  labels?: Partial<PlaygroundLabels>
 }>(), {
   version: '26.2',
   cellId: 'example',
@@ -66,6 +71,8 @@ const props = withDefaults(defineProps<{
   viewport: false,
   compact: false,
   actions: () => ({}),
+  locale: 'en',
+  labels: () => ({}),
 })
 
 const emit = defineEmits<{
@@ -112,6 +119,7 @@ let unsubscribeActivity: (() => void) | undefined
 let disposed = false
 const componentScopeId = createComponentScopeId()
 const effectiveSandboxId = computed(() => props.session ? undefined : normalizedSandboxId(props.sandboxId))
+const ui = computed(() => resolvePlaygroundLabels(props.locale, props.labels))
 const viewportOptions = computed<PlaygroundViewportOptions>(() => props.viewport === true ? {} : props.viewport || {})
 const defaultActions = computed<PlaygroundActionConfig>(() => props.compact
   ? { run: 'primary' }
@@ -127,44 +135,44 @@ const defaultActions = computed<PlaygroundActionConfig>(() => props.compact
 const actionItems = computed<PlaygroundActionItem[]>(() => [
   {
     id: 'run',
-    label: connection.value === 'connecting' ? 'Starting…' : result.hasRun ? 'Rerun' : 'Run',
+    label: connection.value === 'connecting' ? ui.value.starting : result.hasRun ? ui.value.rerun : ui.value.run,
     disabled: connection.value !== 'ready' || isBusy.value,
     emphasis: true,
     run,
   },
   {
     id: 'render',
-    label: 'Render',
+    label: ui.value.render,
     disabled: connection.value !== 'ready' || isBusy.value,
     run: renderCell,
   },
   {
     id: 'save-point',
-    label: 'Save point',
+    label: ui.value.savePoint,
     disabled: connection.value !== 'ready' || isBusy.value,
     run: savePoint,
   },
   {
     id: 'return-to-point',
-    label: 'Return',
+    label: ui.value.returnToPoint,
     disabled: connection.value !== 'ready' || isBusy.value || !hasCheckpoint.value,
     run: returnToPoint,
   },
   {
     id: 'capture-frame',
-    label: `Add frame${animationFrameCount.value ? ` (${animationFrameCount.value})` : ''}`,
+    label: `${ui.value.addFrame}${animationFrameCount.value ? ` (${animationFrameCount.value})` : ''}`,
     disabled: connection.value !== 'ready' || isBusy.value,
     run: captureAnimationFrame,
   },
   {
     id: 'export-gif',
-    label: 'Export GIF',
+    label: ui.value.exportGif,
     disabled: connection.value !== 'ready' || isBusy.value,
     run: exportGif,
   },
   {
     id: 'restore-example',
-    label: 'Reset example',
+    label: ui.value.resetExample,
     disabled: connection.value !== 'ready' || isBusy.value || !hasExampleChanges.value,
     run: resetExample,
   },
@@ -534,7 +542,13 @@ defineExpose({
       <div class="dps-cell-heading">
         <div class="dps-cell-label">MCFunction</div>
         <div class="dps-cell-actions">
-          <PlaygroundActions :items="actionItems" :defaults="defaultActions" :config="actions" />
+          <PlaygroundActions
+            :items="actionItems"
+            :defaults="defaultActions"
+            :config="actions"
+            :more-label="ui.more"
+            :more-title="ui.moreActions"
+          />
         </div>
       </div>
       <FunctionSourceViewer
@@ -546,6 +560,8 @@ defineExpose({
         :complete="complete"
         :check="check"
         :resolve-function="resolveFunction"
+        :locale="locale"
+        :labels="labels"
         :compact="compact"
         @update:model-value="updateSource"
         @run="run"
@@ -564,6 +580,8 @@ defineExpose({
         :raw="result.raw"
         :show-readable="showDetails"
         :show-structured="!compact && showDetails"
+        :locale="locale"
+        :labels="labels"
       />
       <img
         v-if="!compact && result.image"
@@ -578,6 +596,8 @@ defineExpose({
       v-if="viewport && sessionController"
       :session="sessionController"
       :options="viewportOptions"
+      :locale="locale"
+      :labels="labels"
       @error="emit('error', $event)"
       @play-state="emit('play-state', $event)"
       @camera-change="emit('camera-change', $event)"

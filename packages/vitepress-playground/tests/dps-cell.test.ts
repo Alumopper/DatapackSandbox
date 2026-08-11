@@ -10,6 +10,27 @@ const CodeCellStub = {
 }
 
 describe('DpsCell', () => {
+  it('localizes action buttons and accepts per-label overrides', async () => {
+    MockWorker.responder = (worker, request) => {
+      if (request.type === 'transport.connect') worker.emit({ type: 'transport.ready', requestId: request.id })
+      if (request.type === 'session.create') worker.emit({ type: 'session.ready', requestId: request.id })
+    }
+    const wrapper = mount(DpsCell, {
+      props: {
+        modelValue: 'say localized',
+        locale: 'zh-CN',
+        labels: { run: '执行' },
+      },
+      global: { stubs: { CodeCell: CodeCellStub } },
+    })
+    await vi.waitFor(() => expect(wrapper.attributes('data-state')).toBe('ready'))
+
+    expect(wrapper.get('[data-action="run"]').text()).toBe('执行')
+    expect(wrapper.get('.dps-action-menu summary').text()).toContain('更多')
+    expect(wrapper.get('[data-action="render"]').text()).toBe('渲染')
+    wrapper.unmount()
+  })
+
   it('shares a named sandbox while keeping editors and results independent', async () => {
     const executions: Record<string, unknown>[] = []
     let firstRequest: Record<string, unknown> | undefined
@@ -189,6 +210,8 @@ describe('DpsCell', () => {
     await (wrapper.vm as unknown as { run(): Promise<void> }).run()
     await vi.waitFor(() => expect(wrapper.find('.dps-command-outputs').exists()).toBe(true))
     expect(wrapper.get('.dps-command-outputs summary').text()).toBe('Command outputs (1)')
+    await wrapper.setProps({ locale: 'zh-CN' })
+    expect(wrapper.get('.dps-command-outputs summary').text()).toBe('命令输出 (1)')
     const details = wrapper.get('.dps-command-outputs')
     ;(details.element as HTMLDetailsElement).open = true
     await details.trigger('toggle')

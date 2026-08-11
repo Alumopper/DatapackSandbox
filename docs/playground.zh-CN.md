@@ -102,6 +102,8 @@ const source = ref('say 轻量嵌入示例')
 | `animation` | `PlaygroundAnimationOptions` | `480×270`、250 ms、循环 | GIF 尺寸、帧延迟、循环次数和执行后自动记录。 |
 | `checkpoint-name` | `string` | 组件专用默认名 | 内置 Save point/Return 控件使用的名称。 |
 | `actions` | `PlaygroundActionConfig` | 组件默认配置 | 将每个操作放在主操作栏或菜单中，或将其隐藏。 |
+| `locale` | `en \| zh-CN` | `en` | 内置操作按钮使用的语言。 |
+| `labels` | `Partial<PlaygroundLabels>` | `{}` | 为嵌入网站覆盖单个内置按钮文案。 |
 | `presets` | `Record<string, { url; sha256? }>` | `{}` | 从同源或允许 CORS 的 URL 延迟获取静态 ZIP。 |
 | `allow-import` | `boolean` | `true` | 显示文件/目录导入按钮并接受拖放。 |
 | `limits` | `PlaygroundBrowserLimits` | 浏览器默认值 | 每实例稳定性预算和 watchdog 时序。 |
@@ -133,6 +135,8 @@ const actions = {
 ```
 
 完整操作 ID 为 `run`、`render`、`run-all`、`interrupt`、`save-point`、`return-to-point`、`capture-frame`、`export-gif`、`reset-sandbox`、`restore-example`、`import-files`、`import-folder` 和 `restart-sandbox`。`DpsPlayground` 的同一份配置同时作用于顶栏和代码 cell 标题栏；某个操作栏不支持的 ID 会被忽略。完整 Playground 默认只在顶栏保留 **Run all** 和 **Interrupt**，低频操作进入 **More**。`DpsCell` 默认只保留 **Run**；`compact` cell 会隐藏高级操作，除非 `actions` 显式指定其位置。
+
+设置 `locale="zh-CN"` 可使用内置中文操作文案。网站也可以只覆盖需要定制的词语，例如 `:labels="{ runAll: '执行全部' }"`；`DpsPlayground`、`DpsCell` 和独立挂载的 `DpsViewport` 都支持这两个 prop。
 
 本地会话及可选 preset 就绪后触发 `ready(sessionId)`；执行、导入、完整性校验或生命周期失败会触发 `error({ code, message })`。
 

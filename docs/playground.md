@@ -102,6 +102,8 @@ Execution summaries include an expandable **Command outputs** list with the comm
 | `animation` | `PlaygroundAnimationOptions` | `480×270`, 250 ms, loop | GIF dimensions, frame delay, repeat count, and capture-on-execute behavior. |
 | `checkpoint-name` | `string` | component-specific | Name used by the built-in Save point/Return controls. |
 | `actions` | `PlaygroundActionConfig` | component defaults | Place each action in the primary bar or menu, or hide it. |
+| `locale` | `en \| zh-CN` | `en` | Built-in action-button language. |
+| `labels` | `Partial<PlaygroundLabels>` | `{}` | Override individual built-in button labels for the embedding site. |
 | `presets` | `Record<string, { url; sha256? }>` | `{}` | Static ZIP registry fetched lazily from same-origin or CORS-enabled URLs. |
 | `allow-import` | `boolean` | `true` | Show file/folder import controls and accept drops. |
 | `limits` | `PlaygroundBrowserLimits` | browser defaults | Per-instance stability budgets and watchdog timings. |
@@ -133,6 +135,8 @@ const actions = {
 ```
 
 The complete action ids are `run`, `render`, `run-all`, `interrupt`, `save-point`, `return-to-point`, `capture-frame`, `export-gif`, `reset-sandbox`, `restore-example`, `import-files`, `import-folder`, and `restart-sandbox`. A `DpsPlayground` configuration applies to both its top toolbar and code-cell headers; ids unsupported by a particular action bar are ignored. By default, the full playground keeps **Run all** and **Interrupt** in the top bar and puts its less common actions in **More**. `DpsCell` keeps only **Run** in the header; `compact` cells hide advanced actions unless `actions` explicitly places them.
+
+Set `locale="zh-CN"` to use the built-in Chinese action labels. Website-specific wording can be supplied without replacing the locale catalog, for example `:labels="{ runAll: 'Execute notebook' }"`. `DpsPlayground`, `DpsCell`, and standalone `DpsViewport` instances support these props.
 
 `ready(sessionId)` fires after the local session and optional preset are ready. `error({ code, message })` reports execution, import, integrity, and lifecycle failures.
 

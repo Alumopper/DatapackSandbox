@@ -122,6 +122,7 @@ Set these properties on `.dps-playground` or on a site-specific class attached t
 | Brand | `--dps-accent`, `--dps-accent-hover`, `--dps-accent-soft`, `--dps-on-accent` | Primary actions, focus state, selection accents, and text on primary buttons. |
 | Errors | `--dps-danger`, `--dps-danger-soft` | Error text, borders, and error backgrounds. |
 | Borders and depth | `--dps-border`, `--dps-border-strong`, `--dps-shadow`, `--dps-cell-shadow`, `--dps-selection` | Dividers, focus borders, root/cell elevation, and editor selection. |
+| Controls | `--dps-action-height` | Fixed primary/action-menu trigger height; defaults to `32px`. |
 | Syntax | `--dps-syntax-keyword`, `--dps-syntax-type`, `--dps-syntax-string`, `--dps-syntax-number`, `--dps-syntax-bool`, `--dps-syntax-comment`, `--dps-syntax-operator` | MCFunction editor highlighting. |
 
 The default automatic light theme reads VitePress variables such as `--vp-c-bg`, `--vp-c-text-1`, `--vp-c-brand-1`, and `--vp-c-divider` before using standalone fallbacks. The component also reads `--vp-font-family-base` and `--vp-font-family-mono`. A VitePress site with those variables already configured therefore gets a reasonable baseline before any `--dps-*` override.

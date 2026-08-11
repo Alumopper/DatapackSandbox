@@ -3,11 +3,16 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import type { PlaygroundActionConfig } from './types'
 import type { PlaygroundActionItem } from './action-bar'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   items: PlaygroundActionItem[]
   defaults: PlaygroundActionConfig
   config?: PlaygroundActionConfig
-}>()
+  moreLabel?: string
+  moreTitle?: string
+}>(), {
+  moreLabel: 'More',
+  moreTitle: 'More actions',
+})
 
 const menu = ref<HTMLDetailsElement>()
 const primaryItems = computed(() => props.items.filter((item) => placement(item) === 'primary'))
@@ -64,8 +69,8 @@ onBeforeUnmount(() => {
     {{ item.label }}
   </button>
   <details v-if="menuItems.length" ref="menu" class="dps-action-menu">
-    <summary title="More actions">
-      <span>More</span>
+    <summary :title="moreTitle">
+      <span>{{ moreLabel }}</span>
       <span class="dps-action-menu-chevron" aria-hidden="true" />
     </summary>
     <div class="dps-action-menu-panel">

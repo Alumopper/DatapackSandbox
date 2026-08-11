@@ -28,6 +28,8 @@ export type {
   PlaygroundImportKind,
   PlaygroundImportResult,
   PlaygroundLayout,
+  PlaygroundLabels,
+  PlaygroundLocale,
   PlaygroundMarkdownCell,
   PlaygroundNotebook,
   PlaygroundPresetRegistry,

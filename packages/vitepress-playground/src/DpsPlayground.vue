@@ -7,6 +7,7 @@ import PlaygroundActions from './PlaygroundActions.vue'
 import { PlaygroundClientError } from './client'
 import { acquirePageSandbox, createComponentScopeId, normalizedSandboxId } from './page-sandbox'
 import { PlaygroundSessionController } from './session'
+import { resolvePlaygroundLabels } from './localization'
 import type { PlaygroundActionItem } from './action-bar'
 import type {
   PlaygroundActionConfig,
@@ -16,7 +17,9 @@ import type {
   PlaygroundDiagnostic,
   PlaygroundEvent,
   PlaygroundImportKind,
+  PlaygroundLabels,
   PlaygroundLayout,
+  PlaygroundLocale,
   PlaygroundNotebook,
   PlaygroundPresetRegistry,
   PlaygroundRenderOptions,
@@ -57,6 +60,8 @@ const props = withDefaults(defineProps<{
   session?: PlaygroundSessionController
   viewport?: boolean | PlaygroundViewportOptions
   actions?: PlaygroundActionConfig
+  locale?: PlaygroundLocale
+  labels?: Partial<PlaygroundLabels>
 }>(), {
   theme: 'auto',
   layout: 'notebook',
@@ -68,6 +73,8 @@ const props = withDefaults(defineProps<{
   allowImport: true,
   viewport: false,
   actions: () => ({}),
+  locale: 'en',
+  labels: () => ({}),
 })
 
 const emit = defineEmits<{
@@ -107,6 +114,7 @@ let disposed = false
 let stopRunAll = false
 const componentScopeId = createComponentScopeId()
 const effectiveSandboxId = computed(() => props.session ? undefined : normalizedSandboxId(props.sandboxId))
+const ui = computed(() => resolvePlaygroundLabels(props.locale, props.labels))
 
 const rootClasses = computed(() => [
   `dps-theme-${props.theme}`,
@@ -155,72 +163,72 @@ const cellActionDefaults: PlaygroundActionConfig = { run: 'primary', render: 'pr
 const toolbarActionItems = computed<PlaygroundActionItem[]>(() => [
   {
     id: 'run-all',
-    label: 'Run all',
+    label: ui.value.runAll,
     disabled: connection.value !== 'ready' || isBusy.value,
     emphasis: true,
     run: runAll,
   },
   {
     id: 'interrupt',
-    label: 'Interrupt',
+    label: ui.value.interrupt,
     disabled: connection.value !== 'ready' || !hasRunningCell.value,
     run: interrupt,
   },
   {
     id: 'save-point',
-    label: 'Save point',
+    label: ui.value.savePoint,
     disabled: connection.value !== 'ready' || isBusy.value,
     run: savePoint,
   },
   {
     id: 'return-to-point',
-    label: 'Return',
+    label: ui.value.returnToPoint,
     disabled: connection.value !== 'ready' || isBusy.value || !hasCheckpoint.value,
     run: returnToPoint,
   },
   {
     id: 'capture-frame',
-    label: `Add frame${animationFrameCount.value ? ` (${animationFrameCount.value})` : ''}`,
+    label: `${ui.value.addFrame}${animationFrameCount.value ? ` (${animationFrameCount.value})` : ''}`,
     disabled: connection.value !== 'ready' || isBusy.value,
     run: addAnimationFrame,
   },
   {
     id: 'export-gif',
-    label: 'Export GIF',
+    label: ui.value.exportGif,
     disabled: connection.value !== 'ready' || isBusy.value,
     run: exportGif,
   },
   {
     id: 'reset-sandbox',
-    label: 'Reset sandbox',
-    title: 'Clear sandbox state while keeping the edited cell source',
+    label: ui.value.resetSandbox,
+    title: ui.value.resetSandboxTitle,
     disabled: connection.value !== 'ready' || isBusy.value,
     run: reset,
   },
   {
     id: 'restore-example',
-    label: 'Restore example',
-    title: 'Restore the original example source and clear sandbox state',
+    label: ui.value.restoreExample,
+    title: ui.value.restoreExampleTitle,
     disabled: isBusy.value || !hasExampleChanges.value,
     run: restoreExample,
   },
   {
     id: 'import-files',
-    label: 'Import files',
+    label: ui.value.importFiles,
     disabled: connection.value !== 'ready' || isBusy.value,
     visible: props.allowImport,
     run: chooseFiles,
   },
   {
     id: 'import-folder',
-    label: 'Import folder',
+    label: ui.value.importFolder,
     disabled: connection.value !== 'ready' || isBusy.value,
     visible: props.allowImport,
     run: chooseDirectory,
   },
   {
     id: 'restart-sandbox',
-    label: 'Restart',
+    label: ui.value.restartSandbox,
     visible: connection.value === 'unavailable' || connection.value === 'closed',
     run: connect,
   },
@@ -230,14 +238,14 @@ function cellActionItems(cell: LocalCell): PlaygroundActionItem[] {
   return [
     {
       id: 'run',
-      label: cellResult(cell.id).hasRun ? 'Rerun' : 'Run',
+      label: cellResult(cell.id).hasRun ? ui.value.rerun : ui.value.run,
       disabled: connection.value !== 'ready' || isBusy.value || cellResult(cell.id).status !== 'idle',
       emphasis: true,
       run: () => runCell(cell),
     },
     {
       id: 'render',
-      label: 'Render',
+      label: ui.value.render,
       disabled: connection.value !== 'ready' || isBusy.value,
       run: () => renderCell(cell),
     },
@@ -729,7 +737,13 @@ function normalizeCells(input: PlaygroundCell[]): LocalCell[] {
         </div>
       </div>
       <div class="dps-toolbar-actions">
-        <PlaygroundActions :items="toolbarActionItems" :defaults="toolbarActionDefaults" :config="actions" />
+        <PlaygroundActions
+          :items="toolbarActionItems"
+          :defaults="toolbarActionDefaults"
+          :config="actions"
+          :more-label="ui.more"
+          :more-title="ui.moreActions"
+        />
       </div>
       <input ref="fileInput" class="dps-file-input" type="file" multiple accept=".zip,.jar,.mcmeta,.dat,.mcfunction,.json,.nbt,.mca" @change="onFileSelection">
       <input ref="directoryInput" class="dps-file-input" type="file" multiple webkitdirectory @change="onFileSelection">
@@ -738,7 +752,7 @@ function normalizeCells(input: PlaygroundCell[]): LocalCell[] {
     <div v-if="connection === 'unavailable'" class="dps-unavailable" role="status">
       <strong>Local sandbox unavailable</strong>
       <span>{{ connectionMessage }}</span>
-      <button type="button" @click="connect">Restart sandbox</button>
+      <button type="button" @click="connect">{{ ui.restartSandbox }}</button>
     </div>
 
     <div v-if="pendingFiles.length" class="dps-import-choice" role="group" aria-label="Import type">
@@ -749,8 +763,8 @@ function normalizeCells(input: PlaygroundCell[]): LocalCell[] {
         <option value="client-jar">Minecraft client JAR</option>
         <option value="world">Minecraft world</option>
       </select>
-      <button type="button" @click="confirmImport">Import locally</button>
-      <button type="button" @click="pendingFiles = []">Cancel</button>
+      <button type="button" @click="confirmImport">{{ ui.importLocally }}</button>
+      <button type="button" @click="pendingFiles = []">{{ ui.cancel }}</button>
     </div>
     <div v-else-if="importMessage" class="dps-import-message" role="status">{{ importMessage }}</div>
 
@@ -758,6 +772,8 @@ function normalizeCells(input: PlaygroundCell[]): LocalCell[] {
       v-if="viewport && sessionController"
       :session="sessionController"
       :options="viewportOptions"
+      :locale="locale"
+      :labels="labels"
       @error="emit('error', $event)"
       @play-state="emit('play-state', $event)"
       @camera-change="emit('camera-change', $event)"
@@ -776,7 +792,13 @@ function normalizeCells(input: PlaygroundCell[]): LocalCell[] {
               <span>MCFunction</span>
             </div>
             <div class="dps-cell-actions">
-              <PlaygroundActions :items="cellActionItems(cell)" :defaults="cellActionDefaults" :config="actions" />
+              <PlaygroundActions
+                :items="cellActionItems(cell)"
+                :defaults="cellActionDefaults"
+                :config="actions"
+                :more-label="ui.more"
+                :more-title="ui.moreActions"
+              />
             </div>
           </div>
           <FunctionSourceViewer
@@ -788,6 +810,8 @@ function normalizeCells(input: PlaygroundCell[]): LocalCell[] {
             :complete="(source, cursor) => complete(cell.id, source, cursor)"
             :check="(source) => check(cell.id, source)"
             :resolve-function="resolveFunction"
+            :locale="locale"
+            :labels="labels"
             @update:model-value="(source) => updateSource(cell, source)"
             @run="runCell(cell)"
           />
@@ -802,6 +826,8 @@ function normalizeCells(input: PlaygroundCell[]): LocalCell[] {
             v-if="cellResult(cell.id).summary"
             :summary="cellResult(cell.id).summary!"
             :raw="cellResult(cell.id).raw"
+            :locale="locale"
+            :labels="labels"
           />
           <img
             v-if="cellResult(cell.id).image"

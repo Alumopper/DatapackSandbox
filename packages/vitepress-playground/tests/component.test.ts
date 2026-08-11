@@ -134,6 +134,14 @@ describe('DpsPlayground', () => {
     expect(wrapper.get('.dps-toolbar-actions > .dps-action-menu summary').text()).toContain('More')
     expect(wrapper.findAll('.dps-toolbar-actions .dps-action-menu-panel > button')).toHaveLength(8)
 
+    await wrapper.setProps({ locale: 'zh-CN' })
+    expect(wrapper.get('[data-action="run-all"]').text()).toBe('全部运行')
+    expect(wrapper.get('[data-action="interrupt"]').text()).toBe('中断')
+    expect(wrapper.get('.dps-toolbar-actions > .dps-action-menu summary').text()).toContain('更多')
+
+    await wrapper.setProps({ labels: { runAll: '执行全部' } })
+    expect(wrapper.get('[data-action="run-all"]').text()).toBe('执行全部')
+
     await wrapper.setProps({
       actions: {
         'run-all': 'hidden',

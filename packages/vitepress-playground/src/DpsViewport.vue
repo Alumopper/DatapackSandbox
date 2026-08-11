@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { PlaygroundClientError } from './client'
+import { resolvePlaygroundLabels } from './localization'
 import { acquirePageSandbox, normalizedSandboxId } from './page-sandbox'
 import { PlaygroundSessionController } from './session'
 import type {
@@ -10,6 +11,8 @@ import type {
   PlaygroundDependencySource,
   PlaygroundDiagnostic,
   PlaygroundFrameStats,
+  PlaygroundLabels,
+  PlaygroundLocale,
   PlaygroundNotebook,
   PlaygroundOutputEvent,
   PlaygroundPlayerInput,
@@ -26,9 +29,13 @@ const props = withDefaults(defineProps<{
   workerUrl?: string
   limits?: PlaygroundBrowserLimits
   options?: PlaygroundViewportOptions
+  locale?: PlaygroundLocale
+  labels?: Partial<PlaygroundLabels>
 }>(), {
   dependencies: () => [],
   options: () => ({}),
+  locale: 'en',
+  labels: () => ({}),
 })
 
 const emit = defineEmits<{
@@ -91,6 +98,7 @@ const commandHistory: string[] = []
 let commandHistoryIndex = 0
 const viewportCommandCellId = `viewport-command-${Math.random().toString(36).slice(2)}`
 const effectiveSandboxId = computed(() => props.session ? undefined : normalizedSandboxId(props.sandboxId))
+const ui = computed(() => resolvePlaygroundLabels(props.locale, props.labels))
 
 const viewportOptions = computed<Required<Omit<PlaygroundViewportOptions, 'tickFunction'>> & { tickFunction?: string }>(() => ({
   targetFps: props.options.targetFps ?? 60,
@@ -689,23 +697,23 @@ const TEXT_COLORS: Record<string, string> = {
     <div v-if="viewportOptions.showToolbar" class="dps-viewport-toolbar">
       <div class="dps-viewport-playback">
         <button type="button" :disabled="status !== 'ready' || sessionBusy" data-action="viewport-play" @click="togglePlay">
-          {{ playing ? 'Pause' : 'Play' }}
+          {{ playing ? ui.pause : ui.play }}
         </button>
-        <button type="button" :disabled="status !== 'ready' || playing || sessionBusy" data-action="viewport-step" @click="step">Step</button>
-        <button type="button" :disabled="!latestScene" data-action="viewport-reset-view" @click="resetView">Reset view</button>
+        <button type="button" :disabled="status !== 'ready' || playing || sessionBusy" data-action="viewport-step" @click="step">{{ ui.step }}</button>
+        <button type="button" :disabled="!latestScene" data-action="viewport-reset-view" @click="resetView">{{ ui.resetView }}</button>
         <details class="dps-viewport-settings">
-          <summary>Settings</summary>
+          <summary>{{ ui.settings }}</summary>
           <div>
             <label>
-              <span>Mouse {{ mouseSensitivity.toFixed(2) }}</span>
+              <span>{{ ui.mouseSensitivity }} {{ mouseSensitivity.toFixed(2) }}</span>
               <input v-model.number="mouseSensitivity" type="range" min="0.02" max="0.5" step="0.01">
             </label>
             <label>
-              <span>Speed {{ configuredMoveSpeed.toFixed(1) }}</span>
+              <span>{{ ui.moveSpeed }} {{ configuredMoveSpeed.toFixed(1) }}</span>
               <input v-model.number="configuredMoveSpeed" type="range" min="0.5" max="30" step="0.5" @input="updateViewportSettings">
             </label>
             <label>
-              <span>FOV {{ configuredFieldOfView }}°</span>
+              <span>{{ ui.fieldOfView }} {{ configuredFieldOfView }}°</span>
               <input v-model.number="configuredFieldOfView" type="range" min="30" max="110" step="1" @input="updateViewportSettings">
             </label>
           </div>

@@ -24,6 +24,7 @@
   --dps-syntax-bool: #3f7488;
   --dps-syntax-comment: #7b8981;
   --dps-syntax-operator: #795f3d;
+  --dps-action-height: 32px;
   position: relative;
   isolation: isolate;
   overflow: hidden;
@@ -184,8 +185,20 @@
 .dps-cell-actions {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   justify-content: flex-end;
   gap: 7px;
+}
+
+.dps-toolbar-actions > button,
+.dps-cell-actions > button,
+.dps-action-menu > summary {
+  height: var(--dps-action-height);
+  min-height: var(--dps-action-height);
+  max-height: var(--dps-action-height);
+  box-sizing: border-box;
+  align-self: center;
+  white-space: nowrap;
 }
 
 .dps-action-menu {
@@ -201,8 +214,6 @@
 
 .dps-action-menu > summary {
   display: inline-flex;
-  min-height: 32px;
-  box-sizing: border-box;
   align-items: center;
   justify-content: center;
   gap: 7px;
