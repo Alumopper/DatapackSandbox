@@ -478,7 +478,7 @@ class ReplTest {
                 repl.handle("inspect registry missing")
             }
 
-        assertTrue(output.contains("registry damage_types count=5 source=profile:26.2"), output)
+        assertTrue(output.contains("registry damage_types count=51 source=profile:26.2"), output)
         assertTrue(output.contains("registry damage_types minecraft:generic source=profile:26.2"), output)
         assertTrue(output.contains("registry loot_conditions minecraft:random_chance source=profile:26.2"), output)
         assertTrue(output.contains("<missing registry group missing>"), output)

@@ -280,7 +280,7 @@ class ResourceCommandTest : RunCommandTestSupport() {
             }
 
         assertTrue("registry version=26.2 groups=12 selected=1 source=profile:26.2" in output, output)
-        assertTrue("registry damage_types count=5 source=profile:26.2" in output, output)
+        assertTrue("registry damage_types count=51 source=profile:26.2" in output, output)
         assertTrue("registry damage_types minecraft:generic source=profile:26.2" in output, output)
     }
 

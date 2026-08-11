@@ -54,11 +54,13 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar commands --json --output build
 | `debug`、`jfr`、`perf` | 空操作 | `observed-noop` | 接受 action/参数 token 并记录结构化 debug 输出；不模拟 profiling 和 flight recording。 |
 | `defaultgamemode` | 支持 | `modeled` | 存储世界默认游戏模式，并记录结构化前后输出。 |
 | `difficulty` | 支持 | `modeled` | 存储并报告世界难度，并记录结构化前后输出。 |
+| `dialog` | 未支持 | `unsupported` | 不模拟客户端 dialog UI 或 dialog 选择状态；按配置的 unsupported 策略处理。 |
 | `deop`、`op` | 空操作 | `observed-noop` | 记录请求的权限目标为结构化 debug 输出；不存储权限状态。 |
 | `effect` | 部分支持 | `modeled` | `give`、`clear`；更新玩家效果状态并触发相关 advancement 事件，也会更新非玩家实体 active effects，并通过 snapshot 和 `ActiveEffects` NBT 暴露；记录可用于 report/assertion 的结构化输出。 |
 | `enchant` | 部分支持 | `modeled` | 向玩家选中物品和非玩家实体主手装备写入附魔组件；命中已加载资源时会在结构化输出中暴露 `enchantment` JSON 元数据，并记录修改后的物品用于 report/assertion；不检查可附魔性。 |
 | `execute` | 部分支持 | `modeled` | 支持 `as`、`at`、`on target|attacker`、`positioned <pos>`、`positioned as <selector>`、`align`、`anchored`、`facing`、`in`、`rotated`、`store`、`if`、`unless`、`run` 的核心路径；`on target`/`on attacker` 会解析 interaction 实体最后记录的右击/攻击玩家；`as` 只切换执行者，`at` 会把执行位置、维度和旋转移动到目标实体，`positioned as` 只移动执行位置；`align` 会对校验过的 `x`/`y`/`z` 轴取整；`rotated` 和 `facing` 会更新命令旋转上下文，供 `tp` 的相对旋转参数和局部坐标使用；`anchored` 会更新局部坐标基准点；`store` 目标覆盖 score、storage、entity NBT、block NBT 和 bossbar value/max，NBT 目标会按 byte/short/int/long/float/double 类型和 scale 转换数值，整数类型使用窄化转换语义，嵌套条件失败和 `return fail` 会按 success/result `0` 写入；条件覆盖 `entity`、`score`、`data`、`block`、`blocks`、`predicate`、`function`、`dimension`、`biome` 和 `loaded`。 |
 | `experience`、`xp` | 部分支持 | `modeled` | `add`、`set`、`query`；玩家 points 与 levels 分开存储；修改和 query 命令都会记录结构化 data 输出，供断言和 `execute store result` 使用。 |
+| `fetchprofile` | 未支持 | `unsupported` | 不执行网络 profile 查询；按配置的 unsupported 策略处理。 |
 | `fill` | 部分支持 | `modeled` | `fill <from> <to> <block[state]{nbt}> [replace|keep|destroy|hollow|outline]`；记录结构化变化位置输出；位置参数支持局部坐标；不执行更新或掉落。 |
 | `fillbiome` | 部分支持 | `modeled` | 为显式方块范围记录 biome 覆盖，并记录结构化变化位置输出；同一批显式覆盖可被 `execute if biome` 和 predicate `location_check` 的 biome 条件读取；不模拟区块 biome 容器或生成效果。 |
 | `forceload` | 部分支持 | `modeled` | `add`、`remove`、`remove all`、`query`、`query <pos>`；记录强加载 chunk 坐标，并为修改和 query 记录结构化输出。 |
@@ -99,10 +101,13 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar commands --json --output build
 | `spreadplayers` | 部分支持 | `modeled` | 确定性地把选中实体分布到中心附近；不实现原版碰撞/队伍算法。 |
 | `stop` | 空操作 | `observed-noop` | 记录结构化 debug 生命周期请求；宿主进程仍然控制运行时，不会被沙盒命令停止。 |
 | `stopsound` | 部分支持 | `observed-noop` | 记录为 sound 输出事件。 |
+| `stopwatch` | 未支持 | `unsupported` | 不模拟原版 stopwatch 状态；按配置的 unsupported 策略处理。 |
 | `summon` | 部分支持 | `modeled` | 在当前执行维度创建带位置、tag 和 schema 校验 NBT 的实体，并记录可用于 report/assertion 的结构化创建输出；命中已加载资源时会暴露 dimension/dimension_type 元数据，以及 cat/chicken/cow/frog/painting/pig/wolf 等实体 variant 元数据。display 会校验方块/物品/文本内容、变换、渲染属性、成组变换/样式插值和传送插值；盔甲架会校验 Pose、Marker、Small、ShowArms、NoBasePlate、DisabledSlots；marker 保留任意复合 `data`；interaction 会建模 width/height/response、最近攻击/右击记录、命中箱和关系目标。派生渲染状态与命中箱进入实体 snapshot 的 `special`；不执行客户端绘制或实体 AI。 |
+| `swing` | 未支持 | `unsupported` | 不模拟客户端挥手动画；按配置的 unsupported 策略处理。 |
 | `tag` | 支持 | `modeled` | `add`、`remove`、`list`。 |
 | `team` | 部分支持 | `modeled` | `add`、`remove`、`list`、`join`、`leave`、`empty`、`modify`；记录结构化队伍/成员/选项输出，不执行 gameplay 副作用。 |
 | `teammsg`、`tm` | 支持 | `modeled` | 记录为 team chat 输出事件；命中已加载的命令 chat type 时会暴露 `chat_type` JSON 元数据。 |
+| `test` | 未支持 | `unsupported` | 不提供原版 game test 执行环境；按配置的 unsupported 策略处理。 |
 | `teleport`、`tp` | 部分支持 | `modeled` | 坐标传送支持局部坐标、可选旋转、`facing` 和当前执行维度；目标实体传送会复制目标位置、维度和旋转；display 的 `teleport_duration` 会产生确定性的 snapshot 渲染位置插值，而 selector 会立即使用服务端目标位置；记录可用于 report/assertion 的结构化移动输出，命中已加载资源时会暴露 from/to dimension 元数据。 |
 | `tellraw` | 支持 | `modeled` | 解析 JSON text component 并记录输出事件。 |
 | `tick` | 部分支持 | `modeled` | `query`、`rate`、`freeze`、`unfreeze`、`step`、`sprint`、`stop`；更新沙盒 tick 状态，可推进 tick，并记录结构化状态/推进输出用于调试。 |
@@ -110,6 +115,9 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar commands --json --output build
 | `title` | 支持 | `modeled` | `clear`、`reset`、`title`、`subtitle`、`actionbar`、`times` 输出事件。 |
 | `transfer` | 部分支持 | `observed-noop` | 记录请求的 host、port、目标玩家和接受的语法为结构化 debug 输出；不执行真实网络/server transfer。 |
 | `trigger` | 部分支持 | `modeled` | `trigger <objective> [add|set] [value]`；使用当前/default 玩家。 |
+| `unpublish` | 未支持 | `unsupported` | 不模拟 LAN 发布状态；按配置的 unsupported 策略处理。 |
+| `version` | 未支持 | `unsupported` | 不模拟原版 version report 命令行为；按配置的 unsupported 策略处理。 |
+| `waypoint` | 未支持 | `unsupported` | 不模拟 waypoint 传输或客户端 UI；按配置的 unsupported 策略处理。 |
 | `weather` | 部分支持 | `modeled` | `clear`、`rain`、`thunder`；存储状态，并记录结构化天气输出。 |
 | `whitelist` | 空操作 | `observed-noop` | 接受 `add`、`remove`、`list`、`on`、`off`、`reload`，记录请求的 whitelist 动作为结构化 debug 输出；不存储白名单状态。 |
 | `worldborder` | 部分支持 | `modeled` | `get`、`set`、`add`、`center`、`damage`、`warning`；存储状态，并记录可断言的结构化修改/query 输出。 |

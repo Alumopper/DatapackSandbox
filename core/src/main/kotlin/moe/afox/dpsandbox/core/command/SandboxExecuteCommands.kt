@@ -509,7 +509,7 @@ internal fun DatapackSandbox.executeData(
     requireSize(tokens, 3, "data <modify|get|remove> ...", location)
     return when (tokens[1].text) {
         "modify" -> executeDataModify(command, tokens, location, context)
-        "merge" -> executeDataMerge(command, tokens, location, context)
+        "merge" -> executeDataMergeResult(command, tokens, location, context)
         "get" -> {
             val value = executeDataGet(tokens, location, context)
             value?.let {
@@ -517,7 +517,7 @@ internal fun DatapackSandbox.executeData(
             }
             value != null
         }
-        "remove" -> executeDataRemove(tokens, location, context)
+        "remove" -> executeDataRemoveResult(tokens, location, context)
         else -> unsupportedFeature("Unsupported data action '${tokens[1].text}'", profile.id, location)
     }
 }
@@ -560,7 +560,7 @@ internal fun DatapackSandbox.executeDataModify(
         }
     }
     val after = dataTargetNbtValues(target, location).map { it.deepCopy() }
-    return recordDataMutationOutput(
+    return recordDataMutationOutputResult(
         "data modify",
         target,
         values.singleOrNull()
@@ -645,6 +645,15 @@ internal fun DatapackSandbox.executeDataMerge(
     tokens: List<CommandToken>,
     location: SourceLocation?,
     context: ExecutionContext,
+) {
+    executeDataMergeResult(command, tokens, location, context)
+}
+
+private fun DatapackSandbox.executeDataMergeResult(
+    command: String,
+    tokens: List<CommandToken>,
+    location: SourceLocation?,
+    context: ExecutionContext,
 ): Boolean {
     requireSize(tokens, 4, "data merge <storage|entity|block> <target> <nbt>", location)
     val (target, valueIndex) = parseDataTarget(tokens, 2, context, location)
@@ -653,7 +662,7 @@ internal fun DatapackSandbox.executeDataMerge(
     val before = dataTargetNbtValues(target, location).map { it.deepCopy() }
     mutateDataTarget(target, location) { JsonPaths.merge(it, null, value) }
     val after = dataTargetNbtValues(target, location).map { it.deepCopy() }
-    return recordDataMutationOutput("data merge", target, value, before, after) > 0
+    return recordDataMutationOutputResult("data merge", target, value, before, after) > 0
 }
 
 internal fun DatapackSandbox.executeDataGet(
@@ -684,6 +693,14 @@ internal fun DatapackSandbox.executeDataRemove(
     tokens: List<CommandToken>,
     location: SourceLocation?,
     context: ExecutionContext,
+) {
+    executeDataRemoveResult(tokens, location, context)
+}
+
+private fun DatapackSandbox.executeDataRemoveResult(
+    tokens: List<CommandToken>,
+    location: SourceLocation?,
+    context: ExecutionContext,
 ): Boolean {
     requireSize(tokens, 4, "data remove <storage|entity|block> <target> <path>", location)
     val (target, pathIndex) = parseDataTarget(tokens, 2, context, location)
@@ -692,7 +709,7 @@ internal fun DatapackSandbox.executeDataRemove(
     val before = dataTargetNbtValues(target, location).map { it.deepCopy() }
     mutateDataTarget(target, location) { JsonPaths.remove(it, path) }
     val after = dataTargetNbtValues(target, location).map { it.deepCopy() }
-    return recordDataMutationOutput(
+    return recordDataMutationOutputResult(
         "data remove",
         target,
         null,
@@ -741,6 +758,17 @@ internal fun DatapackSandbox.dataTargetNbtValues(
     }
 
 internal fun DatapackSandbox.recordDataMutationOutput(
+    command: String,
+    target: DataTargetSpec,
+    value: JsonElement?,
+    before: List<JsonObject>,
+    after: List<JsonObject>,
+    details: JsonObject? = null,
+) {
+    recordDataMutationOutputResult(command, target, value, before, after, details)
+}
+
+private fun DatapackSandbox.recordDataMutationOutputResult(
     command: String,
     target: DataTargetSpec,
     value: JsonElement?,
