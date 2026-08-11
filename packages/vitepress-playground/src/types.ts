@@ -162,6 +162,24 @@ export interface PlaygroundImportResult {
 export type PlaygroundTheme = 'auto' | 'light' | 'dark'
 export type PlaygroundLayout = 'notebook' | 'compact'
 
+export type PlaygroundAction =
+  | 'run'
+  | 'render'
+  | 'run-all'
+  | 'interrupt'
+  | 'save-point'
+  | 'return-to-point'
+  | 'capture-frame'
+  | 'export-gif'
+  | 'reset-sandbox'
+  | 'restore-example'
+  | 'import-files'
+  | 'import-folder'
+  | 'restart-sandbox'
+
+export type PlaygroundActionPlacement = 'primary' | 'menu' | 'hidden'
+export type PlaygroundActionConfig = Partial<Record<PlaygroundAction, PlaygroundActionPlacement>>
+
 export interface PlaygroundDiagnostic {
   line: number
   from?: number

@@ -57,7 +57,7 @@ import '@datapack-sandbox/vitepress-playground/style.css'
 
 ## 单 cell 轻量嵌入
 
-如果例子只需要一个可编辑命令 cell 和执行结果，可使用独立的 `cell` 入口。`DpsCell` 不包含 Notebook 顶栏、交互式导入或 Markdown cell；紧凑标题栏提供执行、渲染、可复用状态点、GIF 帧记录/导出以及 **Reset example**。
+如果例子只需要一个可编辑命令 cell 和执行结果，可使用独立的 `cell` 入口。`DpsCell` 不包含 Notebook 顶栏、交互式导入或 Markdown cell；标题栏只保留 **Run**，渲染、可复用状态点、GIF 帧记录/导出以及 **Reset example** 收入 **More**。
 
 [[cell-demo]]
 
@@ -82,7 +82,7 @@ const source = ref('say 轻量嵌入示例')
 </template>
 ```
 
-依赖会在 `ready` 前按声明顺序下载，后面的包覆盖前面的包；支持可选 SHA-256 校验。**Reset example** 后依赖仍保留在会话内存中，Worker 自动重建时会重新加载。默认情况下 **Run** 后不自动生成 PNG，但始终可点击 **Render**；可通过 `:render="{ auto: true, width: 640, height: 360 }"` 开启自动渲染。
+依赖会在 `ready` 前按声明顺序下载，后面的包覆盖前面的包；支持可选 SHA-256 校验。**Reset example** 后依赖仍保留在会话内存中，Worker 自动重建时会重新加载。默认情况下 **Run** 后不自动生成 PNG，**Render** 可从 **More** 中使用；可通过 `:render="{ auto: true, width: 640, height: 360 }"` 开启自动渲染。
 
 默认每次成功执行都会记录一帧 GIF。**Add frame** 不执行源码，只记录当前世界；**Export GIF** 下载全部已记录帧。**Save point** 保存完整的建模世界、输出和 trace，**Return** 可重复回到该点。数据包、资源包和单调递增的安全预算属于会话配置，不属于检查点状态。
 
@@ -101,12 +101,38 @@ const source = ref('say 轻量嵌入示例')
 | `render` | `PlaygroundRenderOptions` | 自动，`960×540` | 自动渲染和默认尺寸。 |
 | `animation` | `PlaygroundAnimationOptions` | `480×270`、250 ms、循环 | GIF 尺寸、帧延迟、循环次数和执行后自动记录。 |
 | `checkpoint-name` | `string` | 组件专用默认名 | 内置 Save point/Return 控件使用的名称。 |
+| `actions` | `PlaygroundActionConfig` | 组件默认配置 | 将每个操作放在主操作栏或菜单中，或将其隐藏。 |
 | `presets` | `Record<string, { url; sha256? }>` | `{}` | 从同源或允许 CORS 的 URL 延迟获取静态 ZIP。 |
 | `allow-import` | `boolean` | `true` | 显示文件/目录导入按钮并接受拖放。 |
 | `limits` | `PlaygroundBrowserLimits` | 浏览器默认值 | 每实例稳定性预算和 watchdog 时序。 |
 | `worker-url` | `string` | 包内资源 | 仅在自行托管 Worker 构建物时覆盖。 |
 | `site-id` | `string` | 省略 | 创建会话时携带的嵌入站点标签。 |
 | `sandbox-id` | `string` | 省略 | 页面内世界 ID；相同非空 ID 共用串行会话，省略时创建独立沙盒。 |
+
+### 操作按钮配置
+
+`actions` 是从操作 ID 到 `primary`、`menu` 或 `hidden` 的局部映射。未配置的 ID 沿用组件默认值，因此嵌入网页只需声明需要覆盖的项目：
+
+```vue
+<script setup lang="ts">
+import type { PlaygroundActionConfig } from '@datapack-sandbox/vitepress-playground'
+
+const actions = {
+  'run-all': 'primary',
+  interrupt: 'hidden',
+  render: 'hidden',
+  'reset-sandbox': 'menu',
+  'import-files': 'hidden',
+  'import-folder': 'hidden',
+} satisfies PlaygroundActionConfig
+</script>
+
+<template>
+  <DpsPlayground :notebook="notebook" :actions="actions" />
+</template>
+```
+
+完整操作 ID 为 `run`、`render`、`run-all`、`interrupt`、`save-point`、`return-to-point`、`capture-frame`、`export-gif`、`reset-sandbox`、`restore-example`、`import-files`、`import-folder` 和 `restart-sandbox`。`DpsPlayground` 的同一份配置同时作用于顶栏和代码 cell 标题栏；某个操作栏不支持的 ID 会被忽略。完整 Playground 默认只在顶栏保留 **Run all** 和 **Interrupt**，低频操作进入 **More**。`DpsCell` 默认只保留 **Run**；`compact` cell 会隐藏高级操作，除非 `actions` 显式指定其位置。
 
 本地会话及可选 preset 就绪后触发 `ready(sessionId)`；执行、导入、完整性校验或生命周期失败会触发 `error({ code, message })`。
 

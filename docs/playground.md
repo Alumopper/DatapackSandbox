@@ -57,7 +57,7 @@ The component is SSR-safe: it creates a module Worker only after browser mount. 
 
 ## Single-cell embed
 
-Use the separate `cell` entry when an example only needs one editable command cell and its execution result. `DpsCell` has no notebook toolbar, interactive imports, or Markdown cells. Its compact header includes execution/render controls, a reusable state point, GIF frame capture/export, and **Reset example**.
+Use the separate `cell` entry when an example only needs one editable command cell and its execution result. `DpsCell` has no notebook toolbar, interactive imports, or Markdown cells. Its header keeps **Run** visible and groups rendering, a reusable state point, GIF frame capture/export, and **Reset example** under **More**.
 
 [[cell-demo]]
 
@@ -82,7 +82,7 @@ const source = ref('say embedded example')
 </template>
 ```
 
-Dependencies are fetched in declaration order before `ready`; later packs override earlier packs. They support optional SHA-256 verification, remain in session memory after **Reset example**, and are reloaded automatically if the Worker is rebuilt. Automatic PNG rendering after **Run** is disabled by default, while the explicit **Render** button is always available. Opt in to automatic rendering with `:render="{ auto: true, width: 640, height: 360 }"`.
+Dependencies are fetched in declaration order before `ready`; later packs override earlier packs. They support optional SHA-256 verification, remain in session memory after **Reset example**, and are reloaded automatically if the Worker is rebuilt. Automatic PNG rendering after **Run** is disabled by default, while **Render** remains available from **More**. Opt in to automatic rendering with `:render="{ auto: true, width: 640, height: 360 }"`.
 
 Each successful execution records a GIF frame by default. **Add frame** captures the current world without executing source; **Export GIF** downloads all recorded frames. **Save point** records the complete modeled world, outputs, and traces, while **Return** restores that point without consuming it. Datapack/resource-pack inputs and safety-budget counters are session configuration rather than checkpoint state.
 
@@ -101,12 +101,38 @@ Execution summaries include an expandable **Command outputs** list with the comm
 | `render` | `PlaygroundRenderOptions` | auto, `960×540` | Automatic rendering and default dimensions. |
 | `animation` | `PlaygroundAnimationOptions` | `480×270`, 250 ms, loop | GIF dimensions, frame delay, repeat count, and capture-on-execute behavior. |
 | `checkpoint-name` | `string` | component-specific | Name used by the built-in Save point/Return controls. |
+| `actions` | `PlaygroundActionConfig` | component defaults | Place each action in the primary bar or menu, or hide it. |
 | `presets` | `Record<string, { url; sha256? }>` | `{}` | Static ZIP registry fetched lazily from same-origin or CORS-enabled URLs. |
 | `allow-import` | `boolean` | `true` | Show file/folder import controls and accept drops. |
 | `limits` | `PlaygroundBrowserLimits` | browser defaults | Per-instance stability budgets and watchdog timings. |
 | `worker-url` | `string` | packaged asset | Override only when self-hosting the Worker artifact. |
 | `site-id` | `string` | omitted | Optional embedding-site label carried in session creation. |
 | `sandbox-id` | `string` | omitted | Page-local world id. Equal non-empty ids share one serialized session; omission creates an independent sandbox. |
+
+### Action placement
+
+`actions` is a partial map from action id to `primary`, `menu`, or `hidden`. Omitted ids keep their component default, so an embedding site only needs to declare its overrides:
+
+```vue
+<script setup lang="ts">
+import type { PlaygroundActionConfig } from '@datapack-sandbox/vitepress-playground'
+
+const actions = {
+  'run-all': 'primary',
+  interrupt: 'hidden',
+  render: 'hidden',
+  'reset-sandbox': 'menu',
+  'import-files': 'hidden',
+  'import-folder': 'hidden',
+} satisfies PlaygroundActionConfig
+</script>
+
+<template>
+  <DpsPlayground :notebook="notebook" :actions="actions" />
+</template>
+```
+
+The complete action ids are `run`, `render`, `run-all`, `interrupt`, `save-point`, `return-to-point`, `capture-frame`, `export-gif`, `reset-sandbox`, `restore-example`, `import-files`, `import-folder`, and `restart-sandbox`. A `DpsPlayground` configuration applies to both its top toolbar and code-cell headers; ids unsupported by a particular action bar are ignored. By default, the full playground keeps **Run all** and **Interrupt** in the top bar and puts its less common actions in **More**. `DpsCell` keeps only **Run** in the header; `compact` cells hide advanced actions unless `actions` explicitly places them.
 
 `ready(sessionId)` fires after the local session and optional preset are ready. `error({ code, message })` reports execution, import, integrity, and lifecycle failures.
 

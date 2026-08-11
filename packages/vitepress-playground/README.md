@@ -69,7 +69,7 @@ const source = ref('say embedded example')
 </template>
 ```
 
-The compact header provides Run, Render, Save point/Return, Add frame/Export GIF, and Reset example. Successful runs capture GIF frames by default. Named checkpoints are reusable and restore the complete modeled world while keeping declared dependencies loaded.
+The compact header keeps Run visible and groups Render, Save point/Return, Add frame/Export GIF, and Reset example under More. Successful runs capture GIF frames by default. Named checkpoints are reusable and restore the complete modeled world while keeping declared dependencies loaded. Use the `actions` prop to place any action in the primary bar or menu, or hide it; for example, `:actions="{ render: 'primary', 'export-gif': 'hidden' }"`.
 
 Use `sandbox-id` to share one page-local world without manually creating a controller. Repeating the
 same ID is intentional: every editor keeps its own source and output, while commands, rendering,

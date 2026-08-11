@@ -3,10 +3,13 @@ import MarkdownIt from 'markdown-it'
 import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import ExecutionOutput from './ExecutionOutput.vue'
 import FunctionSourceViewer from './FunctionSourceViewer.vue'
+import PlaygroundActions from './PlaygroundActions.vue'
 import { PlaygroundClientError } from './client'
 import { acquirePageSandbox, createComponentScopeId, normalizedSandboxId } from './page-sandbox'
 import { PlaygroundSessionController } from './session'
+import type { PlaygroundActionItem } from './action-bar'
 import type {
+  PlaygroundActionConfig,
   PlaygroundBrowserLimits,
   PlaygroundAnimationOptions,
   PlaygroundCell,
@@ -53,6 +56,7 @@ const props = withDefaults(defineProps<{
   workerUrl?: string
   session?: PlaygroundSessionController
   viewport?: boolean | PlaygroundViewportOptions
+  actions?: PlaygroundActionConfig
 }>(), {
   theme: 'auto',
   layout: 'notebook',
@@ -63,6 +67,7 @@ const props = withDefaults(defineProps<{
   presets: () => ({}),
   allowImport: true,
   viewport: false,
+  actions: () => ({}),
 })
 
 const emit = defineEmits<{
@@ -133,6 +138,111 @@ const connectionSummary = computed(() => {
   return 'Local sandbox unavailable'
 })
 const viewportOptions = computed<PlaygroundViewportOptions>(() => props.viewport === true ? {} : props.viewport || {})
+const toolbarActionDefaults: PlaygroundActionConfig = {
+  'run-all': 'primary',
+  interrupt: 'primary',
+  'save-point': 'menu',
+  'return-to-point': 'menu',
+  'capture-frame': 'menu',
+  'export-gif': 'menu',
+  'reset-sandbox': 'menu',
+  'restore-example': 'menu',
+  'import-files': 'menu',
+  'import-folder': 'menu',
+  'restart-sandbox': 'primary',
+}
+const cellActionDefaults: PlaygroundActionConfig = { run: 'primary', render: 'primary' }
+const toolbarActionItems = computed<PlaygroundActionItem[]>(() => [
+  {
+    id: 'run-all',
+    label: 'Run all',
+    disabled: connection.value !== 'ready' || isBusy.value,
+    emphasis: true,
+    run: runAll,
+  },
+  {
+    id: 'interrupt',
+    label: 'Interrupt',
+    disabled: connection.value !== 'ready' || !hasRunningCell.value,
+    run: interrupt,
+  },
+  {
+    id: 'save-point',
+    label: 'Save point',
+    disabled: connection.value !== 'ready' || isBusy.value,
+    run: savePoint,
+  },
+  {
+    id: 'return-to-point',
+    label: 'Return',
+    disabled: connection.value !== 'ready' || isBusy.value || !hasCheckpoint.value,
+    run: returnToPoint,
+  },
+  {
+    id: 'capture-frame',
+    label: `Add frame${animationFrameCount.value ? ` (${animationFrameCount.value})` : ''}`,
+    disabled: connection.value !== 'ready' || isBusy.value,
+    run: addAnimationFrame,
+  },
+  {
+    id: 'export-gif',
+    label: 'Export GIF',
+    disabled: connection.value !== 'ready' || isBusy.value,
+    run: exportGif,
+  },
+  {
+    id: 'reset-sandbox',
+    label: 'Reset sandbox',
+    title: 'Clear sandbox state while keeping the edited cell source',
+    disabled: connection.value !== 'ready' || isBusy.value,
+    run: reset,
+  },
+  {
+    id: 'restore-example',
+    label: 'Restore example',
+    title: 'Restore the original example source and clear sandbox state',
+    disabled: isBusy.value || !hasExampleChanges.value,
+    run: restoreExample,
+  },
+  {
+    id: 'import-files',
+    label: 'Import files',
+    disabled: connection.value !== 'ready' || isBusy.value,
+    visible: props.allowImport,
+    run: chooseFiles,
+  },
+  {
+    id: 'import-folder',
+    label: 'Import folder',
+    disabled: connection.value !== 'ready' || isBusy.value,
+    visible: props.allowImport,
+    run: chooseDirectory,
+  },
+  {
+    id: 'restart-sandbox',
+    label: 'Restart',
+    visible: connection.value === 'unavailable' || connection.value === 'closed',
+    run: connect,
+  },
+])
+
+function cellActionItems(cell: LocalCell): PlaygroundActionItem[] {
+  return [
+    {
+      id: 'run',
+      label: cellResult(cell.id).hasRun ? 'Rerun' : 'Run',
+      disabled: connection.value !== 'ready' || isBusy.value || cellResult(cell.id).status !== 'idle',
+      emphasis: true,
+      run: () => runCell(cell),
+    },
+    {
+      id: 'render',
+      label: 'Render',
+      disabled: connection.value !== 'ready' || isBusy.value,
+      run: () => renderCell(cell),
+    },
+  ]
+}
 
 function cellResult(id: string): CellResult {
   if (!results[id]) results[id] = { status: 'idle', diagnostics: [], hasRun: false }
@@ -619,35 +729,7 @@ function normalizeCells(input: PlaygroundCell[]): LocalCell[] {
         </div>
       </div>
       <div class="dps-toolbar-actions">
-        <button class="dps-button-primary" type="button" :disabled="connection !== 'ready' || isBusy" @click="runAll">Run all</button>
-        <button type="button" :disabled="connection !== 'ready' || !hasRunningCell" @click="interrupt">Interrupt</button>
-        <button type="button" data-action="checkpoint" :disabled="connection !== 'ready' || isBusy" @click="savePoint">Save point</button>
-        <button type="button" data-action="restore-point" :disabled="connection !== 'ready' || isBusy || !hasCheckpoint" @click="returnToPoint">Return</button>
-        <button type="button" data-action="capture-frame" :disabled="connection !== 'ready' || isBusy" @click="addAnimationFrame">
-          Add frame<span v-if="animationFrameCount"> ({{ animationFrameCount }})</span>
-        </button>
-        <button type="button" data-action="export-gif" :disabled="connection !== 'ready' || isBusy" @click="exportGif">Export GIF</button>
-        <button
-          type="button"
-          data-action="reset"
-          title="Clear sandbox state while keeping the edited cell source"
-          :disabled="connection !== 'ready' || isBusy"
-          @click="reset"
-        >
-          Reset sandbox
-        </button>
-        <button
-          type="button"
-          data-action="restore"
-          title="Restore the original example source and clear sandbox state"
-          :disabled="isBusy || !hasExampleChanges"
-          @click="restoreExample"
-        >
-          Restore example
-        </button>
-        <button v-if="allowImport" type="button" :disabled="connection !== 'ready' || isBusy" @click="chooseFiles">Import files</button>
-        <button v-if="allowImport" type="button" :disabled="connection !== 'ready' || isBusy" @click="chooseDirectory">Import folder</button>
-        <button v-if="connection === 'unavailable' || connection === 'closed'" type="button" @click="connect">Restart</button>
+        <PlaygroundActions :items="toolbarActionItems" :defaults="toolbarActionDefaults" :config="actions" />
       </div>
       <input ref="fileInput" class="dps-file-input" type="file" multiple accept=".zip,.jar,.mcmeta,.dat,.mcfunction,.json,.nbt,.mca" @change="onFileSelection">
       <input ref="directoryInput" class="dps-file-input" type="file" multiple webkitdirectory @change="onFileSelection">
@@ -694,10 +776,7 @@ function normalizeCells(input: PlaygroundCell[]): LocalCell[] {
               <span>MCFunction</span>
             </div>
             <div class="dps-cell-actions">
-              <button class="dps-button-primary" type="button" :disabled="connection !== 'ready' || isBusy || cellResult(cell.id).status !== 'idle'" @click="runCell(cell)">
-                {{ cellResult(cell.id).hasRun ? 'Rerun' : 'Run' }}
-              </button>
-              <button type="button" :disabled="connection !== 'ready' || isBusy" @click="renderCell(cell)">Render</button>
+              <PlaygroundActions :items="cellActionItems(cell)" :defaults="cellActionDefaults" :config="actions" />
             </div>
           </div>
           <FunctionSourceViewer

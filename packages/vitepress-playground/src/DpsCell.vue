@@ -2,10 +2,13 @@
 import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import ExecutionOutput from './ExecutionOutput.vue'
 import FunctionSourceViewer from './FunctionSourceViewer.vue'
+import PlaygroundActions from './PlaygroundActions.vue'
 import { PlaygroundClientError } from './client'
 import { acquirePageSandbox, createComponentScopeId, normalizedSandboxId } from './page-sandbox'
 import { PlaygroundSessionController } from './session'
+import type { PlaygroundActionItem } from './action-bar'
 import type {
+  PlaygroundActionConfig,
   PlaygroundBrowserLimits,
   PlaygroundAnimationOptions,
   PlaygroundDependencySource,
@@ -49,6 +52,7 @@ const props = withDefaults(defineProps<{
   session?: PlaygroundSessionController
   viewport?: boolean | PlaygroundViewportOptions
   compact?: boolean
+  actions?: PlaygroundActionConfig
 }>(), {
   version: '26.2',
   cellId: 'example',
@@ -61,6 +65,7 @@ const props = withDefaults(defineProps<{
   dependencies: () => [],
   viewport: false,
   compact: false,
+  actions: () => ({}),
 })
 
 const emit = defineEmits<{
@@ -108,6 +113,62 @@ let disposed = false
 const componentScopeId = createComponentScopeId()
 const effectiveSandboxId = computed(() => props.session ? undefined : normalizedSandboxId(props.sandboxId))
 const viewportOptions = computed<PlaygroundViewportOptions>(() => props.viewport === true ? {} : props.viewport || {})
+const defaultActions = computed<PlaygroundActionConfig>(() => props.compact
+  ? { run: 'primary' }
+  : {
+      run: 'primary',
+      render: 'menu',
+      'save-point': 'menu',
+      'return-to-point': 'menu',
+      'capture-frame': 'menu',
+      'export-gif': 'menu',
+      'restore-example': 'menu',
+    })
+const actionItems = computed<PlaygroundActionItem[]>(() => [
+  {
+    id: 'run',
+    label: connection.value === 'connecting' ? 'Starting…' : result.hasRun ? 'Rerun' : 'Run',
+    disabled: connection.value !== 'ready' || isBusy.value,
+    emphasis: true,
+    run,
+  },
+  {
+    id: 'render',
+    label: 'Render',
+    disabled: connection.value !== 'ready' || isBusy.value,
+    run: renderCell,
+  },
+  {
+    id: 'save-point',
+    label: 'Save point',
+    disabled: connection.value !== 'ready' || isBusy.value,
+    run: savePoint,
+  },
+  {
+    id: 'return-to-point',
+    label: 'Return',
+    disabled: connection.value !== 'ready' || isBusy.value || !hasCheckpoint.value,
+    run: returnToPoint,
+  },
+  {
+    id: 'capture-frame',
+    label: `Add frame${animationFrameCount.value ? ` (${animationFrameCount.value})` : ''}`,
+    disabled: connection.value !== 'ready' || isBusy.value,
+    run: captureAnimationFrame,
+  },
+  {
+    id: 'export-gif',
+    label: 'Export GIF',
+    disabled: connection.value !== 'ready' || isBusy.value,
+    run: exportGif,
+  },
+  {
+    id: 'restore-example',
+    label: 'Reset example',
+    disabled: connection.value !== 'ready' || isBusy.value || !hasExampleChanges.value,
+    run: resetExample,
+  },
+])
 
 async function connect(): Promise<void> {
   releaseCurrentSession()
@@ -473,41 +534,7 @@ defineExpose({
       <div class="dps-cell-heading">
         <div class="dps-cell-label">MCFunction</div>
         <div class="dps-cell-actions">
-          <button
-            class="dps-button-primary"
-            type="button"
-            :disabled="connection !== 'ready' || isBusy"
-            @click="run"
-          >
-            {{ connection === 'connecting' ? 'Starting…' : result.hasRun ? 'Rerun' : 'Run' }}
-          </button>
-          <button v-if="!compact" type="button" :disabled="connection !== 'ready' || isBusy" @click="renderCell">Render</button>
-          <button v-if="!compact" type="button" data-action="checkpoint" :disabled="connection !== 'ready' || isBusy" @click="savePoint">
-            Save point
-          </button>
-          <button
-            v-if="!compact"
-            type="button"
-            data-action="restore-point"
-            :disabled="connection !== 'ready' || isBusy || !hasCheckpoint"
-            @click="returnToPoint"
-          >
-            Return
-          </button>
-          <button v-if="!compact" type="button" data-action="capture-frame" :disabled="connection !== 'ready' || isBusy" @click="captureAnimationFrame">
-            Add frame<span v-if="animationFrameCount"> ({{ animationFrameCount }})</span>
-          </button>
-          <button v-if="!compact" type="button" data-action="export-gif" :disabled="connection !== 'ready' || isBusy" @click="exportGif">
-            Export GIF
-          </button>
-          <button
-            v-if="!compact"
-            type="button"
-            :disabled="connection !== 'ready' || isBusy || !hasExampleChanges"
-            @click="resetExample"
-          >
-            Reset example
-          </button>
+          <PlaygroundActions :items="actionItems" :defaults="defaultActions" :config="actions" />
         </div>
       </div>
       <FunctionSourceViewer

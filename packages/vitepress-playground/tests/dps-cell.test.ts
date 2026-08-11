@@ -129,6 +129,33 @@ describe('DpsCell', () => {
     wrapper.unmount()
   })
 
+  it('lets embedders move actions between the header and menu or hide them', async () => {
+    MockWorker.responder = (worker, request) => {
+      if (request.type === 'transport.connect') worker.emit({ type: 'transport.ready', requestId: request.id })
+      if (request.type === 'session.create') worker.emit({ type: 'session.ready', requestId: request.id })
+    }
+    const wrapper = mount(DpsCell, {
+      props: {
+        modelValue: 'say configurable',
+        actions: {
+          run: 'hidden',
+          render: 'primary',
+          'save-point': 'hidden',
+          'export-gif': 'primary',
+        },
+      },
+      global: { stubs: { CodeCell: CodeCellStub } },
+    })
+    await vi.waitFor(() => expect(wrapper.attributes('data-state')).toBe('ready'))
+
+    expect(wrapper.find('[data-action="run"]').exists()).toBe(false)
+    expect(wrapper.find('[data-action="save-point"]').exists()).toBe(false)
+    expect(wrapper.find('.dps-cell-actions > [data-action="render"]').exists()).toBe(true)
+    expect(wrapper.find('.dps-cell-actions > [data-action="export-gif"]').exists()).toBe(true)
+    expect(wrapper.find('.dps-action-menu-panel > [data-action="capture-frame"]').exists()).toBe(true)
+    wrapper.unmount()
+  })
+
   it('shows compact command outputs as readable expandable entries', async () => {
     MockWorker.responder = (worker, request) => {
       if (request.type === 'transport.connect') worker.emit({ type: 'transport.ready', requestId: request.id })
@@ -204,6 +231,9 @@ describe('DpsCell', () => {
 
     expect(wrapper.find('.dps-toolbar').exists()).toBe(false)
     expect(wrapper.findAll('.dps-cell-actions button')).toHaveLength(7)
+    expect(wrapper.findAll('.dps-cell-actions > button')).toHaveLength(1)
+    expect(wrapper.get('.dps-action-menu > summary').text()).toContain('More')
+    expect(wrapper.findAll('.dps-action-menu-panel > button')).toHaveLength(6)
     expect(wrapper.text()).not.toContain('Import')
     expect(wrapper.find('.code-cell-stub').text()).toContain('setblock')
 
@@ -278,10 +308,10 @@ describe('DpsCell', () => {
     })
     await vi.waitFor(() => expect(wrapper.attributes('data-state')).toBe('ready'))
 
-    await wrapper.get('[data-action="checkpoint"]').trigger('click')
+    await wrapper.get('[data-action="save-point"]').trigger('click')
     await flushPromises()
-    expect(wrapper.get('[data-action="restore-point"]').attributes()).not.toHaveProperty('disabled')
-    await wrapper.get('[data-action="restore-point"]').trigger('click')
+    expect(wrapper.get('[data-action="return-to-point"]').attributes()).not.toHaveProperty('disabled')
+    await wrapper.get('[data-action="return-to-point"]').trigger('click')
     await flushPromises()
     await wrapper.get('[data-action="capture-frame"]').trigger('click')
     await flushPromises()

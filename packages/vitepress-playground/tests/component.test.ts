@@ -119,6 +119,38 @@ describe('DpsPlayground', () => {
     wrapper.unmount()
   })
 
+  it('keeps common toolbar actions visible and lets embedders place or hide each action', async () => {
+    MockWorker.responder = (worker, request) => {
+      if (request.type === 'transport.connect') worker.emit({ type: 'transport.ready', requestId: request.id })
+      if (request.type === 'session.create') worker.emit({ type: 'session.ready', requestId: request.id })
+    }
+    const wrapper = mount(DpsPlayground, {
+      props: { notebook },
+      global: { stubs: { CodeCell: CodeCellStub } },
+    })
+    await vi.waitFor(() => expect(wrapper.text()).toContain('Minecraft 26.2'))
+
+    expect(wrapper.findAll('.dps-toolbar-actions > button')).toHaveLength(2)
+    expect(wrapper.get('.dps-toolbar-actions > .dps-action-menu summary').text()).toContain('More')
+    expect(wrapper.findAll('.dps-toolbar-actions .dps-action-menu-panel > button')).toHaveLength(8)
+
+    await wrapper.setProps({
+      actions: {
+        'run-all': 'hidden',
+        interrupt: 'menu',
+        'reset-sandbox': 'primary',
+        'import-files': 'hidden',
+        'import-folder': 'hidden',
+      },
+    })
+    expect(wrapper.find('[data-action="run-all"]').exists()).toBe(false)
+    expect(wrapper.find('.dps-toolbar-actions > [data-action="reset-sandbox"]').exists()).toBe(true)
+    expect(wrapper.find('.dps-toolbar-actions .dps-action-menu-panel > [data-action="interrupt"]').exists()).toBe(true)
+    expect(wrapper.find('[data-action="import-files"]').exists()).toBe(false)
+    expect(wrapper.find('[data-action="import-folder"]').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
   it('restores the original example source and resets the sandbox session', async () => {
     const requests: string[] = []
     MockWorker.responder = (worker, request) => {
@@ -134,7 +166,7 @@ describe('DpsPlayground', () => {
     })
     await flushPromises()
 
-    const restore = wrapper.get('[data-action="restore"]')
+    const restore = wrapper.get('[data-action="restore-example"]')
     expect(restore.attributes()).toHaveProperty('disabled')
     wrapper.findComponent({ name: 'CodeCell' }).vm.$emit('update:modelValue', 'say changed')
     await flushPromises()

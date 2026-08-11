@@ -11,6 +11,9 @@ export type { PlaygroundWorkerClientOptions } from './client'
 export { PlaygroundSessionController } from './session'
 export type { PlaygroundSessionActivity, PlaygroundSessionControllerOptions } from './session'
 export type {
+  PlaygroundAction,
+  PlaygroundActionConfig,
+  PlaygroundActionPlacement,
   PlaygroundBrowserLimits,
   PlaygroundAnimationOptions,
   PlaygroundCheckpoint,

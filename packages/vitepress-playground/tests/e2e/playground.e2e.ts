@@ -1,9 +1,15 @@
 import { expect, test } from '@playwright/test'
+import type { Locator } from '@playwright/test'
 import { strToU8, zipSync } from 'fflate'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 
 const consumerE2ePort = Number(process.env.DPS_PLAYGROUND_CONSUMER_E2E_PORT ?? 14174)
+
+async function openMoreActions(scope: Locator): Promise<void> {
+  const menu = scope.locator('.dps-action-menu').first()
+  if (await menu.getAttribute('open') === null) await menu.locator('summary').click()
+}
 
 test('loads the packaged Worker from a Vite site with a non-root base', async ({ page }) => {
   const workerResponses: Array<{ url: string; status: number; contentType: string }> = []
@@ -87,6 +93,7 @@ test('runs a real cell and renders a screenshot', async ({ page }, testInfo) => 
   await expect(render).toBeVisible()
   await expect(render).toHaveAttribute('src', /^blob:/)
   await page.locator('.dps-playground').screenshot({ path: testInfo.outputPath('playground-ready.png') })
+  await openMoreActions(page.locator('.dps-toolbar-actions'))
   const restore = page.getByRole('button', { name: 'Restore example' })
   await expect(restore).toBeEnabled()
   await restore.click()
@@ -100,12 +107,15 @@ test('embeds the lightweight single-cell surface without notebook controls', asy
   const cell = page.locator('.dps-cell-space')
   await expect(cell).toHaveAttribute('data-state', 'ready', { timeout: 15_000 })
   await expect(cell.locator('.dps-toolbar')).toHaveCount(0)
-  await expect(cell.getByRole('button')).toHaveCount(7)
+  await expect(cell.locator('.dps-cell-actions > button')).toHaveCount(1)
+  await expect(cell.locator('.dps-action-menu > summary')).toHaveText(/More/)
   await cell.getByRole('button', { name: 'Run', exact: true }).click()
   await expect(cell.getByText(/Executed 1 command/)).toBeVisible()
   await expect(cell.locator('img.dps-render')).toHaveCount(0)
+  await openMoreActions(cell)
   await cell.getByRole('button', { name: 'Render', exact: true }).click()
   await expect(cell.locator('img.dps-render')).toBeVisible()
+  await openMoreActions(cell)
   await cell.getByRole('button', { name: 'Reset example', exact: true }).click()
   await expect(cell.locator('.dps-output')).toHaveCount(0)
   await expect(cell.locator('img.dps-render')).toHaveCount(0)
@@ -231,7 +241,9 @@ test('restores a lightweight checkpoint and downloads a real animated GIF', asyn
   await editor.pressSequentially('scoreboard objectives add runs dummy\nscoreboard players set #branch runs 1')
   await cell.getByRole('button', { name: 'Run', exact: true }).click()
   await expect(cell.getByText(/Executed 2 commands/)).toBeVisible()
+  await openMoreActions(cell)
   await cell.getByRole('button', { name: 'Save point', exact: true }).click()
+  await openMoreActions(cell)
   await expect(cell.getByRole('button', { name: 'Return', exact: true })).toBeEnabled()
 
   await editor.click()
@@ -239,6 +251,7 @@ test('restores a lightweight checkpoint and downloads a real animated GIF', asyn
   await editor.pressSequentially('scoreboard players add #branch runs 9')
   await cell.getByRole('button', { name: 'Rerun', exact: true }).click()
   await expect(cell.getByText(/Executed 1 command/)).toBeVisible()
+  await openMoreActions(cell)
   await cell.getByRole('button', { name: 'Return', exact: true }).click()
   await expect(cell.locator('img.dps-render')).toBeVisible()
 
@@ -247,9 +260,11 @@ test('restores a lightweight checkpoint and downloads a real animated GIF', asyn
   await editor.pressSequentially('scoreboard players get #branch runs')
   await cell.getByRole('button', { name: 'Run', exact: true }).click()
   await expect(cell.locator('.dps-output pre')).toContainText('"text": "1"')
+  await openMoreActions(cell)
   await cell.getByRole('button', { name: /Add frame/ }).click()
 
   const downloadPromise = page.waitForEvent('download')
+  await openMoreActions(cell)
   await cell.getByRole('button', { name: 'Export GIF', exact: true }).click()
   const download = await downloadPromise
   const path = testInfo.outputPath('lightweight-animation.gif')
@@ -266,6 +281,7 @@ test('loads lightweight dependencies before ready and keeps them after reset', a
   await expect(cell).toHaveAttribute('data-state', 'ready', { timeout: 15_000 })
   await cell.getByRole('button', { name: 'Run', exact: true }).click()
   await expect(cell.getByText(/Executed 3 commands/)).toBeVisible()
+  await openMoreActions(cell)
   await cell.getByRole('button', { name: 'Reset example', exact: true }).click()
   await cell.getByRole('button', { name: 'Run', exact: true }).click()
   await expect(cell.getByText(/Executed 3 commands/)).toBeVisible()
@@ -319,6 +335,7 @@ test('keeps controls usable in a dark mobile layout', async ({ page }, testInfo)
   const playground = page.locator('.dps-playground')
   await expect(playground).toHaveClass(/dps-theme-dark/)
   await expect(page.getByRole('button', { name: 'Run all' })).toBeVisible()
+  await openMoreActions(page.locator('.dps-toolbar-actions'))
   await expect(page.getByRole('button', { name: 'Reset sandbox' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Restore example' })).toBeVisible()
   await playground.screenshot({ path: testInfo.outputPath('playground-mobile-dark.png') })
@@ -417,6 +434,7 @@ test('runs the compiled VVE 3 physics stack entirely in the browser core', async
   await page.goto('/?viewport&vve&width=960&height=540')
   await expect(page.getByText('Minecraft 26.2')).toBeVisible({ timeout: 30_000 })
   const directoryInput = page.locator('.dps-file-input').nth(1)
+  await openMoreActions(page.locator('.dps-toolbar-actions'))
   for (const pack of ['math3', 'math3-lalib', 'math3-gelib', 'vve3-runtime', 'vve-demo-pack']) {
     await directoryInput.setInputFiles(resolve(packRoot!, pack))
     await expect(page.locator('.dps-import-message')).toContainText('Imported', { timeout: 60_000 })
@@ -690,6 +708,7 @@ test('exports a real-client display entity interpolation GIF', async ({ page }, 
   }
 
   const downloadPromise = page.waitForEvent('download')
+  await openMoreActions(page.locator('.dps-toolbar-actions'))
   await page.getByRole('button', { name: 'Export GIF', exact: true }).click()
   const download = await downloadPromise
   const output = process.env.DPS_GIF_OUTPUT ?? testInfo.outputPath('client-jar-display-animation.gif')
@@ -722,6 +741,7 @@ test('exports a stabilized long display entity physics GIF', async ({ page }, te
     await run.click()
   }
   const capture = async () => {
+    await openMoreActions(page.locator('.dps-toolbar-actions'))
     await frameButton.click()
     frameCount += 1
     await expect(frameButton).toHaveText(`Add frame (${frameCount})`, { timeout: 30_000 })
@@ -795,6 +815,7 @@ test('exports a stabilized long display entity physics GIF', async ({ page }, te
   }
 
   const downloadPromise = page.waitForEvent('download')
+  await openMoreActions(page.locator('.dps-toolbar-actions'))
   await page.getByRole('button', { name: 'Export GIF', exact: true }).click()
   const download = await downloadPromise
   const output = process.env.DPS_PHYSICS_GIF_OUTPUT ?? testInfo.outputPath('client-jar-display-physics.gif')
@@ -827,6 +848,7 @@ test('exports a stabilized many-block display explosion GIF', async ({ page }, t
     await run.click()
   }
   const capture = async () => {
+    await openMoreActions(page.locator('.dps-toolbar-actions'))
     await frameButton.click()
     frameCount += 1
     await expect(frameButton).toHaveText(`Add frame (${frameCount})`, { timeout: 60_000 })
@@ -982,6 +1004,7 @@ test('exports a stabilized many-block display explosion GIF', async ({ page }, t
   for (let hold = 0; hold < 8; hold += 1) await capture()
 
   const downloadPromise = page.waitForEvent('download')
+  await openMoreActions(page.locator('.dps-toolbar-actions'))
   await page.getByRole('button', { name: 'Export GIF', exact: true }).click()
   const download = await downloadPromise
   const output = process.env.DPS_EXPLOSION_GIF_OUTPUT ?? testInfo.outputPath('client-jar-display-explosion.gif')
