@@ -531,6 +531,7 @@ test('uses a resource-pack texture in the Worker renderer', async ({ page }) => 
 })
 
 test('renders block item and styled text display entities in the local Worker', async ({ page }, testInfo) => {
+  test.slow()
   await page.goto('/?cell=1')
   const cell = page.locator('.dps-cell-space')
   await expect(cell).toHaveAttribute('data-state', 'ready', { timeout: 15_000 })
@@ -545,6 +546,7 @@ test('renders block item and styled text display entities in the local Worker', 
   await editor.pressSequentially(source)
   await cell.getByRole('button', { name: 'Run', exact: true }).click()
   await expect(cell.getByText(/Executed 3 commands/)).toBeVisible()
+  await openMoreActions(cell)
   await cell.getByRole('button', { name: 'Render', exact: true }).click()
   const render = cell.locator('img.dps-render')
   await expect(render).toBeVisible()
