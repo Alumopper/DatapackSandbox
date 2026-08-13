@@ -1,5 +1,19 @@
 # Datapack Sandbox Development Roadmap
 
+## When to use this page
+
+This page is for contributors who need the completed capabilities, future priorities, acceptance criteria, and clean-room boundary. Most datapack authors can skip it.
+
+## Prerequisites
+
+Read the user-facing command, resource, and version references first. Code contributors also need JDK 25 and the repository Gradle wrapper.
+
+## Minimal runnable example
+
+Run `.\gradlew.bat releaseCheck` from PowerShell to exercise the module, documentation, schema, API, example, and release-artifact gates described by the roadmap.
+
+## Full capabilities
+
 This roadmap describes the documentation-facing development direction for Datapack Sandbox. It mirrors the Chinese roadmap at a higher level and gives English readers the project structure, priority model, and verification expectations.
 
 ## Goals
@@ -82,3 +96,14 @@ Before a release, the documentation should satisfy these checks:
 - CLI-generated command, resource, and version-profile tables pass their drift checks.
 - Code API examples compile or are covered by focused tests.
 - Chinese and English navigation expose equivalent core pages.
+
+## Limitations
+
+This roadmap records direction and acceptance criteria, not release-date commitments. Current behavior is defined by drift-checked command, resource, and version references plus the public API baselines.
+
+## Related pages
+
+- [Command Support](/en/runtime/command-support)
+- [Resource Formats](/en/resources/resource-formats)
+- [Version Profiles](/en/resources/version-profile)
+- [Troubleshooting](/en/guide/troubleshooting)

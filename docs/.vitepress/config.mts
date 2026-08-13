@@ -2,8 +2,11 @@ import { defineConfigWithTheme } from 'vitepress'
 import type { ThemeConfig } from 'vitepress-carbon'
 import baseConfig from 'vitepress-carbon/config'
 import { fileURLToPath } from 'node:url'
+import { createNav, createSidebar, docsRewrites, validateDocsCatalog } from './docs-catalog.mts'
 
 const repositoryRoot = fileURLToPath(new URL('../..', import.meta.url))
+const docsDirectory = fileURLToPath(new URL('..', import.meta.url))
+validateDocsCatalog(docsDirectory)
 
 const repository = 'https://github.com/Alumopper/DatapackSandbox'
 const docsBase = (() => {
@@ -12,145 +15,10 @@ const docsBase = (() => {
   return withLeadingSlash.endsWith('/') ? withLeadingSlash : `${withLeadingSlash}/`
 })()
 
-const zhSidebar = [
-  {
-    text: '开始',
-    collapsed: false,
-    items: [
-      { text: '文档首页', link: '/' },
-      { text: '快速开始', link: '/guide/getting-started' },
-      { text: 'VS Code 插件', link: '/guide/vscode-extension' },
-      { text: '交互式 Playground', link: '/guide/playground' },
-      { text: 'Playground 样式定制', link: '/guide/playground-styling' },
-      { text: '三维渲染与 Jupyter', link: '/guide/rendering-notebook' },
-      { text: '测试方案', link: '/guide/testing-patterns' },
-      { text: '代码测试 API', link: '/guide/code-test-api' },
-      { text: '排障手册', link: '/guide/troubleshooting' },
-    ],
-  },
-  {
-    text: '运行时',
-    collapsed: false,
-    items: [
-      { text: '命令支持状态', link: '/runtime/command-support' },
-      { text: '玩家事件', link: '/runtime/player-events' },
-      { text: '运行时世界模型', link: '/runtime/world-model' },
-    ],
-  },
-  {
-    text: '资源与版本',
-    collapsed: false,
-    items: [
-      { text: '资源格式', link: '/resources/resource-formats' },
-      { text: '版本 Profile', link: '/resources/version-profile' },
-    ],
-  },
-  {
-    text: '项目',
-    collapsed: true,
-    items: [
-      { text: '开发路线图', link: '/project/development-roadmap' },
-    ],
-  },
-]
-
-const enSidebar = [
-  {
-    text: 'Start',
-    collapsed: false,
-    items: [
-      { text: 'Overview', link: '/en/' },
-      { text: 'Getting Started', link: '/en/guide/getting-started' },
-      { text: 'VS Code Extension', link: '/en/guide/vscode-extension' },
-      { text: 'Interactive Playground', link: '/en/guide/playground' },
-      { text: 'Playground CSS', link: '/en/guide/playground-styling' },
-      { text: 'Rendering and Jupyter', link: '/en/guide/rendering-notebook' },
-      { text: 'Testing Patterns', link: '/en/guide/testing-patterns' },
-      { text: 'Code Test API', link: '/en/guide/code-test-api' },
-      { text: 'Troubleshooting', link: '/en/guide/troubleshooting' },
-    ],
-  },
-  {
-    text: 'Runtime',
-    collapsed: false,
-    items: [
-      { text: 'Command Support', link: '/en/runtime/command-support' },
-      { text: 'Player Events', link: '/en/runtime/player-events' },
-      { text: 'Runtime World Model', link: '/en/runtime/world-model' },
-    ],
-  },
-  {
-    text: 'Resources and Versions',
-    collapsed: false,
-    items: [
-      { text: 'Resource Formats', link: '/en/resources/resource-formats' },
-      { text: 'Version Profiles', link: '/en/resources/version-profile' },
-    ],
-  },
-  {
-    text: 'Project',
-    collapsed: true,
-    items: [
-      { text: 'Development Roadmap', link: '/en/project/development-roadmap' },
-    ],
-  },
-]
-
-const zhNav = [
-  { text: '首页', link: '/' },
-  {
-    text: '使用指南',
-    items: [
-      { text: 'VS Code 插件', link: '/guide/vscode-extension' },
-      { text: '交互式 Playground', link: '/guide/playground' },
-      { text: 'Playground 样式定制', link: '/guide/playground-styling' },
-      { text: '三维渲染与 Jupyter', link: '/guide/rendering-notebook' },
-      { text: '开发者入门', link: '/guide/getting-started' },
-      { text: '测试模式', link: '/guide/testing-patterns' },
-      { text: '代码测试 API', link: '/guide/code-test-api' },
-      { text: '排障手册', link: '/guide/troubleshooting' },
-      { text: '玩家事件', link: '/runtime/player-events' },
-      { text: '运行时世界模型', link: '/runtime/world-model' },
-    ],
-  },
-  {
-    text: '技术参考',
-    items: [
-      { text: '命令支持状态', link: '/runtime/command-support' },
-      { text: '资源格式', link: '/resources/resource-formats' },
-      { text: '版本 Profile', link: '/resources/version-profile' },
-      { text: '开发路线图', link: '/project/development-roadmap' },
-    ],
-  },
-]
-
-const enNav = [
-  { text: 'Home', link: '/en/' },
-  {
-    text: 'Guide',
-    items: [
-      { text: 'Getting Started', link: '/en/guide/getting-started' },
-      { text: 'VS Code Extension', link: '/en/guide/vscode-extension' },
-      { text: 'Interactive Playground', link: '/en/guide/playground' },
-      { text: 'Playground CSS', link: '/en/guide/playground-styling' },
-      { text: 'Rendering and Jupyter', link: '/en/guide/rendering-notebook' },
-      { text: 'Testing Patterns', link: '/en/guide/testing-patterns' },
-      { text: 'Code Test API', link: '/en/guide/code-test-api' },
-      { text: 'Troubleshooting', link: '/en/guide/troubleshooting' },
-      { text: 'Player Events', link: '/en/runtime/player-events' },
-      { text: 'Runtime World Model', link: '/en/runtime/world-model' },
-    ],
-  },
-  {
-    text: 'Reference',
-    items: [
-      { text: 'Command Support', link: '/en/runtime/command-support' },
-      { text: 'Resource Formats', link: '/en/resources/resource-formats' },
-      { text: 'Version Profiles', link: '/en/resources/version-profile' },
-      { text: 'Development Roadmap', link: '/en/project/development-roadmap' },
-    ],
-  },
-]
+const zhSidebar = createSidebar('zh')
+const enSidebar = createSidebar('en')
+const zhNav = createNav('zh')
+const enNav = createNav('en')
 
 const commonThemeConfig = {
   logo: '/datapack-sandbox-mark.svg',
@@ -358,36 +226,7 @@ export default defineConfigWithTheme<ThemeConfig>({
       md.renderer.rules.cell_demo = () => '<ClientOnly><CellDemo /></ClientOnly>\n'
     },
   },
-  rewrites: {
-    'vscode-extension.zh-CN.md': 'guide/vscode-extension.md',
-    'playground.zh-CN.md': 'guide/playground.md',
-    'playground-styling.zh-CN.md': 'guide/playground-styling.md',
-    'rendering-notebook.zh-CN.md': 'guide/rendering-notebook.md',
-    'getting-started.zh-CN.md': 'guide/getting-started.md',
-    'testing-patterns.zh-CN.md': 'guide/testing-patterns.md',
-    'code-test-api.zh-CN.md': 'guide/code-test-api.md',
-    'troubleshooting.zh-CN.md': 'guide/troubleshooting.md',
-    'command-support.zh-CN.md': 'runtime/command-support.md',
-    'player-events.zh-CN.md': 'runtime/player-events.md',
-    'runtime-world.zh-CN.md': 'runtime/world-model.md',
-    'resource-formats.zh-CN.md': 'resources/resource-formats.md',
-    'version-profile.zh-CN.md': 'resources/version-profile.md',
-    'development-roadmap.zh-CN.md': 'project/development-roadmap.md',
-    'getting-started.md': 'en/guide/getting-started.md',
-    'vscode-extension.md': 'en/guide/vscode-extension.md',
-    'playground.md': 'en/guide/playground.md',
-    'playground-styling.md': 'en/guide/playground-styling.md',
-    'rendering-notebook.md': 'en/guide/rendering-notebook.md',
-    'testing-patterns.md': 'en/guide/testing-patterns.md',
-    'code-test-api.md': 'en/guide/code-test-api.md',
-    'troubleshooting.md': 'en/guide/troubleshooting.md',
-    'command-support.md': 'en/runtime/command-support.md',
-    'player-events.md': 'en/runtime/player-events.md',
-    'runtime-world.md': 'en/runtime/world-model.md',
-    'resource-formats.md': 'en/resources/resource-formats.md',
-    'version-profile.md': 'en/resources/version-profile.md',
-    'development-roadmap.md': 'en/project/development-roadmap.md',
-  },
+  rewrites: docsRewrites,
   head: [
     ['link', { rel: 'icon', href: `${docsBase}datapack-sandbox-mark.svg`, type: 'image/svg+xml' }],
     ['meta', { name: 'theme-color', content: '#07120f' }],

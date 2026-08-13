@@ -1,5 +1,19 @@
 # 命令支持状态
 
+## 适用场景
+
+在依赖某条原版命令、selector 或特殊实体行为之前，用本页确认当前 profile 的解析、行为等级和可观察副作用。
+
+## 前置条件
+
+先确定目标 Minecraft version profile；同名命令在不同 profile 中可能不存在，或采用不同的 unsupported 策略。
+
+## 最小可运行示例
+
+运行 `java -jar cli/build/libs/datapack-sandbox-cli.jar commands --version 26.2`，获取与下方矩阵同源的版本化命令目录。
+
+## 完整能力
+
 默认 profile：Minecraft Java `26.2`，兼容 profile 覆盖到 `1.20.4`。
 
 这个沙盒不嵌入原版服务端。“支持”在这里的意思是：命令会按沙盒当前建模的数据包可见状态执行，并产生确定性结果。网络、权限、世界生成、客户端 UI、红石、实体 AI、完整战斗系统和真实服务端生命周期都不在运行时范围内。
@@ -175,53 +189,35 @@ JSON text component 支持 `text`、`score`、`selector`、`translate`、`keybin
 
 ## 沙盒专用 CLI/REPL 命令
 
-这些是工具命令，不是原版命令：
+下表是 Gradle 防漂移检查使用的精简命令目录。它只标记工具入口和行为等级，不再承载完整用法：
 
-| 命令 | 行为等级 | 用途 |
-|---|---:|---|
-| `event player <name> <type> ...` | `modeled` | 注入玩家事件，用于 advancement/predicate 测试，并更新可观察玩家状态，例如消耗/拾取物品、维度、health、recipe 和输入元数据；交互/攻击事件可通过 selector 或 UUID 定向一个真实实体，写入 interaction action NBT 和 response，并供 `execute on target|attacker` 使用。 |
-| `player <name>` | `modeled` | 创建或复用沙盒玩家。 |
-| `inspect <...>` | `modeled` | 查看世界状态、世界边界、score、storage、gamerule、random sequence、scheduled function、强加载 chunk、scoreboard objective/display、team、bossbar、entity state、blocks、biome override、player、玩家物品槽、玩家 recipe、advancement progress、loot、predicate、advancement、recipe、item_modifier、raw JSON resource、tags、resource index、registry group、outputs 和玩家事件 trace。 |
-| `snapshot [file]` | `modeled` | 打印或写出确定性的世界 JSON。 |
-| `help` | `modeled` | 显示 REPL 帮助。 |
-| `exit`、`quit` | `modeled` | 退出 REPL。 |
-| `reload` | `observed-noop` | REPL 专用，保留世界状态并重载数据包文件。 |
-| `load` | `modeled` | 在 REPL 中运行 `#minecraft:load`。 |
-| `load fixture <file>` | `modeled` | 在 REPL 中应用 manifest-style world JSON fixture。 |
-| `tick [n]` | `modeled` | 在 REPL 中推进 tick。 |
-| `trace <on|off|status>` | `modeled` | 开关 REPL 对新执行命令的自动 trace 输出。 |
-| `diff last` | `modeled` | 输出上一条被跟踪 REPL 命令执行前后的 snapshot diff。 |
-| `rerun last` | `modeled` | 重新执行上一条被跟踪 REPL 命令。 |
-| `reset world` | `modeled` | 用全新的 sparse world 替换当前 REPL 世界。 |
-| CLI `loot --table <id> --context <context>` | | 直接生成 loot table。 |
-| CLI `run --trace --trace-filter <filter>` | | 只打印或写出匹配的 trace 事件；过滤器支持 `root=`、`command=`、`contains=`、`function=`、`file=`、`selector=`/`target=`、`success=`、`error=`/`diagnostic=`、`error-code=`/`diagnostic-code=`、`error-message=`/`diagnostic-message=`、文本型 `output=`、数量/布尔型 `outputs=`、`output-channel=`、`output-payload=<path>[=<json>]`、`diff=`、`path=`、`score=` 和 `storage=`。Trace JSONL 条目会包含每条命令产生的输出事件和 snapshot diff。 |
-| CLI `run --outputs-file <file>` | | 将可观察输出事件写成 JSONL，适合作为 CI artifact 或命令生成器回归测试产物。 |
-| CLI `run --report-file <file>` | | 写出综合 JSON 报告，包括通过状态、断言失败、输出、trace、从失败 trace 提取的 diagnostics、事件 trace、最终 snapshot、snapshot diff、资源摘要和数据包覆盖率明细。 |
-| CLI `run/check --coverage` / `--coverage-file <file>` | | 打印可执行行/函数调用覆盖率，或写出包含逐函数调用次数和逐行命中次数的详细 JSON artifact。`--minimum-line-coverage`（也可写 `--min-coverage`）、`--minimum-function-coverage`、`--coverage-include` 和 `--coverage-exclude` 可设置 CI 阈值及完整资源 ID glob 过滤。 |
-| CLI `run --resources` | | 在轻量验包中打印确定性的资源数量、覆盖诊断和直接缺失资源引用。 |
-| CLI `resources --pack <path>` | | 检查一个或多个数据包的已加载资源索引，包含类型、namespace/id、来源文件、pack 标签、加载顺序、active/overridden 状态、覆盖关系、过滤器（`--type`、`--id`、`--namespace`、`--source-pack`、`--order-min`、`--order-max`、`--active-only`、`--overridden-only`）以及 JSON artifact 输出。 |
-| CLI `resources --registry` | | 导出 version profile 的 registry group 和条目，可用 `--registry-group <group>` 过滤，并支持纯文本或 JSON。 |
-| CLI `run --snapshot-diff` | | 输出执行前后的状态差异，可配合 `--snapshot-diff-file` 写出 JSON。 |
-| CLI `run --stdin` | | 从标准输入读取 `.mcfunction` 文本；`--stdin-mode commands` 会按原始命令行执行 stdin。 |
-| CLI `run --command-file <file>` | | 按参数顺序执行一个或多个原始命令文件，适合命令生成器输出。 |
-| CLI `run --event "<event>"` | | 在轻量 run 流程中注入玩家事件，格式为 `player <name> <type> [id] [detail/action\|x y z\|pos=x,y,z]`，之后可断言玩家状态、sparse-world 方块变化或 `eventTrace`。 |
-| CLI `run --event-file <file>` | | 按文件中的非空、非注释行逐条注入玩家事件，格式与 `--event` 相同。 |
-| CLI `run --event-trace-file <file>` | | 写出玩家事件 trace JSONL，适合作为事件驱动数据包调试和 CI artifact。 |
-| CLI `run --seed <long>` | | 在 world fixture 应用后覆盖轻量运行的世界 seed。 |
-| CLI `run --world` | | 执行前应用 manifest-style world JSON fixture，包括 fixture 引用链。 |
-| CLI `run --strict` | | 将未支持的原版命令视为错误，并让直接缺失资源引用导致运行失败，无需同时写 `--unsupported error` 和 `--fail-on-missing-resources`。 |
-| CLI `run --allow-command-failure` | | 直接 `--command`、`--command-file` 或 `--stdin-mode commands` 报错后继续执行，便于轻量测试断言预期 diagnostic，同时继续检查后续输出或状态。 |
-| CLI `run --max-commands`、`--max-function-depth`、`--max-ticks-per-run`、`--max-output-events`、`--max-snapshot-bytes` | | 覆盖轻量 run 的 sandbox 安全边界，用于阻止 runaway 生成命令、递归函数、过大的 tick 请求、无限输出或巨大 snapshot。 |
-| CLI `run --assert`、`run --assert-file` | | 执行后评估内联或文件形式的 manifest assertion，包括最终 `snapshot` 等值/存在性断言，以及需要执行前后上下文的 `snapshotDiff` 断言。Manifest output assertion 支持 exact、contains、正则 `matches`、normalized text、normalized regex、segment、payload、count 和 order 字段；storage 和 NBT/component path expectation 支持 `equals`、`exists`/`missing`、`contains` 和正则 `matches`。`--assert-file` 支持 JSON object/array 文件，也支持非空、非注释行逐行写 shorthand。简写包括 `score:<target>:<objective>=N`、`score:<target>:<objective>>=N`、`score:<target>:<objective><=N`、`storage:<id>[:<path>]=<json>`、`storage:<id>[:<path>]?`、`storage:<id>[:<path>]!`、`advancement:<player>:<id>[=<true\|false>][:done=<true\|false>][:criterion=<name>][:criterionDone=<true\|false>]`、`predicate:<id>[=<true\|false>][:player=<name>][:equals=<true\|false>]`、`loot:<table>[:context=<id>][:player=<name>][:seed=N][:count=N][:item=<id>]`、`player:<name>[:<field>=<value>]`、`world:<field>=<value>`、`gamerule:<rule>=<value>`、`gamerule:<rule>?`、`gamerule:<rule>!`、`random-sequence:<name>=N`、`snapshot:<path>=<json>`、`snapshot:<path>?`、`snapshot:<path>!`、`block:<x>,<y>,<z>=<id>`、`block:<x>,<y>,<z>?`、`block:<x>,<y>,<z>!`、`biome:<x>,<y>,<z>=<id>`、`team:<name>?`、`team:<name>!`、`team:<name>@<member>`、`team:<name>=N`、`bossbar:<id>?`、`bossbar:<id>!`、`bossbar:<id>:<field>=<value>`、`item:<player>:<id>[@slot]=N`、`entity:<type|*>[@tag]=N`、`diff:<json-pointer>[=<kind>]`、`event-trace:<player>:<type>[@x,y,z][=N]`、`trace:<root>=N`、`trace:<text>`、`trace-output:<text>[@target]`、`diagnostic=N`、`diagnostic:<code>=N`、`diagnostic:<code>:<text>[=N]`、`warning=N`、`warning:<text>`、`unsupported=N`、`unsupported:<text>`、`output:<text>`、`output-count:<text>=N`、`output-order:<N>:<text>`、`output-exact:<text>`、`output-matches:<regex>`、`output-command:<command>=N`、`output-command:<command>?`、`output-command:<command>!`、`output-channel:<channel>=N`、`output-channel:<channel>?`、`output-channel:<channel>!`、`output-target:<target>=N`、`output-target:<target>?`、`output-target:<target>!`、`output-normalized:<text>`、`output-normalized-exact:<text>`、`output-normalized-matches:<regex>`、`output-segment:<text>[|color=<color>|bold=<true\|false>][@target]`、`output-segment-exact:<text>[|color=<color>|bold=<true\|false>][@target]`、`output-segment-matches:<regex>[|color=<color>|bold=<true\|false>][@target]` 和 `output-payload:<command>:<path>[=<json>]`。 |
-| Assertion shorthand `scheduled:<id>` | | 用 `scheduled:<id>=<dueTick>`、`scheduled:<id>?` 或 `scheduled:<id>!` 检查 scheduled function snapshot 状态。 |
-| Manifest assertion `gamerule` | | 用类型化 `.dps.json` 字段检查已保存的 gamerule 值和缺失规则。 |
-| Manifest assertions `randomSequence` / `forcedChunk` | | 用类型化 `.dps.json` 字段检查确定性随机序列状态和强加载 chunk 存在性。 |
-| Assertion shorthand `scoreboard-objective:<name>` | | 用 `scoreboard-objective:<name>?`、`scoreboard-objective:<name>!` 或 `scoreboard-objective:<name>:<field>=<value>` 检查 objective 元数据，字段支持 `criteria`、`displayName`、`renderType` 和 `displayAutoUpdate`。 |
-| Assertion shorthand `scoreboard-display:<slot>` | | 用 `scoreboard-display:<slot>=<objective>`、`scoreboard-display:<slot>?` 或 `scoreboard-display:<slot>!` 检查 objective display slot，支持 `sidebar.team.red` 这类带点 slot。 |
-| Manifest assertions `scoreboardObjective` / `scoreboardDisplay` | | 用类型化 `.dps.json` 字段检查 objective 元数据和 display slot，不必手写 snapshot path。 |
-| Assertion shorthand `forced-chunk:<x>,<z>` / `forceload:<x>,<z>` | | 用 `forced-chunk:<x>,<z>?`、`forced-chunk:<x>,<z>!` 或 `forceload:` 别名检查最终 forced chunk snapshot 状态。 |
-| CLI `diff <before.json> <after.json>` / `diff --script <manifest.dps.json>` | | 比较两份确定性 JSON snapshot 或 report，并输出字段级 JSON Pointer 差异；`--snapshot` 可从 run/check report 抽取单个 `snapshot` 字段，`--state` 可忽略 trace bookkeeping，`--json --output <file>` 写出差异 artifact，`--check` 在存在差异时返回非零退出码。`--script --output <file>` 可把 manifest 命令/函数步骤导出为外部原版或第三方差分 harness 可重放的命令脚本，并把沙盒专用步骤保留为注释。 |
-| CLI `benchmark` | | 运行内置性能 smoke 场景，覆盖 scoreboard 批量写入、大 storage merge、函数调用链和批量 manifest 执行；可选 `--pack` 测量 pack 加载，可选 `--loot-table` 抽样 loot 生成，`--json --output <file>` 可写出 benchmark artifact。 |
-| CLI `run --fail-on-missing-resources` | | 在轻量 run 中把 load/tick 标签、advancement parent/reward、predicate/loot/item modifier 资源中的 predicate reference 和嵌套 loot table 的直接缺失资源引用视为失败，适合在编写完整 manifest 前快速验包。 |
-| CLI `check <manifest-or-directory>` | | 运行 `.dps.json` 清单；manifest `include` 可共享 world fixture、steps、assertions、coverage 要求和公共/default pack matrix，并会把公共 pack 排在 case-local pack 之前；`--validate-schema` 会在执行前校验 manifest 结构；`--fail-on-missing-resources` 会把直接资源缺失引用视为失败；`--strict` 会组合 schema 校验、unsupported-command error 和直接缺失引用失败；`--max-commands`、`--max-function-depth`、`--max-ticks-per-run`、`--max-output-events` 和 `--max-snapshot-bytes` 会覆盖每次 attempt 的 sandbox 安全边界；`--verbose` 会打印资源摘要、覆盖条目、缺失引用和输出事件；可用 `--snapshot-diff-on-fail` 输出状态差异，也可用 `--trace-file`、`--trace-filter`、`--outputs-file`、`--event-trace-file`、`--coverage-file` 和 `--report-file` 写出 CI artifact。Report JSON 会按 attempt 包含输出、命令 trace、从失败 trace 提取的 diagnostics、玩家事件 trace、最终 snapshot、snapshot diff、资源摘要和覆盖率明细。 |
-| CLI `schema [--output <file>]` | | 打印或写出内置 `.dps.json` manifest JSON Schema，用于编辑器和 CI 集成。 |
+| 工具入口 | 行为等级 | 权威说明 |
+| --- | --- | --- |
+| `event player <name> <type> ...` | `modeled` | [玩家事件](/runtime/player-events) |
+| `inspect <target>` | `modeled` | [REPL 调试](/workflows/repl) |
+| `load` | `modeled` | [REPL 调试](/workflows/repl) |
+| `trace <on\|off\|status>` | `modeled` | [报告与可观测性](/reference/reports-observability) |
+| `diff last` | `modeled` | [REPL 调试](/workflows/repl) |
+| `rerun last` | `modeled` | [REPL 调试](/workflows/repl) |
+| `exit` | `modeled` | [REPL 调试](/workflows/repl) |
+| `quit` | `modeled` | [REPL 调试](/workflows/repl) |
+
+本节原有的工具命令、运行参数、断言简写和 artifact 附录已经按任务拆分：
+
+- 使用方式和完整参数见 [CLI 参考](/reference/cli)。
+- 持久世界中的 `inspect`、`trace`、`diff last`、`rerun last` 与重载流程见 [REPL 调试](/workflows/repl)。
+- trace、outputs、snapshot diff、coverage 和 report 的格式与筛选规则见 [报告与可观测性](/reference/reports-observability)。
+- Manifest steps/assertions 的类型化字段见 [Manifest 参考](/reference/manifest)。
+
+这里保留原标题，确保已有深链接仍能到达新的权威入口。
+
+## 限制
+
+矩阵描述的是洁净室沙盒的可观察模型，不承诺完整原版副作用；网络、权限、客户端 UI、世界生成、红石、实体 AI 和完整战斗仍在范围外。
+
+## 相关页面
+
+- [CLI 参考](/reference/cli)
+- [REPL 调试](/workflows/repl)
+- [报告与可观测性](/reference/reports-observability)
+- [版本 Profile](/resources/version-profile)

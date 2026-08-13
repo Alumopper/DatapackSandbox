@@ -1,5 +1,19 @@
 # Troubleshooting
 
+## When to use this page
+
+Start here when builds, resource loading, commands, selectors, outputs, or assertions do not behave as expected.
+
+## Prerequisites
+
+Keep the failing command, active version profile, complete diagnostics, and report. Preserve the matching CI artifact when the problem occurs only in automation.
+
+## Minimal runnable example
+
+Run `java -jar cli/build/libs/datapack-sandbox-cli.jar check --strict --verbose examples`, then route from the first structured error code to the matching section.
+
+## Full capabilities
+
 This page is organized by what you see when a test fails. Identify the failure category first, then decide whether to change the test, change the datapack, or keep the issue as a warning.
 
 ## Quick Diagnosis
@@ -158,3 +172,14 @@ During debugging, use contains, range, and existence assertions. Once stable, sw
 | `assertScoreAtLeast(...)` | `assertScore(...)` |
 | `assertEntityCountAtLeast(...)` | `assertEntityCount(...)` |
 | `report()` | `requirePassed()` |
+
+## Limitations
+
+These diagnoses cover the sandbox model. Problems that depend on client behavior, networking, redstone, entity AI, or the full server lifecycle need additional validation in a vanilla environment.
+
+## Related pages
+
+- [CLI Reference](/en/reference/cli)
+- [Reports and Observability](/en/reference/reports-observability)
+- [Command Support](/en/runtime/command-support)
+- [Resource Formats](/en/resources/resource-formats)

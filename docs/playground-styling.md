@@ -1,5 +1,19 @@
 # Playground CSS customization
 
+## When to use this page
+
+Use this page when an embedded `DpsPlayground` or `DpsCell` must match a host site's brand, color mode, or layout.
+
+## Prerequisites
+
+Complete the [Playground integration](/en/guide/playground), import the component's default stylesheet, and give the instance a site-specific class.
+
+## Minimal runnable example
+
+Load an override stylesheet after the package CSS and set `--dps-accent` on `.dps-playground.docs-sandbox`; the example below is directly reusable.
+
+## Full capabilities
+
 `@datapack-sandbox/vitepress-playground` ships complete default styles, but its colors, type, borders, shadows, spacing, and selected internal regions can be adapted to a host site. The preferred customization surface is the set of `--dps-*` custom properties on the component root. Class selectors are available for narrower structural changes.
 
 This page applies to both `DpsPlayground` and `DpsCell`. Both render one `.dps-playground` root and merge a consumer-provided `class` or `style` onto that element.
@@ -211,3 +225,13 @@ If an override does not appear:
 6. Check contrast, focus visibility, disabled state, and both color modes after changing tokens. Avoid removing the component's focus outlines or reduced-motion behavior.
 
 Continue with the [Interactive playground guide](/en/guide/playground) for component props, imports, Worker lifecycle, and viewport behavior.
+
+## Limitations
+
+CSS can style the component and viewport frame but cannot recolor the Minecraft scene drawn into the canvas. Generated hashes, `data-v-*`, and CodeMirror internals are not stable interfaces.
+
+## Related pages
+
+- [Playground Integration](/en/guide/playground)
+- [Playground API Reference](/en/reference/playground-api)
+- [Rendering and Realtime Viewport](/en/guide/rendering-notebook)

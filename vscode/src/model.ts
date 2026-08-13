@@ -5,11 +5,14 @@ export interface OutputEvent { tick: number; command: string; channel: string; t
 export interface TraceEvent { tick: number; command: string; root: string; success: boolean; commandsExecuted: number; outputs: number; executor?: string; position?: { x: number; y: number; z: number }; source?: SourceLocation; outputEvents?: OutputEvent[]; snapshotDiffs?: SnapshotDiff[]; errorCode?: string; errorMessage?: string; }
 export interface PlayerEventTraceEvent { tick: number; playerName: string; type: string; success: boolean; errorCode?: string; errorMessage?: string; [key: string]: unknown; }
 export interface DiagnosticReport { code?: string; message?: string; version?: string; command?: string; source?: SourceLocation; }
-export interface ResourceEntry { type: string; id: string; file: string; pack: string; active: boolean; behavior: string; }
+export interface ResourceEntry { type: string; id: string; file: string; pack: string; order?: number; active: boolean; behavior: string; overrides?: string; overriddenBy?: string; }
 export interface ResourceReport { summary?: Record<string, unknown>; resources?: ResourceEntry[]; functionIds?: string[]; lootTableIds?: string[]; predicateIds?: string[]; advancementIds?: string[]; }
 export interface FunctionSource { id: string; file?: string; source: string; }
 export interface RenderResult { mimeType: "image/png"; encoding: "base64"; data: string; width: number; height: number; metadata: Record<string, unknown>; }
 export interface CheckpointResult { names: string[]; name?: string; action?: "saved" | "restored" | "deleted"; changed?: boolean; state?: Record<string, unknown>; }
+export interface FunctionCoverageLine { line: number; command: string; covered: boolean; hits: number; }
+export interface FunctionCoverage { id: string; file?: string; covered: boolean; invocations: number; coveredLines: number; totalLines: number; linePercentage: number; lines: FunctionCoverageLine[]; }
+export interface CoverageReport { coveredLines: number; totalLines: number; linePercentage: number; coveredFunctions: number; totalFunctions: number; functionPercentage: number; functions: FunctionCoverage[]; failures: string[]; passed: boolean; }
 export interface ServeHello { protocol: string; defaultVersion: string; versions: string[]; capabilities: Record<string, boolean | string>; }
 export interface RunReport { version: string; passed: boolean; gameTime: number; commands: number; entities: number; assertionFailures: string[]; outputs: OutputEvent[]; traces: TraceEvent[]; diagnostics: DiagnosticReport[]; snapshot: unknown; snapshotDiffs: SnapshotDiff[]; resources?: ResourceReport; }
 export interface ManifestAttemptReport extends Partial<RunReport> { version: string; packs: string[]; passed: boolean; messages: string[]; }

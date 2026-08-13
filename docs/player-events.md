@@ -1,5 +1,19 @@
 # Player Events
 
+## When to use this page
+
+Use player events when datapack logic depends on item use, entity interaction, damage, dimension changes, block actions, or keyboard and mouse input.
+
+## Prerequisites
+
+Prepare a loadable datapack and at least one sandbox player. Prefer a manifest world fixture when the event needs richer context.
+
+## Minimal runnable example
+
+Start the [REPL](/en/workflows/repl), run `event player Steve item_used minecraft:carrot_on_a_stick`, then inspect the dispatch with `inspect event-traces`.
+
+## Full capabilities
+
 `event` is a sandbox command, not a vanilla Minecraft command. It injects a
 data-pack-visible player behavior into the runtime. The sandbox does not
 simulate full client input, physics, or combat AI; events feed predicate
@@ -185,3 +199,14 @@ manifest `eventTrace` assertions. `eventTrace` can filter by player/type/success
 criterion, item/entity/block/recipe ids, dimension changes, damage
 source/amount, keyboard/mouse input device/code/action, and failed advancement
 criteria with readable reasons.
+
+## Limitations
+
+An event represents an already-resolved high-level player action. It does not simulate real client input, raycasts, pathfinding, physics, or full combat; use manifest JSON for richer context.
+
+## Related pages
+
+- [Debug with the REPL](/en/workflows/repl)
+- [Manifest Regression Tests](/en/workflows/manifest-tests)
+- [Runtime World Model](/en/runtime/world-model)
+- [Reports and Observability](/en/reference/reports-observability)

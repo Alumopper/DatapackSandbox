@@ -1,5 +1,19 @@
 # 测试模式
 
+## 适用场景
+
+当你需要为单个函数、完整数据包、玩家事件、生成器产物或多版本行为选择测试形态时，使用本页。
+
+## 前置条件
+
+先完成 [安装与获取](/workflows/installation)，并根据入口准备 CLI JAR 或 `testkit` 依赖。
+
+## 最小可运行示例
+
+从下方的[单函数行为测试](#模式-1单函数行为测试)开始：它不需要创建完整数据包，且能同时验证最终状态和命令 trace。
+
+## 完整能力
+
 这页按开发者任务组织测试写法。你可以把它当作 cookbook：先找到测试目标，再复制对应结构，最后按项目资源替换函数、玩家、scoreboard 或 storage 名称。
 
 ## 选哪种测试
@@ -170,3 +184,14 @@ fun unsupportedCommandReportsWarningButDoesNotAbort()
 ```
 
 这样 report 失败时可以直接映射到用户场景。
+
+## 限制
+
+这些模式只覆盖沙盒建模的数据包可见行为；客户端 UI、物理、实体 AI 和完整服务端生命周期不属于测试环境。
+
+## 相关页面
+
+- [Manifest 回归测试](/workflows/manifest-tests)
+- [QuickTest fixture 参考](/reference/quicktest-fixtures)
+- [QuickTest 断言参考](/reference/quicktest-assertions)
+- [报告与可观测性](/reference/reports-observability)

@@ -1,5 +1,19 @@
 # 排障手册
 
+## 适用场景
+
+当构建、资源加载、命令执行、selector、输出或断言结果不符合预期时，从本页按症状定位。
+
+## 前置条件
+
+保留失败命令、使用的 version profile、完整诊断和 report；若问题只在 CI 出现，也保留对应 artifact。
+
+## 最小可运行示例
+
+先运行 `java -jar cli/build/libs/datapack-sandbox-cli.jar check --strict --verbose examples`，再按首个结构化错误码进入对应章节。
+
+## 完整能力
+
 这页按“你看到了什么错误”组织。先定位错误类别，再决定是改测试、改数据包，还是只记录 warning。
 
 ## 快速判断
@@ -158,3 +172,14 @@ diff 适合排查：
 | `assertScoreAtLeast(...)` | `assertScore(...)` |
 | `assertEntityCountAtLeast(...)` | `assertEntityCount(...)` |
 | `report()` | `requirePassed()` |
+
+## 限制
+
+排障结论只针对沙盒建模范围；若问题依赖客户端、网络、红石、实体 AI 或完整服务端生命周期，需要在原版环境补充验证。
+
+## 相关页面
+
+- [CLI 参考](/reference/cli)
+- [报告与可观测性](/reference/reports-observability)
+- [命令支持状态](/runtime/command-support)
+- [资源格式](/resources/resource-formats)

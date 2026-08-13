@@ -1,23 +1,22 @@
-# Interactive playground
+# Interactive Playground
 
-`@datapack-sandbox/vitepress-playground` adds persistent MCFunction notebook cells to a VitePress page. Execution, completion, diagnostics, imported files, world state, and approximate rendering stay inside a dedicated browser Worker. No Java service, WebSocket endpoint, Docker image, or CORS allowlist is required.
+## When to use this page
+
+Use `@datapack-sandbox/vitepress-playground` to embed an executable MCFunction notebook or a single command cell in VitePress. Execution, completion, diagnostics, imported files, world state, and approximate rendering stay in a browser Worker; no Java service is deployed.
 
 [[playground-demo]]
 
-The example above starts a new isolated Worker after the component mounts. User files are read into transferable `ArrayBuffer` values and are never uploaded or written to IndexedDB/OPFS. Refreshing the page discards the session.
+## Prerequisites
 
-The Worker executes the same `:core` runtime used by the JVM CLI, compiled to an ES module with TeaVM. Commands, selectors, scoreboards, storage, entities, scheduling, player events, checkpoints, and snapshots therefore use one implementation on both targets. In-memory datapack imports build the same function, tag, predicate, loot table, advancement, recipe, item modifier, and observed JSON resource models. TeaVM and the generated Worker are build-time artifacts only; the deployed page remains pure frontend.
-
-## Install
+Target browsers need module Workers, transferable `ArrayBuffer`, Blob URLs, Web Crypto, and `createImageBitmap`/OffscreenCanvas for rendering.
 
 ```bash
 npm install @datapack-sandbox/vitepress-playground
 ```
 
-Keep the package out of Vite's development dependency pre-bundle so its relative Worker URL stays anchored to the published `dist` module. The root package entry also covers the `/cell` export:
+Exclude the package from Vite's development pre-bundle so the Worker URL remains relative to its published `dist` module:
 
 ```ts
-// .vitepress/config.mts
 import { defineConfig } from 'vitepress'
 
 export default defineConfig({
@@ -29,35 +28,34 @@ export default defineConfig({
 })
 ```
 
-This uses [Vite's documented `optimizeDeps.exclude` option](https://vite.dev/config/dep-optimization-options#optimizedeps-exclude). After changing an existing site, restart `vitepress dev` with `--force` once to invalidate its previous dependency cache.
-
-Register the component in a VitePress theme or import it from a client-only Vue component:
-
-```ts
-import DpsPlayground from '@datapack-sandbox/vitepress-playground'
-import '@datapack-sandbox/vitepress-playground/style.css'
-```
-
-To match the component to an existing site, see [Playground CSS customization](/en/guide/playground-styling) for the supported theme variables, dark-mode selectors, scoped-style pattern, and structural hooks.
+## Minimal runnable example
 
 ```vue
-<DpsPlayground
-  :notebook="{
-    version: '26.2',
-    cells: [
-      { type: 'markdown', source: '# Persistent local world' },
-      { id: 'setup', type: 'code', source: 'setblock 0 0 2 minecraft:stone' },
-    ],
-  }"
-  :render="{ auto: true, width: 960, height: 540 }"
-/>
+<script setup lang="ts">
+import DpsPlayground from '@datapack-sandbox/vitepress-playground'
+import '@datapack-sandbox/vitepress-playground/style.css'
+
+const notebook = {
+  version: '26.2',
+  cells: [
+    { type: 'markdown', source: '# Persistent local world' },
+    { id: 'setup', type: 'code', source: 'setblock 0 0 2 minecraft:stone' },
+  ],
+}
+</script>
+
+<template>
+  <DpsPlayground :notebook="notebook" :render="{ auto: true }" />
+</template>
 ```
 
-The component is SSR-safe: it creates a module Worker only after browser mount. The UI entry does not statically include the Kotlin runtime; Vite emits a separate content-hashed Worker asset.
+The component is SSR-safe and creates its isolated module Worker only after browser mount. Refreshing or unmounting destroys the in-memory session; imported content is neither uploaded nor persisted to IndexedDB/OPFS.
 
-## Single-cell embed
+## Full capabilities
 
-Use the separate `cell` entry when an example only needs one editable command cell and its execution result. `DpsCell` has no notebook toolbar, interactive imports, or Markdown cells. Its header keeps **Run** visible and groups rendering, a reusable state point, GIF frame capture/export, and **Reset example** under **More**.
+### Single-cell embed
+
+Use the `/cell` entry for one editable example. It retains completion, diagnostics, keyboard execution, rendering, checkpoints, and GIF export while omitting the notebook toolbar and Markdown cells.
 
 [[cell-demo]]
 
@@ -71,218 +69,73 @@ const source = ref('say embedded example')
 </script>
 
 <template>
-  <DpsCell
-    v-model="source"
-    version="26.2"
-    :dependencies="[
-      { kind: 'datapack', url: '/examples/shared-functions.zip' },
-      { kind: 'resource-pack', url: '/examples/preview-assets.zip', sha256: '…' },
-    ]"
-  />
+  <DpsCell v-model="source" version="26.2" />
 </template>
 ```
 
-Dependencies are fetched in declaration order before `ready`; later packs override earlier packs. They support optional SHA-256 verification, remain in session memory after **Reset example**, and are reloaded automatically if the Worker is rebuilt. Automatic PNG rendering after **Run** is disabled by default, while **Render** remains available from **More**. Opt in to automatic rendering with `:render="{ auto: true, width: 640, height: 360 }"`.
+### Presets, dependencies, and imports
 
-Each successful execution records a GIF frame by default. **Add frame** captures the current world without executing source; **Export GIF** downloads all recorded frames. **Save point** records the complete modeled world, outputs, and traces, while **Return** restores that point without consuming it. Datapack/resource-pack inputs and safety-budget counters are session configuration rather than checkpoint state.
+`presets` registers static ZIPs by id with optional `sha256` verification. `dependencies` load in declaration order before `ready`, with later packs overriding earlier ones. Built-in pickers and drag-and-drop accept datapacks, resource packs, client JARs, and world directories or ZIPs.
 
-Without `sandbox-id`, each `DpsCell` owns an isolated local Worker session. It supports completion and diagnostics and runs with <kbd>Ctrl/⌘</kbd>+<kbd>Enter</kbd>. It additionally exposes `savePoint()`, `returnToPoint()`, `captureAnimationFrame()`, and `exportGif()`, and emits `gif` and `checkpoint` alongside `ready`, `executed`, and `error`.
+Every path is normalized to `/`. Absolute paths, drive paths, `..`, control characters, duplicate entries, and archives over budget are rejected. A Minecraft client JAR is read only for models and textures; its classes are never executed.
 
-Execution summaries include an expandable **Command outputs** list with the command, readable text, channel, tick, and targets; the structured JSON remains available separately. Hold <kbd>Ctrl</kbd>/<kbd>⌘</kbd> and click the resource id after any `function` command to open the effective imported `.mcfunction` source. Nested calls form a breadcrumb stack; **Back** or <kbd>Alt</kbd>+<kbd>←</kbd> returns one caller level. Function resolution follows the same pack priority as execution.
+### Supply client assets manually
 
-## Component API
+The Web renderer does not bundle or download Minecraft client assets, consume a server/JVM filesystem path, or automatically inspect the browser machine's `.minecraft` directory. For matching-version models and textures, click **Import files** in the component (or drop a file) and select the local client JAR; `.jar` files are inferred as `client-jar`. The import lives only in the current Worker session, so select it again after a page refresh or session disposal.
 
-| Prop | Type | Default | Meaning |
-| --- | --- | --- | --- |
-| `notebook` | `PlaygroundNotebook` | required | Version, ordered cells, and optional preset id. |
-| `theme` | `auto \| light \| dark` | `auto` | Explicit theme or VitePress dark-mode inheritance. |
-| `layout` | `notebook \| compact` | `notebook` | Full notebook or reduced spacing. |
-| `read-only` | `boolean` | `false` | Prevent source edits while keeping execution available. |
-| `render` | `PlaygroundRenderOptions` | auto, `960×540` | Automatic rendering and default dimensions. |
-| `animation` | `PlaygroundAnimationOptions` | `480×270`, 250 ms, loop | GIF dimensions, frame delay, repeat count, and capture-on-execute behavior. |
-| `checkpoint-name` | `string` | component-specific | Name used by the built-in Save point/Return controls. |
-| `actions` | `PlaygroundActionConfig` | component defaults | Place each action in the primary bar or menu, or hide it. |
-| `locale` | `en \| zh-CN` | `en` | Built-in action-button language. |
-| `labels` | `Partial<PlaygroundLabels>` | `{}` | Override individual built-in button labels for the embedding site. |
-| `presets` | `Record<string, { url; sha256? }>` | `{}` | Static ZIP registry fetched lazily from same-origin or CORS-enabled URLs. |
-| `allow-import` | `boolean` | `true` | Show file/folder import controls and accept drops. |
-| `limits` | `PlaygroundBrowserLimits` | browser defaults | Per-instance stability budgets and watchdog timings. |
-| `worker-url` | `string` | packaged asset | Override only when self-hosting the Worker artifact. |
-| `site-id` | `string` | omitted | Optional embedding-site label carried in session creation. |
-| `sandbox-id` | `string` | omitted | Page-local world id. Equal non-empty ids share one serialized session; omission creates an independent sandbox. |
-
-### Action placement
-
-`actions` is a partial map from action id to `primary`, `menu`, or `hidden`. Omitted ids keep their component default, so an embedding site only needs to declare its overrides:
-
-```vue
-<script setup lang="ts">
-import type { PlaygroundActionConfig } from '@datapack-sandbox/vitepress-playground'
-
-const actions = {
-  'run-all': 'primary',
-  interrupt: 'hidden',
-  render: 'hidden',
-  'reset-sandbox': 'menu',
-  'import-files': 'hidden',
-  'import-folder': 'hidden',
-} satisfies PlaygroundActionConfig
-</script>
-
-<template>
-  <DpsPlayground :notebook="notebook" :actions="actions" />
-</template>
-```
-
-The complete action ids are `run`, `render`, `run-all`, `interrupt`, `save-point`, `return-to-point`, `capture-frame`, `export-gif`, `reset-sandbox`, `restore-example`, `import-files`, `import-folder`, and `restart-sandbox`. A `DpsPlayground` configuration applies to both its top toolbar and code-cell headers; ids unsupported by a particular action bar are ignored. By default, the full playground keeps **Run all** and **Interrupt** in the top bar and puts its less common actions in **More**. `DpsCell` keeps only **Run** in the header; `compact` cells hide advanced actions unless `actions` explicitly places them.
-
-Set `locale="zh-CN"` to use the built-in Chinese action labels. Website-specific wording can be supplied without replacing the locale catalog, for example `:labels="{ runAll: 'Execute notebook' }"`. `DpsPlayground`, `DpsCell`, and standalone `DpsViewport` instances support these props.
-
-`ready(sessionId)` fires after the local session and optional preset are ready. `error({ code, message })` reports execution, import, integrity, and lifecycle failures.
-
-The notebook schema remains stable:
+When you own the session, explicitly pass the bytes from a browser `File`:
 
 ```ts
-interface PlaygroundNotebook {
-  version: string
-  preset?: string
-  cells: Array<
-    | { id?: string; type: 'markdown'; source: string }
-    | { id?: string; type: 'code'; source: string }
-  >
-}
+await session.connect()
+await session.importArchive(
+  'client-jar',
+  clientJar.name,
+  await clientJar.arrayBuffer(),
+)
 ```
 
-Cells execute in order against one persistent world. **Reset sandbox** creates a fresh world while preserving edited source. **Restore example** restores the original notebook, clears output, and creates a fresh world.
+`dependencies` declares datapacks and resource packs only; it cannot implicitly load a client JAR. The Worker extracts only `assets/` entries from that JAR and never executes class files. See [Playground API Reference](/en/reference/playground-api#client-asset-import) for the complete types and budgets.
 
-## Presets and imports
+### Shared worlds and the realtime viewport
 
-Register immutable preset ZIPs by id:
-
-```vue
-<DpsPlayground
-  :notebook="{ version: '26.2', preset: 'starter', cells }"
-  :presets="{
-    starter: {
-      url: '/playground-presets/starter.4f2d.zip',
-      sha256: 'b4f0…64 hexadecimal characters…',
-    },
-  }"
-/>
-```
-
-The ZIP is fetched only when selected. When `sha256` is present, the browser verifies it before transferring the archive to the Worker.
-
-The built-in picker, directory picker, and drop target accept datapack ZIPs/directories, resource packs, client JARs, and world directories/ZIPs. Inputs that cannot be identified unambiguously display a type selector. Every virtual path is normalized to `/`; absolute paths, drive paths, `..`, control characters, and duplicate entries are rejected. Datapack functions under both current `data/<namespace>/function` and legacy `functions` directories become available to `function` commands.
-
-Rendering uses the same perspective camera, blockstate/model baking, depth buffer, texture sampling, lighting, and fog math as the JAR fallback renderer. Imported resource packs and client JARs supply model JSON and PNG textures; only assets referenced by the current scene are decoded, and they remain in memory for the session.
-
-`block_display`, `item_display`, and `text_display` use the same normalized
-display state on JVM and Web. This includes transformations, fixed/vertical/
-horizontal/center billboards, brightness and shadow controls, readable styled
-text, modern item-definition lookup, generated sprite extrusion, model display
-transforms, and tick/teleport interpolation. Decomposed transforms linearly
-interpolate translation and scale while using normalized shortest-arc SLERP for
-both quaternions; 16-number matrices retain component-wise linear interpolation.
-Import the matching client JAR or resource pack when the example
-depends on vanilla or custom visual assets.
-
-## Limits and lifecycle
-
-Defaults are stability budgets, not a browser security boundary:
-
-| Limit | Default |
-| --- | ---: |
-| Cell source | 64 KiB |
-| Structured output | 1 MiB |
-| Commands per execution | 10,000 |
-| Output events | 2,000 |
-| Render size | 1,920 × 1,080 |
-| Named checkpoints | 32, 8 MiB each |
-| GIF recording | 120 frames, 64 MiB RGBA |
-| Expanded imports | 64 MiB |
-| Imported files | 16,384 |
-| Request watchdog | 15 s |
-| Cancellation grace | 2 s |
-
-Execution yields at MCFunction command boundaries. **Interrupt** sets a cancellation flag, so state from completed commands remains. If a request ignores cancellation past the grace period, the client terminates and rebuilds the Worker, rejects in-flight work with `SESSION_LOST`, and creates a clean session automatically.
-
-Each component owns exactly one Worker. Multiple components never share world state. Unmounting terminates the Worker and revokes every render Blob URL.
-
-## Worker protocol
-
-`PlaygroundWorkerClient` replaces the removed WebSocket `PlaygroundClient` export. It preserves request ids, request names, event names, and stable error objects. Supported requests are:
-
-- `session.create`, `session.reset`, `session.interrupt`, `session.close`, `session.import`, and `session.function.read`
-- `session.checkpoint.save`, `.restore`, `.delete`, and `.list`
-- `cell.execute`, `cell.complete`, `cell.check`, and `cell.render`
-- `animation.capture`, `animation.export`, and `animation.clear`
-
-Execution emits `cell.status`, `cell.output`, `diagnostic`, `cell.render`, and `cell.error`. Render events use `bytes: ArrayBuffer` with `mimeType: image/png`; GIF exports use the same transferable shape with `mimeType: image/gif`. Neither format uses base64.
-
-Common codes include `INVALID_REQUEST`, `PROFILE_NOT_ALLOWED`, `CELL_TOO_LARGE`, `COMMAND_LIMIT`, `OUTPUT_LIMIT`, `RENDER_SIZE_LIMIT`, `BUSY`, `INTERRUPTED`, `SESSION_LOST`, `FUNCTION_NOT_FOUND`, `FUNCTION_TAG_NOT_BROWSABLE`, `CHECKPOINT_NOT_FOUND`, `CHECKPOINT_LIMIT`, `ANIMATION_EMPTY`, `ANIMATION_FRAME_LIMIT`, `ANIMATION_SIZE_LIMIT`, `IMPORT_PATH_INVALID`, `IMPORT_CONFLICT`, `IMPORT_FILE_LIMIT`, `IMPORT_SIZE_LIMIT`, and `PRESET_INTEGRITY_FAILED`.
-
-## Rendering boundary
-
-Rendering uses the project's deterministic clean-room software rasterizer. It returns RGBA-derived PNG output and metadata with `lightingModel: approximate` and `visualParity: false`. GIF frames use the shared Kotlin adaptive-palette/LZW encoder, so JVM and Web exports from identical RGBA frames are byte-for-byte consistent. Screenshots must not be described as pixel-perfect vanilla output. Custom font-provider stacks, multi-layer/special item models, glow outlines, the client light map, and post-processing remain outside the parity claim. Imported resource assets are session inputs; unsupported asset details fall back to deterministic procedural colors.
-
-## Static deployment
-
-Build VitePress normally:
-
-```bash
-npm ci
-npm run docs:build
-```
-
-Deploy the generated static directory. Keep content-hashed Worker/profile assets cacheable with a long immutable lifetime, while the HTML entry uses normal revalidation. A custom `worker-url` must be same-origin or served with headers that allow a module Worker. No Java runtime, reverse-proxy upgrade configuration, API origin allowlist, or Docker service is involved.
-
-If local development reports **Local sandbox unavailable** and the failed Worker URL contains `/deps/assets/worker-`, the package is still being dependency-pre-bundled. Add the `optimizeDeps.exclude` configuration from [Install](#install), stop the old dev server, and restart it with `--force`. A production build does not need a manually copied Worker.
-
-Modern browsers must support module Workers, transferable `ArrayBuffer`, `createImageBitmap`/`OffscreenCanvas`, Blob URLs, and Web Crypto for optional preset integrity checks.
-
-## Realtime WebGL viewport
-
-Pass `viewport` to `DpsPlayground` or `DpsCell`, or mount `DpsViewport` directly. A shared
-`PlaygroundSessionController` keeps all components on one Worker-owned world:
-
-```ts
-const session = new PlaygroundSessionController({ notebook })
-```
-
-For declarative page-local sharing, set the same `sandbox-id` on multiple components:
+Components on one page can share a serialized Worker session by using the same `sandbox-id`:
 
 ```vue
 <DpsCell v-model="builder" sandbox-id="tutorial-world" />
 <DpsCell v-model="inspector" sandbox-id="tutorial-world" :viewport="true" />
 ```
 
-Each editor retains independent source, diagnostics, and output. Commands, rendering, imports,
-checkpoints, resets, and viewport state target the same Worker world, and session operations are
-serialized so only one editor operates on it at a time. The first mounted component initializes the
-version, preset, and dependencies; later components with that ID must use the same Minecraft
-version. The shared Worker is disposed after the last matching component unmounts. Omitting
-`sandbox-id` always creates a unique, component-owned sandbox. An explicit `session` takes
-precedence over `sandbox-id`.
+Each editor keeps independent source, diagnostics, and output, while commands, imports, checkpoints, resets, and viewport state target the same world. Alternatively create a `PlaygroundSessionController` and connect `DpsPlayground`, `DpsCell`, or a standalone `DpsViewport`. Realtime frames use a lazy WebGL2 chunk; static PNG and GIF output continue through the shared software renderer.
 
-Playback starts paused. It advances display interpolation and world time at 20 TPS, executes
-`#minecraft:tick` plus an optional `tickFunction`, catches up at most five ticks, and pauses while
-the page is hidden. Desktop controls are pointer-lock mouse look, WASD, Space, Shift, and wheel
-speed; touch devices get two joysticks. Input targets `Steve` by default and is recorded in traces
-and snapshots without adding vanilla physics.
+### Static deployment
 
-The toolbar settings panel adjusts mouse sensitivity, movement speed, and field of view. The same
-values can be supplied through `PlaygroundViewportOptions` as `mouseSensitivity`, `moveSpeed`, and
-`fieldOfView`. Automatic framing is one-shot, so display animation does not drag the camera; use
-**Reset view** to frame the current scene again. The sky follows world time and weather, matching
-the JVM viewport's overworld, Nether, and End shader semantics.
+```bash
+npm ci
+npm run docs:build
+```
 
-The renderer is a separate lazy WebGL2 chunk. Scene revisions transfer independent static-block,
-entity, index, and atlas buffers; camera movement changes uniforms only. Context loss pauses
-playback and rebuilds GPU resources after restoration. Static PNG and GIF export continue through
-the shared software renderer.
+Deploy the generated VitePress directory. Content-hashed Worker and profile assets can use long-lived immutable caching while HTML uses normal revalidation.
 
-The controller exposes `connect`, `execute`, `reset`, `restoreExample`, checkpoint and import
-methods, `play`, `pause`, `step`, `dispatchInput`, scene subscription, and `dispose`. Viewport events
-are `play-state`, `camera-change`, `input`, `frame-stats`, and `context-lost`. `onActivity` observes
-the shared exclusive-operation queue used to coordinate multiple editors.
+## Component API
+
+The former props, events, shared-session, and error-code catalog has moved to the [Playground API Reference](/en/reference/playground-api). This heading remains so existing section links lead to the new authoritative entry.
+
+## Worker protocol
+
+Worker requests, events, transferable binary responses, lifecycle, and stable error codes are now maintained in the [Playground API Reference](/en/reference/playground-api#worker-protocol).
+
+## Limitations
+
+- Default budgets protect browser stability; they are not a security boundary for untrusted code.
+- Execution cooperatively interrupts only at MCFunction command boundaries. Changes from completed commands are not rolled back.
+- A watchdog timeout terminates the Worker and ends in-flight requests with `SESSION_LOST`; the old world is not falsely restored.
+- Rendering is deterministic clean-room approximation with `visualParity: false`, not pixel-identical vanilla output.
+- Without an imported client JAR, the Web renderer uses built-in fallbacks; it does not obtain client assets from the notebook `version`.
+- A custom `worker-url` must be same-origin or served with response headers suitable for a module Worker.
+
+## Related pages
+
+- [Playground API Reference](/en/reference/playground-api)
+- [Playground CSS Customization](/en/guide/playground-styling)
+- [Rendering, Animation, and Realtime Viewports](/en/guide/rendering-notebook)
+- [Serve JSONL Protocol](/en/reference/serve-jsonl)

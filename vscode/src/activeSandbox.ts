@@ -1,7 +1,8 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
 import { inferFunctionContext, isManifest } from "./functionContext";
-import { CheckpointResult, DiagnosticReport, FunctionSource, ManifestReport, OutputEvent, RenderResult, ResourceReport, RunReport, SnapshotDiff, TraceEvent } from "./model";
+import { configuredCoverageOptions } from "./coverageOptions";
+import { CheckpointResult, CoverageReport, DiagnosticReport, FunctionSource, ManifestReport, OutputEvent, RenderResult, ResourceReport, RunReport, SnapshotDiff, TraceEvent } from "./model";
 import { configuredRenderOptions } from "./renderOptions";
 import { SandboxClient } from "./sandboxClient";
 
@@ -36,7 +37,8 @@ export class ActiveSandboxService {
       if (inferred) packs.unshift(inferred);
     }
     const configured = config.get<string>("defaultVersion", "").trim();
-    return this.client.create(version?.trim() || configured || undefined, [...new Set(packs)]);
+    const configuredPlayer = config.get<string>("defaultPlayerName", "Steve").trim();
+    return this.client.create(version?.trim() || configured || undefined, [...new Set(packs)], [], configuredPlayer || null);
   }
 
   stop(): void { this.client.close(); }
@@ -69,6 +71,16 @@ export class ActiveSandboxService {
   async render(): Promise<RenderResult> {
     this.requireActive();
     return this.client.request<RenderResult>("render", configuredRenderOptions());
+  }
+
+  async coverage(): Promise<CoverageReport> {
+    this.requireActive();
+    return this.client.request<CoverageReport>("coverage", configuredCoverageOptions());
+  }
+
+  async resetCoverage(): Promise<void> {
+    this.requireActive();
+    await this.client.request("resetCoverage");
   }
 
   async interrupt(): Promise<void> {

@@ -1,8 +1,8 @@
 {
   "name": "datapack-sandbox-vscode",
   "displayName": "Datapack Sandbox",
-  "description": "Run, test, debug, and inspect Datapack Sandbox scenarios from VS Code.",
-  "version": "0.4.0",
+  "description": "Edit, validate, run, test, debug, and inspect Minecraft Java datapacks with Datapack Sandbox.",
+  "version": "0.4.1",
   "publisher": "Alumopper",
   "author": {
     "name": "Alumopper",
@@ -20,9 +20,10 @@
   "engines": {
     "vscode": "^1.95.0"
   },
-  "categories": ["Testing", "Debuggers", "Other"],
+  "categories": ["Programming Languages", "Linters", "Testing", "Debuggers"],
   "activationEvents": [
     "onLanguage:mcfunction",
+    "workspaceContains:**/pack.mcmeta",
     "onLanguage:json",
     "onDebugResolve:datapack-sandbox",
     "onCommand:datapackSandbox.runCurrentMcfunction",
@@ -35,6 +36,8 @@
     "onCommand:datapackSandbox.restoreCheckpoint",
     "onCommand:datapackSandbox.deleteCheckpoint",
     "onCommand:datapackSandbox.renderActiveSandbox",
+    "onCommand:datapackSandbox.showCoverage",
+    "onCommand:datapackSandbox.resetCoverage",
     "onCommand:datapackSandbox.interrupt",
     "onCommand:datapackSandbox.openFunctionSource"
   ],
@@ -66,6 +69,8 @@
       { "command": "datapackSandbox.restoreCheckpoint", "title": "Datapack Sandbox: Restore Checkpoint" },
       { "command": "datapackSandbox.deleteCheckpoint", "title": "Datapack Sandbox: Delete Checkpoint" },
       { "command": "datapackSandbox.renderActiveSandbox", "title": "Datapack Sandbox: Render Active Sandbox to PNG" },
+      { "command": "datapackSandbox.showCoverage", "title": "Datapack Sandbox: Show Active Sandbox Coverage" },
+      { "command": "datapackSandbox.resetCoverage", "title": "Datapack Sandbox: Reset Active Sandbox Coverage" },
       { "command": "datapackSandbox.interrupt", "title": "Datapack Sandbox: Interrupt Active Execution" },
       { "command": "datapackSandbox.openFunctionSource", "title": "Datapack Sandbox: Open Loaded Function Source" },
       { "command": "datapackSandbox.reloadTests", "title": "Datapack Sandbox: Reload Manifest Tests" },
@@ -101,6 +106,28 @@
           "default": [],
           "description": "Extra datapack folder or zip paths passed to run/debug/sandbox operations."
         },
+        "datapackSandbox.language.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Start an isolated JVM language session for mcfunction completion, hover, definitions, and profile-aware validation. TextMate syntax highlighting remains available when disabled."
+        },
+        "datapackSandbox.language.diagnostics": {
+          "type": "boolean",
+          "default": true,
+          "description": "Validate open mcfunction documents against the selected Datapack Sandbox profile and loaded datapacks."
+        },
+        "datapackSandbox.language.diagnosticDelay": {
+          "type": "integer",
+          "default": 300,
+          "minimum": 100,
+          "maximum": 2000,
+          "description": "Milliseconds to debounce profile-aware mcfunction diagnostics while typing."
+        },
+        "datapackSandbox.defaultPlayerName": {
+          "type": "string",
+          "default": "Steve",
+          "description": "Player created when an active sandbox starts. Empty starts without a default player."
+        },
         "datapackSandbox.strict": {
           "type": "boolean",
           "default": false,
@@ -123,6 +150,32 @@
           "default": "temporary",
           "enumDescriptions": ["Create an isolated sandbox for each run or debug session.", "Use the currently active persistent sandbox."],
           "description": "Default target used by Run and Debug commands. Temporary preserves the original isolated behavior."
+        },
+        "datapackSandbox.coverage.minimumLine": {
+          "type": "number",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Minimum accumulated line coverage percentage used by Show Coverage."
+        },
+        "datapackSandbox.coverage.minimumFunction": {
+          "type": "number",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Minimum accumulated function coverage percentage used by Show Coverage."
+        },
+        "datapackSandbox.coverage.include": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": [],
+          "description": "Resource-id glob patterns included in active-sandbox coverage."
+        },
+        "datapackSandbox.coverage.exclude": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": [],
+          "description": "Resource-id glob patterns excluded from active-sandbox coverage."
         },
         "datapackSandbox.render.width": {
           "type": "integer",
@@ -154,13 +207,67 @@
         "datapackSandbox.render.minecraftAssetsPath": {
           "type": "string",
           "default": "",
-          "description": "Optional Minecraft client asset directory or jar used only for local rendering."
+          "description": "Minecraft client asset directory or jar used for local rendering. Configure this manually; the extension never searches Minecraft installations."
         },
         "datapackSandbox.render.resourcePackPaths": {
           "type": "array",
           "items": { "type": "string" },
           "default": [],
-          "description": "Workspace-relative or absolute resource-pack paths passed to the JAR renderer."
+          "description": "Workspace-relative or absolute resource-pack paths manually passed to the JAR renderer."
+        },
+        "datapackSandbox.render.playerSkins": {
+          "type": "object",
+          "default": {},
+          "additionalProperties": { "type": "string" },
+          "description": "Player names mapped to workspace-relative or absolute PNG skin paths."
+        },
+        "datapackSandbox.render.cameraPlayer": {
+          "type": "string",
+          "default": "",
+          "description": "Player camera name. Empty uses entity, fixed, or automatic camera selection."
+        },
+        "datapackSandbox.render.cameraEntity": {
+          "type": "string",
+          "default": "",
+          "description": "Entity UUID camera used when cameraPlayer is empty."
+        },
+        "datapackSandbox.render.cameraPosition": {
+          "type": "array",
+          "items": { "type": "number" },
+          "minItems": 0,
+          "maxItems": 3,
+          "default": [],
+          "description": "Fixed [x, y, z] camera position used when player and entity cameras are empty."
+        },
+        "datapackSandbox.render.cameraYaw": {
+          "type": "number",
+          "default": 0,
+          "description": "Yaw in degrees for a fixed camera."
+        },
+        "datapackSandbox.render.cameraPitch": {
+          "type": "number",
+          "default": 0,
+          "description": "Pitch in degrees for a fixed camera."
+        },
+        "datapackSandbox.render.cameraDimension": {
+          "type": "string",
+          "default": "minecraft:overworld",
+          "description": "Dimension resource id for a fixed camera."
+        },
+        "datapackSandbox.render.transparentBackground": {
+          "type": "boolean",
+          "default": false,
+          "description": "Render the world with a transparent background."
+        },
+        "datapackSandbox.render.showHud": {
+          "type": "boolean",
+          "default": false,
+          "description": "Draw the modeled HUD in rendered PNGs."
+        },
+        "datapackSandbox.render.showDebugOverlay": {
+          "type": "boolean",
+          "default": false,
+          "description": "Draw renderer diagnostics over rendered PNGs."
         },
         "datapackSandbox.render.strictAssets": {
           "type": "boolean",
@@ -184,9 +291,22 @@
       {
         "id": "mcfunction",
         "aliases": ["Minecraft Function", "mcfunction"],
-        "extensions": [".mcfunction"]
+        "extensions": [".mcfunction"],
+        "configuration": "./language-configuration.json"
       }
     ],
+    "grammars": [
+      {
+        "language": "mcfunction",
+        "scopeName": "source.mcfunction",
+        "path": "./syntaxes/mcfunction.tmLanguage.json"
+      }
+    ],
+    "configurationDefaults": {
+      "[mcfunction]": {
+        "editor.suggest.insertMode": "replace"
+      }
+    },
     "viewsContainers": {
       "activitybar": [
         {

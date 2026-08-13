@@ -1,5 +1,19 @@
 ﻿# 资源格式
 
+## 适用场景
+
+编写或排查数据包目录、`pack.mcmeta`、JSON/SNBT 资源、tag 覆盖和资源行为等级时，使用本页。
+
+## 前置条件
+
+确定目标 version profile，并准备目录或 ZIP 形式的数据包；当前 `26.2` 示例应优先使用单数资源目录。
+
+## 最小可运行示例
+
+运行 `java -jar cli/build/libs/datapack-sandbox-cli.jar resources --pack examples/full-stack/pack`，查看实际加载的资源索引和覆盖关系。
+
+## 完整能力
+
 加载器可以读取目录形式或 zip 形式的数据包，并会按当前 `VersionProfile` 校验 `pack.mcmeta`。
 
 ## `pack.mcmeta` 与资源目录
@@ -292,166 +306,17 @@ Items[{Slot:0b}].id
 
 ## `.dps.json` 清单
 
-清单可包含：
+Manifest 用于声明版本矩阵、数据包、世界 fixture、执行步骤、断言和覆盖率门槛。最小工作流见 [Manifest 回归测试](/workflows/manifest-tests)；完整字段、include 合并、相对路径解析、steps 与 assertions 见 [Manifest 参考](/reference/manifest)。
 
-- `version` 或 `versions`
-- `include`
-- `unsupported`
-- `seed`
-- `failOnMissingResources`
-- `coverage`
-- `packs`
-- `world`
-- `steps`
-- `assertions`
+canonical JSON Schema 仍位于 `schema/manifest/dps-manifest.schema.json`，也可通过 `schema` CLI 子命令导出或检查。本节保留原标题，使旧章节链接继续有效。
 
-JSON Schema 位于：
+## 限制
 
-```text
-schema/manifest/dps-manifest.schema.json
-```
+`observed-noop` 资源会被校验、索引并可检查，但不代表完整运行时语义；完整 crafting、worldgen 和所有 item modifier 行为仍不在范围内。
 
-standalone CLI 也会内置该 schema：
+## 相关页面
 
-```bash
-java -jar cli/build/libs/datapack-sandbox-cli.jar schema --output dps-manifest.schema.json
-java -jar cli/build/libs/datapack-sandbox-cli.jar schema --check schema/manifest/dps-manifest.schema.json
-```
-
-使用 `check --validate-schema` 可以在执行前校验 manifest 结构：
-
-```bash
-java -jar cli/build/libs/datapack-sandbox-cli.jar check ./sandbox-cases --validate-schema
-```
-
-`include` 可以写一个相对清单路径，也可以写路径数组。被 include 的清单会先应用；它们的 `world`、`steps` 和 `assertions` 按顺序拼接，`version`/`versions`、`packs`、`unsupported`、`seed`、`failOnMissingResources` 和 `coverage` 会在当前清单省略这些字段时作为默认值。include 文件里的 world setup 和 step 相对路径按 include 文件所在目录解析；来自 include 文件的断言失败会在前缀中保留来源 manifest 文件路径和 JSON Pointer，方便从 CI 日志直接定位公共断言。
-
-顶层 `"seed"` 设置 manifest 默认的确定性 world seed 和 loot seed；`world.seed` fixture 值会覆盖这个顶层默认 world seed。
-
-顶层设置 `"failOnMissingResources": true`，或在 CLI 使用 `check --fail-on-missing-resources`，可以在已加载资源直接引用缺失的 load/tick 函数、advancement parent/reward、predicate/loot/item modifier 资源中的 predicate reference 或嵌套 loot table 资源时让 manifest 失败。同一批缺失引用始终会出现在结构化 check report 和 `check --verbose` 资源摘要中。
-
-顶层 `coverage` 可检查已加载数据包函数的可执行行覆盖率和函数调用覆盖率：
-
-```json
-{
-  "coverage": {
-    "minimumLine": 85,
-    "minimumFunction": 75,
-    "include": ["demo:*", "shared:public/*"],
-    "exclude": "demo:generated/*"
-  }
-}
-```
-
-分母只包含当前加载后生效的 `.mcfunction` 资源；空行和注释不计入。执行到某一命令行即视为命中，即使随后 macro 展开或命令本身报错；被 `return` 跳过的行仍未覆盖。函数覆盖率按是否调用统计，每行还会保存命中次数。`include` 和 `exclude` 可写一个字符串或字符串数组，按完整资源 ID 做 glob 匹配：`*` 匹配任意字符，`?` 匹配一个字符。筛选结果为空时，覆盖率按 100% 处理。
-
-`run --report-file` 和 `check --report-file` 始终包含详细 coverage。使用 `--coverage` 打印摘要，使用 `--coverage-file <file>` 单独写出 JSON artifact。`run` 与 `check` 都支持 `--minimum-line-coverage`（别名 `--min-line-coverage`、`--min-coverage`）、`--minimum-function-coverage`、`--coverage-include` 和 `--coverage-exclude`；CLI 与 manifest 同时给出最低值时采用更严格者。
-
-在 `world` 内部，`fixture`、`fixtures` 和 `extends` 可以写一个相对 world fixture 路径，也可以写路径数组。被引用文件既可以是裸 world fixture 对象，也可以是顶层 `{ "world": { ... } }` 对象。它们先于当前 `world` 应用，因此标量字段、同坐标方块、同名玩家/team/bossbar、score 和 storage 都可以被当前 manifest 局部覆盖。嵌套 fixture 的相对路径按被引用文件所在目录解析；循环引用会作为输入格式错误失败。
-
-最小示例：
-
-```json
-{
-  "version": "26.2",
-  "packs": ["./pack"],
-  "steps": [
-    { "load": true },
-    { "ticks": 20 },
-    { "function": "demo:main" }
-  ],
-  "assertions": [
-    { "score": { "target": "#clock", "objective": "ticks", "equals": 20 } }
-  ]
-}
-```
-
-`world` 可预置 sparse 方块、用 `regions` 批量铺设的闭区间方块区域、用 `structures` 声明相对方块/实体集合、玩家、非玩家实体维度、health、vehicle/passenger 关系、装备、active effects 和 attributes、玩家末影箱物品、玩家 advancement progress、分数、storage、gamerule、time/weather、seed/difficulty/default game mode、世界/玩家出生点、世界边界、force-loaded chunk、biome 覆盖、team、bossbar，也可以从 Java 存档导入指定 chunk。`assertions` 可检查 score、storage、world、player、entity、entityCount、team、bossbar、scheduled、advancement、output、loot 等行为。
-
-`steps` 支持完整数据包执行和轻量生成器产物测试：
-
-- `{ "load": true }`
-- `{ "ticks": 20 }`
-- `{ "function": "demo:main" }`
-- `{ "command": "say hello" }`
-- `{ "commands": ["scoreboard objectives add runs dummy", "..."], "source": "<generator>" }`
-- `{ "functionText": "say inline\nscoreboard ...", "source": "<inline>" }`
-- `{ "mcfunction": "relative/path/generated.mcfunction" }`
-- `{ "snapshot": "artifacts/before.json" }`
-- `{ "trace": { "file": "artifacts/trace.jsonl", "output": true } }`
-- `{ "reset": true }`
-- `{ "player": { ... } }`、`{ "block": { ... } }`、`{ "event": { ... } }`、`{ "loot": { ... } }`
-
-事件步骤至少需要 `player` 和 `type`。可选上下文字段包括 `item`、`entity`、`block`、`recipe`、`from`/`to`、`damageSource` 或 `damageType`、`amount`、键盘 `key`、鼠标 `button`、`action` 以及指针坐标 `x`/`y`：
-
-```json
-{ "event": { "player": "Steve", "type": "damage", "damageSource": "minecraft:fall", "amount": 4.5 } }
-```
-
-`snapshot` 和 `trace` 步骤可以写 `true` 记录 debug 输出事件，可以写相对文件路径保存 artifact，也可以写成包含 `file` 和 `output` 的对象。`reset` 保留已加载的数据包和 manifest 默认 seed，但把当前世界替换为全新的 sparse world，并重新创建默认玩家 `Steve`。
-
-如果某个步骤本来就应该失败，可以在该步骤上加 `"allowFailure": true`，然后用 `diagnostic` 断言检查错误码、命令文本和错误消息。
-
-`assertions` 除了既有 score、storage、player、block、entityCount、advancement、predicate、loot、output、snapshot 和 snapshot diff 外，也支持以下类型。断言失败消息会带合并后的断言序号和 JSON Pointer 路径，例如 `assertion 1 (/assertions/0/output): ...`：
-
-```json
-{ "score": { "target": "#clock", "objective": "ticks", "min": 20, "max": 40 } }
-```
-
-```json
-{ "storage": { "id": "demo:env", "path": "debug.last", "missing": true } }
-```
-
-```json
-{ "entityCount": { "type": "minecraft:pig", "tag": "fixture", "dimension": "minecraft:the_nether", "min": 1, "max": 3 } }
-```
-
-```json
-{ "entity": { "type": "minecraft:pig", "tag": "fixture", "dimension": "minecraft:the_nether", "health": 8.0, "vehicle": "00000000-0000-0000-0000-000000000102", "nbt": { "path": "Health", "equals": 8.0 }, "equipment": { "slot": "weapon.mainhand", "id": "minecraft:iron_sword" }, "effect": { "id": "minecraft:strength", "duration": 80 }, "attribute": { "id": "minecraft:max_health", "equals": 12.0 } } }
-```
-
-```json
-{ "world": { "difficulty": "hard", "forcedChunk": [0, 0], "worldBorder": { "size": 100 } } }
-```
-
-```json
-{ "scheduled": { "id": "demo:later", "dueTick": 5, "count": 2 } }
-```
-
-```json
-{ "item": { "player": "Steve", "container": "enderItems", "id": "minecraft:apple", "count": 3 } }
-```
-
-```json
-{ "output": { "command": "say", "contains": "hello", "order": 1, "count": 1 } }
-```
-
-```json
-{ "trace": { "root": "scoreboard", "success": true, "outputs": 0, "outputContains": "done", "outputTarget": "Steve", "hasDiff": true, "diffPath": "/scores/runs", "diffKind": "added", "diffContains": "#clock", "count": 1 } }
-```
-
-`trace` 断言中的 `outputContains` 和 `outputTarget` 会匹配该命令产生的输出事件文本和目标。
-
-```json
-{ "eventTrace": { "player": "Steve", "type": "damage", "success": true, "criterion": "fell", "damageSource": "minecraft:fall", "damageAmount": 4.5, "count": 1 } }
-```
-
-```json
-{ "eventTrace": { "player": "Steve", "type": "block_placed", "failedAdvancement": "demo:place_diamond", "failedCriterion": "place_diamond", "failureContains": "block expected minecraft:diamond_block", "count": 1 } }
-```
-
-带 `blockPos` 或 `blockX`/`blockY`/`blockZ` 的 block 事件会把目标坐标写入 event trace，并可用于断言。
-
-```json
-{ "diagnostic": { "step": 1, "code": "COMMAND_ERROR", "contains": "Unknown scoreboard objective", "count": 1 } }
-```
-
-```json
-{ "snapshot": { "path": "scores.runs", "equalsFile": "expected-snapshot.json" } }
-```
-
-```json
-{ "snapshotDiff": { "path": "/scores/runs/#clock", "kind": "changed", "after": 20, "count": 1 } }
-```
-
-`entity` 断言可按 type/tag/uuid/position/dimension/health/vehicle/passenger 过滤后检查 exists/count，并检查完整实体 NBT path、装备物品的 id/count/components/NBT、active effect 的 duration/amplifier/粒子状态，以及显式 attribute 值。`player` 断言还可检查 exists、dimension、game mode、health、food、selected slot、末影箱物品数量、recipe、effect、stat、advancement progress、完整 NBT path、position、last input 和 spawn point。`team`、`bossbar` 断言检查对应运行时状态。`scheduled` 断言可按函数 id、绝对 `dueTick`、存在性和重复条目数量检查 scheduled function 队列。`item` 断言可按玩家、`container`、slot、id、精确/最小/最大 count、components path 和 NBT path 检查背包或末影箱结果。`block` 断言可检查 sparse world 中的方块存在性、id 和方块实体 NBT path 是否存在或等于指定值。`storage` 断言可用 `equals` 比较路径值，也可用 `exists`/`missing` 检查 storage 根对象或嵌套路径是否存在。`output` 断言可按 command/channel/targets、text/contains、空白规范化后的 text/contains、payload path/value、segment style、count 和从 1 开始的 `order` 检查输出；未匹配时失败消息会列出截断后的实际输出候选，且当断言包含 payload path 或 segment style 时会显示对应实际 payload 值或已解析文本 segment 样式。`trace` 断言可按 command/root/contains/success、输出数量、是否产生 snapshot diff、diff path/kind/渲染文本、count、source file 和 function stack 检查命令执行链；未匹配时失败消息会列出截断后的实际命令 trace 候选。`eventTrace` 断言可按 player、type、success、item/entity/block/recipe 上下文、维度变化、damage source/amount、input device/code/action、advancement、criterion、failed advancement/criterion、失败原因片段和 count 检查玩家事件调试链路；未匹配时失败消息会列出截断后的实际玩家事件 trace 候选。`diagnostic` 断言可按 step、version、code、command、root、message substring 和 count 检查预期失败；未匹配时失败消息会列出截断后的实际 diagnostic 候选。`snapshot` 断言可把最终 snapshot 根对象或选定 `path` 与内联 `equals`、JSON `equalsFile`、`exists` 或 `missing` 比较，文件路径按声明该断言的 manifest/include 文件解析。`snapshotDiff` 断言可按 JSON Pointer path、diff kind、before/after 值、渲染文本片段和 count 检查步骤前后的状态差异；未匹配时失败消息会列出截断后的实际 snapshot diff 候选。
+- [Manifest 回归测试](/workflows/manifest-tests)
+- [Manifest 参考](/reference/manifest)
+- [版本 Profile](/resources/version-profile)
+- [命令支持状态](/runtime/command-support)

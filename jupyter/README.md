@@ -28,8 +28,14 @@ client assets. Select **Datapack Sandbox (MCFunction)** as the notebook kernel.
 Successful MCF cells display a readable summary and an inline PNG by default;
 use `%dps render output.png` to save a frame explicitly.
 
-Minecraft assets are never bundled. Configure a user-owned client JAR or
-resource pack with `%dps assets <path>` before rendering with vanilla textures.
+Minecraft assets are never bundled or auto-discovered. Configure a user-owned
+client JAR with `%dps assets <path>` and add resource packs or player skins
+explicitly before rendering with those textures.
+
+The kernel also exposes the persistent JVM session's checkpoints, player
+events, resource and trace inspection, effective function source, and
+line/function coverage through `%dps` directives. Run `%dps help` for the exact
+forms supported by the installed kernel.
 
 ## Release checklist
 

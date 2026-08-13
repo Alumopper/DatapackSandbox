@@ -1,5 +1,19 @@
 # Playground CSS 样式定制
 
+## 适用场景
+
+当嵌入式 `DpsPlayground` 或 `DpsCell` 需要匹配宿主站点的品牌、明暗主题或布局时，使用本页。
+
+## 前置条件
+
+先按 [Playground 集成](/guide/playground)完成组件和默认样式导入，并为实例准备网站专用 class。
+
+## 最小可运行示例
+
+在包样式之后加载覆盖文件，并在 `.dps-playground.docs-sandbox` 上设置 `--dps-accent`；下方示例可直接复制。
+
+## 完整能力
+
 `@datapack-sandbox/vitepress-playground` 自带完整默认样式，同时允许网站开发者调整颜色、字体、边框、阴影、间距和指定内部区域。优先使用组件根节点上的 `--dps-*` CSS 自定义属性；只有需要修改具体布局时，再使用结构 class。
 
 本页同时适用于 `DpsPlayground` 和 `DpsCell`。两个组件都只渲染一个 `.dps-playground` 根节点，并会把调用方传入的 `class` 或 `style` 合并到该节点。
@@ -211,3 +225,13 @@ Vue 官方使用 `:deep()` 从 scoped CSS 选择子组件后代。参见 [SFC CS
 6. 修改变量后检查对比度、焦点可见性、禁用状态及两种颜色模式；不要移除组件的焦点环或 reduced-motion 行为。
 
 组件 props、导入、Worker 生命周期和视窗行为详见[交互式 Playground](/guide/playground)。
+
+## 限制
+
+CSS 能修改组件外观与视窗外框，但不能重新着色 Canvas 中的 Minecraft 场景；生成的 hash、`data-v-*` 和 CodeMirror 内部 DOM 不是稳定接口。
+
+## 相关页面
+
+- [Playground 集成](/guide/playground)
+- [Playground API 参考](/reference/playground-api)
+- [渲染与实时视窗](/guide/rendering-notebook)

@@ -1,5 +1,19 @@
 # Version Profiles
 
+## When to use this page
+
+Use this page to choose a Minecraft target or compare pack formats, resource directories, command roots, registries, and NBT schemas.
+
+## Prerequisites
+
+Prepare the standalone CLI JAR. The tooling itself requires Java 25; the Java column in the table describes each Minecraft profile.
+
+## Minimal runnable example
+
+Run `java -jar cli/build/libs/datapack-sandbox-cli.jar version` to list profiles, or append `1.20.4 26.2` to compare two versions.
+
+## Full capabilities
+
 The sandbox supports multiple Minecraft Java datapack profiles. The default
 profile is `26.2`, `26.1.2` remains available for compatibility, and the
 minimum supported legacy datapack profile is `1.20.4`.
@@ -106,3 +120,14 @@ Reference sources:
 - https://minecraft.wiki/w/Predicate
 - https://minecraft.wiki/w/Advancement_definition
 - https://c4k3.github.io/wiki.vg/Data_Generators.html
+
+## Limitations
+
+Profiles describe bundled sandbox version data and validation inputs; they are not Mojang server distributions. Fine-grained schema `since`/`until` pruning remains bounded by the pinned mcdoc revision.
+
+## Related pages
+
+- [Resource Formats](/en/resources/resource-formats)
+- [Command Support](/en/runtime/command-support)
+- [Manifest Regression Tests](/en/workflows/manifest-tests)
+- [CLI Reference](/en/reference/cli)

@@ -8,7 +8,7 @@ import os
 import shlex
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, NoReturn
 
 from .session import DpsSession, DpsSessionError
 
@@ -19,14 +19,23 @@ class KernelConfig:
     packs: list[Path] = field(default_factory=list)
     minecraft_assets: Path | None = None
     resource_packs: list[Path] = field(default_factory=list)
+    player_skins: dict[str, Path] = field(default_factory=dict)
     default_player: str | None = "Steve"
     camera_player: str | None = "Steve"
+    camera_entity: str | None = None
+    camera_position: tuple[float, float, float] | None = None
+    camera_yaw: float = 0.0
+    camera_pitch: float = 0.0
+    camera_dimension: str = "minecraft:overworld"
     auto_render: bool = True
     strict: bool = False
     render_width: int = 960
     render_height: int = 540
     field_of_view: float = 70.0
-    render_distance: float = 64.0
+    render_distance: float = 128.0
+    transparent_background: bool = False
+    show_hud: bool = False
+    show_debug_overlay: bool = False
 
 
 @dataclass
@@ -100,20 +109,7 @@ class NotebookRuntime:
             self.session.clear_interrupt()
         except DpsSessionError as error:
             self.session.clear_interrupt()
-            # An interrupted or failed request may have completed earlier command
-            # boundaries, so a cached frame can no longer be trusted.
-            self._world_revision += 1
-            self._render_cache = None
-            if error.code in SESSION_LOSS_CODES:
-                self._opened = False
-                self._pending_rebuild = True
-                raise DpsSessionError(
-                    "SESSION_LOST",
-                    "The JVM serve session was lost; the previous world cannot be recovered. "
-                    "Run `%dps reset --apply` to create a new world.",
-                    error.details,
-                ) from error
-            raise
+            self._raise_session_error(error)
         self._last_state = dict(result.get("state") or {})
         self._track_world_change(result)
         streams = [str(output.get("text", "")) for output in result.get("outputs", []) if output.get("text")]
@@ -162,26 +158,86 @@ class NotebookRuntime:
             if path not in self.config.resource_packs:
                 self.config.resource_packs.append(path)
             return CellOutcome(f"Resource pack configured: {path}", self.status_data())
+        if name == "skin":
+            require_arity(name, values, 2)
+            path = self._existing_path(values[1], "Player skin")
+            self.config.player_skins[values[0]] = path
+            self._render_cache = None
+            return CellOutcome(f"Player skin configured: {values[0]} -> {path}", self.status_data())
         if name == "camera":
-            require_arity(name, values, 1)
-            self.config.camera_player = values[0]
-            return CellOutcome(f"Render camera configured: player {values[0]}", self.status_data())
+            return self._configure_camera(values)
         if name == "world":
             require_arity(name, values, 1)
             self._ensure_ready()
             path = self._existing_path(values[0], "World fixture")
-            result = self.session.request("applyWorldFixture", {"path": str(path)})
+            result = self._tracked_request("applyWorldFixture", {"path": str(path)})
             return self._tracked_outcome("World fixture applied", result)
         if name == "tick":
             require_arity(name, values, 1)
             self._ensure_ready()
-            result = self.session.request("tick", {"count": int(values[0])})
+            result = self._tracked_request("tick", {"count": int(values[0])})
             return self._tracked_outcome(f"Advanced {values[0]} ticks", result)
         if name == "function":
             require_arity(name, values, 1)
             self._ensure_ready()
-            result = self.session.request("runFunction", {"id": values[0]})
+            result = self._tracked_request("runFunction", {"id": values[0]})
             return self._tracked_outcome(f"Function completed: {values[0]}", result)
+        if name == "load":
+            require_arity(name, values, 0)
+            self._ensure_ready()
+            return self._tracked_outcome("Load functions completed", self._tracked_request("load"))
+        if name == "event":
+            if not values:
+                raise DpsSessionError("INPUT_FORMAT", "%dps event expects Serve event text, for example: player Steve killed_entity minecraft:zombie")
+            self._ensure_ready()
+            return self._tracked_outcome("Player event injected", self._tracked_request("injectPlayerEvent", {"event": " ".join(values)}))
+        if name == "reload":
+            if values not in ([], ["--discard-world"]):
+                raise DpsSessionError("INPUT_FORMAT", "%dps reload only accepts --discard-world")
+            self._ensure_ready()
+            self._last_state = self.session.request("reload", {"keepWorld": values != ["--discard-world"]})
+            self._world_revision += 1
+            self._render_cache = None
+            return CellOutcome("Datapacks reloaded", self.status_data())
+        if name == "reset-world":
+            require_arity(name, values, 0)
+            self._ensure_ready()
+            self._last_state = self.session.request("resetWorld")
+            self._world_revision += 1
+            self._render_cache = None
+            return CellOutcome("World reset", self.status_data())
+        if name == "checkpoint":
+            return self._checkpoint(values)
+        if name == "coverage":
+            self._ensure_ready()
+            result = self.session.request("coverage", parse_coverage_options(values))
+            summary = (
+                f"Coverage lines={float(result.get('linePercentage', 0.0)):.2f}% "
+                f"functions={float(result.get('functionPercentage', 0.0)):.2f}% "
+                f"passed={str(bool(result.get('passed', False))).lower()}"
+            )
+            return CellOutcome(summary, {"coverage": result})
+        if name == "reset-coverage":
+            require_arity(name, values, 0)
+            self._ensure_ready()
+            result = self.session.request("resetCoverage")
+            return CellOutcome("Coverage counters reset", {"coverage": result})
+        if name in {"resources", "traces", "event-traces"}:
+            require_arity(name, values, 0)
+            self._ensure_ready()
+            method, key = {
+                "resources": ("resources", "resources"),
+                "traces": ("traces", "traces"),
+                "event-traces": ("eventTraces", "eventTraces"),
+            }[name]
+            result = self.session.request(method)
+            count = len(result.get(key, [])) if isinstance(result.get(key), list) else 0
+            return CellOutcome(f"{name}: {count}", {name: result})
+        if name == "function-source":
+            require_arity(name, values, 1)
+            self._ensure_ready()
+            result = self.session.request("functionSource", {"id": values[0]})
+            return CellOutcome(str(result.get("source", "")), {"functionSource": result})
         if name == "render":
             if len(values) > 1:
                 raise DpsSessionError("INPUT_FORMAT", "%dps render accepts at most one output path")
@@ -217,10 +273,14 @@ class NotebookRuntime:
                 self._last_state = self.session.request("state")
             return CellOutcome(self.status_text(), self.status_data())
         if name == "config":
-            if len(values) != 2 or values[0] != "autoRender":
-                raise DpsSessionError("INPUT_FORMAT", "%dps config usage: %dps config autoRender <true|false>")
-            self.config.auto_render = parse_boolean(values[1])
-            return CellOutcome(f"autoRender={str(self.config.auto_render).lower()}", self.status_data())
+            if len(values) != 2 or values[0] not in RENDER_BOOLEAN_OPTIONS:
+                names = "|".join(RENDER_BOOLEAN_OPTIONS)
+                raise DpsSessionError("INPUT_FORMAT", f"%dps config usage: %dps config <{names}> <true|false>")
+            attribute = RENDER_BOOLEAN_OPTIONS[values[0]]
+            configured = parse_boolean(values[1])
+            setattr(self.config, attribute, configured)
+            self._render_cache = None
+            return CellOutcome(f"{values[0]}={str(configured).lower()}", self.status_data())
         raise DpsSessionError("INPUT_FORMAT", f"Unknown %dps command '{name}'. Run `%dps help`.")
 
     def complete(self, code: str, cursor_pos: int) -> dict[str, Any]:
@@ -266,10 +326,16 @@ class NotebookRuntime:
             "packs": [str(path) for path in self.config.packs],
             "minecraftAssets": str(self.config.minecraft_assets) if self.config.minecraft_assets else None,
             "resourcePacks": [str(path) for path in self.config.resource_packs],
+            "playerSkins": {name: str(path) for name, path in self.config.player_skins.items()},
             "defaultPlayer": self.config.default_player,
             "cameraPlayer": self.config.camera_player,
+            "cameraEntity": self.config.camera_entity,
+            "cameraPosition": self.config.camera_position,
             "autoRender": self.config.auto_render,
             "strict": self.config.strict,
+            "transparentBackground": self.config.transparent_background,
+            "showHud": self.config.show_hud,
+            "showDebugOverlay": self.config.show_debug_overlay,
             "pendingReset": self._pending_rebuild,
             "state": self._last_state,
         }
@@ -298,6 +364,85 @@ class NotebookRuntime:
             data["render"] = metadata
         return CellOutcome(summary, data, streams=streams, image_png=image)
 
+    def _tracked_request(self, method: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
+        try:
+            return self.session.request(method, params)
+        except DpsSessionError as error:
+            self._raise_session_error(error)
+
+    def _raise_session_error(self, error: DpsSessionError) -> NoReturn:
+        # Serve failures can retain command-boundary changes as a partial result.
+        self._world_revision += 1
+        self._render_cache = None
+        partial = error.details.get("partial") if isinstance(error.details, dict) else None
+        if isinstance(partial, dict) and isinstance(partial.get("state"), dict):
+            self._last_state = dict(partial["state"])
+        if error.code in SESSION_LOSS_CODES:
+            self._opened = False
+            self._pending_rebuild = True
+            raise DpsSessionError(
+                "SESSION_LOST",
+                "The JVM serve session was lost; the previous world cannot be recovered. "
+                "Run `%dps reset --apply` to create a new world.",
+                error.details,
+            ) from error
+        raise error
+
+    def _checkpoint(self, values: list[str]) -> CellOutcome:
+        if not values or values == ["list"]:
+            self._ensure_ready()
+            result = self.session.request("checkpoints")
+            names = [str(name) for name in result.get("names", [])]
+            return CellOutcome("\n".join(names) if names else "No checkpoints", {"checkpoints": names})
+        action = values[0]
+        if action not in {"save", "restore", "delete"} or len(values) > 2:
+            raise DpsSessionError("INPUT_FORMAT", "%dps checkpoint usage: checkpoint [list|save|restore|delete] [name]")
+        self._ensure_ready()
+        name = values[1] if len(values) == 2 else "default"
+        method = {"save": "saveCheckpoint", "restore": "restoreCheckpoint", "delete": "deleteCheckpoint"}[action]
+        result = self.session.request(method, {"name": name})
+        if action == "restore":
+            self._last_state = dict(result.get("state") or {})
+            self._world_revision += 1
+            self._render_cache = None
+        return CellOutcome(f"Checkpoint {action}: {name}", {"checkpoint": result})
+
+    def _configure_camera(self, values: list[str]) -> CellOutcome:
+        if not values:
+            raise DpsSessionError("INPUT_FORMAT", "%dps camera expects auto, player, entity, fixed, or a player name")
+        mode = values[0].lower()
+        self.config.camera_player = None
+        self.config.camera_entity = None
+        self.config.camera_position = None
+        if mode == "auto" and len(values) == 1:
+            summary = "Render camera configured: auto"
+        elif mode == "player" and len(values) == 2:
+            self.config.camera_player = values[1]
+            summary = f"Render camera configured: player {values[1]}"
+        elif mode == "entity" and len(values) == 2:
+            self.config.camera_entity = values[1]
+            summary = f"Render camera configured: entity {values[1]}"
+        elif mode == "fixed" and 4 <= len(values) <= 7:
+            try:
+                self.config.camera_position = (float(values[1]), float(values[2]), float(values[3]))
+                self.config.camera_yaw = float(values[4]) if len(values) >= 5 else 0.0
+                self.config.camera_pitch = float(values[5]) if len(values) >= 6 else 0.0
+            except ValueError as error:
+                raise DpsSessionError("INPUT_FORMAT", "%dps camera fixed coordinates, yaw, and pitch must be numbers") from error
+            self.config.camera_dimension = values[6] if len(values) == 7 else "minecraft:overworld"
+            summary = f"Render camera configured: fixed {self.config.camera_position}"
+        elif len(values) == 1:
+            if looks_like_uuid(values[0]):
+                self.config.camera_entity = values[0]
+                summary = f"Render camera configured: entity {values[0]}"
+            else:
+                self.config.camera_player = values[0]
+                summary = f"Render camera configured: player {values[0]}"
+        else:
+            raise DpsSessionError("INPUT_FORMAT", "%dps camera expects auto, player <name>, entity <uuid>, or fixed <x> <y> <z> [yaw pitch dimension]")
+        self._render_cache = None
+        return CellOutcome(summary, self.status_data())
+
     def _render(self) -> tuple[str | None, dict[str, Any] | None]:
         params: dict[str, Any] = {
             "width": self.config.render_width,
@@ -305,16 +450,27 @@ class NotebookRuntime:
             "fieldOfView": self.config.field_of_view,
             "renderDistance": self.config.render_distance,
             "strictAssets": self.config.strict,
+            "transparentBackground": self.config.transparent_background,
+            "showHud": self.config.show_hud,
+            "showDebugOverlay": self.config.show_debug_overlay,
         }
         if self.config.minecraft_assets:
             params["minecraftAssets"] = str(self.config.minecraft_assets)
         if self.config.resource_packs:
             params["resourcePacks"] = [str(path) for path in self.config.resource_packs]
+        if self.config.player_skins:
+            params["playerSkins"] = {name: str(path) for name, path in self.config.player_skins.items()}
         if self.config.camera_player:
-            if looks_like_uuid(self.config.camera_player):
-                params["cameraEntity"] = self.config.camera_player
-            else:
-                params["cameraPlayer"] = self.config.camera_player
+            params["cameraPlayer"] = self.config.camera_player
+        elif self.config.camera_entity:
+            params["cameraEntity"] = self.config.camera_entity
+        elif self.config.camera_position:
+            params.update(
+                position=list(self.config.camera_position),
+                yaw=self.config.camera_yaw,
+                pitch=self.config.camera_pitch,
+                dimension=self.config.camera_dimension,
+            )
         cache_key = self._render_cache_key()
         if self._render_cache is not None and self._render_cache[0] == cache_key:
             metadata = dict(self._render_cache[2])
@@ -341,8 +497,17 @@ class NotebookRuntime:
             self.config.render_distance,
             self.config.strict,
             self.config.camera_player,
+            self.config.camera_entity,
+            self.config.camera_position,
+            self.config.camera_yaw,
+            self.config.camera_pitch,
+            self.config.camera_dimension,
+            self.config.transparent_background,
+            self.config.show_hud,
+            self.config.show_debug_overlay,
             path_signature(self.config.minecraft_assets),
             tuple(path_signature(path) for path in self.config.resource_packs),
+            tuple((name, path_signature(path)) for name, path in sorted(self.config.player_skins.items())),
         )
 
     def _ensure_open(self) -> None:
@@ -403,6 +568,37 @@ def parse_boolean(raw: str) -> bool:
     raise DpsSessionError("INPUT_FORMAT", f"Expected true or false, got {raw!r}")
 
 
+def parse_coverage_options(values: list[str]) -> dict[str, Any]:
+    options: dict[str, Any] = {}
+    repeated: dict[str, list[str]] = {"include": [], "exclude": []}
+    names = {
+        "--minimum-line": "minimumLine",
+        "--minimum-function": "minimumFunction",
+        "--include": "include",
+        "--exclude": "exclude",
+    }
+    index = 0
+    while index < len(values):
+        flag = values[index]
+        name = names.get(flag)
+        if name is None or index + 1 >= len(values):
+            raise DpsSessionError(
+                "INPUT_FORMAT",
+                "%dps coverage accepts --minimum-line <percent>, --minimum-function <percent>, --include <glob>, and --exclude <glob>",
+            )
+        raw = values[index + 1]
+        if name in repeated:
+            repeated[name].append(raw)
+        else:
+            try:
+                options[name] = float(raw)
+            except ValueError as error:
+                raise DpsSessionError("INPUT_FORMAT", f"{flag} expects a numeric percentage") from error
+        index += 2
+    options.update({name: entries for name, entries in repeated.items() if entries})
+    return options
+
+
 def looks_like_uuid(raw: str) -> bool:
     compact = raw.replace("-", "")
     return len(compact) == 32 and all(character in "0123456789abcdefABCDEF" for character in compact)
@@ -445,8 +641,6 @@ def load_kernel_config(cwd: Path) -> KernelConfig:
     project = cwd / ".dps-kernel.json"
     if project.is_file():
         apply_config_file(config, project)
-    if config.minecraft_assets is None:
-        config.minecraft_assets = discover_minecraft_assets(config.version)
     return config
 
 
@@ -467,14 +661,23 @@ def apply_config_file(config: KernelConfig, path: Path) -> None:
         config.version = str(values["version"])
     if "packs" in values:
         config.packs = [resolve(str(value)) for value in require_list(values["packs"], "packs", path)]
-    if values.get("minecraftAssets"):
-        config.minecraft_assets = resolve(str(values["minecraftAssets"]))
+    if "minecraftAssets" in values:
+        config.minecraft_assets = resolve(str(values["minecraftAssets"])) if values["minecraftAssets"] else None
     if "resourcePacks" in values:
         config.resource_packs = [resolve(str(value)) for value in require_list(values["resourcePacks"], "resourcePacks", path)]
+    if "playerSkins" in values:
+        skins = values["playerSkins"]
+        if not isinstance(skins, dict) or not all(isinstance(name, str) and isinstance(value, str) for name, value in skins.items()):
+            raise DpsSessionError("INPUT_FORMAT", f"Kernel config {path}: playerSkins must map player names to path strings")
+        config.player_skins = {name: resolve(value) for name, value in skins.items()}
     if "defaultPlayer" in values:
         config.default_player = None if values["defaultPlayer"] is None else str(values["defaultPlayer"])
     if "cameraPlayer" in values:
         config.camera_player = None if values["cameraPlayer"] is None else str(values["cameraPlayer"])
+    if "cameraEntity" in values:
+        config.camera_entity = None if values["cameraEntity"] is None else str(values["cameraEntity"])
+        if config.camera_entity is not None:
+            config.camera_player = None
     if "autoRender" in values:
         config.auto_render = bool(values["autoRender"])
     if "strict" in values:
@@ -485,6 +688,22 @@ def apply_config_file(config: KernelConfig, path: Path) -> None:
         config.render_height = int(render.get("height", config.render_height))
         config.field_of_view = float(render.get("fov", config.field_of_view))
         config.render_distance = float(render.get("renderDistance", config.render_distance))
+        config.transparent_background = bool(render.get("transparentBackground", config.transparent_background))
+        config.show_hud = bool(render.get("showHud", config.show_hud))
+        config.show_debug_overlay = bool(render.get("showDebugOverlay", config.show_debug_overlay))
+        position = render.get("position")
+        if position is not None:
+            if not isinstance(position, list) or len(position) != 3:
+                raise DpsSessionError("INPUT_FORMAT", f"Kernel config {path}: render.position must contain three numbers")
+            try:
+                config.camera_position = tuple(float(value) for value in position)  # type: ignore[assignment]
+            except (TypeError, ValueError) as error:
+                raise DpsSessionError("INPUT_FORMAT", f"Kernel config {path}: render.position must contain three numbers") from error
+            config.camera_player = None
+            config.camera_entity = None
+            config.camera_yaw = float(render.get("yaw", 0.0))
+            config.camera_pitch = float(render.get("pitch", 0.0))
+            config.camera_dimension = str(render.get("dimension", "minecraft:overworld"))
 
 
 def require_list(value: Any, name: str, path: Path) -> list[Any]:
@@ -502,20 +721,7 @@ def user_config_path() -> Path:
     return Path.home() / ".config" / "datapack-sandbox" / "kernel.json"
 
 
-def discover_minecraft_assets(version: str) -> Path | None:
-    roots = []
-    if os.name == "nt" and os.environ.get("APPDATA"):
-        roots.append(Path(os.environ["APPDATA"]) / ".minecraft")
-    roots.append(Path.home() / ".minecraft")
-    for root in roots:
-        jar = root / "versions" / version / f"{version}.jar"
-        if jar.is_file():
-            return jar.resolve()
-    return None
-
-
 SESSION_LOSS_CODES = {
-    "MISSING_CONTEXT",
     "PROTOCOL_ERROR",
     "SERVE_EXITED",
     "SERVE_NOT_RUNNING",
@@ -527,18 +733,30 @@ SESSION_LOSS_CODES = {
 DPS_COMMANDS = [
     "assets",
     "camera",
+    "checkpoint",
     "config",
+    "coverage",
+    "event",
+    "event-traces",
     "function",
+    "function-source",
     "help",
+    "load",
     "outputs",
     "pack",
     "packs",
     "render",
+    "reload",
     "reset",
+    "reset-coverage",
+    "reset-world",
     "resource-pack",
+    "resources",
+    "skin",
     "snapshot",
     "status",
     "tick",
+    "traces",
     "version",
     "world",
 ]
@@ -548,13 +766,32 @@ DPS_HELP = """Datapack Sandbox notebook commands:
 %dps pack <path>              Add a datapack
 %dps assets <path>            Configure a client JAR or assets directory
 %dps resource-pack <path>     Add a rendering resource pack
+%dps skin <player> <path>     Configure a local player skin
 %dps world <fixture.json>     Apply a world fixture
-%dps camera <player>          Select a player camera
+%dps camera <mode...>         Select auto/player/entity/fixed camera
 %dps tick <count>             Advance sandbox ticks
 %dps function <id>            Run a loaded function
+%dps load                     Run datapack load functions
+%dps event <event text>       Inject a player event
+%dps checkpoint <action>      List, save, restore, or delete checkpoints
+%dps coverage [options]       Display accumulated line/function coverage
+%dps reset-coverage           Clear accumulated coverage counters
 %dps render [output.png]      Render and optionally save the current state
 %dps snapshot                 Display the complete snapshot
 %dps outputs                  Display accumulated output events
+%dps traces / event-traces    Display command or player-event traces
+%dps resources                Display the effective resource index
+%dps function-source <id>     Display effective loaded function source
+%dps reload [--discard-world] Reload datapacks, optionally with a new world
+%dps reset-world              Reset only the modeled world
 %dps reset --apply            Rebuild the configured sandbox
 %dps status                   Display kernel and sandbox status
-%dps config autoRender <bool> Toggle automatic PNG output"""
+%dps config <option> <bool>   Toggle automatic rendering or render overlays"""
+
+
+RENDER_BOOLEAN_OPTIONS = {
+    "autoRender": "auto_render",
+    "transparentBackground": "transparent_background",
+    "showHud": "show_hud",
+    "showDebugOverlay": "show_debug_overlay",
+}

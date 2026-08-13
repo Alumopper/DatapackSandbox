@@ -1,5 +1,19 @@
 # Resource Formats
 
+## When to use this page
+
+Use this page while authoring or debugging datapack directories, `pack.mcmeta`, JSON/SNBT resources, tag overlays, and resource behavior levels.
+
+## Prerequisites
+
+Choose the target version profile and prepare a directory or ZIP datapack. New `26.2` examples should prefer singular resource directories.
+
+## Minimal runnable example
+
+Run `java -jar cli/build/libs/datapack-sandbox-cli.jar resources --pack examples/full-stack/pack` to inspect loaded resources and overlay relationships.
+
+## Full capabilities
+
 The loader reads datapack resources from directories or zip files. It validates
 `pack.mcmeta` against the active `VersionProfile`.
 
@@ -154,223 +168,9 @@ smoke tasks.
 
 ## `.dps.json` Manifests
 
-Manifests may contain `version` or `versions`, `unsupported`, `seed`,
-`failOnMissingResources`, `coverage`, `packs`, `world`, `include`, `steps`, and
-`assertions`. The JSON Schema is available at:
+Manifests declare version matrices, datapacks, world fixtures, execution steps, assertions, and coverage gates. Start with [Manifest Regression Tests](/en/workflows/manifest-tests), then use the [Manifest Reference](/en/reference/manifest) for complete fields, include merging, relative-path resolution, steps, and assertions.
 
-```text
-schema/manifest/dps-manifest.schema.json
-```
-
-The standalone CLI also bundles the schema:
-
-```bash
-java -jar cli/build/libs/datapack-sandbox-cli.jar schema --output dps-manifest.schema.json
-java -jar cli/build/libs/datapack-sandbox-cli.jar schema --check schema/manifest/dps-manifest.schema.json
-```
-
-Use `check --validate-schema` to validate manifest structure before execution:
-
-```bash
-java -jar cli/build/libs/datapack-sandbox-cli.jar check ./sandbox-cases --validate-schema
-```
-
-`include` accepts a relative manifest path string or an array of paths. Included
-manifests are applied before the including manifest. Their `world`, `steps`, and
-`assertions` are concatenated in order, and their `version`/`versions`, `packs`,
-`unsupported`, `seed`, `failOnMissingResources`, and `coverage` fields act as
-defaults when the including manifest omits them. Relative paths inside included world setup and
-steps are resolved from the included file's directory. Assertion failures from
-included manifests keep the included file path and JSON Pointer in the failure
-prefix, so shared assertions can be located directly from CI logs.
-
-Set top-level `"seed"` to define the default deterministic world and loot seed
-for the manifest. A `world.seed` fixture value overrides the top-level default
-for world state.
-
-Set top-level `"failOnMissingResources": true`, or pass
-`check --fail-on-missing-resources`, to fail a manifest when loaded resources
-directly reference missing load/tick functions, advancement parents, or
-advancement reward resources, predicate references in predicate/loot/item
-modifier resources, or nested loot tables.
-The same missing references are always present in structured check reports and
-`check --verbose` resource summaries.
-
-Use top-level `coverage` to fail a manifest when loaded datapack functions do
-not meet executable-line or function-invocation thresholds:
-
-```json
-{
-  "coverage": {
-    "minimumLine": 85,
-    "minimumFunction": 75,
-    "include": ["demo:*", "shared:public/*"],
-    "exclude": "demo:generated/*"
-  }
-}
-```
-
-Coverage denominators contain active loaded `.mcfunction` resources only.
-Blank lines and comments are ignored. A command line is covered when execution
-reaches it, even if macro expansion or the command then fails; lines skipped by
-`return` remain uncovered. Function coverage records invocation, while line
-entries also retain hit counts. `include` and `exclude` accept a string or array
-of full resource-id globs where `*` matches any characters and `?` matches one.
-An empty selected function/line set is 100% by convention.
-
-Every `run --report-file` and `check --report-file` artifact includes detailed
-coverage. Use `--coverage` for a console summary and `--coverage-file <file>` for
-a dedicated JSON artifact. Both `run` and `check` accept
-`--minimum-line-coverage` (aliases `--min-line-coverage` and `--min-coverage`),
-`--minimum-function-coverage`, `--coverage-include`, and
-`--coverage-exclude`. CLI minima and manifest minima combine using the stricter
-value.
-
-Inside `world`, `fixture`, `fixtures`, and `extends` accept a relative world
-fixture path string or an array of paths. Referenced files may contain either a
-raw world fixture object or a top-level `{ "world": { ... } }` object. They are
-applied before the local `world` object, so scalar fields, same-position blocks,
-same-name players/teams/bossbars, scores, and storage entries can be overridden
-by the including manifest. Nested fixture paths are resolved from the referenced
-file's directory, and cycles fail as input format errors.
-
-`steps` support full datapack execution and lightweight generated-output tests:
-
-- `{ "load": true }`
-- `{ "ticks": 20 }`
-- `{ "function": "demo:main" }`
-- `{ "command": "say hello" }`
-- `{ "commands": ["scoreboard objectives add runs dummy", "..."], "source": "<generator>" }`
-- `{ "functionText": "say inline\nscoreboard ...", "source": "<inline>" }`
-- `{ "mcfunction": "relative/path/generated.mcfunction" }`
-- `{ "snapshot": "artifacts/before.json" }`
-- `{ "trace": { "file": "artifacts/trace.jsonl", "output": true } }`
-- `{ "reset": true }`
-- `{ "player": { ... } }`, `{ "block": { ... } }`, `{ "event": { ... } }`, `{ "loot": { ... } }`
-
-Event steps require `player` and `type`. Optional context fields include
-`item`, `entity`, `block`, `recipe`, `from`/`to`, `damageSource` or
-`damageType`, `amount`, keyboard `key`, mouse `button`, `action`, and pointer
-`x`/`y`:
-
-```json
-{ "event": { "player": "Steve", "type": "damage", "damageSource": "minecraft:fall", "amount": 4.5 } }
-```
-
-`snapshot` and `trace` steps accept `true` to record a debug output event, a
-relative file path string to write an artifact, or an object with `file` and
-`output`. `reset` replaces the current world with a fresh sparse world and the
-default `Steve` player while keeping the loaded packs and manifest default seed.
-
-Add `"allowFailure": true` to a step when the failure itself is expected and
-should be asserted later with a `diagnostic` assertion.
-
-`world` can predefine sparse blocks, inclusive `regions`, compact `structures`
-with relative blocks/entities, and players, including non-player
-entity dimensions, health, vehicle/passenger links, equipment, active effects, attributes, player ender items, and player advancement progress, plus scoreboards, storage,
-gamerules, time/weather, seed/difficulty/default game mode, world/player spawn
-points, world border, forced chunks, biome overrides, teams, bossbars, and scoped Java save
-imports.
-
-Assertions support score, storage, world, player, team, bossbar, scheduled, block,
-entity, entityCount, advancement, predicate, loot, output, item, trace, event trace,
-diagnostic, snapshot, and snapshot diff checks:
-
-Assertion failures are prefixed with the merged assertion index and source JSON
-Pointer path, for example `assertion 1 (/assertions/0/output): ...`. When the
-assertion came from an included manifest, the prefix keeps the included file path
-before the pointer.
-
-```json
-{ "score": { "target": "#clock", "objective": "ticks", "min": 20, "max": 40 } }
-```
-
-```json
-{ "storage": { "id": "demo:env", "path": "debug.last", "missing": true } }
-```
-
-```json
-{ "entityCount": { "type": "minecraft:pig", "tag": "fixture", "dimension": "minecraft:the_nether", "min": 1, "max": 3 } }
-```
-
-```json
-{ "entity": { "type": "minecraft:pig", "tag": "fixture", "dimension": "minecraft:the_nether", "health": 8.0, "vehicle": "00000000-0000-0000-0000-000000000102", "nbt": { "path": "Health", "equals": 8.0 }, "equipment": { "slot": "weapon.mainhand", "id": "minecraft:iron_sword" }, "effect": { "id": "minecraft:strength", "duration": 80 }, "attribute": { "id": "minecraft:max_health", "equals": 12.0 } } }
-```
-
-```json
-{ "world": { "difficulty": "hard", "forcedChunk": [0, 0], "worldBorder": { "size": 100 } } }
-```
-
-```json
-{ "scheduled": { "id": "demo:later", "dueTick": 5, "count": 2 } }
-```
-
-```json
-{ "item": { "player": "Steve", "container": "enderItems", "id": "minecraft:apple", "count": 3 } }
-```
-
-```json
-{ "output": { "command": "say", "contains": "hello", "order": 1, "count": 1 } }
-```
-
-```json
-{ "trace": { "root": "scoreboard", "success": true, "outputs": 0, "outputContains": "done", "outputTarget": "Steve", "hasDiff": true, "diffPath": "/scores/runs", "diffKind": "added", "diffContains": "#clock", "count": 1 } }
-```
-
-```json
-{ "eventTrace": { "player": "Steve", "type": "damage", "success": true, "criterion": "fell", "damageSource": "minecraft:fall", "damageAmount": 4.5, "count": 1 } }
-```
-
-```json
-{ "eventTrace": { "player": "Steve", "type": "block_placed", "failedAdvancement": "demo:place_diamond", "failedCriterion": "place_diamond", "failureContains": "block expected minecraft:diamond_block", "count": 1 } }
-```
-
-```json
-{ "diagnostic": { "step": 1, "code": "COMMAND_ERROR", "contains": "Unknown scoreboard objective", "count": 1 } }
-```
-
-```json
-{ "snapshot": { "path": "scores.runs", "equalsFile": "expected-snapshot.json" } }
-```
-
-```json
-{ "snapshotDiff": { "path": "/scores/runs/#clock", "kind": "changed", "after": 20, "count": 1 } }
-```
-
-`entity` assertions can check existence/count after type/tag/uuid/position/dimension/health/vehicle/passenger
-filtering, plus full entity NBT path checks, equipment item id/count/components/NBT, active effect
-duration/amplifier/particle state, and explicit attribute values. `player` assertions can also check existence, dimension, game mode, health,
-food, selected slot, ender item count, recipe, effect, stat, advancement progress, full NBT path, position, last input, and spawn point. `team` and
-`bossbar` assertions inspect their stored runtime state. `scheduled` assertions
-inspect queued scheduled functions by id, absolute `dueTick`, existence, and
-duplicate count. `item` assertions can
-check player inventory or `enderItems` by slot, id, exact/min/max count,
-components path, and NBT path. `block` assertions can check sparse-world existence, id, and block
-entity NBT path equality or existence.
-`storage` assertions can compare a path with `equals` or check `exists` and
-`missing` for storage roots or nested paths.
-`output` assertions can check command/channel/targets, text/contains,
-whitespace-normalized text/contains, payload path/value, segment style, count,
-and one-based `order`. When an output assertion misses, the failure message
-includes a bounded list of actual output candidates, including the requested
-payload path value or resolved text segment styles when those were part of the
-assertion.
-`trace` assertions can check command/root/contains, success, output count,
-output text/target, whether a command produced snapshot diffs, diff
-path/kind/rendered text, count, source file, and function stack. When a trace assertion misses, the failure
-message includes a bounded list of actual command trace candidates. `eventTrace`
-assertions check player event dispatch by player, type, success, item/entity/block/recipe
-context, block position, dimension changes, damage source/amount, input device/code/action,
-advancement id, criterion, failed advancement id/criterion, failure reason
-substring, and count; misses include actual player event trace candidates. `diagnostic`
-assertions check expected step failures by step, version, code, command, root,
-message substring, and count; misses include actual diagnostic candidates.
-`snapshot` assertions compare the final snapshot root or a selected `path`
-with inline `equals`, JSON `equalsFile`, `exists`, or `missing`; files are
-resolved relative to the manifest or include file that declared the assertion.
-`snapshotDiff` assertions compare the manifest state before and after steps by
-JSON Pointer path, diff kind, before/after values, rendered text substring, and
-count; misses include actual snapshot diff candidates.
+The canonical JSON Schema remains at `schema/manifest/dps-manifest.schema.json` and can also be exported or checked through the `schema` CLI command. This heading remains so existing section links continue to work.
 
 ## Raw JSON Resources and Tags
 
@@ -511,3 +311,14 @@ Items[{Slot:0b}].id
 
 The same path engine is used by `data`, predicates, loot functions, and
 advancement conditions.
+
+## Limitations
+
+An `observed-noop` resource is validated, indexed, and inspectable, but does not imply complete runtime semantics. Full crafting, world generation, and every item modifier remain outside the model.
+
+## Related pages
+
+- [Manifest Regression Tests](/en/workflows/manifest-tests)
+- [Manifest Reference](/en/reference/manifest)
+- [Version Profiles](/en/resources/version-profile)
+- [Command Support](/en/runtime/command-support)

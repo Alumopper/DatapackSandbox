@@ -38,6 +38,20 @@ class FakeSession:
             }
         if method == "completions":
             return {"suggestions": [{"value": "scoreboard", "start": 0, "end": 3}]}
+        if method == "coverage":
+            return {"coveredLines": 1, "totalLines": 2, "linePercentage": 50.0, "functionPercentage": 100.0, "passed": True, "failures": []}
+        if method == "checkpoints":
+            return {"names": ["before"]}
+        if method in {"saveCheckpoint", "restoreCheckpoint", "deleteCheckpoint"}:
+            return {"names": [values.get("name", "default")], "name": values.get("name", "default"), "state": {"version": "26.2", "gameTime": 4}}
+        if method == "resources":
+            return {"resources": [{"type": "function", "id": "demo:main"}]}
+        if method == "traces":
+            return {"traces": [{"command": "say hi"}], "from": 0, "total": 1}
+        if method == "eventTraces":
+            return {"eventTraces": [{"type": "killed_entity"}], "from": 0, "total": 1}
+        if method == "functionSource":
+            return {"id": values["id"], "source": "say source"}
         return {"commands": 0, "outputs": [], "snapshotDiffs": [], "state": {}}
 
     def close(self) -> None:
@@ -76,6 +90,27 @@ class InterruptBetweenRequestsSession(FakeSession):
         if method == "upsertFunctionSource":
             self.interrupted = True
         return result
+
+
+class PartialFailureSession(FakeSession):
+    def request(self, method: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
+        if method == "runFunction":
+            raise DpsSessionError(
+                "EXECUTION_INTERRUPTED",
+                "interrupted",
+                {"partial": {"state": {"version": "26.2", "gameTime": 9, "entities": 2}, "snapshotDiffs": [{"path": "gameTime"}]}},
+            )
+        return super().request(method, params)
+
+
+class MissingContextSession(FakeSession):
+    fail = True
+
+    def request(self, method: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
+        if method == "runFunction" and self.fail:
+            self.fail = False
+            raise DpsSessionError("MISSING_CONTEXT", "missing player")
+        return super().request(method, params)
 
 
 class NotebookRuntimeTest(unittest.TestCase):
@@ -167,6 +202,84 @@ class NotebookRuntimeTest(unittest.TestCase):
         self.assertEqual(uuid, render_params["cameraEntity"])
         self.assertNotIn("cameraPlayer", render_params)
 
+    def test_fixed_camera_and_render_assets_follow_serve_options(self) -> None:
+        session = FakeSession()
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            skin = root / "steve.png"
+            skin.write_bytes(b"skin")
+            runtime = NotebookRuntime(session=session, cwd=root)  # type: ignore[arg-type]
+            runtime.execute_cell(
+                "%dps skin Steve steve.png\n%dps camera fixed 1 2 3 90 -15 minecraft:the_nether\n"
+                "%dps config transparentBackground true\nsetblock 0 0 0 stone",
+                1,
+            )
+
+        render_params = next(params for method, params in session.requests if method == "render")
+        self.assertEqual([1.0, 2.0, 3.0], render_params["position"])
+        self.assertEqual(90.0, render_params["yaw"])
+        self.assertEqual("minecraft:the_nether", render_params["dimension"])
+        self.assertTrue(render_params["transparentBackground"])
+        self.assertEqual(str(skin.resolve()), render_params["playerSkins"]["Steve"])
+
+    def test_new_serve_controls_are_available_as_magics(self) -> None:
+        session = FakeSession()
+        runtime = NotebookRuntime(session=session)  # type: ignore[arg-type]
+
+        coverage = runtime.execute_cell("%dps coverage --minimum-line 40 --include demo:*", 1)
+        checkpoints = runtime.execute_cell("%dps checkpoint list", 2)
+        runtime.execute_cell("%dps checkpoint restore before", 3)
+        runtime.execute_cell("%dps event player Steve killed_entity minecraft:zombie", 4)
+        resources = runtime.execute_cell("%dps resources", 5)
+
+        self.assertIn("lines=50.00%", coverage.summary)
+        self.assertIn("before", checkpoints.summary)
+        self.assertEqual("player Steve killed_entity minecraft:zombie", next(params["event"] for method, params in session.requests if method == "injectPlayerEvent"))
+        self.assertIn("resources: 1", resources.summary)
+        coverage_params = next(params for method, params in session.requests if method == "coverage")
+        self.assertEqual(40.0, coverage_params["minimumLine"])
+        self.assertEqual(["demo:*"], coverage_params["include"])
+
+    def test_partial_failure_updates_visible_state(self) -> None:
+        runtime = NotebookRuntime(session=PartialFailureSession())  # type: ignore[arg-type]
+
+        with self.assertRaises(DpsSessionError):
+            runtime.execute_cell("say interrupted", 1)
+
+        self.assertEqual(9, runtime.status_data()["state"]["gameTime"])
+
+    def test_partial_directive_failure_updates_visible_state(self) -> None:
+        runtime = NotebookRuntime(session=PartialFailureSession())  # type: ignore[arg-type]
+
+        with self.assertRaises(DpsSessionError):
+            runtime.execute_cell("%dps function demo:main", 1)
+
+        self.assertEqual(9, runtime.status_data()["state"]["gameTime"])
+
+    def test_missing_execution_context_does_not_mark_jvm_session_lost(self) -> None:
+        session = MissingContextSession()
+        runtime = NotebookRuntime(session=session)  # type: ignore[arg-type]
+
+        with self.assertRaises(DpsSessionError) as failure:
+            runtime.execute_cell("say first", 1)
+        self.assertEqual("MISSING_CONTEXT", failure.exception.code)
+        resumed = runtime.execute_cell("say resumed", 2)
+
+        self.assertIn("commands=2", resumed.summary)
+        self.assertFalse(runtime.status_data()["pendingReset"])
+
+    def test_client_assets_are_never_auto_discovered(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            appdata = root / "appdata"
+            client_jar = appdata / ".minecraft" / "versions" / "26.2" / "26.2.jar"
+            client_jar.parent.mkdir(parents=True)
+            client_jar.write_bytes(b"client")
+            with patch.dict(os.environ, {"APPDATA": str(appdata), "DPS_KERNEL_CONFIG": str(root / "missing.json")}, clear=True):
+                runtime = NotebookRuntime(session=FakeSession(), cwd=root)  # type: ignore[arg-type]
+
+        self.assertIsNone(runtime.config.minecraft_assets)
+
     def test_completion_delegates_mcf_and_completes_magics(self) -> None:
         runtime = NotebookRuntime(session=FakeSession())  # type: ignore[arg-type]
         command = runtime.complete("sco", 3)
@@ -202,6 +315,17 @@ class NotebookRuntimeTest(unittest.TestCase):
                 runtime = NotebookRuntime(session=FakeSession(), cwd=root)  # type: ignore[arg-type]
 
             self.assertEqual("1.21.5", runtime.config.version)
+
+    def test_project_config_can_explicitly_disable_environment_assets(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            configured_assets = root / "client.jar"
+            configured_assets.write_bytes(b"client")
+            (root / ".dps-kernel.json").write_text('{"minecraftAssets":null}', encoding="utf-8")
+            with patch.dict(os.environ, {"DPS_MINECRAFT_ASSETS": str(configured_assets)}):
+                runtime = NotebookRuntime(session=FakeSession(), cwd=root)  # type: ignore[arg-type]
+
+            self.assertIsNone(runtime.config.minecraft_assets)
 
 
 if __name__ == "__main__":

@@ -1,5 +1,19 @@
 ﻿# 玩家事件
 
+## 适用场景
+
+当数据包逻辑依赖物品使用、实体交互、伤害、维度切换、方块操作或键鼠输入时，用玩家事件构造可重复的测试输入。
+
+## 前置条件
+
+准备可加载的数据包和至少一个沙盒玩家；复杂上下文建议使用 Manifest world fixture。
+
+## 最小可运行示例
+
+启动 [REPL](/workflows/repl) 后运行 `event player Steve item_used minecraft:carrot_on_a_stick`，再用 `inspect event-traces` 查看分发结果。
+
+## 完整能力
+
 `event` 是沙盒工具命令，不是原版 Minecraft 命令。它用于把“数据包可见的玩家行为”注入运行时。沙盒不模拟完整客户端输入、物理、寻路或战斗 AI；事件只负责喂给 predicate context、loot context 和 advancement trigger。
 
 ## REPL 用法
@@ -164,3 +178,14 @@ report 和断言调试生成出来的战斗命令，而不需要模拟完整战�
 ```
 
 事件会更新玩家 advancement progress，并可能执行 advancement reward，例如 function、loot、experience、recipe。触发后可用 `inspect player <name>`、`inspect advancement`、`inspect outputs`、`inspect event-traces`、snapshot 中的 `playerEventTraces` 或 manifest `eventTrace` 断言查看结果。`eventTrace` 可按 player/type/success、advancement criterion、item/entity/block/recipe id、维度变化、damage source/amount、键鼠 input device/code/action，以及未匹配 advancement criterion 的可读失败原因过滤。
+
+## 限制
+
+事件表示已经解析完成的高层玩家动作，不模拟真实客户端输入、raycast、寻路、物理或完整战斗过程；需要丰富上下文时应使用 JSON Manifest。
+
+## 相关页面
+
+- [REPL 调试](/workflows/repl)
+- [Manifest 回归测试](/workflows/manifest-tests)
+- [运行时世界模型](/runtime/world-model)
+- [报告与可观测性](/reference/reports-observability)

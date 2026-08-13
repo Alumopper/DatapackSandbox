@@ -1,5 +1,19 @@
 # Runtime World Model
 
+## When to use this page
+
+Use this page to design world fixtures, interpret snapshots, import Java saves, or decide where sandbox behavior intentionally differs from a vanilla world.
+
+## Prerequisites
+
+Choose a version profile and identify the datapack-visible state the test needs. Put complex fixtures in `.dps.json` or the QuickTest world builder.
+
+## Minimal runnable example
+
+Run `java -jar cli/build/libs/datapack-sandbox-cli.jar check examples/full-stack/full-stack.dps.json` to exercise a sparse world shared by fixtures, steps, and assertions.
+
+## Full capabilities
+
 The sandbox world is an in-memory sparse model:
 
 - Blocks are stored only when explicitly placed. The initial world is void.
@@ -183,3 +197,14 @@ A vanilla runtime is still useful as an oracle for command trees, registries,
 generated reports, and edge-case behavior. The practical split is: keep this
 sandbox as the fast deterministic runner, and use vanilla/mcdoc data as
 reference input for validation and tests.
+
+## Limitations
+
+The world is a deterministic sparse model. It does not import or simulate lighting, heightmaps, POI, block ticks, chunk lifecycle, redstone, physics, entity AI, or real client behavior.
+
+## Related pages
+
+- [QuickTest Fixtures Reference](/en/reference/quicktest-fixtures)
+- [Manifest Reference](/en/reference/manifest)
+- [Core JVM API](/en/reference/core-api)
+- [Rendering and Realtime Viewport](/en/guide/rendering-notebook)

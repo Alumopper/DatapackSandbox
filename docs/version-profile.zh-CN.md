@@ -1,5 +1,19 @@
 ﻿# 版本 Profile
 
+## 适用场景
+
+选择目标 Minecraft 版本、核对 pack format、资源目录、命令根、registry 或 NBT schema 差异时，使用本页。
+
+## 前置条件
+
+准备 standalone CLI JAR；构建和运行工具本身需要 Java 25，但表格中的 Java 列描述对应 Minecraft profile。
+
+## 最小可运行示例
+
+运行 `java -jar cli/build/libs/datapack-sandbox-cli.jar version` 列出内置 profile，或追加 `1.20.4 26.2` 比较两个版本。
+
+## 完整能力
+
 沙盒支持多个 Minecraft Java 数据包 profile。默认 profile 是 `26.2`，`26.1.2` 仍可用于兼容测试，最低支持的旧数据包 profile 是 `1.20.4`。
 
 | Profile | Java | Data version | Data pack format | NBT schema | 资源目录 |
@@ -109,3 +123,14 @@ Profile 元数据 JSON 会同时包含 `registryCounts` 和完整 `registries` �
 - https://minecraft.wiki/w/Predicate
 - https://minecraft.wiki/w/Advancement_definition
 - https://c4k3.github.io/wiki.vg/Data_Generators.html
+
+## 限制
+
+Profile 描述沙盒内置的版本数据和校验输入，不是 Mojang 服务端发行物；更细粒度的 schema `since`/`until` 属性裁剪仍受当前固定 mcdoc revision 限制。
+
+## 相关页面
+
+- [资源格式](/resources/resource-formats)
+- [命令支持状态](/runtime/command-support)
+- [Manifest 回归测试](/workflows/manifest-tests)
+- [CLI 参考](/reference/cli)

@@ -1,5 +1,19 @@
 # Command Support
 
+## When to use this page
+
+Before depending on a vanilla command, selector, or special-entity behavior, use this page to confirm parsing, behavior level, and observable side effects for the active profile.
+
+## Prerequisites
+
+Choose the target Minecraft version profile first. A command root can be absent from one profile or handled under a different unsupported policy.
+
+## Minimal runnable example
+
+Run `java -jar cli/build/libs/datapack-sandbox-cli.jar commands --version 26.2` to get the version-scoped catalog that also drives the matrix below.
+
+## Full capabilities
+
 Default profile: Minecraft Java `26.2`. Compatibility profiles are available
 down to `1.20.4`.
 
@@ -204,53 +218,35 @@ sandbox does not raycast a player's view or draw client models/text.
 
 ## Sandbox-Only CLI/REPL Commands
 
-These are tooling commands, not vanilla commands:
+This compact catalog is retained for the Gradle drift check. It records tooling entry points and behavior levels, while complete usage lives in the task pages:
 
-| Command | Behavior | Purpose |
-|---|---:|---|
-| `event player <name> <type> ...` | `modeled` | Inject player events for advancements/predicates and observable player state such as consumed/picked-up items, dimension, health, recipes, and input metadata; interaction/attack events may target one real entity by selector or UUID, record interaction-entity action NBT and response, and feed `execute on target|attacker`. |
-| `player <name>` | `modeled` | Create or reuse a sandbox player. |
-| `inspect <...>` | `modeled` | Inspect world state, world border, score, storage, gamerules, random sequences, scheduled functions, forced chunks, scoreboard objectives/displays, teams, bossbars, entity state, blocks, biome overrides, player, player item slots, player recipes, advancement progress, loot, predicate, advancement, recipe, item_modifier, raw JSON resources, tags, resource index, registry groups, outputs, and player event traces. |
-| `snapshot [file]` | `modeled` | Print or write deterministic world JSON. |
-| `help` | `modeled` | Show REPL help. |
-| `exit`, `quit` | `modeled` | Leave the REPL. |
-| `reload` | `observed-noop` | REPL-only datapack reload while preserving world state. |
-| `load` | `modeled` | Run `#minecraft:load` in REPL. |
-| `load fixture <file>` | `modeled` | Apply a manifest-style world JSON fixture in REPL. |
-| `tick [n]` | `modeled` | Advance sandbox ticks in REPL. |
-| `trace <on|off|status>` | `modeled` | Toggle automatic REPL trace printing for newly executed commands. |
-| `diff last` | `modeled` | Print the before/after snapshot diff for the last tracked REPL command. |
-| `rerun last` | `modeled` | Re-execute the last tracked REPL command. |
-| `reset world` | `modeled` | Replace the current REPL world with a fresh sparse world. |
-| CLI `loot --table <id> --context <context>` | | Generate a loot table directly. |
-| CLI `run --trace --trace-filter <filter>` | | Print or write only matching trace events; filters support `root=`, `command=`, `contains=`, `function=`, `file=`, `selector=`/`target=`, `success=`, `error=`/`diagnostic=`, `error-code=`/`diagnostic-code=`, `error-message=`/`diagnostic-message=`, `output=` text, `outputs=` count/boolean, `output-channel=`, `output-payload=<path>[=<json>]`, `diff=`, `path=`, `score=`, and `storage=`. Trace JSONL entries include per-command output events and snapshot diffs for state changed by that command. |
-| CLI `run --outputs-file <file>` | | Write observable output events as JSONL for CI artifacts or generated-command regression tests. |
-| CLI `run --report-file <file>` | | Write a combined JSON report with pass/fail status, assertion failures, outputs, traces, diagnostics derived from failed trace entries, event traces, the final snapshot, snapshot diffs, resource summary details, and datapack coverage. |
-| CLI `run/check --coverage` / `--coverage-file <file>` | | Print executable-line/function-invocation coverage or write a detailed JSON artifact with per-function invocation counts and per-line hit counts. `--minimum-line-coverage` (also `--min-coverage`), `--minimum-function-coverage`, `--coverage-include`, and `--coverage-exclude` add CI thresholds and full resource-id glob filters. |
-| CLI `run --resources` | | Print deterministic resource counts, overlay diagnostics, and missing direct resource references for quick pack checks. |
-| CLI `resources --pack <path>` | | Inspect the loaded resource index for one or more packs, including type, namespace/id, source file, pack label, load order, active/overridden state, overlay links, filters (`--type`, `--id`, `--namespace`, `--source-pack`, `--order-min`, `--order-max`, `--active-only`, `--overridden-only`), and JSON artifact output. |
-| CLI `resources --registry` | | Export version-profile registry groups and entries, optionally filtered with `--registry-group <group>`, in plain text or JSON. |
-| CLI `run --snapshot-diff` | | Print before/after state changes; use `--snapshot-diff-file` to write JSON. |
-| CLI `run --stdin` | | Read `.mcfunction` text from standard input; `--stdin-mode commands` executes stdin as raw command lines. |
-| CLI `run --command-file <file>` | | Execute one or more raw command files in argument order, useful for command-generator output. |
-| CLI `run --event "<event>"` | | Inject player events in quick runs using `player <name> <type> [id] [detail/action\|x y z\|pos=x,y,z]`, then assert player state, sparse-world block changes, or `eventTrace`. |
-| CLI `run --event-file <file>` | | Inject one player event per non-empty, non-comment line, using the same `--event` shorthand. |
-| CLI `run --event-trace-file <file>` | | Write player event trace JSONL for event-driven datapack debugging and CI artifacts. |
-| CLI `run --seed <long>` | | Override the quick-run world seed after world fixtures are applied. |
-| CLI `run --world` | | Apply a manifest-style world JSON fixture, including fixture references, before execution. |
-| CLI `run --strict` | | Treat unsupported vanilla commands as errors and fail the run on direct missing resource references, without needing separate `--unsupported error` and `--fail-on-missing-resources` flags. |
-| CLI `run --allow-command-failure` | | Continue after direct `--command`, `--command-file`, or `--stdin-mode commands` errors so quick tests can assert expected diagnostics and still run follow-up output/state checks. |
-| CLI `run --max-commands`, `--max-function-depth`, `--max-ticks-per-run`, `--max-output-events`, `--max-snapshot-bytes` | | Override sandbox safety limits for quick runs to stop runaway generated commands, recursive functions, oversized tick requests, unbounded output, or huge snapshots. |
-| CLI `run --assert`, `run --assert-file` | | Evaluate inline or file-backed manifest assertions after execution, including final `snapshot` equality/existence assertions and before/after `snapshotDiff` assertions. Manifest output assertions support exact, contains, regex `matches`, normalized text, normalized regex, segment, payload, count, and order fields; storage and NBT/component path expectations support `equals`, `exists`/`missing`, `contains`, and regex `matches`. `--assert-file` accepts JSON object/array files or one shorthand per non-empty, non-comment line. Shorthands include `score:<target>:<objective>=N`, `score:<target>:<objective>>=N`, `score:<target>:<objective><=N`, `storage:<id>[:<path>]=<json>`, `storage:<id>[:<path>]?`, `storage:<id>[:<path>]!`, `advancement:<player>:<id>[=<true\|false>][:done=<true\|false>][:criterion=<name>][:criterionDone=<true\|false>]`, `predicate:<id>[=<true\|false>][:player=<name>][:equals=<true\|false>]`, `loot:<table>[:context=<id>][:player=<name>][:seed=N][:count=N][:item=<id>]`, `player:<name>[:<field>=<value>]`, `world:<field>=<value>`, `gamerule:<rule>=<value>`, `gamerule:<rule>?`, `gamerule:<rule>!`, `random-sequence:<name>=N`, `snapshot:<path>=<json>`, `snapshot:<path>?`, `snapshot:<path>!`, `block:<x>,<y>,<z>=<id>`, `block:<x>,<y>,<z>?`, `block:<x>,<y>,<z>!`, `biome:<x>,<y>,<z>=<id>`, `team:<name>?`, `team:<name>!`, `team:<name>@<member>`, `team:<name>=N`, `bossbar:<id>?`, `bossbar:<id>!`, `bossbar:<id>:<field>=<value>`, `item:<player>:<id>[@slot]=N`, `entity:<type|*>[@tag]=N`, `diff:<json-pointer>[=<kind>]`, `event-trace:<player>:<type>[@x,y,z][=N]`, `trace:<root>=N`, `trace:<text>`, `trace-output:<text>[@target]`, `diagnostic=N`, `diagnostic:<code>=N`, `diagnostic:<code>:<text>[=N]`, `warning=N`, `warning:<text>`, `unsupported=N`, `unsupported:<text>`, `output:<text>`, `output-count:<text>=N`, `output-order:<N>:<text>`, `output-exact:<text>`, `output-matches:<regex>`, `output-command:<command>=N`, `output-command:<command>?`, `output-command:<command>!`, `output-channel:<channel>=N`, `output-channel:<channel>?`, `output-channel:<channel>!`, `output-target:<target>=N`, `output-target:<target>?`, `output-target:<target>!`, `output-normalized:<text>`, `output-normalized-exact:<text>`, `output-normalized-matches:<regex>`, `output-segment:<text>[|color=<color>|bold=<true\|false>][@target]`, `output-segment-exact:<text>[|color=<color>|bold=<true\|false>][@target]`, `output-segment-matches:<regex>[|color=<color>|bold=<true\|false>][@target]`, and `output-payload:<command>:<path>[=<json>]`. |
-| Assertion shorthand `scheduled:<id>` | | Check scheduled function snapshot state with `scheduled:<id>=<dueTick>`, `scheduled:<id>?`, or `scheduled:<id>!`. |
-| Manifest assertion `gamerule` | | Check stored gamerule values and missing rules with typed `.dps.json` fields. |
-| Manifest assertions `randomSequence` / `forcedChunk` | | Check deterministic random sequence state and forced chunk presence with typed `.dps.json` fields. |
-| Assertion shorthand `scoreboard-objective:<name>` | | Check objective metadata with `scoreboard-objective:<name>?`, `scoreboard-objective:<name>!`, or `scoreboard-objective:<name>:<field>=<value>` for `criteria`, `displayName`, `renderType`, or `displayAutoUpdate`. |
-| Assertion shorthand `scoreboard-display:<slot>` | | Check objective display slots with `scoreboard-display:<slot>=<objective>`, `scoreboard-display:<slot>?`, or `scoreboard-display:<slot>!`, including dotted slots such as `sidebar.team.red`. |
-| Manifest assertions `scoreboardObjective` / `scoreboardDisplay` | | Check objective metadata and display slots with typed `.dps.json` fields instead of snapshot paths. |
-| Assertion shorthand `forced-chunk:<x>,<z>` / `forceload:<x>,<z>` | | Check final forced chunk snapshot state with `forced-chunk:<x>,<z>?`, `forced-chunk:<x>,<z>!`, or the `forceload:` alias. |
-| CLI `diff <before.json> <after.json>` / `diff --script <manifest.dps.json>` | | Compare two deterministic JSON snapshots or reports and print field-level JSON Pointer differences; `--snapshot` extracts a single `snapshot` field from run/check reports, `--state` ignores trace bookkeeping, `--json --output <file>` writes a diff artifact, and `--check` exits non-zero when differences exist. `--script --output <file>` exports manifest command/function steps as a replay script for optional external vanilla or third-party differential harnesses, preserving sandbox-only steps as comments. |
-| CLI `benchmark` | | Run built-in performance smoke scenarios for scoreboard writes, large storage merge, function chains, and batch manifest execution; optional `--pack` measures pack loading, optional `--loot-table` samples loot generation, and `--json --output <file>` writes a benchmark artifact. |
-| CLI `run --fail-on-missing-resources` | | Fail a quick run when direct load/tick tag, advancement parent/reward, predicate references in predicate/loot/item modifier resources, or nested loot table references point at missing resources, useful before creating a full manifest. |
-| CLI `check <manifest-or-directory>` | | Run `.dps.json` manifests; manifest `include` can share world fixtures, steps, assertions, coverage requirements, and common/default pack matrices before case-local packs; `--validate-schema` checks manifest structure before execution; `--fail-on-missing-resources` turns direct missing resource references into failures; `--strict` combines schema validation, unsupported-command errors, and direct missing-reference failures; `--max-commands`, `--max-function-depth`, `--max-ticks-per-run`, `--max-output-events`, and `--max-snapshot-bytes` override sandbox safety limits for each attempt; `--verbose` prints resource summaries, overlay entries, missing references, and output events; use `--snapshot-diff-on-fail` for state changes, plus `--trace-file`, `--trace-filter`, `--outputs-file`, `--event-trace-file`, `--coverage-file`, and `--report-file` for CI artifacts. Report JSON includes output, command trace, diagnostics derived from failed trace entries, player event trace, final snapshot, snapshot diff, resource summary, and coverage details per attempt. |
-| CLI `schema [--output <file>]` | | Print or write the bundled `.dps.json` manifest JSON Schema for editor and CI integration. |
+| Tool entry | Behavior | Authoritative guide |
+| --- | --- | --- |
+| `event player <name> <type> ...` | `modeled` | [Player Events](/en/runtime/player-events) |
+| `inspect <target>` | `modeled` | [Debug with the REPL](/en/workflows/repl) |
+| `load` | `modeled` | [Debug with the REPL](/en/workflows/repl) |
+| `trace <on\|off\|status>` | `modeled` | [Reports and Observability](/en/reference/reports-observability) |
+| `diff last` | `modeled` | [Debug with the REPL](/en/workflows/repl) |
+| `rerun last` | `modeled` | [Debug with the REPL](/en/workflows/repl) |
+| `exit` | `modeled` | [Debug with the REPL](/en/workflows/repl) |
+| `quit` | `modeled` | [Debug with the REPL](/en/workflows/repl) |
+
+The former tooling-command, run-option, assertion-shorthand, and artifact appendix is now split by task:
+
+- See the [CLI Reference](/en/reference/cli) for commands and complete option groups.
+- See [Debug with the REPL](/en/workflows/repl) for persistent-world `inspect`, `trace`, `diff last`, `rerun last`, and reload workflows.
+- See [Reports and Observability](/en/reference/reports-observability) for trace, output, snapshot-diff, coverage, and report formats and filters.
+- See the [Manifest Reference](/en/reference/manifest) for typed step and assertion fields.
+
+This heading remains so existing deep links still reach the new authoritative entries.
+
+## Limitations
+
+The matrix describes observable behavior in the clean-room sandbox, not every vanilla side effect. Networking, permissions, client UI, world generation, redstone, entity AI, and full combat remain out of scope.
+
+## Related pages
+
+- [CLI Reference](/en/reference/cli)
+- [Debug with the REPL](/en/workflows/repl)
+- [Reports and Observability](/en/reference/reports-observability)
+- [Version Profiles](/en/resources/version-profile)

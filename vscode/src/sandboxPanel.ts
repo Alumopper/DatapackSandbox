@@ -1,6 +1,8 @@
 import * as vscode from "vscode";
+import { configuredCoverageOptions } from "./coverageOptions";
 import { appendEventPage } from "./eventPages";
 import { FunctionSource, OutputEvent, PlayerEventTraceEvent, RenderResult, TraceEvent } from "./model";
+import { parsePlayerEventPayload } from "./playerEvent";
 import { configuredRenderOptions } from "./renderOptions";
 import { SandboxClient, describeSandboxError } from "./sandboxClient";
 
@@ -70,7 +72,7 @@ export class SandboxPanel implements vscode.Disposable {
       case "function": return this.executeAndInspect("Function completed", "runFunction", { id: String(payload.value ?? "") });
       case "tick": return this.executeAndInspect("Ticks advanced", "tick", { count: Number(payload.value || 1) });
       case "load": return this.executeAndInspect("Load functions completed", "load");
-      case "event": return this.executeAndInspect("Player event injected", "injectPlayerEvent", { event: parseJsonPayload(payload.value, "Player event") });
+      case "event": return this.executeAndInspect("Player event injected", "injectPlayerEvent", parsePlayerEventPayload(payload.value));
       case "fixture": return this.executeAndInspect("World fixture applied", "applyWorldFixture", { path: String(payload.value ?? "") });
       case "reset": {
         await this.client.request("resetWorld");
@@ -94,6 +96,10 @@ export class SandboxPanel implements vscode.Disposable {
         const result = await this.client.request<{ requested: boolean; boundary: string }>("interrupt");
         return { active: true, summary: result.requested ? `Interrupt requested at the next ${result.boundary} boundary.` : "No execution was interrupted." };
       }
+      case "resetCoverage": {
+        await this.client.request("resetCoverage");
+        return { active: true, data: await this.inspect(), focus: "coverage", summary: "Coverage counters reset." };
+      }
       case "inspect": return { active: true, data: await this.inspect(), summary: "Sandbox data refreshed." };
       case "completions": return this.client.request("completions", { buffer: String(payload.value ?? ""), cursor: Number(payload.cursor ?? 0) });
       case "checkCommand": return this.client.request("checkCommand", { command: String(payload.value ?? "") });
@@ -105,7 +111,8 @@ export class SandboxPanel implements vscode.Disposable {
 
   private async start(payload: Record<string, unknown>): Promise<Record<string, unknown>> {
     this.clearEventHistory();
-    await this.client.create(String(payload.version || "").trim() || undefined, stringList(payload.packs));
+    const configuredPlayer = vscode.workspace.getConfiguration("datapackSandbox").get<string>("defaultPlayerName", "Steve").trim();
+    await this.client.create(String(payload.version || "").trim() || undefined, stringList(payload.packs), [], configuredPlayer || null);
     return this.inspect();
   }
 
@@ -123,13 +130,14 @@ export class SandboxPanel implements vscode.Disposable {
   }
 
   private async inspect(): Promise<Record<string, unknown>> {
-    const [state, outputs, traces, eventTraces, snapshot, resources] = await Promise.all([
+    const [state, outputs, traces, eventTraces, snapshot, resources, coverage] = await Promise.all([
       this.client.request("state"),
       this.readEventPage<OutputEvent>("outputs", "outputs", this.outputs),
       this.readEventPage<TraceEvent>("traces", "traces", this.traces),
       this.readEventPage<PlayerEventTraceEvent>("eventTraces", "eventTraces", this.eventTraces),
       this.client.request("snapshot"),
       this.client.request("resources"),
+      this.client.supports("coverage") ? this.client.request("coverage", configuredCoverageOptions()) : Promise.resolve(undefined),
     ]);
     this.outputs = outputs;
     this.traces = traces;
@@ -142,6 +150,7 @@ export class SandboxPanel implements vscode.Disposable {
       eventTraces,
       snapshot,
       resources,
+      coverage,
       players: world.players,
       entities: world.entities,
       scores: world.scores,
@@ -236,15 +245,6 @@ function stringList(value: unknown): string[] {
   return typeof value === "string" ? value.split(/[\r\n,]+/).map((item) => item.trim()).filter(Boolean) : [];
 }
 
-function parseJsonPayload(value: unknown, label: string): unknown {
-  if (typeof value !== "string") return value;
-  try {
-    return JSON.parse(value);
-  } catch {
-    throw new Error(`${label} must be valid JSON.`);
-  }
-}
-
 function html(webview: vscode.Webview): string {
   const nonce = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
   const version = vscode.workspace.getConfiguration("datapackSandbox").get("defaultVersion", "");
@@ -294,7 +294,7 @@ function html(webview: vscode.Webview): string {
           <div class="operation"><select id="operation"><option value="command">Command</option><option value="function">Function</option><option value="tick">Ticks</option><option value="event">Player event</option><option value="fixture">World fixture</option></select><div class="command-entry"><input id="value" placeholder="Enter a command" autocomplete="off" spellcheck="false" aria-autocomplete="list" aria-controls="suggestions"><div id="suggestions" class="suggestions" role="listbox" hidden></div><div id="commandFeedback" class="command-feedback">Start a sandbox for live completion and checks.</div></div><button id="run" class="btn primary" data-requires-active>Run</button></div>
           <div id="operationHint" class="hint">Type to see sandbox-aware command suggestions. Use ↑/↓ and Tab to accept.</div>
           <div id="executionResult" class="execution-result">No operation has been run yet.</div>
-          <div class="actions" style="margin-top:12px"><button class="btn" data-action="load" data-requires-active>Run load</button><button class="btn" data-action="render" data-requires-active data-capability="render">Render PNG</button><button class="btn danger" data-action="interrupt" data-requires-active data-allow-busy data-capability="interrupt">Interrupt</button><button class="btn" data-action="inspect" data-requires-active>Refresh data</button></div>
+          <div class="actions" style="margin-top:12px"><button class="btn" data-action="load" data-requires-active>Run load</button><button class="btn" data-action="render" data-requires-active data-capability="render">Render PNG</button><button class="btn" data-action="resetCoverage" data-requires-active data-capability="coverage">Reset coverage</button><button class="btn danger" data-action="interrupt" data-requires-active data-allow-busy data-capability="interrupt">Interrupt</button><button class="btn" data-action="inspect" data-requires-active>Refresh data</button></div>
         </div>
       </section>
       <section class="card viewer">
@@ -308,9 +308,9 @@ function html(webview: vscode.Webview): string {
   <div id="toast" class="toast" role="status"></div>
   <script nonce="${nonce}">
     const api=acquireVsCodeApi();
-    const names=['state','outputs','traces','eventTraces','render','snapshot','resources','players','entities','scores','storage','diagnostics'];
-    const labels={state:'State',outputs:'Output',traces:'Trace',eventTraces:'Player events',render:'Render',snapshot:'Snapshot',resources:'Resources',players:'Players',entities:'Entities',scores:'Scores',storage:'Storage',diagnostics:'Diagnostics'};
-    const hints={command:'Example: scoreboard players set #test runs 1',function:'Example: demo:main',tick:'Number of ticks to advance',event:'JSON object describing a player event',fixture:'Path to a world fixture JSON file'};
+    const names=['state','coverage','outputs','traces','eventTraces','render','snapshot','resources','players','entities','scores','storage','diagnostics'];
+    const labels={state:'State',coverage:'Coverage',outputs:'Output',traces:'Trace',eventTraces:'Player events',render:'Render',snapshot:'Snapshot',resources:'Resources',players:'Players',entities:'Entities',scores:'Scores',storage:'Storage',diagnostics:'Diagnostics'};
+    const hints={command:'Example: scoreboard players set #test runs 1',function:'Example: demo:main',tick:'Number of ticks to advance',event:'JSON object such as {"player":"Steve","type":"killed_entity","id":"minecraft:zombie"}',fixture:'Path to a world fixture JSON file'};
     let activeTab='state',data={},active=false,capabilities={},sequence=0,pending=0,toastTimer,assistTimer,selectedSuggestion=-1,suggestionItems=[];
     const latestAssist={completions:0,checkCommand:0};
     const byId=(id)=>document.getElementById(id);const tabs=byId('tabs'),content=byId('content'),toast=byId('toast'),valueInput=byId('value'),suggestions=byId('suggestions'),feedback=byId('commandFeedback'),errorPanel=byId('errorPanel'),executionResult=byId('executionResult');
@@ -329,7 +329,7 @@ function html(webview: vscode.Webview): string {
     function setActive(value){active=value;byId('connection').classList.toggle('active',value);byId('connectionText').textContent=value?'Sandbox running':'Sandbox stopped';setBusy()}
     function setCapabilities(value){capabilities=value||{};document.querySelectorAll('[data-capability]').forEach((element)=>{element.hidden=capabilities[element.dataset.capability]!==true})}
     function notify(message,error=false){clearTimeout(toastTimer);toast.textContent=message;toast.className='toast show'+(error?' error':'');toastTimer=setTimeout(()=>toast.className='toast',3200)}
-    window.addEventListener('message',(event)=>{const message=event.data;if(message.action==='completions'||message.action==='checkCommand'){if(message.requestId!==latestAssist[message.action])return;if(!message.ok){if(message.action==='checkCommand')showCheck({valid:false,message:message.error?.message||'Command check failed.'});return}if(message.action==='completions')showSuggestions(message.result);else showCheck(message.result);return}pending=Math.max(0,pending-1);if(!message.ok){setBusy(false);showError(message.error);return}if(message.action==='openSource'||message.action==='openFunctionSource'){setBusy(false);return}hideError();const result=message.result||{};if(Array.isArray(result.profiles))setProfiles(result.profiles,result.defaultVersion);if(result.capabilities)setCapabilities(result.capabilities);if(typeof result.active==='boolean')setActive(result.active);if(result.data)data=result.data;if(result.frame){data.render=result.frame;activeTab='render'}if(result.summary)showSummary(result.summary);else if(message.action!=='status')showSummary(actionLabel(message.action));if(message.action!=='status')notify(actionLabel(message.action));render();if(message.action==='start'||message.action==='command'||message.action==='reset'||message.action==='reload')scheduleAssist()});
+    window.addEventListener('message',(event)=>{const message=event.data;if(message.action==='completions'||message.action==='checkCommand'){if(message.requestId!==latestAssist[message.action])return;if(!message.ok){if(message.action==='checkCommand')showCheck({valid:false,message:message.error?.message||'Command check failed.'});return}if(message.action==='completions')showSuggestions(message.result);else showCheck(message.result);return}pending=Math.max(0,pending-1);if(!message.ok){setBusy(false);showError(message.error);return}if(message.action==='openSource'||message.action==='openFunctionSource'){setBusy(false);return}hideError();const result=message.result||{};if(Array.isArray(result.profiles))setProfiles(result.profiles,result.defaultVersion);if(result.capabilities)setCapabilities(result.capabilities);if(typeof result.active==='boolean')setActive(result.active);if(result.data)data=result.data;if(result.focus)activeTab=result.focus;if(result.frame){data.render=result.frame;activeTab='render'}if(result.summary)showSummary(result.summary);else if(message.action!=='status')showSummary(actionLabel(message.action));if(message.action!=='status')notify(actionLabel(message.action));render();if(message.action==='start'||message.action==='command'||message.action==='reset'||message.action==='reload')scheduleAssist()});
     function setProfiles(profiles,defaultVersion){const select=byId('version');const current=select.value||defaultVersion;select.replaceChildren();for(const profile of profiles){const option=document.createElement('option');option.value=profile.id;option.textContent=profile.id+' · pack '+profile.packFormat+' · Java '+profile.javaMajor;select.appendChild(option)}select.value=profiles.some((profile)=>profile.id===current)?current:defaultVersion}
     function showError(error){const details=typeof error==='object'&&error?error:{title:'Operation failed',message:String(error||'Unknown error')};byId('errorTitle').textContent=details.title||'Operation failed';byId('errorMessage').textContent=details.message||'The sandbox did not complete the operation.';byId('errorCode').textContent=details.code?'Error code: '+details.code:'';byId('errorDetail').textContent=details.detail||'';byId('errorHint').textContent=details.hint?'Try this: '+details.hint:'';errorPanel.hidden=false;executionResult.textContent=(details.title||'Operation failed')+' · '+(details.message||'');executionResult.className='execution-result';notify(details.title||'Operation failed',true)}
     function hideError(){errorPanel.hidden=true}
@@ -340,7 +340,7 @@ function html(webview: vscode.Webview): string {
     function moveSuggestion(delta){if(!suggestionItems.length)return;selectedSuggestion=(selectedSuggestion+delta+suggestionItems.length)%suggestionItems.length;[...suggestions.children].forEach((item,index)=>item.classList.toggle('selected',index===selectedSuggestion));suggestions.children[selectedSuggestion]?.scrollIntoView({block:'nearest'})}
     function applySuggestion(item){const start=item.start??valueInput.selectionStart??0,end=item.end??valueInput.selectionStart??0,suffix=item.appendSpace?' ':'';valueInput.setRangeText(item.value+suffix,start,end,'end');hideSuggestions();valueInput.focus();scheduleAssist()}
     function showCheck(result){feedback.textContent=(result?.valid?'✓ ':'! ')+(result?.message??'Unable to check command.');feedback.className='command-feedback '+(result?.valid?'ok':'error')}
-    function actionLabel(action){return({start:'Sandbox started',stop:'Sandbox stopped',reload:'Datapacks reloaded',reset:'World reset',saveCheckpoint:'Checkpoint saved',restoreCheckpoint:'Checkpoint restored',deleteCheckpoint:'Checkpoint deleted',render:'PNG rendered',interrupt:'Interrupt requested',inspect:'Data refreshed',command:'Command completed',function:'Function completed',tick:'Ticks advanced',event:'Event injected',fixture:'Fixture applied',load:'Load functions completed'})[action]||'Done'}
+    function actionLabel(action){return({start:'Sandbox started',stop:'Sandbox stopped',reload:'Datapacks reloaded',reset:'World reset',saveCheckpoint:'Checkpoint saved',restoreCheckpoint:'Checkpoint restored',deleteCheckpoint:'Checkpoint deleted',render:'PNG rendered',resetCoverage:'Coverage reset',interrupt:'Interrupt requested',inspect:'Data refreshed',command:'Command completed',function:'Function completed',tick:'Ticks advanced',event:'Event injected',fixture:'Fixture applied',load:'Load functions completed'})[action]||'Done'}
     function render(){[...tabs.children].forEach((button)=>button.classList.toggle('active',button.dataset.tab===activeTab));const state=data.state||{};byId('statVersion').textContent=state.version??'—';byId('statTime').textContent=state.gameTime??'—';byId('statEntities').textContent=state.entities??data.entities?.length??'—';byId('statErrors').textContent=data.diagnostics?.length??'—';content.replaceChildren();if(!active){content.appendChild(emptyView('No active sandbox','Start one to inspect its runtime state.'));return}const value=data[activeTab];if(value===undefined||value===null||(Array.isArray(value)&&value.length===0)){content.appendChild(emptyView('Nothing here yet','Run a command or refresh the sandbox data.'));return}if(activeTab==='render'){renderFrame(value);return}if(activeTab==='outputs'){renderOutputs(value);return}const tree=document.createElement('div');tree.className='tree';tree.appendChild(treeNode(labels[activeTab],value,true));content.appendChild(tree)}
     function renderFrame(frame){const image=document.createElement('img');image.className='render-frame';image.alt='Datapack Sandbox rendered world';image.src='data:image/png;base64,'+frame.data;content.appendChild(image);const tree=document.createElement('div');tree.className='tree';tree.appendChild(treeNode('metadata',frame.metadata||{},true));content.appendChild(tree)}
     function renderOutputs(outputs){const list=document.createElement('div');list.className='output-list';for(const output of outputs){const card=document.createElement('article');card.className='output-card';const head=document.createElement('div');head.className='output-head';const channel=document.createElement('span');channel.className='output-channel';channel.textContent=output.channel||'output';const tick=document.createElement('span');tick.textContent='tick '+(output.tick??0);const targets=document.createElement('span');targets.textContent=Array.isArray(output.targets)&&output.targets.length?'→ '+output.targets.join(', '):'';head.append(channel,tick,targets);const text=document.createElement('div');text.className='output-text';if(Array.isArray(output.segments)&&output.segments.length){for(const segment of output.segments){const span=document.createElement('span');span.textContent=segment.text??'';span.style.color=segment.color??'';span.style.fontWeight=segment.bold?'700':'';span.style.fontStyle=segment.italic?'italic':'';span.style.textDecoration=[segment.underlined?'underline':'',segment.strikethrough?'line-through':''].filter(Boolean).join(' ');text.appendChild(span)}}else text.textContent=output.text||output.rawText||'';const command=document.createElement('div');command.className='output-command';command.textContent=output.command||'';card.append(head,text,command);if(output.payload!==undefined)card.appendChild(treeNode('payload',output.payload));list.appendChild(card)}content.appendChild(list)}

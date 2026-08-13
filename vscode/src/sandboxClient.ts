@@ -3,10 +3,9 @@ import * as readline from "node:readline";
 import * as vscode from "vscode";
 import { CliRunner } from "./cli";
 import { ServeHello } from "./model";
+import { isServeHello, parseServeResponse, ServeError } from "./serveProtocol";
 
 interface Pending { method: string; resolve(value: unknown): void; reject(error: Error): void; }
-interface ServeError { code?: string; message?: string; version?: string; command?: string; location?: { file?: string; line?: number; command?: string }; }
-interface Response { id: string | null; ok: boolean; result?: unknown; error?: ServeError; }
 
 const MAX_DIAGNOSTIC_TEXT = 64 * 1024;
 const MAX_INVALID_RESPONSE_PREVIEW = 4 * 1024;
@@ -121,8 +120,20 @@ export class SandboxClient implements vscode.Disposable {
     });
   }
 
-  async create(version: string | undefined, packs: string[], functionSources: unknown[] = []): Promise<Record<string, unknown>> {
-    const state = await this.request<Record<string, unknown>>("createSandbox", { ...(version ? { version } : {}), packs, functionSources });
+  async create(
+    version: string | undefined,
+    packs: string[],
+    functionSources: unknown[] = [],
+    defaultPlayerName: string | null = "Steve",
+    unsupported?: "warn" | "ignore" | "error",
+  ): Promise<Record<string, unknown>> {
+    const state = await this.request<Record<string, unknown>>("createSandbox", {
+      ...(version ? { version } : {}),
+      packs,
+      functionSources,
+      defaultPlayerName,
+      ...(unsupported ? { unsupported } : {}),
+    });
     this.setState(state); return state;
   }
 
@@ -136,11 +147,11 @@ export class SandboxClient implements vscode.Disposable {
       this.logInvalidResponse("invalid JSON", line);
       return;
     }
-    if (!isServeResponse(parsed)) {
+    const response = parseServeResponse(parsed);
+    if (!response) {
       this.logInvalidResponse("invalid response", line);
       return;
     }
-    const response = parsed;
     if (response.id === null) {
       if (!isServeHello(response.result)) {
         this.stop(new Error("Datapack Sandbox CLI returned an invalid serve handshake"));
@@ -165,7 +176,11 @@ export class SandboxClient implements vscode.Disposable {
         else if (result.state && typeof result.state === "object" && "version" in result.state) this.setState(result.state as Record<string, unknown>);
       }
       pending.resolve(response.result);
-    } else pending.reject(requestError(pending.method, response.error));
+    } else {
+      const partialState = response.error?.partial?.state;
+      if (partialState && typeof partialState === "object" && "version" in partialState) this.setState(partialState);
+      pending.reject(requestError(pending.method, response.error));
+    }
   }
 
   private setState(state: Record<string, unknown>): void { this.state = state; this.stateEmitter.fire(state); }
@@ -183,24 +198,7 @@ export class SandboxClient implements vscode.Disposable {
   }
 }
 
-function isServeResponse(value: unknown): value is Response {
-  if (!value || typeof value !== "object") return false;
-  const response = value as Partial<Response>;
-  return (response.id === null || typeof response.id === "string") && typeof response.ok === "boolean";
-}
-
-function isServeHello(value: unknown): value is ServeHello {
-  if (!value || typeof value !== "object") return false;
-  const hello = value as Partial<ServeHello>;
-  return hello.protocol === "dps-jsonl"
-    && typeof hello.defaultVersion === "string"
-    && Array.isArray(hello.versions)
-    && hello.versions.every((version) => typeof version === "string")
-    && Boolean(hello.capabilities && typeof hello.capabilities === "object")
-    && Object.values(hello.capabilities ?? {}).every((capability) => typeof capability === "boolean" || typeof capability === "string");
-}
-
-function requestError(method: string, error?: ServeError): SandboxClientError {
+export function requestError(method: string, error?: ServeError): SandboxClientError {
   const code = error?.code ?? "SERVE_ERROR";
   const titles: Record<string, string> = {
     createSandbox: "Sandbox could not be started",
@@ -216,6 +214,8 @@ function requestError(method: string, error?: ServeError): SandboxClientError {
     restoreCheckpoint: "Sandbox checkpoint could not be restored",
     deleteCheckpoint: "Sandbox checkpoint could not be deleted",
     functionSource: "Function source could not be opened",
+    coverage: "Coverage could not be collected",
+    resetCoverage: "Coverage counters could not be reset",
     interrupt: "Sandbox execution could not be interrupted",
   };
   const hints: Record<string, string> = {
@@ -225,7 +225,16 @@ function requestError(method: string, error?: ServeError): SandboxClientError {
     UNSUPPORTED_FEATURE: "This behavior is not modeled by the selected Datapack Sandbox profile.",
     COMMAND_ERROR: "Review the command arguments and the current sandbox world state.",
     MISSING_CONTEXT: "The command needs a player, entity, block, or execution context that is not present.",
+    EXECUTION_INTERRUPTED: "Review the partial execution counts below, then continue in the same sandbox or restore a checkpoint.",
   };
+  const partial = error?.partial;
+  const partialLine = partial ? [
+    `Partial execution: ${Number(partial.commandsCompleted ?? 0)} command boundaries completed`,
+    `${partial.outputs?.length ?? 0} outputs`,
+    `${partial.traces?.length ?? 0} traces`,
+    `${partial.eventTraces?.length ?? 0} player-event traces`,
+    `${partial.snapshotDiffs?.length ?? 0} state changes`,
+  ].join(" · ") : "";
   return new SandboxClientError({
     title: titles[method] ?? "Datapack Sandbox request failed",
     message: error?.message ?? "The sandbox returned an unknown error.",
@@ -234,6 +243,7 @@ function requestError(method: string, error?: ServeError): SandboxClientError {
       error?.version ? `Minecraft profile: ${error.version}` : "",
       error?.location?.file ? `Location: ${error.location.file}${error.location.line ? `:${error.location.line}` : ""}` : "",
       error?.command ?? error?.location?.command ? `Command: ${error.command ?? error.location?.command}` : "",
+      partialLine,
     ].filter(Boolean).join("\n") || undefined,
     hint: hints[code] ?? "Open the Datapack Sandbox output channel for additional details.",
   });

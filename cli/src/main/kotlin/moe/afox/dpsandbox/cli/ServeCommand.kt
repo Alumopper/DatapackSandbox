@@ -101,7 +101,7 @@ internal class ServeSession {
     @Volatile
     private var sandbox: DatapackSandbox? = null
     private var config: SessionConfig? = null
-    private val gson = GsonBuilder().disableHtmlEscaping().create()
+    private val gson = GsonBuilder().disableHtmlEscaping().serializeNulls().create()
 
     fun run(
         input: BufferedReader,
@@ -275,6 +275,7 @@ internal class ServeSession {
             "state" -> stateJson(current())
             "completions" -> completions(params)
             "checkCommand" -> checkCommand(params)
+            "checkCommands" -> checkCommands(params)
             else -> throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Unknown serve method '$method'")
         }
 
@@ -303,6 +304,7 @@ internal class ServeSession {
                     capabilities.addProperty("pagedEvents", true)
                     capabilities.addProperty("richOutput", true)
                     capabilities.addProperty("coverage", true)
+                    capabilities.addProperty("commandDiagnostics", true)
                 },
             )
             json.add("versions", JsonArray().also { versions -> VersionProfiles.all.forEach { versions.add(it.id) } })
@@ -777,14 +779,22 @@ internal class ServeSession {
         if (command.isBlank()) {
             return commandCheckJson(valid = false, code = DiagnosticCode.INPUT_FORMAT, message = "Enter a command to check.")
         }
-        val cfg = config ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "No sandbox has been created")
-        val scratch = createFromConfig(cfg, SandboxWorld())
-        copyValidationWorld(current().world, scratch.world)
-        return try {
-            scratch.executeCommand(command, SourceLocation(file = "<command-check>", line = 1, command = command))
-            commandCheckJson(valid = true, message = "Command is valid for ${scratch.profile.id}.")
-        } catch (error: SandboxException) {
-            commandCheckJson(valid = false, code = error.code, message = error.message)
+        val result = current().checkCommand(command)
+        return commandCheckJson(result.valid, result.errorCode, result.message)
+    }
+
+    private fun checkCommands(params: JsonObject): JsonObject {
+        val commands = params.stringArray("commands").map { it.trim().removePrefix("/") }
+        val checks = current().checkCommands(commands)
+        return JsonObject().also { json ->
+            json.add(
+                "checks",
+                JsonArray().also { array ->
+                    checks.forEach { result ->
+                        array.add(commandCheckJson(result.valid, result.errorCode, result.message))
+                    }
+                },
+            )
         }
     }
 
@@ -799,46 +809,6 @@ internal class ServeSession {
             code?.let { json.addProperty("code", it.name) }
             json.addProperty("message", message)
         }
-
-    private fun copyValidationWorld(
-        source: SandboxWorld,
-        target: SandboxWorld,
-    ) {
-        target.setGameTime(source.gameTime)
-        target.setDayTime(source.dayTime)
-        target.weather = source.weather
-        target.weatherDuration = source.weatherDuration
-        target.difficulty = source.difficulty
-        target.defaultGameMode = source.defaultGameMode
-        target.seed = source.seed
-        target.worldSpawn = source.worldSpawn.copy()
-        target.tickRate = source.tickRate
-        target.tickFrozen = source.tickFrozen
-        target.objectives.putAll(source.objectives)
-        target.scoreboardObjectiveMetadata.putAll(source.scoreboardObjectiveMetadata.mapValues { (_, value) -> value.copy() })
-        target.scoreboardDisplays.putAll(source.scoreboardDisplays)
-        target.scores.putAll(source.scores)
-        source.storages.forEach { (id, value) -> target.storages[id] = value.deepCopy() }
-        source.blocks.forEach { (position, block) ->
-            target.blocks[position] = block.copy(properties = block.properties.toMutableMap(), nbt = block.nbt.deepCopy())
-        }
-        target.gamerules.putAll(source.gamerules)
-        target.randomSequences.putAll(source.randomSequences)
-        target.forcedChunks.addAll(source.forcedChunks)
-        target.biomes.putAll(source.biomes)
-        source.players.forEach { (name, player) ->
-            target.createPlayer(name).also { copy ->
-                copy.position = player.position
-                copy.dimension = player.dimension
-                copy.gameMode = player.gameMode
-                copy.xp = player.xp
-                copy.xpLevels = player.xpLevels
-                copy.health = player.health
-                copy.food = player.food
-                copy.tags.addAll(player.tags)
-            }
-        }
-    }
 
     private fun runTracked(block: (DatapackSandbox) -> Int): JsonObject {
         val box = current()

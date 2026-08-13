@@ -25,6 +25,7 @@ class DpsSessionIntegrationTest(unittest.TestCase):
             hello = session.start()
             self.assertEqual("dps-jsonl", hello.protocol)
             self.assertTrue(hello.capabilities.get("render"))
+            self.assertTrue(hello.capabilities.get("coverage"))
             session.request("createSandbox", {"version": "26.2", "defaultPlayerName": "Steve"})
             session.request(
                 "upsertFunctionSource",
@@ -35,9 +36,14 @@ class DpsSessionIntegrationTest(unittest.TestCase):
                 },
             )
             result = session.request("runFunction", {"id": "notebook:cell_1"})
+            checkpoint = session.request("saveCheckpoint", {"name": "after-cell"})
+            coverage = session.request("coverage", {"minimumLine": 100.0})
             rendered = session.request("render", {"width": 320, "height": 180, "cameraPlayer": "Steve"})
             self.assertEqual(2, result["commands"])
             self.assertTrue(result["snapshotDiffs"])
+            self.assertIn("after-cell", checkpoint["names"])
+            self.assertTrue(coverage["passed"])
+            self.assertEqual(100.0, coverage["linePercentage"])
             png = base64.b64decode(rendered["data"])
             self.assertEqual(b"\x89PNG\r\n\x1a\n", png[:8])
             self.assertFalse(rendered["metadata"]["visualParity"])

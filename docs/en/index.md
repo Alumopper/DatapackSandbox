@@ -5,37 +5,37 @@ titleTemplate: false
 
 hero:
   name: Datapack Sandbox
-  text: Verify datapack behavior without starting a server
-  tagline: A clean-room local runtime for Minecraft Java datapacks. Run functions, inspect resources, inject player events, and lock world state down with repeatable assertions.
+  text: Run, test, and debug datapacks before shipping
+  tagline: A clean-room local runtime for Minecraft Java datapack authors. Run with the CLI, lock regressions into manifests, and debug interactively in VS Code.
   image:
     src: /datapack-sandbox-mark.svg
     alt: Datapack Sandbox cube and command prompt mark
   actions:
     - theme: brand
-      text: Start in 5 minutes
-      link: /en/guide/getting-started
+      text: Run a datapack
+      link: /en/workflows/cli
     - theme: alt
-      text: Explore testing patterns
-      link: /en/guide/testing-patterns
+      text: Write a manifest
+      link: /en/workflows/manifest-tests
     - theme: alt
       text: View on GitHub
       link: https://github.com/Alumopper/DatapackSandbox
 
 features:
-  - title: Start with one command
-    details: Run a `.mcfunction`, direct command, or complete datapack without waiting for a vanilla server to boot.
-    link: /en/guide/getting-started
-    linkText: Choose an entry point
-  - title: Turn world state into assertions
-    details: Check scores, storage, entities, players, output events, traces, and snapshot diffs.
-    link: /en/guide/testing-patterns
-    linkText: Design regression tests
-  - title: Know the simulation boundary
-    details: Commands and resources are labeled modeled, partial, or unsupported so approximations never masquerade as vanilla behavior.
-    link: /en/runtime/command-support
-    linkText: Read the support matrix
-  - title: Fit into JVM test suites
-    details: Write Kotlin or Java QuickTests, or connect the CLI and manifest runner to CI.
-    link: /en/guide/code-test-api
-    linkText: Open the code test API
+  - title: 1. Run a datapack
+    details: Use `run` with a pack, function, or single `.mcfunction`, then inspect outputs, traces, and snapshot diffs immediately.
+    link: /en/workflows/cli
+    linkText: Open the CLI workflow
+  - title: 2. Write a manifest
+    details: Combine world fixtures, steps, assertions, version matrices, and coverage thresholds in `.dps.json`.
+    link: /en/workflows/manifest-tests
+    linkText: Lock down a regression
+  - title: 3. Debug in VS Code
+    details: Run functions from the editor, inspect traces, keep an active sandbox, or connect the Jupyter kernel.
+    link: /en/guide/vscode-extension
+    linkText: Configure VS Code
+  - title: Browser and JVM integration
+    details: Embed the Playground, Core, Renderer, or Serve JSONL in websites, test frameworks, and editors.
+    link: /en/reference/core-api
+    linkText: Choose an integration API
 ---

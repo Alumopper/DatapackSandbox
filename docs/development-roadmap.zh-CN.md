@@ -1,5 +1,19 @@
 # 开发路线图
 
+## 适用场景
+
+贡献者需要了解已完成能力、后续优先级、验收标准和洁净室边界时，使用本页；普通数据包作者通常无需阅读。
+
+## 前置条件
+
+先阅读面向用户的命令、资源和版本参考；准备贡献代码时还应使用 JDK 25 和仓库 Gradle wrapper。
+
+## 最小可运行示例
+
+在 PowerShell 中运行 `.\gradlew.bat releaseCheck`，执行路线图所要求的模块、文档、schema、API、示例和发布制品门禁。
+
+## 完整能力
+
 本文记录 Datapack Sandbox 的开发计划与当前进度。项目定位是：不嵌入、不复刻 Mojang 原版服务端，而是在洁净室、确定性、可测试的前提下，尽量完整地模拟数据包能看到的资源、命令、输入、输出和状态变化。它的服务对象是单元调试、随手小测、命令生成器产物验证、CI 回归和多版本兼容检查。
 
 当前已完成 1.0，发布版本 `1.1.0`。`core` 运行时、`cli` 工具、REPL、`.dps.json` 清单、quick-test API、输出事件、世界 fixture、常用命令模型、loot/predicate/advancement/player event，以及 Minecraft Java `1.20.4` 到 `26.2` 的版本 profile 都已就绪。本文档同时充当 1.0 的完成状态记录：后续开发应在这些稳定接口上增量演进，而不是另起一套并行系统。
@@ -221,3 +235,14 @@ CLI `run` 支持 `--world`（小型 JSON fixture）、`--assert`/`--assert-file`
 3. `0.4`：玩家事件和 world fixture 大幅增强，examples 覆盖主要使用场景。
 4. `0.5`：多版本 profile 更新流程稳定，P0/P1 资源覆盖完成。
 5. `1.0`：核心 API 稳定、CLI 行为稳定、文档示例可验证、CI 覆盖完整，可作为数据包本地回归测试工具长期使用；当前发布版本为 `1.1.0`。
+
+## 限制
+
+路线图记录方向和验收标准，不构成发布时间承诺；当前行为应以生成检查通过的命令、资源、版本参考和公开 API 基线为准。
+
+## 相关页面
+
+- [命令支持状态](/runtime/command-support)
+- [资源格式](/resources/resource-formats)
+- [版本 Profile](/resources/version-profile)
+- [排障手册](/guide/troubleshooting)

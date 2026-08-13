@@ -1,5 +1,19 @@
 ﻿# 运行时世界模型
 
+## 适用场景
+
+设计 world fixture、解释 snapshot、导入 Java 存档或判断沙盒与原版世界行为边界时，使用本页。
+
+## 前置条件
+
+先选择 version profile，并明确测试只需要数据包可观察状态；复杂 fixture 可写入 `.dps.json` 或 QuickTest world builder。
+
+## 最小可运行示例
+
+运行 `java -jar cli/build/libs/datapack-sandbox-cli.jar check examples/full-stack/full-stack.dps.json`，观察 fixture、执行步骤与断言共享的稀疏世界。
+
+## 完整能力
+
 沙盒世界是内存中的稀疏模型：
 
 - 初始世界是完全虚空。方块只有在命令、fixture 或存档导入后才存在。
@@ -162,3 +176,14 @@ snapshot 会包含用于测试的确定性状态，包括：
 引入真实 Minecraft 客户端或服务端对这个项目更重：会带来渲染、资源、认证/会话、native/platform、服务端线程和世界生命周期约束。对数据包本地测试而言，有限洁净室模拟更轻、更确定、更适合 CLI 和测试环境，也更容易对缺失上下文做严格诊断。
 
 原版运行时仍适合作为命令树、registry、generated reports 和边界行为的参考源。当前实际取舍是：沙盒负责快速确定性执行，vanilla/mcdoc 数据负责校验和测试参考。
+
+## 限制
+
+世界是确定性的稀疏模型，不导入或模拟 lighting、heightmap、POI、方块 tick、区块生命周期、红石、物理、实体 AI 或真实客户端行为。
+
+## 相关页面
+
+- [QuickTest fixture 参考](/reference/quicktest-fixtures)
+- [Manifest 参考](/reference/manifest)
+- [Core JVM API](/reference/core-api)
+- [渲染与实时视窗](/guide/rendering-notebook)

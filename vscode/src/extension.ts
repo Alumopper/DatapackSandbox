@@ -3,7 +3,6 @@ import * as path from "node:path";
 import * as vscode from "vscode";
 import { CliRunner } from "./cli";
 import { DatapackCodeLensProvider } from "./codeLens";
-import { SandboxCompletionProvider } from "./completions";
 import { TraceDebugAdapterFactory, TraceDebugConfigurationProvider } from "./debugAdapter";
 import { DiagnosticPublisher } from "./diagnostics";
 import { inferFunctionContext, isManifest } from "./functionContext";
@@ -13,6 +12,7 @@ import { SandboxClient, describeSandboxError } from "./sandboxClient";
 import { SandboxPanel } from "./sandboxPanel";
 import { ManifestTestController } from "./testController";
 import { ActiveSandboxService } from "./activeSandbox";
+import { McfunctionLanguageService } from "./mcfunctionLanguage";
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   const output = vscode.window.createOutputChannel("Datapack Sandbox");
@@ -20,6 +20,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const diagnostics = new DiagnosticPublisher();
   const client = new SandboxClient(cli, output);
   const activeSandbox = new ActiveSandboxService(client);
+  const mcfunctionLanguage = new McfunctionLanguageService(cli, output);
   const panel = new SandboxPanel(client);
   const resources = new ResourceTreeProvider(client);
   const tests = new ManifestTestController(cli, diagnostics, activeSandbox);
@@ -57,7 +58,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   };
 
   context.subscriptions.push(
-    output, diagnostics.collection, client, panel, tests, status,
+    output, diagnostics.collection, client, mcfunctionLanguage, panel, tests, status,
+    ...mcfunctionLanguage.register(),
     vscode.commands.registerCommand("datapackSandbox.runCurrentMcfunction", (uri?: vscode.Uri) => safe(() => runCurrent(uri))),
     vscode.commands.registerCommand("datapackSandbox.runCurrentWithPack", (uri?: vscode.Uri) => safe(() => runCurrent(uri, true))),
     vscode.commands.registerCommand("datapackSandbox.runCurrentInActiveSandbox", (uri?: vscode.Uri) => safe(() => runCurrent(uri, true, "active"))),
@@ -102,6 +104,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       void vscode.window.showInformationMessage(`Datapack Sandbox checkpoint '${name}' deleted.`);
     })),
     vscode.commands.registerCommand("datapackSandbox.renderActiveSandbox", () => safe(() => renderActiveSandbox(activeSandbox))),
+    vscode.commands.registerCommand("datapackSandbox.showCoverage", () => safe(() => showCoverage(activeSandbox))),
+    vscode.commands.registerCommand("datapackSandbox.resetCoverage", () => safe(async () => {
+      await activeSandbox.resetCoverage();
+      void vscode.window.showInformationMessage("Datapack Sandbox coverage counters reset.");
+    })),
     vscode.commands.registerCommand("datapackSandbox.interrupt", () => safe(async () => {
       await activeSandbox.interrupt();
       void vscode.window.showInformationMessage("Datapack Sandbox interrupt requested.");
@@ -111,7 +118,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand("datapackSandbox.refreshResources", () => safe(() => resources.refresh())),
     vscode.commands.registerCommand("datapackSandbox.generateManifest", (uri?: vscode.Uri) => safe(() => generateManifest(uri, activeSandbox))),
     vscode.languages.registerCodeLensProvider([{ language: "mcfunction" }, { language: "json", pattern: "**/*.dps.json" }], new DatapackCodeLensProvider()),
-    vscode.languages.registerCompletionItemProvider({ language: "mcfunction" }, new SandboxCompletionProvider(client), " ", ":", "@"),
     vscode.window.registerTreeDataProvider("datapackSandbox.resources", resources),
     vscode.debug.registerDebugAdapterDescriptorFactory("datapack-sandbox", new TraceDebugAdapterFactory(cli, activeSandbox)),
     vscode.debug.registerDebugConfigurationProvider("datapack-sandbox", new TraceDebugConfigurationProvider()),
@@ -167,6 +173,18 @@ async function renderActiveSandbox(activeSandbox: ActiveSandboxService): Promise
   await vscode.workspace.fs.writeFile(destination, Buffer.from(frame.data, "base64"));
   await vscode.commands.executeCommand("vscode.open", destination);
   void vscode.window.showInformationMessage(`Rendered ${frame.width}×${frame.height} PNG with the bundled JAR.`);
+}
+
+async function showCoverage(activeSandbox: ActiveSandboxService): Promise<void> {
+  const coverage = await activeSandbox.coverage();
+  const document = await vscode.workspace.openTextDocument({
+    language: "json",
+    content: `${JSON.stringify(coverage, null, 2)}\n`,
+  });
+  await vscode.window.showTextDocument(document, { preview: true });
+  const summary = `Lines ${coverage.linePercentage.toFixed(2)}% · functions ${coverage.functionPercentage.toFixed(2)}%`;
+  if (coverage.passed) void vscode.window.showInformationMessage(`Datapack Sandbox coverage: ${summary}.`);
+  else void vscode.window.showWarningMessage(`Datapack Sandbox coverage thresholds failed: ${summary}.`);
 }
 
 async function openFunctionSource(activeSandbox: ActiveSandboxService): Promise<void> {

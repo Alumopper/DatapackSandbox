@@ -1,23 +1,22 @@
 # 交互式 Playground
 
-`@datapack-sandbox/vitepress-playground` 可在 VitePress 页面中嵌入带持久状态的 MCFunction Notebook。命令执行、补全、诊断、导入文件、世界状态和近似渲染全部留在独立浏览器 Worker 内；无需 Java 服务、WebSocket 地址、Docker 镜像或 CORS 来源白名单。
+## 适用场景
+
+使用 `@datapack-sandbox/vitepress-playground`，可以把可执行的 MCFunction Notebook 或单个命令 cell 嵌入 VitePress。执行、补全、诊断、导入文件、世界状态和近似渲染全部留在浏览器 Worker 中，不需要部署 Java 服务。
 
 [[playground-demo]]
 
-上方示例会在组件挂载后创建一个隔离 Worker。用户文件以可转移 `ArrayBuffer` 读入，不会上传，也不会写入 IndexedDB/OPFS；刷新页面即丢弃会话。
+## 前置条件
 
-Worker 执行的就是 JVM CLI 使用的同一个 `:core` 运行时，只是在构建阶段通过 TeaVM 编译为 ES 模块。命令、选择器、计分板、storage、实体、调度、玩家事件、检查点和 snapshot 在两个目标上共用一份实现。内存数据包导入会构建相同的 function、tag、predicate、loot table、advancement、recipe、item modifier 及可观察 JSON 资源模型。TeaVM 与生成的 Worker 只参与构建，部署后的页面仍是纯前端。
-
-## 安装
+目标浏览器需要支持 ES module Worker、可转移 `ArrayBuffer`、Blob URL、Web Crypto，以及渲染所需的 `createImageBitmap`/OffscreenCanvas。
 
 ```bash
 npm install @datapack-sandbox/vitepress-playground
 ```
 
-请把该包排除在 Vite 的开发依赖预构建之外，使 Worker 的相对 URL 始终以已发布的 `dist` 模块为基准。根包名同时覆盖 `/cell` 子入口：
+在 VitePress 配置中排除开发依赖预构建，确保 Worker URL 仍相对于包内 `dist`：
 
 ```ts
-// .vitepress/config.mts
 import { defineConfig } from 'vitepress'
 
 export default defineConfig({
@@ -29,35 +28,34 @@ export default defineConfig({
 })
 ```
 
-这里使用的是 [Vite 官方的 `optimizeDeps.exclude` 配置](https://vite.dev/config/dep-optimization-options#optimizedeps-exclude)。如果网站已经启动过开发服务器，修改后请带 `--force` 重启一次 `vitepress dev`，使旧的依赖缓存失效。
-
-在 VitePress 主题或仅客户端 Vue 组件中导入：
-
-```ts
-import DpsPlayground from '@datapack-sandbox/vitepress-playground'
-import '@datapack-sandbox/vitepress-playground/style.css'
-```
-
-如需让控件融入现有网站，请参阅 [Playground CSS 样式定制](/guide/playground-styling)，其中列出了主题变量、深色模式选择器、scoped style 写法和结构类钩子。
+## 最小可运行示例
 
 ```vue
-<DpsPlayground
-  :notebook="{
-    version: '26.2',
-    cells: [
-      { type: 'markdown', source: '# 持久的本地世界' },
-      { id: 'setup', type: 'code', source: 'setblock 0 0 2 minecraft:stone' },
-    ],
-  }"
-  :render="{ auto: true, width: 960, height: 540 }"
-/>
+<script setup lang="ts">
+import DpsPlayground from '@datapack-sandbox/vitepress-playground'
+import '@datapack-sandbox/vitepress-playground/style.css'
+
+const notebook = {
+  version: '26.2',
+  cells: [
+    { type: 'markdown', source: '# 持久的本地世界' },
+    { id: 'setup', type: 'code', source: 'setblock 0 0 2 minecraft:stone' },
+  ],
+}
+</script>
+
+<template>
+  <DpsPlayground :notebook="notebook" :render="{ auto: true }" />
+</template>
 ```
 
-组件兼容 SSR：只在浏览器挂载后创建 ES module Worker。UI 主入口不会静态打入 Kotlin 运行时；Vite 会生成独立且带内容 hash 的 Worker 文件。
+组件兼容 SSR，只在浏览器挂载后创建独立的 module Worker。刷新或卸载页面会销毁内存会话，不会把导入内容上传或持久化到 IndexedDB/OPFS。
 
-## 单 cell 轻量嵌入
+## 完整能力
 
-如果例子只需要一个可编辑命令 cell 和执行结果，可使用独立的 `cell` 入口。`DpsCell` 不包含 Notebook 顶栏、交互式导入或 Markdown cell；标题栏只保留 **Run**，渲染、可复用状态点、GIF 帧记录/导出以及 **Reset example** 收入 **More**。
+### 单 cell 嵌入
+
+只有一个可编辑示例时，使用 `/cell` 入口；它保留补全、诊断、快捷执行、渲染、检查点和 GIF，但省略 Notebook 顶栏与 Markdown cell。
 
 [[cell-demo]]
 
@@ -71,195 +69,73 @@ const source = ref('say 轻量嵌入示例')
 </script>
 
 <template>
-  <DpsCell
-    v-model="source"
-    version="26.2"
-    :dependencies="[
-      { kind: 'datapack', url: '/examples/shared-functions.zip' },
-      { kind: 'resource-pack', url: '/examples/preview-assets.zip', sha256: '…' },
-    ]"
-  />
+  <DpsCell v-model="source" version="26.2" />
 </template>
 ```
 
-依赖会在 `ready` 前按声明顺序下载，后面的包覆盖前面的包；支持可选 SHA-256 校验。**Reset example** 后依赖仍保留在会话内存中，Worker 自动重建时会重新加载。默认情况下 **Run** 后不自动生成 PNG，**Render** 可从 **More** 中使用；可通过 `:render="{ auto: true, width: 640, height: 360 }"` 开启自动渲染。
+### Preset、依赖与导入
 
-默认每次成功执行都会记录一帧 GIF。**Add frame** 不执行源码，只记录当前世界；**Export GIF** 下载全部已记录帧。**Save point** 保存完整的建模世界、输出和 trace，**Return** 可重复回到该点。数据包、资源包和单调递增的安全预算属于会话配置，不属于检查点状态。
+`presets` 按 id 注册静态 ZIP，并可用 `sha256` 校验；`dependencies` 会在 `ready` 前按声明顺序载入，后面的包覆盖前面的包。内置选择器和拖放入口接受数据包、资源包、client JAR 及世界目录/ZIP。
 
-未提供 `sandbox-id` 时，每个 `DpsCell` 都拥有隔离的本地 Worker 会话，并保留补全、诊断及 <kbd>Ctrl/⌘</kbd>+<kbd>Enter</kbd> 执行。组件还公开 `savePoint()`、`returnToPoint()`、`captureAnimationFrame()`、`exportGif()`，并在 `ready`、`executed`、`error` 之外触发 `gif` 和 `checkpoint` 事件。
+所有路径都会正规化为 `/`。绝对路径、盘符、`..`、控制字符、重复条目以及超过预算的归档会被拒绝。Minecraft client JAR 只作为模型和纹理资产读取，其中的类不会执行。
 
-执行摘要下方新增可展开的 **Command outputs**：逐条显示命令、可读文本、通道、tick 和目标，结构化 JSON 仍单独保留。按住 <kbd>Ctrl</kbd>/<kbd>⌘</kbd> 点击 `function` 命令后的资源 ID，可以在当前 cell 内打开按数据包优先级生效的 `.mcfunction` 源码。继续点击嵌套调用会形成面包屑调用栈；使用 **Back** 或 <kbd>Alt</kbd>+<kbd>←</kbd> 返回上一层调用者。
+### 手动提供客户端资源
 
-## 组件 API
+Web renderer 不会捆绑或下载 Minecraft 客户端资源，也不能读取服务器/JVM 上的路径或自动访问浏览器所在机器的 `.minecraft`。要获得对应版本的模型和纹理，请在组件中点击 **Import files**（或拖放文件）并选择本地 client JAR；`.jar` 会识别为 `client-jar`。导入只在当前 Worker 内存会话中生效，刷新或销毁 session 后需要重新选择。
 
-| Prop | 类型 | 默认值 | 含义 |
-| --- | --- | --- | --- |
-| `notebook` | `PlaygroundNotebook` | 必填 | 版本、有序 cell 和可选 preset id。 |
-| `theme` | `auto \| light \| dark` | `auto` | 显式主题或继承 VitePress 深色模式。 |
-| `layout` | `notebook \| compact` | `notebook` | 完整 Notebook 或紧凑间距。 |
-| `read-only` | `boolean` | `false` | 禁止编辑源码，但仍可执行。 |
-| `render` | `PlaygroundRenderOptions` | 自动，`960×540` | 自动渲染和默认尺寸。 |
-| `animation` | `PlaygroundAnimationOptions` | `480×270`、250 ms、循环 | GIF 尺寸、帧延迟、循环次数和执行后自动记录。 |
-| `checkpoint-name` | `string` | 组件专用默认名 | 内置 Save point/Return 控件使用的名称。 |
-| `actions` | `PlaygroundActionConfig` | 组件默认配置 | 将每个操作放在主操作栏或菜单中，或将其隐藏。 |
-| `locale` | `en \| zh-CN` | `en` | 内置操作按钮使用的语言。 |
-| `labels` | `Partial<PlaygroundLabels>` | `{}` | 为嵌入网站覆盖单个内置按钮文案。 |
-| `presets` | `Record<string, { url; sha256? }>` | `{}` | 从同源或允许 CORS 的 URL 延迟获取静态 ZIP。 |
-| `allow-import` | `boolean` | `true` | 显示文件/目录导入按钮并接受拖放。 |
-| `limits` | `PlaygroundBrowserLimits` | 浏览器默认值 | 每实例稳定性预算和 watchdog 时序。 |
-| `worker-url` | `string` | 包内资源 | 仅在自行托管 Worker 构建物时覆盖。 |
-| `site-id` | `string` | 省略 | 创建会话时携带的嵌入站点标签。 |
-| `sandbox-id` | `string` | 省略 | 页面内世界 ID；相同非空 ID 共用串行会话，省略时创建独立沙盒。 |
-
-### 操作按钮配置
-
-`actions` 是从操作 ID 到 `primary`、`menu` 或 `hidden` 的局部映射。未配置的 ID 沿用组件默认值，因此嵌入网页只需声明需要覆盖的项目：
-
-```vue
-<script setup lang="ts">
-import type { PlaygroundActionConfig } from '@datapack-sandbox/vitepress-playground'
-
-const actions = {
-  'run-all': 'primary',
-  interrupt: 'hidden',
-  render: 'hidden',
-  'reset-sandbox': 'menu',
-  'import-files': 'hidden',
-  'import-folder': 'hidden',
-} satisfies PlaygroundActionConfig
-</script>
-
-<template>
-  <DpsPlayground :notebook="notebook" :actions="actions" />
-</template>
-```
-
-完整操作 ID 为 `run`、`render`、`run-all`、`interrupt`、`save-point`、`return-to-point`、`capture-frame`、`export-gif`、`reset-sandbox`、`restore-example`、`import-files`、`import-folder` 和 `restart-sandbox`。`DpsPlayground` 的同一份配置同时作用于顶栏和代码 cell 标题栏；某个操作栏不支持的 ID 会被忽略。完整 Playground 默认只在顶栏保留 **Run all** 和 **Interrupt**，低频操作进入 **More**。`DpsCell` 默认只保留 **Run**；`compact` cell 会隐藏高级操作，除非 `actions` 显式指定其位置。
-
-设置 `locale="zh-CN"` 可使用内置中文操作文案。网站也可以只覆盖需要定制的词语，例如 `:labels="{ runAll: '执行全部' }"`；`DpsPlayground`、`DpsCell` 和独立挂载的 `DpsViewport` 都支持这两个 prop。
-
-本地会话及可选 preset 就绪后触发 `ready(sessionId)`；执行、导入、完整性校验或生命周期失败会触发 `error({ code, message })`。
-
-Notebook schema 保持不变：
+自己管理 session 时，必须显式传入浏览器 `File` 的字节：
 
 ```ts
-interface PlaygroundNotebook {
-  version: string
-  preset?: string
-  cells: Array<
-    | { id?: string; type: 'markdown'; source: string }
-    | { id?: string; type: 'code'; source: string }
-  >
-}
+await session.connect()
+await session.importArchive(
+  'client-jar',
+  clientJar.name,
+  await clientJar.arrayBuffer(),
+)
 ```
 
-各 cell 按顺序在同一持久世界中执行。**Reset sandbox** 会创建全新世界但保留编辑后的源码；**Restore example** 会恢复初始 Notebook、清空输出并创建全新世界。
+`dependencies` 只声明数据包和资源包，不能用它隐式加载 client JAR。Worker 只提取 JAR 中的 `assets/` 条目，不执行 class 文件。完整类型与预算见 [Playground API 参考](/reference/playground-api#客户端资源导入)。
 
-## Preset 与导入
+### 共享世界与实时视窗
 
-按 id 注册不可变的 preset ZIP：
-
-```vue
-<DpsPlayground
-  :notebook="{ version: '26.2', preset: 'starter', cells }"
-  :presets="{
-    starter: {
-      url: '/playground-presets/starter.4f2d.zip',
-      sha256: 'b4f0…共 64 个十六进制字符…',
-    },
-  }"
-/>
-```
-
-只有选中 preset 时才会下载 ZIP。配置 `sha256` 后，浏览器会先校验完整性，再把归档转移给 Worker。
-
-内置文件选择、目录选择和拖放入口可接收 datapack ZIP/目录、资源包、client JAR 以及世界目录/ZIP。无法唯一识别的输入会显示类型选择器。所有虚拟路径统一为 `/`；绝对路径、盘符路径、`..`、控制字符和重复条目都会被拒绝。当前的 `data/<namespace>/function` 以及旧版 `functions` 目录中的函数都会注册给 `function` 命令。
-
-浏览器渲染与 JAR fallback 渲染器共享透视相机、blockstate/model 烘焙、深度缓冲、纹理采样、光照和雾化算法。导入资源包或 client JAR 后，Worker 会使用其中的模型 JSON 与 PNG 纹理；只按需解码当前场景引用的资源，并仅在本次会话内存中保留。
-
-`block_display`、`item_display` 和 `text_display` 在 JVM 与 Web 端使用同一份规范化展示状态，包括 transformation、四种 billboard、亮度和阴影控制、可读样式文字、新版 item definition 解析、generated sprite 像素轮廓挤出、模型 display 变换，以及按 tick 推进的视觉与传送插值。分解变换的平移/缩放使用线性插值，左右旋转四元数使用归一化最短弧 SLERP；16 数字矩阵仍按元素线性插值。例子依赖原版或自定义视觉资源时，应默认导入对应版本的 client JAR 或资源包。
-
-## 限制与生命周期
-
-默认值用于维持浏览器稳定，不代表安全隔离边界：
-
-| 限制 | 默认值 |
-| --- | ---: |
-| Cell 源码 | 64 KiB |
-| 结构化输出 | 1 MiB |
-| 单次执行命令数 | 10,000 |
-| 输出事件数 | 2,000 |
-| 渲染尺寸 | 1,920 × 1,080 |
-| 命名检查点 | 32 个，每个 8 MiB |
-| GIF 记录 | 120 帧，64 MiB RGBA |
-| 导入解压后大小 | 64 MiB |
-| 导入文件数 | 16,384 |
-| 请求 watchdog | 15 秒 |
-| 取消宽限期 | 2 秒 |
-
-执行会在每条 MCFunction 命令边界让出事件循环。**Interrupt** 设置取消标志，因此已经完成的命令状态会保留。如果请求超过宽限期仍不响应，客户端会终止并重建 Worker，以 `SESSION_LOST` 拒绝在途请求，然后自动创建干净会话。
-
-每个组件只拥有一个 Worker，不同组件不会共享世界状态。组件卸载时会终止 Worker，并回收全部渲染 Blob URL。
-
-## Worker 协议
-
-`PlaygroundWorkerClient` 替换已经移除的 WebSocket `PlaygroundClient` 导出，同时保留 request id、请求名、事件名和稳定错误对象。支持的请求包括：
-
-- `session.create`、`session.reset`、`session.interrupt`、`session.close`、`session.import`、`session.function.read`
-- `session.checkpoint.save`、`.restore`、`.delete`、`.list`
-- `cell.execute`、`cell.complete`、`cell.check`、`cell.render`
-- `animation.capture`、`animation.export`、`animation.clear`
-
-执行会发送 `cell.status`、`cell.output`、`diagnostic`、`cell.render` 和 `cell.error`。PNG 使用 `bytes: ArrayBuffer` 与 `mimeType: image/png`；GIF 导出使用相同的 transferable 结构和 `mimeType: image/gif`，两者都不使用 base64。
-
-常见错误码包括 `INVALID_REQUEST`、`PROFILE_NOT_ALLOWED`、`CELL_TOO_LARGE`、`COMMAND_LIMIT`、`OUTPUT_LIMIT`、`RENDER_SIZE_LIMIT`、`BUSY`、`INTERRUPTED`、`SESSION_LOST`、`FUNCTION_NOT_FOUND`、`FUNCTION_TAG_NOT_BROWSABLE`、`CHECKPOINT_NOT_FOUND`、`CHECKPOINT_LIMIT`、`ANIMATION_EMPTY`、`ANIMATION_FRAME_LIMIT`、`ANIMATION_SIZE_LIMIT`、`IMPORT_PATH_INVALID`、`IMPORT_CONFLICT`、`IMPORT_FILE_LIMIT`、`IMPORT_SIZE_LIMIT` 和 `PRESET_INTEGRITY_FAILED`。
-
-## 渲染边界
-
-渲染使用项目的确定性 clean-room 软件光栅器，从 RGBA 结果生成 PNG；元数据明确包含 `lightingModel: approximate` 和 `visualParity: false`。GIF 帧由 JVM/Web 共用的 Kotlin 自适应调色板/LZW 编码器生成，因此相同 RGBA 帧的输出字节一致。不得把截图描述为原版像素级复刻。自定义字体 provider、多层或特殊物品模型、发光轮廓、客户端 light map 与后处理仍不在一致性承诺内。导入资源只是当前会话输入；不支持的资源细节会回退到确定性程序颜色。
-
-## 纯静态部署
-
-正常构建 VitePress：
-
-```bash
-npm ci
-npm run docs:build
-```
-
-## 实时 WebGL 视窗
-
-可向 `DpsPlayground` 或 `DpsCell` 传入 `viewport`，也可单独挂载 `DpsViewport`。共享
-`PlaygroundSessionController` 后，多个组件会连接到同一个由 Worker 持有的世界。
-
-若不想手动创建 controller，可在同一页面的多个组件上使用相同的 `sandbox-id`：
+同页组件可使用相同的 `sandbox-id` 共享一个串行 Worker 会话：
 
 ```vue
 <DpsCell v-model="builder" sandbox-id="tutorial-world" />
 <DpsCell v-model="inspector" sandbox-id="tutorial-world" :viewport="true" />
 ```
 
-每个编辑器的源码、诊断和输出互相独立，但命令、渲染、导入、检查点、重置和视窗状态都作用于
-同一个 Worker 世界。会话操作通过同一互斥队列串行执行，因此同一时刻只有一个编辑器操作沙盒。
-同 ID 下第一个挂载的组件负责初始化版本、preset 和依赖，后续组件必须使用相同的 Minecraft
-版本；最后一个同 ID 组件卸载后 Worker 才会销毁。未提供 `sandbox-id` 的组件始终拥有独立且唯一
-的沙盒。若同时传入显式 `session`，以 `session` 为准。
+每个编辑器保留独立源码、诊断和输出；命令、导入、检查点、重置与视窗作用于同一世界。也可显式创建 `PlaygroundSessionController`，再连接 `DpsPlayground`、`DpsCell` 或独立的 `DpsViewport`。实时画面走延迟加载的 WebGL2 chunk，静态 PNG 和 GIF 仍由共享软件渲染器生成。
 
-播放默认关闭。开始播放后以 20 TPS 推进世界时间和展示实体插值，执行
-`#minecraft:tick` 以及可选的 `tickFunction`；卡顿时最多补算 5 tick，页面隐藏时自动暂停。
-桌面端支持指针锁定、鼠标观察、WASD、Space、Shift 和滚轮调速；触屏设备显示双摇杆。
-输入默认记录给 `Steve`，可从 trace 和 snapshot 观察，但不会隐式模拟原版碰撞、玩家物理、实体 AI 或红石。
+### 纯静态部署
 
-工具栏中的设置面板可调整鼠标灵敏度、移动速度和视野；也可通过 `PlaygroundViewportOptions` 的
-`mouseSensitivity`、`moveSpeed` 与 `fieldOfView` 传入。自动取景只执行一次，展示实体动画不会再拖着镜头移动；需要重新取景时点击 **Reset view**。天空会读取世界时间和天气，并与 JVM 视窗共用主世界、下界和末地的着色语义。
+```bash
+npm ci
+npm run docs:build
+```
 
-实时渲染器位于独立的延迟加载 WebGL2 chunk 中。Worker 按 revision 传输独立的方块、实体、索引和
-纹理图集缓冲，镜头移动只更新 uniform。context lost 时暂停播放并在恢复后重建 GPU 资源；静态 PNG
-与 GIF 始终使用共享软件渲染器。视窗事件包括 `play-state`、`camera-change`、`input`、
-`frame-stats` 与 `context-lost`。
+部署 VitePress 生成目录即可。带内容 hash 的 Worker/profile 资源适合长期 immutable 缓存，HTML 保持常规重新验证。
 
-直接部署生成的静态目录。带内容 hash 的 Worker/profile 资源可使用长期 immutable 缓存，HTML 入口保持常规重新验证。自定义 `worker-url` 必须同源，或返回允许 ES module Worker 的响应头。不再涉及 Java 运行时、反向代理 Upgrade、API Origin 白名单或 Docker 服务。
+## 组件 API
 
-如果本地开发出现 **Local sandbox unavailable**，且失败的 Worker URL 中包含 `/deps/assets/worker-`，说明该包仍被依赖预构建。请加入[安装](#安装)一节中的 `optimizeDeps.exclude`，停止旧开发服务器，再使用 `--force` 重启。生产构建不需要手动复制 Worker。
+本节原有的 props、events、共享 session 和错误码清单已迁移到 [Playground API 参考](/reference/playground-api)。这里保留标题，确保旧的章节链接仍能找到新的权威入口。
 
-目标浏览器需支持 ES module Worker、transferable `ArrayBuffer`、`createImageBitmap`/OffscreenCanvas、Blob URL，以及用于可选 preset 完整性校验的 Web Crypto。
+## Worker 协议
+
+Worker 请求、事件、transferable 二进制响应、生命周期和稳定错误码也统一维护在 [Playground API 参考](/reference/playground-api#worker-协议)。
+
+## 限制
+
+- 默认预算用于维持浏览器稳定，并不是不可信代码的安全隔离边界。
+- 执行只在 MCFunction 命令边界协作中断；已完成命令对世界的修改不会回滚。
+- watchdog 超时会终止 Worker，并以 `SESSION_LOST` 结束在途请求；旧世界不会被假装恢复。
+- 渲染结果是确定性的 clean-room 近似画面，`visualParity` 为 `false`，不承诺与原版客户端像素一致。
+- 不导入 client JAR 时，Web renderer 只使用内置 fallback；它不会根据 notebook `version` 自动取得客户端资源。
+- 自定义 `worker-url` 必须同源，或由服务端提供 module Worker 所需的跨域响应头。
+
+## 相关页面
+
+- [Playground API 参考](/reference/playground-api)
+- [Playground CSS 样式定制](/guide/playground-styling)
+- [渲染、动图与实时视窗](/guide/rendering-notebook)
+- [Serve JSONL 协议](/reference/serve-jsonl)

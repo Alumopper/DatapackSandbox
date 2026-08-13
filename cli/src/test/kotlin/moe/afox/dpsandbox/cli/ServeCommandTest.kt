@@ -19,6 +19,8 @@ class ServeCommandTest {
             }
         val responses = runServe(requests)
 
+        assertTrue(responses.first().has("id"), responses.first().toString())
+        assertTrue(responses.first().get("id").isJsonNull, responses.first().toString())
         VersionProfiles.all.forEach { profile ->
             val response = responses.byId(profile.id)
             assertTrue(response.get("ok").asBoolean, response.toString())
@@ -224,6 +226,7 @@ class ServeCommandTest {
                 {"id":"complete","method":"completions","params":{"buffer":"scoreboard players set #check r","cursor":31}}
                 {"id":"valid","method":"checkCommand","params":{"command":"scoreboard players set #check runs 4"}}
                 {"id":"invalid","method":"checkCommand","params":{"command":"scoreboard players set"}}
+                {"id":"batch","method":"checkCommands","params":{"commands":["scoreboard objectives add preview dummy","scoreboard players set #check preview 4","scoreboard players set"]}}
                 {"id":"snapshot","method":"snapshot"}
                 """.trimIndent(),
             )
@@ -245,8 +248,14 @@ class ServeCommandTest {
                 .get("valid")
                 .asBoolean,
         )
+        val batch = responses.byId("batch").getAsJsonObject("result").getAsJsonArray("checks")
+        assertEquals(3, batch.size())
+        assertTrue(batch[0].asJsonObject.get("valid").asBoolean)
+        assertTrue(batch[1].asJsonObject.get("valid").asBoolean)
+        assertFalse(batch[2].asJsonObject.get("valid").asBoolean)
         val scores = responses.byId("snapshot").getAsJsonObject("result").getAsJsonObject("scores")
         assertFalse(scores.has("runs"), "Command checks must not mutate active scores")
+        assertFalse(scores.has("preview"), "Batched command checks must not mutate active scores")
     }
 
     @Test
@@ -355,6 +364,7 @@ class ServeCommandTest {
         assertTrue(capabilities.get("functionSource").asBoolean)
         assertTrue(capabilities.get("pagedEvents").asBoolean)
         assertTrue(capabilities.get("coverage").asBoolean)
+        assertTrue(capabilities.get("commandDiagnostics").asBoolean)
         val source = responses.byId("source").getAsJsonObject("result")
         assertEquals("demo:main", source.get("id").asString)
         assertEquals("say first\nsay second", source.get("source").asString)

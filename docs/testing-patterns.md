@@ -1,5 +1,19 @@
 # Testing Patterns
 
+## When to use this page
+
+Use this page to choose a test shape for one function, a complete datapack, player events, generated output, or cross-version behavior.
+
+## Prerequisites
+
+Complete [Installation and Downloads](/en/workflows/installation), then prepare either the CLI JAR or the `testkit` dependency for the entry point you choose.
+
+## Minimal runnable example
+
+Start with [Single-Function Behavior](#pattern-1-single-function-behavior). It needs no complete datapack and checks both final state and command trace.
+
+## Full capabilities
+
 This page organizes testing techniques by developer task. Use it as a cookbook: find the behavior you want to test, copy the matching shape, then replace function names, players, scoreboards, or storage IDs with your project values.
 
 ## Pick a Pattern
@@ -170,3 +184,14 @@ fun unsupportedCommandReportsWarningButDoesNotAbort()
 ```
 
 When a report fails, the test name should map directly to a user scenario.
+
+## Limitations
+
+These patterns cover only datapack-visible behavior modeled by the sandbox. Client UI, physics, entity AI, and the full server lifecycle are outside the test environment.
+
+## Related pages
+
+- [Manifest Regression Tests](/en/workflows/manifest-tests)
+- [QuickTest Fixtures Reference](/en/reference/quicktest-fixtures)
+- [QuickTest Assertions Reference](/en/reference/quicktest-assertions)
+- [Reports and Observability](/en/reference/reports-observability)
