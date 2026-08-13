@@ -324,8 +324,9 @@ test('opens imported function sources with modifier-click and returns through ca
 
 test('shows the explicit Worker failure state', async ({ page }, testInfo) => {
   await page.goto('/?offline=1')
-  await expect(page.locator('.dps-unavailable strong')).toHaveText('Local sandbox unavailable')
-  await expect(page.getByRole('button', { name: 'Restart sandbox' })).toBeVisible()
+  const unavailable = page.locator('.dps-unavailable')
+  await expect(unavailable.locator('strong')).toHaveText('Local sandbox unavailable')
+  await expect(unavailable.getByRole('button', { name: 'Restart sandbox' })).toBeVisible()
   await page.locator('.dps-playground').screenshot({ path: testInfo.outputPath('playground-unavailable.png') })
 })
 
