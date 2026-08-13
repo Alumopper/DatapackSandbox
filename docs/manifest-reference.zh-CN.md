@@ -12,7 +12,7 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar schema --check schema/manifest
 java -jar cli/build/libs/datapack-sandbox-cli.jar check cases --validate-schema
 ```
 
-`$schema` 用于编辑器反馈，但不能只依赖编辑器；CLI validation 使用实际执行 case 的 runtime 所携带 schema。
+`$schema` 用于编辑器反馈，但不能只依赖编辑器；CLI 校验用的是实际执行用例运行时自带的 schema。
 
 ## 最小有效形态
 
@@ -28,7 +28,7 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar check cases --validate-schema
 }
 ```
 
-递归 discovery 使用 `.dps.json` 后缀。
+递归发现按 `.dps.json` 后缀识别。
 
 ## 顶层字段
 
@@ -71,7 +71,7 @@ Include 可嵌套并按 depth-first 解析；循环失败。Section 从 include 
 | `assertions` | 追加；全部评估 |
 | `world` | 每个 section 依次应用；后面的同 key/坐标状态获胜 |
 
-使用一个有语义的 baseline，避免很长 include chain。最终 report 描述 resolved attempt；可用时 diagnostic source 仍指向声明 section。
+用一套语义明确的 baseline，避免过长的 include 链。最终 report 描述 resolved attempt；可用时 diagnostic source 仍指向声明 section。
 
 ## 路径解析
 
@@ -89,7 +89,7 @@ Generator 应规范化路径；case 需要随项目树移动时保留相对路�
 
 ## World fixture
 
-`world` 表示显式稀疏状态，不是生成地形。Schema group：
+`world` 描述的是显式稀疏状态，不是生成地形。Schema group：
 
 | 分组 | 字段/用途 |
 | --- | --- |
@@ -125,7 +125,7 @@ Fixture 语义和 save-import 边界见 [QuickTest Fixture](/reference/quicktest
 
 ## Step 参考
 
-一个 step 选择一个主要动作。常见 companion 是用于诊断归因的 `source`，以及预期 command/function 失败使用的 `allowFailure`。
+一个 step 选择一个主要动作。常见搭配包括用于诊断归因的 `source`，以及预期 command/function 失败时使用的 `allowFailure`。
 
 | 入口 | 值 | 效果 |
 | --- | --- | --- |
@@ -144,7 +144,7 @@ Fixture 语义和 save-import 边界见 [QuickTest Fixture](/reference/quicktest
 | `reset` | boolean/options | 重置 modeled world |
 | `loot` | object | 发起 loot request |
 
-除非设置 `allowFailure`，`commands` 的语义错误不会跳过。Generator provenance 重要时，`functionText`/`mcfunction` 应设置 `source`。
+`commands` 的语义错误默认会终止执行，除非设置 `allowFailure`。需要保留生成来源时，`functionText`/`mcfunction` 应设置 `source`。
 
 ### 玩家事件字段
 
@@ -184,7 +184,7 @@ Fixture 语义和 save-import 边界见 [QuickTest Fixture](/reference/quicktest
 
 ### Output 匹配
 
-Output assertion 可区分 raw/normalized text，约束 command/channel/targets，检查 styled segment，并比较结构化 payload path。机器语义优先 payload；用户展示优先 text/segment。设置 `count`，顺序重要时再加 `order`，使宽匹配可确定。
+Output assertion 可区分 raw/normalized text，约束 command/channel/targets，检查 styled segment，并比较结构化 payload path。机器语义优先 payload；用户展示优先 text/segment。设置 `count`，顺序重要时再加 `order`，让宽匹配也能有确定结果。
 
 ## Validation 与执行
 

@@ -1,4 +1,4 @@
-﻿# 资源格式
+# 资源格式
 
 ## 适用场景
 
@@ -284,7 +284,7 @@ inspect registry [group]
 
 资源索引记录 type、id、来源 pack、文件路径、active/overridden 状态，以及 pack overlay 覆盖关系。`datapack list [available|enabled]` 的结构化输出 payload 包含 `filter`、`packCount`、`packs`、`overriddenResources`、`resourceOverrides` 和 `missingReferences`，命令生成器或测试用例可以直接断言这些字段，不必进入 REPL。`check --verbose` 也会打印资源摘要、覆盖条目，以及 load/tick 函数标签、advancement parent/reward、predicate/loot/item modifier 资源中的 predicate reference 和嵌套 loot table 中的直接缺失引用。
 
-`inspect registry [group]` 列出当前 version profile 的 registry 条目，并带上 `source=profile:<version>`，便于按实际执行和补全使用的 profile 调试 registry 查找；非交互场景可用 `resources --registry --registry-group <group> --json` 导出同一份 profile registry 数据，作为 CI artifact 或命令生成器回归输入。
+`inspect registry [group]` 列出当前 version profile 的 registry 条目，并带上 `source=profile:<version>`，便于按实际执行和补全所用的 profile 调试 registry 查找；非交互场景可用 `resources --registry --registry-group <group> --json` 导出同一份 profile registry 数据，作为 CI artifact 或命令生成器回归输入。
 
 ## SNBT 与数据路径
 
@@ -302,7 +302,7 @@ foo[0].bar
 Items[{Slot:0b}].id
 ```
 
-同一套 path 引擎被 `data` 命令、predicate、loot function 和 advancement condition 复用。写入实体或方块实体 NBT 时，会使用 mcdoc schema 校验顶层字段。
+`data` 命令、predicate、loot function 和 advancement condition 共用同一套 path 引擎。写入实体或方块实体 NBT 时，会用 mcdoc schema 校验顶层字段。
 
 ## `.dps.json` 清单
 

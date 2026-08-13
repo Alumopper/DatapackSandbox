@@ -143,7 +143,7 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar run `
 
 ## 读取结果
 
-退出码 `0` 表示操作和断言通过；`1` 是断言或 coverage threshold 失败，`2` 是输入格式错误，`3` 覆盖 unsupported/version/resource/command/interruption/context 诊断。CI 应同时使用退出码与机器文件：前者 gate job，report 解释原因。
+退出码 `0` 表示操作和断言通过；`1` 是断言或 coverage threshold 失败，`2` 是输入格式错误，`3` 覆盖 unsupported/version/resource/command/interruption/context 诊断。CI 应同时使用退出码与机器文件：退出码判定 job 成败，report 解释原因。
 
 ## 限制
 

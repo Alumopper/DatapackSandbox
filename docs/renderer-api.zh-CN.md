@@ -104,7 +104,7 @@ val request = RenderRequest(
 )
 ```
 
-只考虑 camera 所在 dimension 的对象。
+只考虑相机所在维度的对象。
 
 ## RenderRequest 参数
 

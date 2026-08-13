@@ -78,7 +78,7 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar viewport `
 
 ## 限制
 
-- 输出只反映稀疏世界模型中已经存在的方块、实体、玩家、时间和天气；不会推断地形生成、粒子、红石更新、实体 AI、原版 light map 或后处理。
+- 输出只反映稀疏世界模型中已经存在的方块、实体、玩家、时间和天气；不会推算地形生成、粒子、红石更新、实体 AI、原版 light map 或后处理。
 - 元数据固定声明 `visualParity: false` 和 `lightingModel: approximate`。不得把结果描述成原版像素级截图。
 - 自定义字体 provider、多层或特殊物品模型、发光轮廓及其他未建模客户端效果不在一致性范围内。
 - PNG 宽高分别为 64–8192，且总像素受 16,777,216 上限约束；Serve 响应还受 16 MiB 编码大小限制。

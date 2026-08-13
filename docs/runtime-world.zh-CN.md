@@ -1,4 +1,4 @@
-﻿# 运行时世界模型
+# 运行时世界模型
 
 ## 适用场景
 
@@ -169,11 +169,11 @@ snapshot 会包含用于测试的确定性状态，包括：
 
 独立的 `:schema-generator` 工程会下载固定 commit 的 `SpyglassMC/vanilla-mcdoc` 归档、校验 SHA-256、通过 `npm ci` 安装锁定依赖、解析 mcdoc AST、拒绝不完整输出，并更新唯一源 `schema/vanilla/vanilla-nbt-schemas.json`。普通 `:core` 构建不再联网，而是直接打包这份已检入 schema；CI 还会运行 `:schema-generator:checkGeneratedVanillaNbtSchemas`，验证生成结果逐字节可复现。
 
-更细粒度的 `since`/`until` 版本属性裁剪仍是后续工作；当前运行时消费固定的 upstream vanilla mcdoc revision，并在顶层字段保持严格未知字段诊断。
+更细粒度的 `since`/`until` 版本属性裁剪仍是后续工作；当前运行时使用固定的 upstream vanilla mcdoc revision，并在顶层字段保持严格未知字段诊断。
 
 ## 客户端/服务端嵌入对比
 
-引入真实 Minecraft 客户端或服务端对这个项目更重：会带来渲染、资源、认证/会话、native/platform、服务端线程和世界生命周期约束。对数据包本地测试而言，有限洁净室模拟更轻、更确定、更适合 CLI 和测试环境，也更容易对缺失上下文做严格诊断。
+引入真实 Minecraft 客户端或服务端对这个项目来说太重了：会带来渲染、资源、认证/会话、native/platform、服务端线程和世界生命周期约束。对数据包本地测试而言，有限洁净室模拟更轻、更确定、更适合 CLI 和测试环境，也更容易对缺失上下文做严格诊断。
 
 原版运行时仍适合作为命令树、registry、generated reports 和边界行为的参考源。当前实际取舍是：沙盒负责快速确定性执行，vanilla/mcdoc 数据负责校验和测试参考。
 

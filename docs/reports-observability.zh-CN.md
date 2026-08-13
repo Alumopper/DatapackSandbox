@@ -2,7 +2,7 @@
 
 ## 适用场景
 
-需要解释失败、归档 CI 证据、比较多个 profile 的行为，或把 sandbox state 交给其他工具时，使用 snapshot、diff、output、command trace、player-event trace、diagnostic、coverage 或组合 report。只选择能回答问题的最小载体；full trace/report 比 snapshot diff 更丰富，也刻意更昂贵。
+需要解释失败、归档 CI 证据、比较多个 profile 的行为，或把 sandbox state 交给其他工具时，使用 snapshot、diff、output、command trace、player-event trace、diagnostic、coverage 或组合 report。只选择能回答问题的最小载体；full trace/report 比 snapshot diff 更丰富，成本也明显更高。
 
 ## 前置条件
 

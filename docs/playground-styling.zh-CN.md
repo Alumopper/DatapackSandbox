@@ -139,7 +139,7 @@ html:not(.dark) .dps-playground.docs-sandbox.dps-theme-auto,
 | 控件 | `--dps-action-height` | 主操作按钮和操作菜单触发器的固定高度，默认为 `32px`。 |
 | 语法高亮 | `--dps-syntax-keyword`、`--dps-syntax-type`、`--dps-syntax-string`、`--dps-syntax-number`、`--dps-syntax-bool`、`--dps-syntax-comment`、`--dps-syntax-operator` | MCFunction 编辑器语法高亮。 |
 
-默认自动浅色主题会先读取 `--vp-c-bg`、`--vp-c-text-1`、`--vp-c-brand-1`、`--vp-c-divider` 等 VitePress 变量，再使用独立站点 fallback。组件还会读取 `--vp-font-family-base` 和 `--vp-font-family-mono`。因此，已经配置这些变量的 VitePress 网站在添加任何 `--dps-*` 覆盖前，就能获得合理的基础适配。
+默认自动浅色主题会先读取 `--vp-c-bg`、`--vp-c-text-1`、`--vp-c-brand-1`、`--vp-c-divider` 等 VitePress 变量，再使用独立站点 fallback。组件还会读取 `--vp-font-family-base` 和 `--vp-font-family-mono`。因此，已经配置这些变量的 VitePress 网站在添加任何 `--dps-*` 覆盖前，就有基本合适的外观。
 
 ## 浅色与深色模式
 
@@ -186,7 +186,7 @@ Canvas 图像属于世界渲染结果；CSS 可以改变其外框、焦点环和
 | 单 cell | `.dps-cell-space`、`.dps-cell-space-compact`、`.dps-cell-code-compact` |
 | 实时视窗 | `.dps-viewport`、`.dps-viewport-toolbar`、`.dps-viewport-stage`、`.dps-viewport-canvas`、`.dps-viewport-command` |
 
-不要依赖 `data-v-*`、生成的资源文件名或 Vite chunk hash。也不要直接依赖 CodeMirror 的 `.cm-*` DOM，除非项目固定了依赖版本，并会在包升级时重新验证；这些节点属于编辑器依赖，而不是沙盒的公开样式面。
+不要依赖 `data-v-*`、生成的资源文件名或 Vite chunk hash。也不要直接依赖 CodeMirror 的 `.cm-*` DOM，除非项目固定了依赖版本，并会在包升级时重新验证；这些节点属于编辑器依赖，而不是沙盒的公开样式接口。
 
 ## Vue 包装组件中的 scoped style
 

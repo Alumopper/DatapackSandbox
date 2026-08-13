@@ -41,7 +41,7 @@ dependencies {
 }
 ```
 
-项目使用 Java 25 toolchain 构建，运行测试的 JDK 需要和 artifact 要求匹配。如果 Gradle 报 toolchain 或 classfile 版本错误，先检查本地 JDK，而不是先怀疑数据包。
+项目用 Java 25 toolchain 构建，跑测试的 JDK 要与产物要求匹配。如果 Gradle 报 toolchain 或 classfile 版本错误，先检查本地 JDK，而不是先怀疑数据包。
 
 ## 最小可运行示例
 
@@ -114,7 +114,7 @@ src/test/resources/
 
 ### 版本与格式先按 warning 处理
 
-Datapack Sandbox 会用 version profile 判断 `pack_format`、`supported_formats`、`min_format` 和 `max_format`。不兼容时应优先作为 warning 观察，而不是把测试入口挡死，因为很多开发者只是想先验证命令和资源行为。
+Datapack Sandbox 会用 version profile 判断 `pack_format`、`supported_formats`、`min_format` 和 `max_format`。不兼容时应先按 warning 观察，而不是把测试入口挡死，因为很多开发者只是想先验证命令和资源行为。
 
 格式值可以是整数，也可以是数组形式：
 

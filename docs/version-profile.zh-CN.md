@@ -1,4 +1,4 @@
-﻿# 版本 Profile
+# 版本 Profile
 
 ## 适用场景
 
@@ -126,7 +126,7 @@ Profile 元数据 JSON 会同时包含 `registryCounts` 和完整 `registries` �
 
 ## 限制
 
-Profile 描述沙盒内置的版本数据和校验输入，不是 Mojang 服务端发行物；更细粒度的 schema `since`/`until` 属性裁剪仍受当前固定 mcdoc revision 限制。
+Profile 描述沙盒内置的版本数据和校验输入，不是 Mojang 服务端发行物；更细粒度的 schema `since`/`until` 属性裁剪仍受制于当前固定的 mcdoc revision。
 
 ## 相关页面
 

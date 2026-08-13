@@ -71,7 +71,7 @@ test
 - `assertScoreboardObjective` 检查 objective existence/metadata。
 - `assertScoreboardDisplay` 检查 display slot 与 objective。
 
-契约只有一个 world field 时，优先专用 helper，不要完整 snapshot。
+契约只有一个 world field 时，优先专用 helper，不要用完整 snapshot。
 
 ## Player、entity 与 collection
 
@@ -144,7 +144,7 @@ test
 
 `assertPlayerEventTrace(...)` 可约束 player、event type、success、advancement/criterion result 或 failure reason、item/entity/block/recipe/dimension/damage detail、keyboard/mouse device/code/action 与 count。
 
-契约不仅关心 final state，还关心 advancement/player behavior 为什么触发或未触发时使用它。Trace assertion 与 final-state assertion 配对：前者解释判定，后者证明效果。
+当契约不仅关心最终状态，还关心 advancement/玩家行为为什么触发（或没触发）时，使用它。Trace assertion 与 final-state assertion 配对：前者解释判定，后者证明效果。
 
 `matchingPlayerEventTraces` 只查询事件记录，不注册 failure。
 
@@ -158,7 +158,7 @@ Coverage 表示 modeled line/function 执行过，不验证原版 parity。即�
 
 `SandboxQuickTestMatrix` 镜像 assertion surface，把每个期望应用到所选版本 scenario。`report()` 返回 `SandboxQuickTestMatrixReport`，包含 aggregate failures 和按 version 的 report map；任一版本失败时 `requirePassed()` 抛 `SandboxQuickTestMatrixAssertionError`。
 
-预期行为有意不同应拆分 scenario，或只断言共享契约；不要把一个 expectation 弱化到偶然通过所有 profile。
+预期行为有意不同应拆分 scenario，或只断言共享契约；不要把一个 expectation 弱化到碰巧通过所有 profile。
 
 ## 选择耐久 assertion
 

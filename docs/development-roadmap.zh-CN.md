@@ -10,7 +10,7 @@
 
 ## 最小可运行示例
 
-在 PowerShell 中运行 `.\gradlew.bat releaseCheck`，执行路线图所要求的模块、文档、schema、API、示例和发布制品门禁。
+在 PowerShell 中运行 `.\gradlew.bat releaseCheck`，跑一遍路线图要求的模块、文档、schema、API、示例和发布制品门禁。
 
 ## 完整能力
 
@@ -199,7 +199,7 @@ CLI `run` 支持 `--world`（小型 JSON fixture）、`--assert`/`--assert-file`
 
 ## 阶段 10：性能、稳定性与发布质量
 
-这一阶段让沙盒承受较大的数据包、批量清单和 CI 使用。
+这一阶段让沙盒撑得住较大的数据包、批量清单和 CI 负载。
 
 - **性能基准**：`benchmark` CLI 提供内置 smoke/CI 基准，覆盖 scoreboard 批量写入、大 storage merge、函数调用链、批量 manifest 执行，可选 `--pack` 测量 pack 加载、`--loot-table` 抽样 loot，并可写 JSON artifact。
 - **缓存**：`DatapackLoader` 提供目录/zip 解析缓存（键为版本 profile + 内容指纹，命中返回深拷贝），`clearCache()` 供 REPL/watch 强制 reload；NBT schema 按 classpath 一次性加载并按 profile 复用；版本 profile、文档表和 registry 目录集中在不可变对象中；`ManifestSchemaValidator` 对 JSON Schema lazy 缓存。

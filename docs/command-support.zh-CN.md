@@ -18,7 +18,7 @@
 
 这个沙盒不嵌入原版服务端。“支持”在这里的意思是：命令会按沙盒当前建模的数据包可见状态执行，并产生确定性结果。网络、权限、世界生成、客户端 UI、红石、实体 AI、完整战斗系统和真实服务端生命周期都不在运行时范围内。
 
-未支持的原版根命令默认不会让运行失败。默认策略是 `warn`：记录 warning 输出事件并继续执行。需要严格验证时，可以用 CLI `--unsupported error`、清单 `"unsupported": "error"` 或 API `UnsupportedFeatureMode.ERROR`；想静默跳过则用 `ignore`。检查命令生成器输出时，`run --strict` 和 `check --strict` 会同时启用 unsupported error 和直接缺失资源引用失败；`check --strict` 还会在执行前校验 manifest schema。
+未支持的原版根命令默认不会导致运行失败。默认策略是 `warn`：记录 warning 输出事件并继续执行。需要严格验证时，可以用 CLI `--unsupported error`、清单 `"unsupported": "error"` 或 API `UnsupportedFeatureMode.ERROR`；想静默跳过则用 `ignore`。检查命令生成器输出时，`run --strict` 和 `check --strict` 会同时启用 unsupported error 和直接缺失资源引用失败；`check --strict` 还会在执行前校验 manifest schema。
 
 ## 状态说明
 
@@ -177,7 +177,7 @@ JSON text component 支持 `text`、`score`、`selector`、`translate`、`keybin
 | `marker` | 保存任意复合 `data`，可继续充当 selector/计分板逻辑锚点，暴露零尺寸不可交互命中箱，并拒绝伤害。 |
 | `interaction` | 校验 `width`、`height`、`response`、`attack`、`interaction`；定向玩家事件记录 UUID/timestamp，暴露命中箱和 response，并供 `execute on target` / `execute on attacker` 使用。 |
 
-实体 snapshot 会把派生状态放在 `entities[*].special`：display 包含 `renderTransformation`、`renderPosition`、插值进度、`cullingBox`、零尺寸游戏 `hitbox` 和已保存内容；盔甲架和 interaction 则包含有效游戏命中箱。定向玩家事件表示客户端已经解析完成的一次命中；沙盒不会从玩家视线做 raycast，也不绘制客户端模型或文本。
+实体 snapshot 会把派生状态放在 `entities[*].special`：display 包含 `renderTransformation`、`renderPosition`、插值进度、`cullingBox`、零尺寸游戏 `hitbox` 和已保存内容；盔甲架和 interaction 则包含有效游戏命中箱。定向玩家事件表示客户端已经解析好的一次命中；沙盒不会从玩家视线做 raycast，也不绘制客户端模型或文本。
 
 ## 世界与 NBT 说明
 

@@ -93,7 +93,7 @@ Datapack format pack_format 100 or range 100..100 is not compatible with version
 )
 ```
 
-如果 trace 有执行记录但 snapshot 没变化，说明命令路径到了，但当前 runtime 可能没有建模该副作用。
+如果 trace 有执行记录但 snapshot 没变化，说明命令确实执行了，但当前 runtime 可能没有建模该副作用。
 
 ## 输出断言失败
 

@@ -6,7 +6,7 @@
 
 ## 前置条件
 
-CI 需要 Java 25 和路径确定的 CLI jar。Manifest、pack、fixture、golden file 要一并检出，使相对路径留在 workspace 内。固定生成 jar 的 Datapack Sandbox 发布版本；每个场景则用 `version`/`versions` 固定 Minecraft profile。
+CI 需要 Java 25 和路径确定的 CLI jar。Manifest、pack、fixture、golden file 要一并检出，使相对路径留在 workspace 内。固定生成 jar 所用的 Datapack Sandbox 发布版本；每个场景则用 `version`/`versions` 固定 Minecraft profile。
 
 ## 最小 CI 命令
 
@@ -57,11 +57,11 @@ jobs:
           path: build/dps
 ```
 
-消费仓库可把 build step 换成获取固定 release jar，并按自身 supply-chain 策略校验 checksum。
+下游仓库可把 build step 换成获取固定 release jar，并按自身 supply-chain 策略校验 checksum。
 
 ## Manifest 发现与严格度
 
-`check <input>...` 接受 Manifest 文件或目录。目录会递归搜索 `.dps.json`，结果按 Manifest 报告。生成 report 应放在发现目录之外，避免后续 job 把 artifact 当输入。
+`check <input>...` 接受 Manifest 文件或目录。目录会递归搜索 `.dps.json`，结果按 Manifest 报告。生成的 report 应放在发现目录之外，避免后续 job 把 artifact 当输入。
 
 | 选项 | CI 效果 |
 | --- | --- |

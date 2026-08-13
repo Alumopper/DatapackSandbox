@@ -88,7 +88,7 @@ python -m jupyterlab examples/jupyter/datapack-sandbox-demo.ipynb
 
 kernel 通过 message-mode interrupt 请求 Serve 在下一条命令边界取消。返回 `EXECUTION_INTERRUPTED` 时，已完成命令及其 outputs、traces、snapshot diffs 会作为 partial result 保留；这不是事务回滚。
 
-如果 JVM 进程意外退出，当前 cell 返回 `SESSION_LOST`。kernel 不会伪造旧世界恢复；修复原因后执行 `%dps reset --apply` 创建明确的新世界。普通命令错误不会关闭会话，后续 cell 仍可执行。
+如果 JVM 进程意外退出，当前 cell 返回 `SESSION_LOST`。kernel 不会假装恢复旧世界；修复原因后执行 `%dps reset --apply` 创建明确的新世界。普通命令错误不会关闭会话，后续 cell 仍可执行。
 
 ## 限制
 

@@ -61,7 +61,7 @@ const lastResult = ref<PlaygroundEvent>()
 
 ## 组件 props
 
-组件共享一套刻意统一的概念：
+组件共享一套有意统一的概念：
 
 | 分组 | Props | 用途 |
 | --- | --- | --- |
@@ -93,7 +93,7 @@ const lastResult = ref<PlaygroundEvent>()
 | `frame-stats` | FPS、frame time、pixel ratio、triangles、revision |
 | `context-lost` | WebGL context 无法继续 present scene |
 
-`DpsCell` 额外发出 `update:modelValue`；`DpsCell` / `DpsPlayground` 按 action 发出相应 execution/GIF/checkpoint event。外层 view 销毁时取消应用 listener。
+`DpsCell` 额外发出 `update:modelValue`；`DpsCell` / `DpsPlayground` 按 action 发出相应 execution/GIF/checkpoint event。外层 view 销毁时要取消注册 listener。
 
 ## 显式共享一个 session
 
@@ -169,7 +169,7 @@ await controller.importArchive(
 
 `PlaygroundImportKind` 为 `datapack | resource-pack | client-jar | world`。Client JAR import 有特殊边界：archive reader 只保留 `assets/` 下受支持的 entry。用户选择的 bytes 只存在于内存 Worker session，dispose/rebuild 后消失。
 
-`PlaygroundDependencySource.kind` 只有 `datapack | resource-pack`。Client JAR 不能声明成 URL dependency，必须由用户/宿主显式提供 bytes。这样 `version` 不会悄悄变成下载指令，asset/license 边界也对宿主可见。
+`PlaygroundDependencySource.kind` 只有 `datapack | resource-pack`。Client JAR 不能声明成 URL dependency，必须由用户/宿主显式提供 bytes。这样 `version` 不会悄悄变成下载指令，资产与许可边界对宿主保持透明。
 
 ## Preset 与 URL dependency
 
@@ -216,7 +216,7 @@ Recoverable fetch/transient error 只能带 backoff 和可见状态重试。Non-
 - Packaged Worker 必须以 JavaScript MIME type 提供。自定义跨域 `workerUrl` 需要兼容 CORS 与 CSP `worker-src`。
 - Worker 执行在本地，但 preset/dependency fetch 仍访问网络，import 会处理不可信 archive；应保持 byte/file/command limits。
 - 页面销毁时终止 owned Worker，否则导航后可能残留内存与 simulation timer。
-- Client assets、pack、world data 可能有版权或隐私属性。默认只留在本地；嵌入页面不能在没有另一个显式动作时上传它们。
+- Client assets、pack、world data 可能有版权或隐私属性。默认只留在本地；嵌入页面不得未经另一个显式动作就把它们上传。
 
 ## 限制
 

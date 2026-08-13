@@ -128,7 +128,7 @@ Worker 请求、事件、transferable 二进制响应、生命周期和稳定错
 
 - 默认预算用于维持浏览器稳定，并不是不可信代码的安全隔离边界。
 - 执行只在 MCFunction 命令边界协作中断；已完成命令对世界的修改不会回滚。
-- watchdog 超时会终止 Worker，并以 `SESSION_LOST` 结束在途请求；旧世界不会被假装恢复。
+- watchdog 超时会终止 Worker，并以 `SESSION_LOST` 结束在途请求；也不会假装恢复了旧世界。
 - 渲染结果是确定性的 clean-room 近似画面，`visualParity` 为 `false`，不承诺与原版客户端像素一致。
 - 不导入 client JAR 时，Web renderer 只使用内置 fallback；它不会根据 notebook `version` 自动取得客户端资源。
 - 自定义 `worker-url` 必须同源，或由服务端提供 module Worker 所需的跨域响应头。

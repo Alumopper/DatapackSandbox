@@ -1,4 +1,4 @@
-﻿# 玩家事件
+# 玩家事件
 
 ## 适用场景
 
@@ -48,15 +48,9 @@ event player <name> <event-type> [resource-id] [detail/action|x y z|pos=x,y,z]
 - `changed_dimension`：`resource-id` 是来源维度，`detail` 是目标维度。
 - `recipe_unlocked`：recipe id。
 
-对于 `entity_interacted`、`entity_attacked`、`player_attacked_entity`、
-`attack_entity` 和 `player_hurt_entity`，id 也可以填写只命中一个真实沙盒实体的
-selector 或 UUID。目标为 interaction 实体时，事件会把玩家 UUID 和当前 game tick
-写入 `interaction` 或 `attack`，并在 event trace 中记录 `response` 与目标 UUID。
-零尺寸 interaction 命中箱、display、marker 和 Marker 模式盔甲架会拒绝这类定向玩家动作。
+对于 `entity_interacted`、`entity_attacked`、`player_attacked_entity`、`attack_entity` 和 `player_hurt_entity`，id 也可以填写只命中一个真实沙盒实体的 selector 或 UUID。目标为 interaction 实体时，事件会把玩家 UUID 和当前 game tick 写入 `interaction` 或 `attack`，并在 event trace 中记录 `response` 与目标 UUID。零尺寸 interaction 命中箱、display、marker 和 Marker 模式盔甲架会拒绝这类定向玩家动作。
 
-方块放置/破坏事件的尾部参数也可以声明目标 sparse-world 坐标，支持
-`0 64 0`、`pos=0,64,0`、`blockPos=0,64,0` 或 `@0,64,0`。传入坐标后，
-事件会同步更新 sparse world，并在 event trace 里记录 `blockPos`。
+方块放置/破坏事件的尾部参数也可以指定目标 sparse-world 坐标，支持 `0 64 0`、`pos=0,64,0`、`blockPos=0,64,0` 或 `@0,64,0`。传入坐标后，事件会同步更新 sparse world，并在 event trace 里记录 `blockPos`。
 
 键盘/鼠标事件把输入代码放在 `[resource-id]` 位置：
 
@@ -77,8 +71,7 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar event --pack examples/full-sta
 
 CLI 接受连字符或下划线；`item-used` 会标准化为 `item_used`。
 
-随手小测可以用 `run --event` 注入同一套简写事件；多条事件可写入文件后
-通过 `run --event-file` 按行注入，然后断言玩家状态或 `eventTrace`：
+随手小测可以用 `run --event` 注入同一套简写事件；多条事件可写入文件后通过 `run --event-file` 按行注入，然后断言玩家状态或 `eventTrace`：
 
 ```bash
 java -jar cli/build/libs/datapack-sandbox-cli.jar run --version 26.2 \
@@ -152,7 +145,7 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar run --version 26.2 \
 
 REPL 快捷命令暴露一个可选 `[resource-id]` 和一个可选 detail 或输入 action。需要更完整上下文时使用 JSON 清单，例如带 NBT 的物品、精确实体上下文、伤害源元数据或鼠标坐标。
 
-定向 interaction 事件发生后，可按原版 interaction 关系形状切换执行者：
+定向 interaction 事件发生后，可以按原版 interaction 关系切换执行者：
 
 ```mcfunction
 execute as @e[type=minecraft:interaction,tag=button] on target run function demo:right_click
@@ -161,14 +154,9 @@ execute as @e[type=minecraft:interaction,tag=button] on attacker run function de
 
 `on target` 使用最近右击记录，`on attacker` 使用最近攻击记录；尚未产生对应记录时，该执行分支没有上下文。
 
-原版风格的 `damage` 命令也会发出玩家事件：玩家受伤时发出 `damage`；
-生命值归零时发出 `death`；如果命令使用 `by <entity>` 或 `from <entity>`，
-还会发出 `entity_killed_player`。当玩家是非玩家实体的伤害来源时，沙盒会发出
-`player_hurt_entity`，致命伤害还会发出 `killed_entity`。`damage` 命令的
-payload 会记录解析后的 `at` 位置、直接 `by` 实体和最终 `from` 实体，便于
-report 和断言调试生成出来的战斗命令，而不需要模拟完整战斗物理。
+原版风格的 `damage` 命令也会发出玩家事件：玩家受伤时发出 `damage`；生命值归零时发出 `death`；如果命令使用 `by <entity>` 或 `from <entity>`，还会发出 `entity_killed_player`。当玩家是非玩家实体的伤害来源时，沙盒会发出 `player_hurt_entity`，致命伤害还会发出 `killed_entity`。`damage` 命令的 payload 会记录解析后的 `at` 位置、直接 `by` 实体和最终 `from` 实体，方便 report 和断言调试生成出来的战斗命令，无需模拟完整战斗物理。
 
-高层事件也会在不需要客户端物理的范围内更新可观察玩家状态：consume 事件可减少背包物品并增加 food，pickup/add 事件会增加背包物品，dimension change 会更新玩家维度，damage/death 会更新 health，recipe unlock 会更新玩家 recipe 集合。这些变化可以通过 snapshot、`inspect player`、manifest assertion 和 QuickTest assertion 检查。
+这些事件也会在不需要客户端物理的范围内更新可观察玩家状态：consume 事件会减少背包物品并增加 food，pickup/add 事件会增加背包物品，dimension change 会更新玩家维度，damage/death 会更新 health，recipe unlock 会更新玩家 recipe 集合。这些变化可以通过 snapshot、`inspect player`、manifest assertion 和 QuickTest assertion 检查。
 
 键鼠清单示例：
 
@@ -181,7 +169,7 @@ report 和断言调试生成出来的战斗命令，而不需要模拟完整战�
 
 ## 限制
 
-事件表示已经解析完成的高层玩家动作，不模拟真实客户端输入、raycast、寻路、物理或完整战斗过程；需要丰富上下文时应使用 JSON Manifest。
+事件代表已经解析好的高层玩家动作；沙盒不模拟真实客户端输入、raycast、寻路、物理或完整战斗过程。需要丰富上下文时使用 JSON Manifest。
 
 ## 相关页面
 

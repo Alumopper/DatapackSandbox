@@ -43,13 +43,13 @@ java -jar .\cli\build\libs\datapack-sandbox-cli.jar check `
   --validate-schema
 ```
 
-成功意味着 Java 能启动 jar、内置 Manifest schema 可读，而且仓库内的实际示例能够执行。
+成功意味着 Java 能启动 jar、内置 Manifest schema 可读，仓库里的实际示例也跑得通。
 
 ## 安装 CLI
 
 ### 使用发布 jar
 
-从准备采用的项目 release 下载 CLI 产物，在 CI 中固定文件名或 wrapper 路径，并用 `java -jar` 启动；无需 Mojang server jar。需要追踪 profile 漂移时，把 `version` 输出一并归档到构建日志。
+从你准备采用的 release 下载 CLI 产物，在 CI 中固定文件名或 wrapper 路径，并用 `java -jar` 启动；无需 Mojang server jar。需要追踪 profile 漂移时，把 `version` 输出一并归档到构建日志。
 
 ### 从源码构建
 
@@ -97,7 +97,7 @@ dependencies {
 code --install-extension Alumopper.datapack-sandbox-vscode
 ```
 
-Marketplace 是推荐渠道，VS Code 可以正常接收扩展更新。`0.4.1` 已内置匹配的 CLI jar；只有在有意测试另一个本地构建时才设置 `datapackSandbox.cliJarPath`。Release 中仍保留 VSIX，供离线安装或固定版本使用。详见 [VS Code 扩展](/guide/vscode-extension)。
+Marketplace 是推荐渠道，VS Code 可以正常接收扩展更新。`0.4.1` 已内置匹配的 CLI jar；只有当你确实想改用另一个本地构建时才设置 `datapackSandbox.cliJarPath`。Release 中仍保留 VSIX，供离线安装或固定版本使用。详见 [VS Code 扩展](/guide/vscode-extension)。
 
 Jupyter 可安装 release wheel，也可从 `jupyter/` 构建；wheel 同样内置 CLI jar，`DPS_CLI_JAR` 只用于显式选择其他构建。详见 [Jupyter](/integrations/jupyter)。
 
@@ -116,9 +116,9 @@ npm install @datapack-sandbox/vitepress-playground
 1. `java -jar ... version` 验证启动与内置 profile 集合。
 2. `java -jar ... schema --output build/dps-manifest.schema.json` 验证 schema 导出。
 3. `java -jar ... check <your-cases> --strict` 验证真实项目。
-4. JVM 消费者运行测试套件；Web 消费者重新构建，使 Worker bundle 与生成 profile 一并刷新。
+4. JVM 用户跑一遍测试套件；Web 用户重新构建，让 Worker bundle 与生成 profile 一起刷新。
 
-CLI、JVM 模块坐标、编辑器后端和浏览器包要有计划地同步升级。Manifest 的 `version` 选择的是 Minecraft 行为 profile，不是 Datapack Sandbox 发布版本。
+CLI、JVM 模块坐标、编辑器后端和浏览器包建议同步升级。Manifest 的 `version` 选择的是 Minecraft 行为 profile，不是 Datapack Sandbox 发布版本。
 
 ## 安装排障
 

@@ -2,7 +2,7 @@
 
 ## 适用场景
 
-当数据包行为要进入现有 Kotlin/Java 测试套件，或者你想用 fluent API 运行单函数、完整 pack 和多版本矩阵时使用 `testkit`。本页只说明依赖、入口、生命周期和报告；fixture 与断言已拆为独立参考。
+要把数据包行为接入现有 Kotlin/Java 测试套件，或者想用 fluent API 运行单函数、完整 pack 和多版本矩阵时，使用 `testkit`。本页只说明依赖、入口、生命周期和报告；fixture 与断言已拆为独立参考。
 
 ## 前置条件
 

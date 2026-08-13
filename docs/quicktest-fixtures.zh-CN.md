@@ -67,7 +67,7 @@ create scenario → apply world/setup/import → run behavior → assert → rep
 
 ### Region
 
-Region helper 用一个状态填充显式 cuboid。它比重复数百次调用清楚，但边界仍应保持小，避免掩盖测试意图并扩大 snapshot。
+Region helper 用一个状态填充显式长方体区域。它比重复调用数百次更清晰，但范围仍应保持小，避免掩盖测试意图并扩大 snapshot。
 
 ### Structure
 
@@ -98,7 +98,7 @@ Player inventory 与 entity equipment 可接 active profile 支持的 item id、
 - Bossbar fixture 创建 id、name、value/max、color/style、visibility、player membership。
 - 契约涉及 objective metadata/display slot 时使用对应 scoreboard helper。
 
-在 load/function 测试前直接 fixture 这些状态，可避免 setup command 干扰被测函数的 coverage 与 trace。
+在 load/function 测试前直接预置这些状态，可避免 setup command 干扰被测函数的 coverage 与 trace。
 
 ## 复用 setup object
 
@@ -121,11 +121,11 @@ test.importSave(
 )
 ```
 
-Importer 只读请求的 Java Anvil data，并将选择的模型内容复制到稀疏世界；它不会启动该存档、像原版服务端一样跑 datafixer、生成缺失 chunk，或隐式导入 player/network state。测试数据只保留小而经过审查的 chunk selection；大 world directory 是慢且不透明的 fixture。
+Importer 只读请求的 Java Anvil data，并将选择的模型内容复制到稀疏世界；它不会启动该存档、像原版服务端一样跑 datafixer、生成缺失 chunk，或隐式导入 player/network state。测试数据只保留小而经过审查的 chunk 选择；大体积的世界目录既慢又难以排查。
 
 ## Matrix fixture
 
-`SandboxQuickTestMatrix` 在各版本 scenario 上镜像主要 behavior/fixture/assertion surface。Matrix fixture 会应用到每个 profile 的隔离 sandbox。资源内容/布局不同时使用按版本的 pack list；除非测试有意 profile-specific，不要放某个 profile 无效的 fixture value。
+`SandboxQuickTestMatrix` 在各版本 scenario 上镜像主要 behavior/fixture/assertion surface。Matrix fixture 会应用到每个 profile 的隔离 sandbox。资源内容/布局不同时使用按版本的 pack list；除非测试有意针对某个 profile，不要放其他 profile 无效的 fixture value。
 
 ## Manifest 等价写法
 

@@ -12,7 +12,7 @@ dependencies {
 }
 ```
 
-Core 需要 Java 25。必须明确选择 Minecraft profile；`26.2` 是当前默认 profile，但集成应为每个文档或测试保存实际使用的版本。`api/core.api` 是构建时检查的 JVM ABI 基线，不是生成式逐符号文档，因此本页按实际任务说明公开入口。
+Core 需要 Java 25。必须明确选择 Minecraft profile；`26.2` 是当前默认 profile，但集成应为每个文档或测试保存实际使用的版本。`api/core.api` 是构建时检查的 JVM ABI 基线，不是逐符号生成的文档，因此本页按实际任务说明公开入口。
 
 ## 最小可运行示例
 
@@ -92,7 +92,7 @@ Fixture 只修改可变 world，不添加数据包资源。`importSave` 只导�
 
 ### 执行上下文
 
-相对坐标、selector、executor 身份、旋转、anchor 或 dimension 重要时传入 `ExecutionContext`：
+当相对坐标、selector、执行者身份、旋转、anchor 或 dimension 会影响执行时，传入 `ExecutionContext`：
 
 ```kotlin
 import moe.afox.dpsandbox.core.ExecutionContext
@@ -121,7 +121,7 @@ Predicate engine 由 sandbox 注入，应用通常不需要设置 `predicateEngi
 
 `sandbox.datapack` 暴露 function、loot table、predicate、advancement、tag、raw resource、warning 和资源索引。资源索引会记录 active/overridden 项，可用于解释 pack priority。
 
-Output event 保存在 `world.outputs`，也可通过 `addOutputListener` / `removeOutputListener` 流式接收。每个 output 包含 tick、command、channel、targets、规范化文本、可选 raw text、带样式 segments、结构化 payload 与 command source。设计外部日志格式前请阅读[报告与可观测性](/reference/reports-observability)。
+Output event 保存在 `world.outputs`，也可通过 `addOutputListener` / `removeOutputListener` 流式接收。每个 output 包含 tick、command、channel、targets、规范化文本、可选 raw text、带样式 segments、结构化 payload 与 command source。设计外部日志格式前请阅读 [报告与可观测性](/reference/reports-observability)。
 
 ## Snapshot、diff、trace 与 coverage
 
@@ -143,23 +143,23 @@ sandbox.resetCoverage()
 
 ## Checkpoint 与取消
 
-`saveCheckpoint`、`restoreCheckpoint`、`deleteCheckpoint`、`checkpointNames` 最多管理 32 个 world 副本。名称只能是 1–64 个 ASCII 字母、数字、`.`、`_`、`-`，且只能在 command boundary 操作。Checkpoint 包含 modeled world state，不包含 datapack resource 与单调累计的执行预算；restore 不会消耗 checkpoint。
+`saveCheckpoint`、`restoreCheckpoint`、`deleteCheckpoint`、`checkpointNames` 最多管理 32 个 world 副本。名称只能是 1–64 个 ASCII 字母、数字、`.`、`_`、`-`，且只能在命令边界操作。Checkpoint 包含 modeled world state，不包含 datapack resource 与单调累计的执行预算；restore 不会消耗 checkpoint。
 
-长操作可由另一控制路径调用 `requestExecutionCancellation()`。取消只在 command/tick boundary 协作检查，并抛出 `EXECUTION_INTERRUPTED`；已完成命令不会回滚。有意复用已取消的 sandbox 前调用 `clearExecutionCancellation()`。
+长操作可以从另一条控制路径调用 `requestExecutionCancellation()`。取消只在命令/tick 边界协作生效，并抛出 `EXECUTION_INTERRUPTED`；已完成命令不会回滚。打算复用已取消的 sandbox 前，先调用 `clearExecutionCancellation()`。
 
 ## 诊断与安全策略
 
 运行失败使用 `SandboxException`。公开 diagnostic code 区分输入格式、版本不匹配、资源缺失、未支持能力、命令错误、中断、断言失败与缺失执行上下文。集成应保留 `code`、`message`、`location`、`version`、`command`，不要只拼成字符串。
 
-`UnsupportedFeatureMode` 控制“当前版本认识、sandbox 尚未完整建模”的命令：
+`UnsupportedFeatureMode` 控制“当前版本存在、但沙盒尚未完整建模”的命令：
 
 - `WARN`：记录 warning output 后继续；
 - `IGNORE`：静默继续；
 - `ERROR`：抛出 `UNSUPPORTED_FEATURE`。
 
-未知 command root 无论何种 mode 都是输入错误。回归测试和 CI 通常适合 `ERROR`，能更早暴露覆盖缺口。
+未知 command root 无论模式如何都是输入错误。回归测试和 CI 通常适合 `ERROR`，能更早暴露覆盖缺口。
 
-默认 `SandboxLimits`：100,000 条命令、函数深度 64、单次 `runTicks` 100,000 ticks、100,000 个保留 output、10,000,000 字节 snapshot。命令数默认按整个 sandbox 生命周期累计；只有受控的长期交互 session 需要每个顶层操作刷新预算时，才启用 `resetCommandBudgetPerOperation = true`。
+默认 `SandboxLimits`：100,000 条命令、函数深度 64、单次 `runTicks` 100,000 ticks、100,000 个保留 output、10,000,000 字节 snapshot。命令数默认按整个 sandbox 生命周期累计；只有当受控的长期交互会话需要按每个顶层操作刷新预算时，才启用 `resetCommandBudgetPerOperation = true`。
 
 ## 并发与所有权
 

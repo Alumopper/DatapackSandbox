@@ -22,7 +22,7 @@ Transport 为 UTF-8 stdin/stdout，每行一个完整 JSON 对象。请求不能
 {"id":null,"ok":true,"result":{"protocol":"dps-jsonl","defaultVersion":"26.2","capabilities":{"render":true,"renderMimeType":"image/png","checkpoints":true,"functionSource":true,"interrupt":true,"eventTraces":true,"pagedEvents":true,"richOutput":true,"coverage":true,"commandDiagnostics":true},"versions":["1.20.4","26.2"]}}
 ```
 
-示例省略了中间版本。启用控件前等待此行，校验 `protocol`，保存 `defaultVersion`/`versions`，并按 `capabilities` 开启可选 UI，不要假设所有 CLI 版本拥有同一 surface。
+示例省略了中间版本。开启相应功能前等待此行，校验 `protocol`，保存 `defaultVersion`/`versions`，并按 `capabilities` 开启可选 UI，不要假设所有 CLI 版本的能力面都一样。
 
 每个请求包含应用自选的 `id`、`method` 与可选对象 `params`：
 
@@ -30,7 +30,7 @@ Transport 为 UTF-8 stdin/stdout，每行一个完整 JSON 对象。请求不能
 {"id":"req-1","method":"state","params":{}}
 ```
 
-ID 可为字符串或数字，响应会保留其 JSON 类型。Outstanding request 应使用唯一 id，才能可靠关联队列操作与 out-of-band `interrupt`。
+ID 可为字符串或数字，响应会保留其 JSON 类型。未完成的请求应使用唯一 id，才能可靠关联队列操作与 out-of-band `interrupt`。
 
 成功：
 
@@ -75,7 +75,7 @@ Tracked `runFunction` result 包含本次操作的命令数、output、trace、p
 | `unsupported` | `warn`、`ignore`、`error` | unsupported feature 策略 |
 | `limits` | object | `maxCommands`、`maxFunctionDepth`、`maxTicksPerRun`、`maxOutputEvents`、`maxSnapshotBytes` |
 
-所有宿主路径由 `serve` 进程规范化，因此相对路径以该进程 working directory 解析，除非编辑器文档恰好与它同目录，否则不是相对文档解析。
+所有宿主路径都由 `serve` 进程规范化，相对路径按该进程的工作目录解析；除非编辑器文档恰好也在同一目录，否则不会相对文档解析。
 
 `upsertFunctionSource` 用 `id` 加 `text`/`path` 二选一添加或替换 synthetic function，并保留 world。`reload` 按保存的配置重建资源，`keepWorld` 默认 `true`；`resetWorld` 在 fresh sparse world 上重建同一配置。Resource reload 对外部文件变化不是 transaction；应先保存编辑器内容，并在 reload 失败时保留上一份客户端视图。
 
@@ -165,7 +165,7 @@ Camera 优先级为 `cameraPlayer`、`cameraEntity`、带可选 `yaw`/`pitch`/`d
 ## 进程所有权与恢复
 
 - 一个进程持有一个 active sandbox。不同文档或安全域应启动独立进程。
-- EOF、无效 JSON、子进程退出、写入失败都视为 session loss：拒绝 outstanding request，保留未保存编辑器文本，重启并等待 hello，然后 recreate，再执行 fixture/checkpoint 恢复策略。
+- EOF、无效 JSON、子进程退出、写入失败都视为 session loss：拒绝未完成的请求，保留未保存的编辑器文本，重启并等待 hello，然后重建 sandbox，再执行 fixture/checkpoint 恢复策略。
 - 不要把不受限制的 `serve` 子进程直接暴露给不可信远程客户端。Pack、manifest、function、world、render 参数都可能读取进程可访问的宿主路径。
 - 父集成应约束路径，并让子进程只拥有工作区所需的最小文件权限。
 

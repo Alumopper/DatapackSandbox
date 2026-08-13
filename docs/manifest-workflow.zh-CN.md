@@ -105,7 +105,7 @@ Step 严格从上到下执行。每项选择 load、ticks、function、commands�
 - packs、steps、assertions 按 include 到当前文件的顺序追加；
 - 每个 world section 依次应用，后面的同名/同坐标状态获胜。
 
-广泛环境 setup 放 included baseline，但 behavior step 和 expected result 应靠近 case。只复用 world 时，`world.extends`、`world.fixture`、`world.fixtures` 会先应用外部 fixture，再应用本地字段。
+广泛环境 setup 放在 included baseline 里，但 behavior step 和 expected result 应贴近 case。只复用 world 时，`world.extends`、`world.fixture`、`world.fixtures` 会先应用外部 fixture，再应用本地字段。
 
 ```json
 {
@@ -187,7 +187,7 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar check cases/demo.dps.json `
   --report-file build/demo-report.json
 ```
 
-建议依次看：schema/path diagnostic、resource summary 与 missing reference、失败 assertion message、snapshot diff、最后是窄 command/event trace。这样不必一开始就读巨大完整 snapshot。
+建议依次看：schema/path diagnostic、resource summary 与 missing reference、失败 assertion message、snapshot diff，最后是窄 command/event trace。这样不必一开始就读完整的巨大 snapshot。
 
 ## 把交互复现迁入 Manifest
 

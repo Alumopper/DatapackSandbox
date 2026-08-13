@@ -32,7 +32,7 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar run --help
 
 ### `run`
 
-`run` 是最宽的一次性入口：目录/zip pack、文件/文本/stdin 函数、直接命令流、world fixture、load/ticks/functions/events、assertion、资源检查、安全限制、coverage、report 和截图。输入 action family 按固定生命周期执行；任意交错使用 Manifest `steps`。详见 [CLI 运行工作流](/workflows/cli)。
+`run` 是覆盖面最广的一次性入口：目录/zip pack、文件/文本/stdin 函数、直接命令流、world fixture、load/ticks/functions/events、assertion、资源检查、安全限制、coverage、report 和截图。输入 action family 按固定生命周期执行；任意交错使用 Manifest `steps`。详见 [CLI 运行工作流](/workflows/cli)。
 
 ### `check`
 
@@ -44,7 +44,7 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar run --help
 
 ### `viewport`
 
-`viewport` 打开原生 JVM 窗口，支持 version/packs、显式 `--minecraft-assets`、resource packs、启动 command/function、窗口尺寸、目标 FPS/tick rate、autoplay、input player、FOV、移动/鼠标/UI scale 与 PNG export directory。客户端资源绝不会自动发现。
+`viewport` 打开原生 JVM 窗口，支持 version/packs、显式 `--minecraft-assets`、resource packs、启动 command/function、窗口尺寸、目标 FPS/tick rate、autoplay、input player、FOV、移动/鼠标/UI scale 与 PNG export directory。客户端资源绝不会被自动发现。
 
 ### `serve`
 
@@ -105,7 +105,7 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar resources --pack .\my-pack --i
 
 ### Limits
 
-`run`/`check` 暴露 `--max-commands`、`--max-function-depth`、`--max-ticks-per-run`、`--max-output-events`、`--max-snapshot-bytes`，对应 `SandboxLimits`。生成或不可信输入应保守设置。
+`run`/`check` 暴露 `--max-commands`、`--max-function-depth`、`--max-ticks-per-run`、`--max-output-events`、`--max-snapshot-bytes`，对应 `SandboxLimits`。对生成内容或不可信输入应保守设置。
 
 ## 退出码
 
@@ -123,12 +123,12 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar resources --pack .\my-pack --i
 - JSON 文件包含一个完整 value；JSONL 每个 UTF-8 行一个对象。
 - `serve` 将 stdout 专用于 JSONL envelope。
 - `run/check` 控制台颜色、表格与措辞面向人，可继续演进。
-- Report object 可以增加字段；消费者应要求已知字段、忽略未知字段。
+- Report object 可以增加字段；消费者应只读取已知字段、忽略未知字段。
 - Trace filter 只改变展示/导出，不改变 sandbox 内记录和组合 report。
 
 ## 渲染资源
 
-所有 JVM render surface（`run --screenshot-file`、`viewport`、Serve `render`）都要求调用者显式传入匹配的 Minecraft client JAR 或 `assets/` 目录，才能得到原版模型/纹理。命令不会从 `--version` 推导 `.minecraft` 路径或下载资源。没有资源时 headless render 使用 fallback；live viewport 应提供 `--minecraft-assets` 才有有意义的客户端视觉。
+所有 JVM render surface（`run --screenshot-file`、`viewport`、Serve `render`）都要求调用者显式传入匹配的 Minecraft client JAR 或 `assets/` 目录，才能得到原版模型/纹理。命令不会从 `--version` 推导 `.minecraft` 路径或下载资源。没有资源时 headless render 使用 fallback；live viewport 只有提供 `--minecraft-assets` 才能看到有意义的客户端画面。
 
 ## 限制
 
