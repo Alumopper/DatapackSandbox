@@ -732,7 +732,7 @@ internal fun DatapackSandbox.parseDataTarget(
     return when (tokens[index].text) {
         "storage" -> {
             requireIndex(tokens, index + 1, "data storage <id>", location)
-            DataTargetSpec.Storage(ResourceLocation.parse(tokens[index + 1].text)) to index + 2
+            DataTargetSpec.Storage(ResourceLocation.parseNullable(tokens[index + 1].text)) to index + 2
         }
         "entity" -> {
             requireIndex(tokens, index + 1, "data entity <target>", location)

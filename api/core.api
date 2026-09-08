@@ -2554,6 +2554,8 @@ public final class moe.afox.dpsandbox.core.ResourceLocation implements java.lang
 public final class moe.afox.dpsandbox.core.ResourceLocation$Companion {
   public final moe.afox.dpsandbox.core.ResourceLocation parse(java.lang.String, java.lang.String);
   public static moe.afox.dpsandbox.core.ResourceLocation parse$default(moe.afox.dpsandbox.core.ResourceLocation$Companion, java.lang.String, java.lang.String, int, java.lang.Object);
+  public final moe.afox.dpsandbox.core.ResourceLocation parseStorage(java.lang.String, java.lang.String);
+  public static moe.afox.dpsandbox.core.ResourceLocation parseStorage$default(moe.afox.dpsandbox.core.ResourceLocation$Companion, java.lang.String, java.lang.String, int, java.lang.Object);
   public moe.afox.dpsandbox.core.ResourceLocation$Companion(kotlin.jvm.internal.DefaultConstructorMarker);
 }
 final class moe.afox.dpsandbox.core.ResourceLocation$compareTo$1 extends kotlin.jvm.internal.PropertyReference1Impl {

@@ -127,6 +127,41 @@ class ManifestAssertionTest : ManifestRunnerTestSupport() {
     }
 
     @Test
+    fun `storage fixtures and assertions accept empty paths`() {
+        val dir = Files.createTempDirectory("dps-empty-storage-path-manifest")
+        val pack =
+            Path
+                .of("../core/src/test/resources/packs/counter")
+                .toAbsolutePath()
+                .normalize()
+                .toString()
+                .replace("\\", "\\\\")
+        val manifest = dir.resolve("empty-storage-path.dps.json")
+        Files.writeString(
+            manifest,
+            """
+            {
+              "version": "26.1.2",
+              "packs": ["$pack"],
+              "world": {
+                "storage": {
+                  "ram:": { "ready": true }
+                }
+              },
+              "steps": [],
+              "assertions": [
+                { "storage": { "id": "ram:", "path": "ready", "equals": true } }
+              ]
+            }
+            """.trimIndent(),
+        )
+
+        val result = ManifestRunner.run(manifest)
+
+        assertTrue(result.passed, result.messages.joinToString())
+    }
+
+    @Test
     fun `runs path contains and regex assertions`() {
         val dir = Files.createTempDirectory("dps-path-matches-manifest")
         val pack =

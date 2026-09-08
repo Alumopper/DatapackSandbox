@@ -26,8 +26,6 @@ import moe.afox.dpsandbox.core.TraceExpectation
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
-import kotlin.io.path.isRegularFile
-import kotlin.io.path.name
 
 internal object ManifestAssertionEvaluator {
     fun evaluate(
@@ -1501,7 +1499,7 @@ internal object ManifestAssertionEvaluator {
         storage: JsonObject,
         sandbox: DatapackSandbox,
     ): List<String> {
-        val id = ResourceLocation.parse(storage.requiredManifestString("id"))
+        val id = ResourceLocation.parseNullable(storage.requiredManifestString("id"))
         val path = storage.manifestString("path")
         val actual = sandbox.world.storages[id]?.let { root -> JsonPaths.get(root, path) }
         val label = "storage $id ${path ?: "<root>"}"

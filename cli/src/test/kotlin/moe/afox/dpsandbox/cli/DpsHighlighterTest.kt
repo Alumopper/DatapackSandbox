@@ -15,4 +15,11 @@ class DpsHighlighterTest {
         assertNotEquals(AttributedStyle.DEFAULT, highlighted.styleAt(11))
         assertNotEquals(AttributedStyle.DEFAULT, highlighted.styleAt(27))
     }
+
+    @Test
+    fun `styles storage ids with empty paths`() {
+        val highlighted = DpsHighlighter().highlightLine("data get storage ram:")
+
+        assertNotEquals(AttributedStyle.DEFAULT, highlighted.styleAt(17))
+    }
 }

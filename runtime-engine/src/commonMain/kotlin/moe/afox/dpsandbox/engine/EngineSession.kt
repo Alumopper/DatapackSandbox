@@ -783,7 +783,7 @@ class EngineSession(
             return
         }
         require(tokens[2] == "storage") { "Browser runtime models data operations on storage and display entities" }
-        val id = resource(tokens[3])
+        val id = ResourceNullable(tokens[3])
         when (action) {
             "merge", "modify" -> world.storages[id] = tokens.drop(4).joinToString(" ").ifBlank { "{}" }
             "remove" -> world.storages.remove(id)
@@ -1069,6 +1069,12 @@ class EngineSession(
         return normalized
     }
 
+    private fun ResourceNullable(value: String): String {
+        val normalized = if (':' in value) value else "minecraft:$value"
+        require(RESOURCE_ID_NULLABLE.matches(normalized)) { "Invalid storage id '$value'" }
+        return normalized
+    }
+
     private fun blockKey(x: Int, y: Int, z: Int): String = "$x,$y,$z"
 
     private fun blockProperties(token: String): Map<String, String> {
@@ -1085,6 +1091,7 @@ class EngineSession(
 
     companion object {
         private val RESOURCE_ID = Regex("[a-z0-9_.-]+:[a-z0-9_./-]+")
+        private val RESOURCE_ID_NULLABLE = Regex("[a-z0-9_.-]+:[a-z0-9_./-]*")
         private val CHECKPOINT_NAME = Regex("[A-Za-z0-9._-]{1,64}")
         private val PLAYER_NAME = Regex("[A-Za-z0-9_]{1,16}")
         private val INPUT_DEVICES = setOf("keyboard", "mouse", "touch")

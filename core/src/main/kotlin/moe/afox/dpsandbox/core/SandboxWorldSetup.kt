@@ -722,7 +722,7 @@ class SandboxWorldSetup {
     fun storage(
         id: String,
         value: String,
-    ): SandboxWorldSetup = storage(ResourceLocation.parse(id), JsonValues.parse(value))
+    ): SandboxWorldSetup = storage(ResourceLocation.parseNullable(id), JsonValues.parse(value))
 
     /**
      * Sets a storage object from a parsed JSON element.

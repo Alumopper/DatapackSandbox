@@ -165,7 +165,7 @@ object TextComponents {
             val values =
                 when {
                     root.has("storage") -> {
-                        val storage = world.storages[ResourceLocation.parse(root.requiredString("storage"))]
+                        val storage = world.storages[ResourceLocation.parseNullable(root.requiredString("storage"))]
                         listOfNotNull(storage?.let { JsonPaths.get(it, path) })
                     }
                     root.has("entity") ->

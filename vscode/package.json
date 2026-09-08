@@ -22,24 +22,9 @@
   },
   "categories": ["Programming Languages", "Linters", "Testing", "Debuggers"],
   "activationEvents": [
-    "onLanguage:mcfunction",
     "workspaceContains:**/pack.mcmeta",
     "onLanguage:json",
-    "onDebugResolve:datapack-sandbox",
-    "onCommand:datapackSandbox.runCurrentMcfunction",
-    "onCommand:datapackSandbox.debugCurrentMcfunction",
-    "onCommand:datapackSandbox.runManifest",
-    "onCommand:datapackSandbox.runManifestStrict",
-    "onCommand:datapackSandbox.debugManifestTrace",
-    "onCommand:datapackSandbox.openSandboxPanel",
-    "onCommand:datapackSandbox.saveCheckpoint",
-    "onCommand:datapackSandbox.restoreCheckpoint",
-    "onCommand:datapackSandbox.deleteCheckpoint",
-    "onCommand:datapackSandbox.renderActiveSandbox",
-    "onCommand:datapackSandbox.showCoverage",
-    "onCommand:datapackSandbox.resetCoverage",
-    "onCommand:datapackSandbox.interrupt",
-    "onCommand:datapackSandbox.openFunctionSource"
+    "onDebugResolve:datapack-sandbox"
   ],
   "main": "./out/extension.js",
   "scripts": {
@@ -318,7 +303,7 @@
     },
     "views": {
       "datapackSandbox": [
-        { "id": "datapackSandbox.resources", "name": "Resources" }
+        { "id": "datapackSandbox.resources", "name": "Resources"}
       ]
     },
     "breakpoints": [

@@ -1,7 +1,7 @@
 ﻿package moe.afox.dpsandbox.core
 
 private val namespacePattern = Regex("[a-z0-9_.-]+")
-private val pathPattern = Regex("[a-z0-9_./-]+")
+private val pathPattern = Regex("[a-z0-9_./-]*")
 
 /**
  * Minecraft resource location (`namespace:path`).
@@ -34,12 +34,30 @@ data class ResourceLocation(
         fun parse(
             value: String,
             defaultNamespace: String = "minecraft",
+        ): ResourceLocation = parse(value, defaultNamespace, allowEmptyPath = false)
+
+        /**
+         * Parses a string resource location whcih path may be empty (e.g., for storages, bossbars, etc.).
+         *
+         * @param value Raw id, either `namespace:path` or `path`.
+         * @param defaultNamespace Namespace used when [value] does not include one.
+         * @throws SandboxException when the id contains invalid characters.
+         */
+        fun parseNullable(
+            value: String,
+            defaultNamespace: String = "minecraft",
+        ): ResourceLocation = parse(value, defaultNamespace, allowEmptyPath = true)
+
+        private fun parse(
+            value: String,
+            defaultNamespace: String,
+            allowEmptyPath: Boolean,
         ): ResourceLocation {
             val trimmed = value.trim()
             val split = trimmed.split(":", limit = 2)
             val namespace = if (split.size == 2 && split[0].isNotEmpty()) split[0] else defaultNamespace
             val path = if (split.size == 2) split[1] else split[0]
-            if (path.isEmpty()) {
+            if (path.isEmpty() && !allowEmptyPath) {
                 throw SandboxException(
                     code = DiagnosticCode.INPUT_FORMAT,
                     message = "Resource location path is empty: '$value'",

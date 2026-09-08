@@ -2996,7 +2996,7 @@ class DatapackSandbox(
             }
             "storage" -> {
                 requireSizeFrom(tokens, index, 6, "execute store ${tokens[index].text} storage <id> <path> <type> <scale>", location)
-                val storage = world.storage(ResourceLocation.parse(tokens[index + 2].text))
+                val storage = world.storage(ResourceLocation.parseNullable(tokens[index + 2].text))
                 val scaled = scaledStoreValue(valueToStore, tokens[index + 4].text, tokens[index + 5].text, location)
                 JsonPaths.set(storage, tokens[index + 3].text, scaled)
             }

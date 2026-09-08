@@ -378,7 +378,7 @@ class Repl(
             }
             "storage" -> {
                 if (args.size >= 3) {
-                    val value = sandbox.world.storages[ResourceLocation.parse(args[1])]?.let { JsonPaths.get(it, args[2]) }
+                    val value = sandbox.world.storages[ResourceLocation.parseNullable(args[1])]?.let { JsonPaths.get(it, args[2]) }
                     println(value?.let(JsonValues::render) ?: "<missing>")
                 } else {
                     sandbox.world.storages.toSortedMap().forEach { (id, value) ->
@@ -549,7 +549,7 @@ class Repl(
     }
 
     private fun inspectBossbars(args: List<String>) {
-        val id = args.getOrNull(1)?.let { ResourceLocation.parse(it) }
+        val id = args.getOrNull(1)?.let { ResourceLocation.parseNullable(it) }
         if (id != null) {
             val bossbar = sandbox.world.bossbars[id]
             println(bossbar?.let { renderBossbar(it) } ?: "<missing>")

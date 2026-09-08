@@ -382,7 +382,7 @@ class SandboxQuickTest private constructor(
         expectedJson: String,
     ): SandboxQuickTest =
         apply {
-            val storageId = ResourceLocation.parse(id)
+            val storageId = ResourceLocation.parseNullable(id)
             val expected = JsonValues.parse(expectedJson)
             val actual = storageValue(storageId, path)
             if (actual != expected) {
@@ -403,7 +403,7 @@ class SandboxQuickTest private constructor(
         path: String? = null,
     ): SandboxQuickTest =
         apply {
-            val storageId = ResourceLocation.parse(id)
+            val storageId = ResourceLocation.parseNullable(id)
             if (storageValue(storageId, path) == null) {
                 failures += "${storageLabel(storageId, path)} expected present but was <missing>"
             }
@@ -418,7 +418,7 @@ class SandboxQuickTest private constructor(
         path: String? = null,
     ): SandboxQuickTest =
         apply {
-            val storageId = ResourceLocation.parse(id)
+            val storageId = ResourceLocation.parseNullable(id)
             val actual = storageValue(storageId, path)
             if (actual != null) {
                 failures += "${storageLabel(storageId, path)} expected missing but was ${JsonValues.render(actual)}"

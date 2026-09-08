@@ -107,7 +107,7 @@
       "patterns": [
         {
           "name": "entity.name.function.resource-location.mcfunction",
-          "match": "#?[a-z0-9_.-]+:[a-z0-9_./-]+"
+          "match": "#?[a-z0-9_.-]+:[a-z0-9_./-]*"
         },
         {
           "name": "entity.name.function.resource-path.mcfunction",

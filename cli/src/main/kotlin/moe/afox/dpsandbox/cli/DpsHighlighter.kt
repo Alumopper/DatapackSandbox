@@ -70,7 +70,7 @@ class DpsHighlighter(
     companion object {
         private val tokenPattern = Regex("""\s+|"(?:\\.|[^"\\])*"?|'(?:\\.|[^'\\])*'?|\S+""")
         private val numberPattern = Regex("""-?\d+(?:\.\d+)?[bBsSlLfFdD]?""")
-        private val resourceLocationPattern = Regex("""[a-z0-9_.-]+:[a-z0-9_./-]+""")
+        private val resourceLocationPattern = Regex("""[a-z0-9_.-]+:[a-z0-9_./-]*""")
 
         private val syntaxKeywords =
             setOf(

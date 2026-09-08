@@ -546,12 +546,12 @@ object ManifestWorldSetup {
             val storage = element.asJsonObject
             result +=
                 ManifestStorageSetup(
-                    id = ResourceLocation.parse(storage.requiredManifestString("id")),
+                    id = ResourceLocation.parseNullable(storage.requiredManifestString("id")),
                     value = storage.get("value") ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "world storage requires value"),
                 )
         }
         world.getAsJsonObject("storage")?.entrySet()?.forEach { (id, value) ->
-            result += ManifestStorageSetup(ResourceLocation.parse(id), value)
+            result += ManifestStorageSetup(ResourceLocation.parseNullable(id), value)
         }
         return result
     }

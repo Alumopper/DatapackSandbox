@@ -18,8 +18,8 @@
     "docs:preview": "vitepress preview docs --host 127.0.0.1"
   },
   "devDependencies": {
-    "@spyglassmc/core": "0.4.52",
-    "@spyglassmc/mcdoc": "0.3.56",
+    "@spyglassmc/core": "0.4.55",
+    "@spyglassmc/mcdoc": "0.3.59",
     "markdown-it-mathjax3": "^4.3.2",
     "typescript": "5.9.3",
     "vitepress": "^1.6.4",

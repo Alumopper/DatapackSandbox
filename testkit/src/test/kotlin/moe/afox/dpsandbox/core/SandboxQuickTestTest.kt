@@ -133,6 +133,16 @@ class SandboxQuickTestTest {
     }
 
     @Test
+    fun `quick storage fixtures and assertions accept empty paths`() {
+        SandboxQuickTest
+            .create(listOf(fixturePack()), version = "26.1.2")
+            .world {
+                storage("ram:", "{ready:true}")
+            }.assertStorageEquals("ram:", "ready", "true")
+            .requirePassed()
+    }
+
+    @Test
     fun `quick score range assertions explain failures`() {
         val report =
             SandboxQuickTest

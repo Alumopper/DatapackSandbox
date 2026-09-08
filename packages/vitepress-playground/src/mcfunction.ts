@@ -30,7 +30,7 @@ const parser: StreamParser<McfunctionState> = {
       state.firstToken = false
       return 'bool'
     }
-    if (stream.match(/^#?[a-z0-9_.-]+:[a-z0-9_./-]+/i)) {
+    if (stream.match(/^#?[a-z0-9_.-]+:[a-z0-9_./-]*/i)) {
       state.firstToken = false
       return 'typeName'
     }

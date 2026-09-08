@@ -77,6 +77,21 @@ class SandboxBehaviorTest {
     }
 
     @Test
+    fun `data commands accept storage ids with an empty path`() {
+        val sandbox = createFunctionSandboxFromString("26.2", "")
+
+        val modified = sandbox.executeCommand("data modify storage ram: i set value {int:1}")
+        sandbox.executeCommand("scoreboard objectives add values dummy")
+        sandbox.executeCommand("scoreboard players set #value values 7")
+        sandbox.executeCommand("execute store result storage ram: result int 1 run scoreboard players get #value values")
+
+        val storage = sandbox.world.storages.getValue(ResourceLocation.parseNullable("ram:"))
+        assertTrue(modified.success)
+        assertEquals(1, JsonPaths.get(storage, "i.int")?.asInt)
+        assertEquals(7, JsonPaths.get(storage, "result")?.asInt)
+    }
+
+    @Test
     fun `unchanged data mutations fail and store success zero`() {
         val sandbox = createFunctionSandboxFromString("26.2", "")
         sandbox.executeCommand("scoreboard objectives add test dummy")

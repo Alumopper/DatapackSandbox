@@ -640,17 +640,16 @@ class DpsCompletionEngine(
         words: List<String>,
         context: CompletionContext,
     ): List<CompletionSuggestion> =
-        when {
-            context.wordIndex == 1 -> listOf("add", "remove", "list", "get", "set").suggest("bossbar actions", appendSpace = true)
-            context.wordIndex == 2 &&
-                words.getOrNull(
-                    1,
-                ) in setOf("remove", "get", "set") -> bossbarIds().suggest("bossbars", appendSpace = true)
-            context.wordIndex == 3 && words.getOrNull(1) == "get" -> listOf("value", "max", "visible", "players").suggest("bossbar fields")
-            context.wordIndex == 3 &&
-                words.getOrNull(
-                    1,
-                ) == "set" ->
+        when (context.wordIndex) {
+            1 -> listOf("add", "remove", "list", "get", "set").suggest("bossbar actions", appendSpace = true)
+            2 if words.getOrNull(
+                1,
+            ) in setOf("remove", "get", "set") -> bossbarIds().suggest("bossbars", appendSpace = true)
+
+            3 if words.getOrNull(1) == "get" -> listOf("value", "max", "visible", "players").suggest("bossbar fields")
+            3 if words.getOrNull(
+                1,
+            ) == "set" ->
                 listOf(
                     "name",
                     "value",
@@ -660,10 +659,11 @@ class DpsCompletionEngine(
                     "visible",
                     "players",
                 ).suggest("bossbar fields", appendSpace = true)
-            context.wordIndex == 4 && words.getOrNull(3) == "color" -> bossbarColors.suggest("bossbar colors")
-            context.wordIndex == 4 && words.getOrNull(3) == "style" -> bossbarStyles.suggest("bossbar styles")
-            context.wordIndex == 4 && words.getOrNull(3) == "visible" -> booleans.suggest("booleans")
-            context.wordIndex == 4 && words.getOrNull(3) == "players" -> playerTargets().suggest("players/selectors")
+
+            4 if words.getOrNull(3) == "color" -> bossbarColors.suggest("bossbar colors")
+            4 if words.getOrNull(3) == "style" -> bossbarStyles.suggest("bossbar styles")
+            4 if words.getOrNull(3) == "visible" -> booleans.suggest("booleans")
+            4 if words.getOrNull(3) == "players" -> playerTargets().suggest("players/selectors")
             else -> emptyList()
         }
 

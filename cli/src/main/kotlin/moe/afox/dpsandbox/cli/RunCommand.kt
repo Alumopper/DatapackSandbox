@@ -980,7 +980,7 @@ class RunCommand : CliktCommand(name = "run") {
         if (trimmed.isEmpty()) {
             throw SandboxException(DiagnosticCode.INPUT_FORMAT, "$label bossbar id must not be empty")
         }
-        return JsonObject().also { it.addProperty("id", ResourceLocation.parse(trimmed).toString()) }
+        return JsonObject().also { it.addProperty("id", ResourceLocation.parseNullable(trimmed).toString()) }
     }
 
     private fun parseBossbarBoolean(

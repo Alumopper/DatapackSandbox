@@ -225,6 +225,18 @@ class EngineSessionTest {
     }
 
     @Test
+    fun acceptsStorageIdsWithAnEmptyPath() {
+        val session = EngineSession("26.2")
+        session.configure(listOf("data"), emptyList(), emptyList(), emptyList())
+
+        session.beginExecution()
+        session.executeLine("data modify storage ram: i set value {int:1}", 1)
+        session.finishExecutionJson()
+
+        assertContains(session.snapshotJson(), "\"ram:\"")
+    }
+
+    @Test
     fun completesObjectivesDeclaredEarlierInTheEditorWithoutExecutingThem() {
         val session = EngineSession("26.2")
         session.configure(listOf("scoreboard"), emptyList(), emptyList(), emptyList())
