@@ -1,4 +1,5 @@
 import java.util.zip.ZipFile
+import java.security.MessageDigest
 import org.gradle.api.artifacts.repositories.PasswordCredentials
 import org.gradle.api.publish.PublishingExtension
 import org.gradle.api.publish.maven.MavenPublication
@@ -13,7 +14,7 @@ plugins {
 
 allprojects {
     group = "moe.afox.dpsandbox"
-    version = "1.1.0"
+    version = "1.1.1"
 }
 
 val mavenRepositoryBaseUrl = providers
@@ -40,6 +41,35 @@ val mavenRepositoryPassword = providers
 
 subprojects {
     apply(plugin = "maven-publish")
+
+    extensions.configure<PublishingExtension> {
+        repositories {
+            maven {
+                name = "mcfpp"
+                val repositoryName = if (project.version.toString().endsWith("-SNAPSHOT")) {
+                    mavenSnapshotsRepository.get()
+                } else {
+                    mavenReleasesRepository.get()
+                }
+                url = uri("${mavenRepositoryBaseUrl.get().trimEnd('/')}/repository/$repositoryName/")
+                credentials(PasswordCredentials::class) {
+                    username = mavenRepositoryUsername.orNull
+                    password = mavenRepositoryPassword.orNull
+                }
+            }
+        }
+    }
+
+    tasks.withType<PublishToMavenRepository>().configureEach {
+        doFirst {
+            require(!mavenRepositoryUsername.orNull.isNullOrBlank()) {
+                "Missing Maven repository username. Set MAVEN_USERNAME, MAVEN_USER, NEXUS_USERNAME, NEXUS_USER, or nexusUsername."
+            }
+            require(!mavenRepositoryPassword.orNull.isNullOrBlank()) {
+                "Missing Maven repository password. Set MAVEN_PASSWORD, MAVEN_PASS, NEXUS_PASSWORD, NEXUS_PASS, or nexusPassword."
+            }
+        }
+    }
 
     dependencyLocking {
         lockAllConfigurations()
@@ -70,35 +100,6 @@ subprojects {
                 }
             }
 
-            repositories {
-                maven {
-                    name = "mcfpp"
-                    val repositoryName = if (project.version.toString().endsWith("-SNAPSHOT")) {
-                        mavenSnapshotsRepository.get()
-                    } else {
-                        mavenReleasesRepository.get()
-                    }
-                    url = uri(
-                        "${mavenRepositoryBaseUrl.get().trimEnd('/')}/repository/$repositoryName/",
-                    )
-
-                    credentials(PasswordCredentials::class) {
-                        username = mavenRepositoryUsername.orNull
-                        password = mavenRepositoryPassword.orNull
-                    }
-                }
-            }
-        }
-
-        tasks.withType<PublishToMavenRepository>().configureEach {
-            doFirst {
-                require(!mavenRepositoryUsername.orNull.isNullOrBlank()) {
-                    "Missing Maven repository username. Set MAVEN_USERNAME, MAVEN_USER, NEXUS_USERNAME, NEXUS_USER, or nexusUsername."
-                }
-                require(!mavenRepositoryPassword.orNull.isNullOrBlank()) {
-                    "Missing Maven repository password. Set MAVEN_PASSWORD, MAVEN_PASS, NEXUS_PASSWORD, NEXUS_PASS, or nexusPassword."
-                }
-            }
         }
     }
 }
@@ -279,43 +280,48 @@ tasks.register("releaseCheck") {
     )
 }
 
-val prepareJupyterKernel = tasks.register<Copy>("prepareJupyterKernel") {
+val exportBrowserProfiles = tasks.register<Exec>("exportBrowserProfiles") {
     group = "build"
-    description = "Copies the standalone CLI jar into the Python Jupyter Kernel package."
-    dependsOn(":cli:fatJar")
-    from(project(":cli").layout.buildDirectory.file("libs/datapack-sandbox-cli.jar"))
-    into(layout.projectDirectory.dir("jupyter/src/datapack_sandbox_kernel/resources"))
+    val output = layout.buildDirectory.dir("browser-profiles")
+    inputs.file("core/src/main/kotlin/moe/afox/dpsandbox/core/VersionProfile.kt")
+    inputs.file("tools/export-browser-profiles.mjs")
+    outputs.dir(output)
+    commandLine("node", "tools/export-browser-profiles.mjs", output.get().asFile.absolutePath)
 }
 
-tasks.register<Exec>("jupyterKernelTest") {
-    group = "verification"
-    description = "Runs the Python unit and real Jupyter Kernel integration tests."
-    dependsOn(prepareJupyterKernel)
-    val python = providers.environmentVariable("PYTHON").orElse("python")
-    val packageRoot = layout.projectDirectory.dir("jupyter/src").asFile.absolutePath
-    val cliJar = project(":cli").layout.buildDirectory.file("libs/datapack-sandbox-cli.jar")
-    environment("PYTHONPATH", packageRoot)
-    environment("DPS_CLI_JAR", cliJar.get().asFile.absolutePath)
-    commandLine(
-        python.get(),
-        "-m",
-        "unittest",
-        "discover",
-        "-s",
-        layout.projectDirectory.dir("jupyter/tests").asFile.absolutePath,
-        "-p",
-        "test*.py",
-        "-v",
-    )
+val browserBundle = tasks.register<Zip>("browserBundle") {
+    group = "build"
+    description = "Packages versioned browser runtimes and profile data for independent consumers."
+    dependsOn(":browser-runtime:jsBrowserProductionLibraryDistribution", ":browser-core:generateJavaScript", exportBrowserProfiles)
+    archiveFileName.set("datapack-sandbox-browser-${project.version}.zip")
+    destinationDirectory.set(layout.buildDirectory.dir("release"))
+    from(project(":browser-runtime").layout.buildDirectory.dir("dist/js/productionLibrary")) { into("kotlin") }
+    from(project(":browser-core").layout.buildDirectory.file("dist/js/datapack-sandbox-core.js"))
+    from(layout.projectDirectory.file("schema/vanilla/vanilla-command-catalog-26.2.json"))
+    from(layout.buildDirectory.dir("browser-profiles")) { into("profiles") }
 }
 
-tasks.register<Exec>("jupyterKernelPackage") {
+tasks.register("releaseAssets") {
     group = "build"
-    description = "Builds and verifies offline Jupyter Kernel wheel and sdist artifacts."
-    dependsOn(prepareJupyterKernel)
-    val python = providers.environmentVariable("PYTHON").orElse("python")
-    commandLine(
-        python.get(),
-        layout.projectDirectory.file("jupyter/scripts/build_offline.py").asFile.absolutePath,
-    )
+    description = "Stages CLI, schema, browser bundle, and SHA-256 checksums for a tagged release."
+    dependsOn(":cli:fatJar", ":core:jar", ":runtime-engine:jvmJar", browserBundle)
+    val output = layout.buildDirectory.dir("release")
+    outputs.dir(output)
+    doLast {
+        val directory = output.get().asFile.apply { mkdirs() }
+        val cli = project(":cli").layout.buildDirectory.file("libs/datapack-sandbox-cli.jar").get().asFile
+        val core = project(":core").layout.buildDirectory.file("libs/core-${project.version}.jar").get().asFile
+        val engine = project(":runtime-engine").layout.buildDirectory.file("libs/runtime-engine-jvm-${project.version}.jar").get().asFile
+        val schema = layout.projectDirectory.file("schema/manifest/dps-manifest.schema.json").asFile
+        cli.copyTo(directory.resolve(cli.name), overwrite = true)
+        core.copyTo(directory.resolve(core.name), overwrite = true)
+        engine.copyTo(directory.resolve(engine.name), overwrite = true)
+        schema.copyTo(directory.resolve("dps-manifest.schema.json"), overwrite = true)
+        val assets = listOf(directory.resolve(cli.name), directory.resolve(core.name), directory.resolve(engine.name), directory.resolve("dps-manifest.schema.json"), browserBundle.get().archiveFile.get().asFile)
+        val sums = assets.joinToString("\n", postfix = "\n") { file ->
+            val digest = MessageDigest.getInstance("SHA-256").digest(file.readBytes())
+            "${digest.joinToString("") { "%02x".format(it) }}  ${file.name}"
+        }
+        directory.resolve("SHA256SUMS.txt").writeText(sums)
+    }
 }

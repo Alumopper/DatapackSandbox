@@ -1,4 +1,4 @@
-﻿# Datapack Sandbox
+# Datapack Sandbox
 
 [中文文档](README.zh-CN.md)
 
@@ -16,7 +16,9 @@ modeled world using user-provided Minecraft assets. The standalone JAR also
 offers a GLFW/OpenGL keyboard-and-mouse JVM realtime viewport through `viewport`. The
 native Jupyter Kernel runs persistent `mcfunction` cells and displays output,
 snapshot diffs, and the current frame inline. See
-[Rendering and Jupyter Kernel](docs/rendering-notebook.md).
+[Rendering and Jupyter Kernel](https://github.com/Alumopper/DatapackSandbox-Docs/blob/master/rendering-notebook.md).
+
+The editor and documentation live in separate repositories: [Language Server](https://github.com/Alumopper/DatapackSandbox-LSP), [VS Code extension](https://github.com/Alumopper/DatapackSandbox-VSCode), [Jupyter Kernel](https://github.com/Alumopper/DatapackSandbox-Jupyter), [browser Playground](https://github.com/Alumopper/DatapackSandbox-Playground), and [documentation](https://github.com/Alumopper/DatapackSandbox-Docs). This repository publishes versioned CLI, schema, core, and browser assets for them.
 
 ## Build
 
@@ -104,7 +106,7 @@ SandboxQuickTest.singleFunctionText(
 ```
 
 Java callers can use the `DatapackSandboxTestApi` static facade. See
-`docs/code-test-api.md` for dependency variants, Java examples, lower-level
+[code test API documentation](https://github.com/Alumopper/DatapackSandbox-Docs/blob/master/code-test-api.md) for dependency variants, Java examples, lower-level
 runtime factories, reports, traces, fixtures, and the full quick-test method
 catalog.
 
@@ -122,9 +124,9 @@ List supported version profiles and their data pack formats:
 java -jar cli/build/libs/datapack-sandbox-cli.jar version
 java -jar cli/build/libs/datapack-sandbox-cli.jar version --json
 java -jar cli/build/libs/datapack-sandbox-cli.jar version --docs
-java -jar cli/build/libs/datapack-sandbox-cli.jar version --docs --output docs/version-profile-table.md
-java -jar cli/build/libs/datapack-sandbox-cli.jar version --docs --check docs/version-profile.md
-java -jar cli/build/libs/datapack-sandbox-cli.jar version --docs --locale zh-CN --check docs/version-profile.zh-CN.md
+java -jar cli/build/libs/datapack-sandbox-cli.jar version --docs --output build/version-profile-table.md
+java -jar cli/build/libs/datapack-sandbox-cli.jar version --docs --check checks/reference/version-profile.md
+java -jar cli/build/libs/datapack-sandbox-cli.jar version --docs --locale zh-CN --check checks/reference/version-profile.zh-CN.md
 java -jar cli/build/libs/datapack-sandbox-cli.jar version 1.20.4 26.2
 java -jar cli/build/libs/datapack-sandbox-cli.jar version --json 1.20.4 26.2
 java -jar cli/build/libs/datapack-sandbox-cli.jar version --json --output build/profile-diff.json 1.20.4 26.2
@@ -135,9 +137,9 @@ List command support and behavior levels:
 ```bash
 java -jar cli/build/libs/datapack-sandbox-cli.jar commands
 java -jar cli/build/libs/datapack-sandbox-cli.jar commands --docs
-java -jar cli/build/libs/datapack-sandbox-cli.jar commands --docs --output docs/command-catalog.md
-java -jar cli/build/libs/datapack-sandbox-cli.jar commands --check docs/command-support.md
-java -jar cli/build/libs/datapack-sandbox-cli.jar commands --check docs/command-support.zh-CN.md
+java -jar cli/build/libs/datapack-sandbox-cli.jar commands --docs --output build/command-catalog.md
+java -jar cli/build/libs/datapack-sandbox-cli.jar commands --check checks/reference/command-support.md
+java -jar cli/build/libs/datapack-sandbox-cli.jar commands --check checks/reference/command-support.zh-CN.md
 java -jar cli/build/libs/datapack-sandbox-cli.jar commands --json --version 26.2
 java -jar cli/build/libs/datapack-sandbox-cli.jar commands --json --output build/command-catalog.json --version 26.2
 ```
@@ -147,9 +149,9 @@ List resource support and behavior levels:
 ```bash
 java -jar cli/build/libs/datapack-sandbox-cli.jar resources
 java -jar cli/build/libs/datapack-sandbox-cli.jar resources --docs
-java -jar cli/build/libs/datapack-sandbox-cli.jar resources --docs --output docs/resource-catalog.md
-java -jar cli/build/libs/datapack-sandbox-cli.jar resources --check docs/resource-formats.md
-java -jar cli/build/libs/datapack-sandbox-cli.jar resources --docs --locale zh-CN --check docs/resource-formats.zh-CN.md
+java -jar cli/build/libs/datapack-sandbox-cli.jar resources --docs --output build/resource-catalog.md
+java -jar cli/build/libs/datapack-sandbox-cli.jar resources --check checks/reference/resource-formats.md
+java -jar cli/build/libs/datapack-sandbox-cli.jar resources --docs --locale zh-CN --check checks/reference/resource-formats.zh-CN.md
 java -jar cli/build/libs/datapack-sandbox-cli.jar resources --json --output build/resource-catalog.json
 java -jar cli/build/libs/datapack-sandbox-cli.jar resources --registry --registry-group damage_types --json --output build/profile-registry.json
 java -jar cli/build/libs/datapack-sandbox-cli.jar resources --pack ./my_pack --type function --namespace demo
@@ -590,11 +592,4 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar event --pack examples/full-sta
 java -jar cli/build/libs/datapack-sandbox-cli.jar event --pack examples/full-stack/pack player Steve block-placed minecraft:stone 1 64 2
 ```
 
-Inspect support boundaries in:
-
-- `docs/command-support.md`
-- `docs/code-test-api.md`
-- `docs/resource-formats.md`
-- `docs/player-events.md`
-- `docs/version-profile.md`
-- `docs/runtime-world.md`
+Read the [documentation repository](https://github.com/Alumopper/DatapackSandbox-Docs) for command support, resources, version profiles, and the runtime model.

@@ -138,7 +138,7 @@ val smokeCliJarVersion =
         "version",
     )
 
-val versionProfileDoc = rootProject.layout.projectDirectory.file("docs/version-profile.md")
+val versionProfileDoc = rootProject.layout.projectDirectory.file("checks/reference/version-profile.md")
 val smokeCliJarVersionDocs =
     registerCliJarSmokeTask(
         name = "smokeCliJarVersionDocs",
@@ -152,7 +152,7 @@ smokeCliJarVersionDocs.configure {
     inputs.file(versionProfileDoc)
 }
 
-val versionProfileZhDoc = rootProject.layout.projectDirectory.file("docs/version-profile.zh-CN.md")
+val versionProfileZhDoc = rootProject.layout.projectDirectory.file("checks/reference/version-profile.zh-CN.md")
 val smokeCliJarVersionDocsZh =
     registerCliJarSmokeTask(
         name = "smokeCliJarVersionDocsZh",
@@ -168,7 +168,7 @@ smokeCliJarVersionDocsZh.configure {
     inputs.file(versionProfileZhDoc)
 }
 
-val commandSupportDoc = rootProject.layout.projectDirectory.file("docs/command-support.md")
+val commandSupportDoc = rootProject.layout.projectDirectory.file("checks/reference/command-support.md")
 val smokeCliJarCommandDocs =
     registerCliJarSmokeTask(
         name = "smokeCliJarCommandDocs",
@@ -181,7 +181,7 @@ smokeCliJarCommandDocs.configure {
     inputs.file(commandSupportDoc)
 }
 
-val commandSupportZhDoc = rootProject.layout.projectDirectory.file("docs/command-support.zh-CN.md")
+val commandSupportZhDoc = rootProject.layout.projectDirectory.file("checks/reference/command-support.zh-CN.md")
 val smokeCliJarCommandDocsZh =
     registerCliJarSmokeTask(
         name = "smokeCliJarCommandDocsZh",
@@ -194,7 +194,7 @@ smokeCliJarCommandDocsZh.configure {
     inputs.file(commandSupportZhDoc)
 }
 
-val resourceFormatsDoc = rootProject.layout.projectDirectory.file("docs/resource-formats.md")
+val resourceFormatsDoc = rootProject.layout.projectDirectory.file("checks/reference/resource-formats.md")
 val smokeCliJarResourceDocs =
     registerCliJarSmokeTask(
         name = "smokeCliJarResourceDocs",
@@ -207,7 +207,7 @@ smokeCliJarResourceDocs.configure {
     inputs.file(resourceFormatsDoc)
 }
 
-val resourceFormatsZhDoc = rootProject.layout.projectDirectory.file("docs/resource-formats.zh-CN.md")
+val resourceFormatsZhDoc = rootProject.layout.projectDirectory.file("checks/reference/resource-formats.zh-CN.md")
 val smokeCliJarResourceDocsZh =
     registerCliJarSmokeTask(
         name = "smokeCliJarResourceDocsZh",

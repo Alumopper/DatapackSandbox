@@ -1,0 +1,33 @@
+name: Publish release assets
+
+on:
+  push:
+    tags: ['1.*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  assets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: gradle
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - uses: gradle/actions/setup-gradle@v4
+      - run: npm ci
+      - run: ./gradlew releaseCheck releaseAssets
+      - name: Upload verified assets
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" build/release/* --title "$GITHUB_REF_NAME" --notes "Datapack Sandbox release $GITHUB_REF_NAME" --verify-tag

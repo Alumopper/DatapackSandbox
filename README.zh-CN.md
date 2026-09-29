@@ -1,10 +1,10 @@
-﻿# Datapack Sandbox
+# Datapack Sandbox
 
 一个轻量、洁净室实现的 Minecraft Java 数据包沙盒，重点面向本地 CLI 调试、JSON 清单回归测试和 JVM 项目的代码级快速测试。
 
 内置版本 profile 覆盖 Minecraft Java `1.20.4` 到 `26.2`，默认使用最新 profile `26.2`。项目不嵌入原版服务端运行时，也不分发 Mojang 服务端代码；构建时会使用公开的 `SpyglassMC/vanilla-mcdoc` 资料和官方 `@spyglassmc/mcdoc` 解析器生成 NBT schema，用于运行时校验。
 
-可选的 `renderer` 模块可以读取用户提供的 Minecraft 资产，把已建模世界输出为无窗口透视 PNG。standalone JAR 还提供基于 GLFW/OpenGL 的 `viewport` JVM 桌面实时视窗，支持键盘和鼠标操作。原生 Jupyter Kernel 能连续运行 `mcfunction` 单元，并在单元下方直接显示命令输出、snapshot diff 和当前画面。参见[三维渲染与 Jupyter Kernel](docs/rendering-notebook.zh-CN.md)。
+可选的 `renderer` 模块可以读取用户提供的 Minecraft 资产，把已建模世界输出为无窗口透视 PNG。standalone JAR 还提供基于 GLFW/OpenGL 的 `viewport` JVM 桌面实时视窗，支持键盘和鼠标操作。原生 Jupyter Kernel 能连续运行 `mcfunction` 单元，并在单元下方直接显示命令输出、snapshot diff 和当前画面。参见[三维渲染与 Jupyter Kernel](https://github.com/Alumopper/DatapackSandbox-Docs/blob/master/rendering-notebook.zh-CN.md)。
 
 ## 构建
 
@@ -78,7 +78,7 @@ SandboxQuickTest.singleFunctionText(
     .requirePassed()
 ```
 
-Java 调用方可以使用 `DatapackSandboxTestApi` 静态门面。完整依赖写法、Java 示例、底层 runtime factory、报告、trace、fixture 和 quick-test 方法目录见 `docs/code-test-api.zh-CN.md`。
+Java 调用方可以使用 `DatapackSandboxTestApi` 静态门面。完整依赖写法、Java 示例、底层 runtime factory、报告、trace、fixture 和 quick-test 方法目录见[代码测试 API 文档](https://github.com/Alumopper/DatapackSandbox-Docs/blob/master/code-test-api.zh-CN.md)。
 
 ## CLI 示例
 
@@ -92,7 +92,7 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar repl --version 26.2 --pack ./m
 
 ```bash
 java -jar cli/build/libs/datapack-sandbox-cli.jar version
-java -jar cli/build/libs/datapack-sandbox-cli.jar version --docs --locale zh-CN --check docs/version-profile.zh-CN.md
+java -jar cli/build/libs/datapack-sandbox-cli.jar version --docs --locale zh-CN --check checks/reference/version-profile.zh-CN.md
 java -jar cli/build/libs/datapack-sandbox-cli.jar version 1.20.4 26.2
 ```
 
@@ -100,7 +100,7 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar version 1.20.4 26.2
 
 ```bash
 java -jar cli/build/libs/datapack-sandbox-cli.jar commands
-java -jar cli/build/libs/datapack-sandbox-cli.jar commands --check docs/command-support.zh-CN.md
+java -jar cli/build/libs/datapack-sandbox-cli.jar commands --check checks/reference/command-support.zh-CN.md
 java -jar cli/build/libs/datapack-sandbox-cli.jar commands --json --version 26.2
 ```
 
@@ -214,7 +214,7 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar run --pack ./my_pack --resourc
 需要单独检查内置资源目录支持状态，或查看某个数据包实际加载了哪些资源时，可以导出资源目录/资源索引，并按类型、namespace 或覆盖状态过滤：
 
 ```bash
-java -jar cli/build/libs/datapack-sandbox-cli.jar resources --docs --locale zh-CN --check docs/resource-formats.zh-CN.md
+java -jar cli/build/libs/datapack-sandbox-cli.jar resources --docs --locale zh-CN --check checks/reference/resource-formats.zh-CN.md
 java -jar cli/build/libs/datapack-sandbox-cli.jar resources --registry --registry-group damage_types --json --output build/profile-registry.json
 java -jar cli/build/libs/datapack-sandbox-cli.jar resources --pack ./my_pack --type function --namespace demo
 java -jar cli/build/libs/datapack-sandbox-cli.jar resources --pack ./my_pack --id demo:main --source-pack ./my_pack --active-only
@@ -445,9 +445,9 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar event --pack examples/full-sta
 
 ## 文档
 
-- [命令支持状态](docs/command-support.zh-CN.md)
-- [代码测试 API](docs/code-test-api.zh-CN.md)
-- [资源格式与清单格式](docs/resource-formats.zh-CN.md)
-- [玩家事件](docs/player-events.zh-CN.md)
-- [版本 profile](docs/version-profile.zh-CN.md)
-- [运行时世界模型](docs/runtime-world.zh-CN.md)
+- [命令支持状态](https://github.com/Alumopper/DatapackSandbox-Docs/blob/master/command-support.zh-CN.md)
+- [代码测试 API](https://github.com/Alumopper/DatapackSandbox-Docs/blob/master/code-test-api.zh-CN.md)
+- [资源格式与清单格式](https://github.com/Alumopper/DatapackSandbox-Docs/blob/master/resource-formats.zh-CN.md)
+- [玩家事件](https://github.com/Alumopper/DatapackSandbox-Docs/blob/master/player-events.zh-CN.md)
+- [版本 profile](https://github.com/Alumopper/DatapackSandbox-Docs/blob/master/version-profile.zh-CN.md)
+- [运行时世界模型](https://github.com/Alumopper/DatapackSandbox-Docs/blob/master/runtime-world.zh-CN.md)
