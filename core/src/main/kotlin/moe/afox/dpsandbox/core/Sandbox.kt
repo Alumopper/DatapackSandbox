@@ -14,6 +14,7 @@ import moe.afox.dpsandbox.core.command.executeAttribute
 import moe.afox.dpsandbox.core.command.executeBossbar
 import moe.afox.dpsandbox.core.command.executeClear
 import moe.afox.dpsandbox.core.command.executeClone
+import moe.afox.dpsandbox.core.command.executeCompute
 import moe.afox.dpsandbox.core.command.executeData
 import moe.afox.dpsandbox.core.command.executeDefaultGameMode
 import moe.afox.dpsandbox.core.command.executeDifficulty
@@ -25,7 +26,9 @@ import moe.afox.dpsandbox.core.command.executeFill
 import moe.afox.dpsandbox.core.command.executeGameMode
 import moe.afox.dpsandbox.core.command.executeGamerule
 import moe.afox.dpsandbox.core.command.executeGive
+import moe.afox.dpsandbox.core.command.executeHelp
 import moe.afox.dpsandbox.core.command.executeKill
+import moe.afox.dpsandbox.core.command.executeList
 import moe.afox.dpsandbox.core.command.executeMe
 import moe.afox.dpsandbox.core.command.executeParticle
 import moe.afox.dpsandbox.core.command.executePlaySound
@@ -215,6 +218,9 @@ class DatapackSandbox(
     private var validationOnly = false
     internal var lastFunctionReturnValue: Int? = null
     private val functionStack = mutableListOf<FunctionTraceFrame>()
+
+    /** Installed by a debugger before starting execution; callbacks run on the world owner. */
+    var executionObserver: SandboxExecutionObserver? = null
     private val coverageTracker = DatapackCoverageTracker(datapack)
     private val placementCommands = SandboxPlacementCommands(this)
     private val itemCommands = SandboxItemCommands(this)
@@ -360,6 +366,7 @@ class DatapackSandbox(
                         ?.location
                         ?.file,
                 )
+            executionObserver?.enterFunction(id, function.lines.firstOrNull()?.location, context)
             for ((lineIndex, line) in function.lines.withIndex()) {
                 checkExecutionCancellation(line.location)
                 coverageTracker.recordLine(id, lineIndex, function.lines.size)
@@ -370,6 +377,7 @@ class DatapackSandbox(
             returnValue = signal.value
             // A return command stops the current function only.
         } finally {
+            executionObserver?.exitFunction()
             functionStack.removeLast()
             functionDepth -= 1
         }
@@ -410,13 +418,15 @@ class DatapackSandbox(
         checkExecutionCancellation(location)
         val normalized = command.trim().removePrefix("/")
         if (normalized.isBlank()) return ExecutionResult(0)
+        executionObserver?.beforeCommand(normalized, location, context)
+        checkExecutionCancellation(location)
         val runtimeContext = context.copy(predicateEngine = predicates)
         val before = commandsExecuted
         val outputsBefore = world.outputs.size
         val traceMode = world.commandTraceMode
         val beforeSnapshot =
             if (traceMode == CommandTraceMode.FULL) {
-                buildSnapshotJson().also(::checkSnapshotSize)
+                buildCommandSnapshot(outputsBefore).also(::checkSnapshotSize)
             } else {
                 null
             }
@@ -437,7 +447,7 @@ class DatapackSandbox(
             val commandSuccess = executeOne(normalized, location, runtimeContext)
             checkOutputLimit(location)
             if (traceMode == CommandTraceMode.FULL) {
-                afterSnapshot = buildSnapshotJson()
+                afterSnapshot = buildCommandSnapshot(outputsBefore, source)
                 checkSnapshotSize(afterSnapshot)
             }
             success = commandSuccess
@@ -465,11 +475,11 @@ class DatapackSandbox(
                         success = success,
                         commandsExecuted = commandsExecuted - before,
                         outputs = world.outputs.size - outputsBefore,
-                        outputEvents = world.outputs.drop(outputsBefore),
+                        outputEvents = world.outputs.drop(outputsBefore).filter { it.source === source },
                         snapshotDiffs =
                             beforeSnapshot
                                 ?.let { snapshot ->
-                                    SnapshotDiff.stateDiff(snapshot, afterSnapshot ?: buildSnapshotJson())
+                                    SnapshotDiff.stateDiff(snapshot, afterSnapshot ?: buildCommandSnapshot(outputsBefore, source))
                                 }.orEmpty(),
                         errorCode = errorCode,
                         errorMessage = errorMessage,
@@ -503,6 +513,9 @@ class DatapackSandbox(
         val preview = validationPreview()
         return commands.map { command -> preview.checkCommandInPlace(command, ExecutionContext()) }
     }
+
+    /** Detached inspection state; capture on the world owner before permitting concurrent debugger reads. */
+    fun inspectionCopy(): DatapackSandbox = validationPreview()
 
     private fun validationPreview(): DatapackSandbox =
         DatapackSandbox(
@@ -561,6 +574,18 @@ class DatapackSandbox(
 
     private fun buildSnapshotJson(): JsonObject {
         val snapshot = world.snapshot(profile)
+        snapshot.addProperty("version", profile.id)
+        return snapshot
+    }
+
+    private fun buildCommandSnapshot(outputsBefore: Int, source: CommandSource? = null): JsonObject {
+        val snapshot = world.snapshotState(profile)
+        val outputs = JsonArray()
+        world.outputs
+            .drop(outputsBefore)
+            .filter { it.source === source }
+            .forEach { outputs.add(it.toJson()) }
+        snapshot.add("outputs", outputs)
         snapshot.addProperty("version", profile.id)
         return snapshot
     }
@@ -912,6 +937,7 @@ class DatapackSandbox(
                 "difficulty" -> executeDifficulty(tokens, location)
                 "execute" -> return executeExecute(command, tokens, location, context)
                 "data" -> return executeData(command, tokens, location, context)
+                "compute" -> executeCompute(tokens, location, context)
                 "effect" -> executeEffect(tokens, location, context)
                 "enchant" -> executeEnchant(tokens, location, context)
                 "experience", "xp" -> executeExperience(tokens, location, context)
@@ -1092,7 +1118,7 @@ class DatapackSandbox(
         val arguments =
             if (tokens.getOrNull(2)?.text == "with") {
                 val (target, pathIndex) = parseDataTarget(tokens, 3, context, location)
-                val path = tokens.getOrNull(pathIndex)?.text
+                val path = tokens.getOrNull(pathIndex)?.sourceText
                 val argumentValue =
                     dataTargetNbtValues(target, location).singleOrNull()
                         ?: throw SandboxException(
@@ -1157,51 +1183,6 @@ class DatapackSandbox(
             }
             else -> throw ReturnSignal(parseInt(tokens[1].text, "return value", location))
         }
-    }
-
-    private fun executeHelp(
-        tokens: List<CommandToken>,
-        location: SourceLocation?,
-    ) {
-        requireSize(tokens, 1, "help [command]", location)
-        val topic = tokens.getOrNull(1)?.text
-        val text =
-            if (topic == null) {
-                profile.commands.roots
-                    .sorted()
-                    .joinToString(", ")
-            } else if (profile.commands.hasRoot(topic)) {
-                "$topic: ${commandHelp(topic)}"
-            } else {
-                throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Unknown help topic '$topic'", location, version = profile.id)
-            }
-        world.recordOutput("help", "data", text = text)
-    }
-
-    private fun commandHelp(root: String): String =
-        when (root) {
-            "function" -> "function <namespace:path>"
-            "scoreboard" -> "scoreboard objectives|players ..."
-            "execute" -> "execute ... run <command>"
-            "data" -> "data get|merge|modify|remove <target> ..."
-            "gamemode" -> "gamemode <mode> [targets]"
-            "worldborder" -> "worldborder add|center|damage|get|set|warning ..."
-            else -> if (profile.commands.hasRoot(root)) "vanilla root command; sandbox support may be partial" else "unknown"
-        }
-
-    private fun executeList(
-        tokens: List<CommandToken>,
-        location: SourceLocation?,
-    ) {
-        requireSize(tokens, 1, "list [uuids]", location)
-        val names = world.players.keys.sorted()
-        val payload = JsonObject()
-        payload.addProperty("count", names.size)
-        payload.add("players", JsonArray().also { array -> names.forEach(array::add) })
-        if (tokens.getOrNull(1)?.text == "uuids") {
-            world.players.toSortedMap().forEach { (name, player) -> payload.addProperty(name, player.uuid) }
-        }
-        world.recordOutput("list", "data", text = "There are ${names.size} player(s): ${names.joinToString()}", payload = payload)
     }
 
     private fun executeLoot(
@@ -2998,7 +2979,7 @@ class DatapackSandbox(
                 requireSizeFrom(tokens, index, 6, "execute store ${tokens[index].text} storage <id> <path> <type> <scale>", location)
                 val storage = world.storage(ResourceLocation.parse(tokens[index + 2].text))
                 val scaled = scaledStoreValue(valueToStore, tokens[index + 4].text, tokens[index + 5].text, location)
-                JsonPaths.set(storage, tokens[index + 3].text, scaled)
+                JsonPaths.set(storage, tokens[index + 3].sourceText, scaled)
             }
             "entity" -> {
                 requireSizeFrom(tokens, index, 6, "execute store ${tokens[index].text} entity <target> <path> <type> <scale>", location)
@@ -3018,7 +2999,7 @@ class DatapackSandbox(
                     )
                 }
                 val updated = target.fullNbt(profile, location)
-                JsonPaths.set(updated, tokens[index + 3].text, scaled)
+                JsonPaths.set(updated, tokens[index + 3].sourceText, scaled)
                 target.writeFullNbt(profile, updated, location)
             }
             "block" -> {
@@ -3027,7 +3008,7 @@ class DatapackSandbox(
                 val block = world.requireBlock(pos)
                 val scaled = scaledStoreValue(valueToStore, tokens[index + 6].text, tokens[index + 7].text, location)
                 val updated = block.fullNbt(pos, profile, location)
-                JsonPaths.set(updated, tokens[index + 5].text, scaled)
+                JsonPaths.set(updated, tokens[index + 5].sourceText, scaled)
                 block.writeFullNbt(pos, profile, updated, location)
             }
             "bossbar" -> {
@@ -3090,6 +3071,17 @@ class DatapackSandbox(
             .drop(outputsBefore)
             .asReversed()
             .firstNotNullOfOrNull { output ->
+                val payload = output.payload
+                if (output.command == "get" && payload != null) {
+                    when {
+                        payload.isJsonArray -> return@firstNotNullOfOrNull payload.asJsonArray.size()
+                        payload.isJsonObject -> return@firstNotNullOfOrNull payload.asJsonObject.size()
+                        payload.isJsonPrimitive && payload.asJsonPrimitive.isString ->
+                            return@firstNotNullOfOrNull payload.asString.length
+                        payload.isJsonPrimitive && payload.asJsonPrimitive.isBoolean ->
+                            return@firstNotNullOfOrNull if (payload.asBoolean) 1 else 0
+                    }
+                }
                 output.text
                     .trim()
                     .toDoubleOrNull()

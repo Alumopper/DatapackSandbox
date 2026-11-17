@@ -293,7 +293,15 @@ object VersionProfiles {
             commands = CommandProfile.minecraft262,
         )
 
-    val default: VersionProfile = minecraft262
+    val minecraft263 =
+        minecraft262.copy(
+            id = "26.3",
+            dataVersion = 5023,
+            dataPackFormat = DataPackFormat.of("121.0"),
+            description = "Minecraft Java 26.3 datapack profile",
+            commands = CommandProfile(CommandProfile.minecraft262.roots + "compute"),
+        )
+    val default: VersionProfile = minecraft263
     val all: List<VersionProfile> =
         listOf(
             minecraft1204,
@@ -315,6 +323,7 @@ object VersionProfiles {
             minecraft2611,
             minecraft2612,
             minecraft262,
+            minecraft263,
         )
 
     /**

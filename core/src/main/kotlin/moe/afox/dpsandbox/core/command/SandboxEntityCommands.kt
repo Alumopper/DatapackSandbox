@@ -43,7 +43,7 @@ internal fun DatapackSandbox.executeSummon(
     tokens: List<CommandToken>,
     location: SourceLocation?,
     context: ExecutionContext,
-) {
+): SandboxEntity {
     requireSize(tokens, 2, "summon <entity> [x y z] [nbt]", location)
     val type = ResourceLocation.parse(tokens[1].text)
     var position = context.position
@@ -89,6 +89,7 @@ internal fun DatapackSandbox.executeSummon(
                 entityVariantPayloads(entity.type, fullNbt, location)?.let { payload.add("variantResources", it) }
             },
     )
+    return entity
 }
 
 private fun summonUuid(

@@ -81,6 +81,8 @@ tasks.register<Jar>("fatJar") {
     group = "build"
     description = "Builds a standalone CLI jar."
     archiveFileName.set("datapack-sandbox-cli.jar")
+    isPreserveFileTimestamps = false
+    isReproducibleFileOrder = true
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 
     manifest {

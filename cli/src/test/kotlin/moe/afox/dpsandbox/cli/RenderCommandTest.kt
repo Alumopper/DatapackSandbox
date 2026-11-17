@@ -1,5 +1,6 @@
 package moe.afox.dpsandbox.cli
 
+import com.google.gson.JsonParser
 import java.nio.file.Files
 import javax.imageio.ImageIO
 import kotlin.test.Test
@@ -8,6 +9,39 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class RenderCommandTest : RunCommandTestSupport() {
+    @Test
+    fun `screenshot runs retain command traces when explicitly requested`() {
+        val directory = Files.createTempDirectory("dps-cli-render-traces")
+        for (tracing in listOf(false, true)) {
+            val snapshot = directory.resolve("state-$tracing.json")
+            val screenshot = directory.resolve("state-$tracing.png")
+            captureStdout {
+                main(
+                    (
+                        listOf(
+                            "run",
+                            "--version",
+                            "26.3",
+                            "--command",
+                            "say rendered",
+                            "--snapshot-file",
+                            snapshot.toString(),
+                            "--screenshot-file",
+                            screenshot.toString(),
+                            "--screenshot-width",
+                            "320",
+                            "--screenshot-height",
+                            "180",
+                        ) + if (tracing) listOf("--trace") else emptyList()
+                    ).toTypedArray(),
+                )
+            }
+            val state = JsonParser.parseString(Files.readString(snapshot)).asJsonObject
+            assertEquals(tracing, state.getAsJsonArray("traces").size() > 0)
+            assertTrue(Files.isRegularFile(screenshot))
+        }
+    }
+
     @Test
     fun `run writes screenshot after executing commands`() {
         val output = Files.createTempDirectory("dps-cli-render").resolve("nested/state.png")

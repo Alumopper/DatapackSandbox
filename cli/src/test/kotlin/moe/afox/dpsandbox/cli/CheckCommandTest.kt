@@ -241,6 +241,36 @@ class CheckCommandTest {
         assertTrue("\"root\": \"say\"" in traceJson, traceJson)
         assertTrue("scoreboard objectives add filtered_check dummy" !in traceJson, traceJson)
         assertTrue("scoreboard players set #check filtered_check 4" !in traceJson, traceJson)
+        val automatic = captureStdout { main(arrayOf("check", manifest.toString())) }
+        assertTrue("PASS $manifest" in automatic, automatic)
+    }
+
+    @Test
+    fun `basic manifest tracing keeps command metadata without world diffs`() {
+        val dir = Files.createTempDirectory("dps-check-basic-trace")
+        val pack = writeVerbosePack(dir, "basic-pack", "basic", includeMissingLoad = false)
+        val manifest = dir.resolve("basic.dps.json")
+        Files.writeString(
+            manifest,
+            """
+            {"version":"26.3","packs":["${manifestPath(pack)}"],
+             "steps":[{"command":"say before"},{"reset":true},{"command":"say after"}]}
+            """.trimIndent(),
+        )
+        val result =
+            ManifestRunner.run(
+                manifest,
+                ManifestOptions(commandTraceMode = moe.afox.dpsandbox.core.CommandTraceMode.BASIC),
+            )
+        assertTrue(result.passed, result.messages.joinToString())
+        assertEquals("say after", result.traces.last().command)
+        assertTrue(result.traces.all { it.snapshotDiffs.isEmpty() })
+        assertEquals("<Server> after", result.outputs.last().text)
+        val report = dir.resolve("report.json")
+        val output = captureStdout { main(arrayOf("check", manifest.toString(), "--report-file", report.toString())) }
+        assertTrue("PASS $manifest" in output, output)
+        val json = JsonParser.parseString(Files.readString(report)).asJsonArray[0].asJsonObject
+        assertEquals(0, json.get("traceCount").asInt)
     }
 
     @Test
@@ -371,7 +401,7 @@ class CheckCommandTest {
 
         val output =
             captureStdout {
-                main(arrayOf("check", manifest.toString(), "--report-file", reportFile.toString()))
+                main(arrayOf("check", manifest.toString(), "--trace", "--report-file", reportFile.toString()))
             }
 
         assertTrue("PASS $manifest" in output, output)

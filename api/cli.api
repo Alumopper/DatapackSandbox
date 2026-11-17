@@ -653,6 +653,46 @@ final class moe.afox.dpsandbox.cli.JvmViewportWindow$createController$5 extends 
   public final void invoke(moe.afox.dpsandbox.cli.JvmViewportEnvironment);
   public java.lang.Object invoke(java.lang.Object);
 }
+public final class moe.afox.dpsandbox.cli.LiveDebugSession implements moe.afox.dpsandbox.core.SandboxExecutionObserver {
+  public moe.afox.dpsandbox.cli.LiveDebugSession(moe.afox.dpsandbox.core.DatapackSandbox, kotlin.jvm.functions.Function2<? super java.lang.String, ? super com.google.gson.JsonObject, kotlin.Unit>);
+  public final boolean getActive();
+  public final com.google.gson.JsonObject dispatch(java.lang.String, com.google.gson.JsonObject);
+  public void enterFunction(moe.afox.dpsandbox.core.ResourceLocation, moe.afox.dpsandbox.core.SourceLocation, moe.afox.dpsandbox.core.ExecutionContext);
+  public void exitFunction();
+  public void beforeCommand(java.lang.String, moe.afox.dpsandbox.core.SourceLocation, moe.afox.dpsandbox.core.ExecutionContext);
+  public final void stop();
+  public final void close();
+}
+final class moe.afox.dpsandbox.cli.LiveDebugSession$Frame {
+  public moe.afox.dpsandbox.cli.LiveDebugSession$Frame(java.lang.String, long, java.lang.String, java.lang.Integer, java.lang.String, java.lang.String, moe.afox.dpsandbox.core.Position, moe.afox.dpsandbox.core.ExecutionContext);
+  public final java.lang.String getId();
+  public final long getActivation();
+  public final java.lang.String getFile();
+  public final void setFile(java.lang.String);
+  public final java.lang.Integer getLine();
+  public final void setLine(java.lang.Integer);
+  public final java.lang.String getExecutor();
+  public final void setExecutor(java.lang.String);
+  public final java.lang.String getDimension();
+  public final void setDimension(java.lang.String);
+  public final moe.afox.dpsandbox.core.Position getPosition();
+  public final void setPosition(moe.afox.dpsandbox.core.Position);
+  public final moe.afox.dpsandbox.core.ExecutionContext getExecution();
+  public final void setExecution(moe.afox.dpsandbox.core.ExecutionContext);
+  public final java.lang.String component1();
+  public final long component2();
+  public final java.lang.String component3();
+  public final java.lang.Integer component4();
+  public final java.lang.String component5();
+  public final java.lang.String component6();
+  public final moe.afox.dpsandbox.core.Position component7();
+  public final moe.afox.dpsandbox.core.ExecutionContext component8();
+  public final moe.afox.dpsandbox.cli.LiveDebugSession$Frame copy(java.lang.String, long, java.lang.String, java.lang.Integer, java.lang.String, java.lang.String, moe.afox.dpsandbox.core.Position, moe.afox.dpsandbox.core.ExecutionContext);
+  public static moe.afox.dpsandbox.cli.LiveDebugSession$Frame copy$default(moe.afox.dpsandbox.cli.LiveDebugSession$Frame, java.lang.String, long, java.lang.String, java.lang.Integer, java.lang.String, java.lang.String, moe.afox.dpsandbox.core.Position, moe.afox.dpsandbox.core.ExecutionContext, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+}
 public final class moe.afox.dpsandbox.cli.LootCommand extends com.github.ajalt.clikt.core.CliktCommand {
   public moe.afox.dpsandbox.cli.LootCommand();
   public void run();
@@ -675,17 +715,20 @@ public final class moe.afox.dpsandbox.cli.ManifestSchemaCommand extends com.gith
   public void run();
 }
 public final class moe.afox.dpsandbox.cli.MinecraftBitmapFont {
-  public moe.afox.dpsandbox.cli.MinecraftBitmapFont(java.awt.image.BufferedImage, java.util.Map<java.lang.Integer, moe.afox.dpsandbox.cli.MinecraftBitmapGlyph>, moe.afox.dpsandbox.cli.MinecraftBitmapGlyph, java.lang.String);
+  public moe.afox.dpsandbox.cli.MinecraftBitmapFont(java.awt.image.BufferedImage, java.util.Map<java.lang.Integer, moe.afox.dpsandbox.cli.MinecraftBitmapGlyph>, moe.afox.dpsandbox.cli.MinecraftBitmapGlyph, java.lang.String, boolean);
+  public moe.afox.dpsandbox.cli.MinecraftBitmapFont(java.awt.image.BufferedImage, java.util.Map, moe.afox.dpsandbox.cli.MinecraftBitmapGlyph, java.lang.String, boolean, int, kotlin.jvm.internal.DefaultConstructorMarker);
   public final java.awt.image.BufferedImage getImage();
   public final java.util.Map<java.lang.Integer, moe.afox.dpsandbox.cli.MinecraftBitmapGlyph> getGlyphs();
   public final moe.afox.dpsandbox.cli.MinecraftBitmapGlyph getFallback();
   public final java.lang.String getSource();
+  public final boolean getSmooth();
   public final java.awt.image.BufferedImage component1();
   public final java.util.Map<java.lang.Integer, moe.afox.dpsandbox.cli.MinecraftBitmapGlyph> component2();
   public final moe.afox.dpsandbox.cli.MinecraftBitmapGlyph component3();
   public final java.lang.String component4();
-  public final moe.afox.dpsandbox.cli.MinecraftBitmapFont copy(java.awt.image.BufferedImage, java.util.Map<java.lang.Integer, moe.afox.dpsandbox.cli.MinecraftBitmapGlyph>, moe.afox.dpsandbox.cli.MinecraftBitmapGlyph, java.lang.String);
-  public static moe.afox.dpsandbox.cli.MinecraftBitmapFont copy$default(moe.afox.dpsandbox.cli.MinecraftBitmapFont, java.awt.image.BufferedImage, java.util.Map, moe.afox.dpsandbox.cli.MinecraftBitmapGlyph, java.lang.String, int, java.lang.Object);
+  public final boolean component5();
+  public final moe.afox.dpsandbox.cli.MinecraftBitmapFont copy(java.awt.image.BufferedImage, java.util.Map<java.lang.Integer, moe.afox.dpsandbox.cli.MinecraftBitmapGlyph>, moe.afox.dpsandbox.cli.MinecraftBitmapGlyph, java.lang.String, boolean);
+  public static moe.afox.dpsandbox.cli.MinecraftBitmapFont copy$default(moe.afox.dpsandbox.cli.MinecraftBitmapFont, java.awt.image.BufferedImage, java.util.Map, moe.afox.dpsandbox.cli.MinecraftBitmapGlyph, java.lang.String, boolean, int, java.lang.Object);
   public java.lang.String toString();
   public int hashCode();
   public boolean equals(java.lang.Object);
@@ -848,6 +891,7 @@ public final class moe.afox.dpsandbox.cli.ReplPresentation {
   public final java.lang.String success(java.lang.String, java.lang.String);
   public final java.lang.String warning(java.lang.String);
 }
+
 public final class moe.afox.dpsandbox.cli.ResourceSummaryRenderer {
   public static final moe.afox.dpsandbox.cli.ResourceSummaryRenderer INSTANCE;
   public final java.util.List<java.lang.String> render(java.lang.String, moe.afox.dpsandbox.core.DatapackResourceSummary);
@@ -857,7 +901,6 @@ public final class moe.afox.dpsandbox.cli.ResourcesCommand extends com.github.aj
   public moe.afox.dpsandbox.cli.ResourcesCommand();
   public void run();
 }
-
 public final class moe.afox.dpsandbox.cli.RunCommand extends com.github.ajalt.clikt.core.CliktCommand {
   public moe.afox.dpsandbox.cli.RunCommand();
   public void run();

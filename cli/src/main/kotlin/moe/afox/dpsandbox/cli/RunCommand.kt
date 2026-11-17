@@ -14,6 +14,7 @@ import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import com.google.gson.JsonPrimitive
+import moe.afox.dpsandbox.core.CommandTraceMode
 import moe.afox.dpsandbox.core.DatapackSandbox
 import moe.afox.dpsandbox.core.DiagnosticCode
 import moe.afox.dpsandbox.core.FunctionSource
@@ -174,6 +175,16 @@ class RunCommand : CliktCommand(name = "run") {
                         "run requires at least one --pack path, --mcfunction file, --mcfunction-text string, --stdin, --command, --command-file, --event, --event-file, --world, --assert, or output/snapshot/trace/screenshot option",
                     )
                 }
+            // Match realtime viewport behavior for screenshots unless trace data was requested.
+            if (screenshotFile != null &&
+                !trace &&
+                traceFile == null &&
+                traceFilters.isEmpty() &&
+                assertions.isEmpty() &&
+                assertionFiles.isEmpty()
+            ) {
+                sandbox.world.commandTraceMode = CommandTraceMode.OFF
+            }
             applyWorldFixtures(sandbox)
             seed?.let { sandbox.world.seed = it }
             val beforeSnapshot = sandbox.snapshotJson()

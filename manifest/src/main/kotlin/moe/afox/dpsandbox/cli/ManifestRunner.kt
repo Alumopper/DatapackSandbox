@@ -6,6 +6,7 @@ import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import moe.afox.dpsandbox.core.BlockPos
 import moe.afox.dpsandbox.core.CommandTraceEvent
+import moe.afox.dpsandbox.core.CommandTraceMode
 import moe.afox.dpsandbox.core.DatapackCoverageOptions
 import moe.afox.dpsandbox.core.DatapackCoverageReport
 import moe.afox.dpsandbox.core.DatapackMissingResourceReference
@@ -79,6 +80,7 @@ data class ManifestOptions(
     val unsupportedFeatureMode: UnsupportedFeatureMode = UnsupportedFeatureMode.WARN,
     val limits: SandboxLimits = SandboxLimits(),
     val coverage: DatapackCoverageOptions = DatapackCoverageOptions(),
+    val commandTraceMode: CommandTraceMode = CommandTraceMode.FULL,
 )
 
 internal data class ManifestDiagnostic(
@@ -375,6 +377,16 @@ object ManifestRunner {
         options: ManifestOptions,
     ): ManifestAttemptResult {
         var sandbox = createSandbox(config.version, config.packs, unsupportedFeatureMode = unsupportedMode, limits = options.limits)
+
+        // Trace assertions and artifact steps require full diffs even when CLI tracing is disabled.
+        fun requiresFullTrace(element: JsonElement): Boolean =
+            when {
+                element.isJsonObject -> element.asJsonObject.entrySet().any { (key, value) -> key == "trace" || requiresFullTrace(value) }
+                element.isJsonArray -> element.asJsonArray.any(::requiresFullTrace)
+                else -> false
+            }
+        sandbox.world.commandTraceMode =
+            if ((document.steps + document.assertions).any { requiresFullTrace(it.element) }) CommandTraceMode.FULL else options.commandTraceMode
         sandbox.world.seed = options.seed
         document.worlds.forEach { world ->
             if (!world.element.isJsonObject) {
@@ -905,6 +917,7 @@ object ManifestRunner {
             sandbox.datapack,
             SandboxWorld().also { world ->
                 world.seed = options.seed
+                world.commandTraceMode = sandbox.world.commandTraceMode
                 world.createPlayer("Steve")
             },
             sandbox.unsupportedFeatureMode,

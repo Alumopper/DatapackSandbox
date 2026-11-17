@@ -14,7 +14,7 @@ Run `java -jar cli/build/libs/datapack-sandbox-cli.jar commands --version 26.2` 
 
 ## Full capabilities
 
-Default profile: Minecraft Java `26.2`. Compatibility profiles are available
+Default profile: Minecraft Java `26.3`. Compatibility profiles are available
 down to `1.20.4`.
 
 This sandbox does not embed a vanilla server. Command support means "the
@@ -74,6 +74,7 @@ runs both English and localized docs checks through standalone jar smoke tasks.
 | `bossbar` | Partial | `modeled` | `add`, `remove`, `list`, `get`, `set`; mutations and `get` record structured data output for assertions and `execute store result`; state is stored and appears in snapshots, no real client UI. |
 | `clear` | Partial | `modeled` | Removes matching item stacks from sandbox player inventories, including JSON/SNBT-lite NBT and component payload filters; records the matched/removed count, and treats `maxCount=0` as a query-only check. |
 | `clone` | Partial | `modeled` | Copies sparse sandbox block state/NBT and records structured copied/changed-position output; no updates, drops, or overlap physics. |
+| `compute` | Partial | `modeled` | Minecraft 26.3 integer/float context providers with default, entity, and block contexts; evaluates arithmetic and supported storage, score, and resource-backed providers. |
 | `damage` | Partial | `modeled` | Reduces entity/player health, supports `at`, `by`, and `from` context in structured output, exposes loaded `damage_type` JSON metadata for custom damage sources, emits sandbox damage/death advancement events, and records health changes; display, marker, interaction, marker-mode armor stand, and `Invulnerable` entities reject damage; no armor calculation, invulnerability frames, death loot, or full combat rules. |
 | `data` | Partial | `modeled` | `get` with optional numeric scale, `merge`, `modify`, `remove` for `storage`, `entity`, and `block`; write operations record structured before/after output; paths support fields, positive/negative numeric indexes, and simple object matchers; `modify` supports `value`, `from`, and `string` sources; append/prepend/insert reject existing non-list targets instead of overwriting them; top-level NBT is schema-checked. |
 | `datapack` | Partial | `modeled` | `list [available|enabled]` reports loaded pack paths, typed/raw/tag/resource-index counts, resource overlay diagnostics, and missing-reference diagnostics in a structured payload; `enable`/`disable` are accepted as no-op because pack order is fixed at sandbox creation and record the requested pack name/order arguments for assertions. |

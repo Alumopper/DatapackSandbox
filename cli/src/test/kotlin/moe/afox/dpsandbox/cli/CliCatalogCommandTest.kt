@@ -17,7 +17,7 @@ class CliCatalogCommandTest : RunCommandTestSupport() {
 
         assertTrue("1.20.4 java=17 pack_format=26 data=3700" in output, output)
         assertTrue("26.1.2 java=25 pack_format=101.1" in output, output)
-        assertTrue("26.2 java=25 pack_format=107.1 data=4903 default" in output, output)
+        assertTrue("26.3 java=25 pack_format=121 data=5023 default" in output, output)
     }
 
     @Test
@@ -137,9 +137,9 @@ class CliCatalogCommandTest : RunCommandTestSupport() {
         val json = JsonParser.parseString(output).asJsonObject
         val latest = json.getAsJsonArray("profiles").last().asJsonObject
 
-        assertEquals("26.2", json.get("default").asString)
-        assertEquals("26.2", latest.get("id").asString)
-        assertEquals("26.2:26.2", latest.get("nbtSchema").asString)
+        assertEquals("26.3", json.get("default").asString)
+        assertEquals("26.3", latest.get("id").asString)
+        assertEquals("fallback:26.3", latest.get("nbtSchema").asString)
         assertTrue(latest.getAsJsonArray("commandRoots").map { it.asString }.contains("transfer"))
     }
 

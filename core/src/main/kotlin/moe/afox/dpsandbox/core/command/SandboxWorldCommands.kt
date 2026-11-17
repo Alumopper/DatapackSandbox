@@ -902,9 +902,9 @@ internal fun DatapackSandbox.executeScoreOperation(
             location,
         )
     }
-    val sourceValue = world.getScore(sourceTargets.single(), tokens[7].text)
     var commandResult: Int? = null
     scoreTargets(tokens[3].text, context, location).forEach { target ->
+        val sourceValue = world.getScore(sourceTargets.single(), tokens[7].text)
         val current = world.getScore(target, tokens[4].text)
         val result =
             when (operation) {
@@ -920,6 +920,10 @@ internal fun DatapackSandbox.executeScoreOperation(
                 "%=" -> if (sourceValue == 0) current else Math.floorMod(current, sourceValue)
                 "<" -> minOf(current, sourceValue)
                 ">" -> maxOf(current, sourceValue)
+                "><" -> {
+                    world.setScore(sourceTargets.single(), tokens[7].text, current)
+                    sourceValue
+                }
                 else -> unsupportedFeature("Unsupported scoreboard operation '$operation'", profile.id, location)
             }
         world.setScore(target, tokens[4].text, result)

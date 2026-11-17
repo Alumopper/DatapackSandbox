@@ -14,7 +14,9 @@
 
 ## 完整能力
 
-沙盒支持多个 Minecraft Java 数据包 profile。默认 profile 是 `26.2`，`26.1.2` 仍可用于兼容测试，最低支持的旧数据包 profile 是 `1.20.4`。
+沙盒支持多个 Minecraft Java 数据包 profile。默认 profile 是 `26.3`，`26.1.2` 仍可用于兼容测试，最低支持的旧数据包 profile 是 `1.20.4`。
+
+26.3 profile 当前使用后备 NBT 校验；已生成的原版 NBT schema 覆盖到 26.2。
 
 | Profile | Java | Data version | Data pack format | NBT schema | 资源目录 |
 |---|---:|---:|---:|---|---|
@@ -37,6 +39,7 @@
 | `26.1.1` | 25 | 4788 | 101.1 | `26.1.1:26.1.1` | `function`、`loot_table`、`predicate`、`advancement`，允许旧别名 `functions`、`loot_tables`、`predicates`、`advancements` |
 | `26.1.2` | 25 | 4790 | 101.1 | `26.1.2:26.1.2` | `function`、`loot_table`、`predicate`、`advancement`，允许旧别名 `functions`、`loot_tables`、`predicates`、`advancements` |
 | `26.2` | 25 | 4903 | 107.1 | `26.2:26.2` | `function`、`loot_table`、`predicate`、`advancement`，允许旧别名 `functions`、`loot_tables`、`predicates`、`advancements` |
+| `26.3` | 25 | 5023 | 121 | `fallback:26.3` | `function`、`loot_table`、`predicate`、`advancement`，允许旧别名 `functions`、`loot_tables`、`predicates`、`advancements` |
 
 ## Profile 控制的内容
 

@@ -194,7 +194,11 @@ internal class JvmViewportWindow(
                 sceneSink = { scene, forceReset -> pendingScene.set(SceneUpdate(scene, forceReset)) },
                 outputSink = { text, error ->
                     messages += StatusMessage(text, error)
-                    if (error) System.err.println(text)
+                    if (error) {
+                        System.err.println(text)
+                    } else {
+                        System.out.println(text)
+                    }
                 },
                 playStateSink = { playing = it },
                 visualSink = visualEvents::add,

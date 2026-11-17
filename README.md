@@ -4,8 +4,10 @@
 
 A lightweight, clean-room Minecraft Java datapack sandbox focused on local CLI
 debugging, manifest checks, and JVM-level quick tests. Built-in version profiles
-cover every Minecraft Java release from `1.20.4` through `26.2`, with `26.2` as
+cover every Minecraft Java release from `1.20.4` through `26.3`, with `26.3` as
 the default latest profile.
+
+Live command breakpoints, stepping, and frame inspection over JSONL are documented in [LIVE_DEBUG.md](LIVE_DEBUG.md).
 
 The runtime does not embed or distribute a vanilla server. Build tooling uses
 public `SpyglassMC/vanilla-mcdoc` data and the official `@spyglassmc/mcdoc`

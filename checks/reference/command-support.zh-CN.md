@@ -14,7 +14,7 @@
 
 ## 完整能力
 
-默认 profile：Minecraft Java `26.2`，兼容 profile 覆盖到 `1.20.4`。
+默认 profile：Minecraft Java `26.3`，兼容 profile 覆盖到 `1.20.4`。
 
 这个沙盒不嵌入原版服务端。“支持”在这里的意思是：命令会按沙盒当前建模的数据包可见状态执行，并产生确定性结果。网络、权限、世界生成、客户端 UI、红石、实体 AI、完整战斗系统和真实服务端生命周期都不在运行时范围内。
 
@@ -62,6 +62,7 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar commands --json --output build
 | `bossbar` | 部分支持 | `modeled` | `add`、`remove`、`list`、`get`、`set`；修改命令和 `get` 都会记录结构化 data 输出，供断言和 `execute store result` 使用；状态进入 snapshot，不模拟客户端 UI。 |
 | `clear` | 部分支持 | `modeled` | 从沙盒玩家背包移除匹配物品，支持 JSON/SNBT-lite NBT 和 components payload 过滤，记录 matched/removed 数量；`maxCount=0` 作为只查询不删除的检查。 |
 | `clone` | 部分支持 | `modeled` | 复制稀疏世界中的方块状态和方块实体 NBT，并记录结构化复制/变化位置输出；不执行更新、掉落或重叠区物理。 |
+| `compute` | 部分支持 | `modeled` | Minecraft 26.3 整数/浮点上下文 provider，支持 default、entity 和 block 上下文；计算算术及已实现的 storage、score 和资源引用 provider。 |
 | `damage` | 部分支持 | `modeled` | 降低实体或玩家生命值，结构化输出支持 `at`、`by`、`from` 上下文，会为自定义伤害来源暴露已加载的 `damage_type` JSON 元数据，发出沙盒 damage/death advancement 事件，并记录生命值变化；display、marker、interaction、Marker 模式盔甲架和带 `Invulnerable` 的实体拒绝伤害；不计算盔甲、无敌帧、死亡掉落和完整战斗规则。 |
 | `data` | 部分支持 | `modeled` | 支持带可选数值 scale 的 `get`，以及 `merge`、`modify`、`remove`，目标支持 `storage`、`entity`、`block`；写入类操作会记录结构化前后输出；path 支持字段、正/负数字索引和简单对象匹配；`modify` 支持 `value`、`from` 和 `string` 来源；append/prepend/insert 会拒绝已存在的非列表目标而不是覆盖它；顶层 NBT 字段经过 schema 校验。 |
 | `datapack` | 部分支持 | `modeled` | `list [available|enabled]` 会在结构化 payload 中报告已加载 pack 路径、typed/raw/tag/resource-index 资源数量、资源覆盖诊断和缺失引用诊断；`enable`/`disable` 作为 no-op 接受，因为沙盒创建后 pack 顺序固定，并会记录请求的 pack 名称和顺序参数供断言。 |

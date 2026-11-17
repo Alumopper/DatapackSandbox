@@ -108,19 +108,29 @@ internal class MinecraftClientResources(
     }
 
     private fun fallbackFont(): MinecraftBitmapFont {
-        val cellWidth = 12
-        val cellHeight = 16
+        val oversample = 4f
+        val measuringImage = BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB)
+        val measuringGraphics = measuringImage.createGraphics()
+        val font = Font(Font.SANS_SERIF, Font.PLAIN, 32)
+        val metrics =
+            try {
+                measuringGraphics.getFontMetrics(font)
+            } finally {
+                measuringGraphics.dispose()
+            }
+        val cellWidth = (32..126).maxOf { metrics.charWidth(it) } + 2
+        val cellHeight = metrics.height + 2
         val columns = 16
         val rows = 6
         val image = BufferedImage(columns * cellWidth, rows * cellHeight, BufferedImage.TYPE_INT_ARGB)
         val graphics = image.createGraphics()
         try {
             graphics.color = Color.WHITE
-            graphics.font = Font(Font.MONOSPACED, Font.PLAIN, 14)
+            graphics.font = font
             graphics.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON)
             for (codePoint in 32..126) {
                 val index = codePoint - 32
-                graphics.drawString(codePoint.toChar().toString(), index % columns * cellWidth, index / columns * cellHeight + 13)
+                graphics.drawString(codePoint.toChar().toString(), index % columns * cellWidth + 1, index / columns * cellHeight + metrics.ascent + 1)
             }
         } finally {
             graphics.dispose()
@@ -133,13 +143,13 @@ internal class MinecraftClientResources(
                     y = index / columns * cellHeight,
                     width = cellWidth,
                     height = cellHeight,
-                    renderedWidth = 6f,
-                    renderedHeight = 8f,
-                    advance = 7f,
-                    topOffset = 0f,
+                    renderedWidth = cellWidth / oversample,
+                    renderedHeight = cellHeight / oversample,
+                    advance = metrics.charWidth(codePoint) / oversample,
+                    topOffset = DEFAULT_ASCENT - (metrics.ascent + 1) / oversample,
                 )
             }
-        return MinecraftBitmapFont(image, glyphs, glyphs.getValue('?'.code), source = "system fallback")
+        return MinecraftBitmapFont(image, glyphs, glyphs.getValue('?'.code), source = "system fallback", smooth = true)
     }
 
     private fun bytes(key: String): ByteArray? =
@@ -278,6 +288,7 @@ internal data class MinecraftBitmapFont(
     val glyphs: Map<Int, MinecraftBitmapGlyph>,
     val fallback: MinecraftBitmapGlyph?,
     val source: String,
+    val smooth: Boolean = false,
 )
 
 internal data class MinecraftBitmapGlyph(

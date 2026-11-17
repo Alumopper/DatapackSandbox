@@ -126,7 +126,7 @@ class PredicateEngine(
         context: PredicateContext,
     ): Boolean {
         val type =
-            root.string("condition") ?: root.string("predicate")
+            root.string("condition") ?: root.string("predicate") ?: root.string("type")?.takeIf { profile.id == "26.3" }
                 ?: return testEntityPredicate(context.thisEntity ?: context.player, root, context)
         return when (canonical(type)) {
             "all_of" -> root.terms().all { testElement(it, context) }
@@ -137,6 +137,20 @@ class PredicateEngine(
             "random_chance_with_enchanted_bonus", "random_chance_with_looting" -> testRandomChanceWithEnchantedBonus(root, context)
             "table_bonus" -> testTableBonus(root, context)
             "value_check" -> testRange(numberProviderValue(root.get("value"), context), root.get("range"), context)
+            "float_value_check", "int_value_check" -> {
+                val providers = ContextNumberProviders(datapack, profile)
+                val floating = canonical(type) == "float_value_check"
+
+                fun number(element: JsonElement?): Double = if (floating) providers.floating(element, context).toDouble() else providers.integer(element, context).toDouble()
+                val value = number(root.get("value"))
+                val range = root.get("test") ?: return true
+                if (range.isJsonPrimitive) {
+                    value == number(range)
+                } else {
+                    (range.asJsonObject.get("min")?.let { value >= number(it) } ?: true) &&
+                        (range.asJsonObject.get("max")?.let { value <= number(it) } ?: true)
+                }
+            }
             "killed_by_player" -> context.attackingPlayer != null
             "survives_explosion" -> true
             "time_check" -> testRange(context.world.gameTime, root.get("value") ?: root.get("period"), context)

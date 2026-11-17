@@ -275,7 +275,16 @@ object NbtSchemas {
             )
         }
         json.addProperty("id", entity.type.toString())
-        json.addProperty("UUID", entity.uuid)
+        val uuid = java.util.UUID.fromString(entity.uuid)
+        json.add(
+            "UUID",
+            JsonArray().also { parts ->
+                parts.add((uuid.mostSignificantBits ushr 32).toInt())
+                parts.add(uuid.mostSignificantBits.toInt())
+                parts.add((uuid.leastSignificantBits ushr 32).toInt())
+                parts.add(uuid.leastSignificantBits.toInt())
+            },
+        )
         json.add("Pos", entity.position.toNbtArray())
         if (entity.tags.isNotEmpty()) {
             val tagsJson = JsonArray()

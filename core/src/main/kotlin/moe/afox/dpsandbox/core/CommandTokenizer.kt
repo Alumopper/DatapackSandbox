@@ -4,6 +4,7 @@ data class CommandToken(
     val text: String,
     val start: Int,
     val end: Int,
+    val sourceText: String = text,
 )
 
 object CommandTokenizer {
@@ -21,6 +22,7 @@ object CommandTokenizer {
             val builder = StringBuilder()
             val quote = if (command[index] == '"' || command[index] == '\'') command[index++] else null
             var escaped = false
+            var quotedEnd = -1
 
             if (quote == null) {
                 var nestedQuote: Char? = null
@@ -82,7 +84,10 @@ object CommandTokenizer {
                             escaped = false
                         }
                         char == '\\' -> escaped = true
-                        char == quote -> break
+                        char == quote -> {
+                            quotedEnd = index
+                            break
+                        }
                         else -> builder.append(char)
                     }
                 }
@@ -94,9 +99,16 @@ object CommandTokenizer {
                         command = command,
                     )
                 }
+                // An NBT path may start with a quoted field and continue with .field or [index].
+                // Keep that complete syntax together; standalone quoted arguments stay decoded.
+                if (quotedEnd >= 0 && index < command.length && !command[index].isWhitespace()) {
+                    val suffix = tokenize(command.substring(index), location).first()
+                    index += suffix.end
+                    builder.clear().append(command.substring(start, index))
+                }
             }
 
-            tokens += CommandToken(builder.toString(), start, index)
+            tokens += CommandToken(builder.toString(), start, index, command.substring(start, index))
         }
         return tokens
     }

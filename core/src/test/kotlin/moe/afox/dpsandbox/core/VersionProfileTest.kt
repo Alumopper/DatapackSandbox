@@ -19,13 +19,13 @@ class VersionProfileTest {
     }
 
     @Test
-    fun `version profiles include the latest 26_2 datapack version as default`() {
-        val profile = VersionProfiles.get("26.2")
+    fun `version profiles include the latest 26_3 datapack version as default`() {
+        val profile = VersionProfiles.get("26.3")
 
         assertEquals(profile, VersionProfiles.default)
         assertEquals(25, profile.javaMajor)
-        assertEquals(4903, profile.dataVersion)
-        assertEquals("107.1", profile.dataPackFormat.toString())
+        assertEquals(5023, profile.dataVersion)
+        assertEquals("121", profile.dataPackFormat.toString())
         assertEquals(listOf("function", "functions"), profile.resourceDirectories.functions)
         assertTrue(profile.commands.hasRoot("transfer"))
         assertTrue(profile.commands.hasRoot("dialog"))
@@ -61,6 +61,7 @@ class VersionProfileTest {
                 "26.1.1",
                 "26.1.2",
                 "26.2",
+                "26.3",
             ),
             VersionProfiles.all.map { it.id },
         )

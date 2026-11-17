@@ -662,6 +662,7 @@ data class CommandTraceEvent(
     val success: Boolean,
     val commandsExecuted: Int,
     val outputs: Int,
+    /** Direct outputs of this source command; nested commands have their own trace events. */
     val outputEvents: List<OutputEvent> = emptyList(),
     val snapshotDiffs: List<SnapshotDiffEntry> = emptyList(),
     val errorCode: DiagnosticCode? = null,
@@ -1134,7 +1135,12 @@ class SandboxWorld {
     /**
      * Returns a deterministic JSON snapshot of the complete modeled world state.
      */
-    fun snapshot(profile: VersionProfile = VersionProfiles.default): JsonObject {
+    fun snapshot(profile: VersionProfile = VersionProfiles.default): JsonObject = snapshot(profile, includeHistory = true)
+
+    /** State used for per-command diffs; each trace carries its own output events. */
+    internal fun snapshotState(profile: VersionProfile): JsonObject = snapshot(profile, includeHistory = false)
+
+    private fun snapshot(profile: VersionProfile, includeHistory: Boolean): JsonObject {
         val root = JsonObject()
         root.addProperty("gameTime", gameTime)
         root.addProperty("dayTime", dayTime)
@@ -1252,17 +1258,19 @@ class SandboxWorld {
         root.add("biomes", biomeJson)
         root.add("worldBorder", worldBorder.toJson())
 
-        val outputJson = JsonArray()
-        outputs.forEach { outputJson.add(it.toJson()) }
-        root.add("outputs", outputJson)
+        if (includeHistory) {
+            val outputJson = JsonArray()
+            outputs.forEach { outputJson.add(it.toJson()) }
+            root.add("outputs", outputJson)
 
-        val traceJson = JsonArray()
-        traces.forEach { traceJson.add(it.toJson()) }
-        root.add("traces", traceJson)
+            val traceJson = JsonArray()
+            traces.forEach { traceJson.add(it.toJson()) }
+            root.add("traces", traceJson)
 
-        val playerEventTraceJson = JsonArray()
-        playerEventTraces.forEach { playerEventTraceJson.add(it.toJson()) }
-        root.add("playerEventTraces", playerEventTraceJson)
+            val playerEventTraceJson = JsonArray()
+            playerEventTraces.forEach { playerEventTraceJson.add(it.toJson()) }
+            root.add("playerEventTraces", playerEventTraceJson)
+        }
         return root
     }
 }

@@ -54,6 +54,16 @@ internal fun DatapackSandbox.executeExecute(
                     }
                 index += 2
             }
+            "summon" -> {
+                requireIndex(tokens, index + 1, "execute summon <entity>", location)
+                val summon = "summon ${tokens[index + 1].text}"
+                val summonTokens = CommandTokenizer.tokenize(summon, location)
+                contexts =
+                    contexts.map { ctx ->
+                        ctx.copy(entity = executeSummon(summon, summonTokens, location, ctx))
+                    }
+                index += 2
+            }
             "at" -> {
                 requireIndex(tokens, index + 1, "execute at <selector>", location)
                 contexts =
@@ -175,63 +185,28 @@ internal fun DatapackSandbox.executeExecute(
                 index += 3
             }
             "store" -> {
-                val runIndex = tokens.indexOfFirst { it.text == "run" }
-                if (runIndex < 0) throw SandboxException(DiagnosticCode.INPUT_FORMAT, "execute store requires run", location)
-                val storeIndices = mutableListOf<Int>()
-                var storeIndex = index
-                while (storeIndex < runIndex) {
-                    if (tokens.getOrNull(storeIndex)?.text != "store") {
-                        throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Expected another execute store clause or run", location)
-                    }
-                    requireIndex(tokens, storeIndex + 2, "execute store <result|success> <target> ...", location)
-                    storeIndices += storeIndex + 1
-                    storeIndex +=
-                        when (tokens[storeIndex + 2].text) {
-                            "score", "bossbar" -> 5
-                            "storage", "entity" -> 7
-                            "block" -> 9
-                            else ->
-                                throw SandboxException(
-                                    DiagnosticCode.INPUT_FORMAT,
-                                    "Unsupported execute store target '${tokens[storeIndex + 2].text}'",
-                                    location,
-                                )
-                        }
-                }
-                if (storeIndex != runIndex) {
-                    throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Malformed execute store clause", location)
-                }
-                val rest = CommandTokenizer.tailAfter(command, tokens[runIndex])
-                var anySuccess = false
-                contexts.forEach { storeContext ->
-                    val commandsBefore = commandsExecuted
-                    val outputsBefore = world.outputs.size
-                    lastFunctionReturnValue = null
-                    val commandSuccess = executeOne(rest, location, storeContext)
-                    val commandsRun = (commandsExecuted - commandsBefore).coerceAtLeast(0)
-                    storeIndices.forEach { valueIndex ->
-                        val stored =
-                            executeStoreValue(
-                                tokens[valueIndex].text,
-                                commandsRun,
-                                outputsBefore,
-                                lastFunctionReturnValue,
-                                commandSuccess,
-                            )
-                        storeExecuteValue(tokens, valueIndex, stored, location, storeContext)
-                    }
-                    anySuccess = anySuccess || commandSuccess
-                }
-                return anySuccess
+                return executeStoreChain(command, tokens, index, contexts, location)
             }
             "if", "unless" -> {
                 val positive = tokens[index].text == "if"
-                val evaluated = contexts.map { it to evaluateCondition(tokens, index + 1, location, it) }
+                val conditionIndex = index + 1
+                val evaluated = contexts.map { it to evaluateCondition(tokens, conditionIndex, location, it) }
                 contexts =
                     evaluated
                         .filter { (_, result) -> result.first == positive }
                         .map { (ctx, _) -> ctx }
-                index = evaluated.firstOrNull()?.second?.second ?: nextConditionIndex(tokens, index + 1, location)
+                index = evaluated.firstOrNull()?.second?.second ?: nextConditionIndex(tokens, conditionIndex, location)
+                if (index == tokens.size) {
+                    val result =
+                        if (positive && tokens[conditionIndex].text == "entity") {
+                            contexts.sumOf { ctx ->
+                                EntitySelectors.select(world, tokens[conditionIndex + 1].text, ctx, location).size
+                            }
+                        } else {
+                            contexts.size
+                        }
+                    world.recordOutput("execute", "data", text = result.toString())
+                }
             }
             else -> unsupportedFeature("Unsupported execute subcommand '${tokens[index].text}'", profile.id, location, command)
         }
@@ -261,7 +236,14 @@ internal fun DatapackSandbox.evaluateCondition(
         "blocks" -> evaluateBlocksCondition(tokens, index, location, context)
         "predicate" -> {
             requireIndex(tokens, index + 1, "execute if|unless predicate <id>", location)
-            predicates.test(ResourceLocation.parse(tokens[index + 1].text), executePredicateContext(context)) to index + 2
+            val argument = tokens[index + 1].text
+            val result =
+                if (argument.startsWith("{")) {
+                    predicates.testElement(JsonValues.parse(argument, location), executePredicateContext(context))
+                } else {
+                    predicates.test(ResourceLocation.parse(argument), executePredicateContext(context))
+                }
+            result to index + 2
         }
         "function" -> {
             requireIndex(tokens, index + 1, "execute if|unless function <id|#tag>", location)
@@ -497,7 +479,7 @@ internal fun DatapackSandbox.evaluateDataCondition(
     requireSizeFrom(tokens, index, 4, "execute if data <storage|entity> ...", location)
     val (target, pathIndex) = parseDataTarget(tokens, index + 1, context, location)
     requireIndex(tokens, pathIndex, "execute if data <target> <path>", location)
-    return (dataTargetNbtValues(target, location).any { JsonPaths.exists(it, tokens[pathIndex].text) } to pathIndex + 1)
+    return (dataTargetNbtValues(target, location).any { JsonPaths.exists(it, tokens[pathIndex].sourceText) } to pathIndex + 1)
 }
 
 internal fun DatapackSandbox.executeData(
@@ -531,7 +513,7 @@ internal fun DatapackSandbox.executeDataModify(
     requireSize(tokens, 6, "data modify <storage|entity|block> <target> <path> <set|merge|append|prepend|insert> ...", location)
     val (target, pathIndex) = parseDataTarget(tokens, 2, context, location)
     requireIndex(tokens, pathIndex + 1, "data modify <target> <path> <operation>", location)
-    val path = tokens[pathIndex].text
+    val path = tokens[pathIndex].sourceText
     val mutation = tokens[pathIndex + 1].text
     val insertIndex =
         if (mutation == "insert") {
@@ -583,13 +565,18 @@ internal fun DatapackSandbox.readDataModifyValues(
     location: SourceLocation?,
 ): List<JsonElement> =
     when (tokens[sourceKindIndex].text) {
+        "compute" -> {
+            val computed = computeValue(tokens, sourceKindIndex + 1, context, location)
+            if (computed.nextIndex != tokens.size) throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Unexpected data compute arguments", location)
+            listOf(computed.value)
+        }
         "value" -> {
             requireIndex(tokens, sourceKindIndex + 1, "data modify ... value <value>", location)
             listOf(JsonValues.parse(CommandTokenizer.tailFrom(command, tokens[sourceKindIndex + 1]), location))
         }
         "from" -> {
             val (sourceTarget, sourcePathIndex) = parseDataTarget(tokens, sourceKindIndex + 1, context, location)
-            val sourcePath = tokens.getOrNull(sourcePathIndex)?.text
+            val sourcePath = tokens.getOrNull(sourcePathIndex)?.sourceText
             dataTargetNbtValues(sourceTarget, location)
                 .firstOrNull()
                 ?.let { JsonPaths.getAll(it, sourcePath).map { value -> value.deepCopy() } }
@@ -610,7 +597,7 @@ internal fun DatapackSandbox.readDataModifyString(
     val source =
         dataTargetNbtValues(sourceTarget, location)
             .firstOrNull()
-            ?.let { JsonPaths.get(it, tokens[sourcePathIndex].text) }
+            ?.let { JsonPaths.get(it, tokens[sourcePathIndex].sourceText) }
             ?: throw SandboxException(DiagnosticCode.COMMAND_ERROR, "Data modify string source did not resolve", location)
     if (!source.isJsonPrimitive) {
         throw SandboxException(DiagnosticCode.COMMAND_ERROR, "Data modify string source must be a primitive value", location)
@@ -672,7 +659,7 @@ internal fun DatapackSandbox.executeDataGet(
 ): JsonElement? {
     requireSize(tokens, 3, "data get <storage|entity|block> <target> [path] [scale]", location)
     val (target, pathIndex) = parseDataTarget(tokens, 2, context, location)
-    val path = tokens.getOrNull(pathIndex)?.text
+    val path = tokens.getOrNull(pathIndex)?.sourceText
     val value = dataTargetNbtValues(target, location).firstOrNull()?.let { JsonPaths.get(it, path) }
     val scale = if (path != null) tokens.getOrNull(pathIndex + 1)?.text?.let { parseDouble(it, "data get scale", location) } else null
     return if (scale == null) value else value?.let { scaleDataGetResult(it, scale, location) }
@@ -705,7 +692,7 @@ private fun DatapackSandbox.executeDataRemoveResult(
     requireSize(tokens, 4, "data remove <storage|entity|block> <target> <path>", location)
     val (target, pathIndex) = parseDataTarget(tokens, 2, context, location)
     requireIndex(tokens, pathIndex, "data remove <target> <path>", location)
-    val path = tokens[pathIndex].text
+    val path = tokens[pathIndex].sourceText
     val before = dataTargetNbtValues(target, location).map { it.deepCopy() }
     mutateDataTarget(target, location) { JsonPaths.remove(it, path) }
     val after = dataTargetNbtValues(target, location).map { it.deepCopy() }

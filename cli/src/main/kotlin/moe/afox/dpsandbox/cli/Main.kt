@@ -144,6 +144,12 @@ class CheckCommand : CliktCommand(name = "check") {
                             unsupportedFeatureMode = if (strict) UnsupportedFeatureMode.ERROR else unsupportedFeatureMode(unsupported),
                             limits = limits,
                             coverage = coverageOptions,
+                            commandTraceMode =
+                                if (trace || traceFile != null || traceFilters.isNotEmpty()) {
+                                    moe.afox.dpsandbox.core.CommandTraceMode.FULL
+                                } else {
+                                    moe.afox.dpsandbox.core.CommandTraceMode.OFF
+                                },
                         ),
                     )
                 val resultTraces = TraceFilters.apply(result.traces, traceFilters)

@@ -29,6 +29,7 @@ object DpsCommandCatalog {
             command("bossbar", "edit stored bossbar state"),
             command("clear", "remove items from player inventories"),
             command("clone", "copy sparse sandbox blocks"),
+            command("compute", "evaluate integer or float context number providers"),
             command("damage", "apply sandbox health damage"),
             command("data", "read or mutate storage/entity/block NBT"),
             command("debug", "record a profiling request", CommandBehaviorLevel.OBSERVED_NOOP),
@@ -138,6 +139,7 @@ object DpsCommandCatalog {
             "scoreboard" -> " objectives <add|remove|list|modify|setdisplay>|players ..."
             "execute" -> " as|at|on|if|unless|store ... run <command>"
             "data" -> " <get|modify|merge|remove> <storage|entity|block> ..."
+            "compute" -> " <default|entity target|block pos> <integer|float> <provider> [scale]"
             "bossbar" -> " <add|remove|list|get|set> ..."
             "give" -> " <players> <item> [count]"
             "effect" -> " <give|clear> <players> ..."

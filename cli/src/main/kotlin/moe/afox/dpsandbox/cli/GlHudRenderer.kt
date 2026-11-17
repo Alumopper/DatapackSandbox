@@ -80,8 +80,9 @@ internal class GlHudRenderer(
                 GL_UNSIGNED_BYTE,
                 bitmap,
             )
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST)
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST)
+            val filter = if (font.smooth) org.lwjgl.opengl.GL11.GL_LINEAR else GL_NEAREST
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filter)
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filter)
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE)
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE)
         } finally {
@@ -241,7 +242,7 @@ internal class GlHudRenderer(
     private fun glyph(codePoint: Int): MinecraftBitmapGlyph = font.glyphs[codePoint] ?: font.fallback ?: font.glyphs.values.first()
 
     private fun pixelScale(scale: Float): Float =
-        (BASE_TEXT_PIXELS * scale.coerceIn(0.5f, 4f) / MINECRAFT_LINE_HEIGHT).roundToInt().coerceIn(1, 8).toFloat()
+        (BASE_TEXT_PIXELS * scale.coerceIn(0.5f, 4f) / MINECRAFT_LINE_HEIGHT).coerceIn(0.5f, 8f)
 
     private fun uploadColor(
         targetProgram: Int,
@@ -280,7 +281,7 @@ internal class GlHudRenderer(
 
     companion object {
         private const val MINECRAFT_LINE_HEIGHT = 9f
-        private const val BASE_TEXT_PIXELS = 11f
+        private const val BASE_TEXT_PIXELS = 16f
         private const val FLOATS_PER_FONT_VERTEX = 4
         private const val FONT_VERTEX_BYTES = FLOATS_PER_FONT_VERTEX * Float.SIZE_BYTES
         private const val VERTICES_PER_GLYPH = 6

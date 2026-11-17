@@ -17,6 +17,15 @@ class MinecraftClientResourcesTest {
     lateinit var tempDirectory: Path
 
     @Test
+    fun `fallback HUD font uses measured advances instead of widely spaced fixed cells`() {
+        val font = MinecraftClientResources(RenderAssets()).defaultFont()
+        assertEquals("system fallback", font.source)
+        assertTrue(font.smooth)
+        assertTrue(font.glyphs.getValue('W'.code).advance > font.glyphs.getValue('i'.code).advance)
+        assertTrue(font.glyphs.getValue(' '.code).advance < font.glyphs.getValue('W'.code).advance)
+    }
+
+    @Test
     fun `loads the default bitmap font and particle sprites from a client resource source`() {
         val fontDirectory = tempDirectory.resolve("assets/minecraft/font")
         val fontTextureDirectory = tempDirectory.resolve("assets/minecraft/textures/font")

@@ -2,7 +2,9 @@
 
 一个轻量、洁净室实现的 Minecraft Java 数据包沙盒，重点面向本地 CLI 调试、JSON 清单回归测试和 JVM 项目的代码级快速测试。
 
-内置版本 profile 覆盖 Minecraft Java `1.20.4` 到 `26.2`，默认使用最新 profile `26.2`。项目不嵌入原版服务端运行时，也不分发 Mojang 服务端代码；构建时会使用公开的 `SpyglassMC/vanilla-mcdoc` 资料和官方 `@spyglassmc/mcdoc` 解析器生成 NBT schema，用于运行时校验。
+内置版本 profile 覆盖 Minecraft Java `1.20.4` 到 `26.3`，默认使用最新 profile `26.3`。项目不嵌入原版服务端运行时，也不分发 Mojang 服务端代码；构建时会使用公开的 `SpyglassMC/vanilla-mcdoc` 资料和官方 `@spyglassmc/mcdoc` 解析器生成 NBT schema，用于运行时校验。
+
+JSONL 实时断点、单步执行与栈帧检查协议见 [LIVE_DEBUG.md](LIVE_DEBUG.md)。
 
 可选的 `renderer` 模块可以读取用户提供的 Minecraft 资产，把已建模世界输出为无窗口透视 PNG。standalone JAR 还提供基于 GLFW/OpenGL 的 `viewport` JVM 桌面实时视窗，支持键盘和鼠标操作。原生 Jupyter Kernel 能连续运行 `mcfunction` 单元，并在单元下方直接显示命令输出、snapshot diff 和当前画面。参见[三维渲染与 Jupyter Kernel](https://github.com/Alumopper/DatapackSandbox-Docs/blob/master/rendering-notebook.zh-CN.md)。
 

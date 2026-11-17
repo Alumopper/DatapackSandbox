@@ -22,14 +22,21 @@ class JvmViewportControllerTest {
         val changedScene = CountDownLatch(1)
         val visual = CopyOnWriteArrayList<OutputEvent>()
         val particle = CountDownLatch(1)
+        val sandbox = createFunctionSandboxFromString("26.2", "")
+        val pendingOutputsAtScene = AtomicInteger(-1)
         val controller =
             JvmViewportController(
-                sandboxFactory = { createFunctionSandboxFromString("26.2", "") },
+                sandboxFactory = { sandbox },
                 initializeSandbox = {},
                 realtimeRenderer = SandboxRealtimeRenderer(assets),
                 assets = assets,
                 options = JvmViewportOptions(width = 320, height = 180),
-                sceneSink = { scene, _ -> if (scene.visibleBlocks == 1) changedScene.countDown() },
+                sceneSink = { scene, _ ->
+                    if (scene.visibleBlocks == 1) {
+                        pendingOutputsAtScene.set(sandbox.world.outputs.size)
+                        changedScene.countDown()
+                    }
+                },
                 outputSink = { text, _ ->
                     output += text
                     if (text.startsWith("JVM sandbox ready")) ready.countDown()
@@ -63,6 +70,8 @@ class JvmViewportControllerTest {
             assertTrue(changedScene.await(10, TimeUnit.SECONDS), output.joinToString("\n"))
             assertTrue(output.any { it == "> setblock 2 0 0 minecraft:stone" })
             assertTrue(output.any { it.startsWith("OK:") })
+            assertEquals(0, pendingOutputsAtScene.get(), "command outputs must be delivered before renderer snapshots")
+            assertTrue(visual.isNotEmpty(), "draining output must preserve delivery to the viewport")
 
             controller.execute("particle minecraft:flame 2 1 0 0.2 0.2 0.2 0.05 8 force Steve")
             assertTrue(particle.await(10, TimeUnit.SECONDS), output.joinToString("\n"))

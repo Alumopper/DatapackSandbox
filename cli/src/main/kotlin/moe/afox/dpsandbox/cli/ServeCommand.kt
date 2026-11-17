@@ -101,12 +101,23 @@ internal class ServeSession {
     @Volatile
     private var sandbox: DatapackSandbox? = null
     private var config: SessionConfig? = null
+
+    @Volatile private var liveDebug: LiveDebugSession? = null
+    private var debugEvents: (String, JsonObject) -> Unit = { _, _ -> }
     private val gson = GsonBuilder().disableHtmlEscaping().serializeNulls().create()
 
     fun run(
         input: BufferedReader,
         output: BufferedWriter,
     ) {
+        debugEvents = { event, body ->
+            output.writeLine(
+                JsonObject().apply {
+                    addProperty("event", event)
+                    add("body", body)
+                },
+            )
+        }
         output.writeLine(success(JsonNull.INSTANCE, helloJson()))
         val executor =
             ThreadPoolExecutor(
@@ -159,6 +170,7 @@ internal class ServeSession {
                 }
             }
         } finally {
+            liveDebug?.close()
             executor.shutdown()
             if (!executor.awaitTermination(30, TimeUnit.SECONDS)) executor.shutdownNow()
         }
@@ -211,7 +223,8 @@ internal class ServeSession {
                 .parseString(line)
                 .takeIf { it.isJsonObject }
                 ?.asJsonObject
-                ?.string("method") == "interrupt"
+                ?.string("method")
+                ?.let { it == "interrupt" || it.startsWith("debug.") } == true
         } catch (_: Exception) {
             false
         }
@@ -230,7 +243,19 @@ internal class ServeSession {
             request.string("method") ?: return failure(id, SandboxException(DiagnosticCode.INPUT_FORMAT, "Serve request is missing method"))
         val params = request.getAsJsonObjectOrNull("params") ?: JsonObject()
         return try {
-            success(id, dispatch(method, params))
+            if (method.startsWith("debug.")) {
+                val session = liveDebug ?: LiveDebugSession(current(), debugEvents).also { liveDebug = it }
+                success(id, session.dispatch(method, params))
+            } else {
+                require(liveDebug?.active != true || method in setOf("hello", "versions", "interrupt")) {
+                    "A debug execution owns the world; use debug.state while paused"
+                }
+                if (method in setOf("createSandbox", "createFunctionSandbox", "open", "reload", "resetWorld")) {
+                    liveDebug?.close()
+                    liveDebug = null
+                }
+                success(id, dispatch(method, params))
+            }
         } catch (error: SandboxException) {
             failure(id, error)
         } catch (error: Exception) {
@@ -305,6 +330,8 @@ internal class ServeSession {
                     capabilities.addProperty("richOutput", true)
                     capabilities.addProperty("coverage", true)
                     capabilities.addProperty("commandDiagnostics", true)
+                    capabilities.addProperty("liveDebug", true)
+                    capabilities.addProperty("debugProtocolVersion", 1)
                 },
             )
             json.add("versions", JsonArray().also { versions -> VersionProfiles.all.forEach { versions.add(it.id) } })

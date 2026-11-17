@@ -4,7 +4,7 @@
 - Gradle multi-project: `:core` is the embeddable runtime, `:testkit` contains the QuickTest DSL, `:manifest` owns manifest models/runner/schema, `:cli` is the standalone Clikt app, and `:schema-generator` verifies/regenerates pinned vanilla NBT schemas.
 - Kotlin/JVM uses Gradle wrapper 9.5.1, Kotlin 2.4.0, and Java 25 toolchains in all JVM modules; Java/classfile errors usually mean missing JDK 25.
 - This is a clean-room runtime; do not add Mojang server jars or vendored vanilla server code.
-- Built-in Minecraft profiles cover `1.20.4` through `26.2`; `26.2` is the default latest profile.
+- Built-in Minecraft profiles cover `1.20.4` through `26.3`; `26.3` is the default latest profile.
 
 ## Commands
 - Use `./gradlew` on Unix and `./gradlew.bat` from PowerShell/cmd on Windows.

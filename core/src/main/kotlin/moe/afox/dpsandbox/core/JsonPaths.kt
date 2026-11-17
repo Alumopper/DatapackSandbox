@@ -240,6 +240,7 @@ object JsonPaths {
 private sealed interface PathPart {
     data class Field(
         val name: String,
+        val expected: JsonObject? = null,
     ) : PathPart
 
     data class Index(
@@ -263,7 +264,7 @@ private data class NbtPath(
             current.flatMap { element ->
                 when (part) {
                     is PathPart.Field ->
-                        if (element.isJsonObject) listOfNotNull(element.asJsonObject.get(part.name)) else emptyList()
+                        if (element.isJsonObject) listOfNotNull(element.asJsonObject.get(part.name)?.takeIf { part.matches(it) }) else emptyList()
                     is PathPart.Index -> {
                         if (!element.isJsonArray) {
                             emptyList()
@@ -305,6 +306,10 @@ private data class NbtPath(
                 is PathPart.Field -> {
                     if (!current.isJsonObject) {
                         throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Path target '${part.name}' is not an object")
+                    }
+                    val previous = current.asJsonObject.get(part.name)
+                    if (previous != null && !part.matches(previous)) {
+                        throw SandboxException(DiagnosticCode.COMMAND_ERROR, "Path compound matcher did not match '${part.name}'")
                     }
                     current.asJsonObject.add(part.name, value.deepCopy())
                 }
@@ -360,7 +365,10 @@ private data class NbtPath(
                 val objectCurrent = current.asJsonObject
                 val child =
                     objectCurrent.get(part.name)?.takeUnless { it is JsonNull }
-                        ?: pathContainer(next).also { objectCurrent.add(part.name, it) }
+                        ?: (part.expected?.deepCopy() ?: pathContainer(next)).also { objectCurrent.add(part.name, it) }
+                if (!part.matches(child)) {
+                    throw SandboxException(DiagnosticCode.COMMAND_ERROR, "Path compound matcher did not match '${part.name}'")
+                }
                 setAt(child, partIndex + 1, value)
             }
             is PathPart.Index -> {
@@ -415,7 +423,11 @@ private data class NbtPath(
         val part = parts[partIndex]
         if (partIndex == parts.lastIndex) {
             return when (part) {
-                is PathPart.Field -> current.isJsonObject && current.asJsonObject.remove(part.name) != null
+                is PathPart.Field ->
+                    current.isJsonObject &&
+                        current.asJsonObject.get(part.name)?.let {
+                            part.matches(it) && current.asJsonObject.remove(part.name) != null
+                        } == true
                 is PathPart.Index -> {
                     if (!current.isJsonArray) return false
                     val array = current.asJsonArray
@@ -441,7 +453,7 @@ private data class NbtPath(
         val children =
             when (part) {
                 is PathPart.Field ->
-                    if (current.isJsonObject) listOfNotNull(current.asJsonObject.get(part.name)) else emptyList()
+                    if (current.isJsonObject) listOfNotNull(current.asJsonObject.get(part.name)?.takeIf { part.matches(it) }) else emptyList()
                 is PathPart.Index -> {
                     if (!current.isJsonArray) {
                         emptyList()
@@ -460,6 +472,9 @@ private data class NbtPath(
             }
         return children.fold(false) { changed, child -> removeAt(child, partIndex + 1) || changed }
     }
+
+    private fun PathPart.Field.matches(value: JsonElement): Boolean =
+        expected == null || value.isJsonObject && objectMatches(value.asJsonObject, expected)
 
     private fun objectMatches(
         actual: JsonObject,
@@ -519,6 +534,24 @@ private data class NbtPath(
             }
             while (index < path.length) {
                 when (val char = path[index]) {
+                    '"', '\'' -> {
+                        val quote = char
+                        index++
+                        var closed = false
+                        while (index < path.length) {
+                            val next = path[index++]
+                            if (next == quote) {
+                                closed = true
+                                break
+                            }
+                            if (next == '\\' && index < path.length) {
+                                name.append(path[index++])
+                            } else {
+                                name.append(next)
+                            }
+                        }
+                        if (!closed) throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Unclosed quoted path field in '$path'")
+                    }
                     '.' -> {
                         flushName()
                         index++
@@ -548,6 +581,16 @@ private data class NbtPath(
                             }
                         index = end + 1
                     }
+                    '{' -> {
+                        flushName()
+                        val field =
+                            parts.lastOrNull() as? PathPart.Field
+                                ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Expected a named field before compound matcher in '$path'")
+                        val end = findClosingCompound(path, index)
+                        if (end < 0) throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Unclosed compound matcher in '$path'")
+                        parts[parts.lastIndex] = field.copy(expected = JsonValues.parse(path.substring(index, end + 1)).asJsonObject)
+                        index = end + 1
+                    }
                     else -> {
                         name.append(char)
                         index++
@@ -556,6 +599,29 @@ private data class NbtPath(
             }
             flushName()
             return NbtPath(parts)
+        }
+
+        private fun findClosingCompound(path: String, start: Int): Int {
+            var depth = 0
+            var quote: Char? = null
+            var escaped = false
+            for (index in start until path.length) {
+                val char = path[index]
+                if (quote != null) {
+                    when {
+                        escaped -> escaped = false
+                        char == '\\' -> escaped = true
+                        char == quote -> quote = null
+                    }
+                } else {
+                    when (char) {
+                        '"', '\'' -> quote = char
+                        '{' -> depth++
+                        '}' -> if (--depth == 0) return index
+                    }
+                }
+            }
+            return -1
         }
 
         private fun findClosingBracket(
@@ -692,7 +758,7 @@ private class SnbtParser(
             token.matches(Regex("[-+]?\\d+[bBsSlL]")) -> JsonPrimitive(token.dropLast(1).toLong())
             token.matches(Regex("[-+]?\\d+")) -> JsonPrimitive(token.toLong())
             token.matches(
-                Regex("[-+]?(\\d+\\.\\d*|\\d*\\.\\d+)([fFdD])?"),
+                Regex("[-+]?(\\d+\\.?\\d*|\\.\\d+)([eE][-+]?\\d+)?[fFdD]?"),
             ) ->
                 JsonPrimitive(
                     token
@@ -702,7 +768,6 @@ private class SnbtParser(
                         .removeSuffix("D")
                         .toDouble(),
                 )
-            token.matches(Regex("[-+]?\\d+[fFdD]")) -> JsonPrimitive(token.dropLast(1).toDouble())
             else -> JsonPrimitive(token)
         }
     }
