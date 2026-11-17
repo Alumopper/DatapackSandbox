@@ -57,6 +57,7 @@ private fun SandboxWorld.replaceStateFrom(source: SandboxWorld) {
         },
     )
     randomSequences.replaceWith(source.randomSequences)
+    selectorDraw = source.selectorDraw
     forcedChunks.replaceWith(source.forcedChunks)
     biomes.replaceWith(source.biomes)
     worldBorder.copyValuesFrom(source.worldBorder)

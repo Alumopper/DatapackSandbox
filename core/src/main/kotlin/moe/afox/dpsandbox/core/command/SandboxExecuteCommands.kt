@@ -539,18 +539,12 @@ internal fun DatapackSandbox.executeData(
     tokens: List<CommandToken>,
     location: SourceLocation?,
     context: ExecutionContext,
-): Boolean {
+): Int? {
     requireSize(tokens, 3, "data <modify|get|remove> ...", location)
     return when (tokens[1].text) {
         "modify" -> executeDataModify(command, tokens, location, context)
         "merge" -> executeDataMergeResult(command, tokens, location, context)
-        "get" -> {
-            val value = executeDataGet(tokens, location, context)
-            value?.let {
-                world.recordOutput("get", "data", text = JsonValues.render(it), payload = it)
-            }
-            value != null
-        }
+        "get" -> executeDataGet(tokens, location, context)
         "remove" -> executeDataRemoveResult(tokens, location, context)
         else -> unsupportedFeature("Unsupported data action '${tokens[1].text}'", profile.id, location)
     }
@@ -561,7 +555,7 @@ internal fun DatapackSandbox.executeDataModify(
     tokens: List<CommandToken>,
     location: SourceLocation?,
     context: ExecutionContext,
-): Boolean {
+): Int? {
     requireSize(tokens, 6, "data modify <storage|entity|block> <target> <path> <set|merge|append|prepend|insert> ...", location)
     val (target, pathIndex) = parseDataTarget(tokens, 2, context, location)
     requireIndex(tokens, pathIndex + 1, "data modify <target> <path> <operation>", location)
@@ -582,16 +576,19 @@ internal fun DatapackSandbox.executeDataModify(
         }
     requireIndex(tokens, sourceKindIndex, "data modify ... $mutation <value|from> ...", location)
     val values = readDataModifyValues(command, tokens, sourceKindIndex, context, location)
-    if (values.isEmpty()) return false
+    if (values.isEmpty()) return null
     val before = dataTargetNbtValues(target, location).map { it.deepCopy() }
+    var changed = 0
     mutateDataTarget(target, location) { targetNbt ->
-        when (mutation) {
-            "set" -> JsonPaths.set(targetNbt, path, values.last())
-            "merge" -> values.forEach { JsonPaths.merge(targetNbt, path, it) }
-            "append" -> values.forEach { JsonPaths.append(targetNbt, path, it, location) }
-            "prepend" -> values.asReversed().forEach { JsonPaths.prepend(targetNbt, path, it, location) }
-            "insert" -> values.asReversed().forEach { JsonPaths.insert(targetNbt, path, insertIndex ?: 0, it, location) }
-        }
+        changed +=
+            when (mutation) {
+                "set" -> JsonPaths.setCount(targetNbt, path, values.last())
+                "merge" -> JsonPaths.mergeValues(targetNbt, path, values)
+                "prepend" -> JsonPaths.insertValues(targetNbt, path, 0, values, location)
+                "append" -> JsonPaths.insertValues(targetNbt, path, -1, values, location)
+                else -> JsonPaths.insertValues(targetNbt, path, checkNotNull(insertIndex), values, location)
+            }
+        changed != 0
     }
     val after = dataTargetNbtValues(target, location).map { it.deepCopy() }
     return recordDataMutationOutputResult(
@@ -606,7 +603,8 @@ internal fun DatapackSandbox.executeDataModify(
             details.addProperty("path", path)
             insertIndex?.let { details.addProperty("insertIndex", it) }
         },
-    ) > 0
+        changed,
+    ).takeIf { it != 0 }
 }
 
 internal fun DatapackSandbox.readDataModifyValues(
@@ -693,28 +691,38 @@ private fun DatapackSandbox.executeDataMergeResult(
     tokens: List<CommandToken>,
     location: SourceLocation?,
     context: ExecutionContext,
-): Boolean {
+): Int? {
     requireSize(tokens, 4, "data merge <storage|entity|block> <target> <nbt>", location)
     val (target, valueIndex) = parseDataTarget(tokens, 2, context, location)
     requireIndex(tokens, valueIndex, "data merge <target> <nbt>", location)
     val value = JsonValues.parse(CommandTokenizer.tailFrom(command, tokens[valueIndex]), location)
     val before = dataTargetNbtValues(target, location).map { it.deepCopy() }
-    mutateDataTarget(target, location) { JsonPaths.merge(it, null, value) }
+    mutateDataTarget(target, location) { JsonPaths.mergeValues(it, null, listOf(value)) != 0 }
     val after = dataTargetNbtValues(target, location).map { it.deepCopy() }
-    return recordDataMutationOutputResult("data merge", target, value, before, after) > 0
+    return recordDataMutationOutputResult("data merge", target, value, before, after).takeIf { it != 0 }
 }
 
 internal fun DatapackSandbox.executeDataGet(
     tokens: List<CommandToken>,
     location: SourceLocation?,
     context: ExecutionContext,
-): JsonElement? {
+): Int? {
     requireSize(tokens, 3, "data get <storage|entity|block> <target> [path] [scale]", location)
     val (target, pathIndex) = parseDataTarget(tokens, 2, context, location)
     val path = tokens.getOrNull(pathIndex)?.sourceText
     val value = dataTargetNbtValues(target, location).singleOrNull()?.let { JsonPaths.getAll(it, path).singleOrNull() }
     val scale = if (path != null) tokens.getOrNull(pathIndex + 1)?.text?.let { parseDouble(it, "data get scale", location) } else null
-    return if (scale == null) value else value?.let { scaleDataGetResult(it, scale, location) }
+    if (value == null) return null
+    val output = if (scale == null) value else scaleDataGetResult(value, scale, location)
+    world.recordOutput("get", "data", text = JsonValues.render(output), payload = output)
+    return when {
+        path == null -> 1
+        output.isJsonArray -> output.asJsonArray.size()
+        output.isJsonObject -> output.asJsonObject.size()
+        output.asJsonPrimitive.isNumber -> floor(output.asDouble).toInt()
+        output.asJsonPrimitive.isBoolean -> if (output.asBoolean) 1 else 0
+        else -> output.asString.length
+    }
 }
 
 internal fun DatapackSandbox.scaleDataGetResult(
@@ -740,13 +748,17 @@ private fun DatapackSandbox.executeDataRemoveResult(
     tokens: List<CommandToken>,
     location: SourceLocation?,
     context: ExecutionContext,
-): Boolean {
+): Int? {
     requireSize(tokens, 4, "data remove <storage|entity|block> <target> <path>", location)
     val (target, pathIndex) = parseDataTarget(tokens, 2, context, location)
     requireIndex(tokens, pathIndex, "data remove <target> <path>", location)
     val path = tokens[pathIndex].sourceText
     val before = dataTargetNbtValues(target, location).map { it.deepCopy() }
-    mutateDataTarget(target, location) { JsonPaths.remove(it, path) }
+    var removed = 0
+    mutateDataTarget(target, location) {
+        removed = JsonPaths.removeCount(it, path)
+        removed > 0
+    }
     val after = dataTargetNbtValues(target, location).map { it.deepCopy() }
     return recordDataMutationOutputResult(
         "data remove",
@@ -758,7 +770,8 @@ private fun DatapackSandbox.executeDataRemoveResult(
             details.addProperty("operation", "remove")
             details.addProperty("path", path)
         },
-    ) > 0
+        removed,
+    ).takeIf { it != 0 }
 }
 
 internal fun DatapackSandbox.parseDataTarget(
@@ -815,9 +828,9 @@ private fun DatapackSandbox.recordDataMutationOutputResult(
     before: List<JsonObject>,
     after: List<JsonObject>,
     details: JsonObject? = null,
+    changed: Int = before.zip(after).count { (old, new) -> old != new },
 ): Int {
     val targetNames = dataTargetNames(target)
-    val changed = before.zip(after).count { (beforeValue, afterValue) -> beforeValue != afterValue }
     world.recordOutput(
         command,
         "data",
@@ -869,14 +882,20 @@ internal fun DatapackSandbox.dataTargetNames(target: DataTargetSpec): List<Strin
 internal fun DatapackSandbox.mutateDataTarget(
     target: DataTargetSpec,
     location: SourceLocation?,
-    mutation: (JsonObject) -> Unit,
+    mutation: (JsonObject) -> Boolean,
 ) {
     when (target) {
-        is DataTargetSpec.Storage -> mutation(world.storage(target.id))
+        is DataTargetSpec.Storage -> {
+            val storage = world.storage(target.id)
+            val updated = storage.deepCopy()
+            if (!mutation(updated)) return
+            storage.entrySet().clear()
+            updated.entrySet().forEach { (key, value) -> storage.add(key, value) }
+        }
         is DataTargetSpec.Block -> {
             val block = world.requireBlock(target.pos)
             val updated = block.fullNbt(target.pos, profile, location)
-            mutation(updated)
+            if (!mutation(updated)) return
             block.writeFullNbt(target.pos, profile, updated, location)
         }
         is DataTargetSpec.Entities ->
@@ -889,7 +908,7 @@ internal fun DatapackSandbox.mutateDataTarget(
                     )
                 }
                 val updated = entity.fullNbt(profile, location)
-                mutation(updated)
+                if (!mutation(updated)) return@forEach
                 entity.writeFullNbt(profile, updated, location)
             }
     }

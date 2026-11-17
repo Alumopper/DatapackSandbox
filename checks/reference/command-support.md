@@ -171,7 +171,7 @@ example, `say hello` records `text = "<Server> hello"` and
 
 ## Selectors
 
-Implemented selectors: `@s`, `@a`, `@p`, `@e`, `@n`.
+Implemented selectors include `@s`, `@a`, `@p`, `@r`, `@e`, and `@n`.
 
 Implemented options: `type`, `tag`, `name`, `gamemode`, `team`, `nbt`,
 `predicate`, `scores`, `advancements`, `level`, `x_rotation`, `y_rotation`,
@@ -182,8 +182,10 @@ whole-advancement or criterion booleans; NBT filters use contains-style object
 matching with numeric equality; predicate filters evaluate loaded datapack
 predicates with the candidate entity as `this` and with the candidate
 position/dimension, and support `!` negation; and rotation filters support
-signed numeric ranges. `sort=random` uses a
-deterministic per-origin ordering for repeatable tests. Unsupported selector
+wrapped angle ranges. Spatial filters use the execution dimension. Volume checks use
+the modeled hitbox of standing players, armor stands, interaction entities, markers
+and displays. Other entity types use their position. Random selection advances
+with each draw and can be replayed by restoring a world checkpoint. Unsupported selector
 options produce an unsupported diagnostic under the active unsupported policy.
 
 ## Special Entities

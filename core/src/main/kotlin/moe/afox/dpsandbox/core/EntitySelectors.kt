@@ -1,17 +1,16 @@
 ﻿package moe.afox.dpsandbox.core
 
-import com.google.gson.JsonElement
 import com.google.gson.JsonObject
-import com.google.gson.JsonPrimitive
+import kotlin.random.Random
 
 private data class SelectorOptions(
     val tags: List<Pair<String, Boolean>> = emptyList(),
-    val type: Pair<ResourceLocation, Boolean>? = null,
-    val name: Pair<String, Boolean>? = null,
-    val gamemode: Pair<String, Boolean>? = null,
-    val team: Pair<String, Boolean>? = null,
-    val nbt: Pair<JsonObject, Boolean>? = null,
-    val predicate: Pair<ResourceLocation, Boolean>? = null,
+    val types: List<Pair<String, Boolean>> = emptyList(),
+    val names: List<Pair<String, Boolean>> = emptyList(),
+    val gamemodes: List<Pair<String, Boolean>> = emptyList(),
+    val teams: List<Pair<String, Boolean>> = emptyList(),
+    val nbt: List<Pair<JsonObject, Boolean>> = emptyList(),
+    val predicates: List<Pair<ResourceLocation, Boolean>> = emptyList(),
     val scores: Map<String, SelectorScoreRange> = emptyMap(),
     val advancements: Map<ResourceLocation, SelectorAdvancementExpectation> = emptyMap(),
     val level: SelectorScoreRange? = null,
@@ -63,8 +62,7 @@ object EntitySelectors {
             when (selector) {
                 "@s" -> listOfNotNull(context.entity)
                 "@e" -> world.entities.toList()
-                "@a" -> world.players.values.toList()
-                "@p" -> world.players.values.toList()
+                "@a", "@p", "@r" -> world.players.values.toList()
                 "@n" -> world.entities.toList()
                 else -> unsupportedFeature("Unsupported selector '$selector'", location = location, command = token)
             }
@@ -76,19 +74,35 @@ object EntitySelectors {
                 y = options.y ?: context.position.y,
                 z = options.z ?: context.position.z,
             )
-        options.type?.let { (type, positive) ->
-            result = result.filter { (it.type == type) == positive }
+        if (options.x != null ||
+            options.y != null ||
+            options.z != null ||
+            options.distance != null ||
+            options.dx != null ||
+            options.dy != null ||
+            options.dz != null
+        ) {
+            result = result.filter { it.dimension == context.dimension }
         }
-        options.name?.let { (name, positive) ->
+        options.types.forEach { (type, positive) ->
+            val tag = type.startsWith('#')
+            val id = ResourceLocation.parse(type.removePrefix("#"))
+            result =
+                result.filter {
+                    val matches = if (tag) context.predicateEngine?.entityTypeInTag(it.type, id) == true else it.type == id
+                    matches == positive
+                }
+        }
+        options.names.forEach { (name, positive) ->
             result = result.filter { (it.selectorName() == name) == positive }
         }
-        options.gamemode?.let { (mode, positive) ->
+        options.gamemodes.forEach { (mode, positive) ->
             result =
                 result.filter { entity ->
                     entity is SandboxPlayer && ((entity.gameMode == mode) == positive)
                 }
         }
-        options.team?.let { (team, positive) ->
+        options.teams.forEach { (team, positive) ->
             result =
                 result.filter { entity ->
                     val actual = world.teamFor(entity)
@@ -97,13 +111,13 @@ object EntitySelectors {
                     matched == positive
                 }
         }
-        options.nbt?.let { (expected, positive) ->
+        options.nbt.forEach { (expected, positive) ->
             result =
                 result.filter { entity ->
-                    nbtContains(entity.fullNbt(location), expected) == positive
+                    matchesNbt(entity.fullNbt(context.predicateEngine?.profile ?: VersionProfiles.default, location), expected) == positive
                 }
         }
-        options.predicate?.let { (predicate, positive) ->
+        options.predicates.forEach { (predicate, positive) ->
             val engine =
                 context.predicateEngine
                     ?: throw SandboxException(
@@ -117,10 +131,9 @@ object EntitySelectors {
                 }
         }
         options.tags.forEach { (tag, positive) ->
-            result = result.filter { (tag in it.tags) == positive }
+            result = result.filter { (if (tag.isEmpty()) it.tags.isEmpty() else tag in it.tags) == positive }
         }
         if (options.scores.isNotEmpty()) {
-            options.scores.keys.forEach(world::ensureObjective)
             result =
                 result.filter { entity ->
                     options.scores.all { (objective, range) ->
@@ -144,10 +157,10 @@ object EntitySelectors {
                 }
         }
         options.xRotation?.let { range ->
-            result = result.filter { it.pitch in range }
+            result = result.filter { matchesRotation(it.pitch, range) }
         }
         options.yRotation?.let { range ->
-            result = result.filter { it.yaw in range }
+            result = result.filter { matchesRotation(it.yaw, range) }
         }
         options.distance?.let { distance ->
             val minSquared = distance.start * distance.start
@@ -162,20 +175,32 @@ object EntitySelectors {
                     z = origin.z + (options.dz ?: 0.0),
                 )
             val minX = minOf(origin.x, max.x)
-            val maxX = maxOf(origin.x, max.x)
+            val maxX = maxOf(origin.x, max.x) + 1.0
             val minY = minOf(origin.y, max.y)
-            val maxY = maxOf(origin.y, max.y)
+            val maxY = maxOf(origin.y, max.y) + 1.0
             val minZ = minOf(origin.z, max.z)
-            val maxZ = maxOf(origin.z, max.z)
+            val maxZ = maxOf(origin.z, max.z) + 1.0
             result =
                 result.filter { entity ->
-                    entity.position.x in minX..maxX &&
-                        entity.position.y in minY..maxY &&
-                        entity.position.z in minZ..maxZ
+                    val pos = entity.position
+                    val size = SpecialEntitySupport.selectionSize(entity)
+                    if (size == null) {
+                        // Entities with no modeled dimensions use their feet as the reference point.
+                        pos.x >= minX && pos.x < maxX && pos.y >= minY && pos.y < maxY && pos.z >= minZ && pos.z < maxZ
+                    } else {
+                        val radius = size.first / 2
+                        pos.x + radius > minX &&
+                            pos.x - radius < maxX &&
+                            pos.y + size.second > minY &&
+                            pos.y < maxY &&
+                            pos.z + radius > minZ &&
+                            pos.z - radius < maxZ
+                    }
                 }
         }
         val sort =
             options.sort ?: when (selector) {
+                "@r" -> "random"
                 "@p", "@n" -> "nearest"
                 else -> "arbitrary"
             }
@@ -186,13 +211,18 @@ object EntitySelectors {
                     result.sortedWith(
                         compareByDescending<SandboxEntity> { it.position.distanceSquaredTo(origin) }.thenBy { it.uuid },
                     )
-                "random" -> result.sortedWith(compareBy<SandboxEntity> { deterministicSelectorHash(it.uuid, origin) }.thenBy { it.uuid })
+                "random" ->
+                    result
+                        .toList()
+                        .let { candidates ->
+                            if (candidates.size < 2) candidates else candidates.shuffled(Random(world.seed + world.selectorDraw++))
+                        }.asSequence()
                 "arbitrary" -> result
                 else -> result
             }.toList()
         val defaultLimit =
             when (selector) {
-                "@p", "@n" -> 1
+                "@p", "@n", "@r" -> 1
                 else -> null
             }
         return (options.limit ?: defaultLimit)?.let { sorted.take(it) } ?: sorted
@@ -206,18 +236,20 @@ object EntitySelectors {
             token
                 .substringAfter("[", missingDelimiterValue = "")
                 .substringBeforeLast("]", missingDelimiterValue = "")
-        if (optionsText.isBlank()) return SelectorOptions()
+        if ("[" !in token) return SelectorOptions()
         if (!token.endsWith("]")) {
             throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Malformed selector options: $token", location = location)
         }
 
+        if (optionsText.isBlank()) return SelectorOptions()
+        val seen = mutableSetOf<String>()
         val tags = mutableListOf<Pair<String, Boolean>>()
-        var type: Pair<ResourceLocation, Boolean>? = null
-        var name: Pair<String, Boolean>? = null
-        var gamemode: Pair<String, Boolean>? = null
-        var team: Pair<String, Boolean>? = null
-        var nbt: Pair<JsonObject, Boolean>? = null
-        var predicate: Pair<ResourceLocation, Boolean>? = null
+        val types = mutableListOf<Pair<String, Boolean>>()
+        val names = mutableListOf<Pair<String, Boolean>>()
+        val gamemodes = mutableListOf<Pair<String, Boolean>>()
+        val teams = mutableListOf<Pair<String, Boolean>>()
+        val nbt = mutableListOf<Pair<JsonObject, Boolean>>()
+        val predicates = mutableListOf<Pair<ResourceLocation, Boolean>>()
         var scores: Map<String, SelectorScoreRange> = emptyMap()
         var advancements: Map<ResourceLocation, SelectorAdvancementExpectation> = emptyMap()
         var level: SelectorScoreRange? = null
@@ -234,8 +266,12 @@ object EntitySelectors {
         var dz: Double? = null
         splitSelectorOptions(optionsText, location).filter { it.isNotBlank() }.forEach { rawPart ->
             val part = rawPart.trim()
-            val key = part.substringBefore("=")
-            val value = part.substringAfter("=", missingDelimiterValue = "")
+            if ('=' !in part) throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Expected selector option key=value", location)
+            val key = part.substringBefore("=").trim()
+            val value = part.substringAfter("=").trim()
+            if (key !in setOf("tag", "nbt", "predicate", "type", "gamemode", "name", "team") && !seen.add(key)) {
+                throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Duplicate selector option '$key'", location)
+            }
             when (key) {
                 "tag" -> {
                     val positive = !value.startsWith("!")
@@ -243,27 +279,29 @@ object EntitySelectors {
                 }
                 "type" -> {
                     val positive = !value.startsWith("!")
-                    type = ResourceLocation.parse(value.removePrefix("!")) to positive
+                    types.addFilter(value.removePrefix("!"), positive, key, location)
                 }
                 "name" -> {
                     val positive = !value.startsWith("!")
-                    name = value.removePrefix("!") to positive
+                    val raw = value.removePrefix("!")
+                    val text = if (raw.startsWith('"') || raw.startsWith("\u0027")) JsonValues.parse(raw, location).asString else raw
+                    names.addFilter(text, positive, key, location)
                 }
                 "gamemode" -> {
                     val positive = !value.startsWith("!")
-                    gamemode = normalizeSelectorGameMode(value.removePrefix("!"), location) to positive
+                    gamemodes.addFilter(normalizeSelectorGameMode(value.removePrefix("!"), location), positive, key, location)
                 }
                 "team" -> {
                     val positive = !value.startsWith("!")
-                    team = value.removePrefix("!") to positive
+                    teams.addFilter(value.removePrefix("!"), positive, key, location)
                 }
                 "nbt" -> {
                     val positive = !value.startsWith("!")
-                    nbt = parseSelectorNbt(value.removePrefix("!"), location) to positive
+                    nbt += parseSelectorNbt(value.removePrefix("!"), location) to positive
                 }
                 "predicate" -> {
                     val positive = !value.startsWith("!")
-                    predicate = ResourceLocation.parse(value.removePrefix("!")) to positive
+                    predicates += ResourceLocation.parse(value.removePrefix("!")) to positive
                 }
                 "scores" -> scores = parseSelectorScores(value, location)
                 "advancements" -> advancements = parseSelectorAdvancements(value, location)
@@ -271,7 +309,7 @@ object EntitySelectors {
                 "x_rotation" -> xRotation = parseSignedSelectorRange(value, "x_rotation", location)
                 "y_rotation" -> yRotation = parseSignedSelectorRange(value, "y_rotation", location)
                 "limit" ->
-                    limit = value.toIntOrNull()
+                    limit = value.toIntOrNull()?.takeIf { it >= 1 }
                         ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Invalid selector limit: $value", location = location)
                 "sort" -> {
                     if (value !in setOf("nearest", "furthest", "random", "arbitrary")) {
@@ -291,12 +329,12 @@ object EntitySelectors {
         }
         return SelectorOptions(
             tags = tags,
-            type = type,
-            name = name,
-            gamemode = gamemode,
-            team = team,
+            types = types,
+            names = names,
+            gamemodes = gamemodes,
+            teams = teams,
             nbt = nbt,
-            predicate = predicate,
+            predicates = predicates,
             scores = scores,
             advancements = advancements,
             level = level,
@@ -360,11 +398,11 @@ object EntitySelectors {
         value: String,
         location: SourceLocation?,
     ): String =
-        when (value.lowercase()) {
-            "survival", "s", "0" -> "survival"
-            "creative", "c", "1" -> "creative"
-            "adventure", "a", "2" -> "adventure"
-            "spectator", "sp", "3" -> "spectator"
+        when (value) {
+            "survival" -> "survival"
+            "creative" -> "creative"
+            "adventure" -> "adventure"
+            "spectator" -> "spectator"
             else -> throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Invalid selector gamemode: $value", location = location)
         }
 
@@ -490,8 +528,23 @@ object EntitySelectors {
         label: String,
         location: SourceLocation?,
     ): Double =
-        value.toDoubleOrNull()
+        value.toDoubleOrNull()?.takeIf { it.isFinite() }
             ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Invalid selector $label: $value", location = location)
+
+    private fun matchesRotation(value: Double, range: ClosedFloatingPointRange<Double>): Boolean {
+        fun wrapped(angle: Double): Double {
+            val normalized = angle % 360.0
+            return when {
+                normalized >= 180.0 -> normalized - 360.0
+                normalized < -180.0 -> normalized + 360.0
+                else -> normalized
+            }
+        }
+        val angle = wrapped(value)
+        val min = if (range.start.isFinite()) wrapped(range.start) else 0.0
+        val max = if (range.endInclusive.isFinite()) wrapped(range.endInclusive) else wrapped(359.0)
+        return if (min <= max) angle in min..max else angle >= min || angle <= max
+    }
 
     private fun parseSignedSelectorRange(
         value: String,
@@ -506,9 +559,7 @@ object EntitySelectors {
         val endText = value.substringAfter("..")
         val start = if (startText.isBlank()) Double.NEGATIVE_INFINITY else parseSelectorDouble(startText, "$label start", location)
         val end = if (endText.isBlank()) Double.POSITIVE_INFINITY else parseSelectorDouble(endText, "$label end", location)
-        if (start > end) {
-            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Invalid selector $label range: $value", location = location)
-        }
+        if (startText.isEmpty() && endText.isEmpty()) throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Empty selector $label range", location)
         return start..end
     }
 
@@ -534,10 +585,12 @@ object EntitySelectors {
         return start..end
     }
 
-    private fun deterministicSelectorHash(
-        uuid: String,
-        origin: Position,
-    ): Int = "$uuid@${origin.x},${origin.y},${origin.z}".hashCode()
+    private fun <T> MutableList<Pair<T, Boolean>>.addFilter(value: T, positive: Boolean, key: String, location: SourceLocation?) {
+        if (isNotEmpty() && (positive || any { it.second })) {
+            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Incompatible repeated selector option '$key'", location)
+        }
+        add(value to positive)
+    }
 
     private fun selectorPredicateContext(
         world: SandboxWorld,
@@ -589,38 +642,3 @@ private fun SandboxPlayer.matchesAdvancement(
         (progress?.criteria?.get(criterion) == true) == expected
     }
 }
-
-private fun nbtContains(
-    actual: JsonObject,
-    expected: JsonObject,
-): Boolean =
-    expected.entrySet().all { (key, expectedValue) ->
-        val actualValue = actual.get(key) ?: return@all false
-        nbtElementMatches(actualValue, expectedValue)
-    }
-
-private fun nbtElementMatches(
-    actual: JsonElement,
-    expected: JsonElement,
-): Boolean =
-    when {
-        expected.isJsonObject -> actual.isJsonObject && nbtContains(actual.asJsonObject, expected.asJsonObject)
-        expected.isJsonArray ->
-            actual.isJsonArray &&
-                actual.asJsonArray.size() == expected.asJsonArray.size() &&
-                actual.asJsonArray.zip(expected.asJsonArray).all { (actualElement, expectedElement) ->
-                    nbtElementMatches(actualElement, expectedElement)
-                }
-        expected.isJsonPrimitive && actual.isJsonPrimitive -> nbtPrimitiveMatches(actual.asJsonPrimitive, expected.asJsonPrimitive)
-        else -> actual == expected
-    }
-
-private fun nbtPrimitiveMatches(
-    actual: JsonPrimitive,
-    expected: JsonPrimitive,
-): Boolean =
-    when {
-        actual.isNumber && expected.isNumber -> actual.asDouble == expected.asDouble
-        actual.isBoolean && expected.isBoolean -> actual.asBoolean == expected.asBoolean
-        else -> actual.asString == expected.asString
-    }

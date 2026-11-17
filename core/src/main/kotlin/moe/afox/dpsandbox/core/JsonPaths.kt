@@ -142,82 +142,63 @@ object JsonPaths {
         path: String?,
         value: JsonElement,
     ) {
-        val current = get(root, path)
-        if (path.isNullOrBlank()) {
-            mergeInto(root, value)
-        } else if (current != null && current.isJsonObject) {
-            mergeInto(current.asJsonObject, value)
-        } else {
-            set(root, path, value)
+        mergeValues(root, path, listOf(value))
+    }
+
+    internal fun mergeValues(root: JsonObject, path: String?, values: List<JsonElement>): Int {
+        val merged = JsonObject()
+        values.forEach {
+            if (!it.isJsonObject) throw CommandFailure("Data merge source must be a compound")
+            mergeInto(merged, it)
+        }
+        val destinations = NbtPath.parse(path.orEmpty()).getOrCreate(root, ::JsonObject)
+        if (destinations.any { !it.isJsonObject }) throw CommandFailure("Data merge target must be a compound")
+        return destinations.count {
+            val before = it.deepCopy()
+            mergeInto(it.asJsonObject, merged)
+            it != before
         }
     }
 
-    fun append(
-        root: JsonObject,
-        path: String,
-        value: JsonElement,
-        location: SourceLocation? = null,
-    ) {
-        val array = requireArray(root, path, location)
-        array.add(value)
+    internal fun setCount(root: JsonObject, path: String, value: JsonElement): Int = NbtPath.parse(path).set(root, value)
+
+    fun append(root: JsonObject, path: String, value: JsonElement, location: SourceLocation? = null) {
+        insertValues(root, path, -1, listOf(value), location)
     }
 
-    fun prepend(
-        root: JsonObject,
-        path: String,
-        value: JsonElement,
-        location: SourceLocation? = null,
-    ) {
-        val array = requireArray(root, path, location)
-        val replacement = JsonArray()
-        replacement.add(value.deepCopy())
-        array.forEach { replacement.add(it.deepCopy()) }
-        set(root, path, replacement)
+    fun prepend(root: JsonObject, path: String, value: JsonElement, location: SourceLocation? = null) {
+        insertValues(root, path, 0, listOf(value), location)
     }
 
-    fun insert(
-        root: JsonObject,
-        path: String,
-        index: Int,
-        value: JsonElement,
-        location: SourceLocation? = null,
-    ) {
-        val array = requireArray(root, path, location)
-        val targetIndex = index.coerceIn(0, array.size())
-        val replacement = JsonArray()
-        array.forEachIndexed { currentIndex, element ->
-            if (currentIndex == targetIndex) replacement.add(value.deepCopy())
-            replacement.add(element.deepCopy())
+    fun insert(root: JsonObject, path: String, index: Int, value: JsonElement, location: SourceLocation? = null) {
+        insertValues(root, path, index, listOf(value), location)
+    }
+
+    internal fun insertValues(root: JsonObject, path: String, index: Int, values: List<JsonElement>, location: SourceLocation?): Int {
+        val lists =
+            NbtPath.parse(path).getOrCreate(root, ::JsonArray).map {
+                if (!it.isJsonArray) throw CommandFailure("Data path '$path' is not a list", location)
+                it.asJsonArray
+            }
+        for (list in lists) {
+            val offset = if (index < 0) list.size() + index + 1 else index
+            if (offset !in 0..list.size()) throw CommandFailure("Invalid list insertion index $index", location)
+            list.asList().addAll(offset, values.map { it.deepCopy() })
         }
-        if (targetIndex == array.size()) replacement.add(value.deepCopy())
-        set(root, path, replacement)
+        return lists.size
     }
 
     fun remove(
         root: JsonObject,
         path: String,
-    ): Boolean = NbtPath.parse(path).remove(root)
+    ): Boolean = removeCount(root, path) > 0
+
+    internal fun removeCount(root: JsonObject, path: String): Int = NbtPath.parse(path).remove(root)
 
     fun exists(
         root: JsonObject,
         path: String,
     ): Boolean = get(root, path) != null && get(root, path) !is JsonNull
-
-    private fun requireArray(
-        root: JsonObject,
-        path: String,
-        location: SourceLocation?,
-    ): JsonArray {
-        val value = get(root, path)
-        if (value != null && value.isJsonArray) return value.asJsonArray
-        if (value != null && value !is JsonNull) {
-            throw SandboxException(DiagnosticCode.COMMAND_ERROR, "Data path '$path' is not a list", location)
-        }
-        val array = JsonArray()
-        set(root, path, array)
-        return get(root, path)?.asJsonArray
-            ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Failed to create array at path '$path'", location)
-    }
 
     private fun mergeInto(
         target: JsonObject,
@@ -256,154 +237,84 @@ private sealed interface PathPart {
 
 private data class NbtPath(
     val parts: List<PathPart>,
+    val rootFilter: JsonObject? = null,
 ) {
     fun get(root: JsonElement): JsonElement? = getAll(root).firstOrNull()
 
-    fun getAll(root: JsonElement): List<JsonElement> =
-        parts.fold(listOf(root)) { current, part ->
-            current.flatMap { element ->
-                when (part) {
-                    is PathPart.Field ->
-                        if (element.isJsonObject) listOfNotNull(element.asJsonObject.get(part.name)?.takeIf { part.matches(it) }) else emptyList()
-                    is PathPart.Index -> {
-                        if (!element.isJsonArray) {
-                            emptyList()
-                        } else {
-                            val array = element.asJsonArray
-                            existingIndex(part.index, array.size())?.let { listOf(array[it]) } ?: emptyList()
-                        }
-                    }
-                    is PathPart.Match ->
-                        if (element.isJsonArray) {
-                            element.asJsonArray.filter { it.isJsonObject && objectMatches(it.asJsonObject, part.expected) }
-                        } else {
-                            emptyList()
-                        }
-                    PathPart.All -> if (element.isJsonArray) element.asJsonArray.toList() else emptyList()
-                }
-            }
-        }
+    fun getAll(root: JsonElement): List<JsonElement> = walk(root, parts.size, null)
 
-    fun set(
-        root: JsonObject,
-        value: JsonElement,
-    ) {
-        if (parts.isEmpty()) {
-            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Path cannot be empty for set")
+    fun getOrCreate(root: JsonElement, factory: () -> JsonElement): List<JsonElement> = walk(root, parts.size, factory)
+
+    private fun walk(root: JsonElement, count: Int, factory: (() -> JsonElement)?): List<JsonElement> {
+        if (rootFilter != null && !matchesNbt(root, rootFilter)) return emptyList()
+        var current = listOf(root)
+        for (index in 0 until count) {
+            val part = parts[index]
+            val create: (() -> JsonElement)? =
+                if (factory == null) {
+                    null
+                } else if (index + 1 == count) {
+                    factory
+                } else {
+                    ({ pathContainer(parts[index + 1]) })
+                }
+            current = current.flatMap { children(it, part, create) }
+            if (create != null && current.isEmpty()) throw CommandFailure("No element matches path segment $part")
         }
-        setAt(root, 0, value)
+        return current
     }
 
-    private fun setAt(
-        current: JsonElement,
-        partIndex: Int,
-        value: JsonElement,
-    ) {
-        val part = parts[partIndex]
-        val last = partIndex == parts.lastIndex
-        if (last) {
-            when (part) {
-                is PathPart.Field -> {
-                    if (!current.isJsonObject) {
-                        throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Path target '${part.name}' is not an object")
-                    }
-                    val previous = current.asJsonObject.get(part.name)
-                    if (previous != null && !part.matches(previous)) {
-                        throw SandboxException(DiagnosticCode.COMMAND_ERROR, "Path compound matcher did not match '${part.name}'")
-                    }
-                    current.asJsonObject.add(part.name, value.deepCopy())
+    private fun children(parent: JsonElement, part: PathPart, create: (() -> JsonElement)?): List<JsonElement> {
+        if (part is PathPart.Field) {
+            if (!parent.isJsonObject) return emptyList()
+            val obj = parent.asJsonObject
+            val value =
+                obj.get(part.name) ?: if (create != null) {
+                    (part.expected?.deepCopy() ?: create()).also { obj.add(part.name, it) }
+                } else {
+                    return emptyList()
                 }
-                is PathPart.Index -> {
-                    if (!current.isJsonArray) {
-                        throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Path target [${part.index}] is not an array")
-                    }
-                    val array = current.asJsonArray
-                    val targetIndex =
-                        if (part.index < 0) {
-                            existingIndex(part.index, array.size())
-                                ?: throw SandboxException(
-                                    DiagnosticCode.COMMAND_ERROR,
-                                    "Path index [${part.index}] did not match any array entry",
-                                )
-                        } else {
-                            while (array.size() <= part.index) array.add(JsonNull.INSTANCE)
-                            part.index
-                        }
-                    array.set(targetIndex, value.deepCopy())
-                }
-                is PathPart.Match -> {
-                    if (!current.isJsonArray) {
-                        throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Path object matcher target is not an array")
-                    }
-                    val array = current.asJsonArray
-                    val matches =
-                        (0 until array.size()).filter { index ->
-                            array[index].isJsonObject && objectMatches(array[index].asJsonObject, part.expected)
-                        }
-                    if (matches.isEmpty()) {
-                        throw SandboxException(DiagnosticCode.COMMAND_ERROR, "Path object matcher did not match any array entry")
-                    }
-                    matches.forEach { array.set(it, value.deepCopy()) }
-                }
-                PathPart.All -> {
-                    if (!current.isJsonArray) {
-                        throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Path list matcher target is not an array")
-                    }
-                    val array = current.asJsonArray
-                    (0 until array.size()).forEach { array.set(it, value.deepCopy()) }
-                }
-            }
-            return
+            return listOfNotNull(value.takeIf { part.matches(it) })
         }
-
-        val next = parts[partIndex + 1]
-        when (part) {
-            is PathPart.Field -> {
-                if (!current.isJsonObject) {
-                    throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Path segment '${part.name}' is not an object")
-                }
-                val objectCurrent = current.asJsonObject
-                val child =
-                    objectCurrent.get(part.name)?.takeUnless { it is JsonNull }
-                        ?: (part.expected?.deepCopy() ?: pathContainer(next)).also { objectCurrent.add(part.name, it) }
-                if (!part.matches(child)) {
-                    throw SandboxException(DiagnosticCode.COMMAND_ERROR, "Path compound matcher did not match '${part.name}'")
-                }
-                setAt(child, partIndex + 1, value)
-            }
-            is PathPart.Index -> {
-                if (!current.isJsonArray) {
-                    throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Path segment [${part.index}] is not an array")
-                }
-                val array = current.asJsonArray
-                val targetIndex =
-                    if (part.index < 0) {
-                        existingIndex(part.index, array.size())
-                            ?: throw SandboxException(
-                                DiagnosticCode.COMMAND_ERROR,
-                                "Path index [${part.index}] did not match any array entry",
-                            )
-                    } else {
-                        while (array.size() <= part.index) array.add(pathContainer(next))
-                        part.index
-                    }
-                setAt(array[targetIndex], partIndex + 1, value)
-            }
+        if (!parent.isJsonArray) return emptyList()
+        val list = parent.asJsonArray
+        return when (part) {
+            is PathPart.Index -> listOfNotNull(existingIndex(part.index, list.size())?.let { list[it] })
             is PathPart.Match -> {
-                if (!current.isJsonArray) {
-                    throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Path object matcher is not applied to an array")
-                }
-                val matches = current.asJsonArray.filter { it.isJsonObject && objectMatches(it.asJsonObject, part.expected) }
-                if (matches.isEmpty()) {
-                    throw SandboxException(DiagnosticCode.COMMAND_ERROR, "Path object matcher did not match any array entry")
-                }
-                matches.forEach { setAt(it, partIndex + 1, value) }
+                val matches = list.filter { matchesNbt(it, part.expected) }
+                if (matches.isEmpty() && create != null) listOf(part.expected.deepCopy().also(list::add)) else matches
             }
-            PathPart.All -> {
-                if (!current.isJsonArray) {
-                    throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Path list matcher is not applied to an array")
+            PathPart.All -> if (list.isEmpty && create != null) listOf(create().also(list::add)) else list.toList()
+            is PathPart.Field -> error("Field handled above")
+        }
+    }
+
+    fun set(root: JsonObject, value: JsonElement): Int {
+        val last = parts.lastOrNull() ?: return 0
+        val parents = walk(root, parts.lastIndex) { pathContainer(last) }
+        return parents.sumOf { parent ->
+            if (last is PathPart.Field) {
+                if (!parent.isJsonObject) return@sumOf 0
+                val old = parent.asJsonObject.get(last.name)
+                if (old == value || (old != null && !last.matches(old))) return@sumOf 0
+                parent.asJsonObject.add(last.name, value.deepCopy())
+                return@sumOf 1
+            }
+            if (!parent.isJsonArray) return@sumOf 0
+            val list = parent.asJsonArray
+            val indices =
+                when (last) {
+                    is PathPart.Index -> listOfNotNull(existingIndex(last.index, list.size()))
+                    is PathPart.Match -> (0 until list.size()).filter { matchesNbt(list[it], last.expected) }
+                    else -> (0 until list.size()).toList()
                 }
-                current.asJsonArray.forEach { setAt(it, partIndex + 1, value) }
+            if (indices.isEmpty() && last !is PathPart.Index) {
+                list.add(value.deepCopy())
+                1
+            } else {
+                indices.count { i ->
+                    (list[i] != value).also { changed -> if (changed) list.set(i, value.deepCopy()) }
+                }
             }
         }
     }
@@ -411,105 +322,35 @@ private data class NbtPath(
     private fun pathContainer(next: PathPart): JsonElement =
         if (next is PathPart.Index || next is PathPart.Match || next is PathPart.All) JsonArray() else JsonObject()
 
-    fun remove(root: JsonObject): Boolean {
-        if (parts.isEmpty()) return false
-        return removeAt(root, 0)
-    }
-
-    private fun removeAt(
-        current: JsonElement,
-        partIndex: Int,
-    ): Boolean {
-        val part = parts[partIndex]
-        if (partIndex == parts.lastIndex) {
-            return when (part) {
-                is PathPart.Field ->
-                    current.isJsonObject &&
-                        current.asJsonObject.get(part.name)?.let {
-                            part.matches(it) && current.asJsonObject.remove(part.name) != null
-                        } == true
+    fun remove(root: JsonObject): Int {
+        val last = parts.lastOrNull() ?: return 0
+        return walk(root, parts.lastIndex, null).sumOf { parent ->
+            when (last) {
+                is PathPart.Field -> {
+                    if (!parent.isJsonObject) return@sumOf 0
+                    val value = parent.asJsonObject.get(last.name) ?: return@sumOf 0
+                    if (!last.matches(value)) return@sumOf 0
+                    parent.asJsonObject.remove(last.name)
+                    1
+                }
                 is PathPart.Index -> {
-                    if (!current.isJsonArray) return false
-                    val array = current.asJsonArray
-                    val targetIndex = existingIndex(part.index, array.size()) ?: return false
-                    array.remove(array[targetIndex])
+                    if (!parent.isJsonArray) return@sumOf 0
+                    val index = existingIndex(last.index, parent.asJsonArray.size()) ?: return@sumOf 0
+                    parent.asJsonArray.remove(index)
+                    1
                 }
-                is PathPart.Match -> {
-                    if (!current.isJsonArray) return false
-                    val array = current.asJsonArray
-                    val matches = array.filter { it.isJsonObject && objectMatches(it.asJsonObject, part.expected) }
-                    matches.forEach { array.remove(it) }
-                    matches.isNotEmpty()
-                }
-                PathPart.All -> {
-                    if (!current.isJsonArray) return false
-                    val array = current.asJsonArray
-                    val changed = array.size() > 0
-                    while (array.size() > 0) array.remove(0)
-                    changed
+                is PathPart.Match, PathPart.All -> {
+                    if (!parent.isJsonArray) return@sumOf 0
+                    val list = parent.asJsonArray.asList()
+                    val size = list.size
+                    if (last is PathPart.Match) list.removeIf { matchesNbt(it, last.expected) } else list.clear()
+                    size - list.size
                 }
             }
         }
-        val children =
-            when (part) {
-                is PathPart.Field ->
-                    if (current.isJsonObject) listOfNotNull(current.asJsonObject.get(part.name)?.takeIf { part.matches(it) }) else emptyList()
-                is PathPart.Index -> {
-                    if (!current.isJsonArray) {
-                        emptyList()
-                    } else {
-                        val array = current.asJsonArray
-                        existingIndex(part.index, array.size())?.let { listOf(array[it]) } ?: emptyList()
-                    }
-                }
-                is PathPart.Match ->
-                    if (current.isJsonArray) {
-                        current.asJsonArray.filter { it.isJsonObject && objectMatches(it.asJsonObject, part.expected) }
-                    } else {
-                        emptyList()
-                    }
-                PathPart.All -> if (current.isJsonArray) current.asJsonArray.toList() else emptyList()
-            }
-        return children.fold(false) { changed, child -> removeAt(child, partIndex + 1) || changed }
     }
 
-    private fun PathPart.Field.matches(value: JsonElement): Boolean =
-        expected == null || value.isJsonObject && objectMatches(value.asJsonObject, expected)
-
-    private fun objectMatches(
-        actual: JsonObject,
-        expected: JsonObject,
-    ): Boolean =
-        expected.entrySet().all { (key, expectedValue) ->
-            val actualValue = actual.get(key) ?: return@all false
-            elementMatches(actualValue, expectedValue)
-        }
-
-    private fun elementMatches(
-        actual: JsonElement,
-        expected: JsonElement,
-    ): Boolean =
-        when {
-            expected.isJsonObject -> actual.isJsonObject && objectMatches(actual.asJsonObject, expected.asJsonObject)
-            expected.isJsonArray ->
-                actual.isJsonArray &&
-                    actual.asJsonArray.size() == expected.asJsonArray.size() &&
-                    actual.asJsonArray.zip(expected.asJsonArray).all { (actualElement, expectedElement) ->
-                        elementMatches(actualElement, expectedElement)
-                    }
-            expected.isJsonPrimitive && actual.isJsonPrimitive -> primitiveMatches(actual.asJsonPrimitive, expected.asJsonPrimitive)
-            else -> actual == expected
-        }
-
-    private fun primitiveMatches(
-        actual: JsonPrimitive,
-        expected: JsonPrimitive,
-    ): Boolean =
-        when {
-            actual.isNumber && expected.isNumber -> actual.asDouble == expected.asDouble
-            actual.isBoolean && expected.isBoolean -> actual.asBoolean == expected.asBoolean
-            else -> actual.asString == expected.asString
-        }
+    private fun PathPart.Field.matches(value: JsonElement): Boolean = expected == null || matchesNbt(value, expected)
 
     private fun existingIndex(
         index: Int,
@@ -524,6 +365,13 @@ private data class NbtPath(
             if (path.isBlank()) return NbtPath(emptyList())
             val parts = mutableListOf<PathPart>()
             var index = 0
+            var rootFilter: JsonObject? = null
+            if (path.startsWith("{")) {
+                val end = findClosingCompound(path, 0)
+                if (end < 0) throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Unclosed root matcher in '$path'")
+                rootFilter = JsonValues.parse(path.substring(0, end + 1)).asJsonObject
+                index = end + 1
+            }
             val name = StringBuilder()
 
             fun flushName() {
@@ -598,7 +446,7 @@ private data class NbtPath(
                 }
             }
             flushName()
-            return NbtPath(parts)
+            return NbtPath(parts, rootFilter)
         }
 
         private fun findClosingCompound(path: String, start: Int): Int {

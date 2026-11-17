@@ -932,7 +932,10 @@ class DatapackSandbox(
                 "defaultgamemode" -> executeDefaultGameMode(tokens, location)
                 "difficulty" -> executeDifficulty(tokens, location)
                 "execute" -> return executeExecute(command, tokens, location, context, callbacks)
-                "data" -> success = executeData(command, tokens, location, context)
+                "data" -> {
+                    numericResult = executeData(command, tokens, location, context)
+                    success = numericResult != null
+                }
                 "compute" -> executeCompute(tokens, location, context)
                 "effect" -> executeEffect(tokens, location, context)
                 "enchant" -> executeEnchant(tokens, location, context)
@@ -2954,19 +2957,6 @@ class DatapackSandbox(
             .asReversed()
             .firstNotNullOfOrNull { output ->
                 if (output.source !== world.currentCommandSource || output.channel == "chat") return@firstNotNullOfOrNull null
-                val payload = output.payload
-                if (output.command == "get" && payload != null) {
-                    when {
-                        payload.isJsonArray -> return@firstNotNullOfOrNull payload.asJsonArray.size()
-                        payload.isJsonObject -> return@firstNotNullOfOrNull payload.asJsonObject.size()
-                        payload.isJsonPrimitive && payload.asJsonPrimitive.isString ->
-                            return@firstNotNullOfOrNull payload.asString.length
-                        payload.isJsonPrimitive && payload.asJsonPrimitive.isBoolean ->
-                            return@firstNotNullOfOrNull if (payload.asBoolean) 1 else 0
-                        payload.isJsonPrimitive && payload.asJsonPrimitive.isNumber ->
-                            return@firstNotNullOfOrNull floor(payload.asDouble).toInt()
-                    }
-                }
                 output.text
                     .trim()
                     .toDoubleOrNull()

@@ -469,21 +469,25 @@ internal object SpecialEntitySupport {
         return root
     }
 
+    /** Width and height used by the sandbox's modeled entity hitboxes. */
+    internal fun selectionSize(entity: SandboxEntity): Pair<Double, Double>? =
+        when {
+            entity.type == armorStand ->
+                when {
+                    entity.nbt.booleanValue("Marker", false) -> 0.0 to 0.0
+                    entity.nbt.booleanValue("Small", false) -> 0.25 to 0.9875
+                    else -> 0.5 to 1.975
+                }
+            entity.type == interaction -> entity.nbt.doubleValue("width", 1.0) to entity.nbt.doubleValue("height", 1.0)
+            entity.type == marker || entity.type in displayTypes -> 0.0 to 0.0
+            entity is SandboxPlayer -> 0.6 to 1.8
+            else -> null
+        }
+
     private fun armorStandSnapshot(entity: SandboxEntity): JsonObject {
         val markerMode = entity.nbt.booleanValue("Marker", false)
         val small = entity.nbt.booleanValue("Small", false)
-        val width =
-            when {
-                markerMode -> 0.0
-                small -> 0.25
-                else -> 0.5
-            }
-        val height =
-            when {
-                markerMode -> 0.0
-                small -> 0.9875
-                else -> 1.975
-            }
+        val (width, height) = checkNotNull(selectionSize(entity))
         return JsonObject().also { root ->
             root.add("pose", entity.nbt.getAsJsonObject("Pose")?.deepCopy() ?: JsonObject())
             root.addProperty("marker", markerMode)
@@ -496,8 +500,7 @@ internal object SpecialEntitySupport {
     }
 
     private fun interactionSnapshot(entity: SandboxEntity): JsonObject {
-        val width = entity.nbt.doubleValue("width", 1.0)
-        val height = entity.nbt.doubleValue("height", 1.0)
+        val (width, height) = checkNotNull(selectionSize(entity))
         return JsonObject().also { root ->
             root.addProperty("response", entity.nbt.booleanValue("response", false))
             entity.nbt.get("attack")?.let { root.add("lastAttack", it.deepCopy()) }

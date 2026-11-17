@@ -895,6 +895,7 @@ class SandboxWorld {
     var difficulty: String = "normal"
     var defaultGameMode: String = "survival"
     var seed: Long = 0
+    internal var selectorDraw: Long = 0
     var worldSpawn: SpawnPoint = SpawnPoint()
     var tickRate: Double = 20.0
     var tickFrozen: Boolean = false

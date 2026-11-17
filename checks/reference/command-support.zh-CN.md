@@ -154,7 +154,7 @@ JSON text component 支持 `text`、`score`、`selector`、`translate`、`keybin
 
 ## 选择器（Selector）
 
-已实现 selector：`@s`、`@a`、`@p`、`@e`、`@n`。
+已实现 `@s`、`@a`、`@p`、`@r`、`@e`、`@n` 选择器。
 
 已实现选项：`type`、`tag`、`name`、`gamemode`、`team`、`nbt`、`predicate`、`scores`、`advancements`、`level`、`x_rotation`、`y_rotation`、`limit`、`sort`、`distance`、`x`、`y`、`z`、`dx`、`dy`、`dz`。
 
@@ -162,8 +162,8 @@ JSON text component 支持 `text`、`score`、`selector`、`translate`、`keybin
 - advancement 过滤按玩家当前进度支持整体完成或 criterion 布尔匹配；
 - NBT 过滤使用包含式对象匹配和数值等值比较；
 - predicate 过滤会把候选实体作为 `this` 上下文，并用候选实体的位置/维度交给已加载数据包 predicate 引擎评估，支持 `!` 取反；
-- 旋转过滤支持带符号数值范围；
-- `sort=random` 使用基于原点的确定性顺序，便于重复测试。
+- 旋转范围可以跨越 ±180°。空间过滤在执行维度内生效。选区与站立玩家、盔甲架、交互实体、标记和展示实体按碰撞箱求交，其他实体按位置判断。
+- 随机选择每次抽取会推进随机序列，恢复世界检查点后可以重放。
 
 未支持的 selector 选项会按当前 unsupported 策略产生诊断或 warning。
 

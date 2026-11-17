@@ -75,8 +75,20 @@ class MissingPredicateContext(
  */
 class PredicateEngine(
     private val datapack: Datapack,
-    private val profile: VersionProfile = VersionProfiles.default,
+    internal val profile: VersionProfile = VersionProfiles.default,
 ) {
+    internal fun entityTypeInTag(type: ResourceLocation, id: ResourceLocation, seen: MutableSet<ResourceLocation> = mutableSetOf()): Boolean {
+        if (!seen.add(id)) return false
+        val tag = datapack.tags[TagKey("entity_type", id)] ?: datapack.tags[TagKey("entity_types", id)] ?: return false
+        return tag.values.any {
+            if (it.id.startsWith('#')) {
+                entityTypeInTag(type, ResourceLocation.parse(it.id.substring(1)), seen)
+            } else {
+                ResourceLocation.parse(it.id) == type
+            }
+        }
+    }
+
     /**
      * Evaluates a loaded predicate resource by id.
      *
@@ -387,11 +399,15 @@ class PredicateEngine(
     ): Boolean {
         val actual = requireContext(entity, "Entity predicate requires an entity context")
         predicate.string("type")?.let {
-            if (ResourceLocation.parse(it) != actual.type) return false
+            if (it.startsWith('#')) {
+                if (!entityTypeInTag(actual.type, ResourceLocation.parse(it.substring(1)))) return false
+            } else if (ResourceLocation.parse(it) != actual.type) {
+                return false
+            }
         }
         predicate.get("nbt")?.let {
             val expected = if (it.isJsonPrimitive) JsonValues.parse(it.asString) else it
-            if (expected.isJsonObject && !containsAll(actual.fullNbt(profile), expected.asJsonObject)) return false
+            if (expected.isJsonObject && !matchesNbt(actual.fullNbt(profile), expected)) return false
         }
         predicate.getAsJsonObject("location")?.let {
             if (!testLocation(it, null, context.copy(origin = actual.position))) return false
@@ -551,7 +567,7 @@ class PredicateEngine(
         predicate.get("count")?.let { if (!testRange(item.count.toLong(), it)) return false }
         predicate.get("nbt")?.let {
             val expected = if (it.isJsonPrimitive) JsonValues.parse(it.asString) else it
-            if (expected.isJsonObject && !containsAll(item.nbt, expected.asJsonObject)) return false
+            if (expected.isJsonObject && !matchesNbt(item.nbt, expected)) return false
         }
         predicate.getAsJsonObject("components")?.let {
             if (!containsAll(item.components, it)) return false
@@ -632,7 +648,7 @@ class PredicateEngine(
         predicate.get("nbt")?.let {
             val actual = block ?: return false
             val expected = if (it.isJsonPrimitive) JsonValues.parse(it.asString) else it
-            if (expected.isJsonObject && !containsAll(actual.fullNbt(pos, profile), expected.asJsonObject)) return false
+            if (expected.isJsonObject && !matchesNbt(actual.fullNbt(pos, profile), expected)) return false
         }
         return true
     }

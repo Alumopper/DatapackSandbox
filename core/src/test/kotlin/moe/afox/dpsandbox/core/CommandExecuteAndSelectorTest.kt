@@ -313,7 +313,7 @@ class CommandExecuteAndSelectorTest {
 
         val invalidRotationRange =
             assertFailsWith<SandboxException> {
-                sandbox.executeCommand("""execute if entity @e[x_rotation=10..-10] run say invalid""")
+                sandbox.executeCommand("""execute if entity @e[x_rotation=..] run say invalid""")
             }
         assertEquals(DiagnosticCode.INPUT_FORMAT, invalidRotationRange.code)
     }
