@@ -263,6 +263,17 @@ final class moe.afox.dpsandbox.core.ChunkPos$compareTo$2 extends kotlin.jvm.inte
   public static final moe.afox.dpsandbox.core.ChunkPos$compareTo$2 INSTANCE;
   public java.lang.Object get(java.lang.Object);
 }
+public final class moe.afox.dpsandbox.core.CommandCallbacks {
+  public moe.afox.dpsandbox.core.CommandCallbacks(java.util.List<? extends kotlin.jvm.functions.Function2<? super java.lang.Boolean, ? super java.lang.Integer, kotlin.Unit>>, kotlin.jvm.functions.Function2<? super java.lang.Boolean, ? super java.lang.Integer, kotlin.Unit>);
+  public moe.afox.dpsandbox.core.CommandCallbacks(java.util.List, kotlin.jvm.functions.Function2, int, kotlin.jvm.internal.DefaultConstructorMarker);
+  public final java.util.List<kotlin.jvm.functions.Function2<java.lang.Boolean, java.lang.Integer, kotlin.Unit>> getStores();
+  public final kotlin.jvm.functions.Function2<java.lang.Boolean, java.lang.Integer, kotlin.Unit> getOnReturn();
+  public final void complete(boolean, java.lang.Integer);
+  public moe.afox.dpsandbox.core.CommandCallbacks();
+}
+public final class moe.afox.dpsandbox.core.CommandCallbacksKt {
+  public static final java.lang.Void executeReturn(moe.afox.dpsandbox.core.DatapackSandbox, java.lang.String, java.util.List<moe.afox.dpsandbox.core.CommandToken>, moe.afox.dpsandbox.core.SourceLocation, moe.afox.dpsandbox.core.ExecutionContext, moe.afox.dpsandbox.core.CommandCallbacks);
+}
 public final class moe.afox.dpsandbox.core.CommandCheckResult {
   public moe.afox.dpsandbox.core.CommandCheckResult(boolean, int, int, int, moe.afox.dpsandbox.core.DiagnosticCode, java.lang.String);
   public moe.afox.dpsandbox.core.CommandCheckResult(boolean, int, int, int, moe.afox.dpsandbox.core.DiagnosticCode, java.lang.String, int, kotlin.jvm.internal.DefaultConstructorMarker);
@@ -283,6 +294,10 @@ public final class moe.afox.dpsandbox.core.CommandCheckResult {
   public java.lang.String toString();
   public int hashCode();
   public boolean equals(java.lang.Object);
+}
+public final class moe.afox.dpsandbox.core.CommandFailure extends moe.afox.dpsandbox.core.SandboxException {
+  public moe.afox.dpsandbox.core.CommandFailure(java.lang.String, moe.afox.dpsandbox.core.SourceLocation);
+  public moe.afox.dpsandbox.core.CommandFailure(java.lang.String, moe.afox.dpsandbox.core.SourceLocation, int, kotlin.jvm.internal.DefaultConstructorMarker);
 }
 public final class moe.afox.dpsandbox.core.CommandProfile {
   public static final moe.afox.dpsandbox.core.CommandProfile$Companion Companion;
@@ -648,6 +663,7 @@ public final class moe.afox.dpsandbox.core.DatapackFunction {
   public moe.afox.dpsandbox.core.DatapackFunction(moe.afox.dpsandbox.core.ResourceLocation, java.util.List<moe.afox.dpsandbox.core.FunctionLine>);
   public final moe.afox.dpsandbox.core.ResourceLocation getId();
   public final java.util.List<moe.afox.dpsandbox.core.FunctionLine> getLines();
+  public final boolean getHasMacros$moe_afox_dpsandbox_core();
   public final moe.afox.dpsandbox.core.ResourceLocation component1();
   public final java.util.List<moe.afox.dpsandbox.core.FunctionLine> component2();
   public final moe.afox.dpsandbox.core.DatapackFunction copy(moe.afox.dpsandbox.core.ResourceLocation, java.util.List<moe.afox.dpsandbox.core.FunctionLine>);
@@ -932,8 +948,6 @@ public final class moe.afox.dpsandbox.core.DatapackSandbox {
   public final moe.afox.dpsandbox.core.AdvancementRuntime getAdvancements();
   public final int getCommandsExecuted$moe_afox_dpsandbox_core();
   public final void setCommandsExecuted$moe_afox_dpsandbox_core(int);
-  public final java.lang.Integer getLastFunctionReturnValue$moe_afox_dpsandbox_core();
-  public final void setLastFunctionReturnValue$moe_afox_dpsandbox_core(java.lang.Integer);
   public final moe.afox.dpsandbox.core.SandboxExecutionObserver getExecutionObserver();
   public final void setExecutionObserver(moe.afox.dpsandbox.core.SandboxExecutionObserver);
   public final void requestExecutionCancellation();
@@ -964,7 +978,8 @@ public final class moe.afox.dpsandbox.core.DatapackSandbox {
   public final java.util.List<moe.afox.dpsandbox.core.AdvancementUpdate> handlePlayerEvent(moe.afox.dpsandbox.core.PlayerEvent);
   public final moe.afox.dpsandbox.core.LootResult generateLoot(moe.afox.dpsandbox.core.ResourceLocation, moe.afox.dpsandbox.core.ResourceLocation, moe.afox.dpsandbox.core.SandboxPlayer, long);
   public static moe.afox.dpsandbox.core.LootResult generateLoot$default(moe.afox.dpsandbox.core.DatapackSandbox, moe.afox.dpsandbox.core.ResourceLocation, moe.afox.dpsandbox.core.ResourceLocation, moe.afox.dpsandbox.core.SandboxPlayer, long, int, java.lang.Object);
-  public final boolean executeOne$moe_afox_dpsandbox_core(java.lang.String, moe.afox.dpsandbox.core.SourceLocation, moe.afox.dpsandbox.core.ExecutionContext);
+  public final boolean executeOne$moe_afox_dpsandbox_core(java.lang.String, moe.afox.dpsandbox.core.SourceLocation, moe.afox.dpsandbox.core.ExecutionContext, moe.afox.dpsandbox.core.CommandCallbacks);
+  public static boolean executeOne$moe_afox_dpsandbox_core$default(moe.afox.dpsandbox.core.DatapackSandbox, java.lang.String, moe.afox.dpsandbox.core.SourceLocation, moe.afox.dpsandbox.core.ExecutionContext, moe.afox.dpsandbox.core.CommandCallbacks, int, java.lang.Object);
   public final void handleUnknownCommand$moe_afox_dpsandbox_core(java.lang.String, java.lang.String, moe.afox.dpsandbox.core.SourceLocation);
   public final com.google.gson.JsonObject itemStackOutput$moe_afox_dpsandbox_core(moe.afox.dpsandbox.core.ItemStack);
   public final void replaceBlockItem$moe_afox_dpsandbox_core(moe.afox.dpsandbox.core.BlockPos, int, moe.afox.dpsandbox.core.ItemStack, moe.afox.dpsandbox.core.SourceLocation);
@@ -1001,9 +1016,6 @@ public final class moe.afox.dpsandbox.core.DatapackSandbox {
   public final moe.afox.dpsandbox.core.Position anchoredPosition$moe_afox_dpsandbox_core(moe.afox.dpsandbox.core.Position, moe.afox.dpsandbox.core.SandboxEntity, java.lang.String);
   public final moe.afox.dpsandbox.core.Position facingPosition$moe_afox_dpsandbox_core(moe.afox.dpsandbox.core.SandboxEntity, java.lang.String, moe.afox.dpsandbox.core.SourceLocation);
   public final long parseTime$moe_afox_dpsandbox_core(java.lang.String, moe.afox.dpsandbox.core.SourceLocation);
-  public final void storeExecuteValue$moe_afox_dpsandbox_core(java.util.List<moe.afox.dpsandbox.core.CommandToken>, int, int, moe.afox.dpsandbox.core.SourceLocation, moe.afox.dpsandbox.core.ExecutionContext);
-  public final int executeStoreValue$moe_afox_dpsandbox_core(java.lang.String, int, int, java.lang.Integer, boolean);
-  public static int executeStoreValue$moe_afox_dpsandbox_core$default(moe.afox.dpsandbox.core.DatapackSandbox, java.lang.String, int, int, java.lang.Integer, boolean, int, java.lang.Object);
   public final java.lang.String outputSender$moe_afox_dpsandbox_core(moe.afox.dpsandbox.core.ExecutionContext);
   public final int parseInt$moe_afox_dpsandbox_core(java.lang.String, java.lang.String, moe.afox.dpsandbox.core.SourceLocation);
   public final long parseLong$moe_afox_dpsandbox_core(java.lang.String, java.lang.String, moe.afox.dpsandbox.core.SourceLocation);
@@ -1327,6 +1339,7 @@ public final class moe.afox.dpsandbox.core.ExecutionContext {
   public boolean equals(java.lang.Object);
   public moe.afox.dpsandbox.core.ExecutionContext();
 }
+
 public final class moe.afox.dpsandbox.core.ExecutionResult {
   public moe.afox.dpsandbox.core.ExecutionResult(int, java.lang.Integer, boolean);
   public moe.afox.dpsandbox.core.ExecutionResult(int, java.lang.Integer, boolean, int, kotlin.jvm.internal.DefaultConstructorMarker);
@@ -1356,9 +1369,9 @@ public final class moe.afox.dpsandbox.core.FunctionLine {
 }
 public final class moe.afox.dpsandbox.core.FunctionMacroExpander {
   public static final moe.afox.dpsandbox.core.FunctionMacroExpander INSTANCE;
+  public final moe.afox.dpsandbox.core.DatapackFunction instantiate(moe.afox.dpsandbox.core.VersionProfile, moe.afox.dpsandbox.core.DatapackFunction, com.google.gson.JsonObject);
   public final java.lang.String expand(moe.afox.dpsandbox.core.VersionProfile, moe.afox.dpsandbox.core.ResourceLocation, moe.afox.dpsandbox.core.FunctionLine, com.google.gson.JsonObject);
 }
-
 public final class moe.afox.dpsandbox.core.FunctionSource {
   public static final moe.afox.dpsandbox.core.FunctionSource$Companion Companion;
   public final moe.afox.dpsandbox.core.ResourceLocation getId();
@@ -2582,12 +2595,12 @@ public final class moe.afox.dpsandbox.core.ResourceLocationKt {
   public static final kotlin.text.Regex access$getNamespacePattern$p();
   public static final kotlin.text.Regex access$getPathPattern$p();
 }
-final class moe.afox.dpsandbox.core.ReturnSignal extends java.lang.RuntimeException {
-  public moe.afox.dpsandbox.core.ReturnSignal(java.lang.Integer);
-  public moe.afox.dpsandbox.core.ReturnSignal(java.lang.Integer, int, kotlin.jvm.internal.DefaultConstructorMarker);
-  public final java.lang.Integer getValue();
+public final class moe.afox.dpsandbox.core.ReturnSignal extends java.lang.RuntimeException {
+  public moe.afox.dpsandbox.core.ReturnSignal(int, boolean);
+  public moe.afox.dpsandbox.core.ReturnSignal(int, boolean, int, kotlin.jvm.internal.DefaultConstructorMarker);
+  public final int getValue();
+  public final boolean getSuccess();
   public java.lang.Throwable fillInStackTrace();
-  public moe.afox.dpsandbox.core.ReturnSignal();
 }
 public final class moe.afox.dpsandbox.core.SandboxBlock {
   public moe.afox.dpsandbox.core.SandboxBlock(moe.afox.dpsandbox.core.ResourceLocation, java.util.Map<java.lang.String, java.lang.String>, com.google.gson.JsonObject);
@@ -2882,6 +2895,7 @@ public final class moe.afox.dpsandbox.core.SandboxStructureEntityFixture {
   public int hashCode();
   public boolean equals(java.lang.Object);
 }
+
 public final class moe.afox.dpsandbox.core.SandboxStructureSetup {
   public moe.afox.dpsandbox.core.SandboxStructureSetup();
   public final java.util.List<moe.afox.dpsandbox.core.SandboxStructureBlockFixture> getBlocks$moe_afox_dpsandbox_core();
@@ -2955,7 +2969,6 @@ public final class moe.afox.dpsandbox.core.SandboxWeather extends java.lang.Enum
   public static moe.afox.dpsandbox.core.SandboxWeather valueOf(java.lang.String);
   public static kotlin.enums.EnumEntries<moe.afox.dpsandbox.core.SandboxWeather> getEntries();
 }
-
 public final class moe.afox.dpsandbox.core.SandboxWorld {
   public moe.afox.dpsandbox.core.SandboxWorld();
   public final moe.afox.dpsandbox.core.CommandTraceMode getCommandTraceMode();
@@ -3906,6 +3919,18 @@ public final class moe.afox.dpsandbox.core.command.ComputedValue {
   public int hashCode();
   public boolean equals(java.lang.Object);
 }
+final class moe.afox.dpsandbox.core.command.ExecuteBranch {
+  public moe.afox.dpsandbox.core.command.ExecuteBranch(moe.afox.dpsandbox.core.ExecutionContext, moe.afox.dpsandbox.core.CommandCallbacks);
+  public final moe.afox.dpsandbox.core.ExecutionContext getContext();
+  public final moe.afox.dpsandbox.core.CommandCallbacks getCallbacks();
+  public final moe.afox.dpsandbox.core.ExecutionContext component1();
+  public final moe.afox.dpsandbox.core.CommandCallbacks component2();
+  public final moe.afox.dpsandbox.core.command.ExecuteBranch copy(moe.afox.dpsandbox.core.ExecutionContext, moe.afox.dpsandbox.core.CommandCallbacks);
+  public static moe.afox.dpsandbox.core.command.ExecuteBranch copy$default(moe.afox.dpsandbox.core.command.ExecuteBranch, moe.afox.dpsandbox.core.ExecutionContext, moe.afox.dpsandbox.core.CommandCallbacks, int, java.lang.Object);
+  public java.lang.String toString();
+  public int hashCode();
+  public boolean equals(java.lang.Object);
+}
 public final class moe.afox.dpsandbox.core.command.SandboxComputeCommandsKt {
   public static final moe.afox.dpsandbox.core.command.ComputedValue computeValue(moe.afox.dpsandbox.core.DatapackSandbox, java.util.List<moe.afox.dpsandbox.core.CommandToken>, int, moe.afox.dpsandbox.core.ExecutionContext, moe.afox.dpsandbox.core.SourceLocation);
   public static final void executeCompute(moe.afox.dpsandbox.core.DatapackSandbox, java.util.List<moe.afox.dpsandbox.core.CommandToken>, moe.afox.dpsandbox.core.SourceLocation, moe.afox.dpsandbox.core.ExecutionContext);
@@ -3923,21 +3948,19 @@ public final class moe.afox.dpsandbox.core.command.SandboxEntityCommandsKt {
   public static final void executeTeleport(moe.afox.dpsandbox.core.DatapackSandbox, java.util.List<moe.afox.dpsandbox.core.CommandToken>, moe.afox.dpsandbox.core.SourceLocation, moe.afox.dpsandbox.core.ExecutionContext);
 }
 public final class moe.afox.dpsandbox.core.command.SandboxExecuteCommandsKt {
-  public static final boolean executeExecute(moe.afox.dpsandbox.core.DatapackSandbox, java.lang.String, java.util.List<moe.afox.dpsandbox.core.CommandToken>, moe.afox.dpsandbox.core.SourceLocation, moe.afox.dpsandbox.core.ExecutionContext);
-  public static final kotlin.Pair<java.lang.Boolean, java.lang.Integer> evaluateCondition(moe.afox.dpsandbox.core.DatapackSandbox, java.util.List<moe.afox.dpsandbox.core.CommandToken>, int, moe.afox.dpsandbox.core.SourceLocation, moe.afox.dpsandbox.core.ExecutionContext);
+  public static final boolean executeExecute(moe.afox.dpsandbox.core.DatapackSandbox, java.lang.String, java.util.List<moe.afox.dpsandbox.core.CommandToken>, moe.afox.dpsandbox.core.SourceLocation, moe.afox.dpsandbox.core.ExecutionContext, moe.afox.dpsandbox.core.CommandCallbacks);
   public static final int nextConditionIndex(moe.afox.dpsandbox.core.DatapackSandbox, java.util.List<moe.afox.dpsandbox.core.CommandToken>, int, moe.afox.dpsandbox.core.SourceLocation);
   public static final boolean evaluateFunctionCondition(moe.afox.dpsandbox.core.DatapackSandbox, java.lang.String, moe.afox.dpsandbox.core.ExecutionContext, moe.afox.dpsandbox.core.SourceLocation);
-  public static final boolean functionConditionPassed(moe.afox.dpsandbox.core.DatapackSandbox, moe.afox.dpsandbox.core.ExecutionResult);
   public static final java.util.List<moe.afox.dpsandbox.core.ResourceLocation> resolveFunctionTag(moe.afox.dpsandbox.core.DatapackSandbox, moe.afox.dpsandbox.core.ResourceLocation, moe.afox.dpsandbox.core.SourceLocation, java.util.Set<moe.afox.dpsandbox.core.ResourceLocation>);
   public static java.util.List resolveFunctionTag$default(moe.afox.dpsandbox.core.DatapackSandbox, moe.afox.dpsandbox.core.ResourceLocation, moe.afox.dpsandbox.core.SourceLocation, java.util.Set, int, java.lang.Object);
   public static final moe.afox.dpsandbox.core.PredicateContext executePredicateContext(moe.afox.dpsandbox.core.DatapackSandbox, moe.afox.dpsandbox.core.ExecutionContext);
   public static final moe.afox.dpsandbox.core.WeatherState currentWeatherState(moe.afox.dpsandbox.core.DatapackSandbox);
   public static final moe.afox.dpsandbox.core.ResourceLocation entityDimension(moe.afox.dpsandbox.core.DatapackSandbox, moe.afox.dpsandbox.core.SandboxEntity);
-  public static final kotlin.Pair<java.lang.Boolean, java.lang.Integer> evaluateBlocksCondition(moe.afox.dpsandbox.core.DatapackSandbox, java.util.List<moe.afox.dpsandbox.core.CommandToken>, int, moe.afox.dpsandbox.core.SourceLocation, moe.afox.dpsandbox.core.ExecutionContext);
+  public static final java.lang.Integer evaluateBlocksCondition(moe.afox.dpsandbox.core.DatapackSandbox, java.util.List<moe.afox.dpsandbox.core.CommandToken>, int, moe.afox.dpsandbox.core.SourceLocation, moe.afox.dpsandbox.core.ExecutionContext);
   public static final boolean sameBlock(moe.afox.dpsandbox.core.DatapackSandbox, moe.afox.dpsandbox.core.SandboxBlock, moe.afox.dpsandbox.core.SandboxBlock);
   public static final boolean evaluateScoreCondition(moe.afox.dpsandbox.core.DatapackSandbox, java.util.List<moe.afox.dpsandbox.core.CommandToken>, int, moe.afox.dpsandbox.core.SourceLocation, moe.afox.dpsandbox.core.ExecutionContext);
   public static final int nextScoreConditionIndex(moe.afox.dpsandbox.core.DatapackSandbox, java.util.List<moe.afox.dpsandbox.core.CommandToken>, int);
-  public static final kotlin.Pair<java.lang.Boolean, java.lang.Integer> evaluateDataCondition(moe.afox.dpsandbox.core.DatapackSandbox, java.util.List<moe.afox.dpsandbox.core.CommandToken>, int, moe.afox.dpsandbox.core.SourceLocation, moe.afox.dpsandbox.core.ExecutionContext);
+  public static final int evaluateDataCondition(moe.afox.dpsandbox.core.DatapackSandbox, java.util.List<moe.afox.dpsandbox.core.CommandToken>, int, moe.afox.dpsandbox.core.SourceLocation, moe.afox.dpsandbox.core.ExecutionContext);
   public static final boolean executeData(moe.afox.dpsandbox.core.DatapackSandbox, java.lang.String, java.util.List<moe.afox.dpsandbox.core.CommandToken>, moe.afox.dpsandbox.core.SourceLocation, moe.afox.dpsandbox.core.ExecutionContext);
   public static final boolean executeDataModify(moe.afox.dpsandbox.core.DatapackSandbox, java.lang.String, java.util.List<moe.afox.dpsandbox.core.CommandToken>, moe.afox.dpsandbox.core.SourceLocation, moe.afox.dpsandbox.core.ExecutionContext);
   public static final java.util.List<com.google.gson.JsonElement> readDataModifyValues(moe.afox.dpsandbox.core.DatapackSandbox, java.lang.String, java.util.List<moe.afox.dpsandbox.core.CommandToken>, int, moe.afox.dpsandbox.core.ExecutionContext, moe.afox.dpsandbox.core.SourceLocation);
@@ -3957,7 +3980,7 @@ public final class moe.afox.dpsandbox.core.command.SandboxExecuteCommandsKt {
   public static final void mutateDataTarget(moe.afox.dpsandbox.core.DatapackSandbox, moe.afox.dpsandbox.core.DataTargetSpec, moe.afox.dpsandbox.core.SourceLocation, kotlin.jvm.functions.Function1<? super com.google.gson.JsonObject, kotlin.Unit>);
 }
 public final class moe.afox.dpsandbox.core.command.SandboxExecuteStoreCommandsKt {
-  public static final boolean executeStoreChain(moe.afox.dpsandbox.core.DatapackSandbox, java.lang.String, java.util.List<moe.afox.dpsandbox.core.CommandToken>, int, java.util.List<moe.afox.dpsandbox.core.ExecutionContext>, moe.afox.dpsandbox.core.SourceLocation);
+  public static final kotlin.jvm.functions.Function2<java.lang.Boolean, java.lang.Integer, kotlin.Unit> bindExecuteStore(moe.afox.dpsandbox.core.DatapackSandbox, java.util.List<moe.afox.dpsandbox.core.CommandToken>, int, moe.afox.dpsandbox.core.SourceLocation, moe.afox.dpsandbox.core.ExecutionContext);
 }
 final class moe.afox.dpsandbox.core.command.SandboxFeatureBlockPlacement {
   public moe.afox.dpsandbox.core.command.SandboxFeatureBlockPlacement(moe.afox.dpsandbox.core.BlockPos, moe.afox.dpsandbox.core.BlockArgument, java.util.Set<moe.afox.dpsandbox.core.ResourceLocation>);
@@ -4340,13 +4363,13 @@ public final class moe.afox.dpsandbox.core.command.SandboxWorldCommandsKt {
   public static final void recordAttributeModifierValueOutput(moe.afox.dpsandbox.core.DatapackSandbox, moe.afox.dpsandbox.core.SandboxEntity, moe.afox.dpsandbox.core.ResourceLocation, moe.afox.dpsandbox.core.AttributeModifier, double);
   public static final double attributeTotal(moe.afox.dpsandbox.core.DatapackSandbox, moe.afox.dpsandbox.core.SandboxEntity, moe.afox.dpsandbox.core.ResourceLocation);
   public static final java.lang.String normalizeAttributeModifierOperation(moe.afox.dpsandbox.core.DatapackSandbox, java.lang.String, moe.afox.dpsandbox.core.SourceLocation);
-  public static final void executeScoreboard(moe.afox.dpsandbox.core.DatapackSandbox, java.lang.String, java.util.List<moe.afox.dpsandbox.core.CommandToken>, moe.afox.dpsandbox.core.SourceLocation, moe.afox.dpsandbox.core.ExecutionContext);
+  public static final java.lang.Integer executeScoreboard(moe.afox.dpsandbox.core.DatapackSandbox, java.lang.String, java.util.List<moe.afox.dpsandbox.core.CommandToken>, moe.afox.dpsandbox.core.SourceLocation, moe.afox.dpsandbox.core.ExecutionContext);
   public static final void executeObjectives(moe.afox.dpsandbox.core.DatapackSandbox, java.lang.String, java.util.List<moe.afox.dpsandbox.core.CommandToken>, moe.afox.dpsandbox.core.SourceLocation);
   public static final void executeObjectiveModify(moe.afox.dpsandbox.core.DatapackSandbox, java.lang.String, java.util.List<moe.afox.dpsandbox.core.CommandToken>, moe.afox.dpsandbox.core.SourceLocation);
   public static final void recordScoreboardObjectiveModify(moe.afox.dpsandbox.core.DatapackSandbox, java.lang.String, java.lang.String, com.google.gson.JsonElement, com.google.gson.JsonElement);
   public static final void recordScoreboardDisplay(moe.afox.dpsandbox.core.DatapackSandbox, java.lang.String, java.lang.String, java.lang.String);
   public static final void recordObjectiveList(moe.afox.dpsandbox.core.DatapackSandbox);
-  public static final void executePlayers(moe.afox.dpsandbox.core.DatapackSandbox, java.util.List<moe.afox.dpsandbox.core.CommandToken>, moe.afox.dpsandbox.core.SourceLocation, moe.afox.dpsandbox.core.ExecutionContext);
+  public static final java.lang.Integer executePlayers(moe.afox.dpsandbox.core.DatapackSandbox, java.util.List<moe.afox.dpsandbox.core.CommandToken>, moe.afox.dpsandbox.core.SourceLocation, moe.afox.dpsandbox.core.ExecutionContext);
   public static final void executeBossbar(moe.afox.dpsandbox.core.DatapackSandbox, java.lang.String, java.util.List<moe.afox.dpsandbox.core.CommandToken>, moe.afox.dpsandbox.core.SourceLocation, moe.afox.dpsandbox.core.ExecutionContext);
   public static final void executeGamerule(moe.afox.dpsandbox.core.DatapackSandbox, java.util.List<moe.afox.dpsandbox.core.CommandToken>, moe.afox.dpsandbox.core.SourceLocation);
   public static final void executeTime(moe.afox.dpsandbox.core.DatapackSandbox, java.util.List<moe.afox.dpsandbox.core.CommandToken>, moe.afox.dpsandbox.core.SourceLocation);
@@ -4354,6 +4377,6 @@ public final class moe.afox.dpsandbox.core.command.SandboxWorldCommandsKt {
   public static final void executeWeather(moe.afox.dpsandbox.core.DatapackSandbox, java.util.List<moe.afox.dpsandbox.core.CommandToken>, moe.afox.dpsandbox.core.SourceLocation);
   public static final void executeRandom(moe.afox.dpsandbox.core.DatapackSandbox, java.util.List<moe.afox.dpsandbox.core.CommandToken>, moe.afox.dpsandbox.core.SourceLocation);
   public static final long randomSequenceSeed(moe.afox.dpsandbox.core.DatapackSandbox, java.lang.String);
-  public static final void executeScoreOperation(moe.afox.dpsandbox.core.DatapackSandbox, java.util.List<moe.afox.dpsandbox.core.CommandToken>, moe.afox.dpsandbox.core.SourceLocation, moe.afox.dpsandbox.core.ExecutionContext);
+  public static final int executeScoreOperation(moe.afox.dpsandbox.core.DatapackSandbox, java.util.List<moe.afox.dpsandbox.core.CommandToken>, moe.afox.dpsandbox.core.SourceLocation, moe.afox.dpsandbox.core.ExecutionContext);
   public static final java.util.List<java.lang.String> scoreTargets(moe.afox.dpsandbox.core.DatapackSandbox, java.lang.String, moe.afox.dpsandbox.core.ExecutionContext, moe.afox.dpsandbox.core.SourceLocation);
 }

@@ -647,7 +647,7 @@ class CommandExecuteAndSelectorTest {
         assertEquals(0, sandbox.world.getScore("#fail", "checks"))
         assertEquals(1, sandbox.world.getScore("#function_pass", "checks"))
         assertEquals(0, sandbox.world.getScore("#function_fail", "checks"))
-        assertEquals(44, sandbox.world.getScore("#condition", "checks"))
+        assertEquals(34, sandbox.world.getScore("#condition", "checks"))
         assertEquals(4, sandbox.world.getScore("#return", "checks"))
         assertEquals(4, sandbox.world.getScore("#explicit", "checks"))
     }

@@ -3,7 +3,6 @@ package moe.afox.dpsandbox.core
 import com.google.gson.JsonArray
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
-import com.google.gson.JsonPrimitive
 import moe.afox.dpsandbox.core.command.SandboxItemCommands
 import moe.afox.dpsandbox.core.command.SandboxPlacementCommands
 import moe.afox.dpsandbox.core.command.blockPosOutput
@@ -63,7 +62,7 @@ import moe.afox.dpsandbox.core.command.executeTrigger
 import moe.afox.dpsandbox.core.command.executeWeather
 import moe.afox.dpsandbox.core.command.executeWorldBorder
 import moe.afox.dpsandbox.core.command.parseDataTarget
-import moe.afox.dpsandbox.core.command.scoreTargets
+import moe.afox.dpsandbox.core.command.resolveFunctionTag
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.floor
@@ -158,12 +157,6 @@ data class SandboxLimits(
     }
 }
 
-private class ReturnSignal(
-    val value: Int? = null,
-) : RuntimeException() {
-    override fun fillInStackTrace(): Throwable = this
-}
-
 /**
  * Policy for vanilla commands that exist in the active profile but are not
  * implemented by the sandbox.
@@ -216,7 +209,6 @@ class DatapackSandbox(
     private var commandBudgetDepth = 0
     private var commandBudgetStart = 0
     private var validationOnly = false
-    internal var lastFunctionReturnValue: Int? = null
     private val functionStack = mutableListOf<FunctionTraceFrame>()
 
     /** Installed by a debugger before starting execution; callbacks run on the world owner. */
@@ -337,15 +329,14 @@ class DatapackSandbox(
     fun runFunction(
         id: ResourceLocation,
         context: ExecutionContext = ExecutionContext(),
-    ): ExecutionResult = withCommandBudget { runFunctionWithArguments(id, context, null) }
+    ): ExecutionResult = withCommandBudget { runFunctionLines(FunctionMacroExpander.instantiate(profile, datapack.function(id), null), context) }
 
-    private fun runFunctionWithArguments(
-        id: ResourceLocation,
+    private fun runFunctionLines(
+        function: DatapackFunction,
         context: ExecutionContext,
-        macroArguments: JsonObject?,
     ): ExecutionResult {
         val before = commandsExecuted
-        val function = datapack.function(id)
+        val id = function.id
         functionDepth += 1
         if (functionDepth > limits.maxFunctionDepth) {
             functionDepth -= 1
@@ -356,6 +347,7 @@ class DatapackSandbox(
             )
         }
         var returnValue: Int? = null
+        var returnSuccess = false
         try {
             coverageTracker.recordInvocation(id)
             functionStack +=
@@ -370,11 +362,12 @@ class DatapackSandbox(
             for ((lineIndex, line) in function.lines.withIndex()) {
                 checkExecutionCancellation(line.location)
                 coverageTracker.recordLine(id, lineIndex, function.lines.size)
-                val command = FunctionMacroExpander.expand(profile, id, line, macroArguments)
+                val command = line.command
                 executeCommand(command, line.location.copy(command = command), context)
             }
         } catch (signal: ReturnSignal) {
             returnValue = signal.value
+            returnSuccess = signal.success
             // A return command stops the current function only.
         } finally {
             executionObserver?.exitFunction()
@@ -382,7 +375,7 @@ class DatapackSandbox(
             functionDepth -= 1
         }
         val executed = commandsExecuted - before
-        val success = returnValue?.let { it > 0 } ?: (executed > 0)
+        val success = if (returnValue != null) returnSuccess else executed > 0
         return ExecutionResult(executed, returnValue, success)
     }
 
@@ -453,7 +446,7 @@ class DatapackSandbox(
             success = commandSuccess
             return ExecutionResult(commandsExecuted - before, success = commandSuccess)
         } catch (signal: ReturnSignal) {
-            success = true
+            success = signal.success
             throw signal
         } catch (error: SandboxException) {
             errorCode = error.code
@@ -639,7 +632,6 @@ class DatapackSandbox(
                 )
         world.restoreCheckpointState(checkpoint)
         executionCancellationRequested = false
-        lastFunctionReturnValue = null
         functionStack.clear()
         return snapshotString()
     }
@@ -907,6 +899,7 @@ class DatapackSandbox(
         command: String,
         location: SourceLocation?,
         context: ExecutionContext,
+        callbacks: CommandCallbacks? = null,
     ): Boolean {
         if (command.isBlank()) return false
         val tokens =
@@ -919,14 +912,17 @@ class DatapackSandbox(
                 }
         if (tokens.isEmpty()) return false
         countCommand(location)
+        val outputsBefore = world.outputs.size
+        var numericResult: Int? = null
+        var success = true
         try {
             when (tokens[0].text) {
                 "ban", "ban-ip", "banlist", "deop", "kick", "op", "pardon", "pardon-ip", "whitelist" ->
                     executeServerAdminNoop(command, tokens, location)
-                "function" -> return executeFunction(tokens, location, context).success
-                "return" -> executeReturn(command, tokens, location, context)
+                "function" -> return executeFunction(tokens, location, context, callbacks)
+                "return" -> executeReturn(command, tokens, location, context, callbacks)
                 "attribute" -> executeAttribute(tokens, location, context)
-                "scoreboard" -> executeScoreboard(command, tokens, location, context)
+                "scoreboard" -> numericResult = executeScoreboard(command, tokens, location, context)
                 "bossbar" -> executeBossbar(command, tokens, location, context)
                 "clear" -> executeClear(tokens, location, context)
                 "clone" -> executeClone(tokens, location, context)
@@ -935,8 +931,8 @@ class DatapackSandbox(
                 "debug", "jfr", "perf" -> executeProfilingNoop(tokens, location)
                 "defaultgamemode" -> executeDefaultGameMode(tokens, location)
                 "difficulty" -> executeDifficulty(tokens, location)
-                "execute" -> return executeExecute(command, tokens, location, context)
-                "data" -> return executeData(command, tokens, location, context)
+                "execute" -> return executeExecute(command, tokens, location, context, callbacks)
+                "data" -> success = executeData(command, tokens, location, context)
                 "compute" -> executeCompute(tokens, location, context)
                 "effect" -> executeEffect(tokens, location, context)
                 "enchant" -> executeEnchant(tokens, location, context)
@@ -992,8 +988,13 @@ class DatapackSandbox(
                 "transfer" -> executeTransfer(command, tokens, location, context)
                 else -> handleUnknownCommand(tokens[0].text, command, location)
             }
-            return true
+            callbacks?.complete(success, if (success) numericResult ?: latestNumericOutput(outputsBefore) ?: 1 else 0)
+            return success
         } catch (error: SandboxException) {
+            if (error is CommandFailure && !validationOnly && (callbacks != null || functionDepth > 0)) {
+                callbacks?.complete(false, 0)
+                return false
+            }
             if (error.code == DiagnosticCode.UNSUPPORTED_FEATURE &&
                 unsupportedFeatureMode != UnsupportedFeatureMode.ERROR &&
                 tokens.firstOrNull()?.text?.let(profile.commands::hasRoot) == true
@@ -1113,7 +1114,8 @@ class DatapackSandbox(
         tokens: List<CommandToken>,
         location: SourceLocation?,
         context: ExecutionContext,
-    ): ExecutionResult {
+        callbacks: CommandCallbacks?,
+    ): Boolean {
         requireSize(tokens, 2, "function <id>", location)
         val arguments =
             if (tokens.getOrNull(2)?.text == "with") {
@@ -1121,68 +1123,62 @@ class DatapackSandbox(
                 val path = tokens.getOrNull(pathIndex)?.sourceText
                 val argumentValue =
                     dataTargetNbtValues(target, location).singleOrNull()
-                        ?: throw SandboxException(
-                            DiagnosticCode.COMMAND_ERROR,
+                        ?: throw CommandFailure(
                             "function with requires exactly one data source",
                             location,
                         )
-                val selected = if (path == null || path == "{}") argumentValue else JsonPaths.get(argumentValue, path)
+                val selected = JsonPaths.getAll(argumentValue, path).singleOrNull()
                 selected?.takeIf { it.isJsonObject }?.asJsonObject
-                    ?: throw SandboxException(
-                        DiagnosticCode.COMMAND_ERROR,
+                    ?: throw CommandFailure(
                         "function with source must resolve to a compound tag",
                         location,
                     )
+            } else if (tokens.size == 3 && tokens[2].text.startsWith("{")) {
+                JsonValues.parse(tokens[2].sourceText, location).asJsonObject
             } else {
                 if (tokens.size > 2) {
-                    throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Expected: function <id> [with <source>]", location)
+                    throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Expected: function <id> [<compound>|with <source> [<path>]]", location)
                 }
                 null
             }
-        val functionId = ResourceLocation.parse(tokens[1].text)
-        if (validationOnly) {
-            val function = datapack.function(functionId)
-            function.lines.forEach { line ->
-                if (line.command.startsWith('$')) FunctionMacroExpander.expand(profile, functionId, line, arguments)
+        val raw = tokens[1].text
+        val ids =
+            try {
+                if (raw.startsWith("#")) resolveFunctionTag(ResourceLocation.parse(raw.substring(1)), location) else listOf(ResourceLocation.parse(raw))
+            } catch (error: SandboxException) {
+                if (validationOnly || error.code != DiagnosticCode.RESOURCE_NOT_FOUND || (callbacks == null && functionDepth == 0)) throw error
+                callbacks?.complete(false, 0)
+                return false
             }
-            return ExecutionResult(commandsExecuted = 1, success = true)
+        if (ids.isEmpty()) {
+            callbacks?.complete(false, 0)
+            return false
         }
-        val result = runFunctionWithArguments(functionId, context, arguments)
-        lastFunctionReturnValue = result.returnValue
-        return result
-    }
-
-    private fun executeReturn(
-        command: String,
-        tokens: List<CommandToken>,
-        location: SourceLocation?,
-        context: ExecutionContext,
-    ): Nothing {
-        requireSize(tokens, 2, "return <value|fail|run ...>", location)
-        when (tokens[1].text) {
-            "fail" -> throw ReturnSignal(0)
-            "run" -> {
-                val rest = CommandTokenizer.tailAfter(command, tokens[1])
-                if (rest.isBlank()) {
-                    throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Expected: return run <command>", location)
+        var success = false
+        var returned = false
+        for (id in ids) {
+            val function =
+                try {
+                    FunctionMacroExpander.instantiate(profile, datapack.function(id), arguments)
+                } catch (error: SandboxException) {
+                    if (validationOnly || (callbacks == null && functionDepth == 0)) throw error
+                    returned = true
+                    callbacks?.complete(false, 0)
+                    continue
                 }
-                val commandsBefore = commandsExecuted
-                val outputsBefore = world.outputs.size
-                lastFunctionReturnValue = null
-                val success = executeOne(rest, location, context)
-                val commandsRun = (commandsExecuted - commandsBefore).coerceAtLeast(0)
-                throw ReturnSignal(
-                    executeStoreValue(
-                        "result",
-                        commandsRun,
-                        outputsBefore,
-                        lastFunctionReturnValue,
-                        success,
-                    ),
-                )
+            if (validationOnly) {
+                success = true
+                continue
             }
-            else -> throw ReturnSignal(parseInt(tokens[1].text, "return value", location))
+            val result = runFunctionLines(function, context)
+            success = success || result.success
+            if (result.returnValue != null) {
+                returned = true
+                callbacks?.complete(result.success, result.returnValue)
+            }
         }
+        if (!returned) callbacks?.complete(false, null)
+        return success
     }
 
     private fun executeLoot(
@@ -2952,125 +2948,12 @@ class DatapackSandbox(
         return max(1, ticks)
     }
 
-    internal fun storeExecuteValue(
-        tokens: List<CommandToken>,
-        index: Int,
-        value: Int,
-        location: SourceLocation?,
-        context: ExecutionContext,
-    ) {
-        requireSizeFrom(tokens, index, 4, "execute store <result|success> <score|storage|entity|block|bossbar> ...", location)
-        val valueToStore =
-            if (tokens[index].text == "success") {
-                if (value > 0) 1 else 0
-            } else if (tokens[index].text == "result") {
-                value
-            } else {
-                unsupportedFeature("Unsupported execute store type '${tokens[index].text}'", profile.id, location)
-            }
-        when (tokens[index + 1].text) {
-            "score" -> {
-                requireSizeFrom(tokens, index, 4, "execute store ${tokens[index].text} score <target> <objective>", location)
-                scoreTargets(tokens[index + 2].text, context, location).forEach { target ->
-                    world.setScore(target, tokens[index + 3].text, valueToStore)
-                }
-            }
-            "storage" -> {
-                requireSizeFrom(tokens, index, 6, "execute store ${tokens[index].text} storage <id> <path> <type> <scale>", location)
-                val storage = world.storage(ResourceLocation.parse(tokens[index + 2].text))
-                val scaled = scaledStoreValue(valueToStore, tokens[index + 4].text, tokens[index + 5].text, location)
-                JsonPaths.set(storage, tokens[index + 3].sourceText, scaled)
-            }
-            "entity" -> {
-                requireSizeFrom(tokens, index, 6, "execute store ${tokens[index].text} entity <target> <path> <type> <scale>", location)
-                val scaled = scaledStoreValue(valueToStore, tokens[index + 4].text, tokens[index + 5].text, location)
-                val target =
-                    EntitySelectors.select(world, tokens[index + 2].text, context, location).singleOrNull()
-                        ?: throw SandboxException(
-                            DiagnosticCode.COMMAND_ERROR,
-                            "execute store entity requires exactly one target",
-                            location,
-                        )
-                if (target is SandboxPlayer) {
-                    throw SandboxException(
-                        DiagnosticCode.COMMAND_ERROR,
-                        "Player NBT is read-only in this sandbox; use player events or movement commands",
-                        location,
-                    )
-                }
-                val updated = target.fullNbt(profile, location)
-                JsonPaths.set(updated, tokens[index + 3].sourceText, scaled)
-                target.writeFullNbt(profile, updated, location)
-            }
-            "block" -> {
-                requireSizeFrom(tokens, index, 8, "execute store ${tokens[index].text} block <pos> <path> <type> <scale>", location)
-                val pos = parseBlockPos(tokens, index + 2, context, location)
-                val block = world.requireBlock(pos)
-                val scaled = scaledStoreValue(valueToStore, tokens[index + 6].text, tokens[index + 7].text, location)
-                val updated = block.fullNbt(pos, profile, location)
-                JsonPaths.set(updated, tokens[index + 5].sourceText, scaled)
-                block.writeFullNbt(pos, profile, updated, location)
-            }
-            "bossbar" -> {
-                requireSizeFrom(tokens, index, 4, "execute store ${tokens[index].text} bossbar <id> <value|max>", location)
-                val bar =
-                    world.bossbars[ResourceLocation.parse(tokens[index + 2].text)]
-                        ?: throw SandboxException(
-                            DiagnosticCode.COMMAND_ERROR,
-                            "Bossbar '${tokens[index + 2].text}' does not exist",
-                            location,
-                        )
-                when (tokens[index + 3].text) {
-                    "value" -> bar.value = valueToStore
-                    "max" -> bar.max = valueToStore.coerceAtLeast(1)
-                    else -> unsupportedFeature("Unsupported execute store bossbar field '${tokens[index + 3].text}'", profile.id, location)
-                }
-            }
-            else -> unsupportedFeature("Unsupported execute store target '${tokens[index + 1].text}'", profile.id, location)
-        }
-    }
-
-    private fun scaledStoreValue(
-        value: Int,
-        typeText: String,
-        scaleText: String,
-        location: SourceLocation?,
-    ): JsonPrimitive {
-        val scale =
-            scaleText.toDoubleOrNull()
-                ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Invalid execute store scale '$scaleText'", location)
-        if (!scale.isFinite()) {
-            throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Invalid execute store scale '$scaleText'", location)
-        }
-        val scaled = value * scale
-        return when (typeText) {
-            "byte" -> JsonPrimitive(scaled.toInt().toByte().toInt())
-            "short" -> JsonPrimitive(scaled.toInt().toShort().toInt())
-            "int" -> JsonPrimitive(scaled.toInt())
-            "long" -> JsonPrimitive(scaled.toLong())
-            "float" -> JsonPrimitive(scaled.toFloat())
-            "double" -> JsonPrimitive(scaled)
-            else -> unsupportedFeature("Unsupported execute store numeric type '$typeText'", profile.id, location)
-        }
-    }
-
-    internal fun executeStoreValue(
-        storeType: String,
-        commandsRun: Int,
-        outputsBefore: Int,
-        returnValue: Int? = null,
-        success: Boolean = commandsRun > 0,
-    ): Int =
-        when (storeType) {
-            "success" -> if (success) 1 else 0
-            else -> if (success) returnValue ?: latestNumericOutput(outputsBefore) ?: commandsRun else 0
-        }
-
     private fun latestNumericOutput(outputsBefore: Int): Int? =
         world.outputs
             .drop(outputsBefore)
             .asReversed()
             .firstNotNullOfOrNull { output ->
+                if (output.source !== world.currentCommandSource || output.channel == "chat") return@firstNotNullOfOrNull null
                 val payload = output.payload
                 if (output.command == "get" && payload != null) {
                     when {
@@ -3080,6 +2963,8 @@ class DatapackSandbox(
                             return@firstNotNullOfOrNull payload.asString.length
                         payload.isJsonPrimitive && payload.asJsonPrimitive.isBoolean ->
                             return@firstNotNullOfOrNull if (payload.asBoolean) 1 else 0
+                        payload.isJsonPrimitive && payload.asJsonPrimitive.isNumber ->
+                            return@firstNotNullOfOrNull floor(payload.asDouble).toInt()
                     }
                 }
                 output.text

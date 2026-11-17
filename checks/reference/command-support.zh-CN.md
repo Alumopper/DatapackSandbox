@@ -79,7 +79,7 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar commands --json --output build
 | `fill` | 部分支持 | `modeled` | `fill <from> <to> <block[state]{nbt}> [replace|keep|destroy|hollow|outline]`；记录结构化变化位置输出；位置参数支持局部坐标；不执行更新或掉落。 |
 | `fillbiome` | 部分支持 | `modeled` | 为显式方块范围记录 biome 覆盖，并记录结构化变化位置输出；同一批显式覆盖可被 `execute if biome` 和 predicate `location_check` 的 biome 条件读取；不模拟区块 biome 容器或生成效果。 |
 | `forceload` | 部分支持 | `modeled` | `add`、`remove`、`remove all`、`query`、`query <pos>`；记录强加载 chunk 坐标，并为修改和 query 记录结构化输出。 |
-| `function` | 支持 | `modeled` | `function <id>`。 |
+| `function` | 支持 | `modeled` | 可调用单个函数或函数标签。宏参数可用内联 SNBT 复合标签或 `with <数据源> [路径]` 传入。函数没有显式返回值时，`execute store` 保留目标原值。[宏参数](https://www.minecraft.net/en-us/article/minecraft-java-edition-1-20-2) |
 | `gamemode` | 支持 | `modeled` | `gamemode <mode> [targets]`；更新沙盒玩家游戏模式，并记录结构化前后输出。 |
 | `gamerule` | 部分支持 | `modeled` | 存储任意 gamerule 字符串值，并为修改/query 记录结构化输出；不执行具体游戏规则副作用。 |
 | `give` | 部分支持 | `modeled` | 向玩家背包添加物品，记录可用于 report/assertion 的结构化输出；物品含匹配组件且命中已加载资源时会暴露 equipment asset、banner pattern、instrument、jukebox song 和 armor trim material/pattern 元数据；触发 inventory advancement 事件；item argument 支持沙盒 JSON/SNBT-lite NBT 和 components payload。 |
@@ -100,7 +100,7 @@ java -jar cli/build/libs/datapack-sandbox-cli.jar commands --json --output build
 | `random` | 部分支持 | `modeled` | `value`、`roll`、`reset`；使用确定性的沙盒随机序列状态，默认混入 world seed，显式 reset seed 时优先使用 reset 值；value/roll/reset 会记录结构化序列状态输出，供断言和 `execute store result` 使用。 |
 | `recipe` | 部分支持 | `modeled` | `give`、`take`；支持对已加载数据包 recipe 使用 `*`，更新玩家 recipe 集合并记录 changed 数量和实际变更的 recipe id 列表。 |
 | `reload` | 空操作 | `observed-noop` | 原版命令会记录结构化 no-op payload；REPL 工具命令 `reload` 会真正重载数据包并保留世界状态。 |
-| `return` | 支持 | `modeled` | 结束当前 function；支持 `return <value>`、`return fail` 和 `return run <command>`，用于 function 条件和 store result 测试。 |
+| `return` | 支持 | `modeled` | `return <整数>` 成功返回该整数，包括零和负数。`return fail` 返回失败。`return run` 传递成功状态和结果值，无结果时返回失败。函数标签用于条件判断时，第一个显式返回值决定结果。[Java 版函数规则](https://www.minecraft.net/en-us/article/minecraft-java-edition-1-20-3) |
 | `ride` | 部分支持 | `modeled` | 记录载具和乘客关系，并记录结构化 mount/dismount 输出；不模拟控制或物理。 |
 | `rotate` | 部分支持 | `modeled` | 更新 yaw/pitch，并记录结构化前后旋转输出。 |
 | `save-all`、`save-off`、`save-on` | 空操作 | `observed-noop` | 记录请求的存档生命周期动作，包括 `save-all flush`，为结构化 debug 输出；不修改真实文件保存模式。 |

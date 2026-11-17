@@ -5,6 +5,17 @@ import com.google.gson.JsonObject
 internal object FunctionMacroExpander {
     private val argumentPattern = Regex("\\$\\(([^)]+)\\)")
 
+    /** Resolve all substitutions before executing the first line. */
+    fun instantiate(profile: VersionProfile, function: DatapackFunction, arguments: JsonObject?): DatapackFunction {
+        if (!function.hasMacros) return function
+        return function.copy(
+            lines =
+                function.lines.map { line ->
+                    if (line.command.startsWith('$')) line.copy(command = expand(profile, function.id, line, arguments)) else line
+                },
+        )
+    }
+
     fun expand(
         profile: VersionProfile,
         functionId: ResourceLocation,

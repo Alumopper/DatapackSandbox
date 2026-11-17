@@ -28,7 +28,7 @@ class ExecuteCompositionTest {
         )
         val entity = sandbox.world.entities.single { "created" in it.tags }
         assertEquals(ResourceLocation.parse("minecraft:block_display"), entity.type)
-        assertEquals(Position(3.0, 64.0, -2.0), entity.position)
+        assertEquals(Position(0.375, 64.0, -0.25), entity.position)
         assertEquals(ResourceLocation.parse("minecraft:the_nether"), entity.dimension)
         assertTrue("created" in entity.tags)
     }

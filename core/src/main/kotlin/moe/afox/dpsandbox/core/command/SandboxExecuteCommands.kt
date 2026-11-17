@@ -5,6 +5,8 @@ import com.google.gson.JsonObject
 import com.google.gson.JsonPrimitive
 import moe.afox.dpsandbox.core.BlockPos
 import moe.afox.dpsandbox.core.ChunkPos
+import moe.afox.dpsandbox.core.CommandCallbacks
+import moe.afox.dpsandbox.core.CommandFailure
 import moe.afox.dpsandbox.core.CommandToken
 import moe.afox.dpsandbox.core.CommandTokenizer
 import moe.afox.dpsandbox.core.DataTargetSpec
@@ -12,7 +14,6 @@ import moe.afox.dpsandbox.core.DatapackSandbox
 import moe.afox.dpsandbox.core.DiagnosticCode
 import moe.afox.dpsandbox.core.EntitySelectors
 import moe.afox.dpsandbox.core.ExecutionContext
-import moe.afox.dpsandbox.core.ExecutionResult
 import moe.afox.dpsandbox.core.JsonPaths
 import moe.afox.dpsandbox.core.JsonValues
 import moe.afox.dpsandbox.core.PredicateContext
@@ -29,25 +30,55 @@ import moe.afox.dpsandbox.core.WeatherState
 import moe.afox.dpsandbox.core.unsupportedFeature
 import kotlin.math.floor
 
+private data class ExecuteBranch(
+    val context: ExecutionContext,
+    val callbacks: CommandCallbacks?,
+)
+
+private inline fun List<ExecuteBranch>.move(transform: (ExecutionContext) -> ExecutionContext): List<ExecuteBranch> =
+    map { it.copy(context = transform(it.context)) }
+
+private inline fun List<ExecuteBranch>.fork(transform: (ExecutionContext) -> List<ExecutionContext>): List<ExecuteBranch> =
+    flatMap { branch -> transform(branch.context).map { branch.copy(context = it) } }
+
+private fun DatapackSandbox.coordinateScale(dimension: ResourceLocation, location: SourceLocation?): Double {
+    val definition =
+        datapack.rawResources["dimension"]
+            ?.get(dimension)
+            ?.root
+            ?.asJsonObject
+    val type = definition?.get("type")?.asString?.let(ResourceLocation::parse) ?: dimension
+    val scale =
+        datapack.rawResources["dimension_type"]
+            ?.get(type)
+            ?.root
+            ?.asJsonObject
+            ?.get("coordinate_scale")
+            ?: return if (type == ResourceLocation("minecraft", "the_nether")) 8.0 else 1.0
+    return scale.takeIf { it.isJsonPrimitive && it.asJsonPrimitive.isNumber }?.asDouble?.takeIf { it.isFinite() && it > 0.0 }
+        ?: throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Invalid coordinate_scale for dimension type '$type'", location)
+}
+
 internal fun DatapackSandbox.executeExecute(
     command: String,
     tokens: List<CommandToken>,
     location: SourceLocation?,
     context: ExecutionContext,
+    callbacks: CommandCallbacks?,
 ): Boolean {
     var index = 1
-    var contexts = listOf(context)
+    var contexts = listOf(ExecuteBranch(context, callbacks))
 
     while (index < tokens.size) {
         when (tokens[index].text) {
             "run" -> {
                 val rest = CommandTokenizer.tailAfter(command, tokens[index])
-                return contexts.map { executeOne(rest, location, it) }.any { it }
+                return contexts.map { executeOne(rest, location, it.context, it.callbacks) }.any { it }
             }
             "as" -> {
                 requireIndex(tokens, index + 1, "execute as <selector>", location)
                 contexts =
-                    contexts.flatMap { ctx ->
+                    contexts.fork { ctx ->
                         EntitySelectors.select(world, tokens[index + 1].text, ctx, location).map {
                             ctx.copy(entity = it)
                         }
@@ -59,7 +90,7 @@ internal fun DatapackSandbox.executeExecute(
                 val summon = "summon ${tokens[index + 1].text}"
                 val summonTokens = CommandTokenizer.tokenize(summon, location)
                 contexts =
-                    contexts.map { ctx ->
+                    contexts.move { ctx ->
                         ctx.copy(entity = executeSummon(summon, summonTokens, location, ctx))
                     }
                 index += 2
@@ -67,7 +98,7 @@ internal fun DatapackSandbox.executeExecute(
             "at" -> {
                 requireIndex(tokens, index + 1, "execute at <selector>", location)
                 contexts =
-                    contexts.flatMap { ctx ->
+                    contexts.fork { ctx ->
                         EntitySelectors.select(world, tokens[index + 1].text, ctx, location).map {
                             ctx.copy(position = it.position, dimension = entityDimension(it), yaw = it.yaw, pitch = it.pitch)
                         }
@@ -81,10 +112,8 @@ internal fun DatapackSandbox.executeExecute(
                     unsupportedFeature("Unsupported execute on relation '$relation'", profile.id, location, command)
                 }
                 contexts =
-                    contexts.mapNotNull { ctx ->
-                        SpecialEntitySupport.relation(ctx.entity, relation, world)?.let { related ->
-                            ctx.copy(entity = related)
-                        }
+                    contexts.fork { ctx ->
+                        listOfNotNull(SpecialEntitySupport.relation(ctx.entity, relation, world)?.let { ctx.copy(entity = it) })
                     }
                 index += 2
             }
@@ -93,7 +122,7 @@ internal fun DatapackSandbox.executeExecute(
                 if (tokens[index + 1].text == "as") {
                     requireIndex(tokens, index + 2, "execute positioned as <selector>", location)
                     contexts =
-                        contexts.flatMap { ctx ->
+                        contexts.fork { ctx ->
                             EntitySelectors.select(world, tokens[index + 2].text, ctx, location).map {
                                 ctx.copy(position = it.position)
                             }
@@ -102,7 +131,7 @@ internal fun DatapackSandbox.executeExecute(
                 } else {
                     requireSizeFrom(tokens, index, 4, "execute positioned <x> <y> <z>", location)
                     contexts =
-                        contexts.map { ctx ->
+                        contexts.move { ctx ->
                             ctx.copy(position = parsePosition(tokens, index + 1, ctx, location))
                         }
                     index += 4
@@ -119,7 +148,7 @@ internal fun DatapackSandbox.executeExecute(
                     )
                 }
                 contexts =
-                    contexts.map { ctx ->
+                    contexts.move { ctx ->
                         var pos = ctx.position
                         if ('x' in axes) pos = pos.copy(x = floor(pos.x))
                         if ('y' in axes) pos = pos.copy(y = floor(pos.y))
@@ -134,7 +163,7 @@ internal fun DatapackSandbox.executeExecute(
                 if (anchor !in setOf("eyes", "feet")) {
                     throw SandboxException(DiagnosticCode.INPUT_FORMAT, "execute anchored must be eyes or feet", location)
                 }
-                contexts = contexts.map { it.copy(anchor = anchor) }
+                contexts = contexts.move { it.copy(anchor = anchor) }
                 index += 2
             }
             "facing" -> {
@@ -143,7 +172,7 @@ internal fun DatapackSandbox.executeExecute(
                     requireSizeFrom(tokens, index, 4, "execute facing entity <target> <eyes|feet>", location)
                     val anchor = tokens[index + 3].text
                     contexts =
-                        contexts.flatMap { ctx ->
+                        contexts.fork { ctx ->
                             EntitySelectors.select(world, tokens[index + 2].text, ctx, location).map { target ->
                                 ctx.facing(facingPosition(target, anchor, location))
                             }
@@ -151,7 +180,7 @@ internal fun DatapackSandbox.executeExecute(
                 } else {
                     requireSizeFrom(tokens, index, 4, "execute facing <x> <y> <z>", location)
                     contexts =
-                        contexts.map { ctx ->
+                        contexts.move { ctx ->
                             ctx.facing(parsePosition(tokens, index + 1, ctx, location))
                         }
                 }
@@ -159,7 +188,16 @@ internal fun DatapackSandbox.executeExecute(
             }
             "in" -> {
                 requireIndex(tokens, index + 1, "execute in <dimension>", location)
-                contexts = contexts.map { ctx -> ctx.copy(dimension = ResourceLocation.parse(tokens[index + 1].text)) }
+                val dimension = ResourceLocation.parse(tokens[index + 1].text)
+                contexts =
+                    contexts.move { ctx ->
+                        if (ctx.dimension == dimension) {
+                            ctx
+                        } else {
+                            val scale = coordinateScale(ctx.dimension, location) / coordinateScale(dimension, location)
+                            ctx.copy(dimension = dimension, position = ctx.position.copy(x = ctx.position.x * scale, z = ctx.position.z * scale))
+                        }
+                    }
                 index += 2
             }
             "rotated" -> {
@@ -167,7 +205,7 @@ internal fun DatapackSandbox.executeExecute(
                 if (tokens[index + 1].text == "as") {
                     requireIndex(tokens, index + 2, "execute rotated as <target>", location)
                     contexts =
-                        contexts.flatMap { ctx ->
+                        contexts.fork { ctx ->
                             EntitySelectors.select(world, tokens[index + 2].text, ctx, location).map {
                                 ctx.copy(yaw = it.yaw, pitch = it.pitch)
                             }
@@ -175,7 +213,7 @@ internal fun DatapackSandbox.executeExecute(
                 } else {
                     requireSizeFrom(tokens, index, 3, "execute rotated <yaw> <pitch>", location)
                     contexts =
-                        contexts.map { ctx ->
+                        contexts.move { ctx ->
                             ctx.copy(
                                 yaw = parseRotation(tokens[index + 1].text, ctx.yaw, "yaw", location),
                                 pitch = parseRotation(tokens[index + 2].text, ctx.pitch, "pitch", location),
@@ -185,28 +223,38 @@ internal fun DatapackSandbox.executeExecute(
                 index += 3
             }
             "store" -> {
-                return executeStoreChain(command, tokens, index, contexts, location)
+                requireIndex(tokens, index + 2, "execute store <result|success> <target>", location)
+                val size =
+                    when (tokens[index + 2].text) {
+                        "score", "bossbar" -> 5
+                        "storage", "entity" -> 7
+                        "block" -> 9
+                        else -> throw SandboxException(DiagnosticCode.INPUT_FORMAT, "Unknown execute store target", location)
+                    }
+                requireIndex(tokens, index + size, "execute store must be followed by a condition or command", location)
+                contexts =
+                    contexts.map { branch ->
+                        val store = bindExecuteStore(tokens, index + 1, location, branch.context)
+                        val previous = branch.callbacks
+                        branch.copy(callbacks = CommandCallbacks(previous?.stores.orEmpty() + store, previous?.onReturn))
+                    }
+                index += size
             }
             "if", "unless" -> {
                 val positive = tokens[index].text == "if"
                 val conditionIndex = index + 1
-                val evaluated = contexts.map { it to evaluateCondition(tokens, conditionIndex, location, it) }
+                index = nextConditionIndex(tokens, conditionIndex, location)
                 contexts =
-                    evaluated
-                        .filter { (_, result) -> result.first == positive }
-                        .map { (ctx, _) -> ctx }
-                index = evaluated.firstOrNull()?.second?.second ?: nextConditionIndex(tokens, conditionIndex, location)
-                if (index == tokens.size) {
-                    val result =
-                        if (positive && tokens[conditionIndex].text == "entity") {
-                            contexts.sumOf { ctx ->
-                                EntitySelectors.select(world, tokens[conditionIndex + 1].text, ctx, location).size
-                            }
-                        } else {
-                            contexts.size
+                    contexts.filter { branch ->
+                        val count = conditionResult(tokens, conditionIndex, location, branch.context)
+                        val passed = (count != null) == positive
+                        if (index == tokens.size) {
+                            val value = if (passed) count ?: 1 else 0
+                            world.recordOutput("execute", "data", text = value.toString())
+                            branch.callbacks?.complete(passed, value)
                         }
-                    world.recordOutput("execute", "data", text = result.toString())
-                }
+                        passed
+                    }
             }
             else -> unsupportedFeature("Unsupported execute subcommand '${tokens[index].text}'", profile.id, location, command)
         }
@@ -214,57 +262,59 @@ internal fun DatapackSandbox.executeExecute(
     return contexts.isNotEmpty()
 }
 
-internal fun DatapackSandbox.evaluateCondition(
+private fun DatapackSandbox.conditionResult(
     tokens: List<CommandToken>,
     index: Int,
     location: SourceLocation?,
     context: ExecutionContext,
-): Pair<Boolean, Int> {
+): Int? {
     requireIndex(tokens, index, "execute if|unless <condition>", location)
-    return when (tokens[index].text) {
-        "entity" -> {
-            requireIndex(tokens, index + 1, "execute if entity <selector>", location)
-            EntitySelectors.select(world, tokens[index + 1].text, context, location).isNotEmpty() to index + 2
+    val matches =
+        when (tokens[index].text) {
+            "entity" -> {
+                requireIndex(tokens, index + 1, "execute if entity <selector>", location)
+                return EntitySelectors.select(world, tokens[index + 1].text, context, location).size.takeIf { it > 0 }
+            }
+            "score" -> evaluateScoreCondition(tokens, index, location, context)
+            "data" -> return evaluateDataCondition(tokens, index, location, context).takeIf { it > 0 }
+            "block" -> {
+                requireSizeFrom(tokens, index, 5, "execute if|unless block <pos> <block>", location)
+                val pos = parseBlockPos(tokens, index + 1, context, location)
+                matchesBlock(pos, tokens[index + 4].text, location)
+            }
+            "blocks" -> return evaluateBlocksCondition(tokens, index, location, context)
+            "predicate" -> {
+                requireIndex(tokens, index + 1, "execute if|unless predicate <id>", location)
+                val argument = tokens[index + 1].text
+                val result =
+                    if (argument.startsWith("{")) {
+                        predicates.testElement(JsonValues.parse(argument, location), executePredicateContext(context))
+                    } else {
+                        predicates.test(ResourceLocation.parse(argument), executePredicateContext(context))
+                    }
+                result
+            }
+            "function" -> {
+                requireIndex(tokens, index + 1, "execute if|unless function <id|#tag>", location)
+                evaluateFunctionCondition(tokens[index + 1].text, context, location)
+            }
+            "dimension" -> {
+                requireIndex(tokens, index + 1, "execute if|unless dimension <id>", location)
+                context.dimension == ResourceLocation.parse(tokens[index + 1].text)
+            }
+            "biome" -> {
+                requireSizeFrom(tokens, index, 5, "execute if|unless biome <pos> <biome>", location)
+                val pos = parseBlockPos(tokens, index + 1, context, location)
+                world.biomes[pos] == ResourceLocation.parse(tokens[index + 4].text)
+            }
+            "loaded" -> {
+                requireSizeFrom(tokens, index, 4, "execute if|unless loaded <pos>", location)
+                val pos = parseBlockPos(tokens, index + 1, context, location)
+                ChunkPos(Math.floorDiv(pos.x, 16), Math.floorDiv(pos.z, 16)) in world.forcedChunks
+            }
+            else -> unsupportedFeature("Unsupported execute condition '${tokens[index].text}'", profile.id, location)
         }
-        "score" -> evaluateScoreCondition(tokens, index, location, context) to nextScoreConditionIndex(tokens, index)
-        "data" -> evaluateDataCondition(tokens, index, location, context)
-        "block" -> {
-            requireSizeFrom(tokens, index, 5, "execute if|unless block <pos> <block>", location)
-            val pos = parseBlockPos(tokens, index + 1, context, location)
-            (matchesBlock(pos, tokens[index + 4].text, location) to index + 5)
-        }
-        "blocks" -> evaluateBlocksCondition(tokens, index, location, context)
-        "predicate" -> {
-            requireIndex(tokens, index + 1, "execute if|unless predicate <id>", location)
-            val argument = tokens[index + 1].text
-            val result =
-                if (argument.startsWith("{")) {
-                    predicates.testElement(JsonValues.parse(argument, location), executePredicateContext(context))
-                } else {
-                    predicates.test(ResourceLocation.parse(argument), executePredicateContext(context))
-                }
-            result to index + 2
-        }
-        "function" -> {
-            requireIndex(tokens, index + 1, "execute if|unless function <id|#tag>", location)
-            evaluateFunctionCondition(tokens[index + 1].text, context, location) to index + 2
-        }
-        "dimension" -> {
-            requireIndex(tokens, index + 1, "execute if|unless dimension <id>", location)
-            (context.dimension == ResourceLocation.parse(tokens[index + 1].text)) to index + 2
-        }
-        "biome" -> {
-            requireSizeFrom(tokens, index, 5, "execute if|unless biome <pos> <biome>", location)
-            val pos = parseBlockPos(tokens, index + 1, context, location)
-            (world.biomes[pos] == ResourceLocation.parse(tokens[index + 4].text)) to index + 5
-        }
-        "loaded" -> {
-            requireSizeFrom(tokens, index, 4, "execute if|unless loaded <pos>", location)
-            val pos = parseBlockPos(tokens, index + 1, context, location)
-            (ChunkPos(Math.floorDiv(pos.x, 16), Math.floorDiv(pos.z, 16)) in world.forcedChunks) to index + 4
-        }
-        else -> unsupportedFeature("Unsupported execute condition '${tokens[index].text}'", profile.id, location)
-    }
+    return if (matches) 1 else null
 }
 
 internal fun DatapackSandbox.nextConditionIndex(
@@ -280,7 +330,7 @@ internal fun DatapackSandbox.nextConditionIndex(
         }
         "score" -> nextScoreConditionIndex(tokens, index)
         "data" -> {
-            val (_, pathIndex) = parseDataTarget(tokens, index + 1, ExecutionContext(), location)
+            val pathIndex = if (tokens.getOrNull(index + 1)?.text == "block") index + 5 else index + 3
             requireIndex(tokens, pathIndex, "execute if data <target> <path>", location)
             pathIndex + 1
         }
@@ -311,12 +361,12 @@ internal fun DatapackSandbox.evaluateFunctionCondition(
         } else {
             listOf(ResourceLocation.parse(raw))
         }
-    if (ids.isEmpty()) return false
-    return ids.map { runFunction(it, context) }.any { functionConditionPassed(it) }
+    for (id in ids) {
+        val result = runFunction(id, context)
+        if (result.returnValue != null) return result.success && result.returnValue != 0
+    }
+    return false
 }
-
-internal fun DatapackSandbox.functionConditionPassed(result: ExecutionResult): Boolean =
-    result.returnValue?.let { it > 0 } ?: (result.commandsExecuted > 0)
 
 internal fun DatapackSandbox.resolveFunctionTag(
     id: ResourceLocation,
@@ -354,7 +404,7 @@ internal fun DatapackSandbox.resolveFunctionTag(
             }
         }
     visited.remove(id)
-    return functions
+    return functions.distinct()
 }
 
 internal fun DatapackSandbox.executePredicateContext(context: ExecutionContext): PredicateContext {
@@ -380,7 +430,7 @@ internal fun DatapackSandbox.evaluateBlocksCondition(
     index: Int,
     location: SourceLocation?,
     context: ExecutionContext,
-): Pair<Boolean, Int> {
+): Int? {
     requireSizeFrom(tokens, index, 11, "execute if|unless blocks <begin> <end> <destination> <all|masked>", location)
     val from = parseBlockPos(tokens, index + 1, context, location)
     val to = parseBlockPos(tokens, index + 4, context, location)
@@ -398,17 +448,19 @@ internal fun DatapackSandbox.evaluateBlocksCondition(
         throw SandboxException(DiagnosticCode.COMMAND_ERROR, "Execute blocks volume $volume exceeds sandbox limit 32768", location)
     }
 
+    var compared = 0
     for ((dx, x) in xs.withIndex()) {
         for ((dy, y) in ys.withIndex()) {
             for ((dz, z) in zs.withIndex()) {
                 val source = world.block(BlockPos(x, y, z))
-                if (mode == "masked" && source == null) continue
+                if (mode == "masked" && (source == null || source.id == ResourceLocation("minecraft", "air"))) continue
                 val target = world.block(BlockPos(dest.x + dx, dest.y + dy, dest.z + dz))
-                if (!sameBlock(source, target)) return false to index + 11
+                if (!sameBlock(source, target)) return null
+                compared++
             }
         }
     }
-    return true to index + 11
+    return compared
 }
 
 internal fun DatapackSandbox.sameBlock(
@@ -475,11 +527,11 @@ internal fun DatapackSandbox.evaluateDataCondition(
     index: Int,
     location: SourceLocation?,
     context: ExecutionContext,
-): Pair<Boolean, Int> {
+): Int {
     requireSizeFrom(tokens, index, 4, "execute if data <storage|entity> ...", location)
     val (target, pathIndex) = parseDataTarget(tokens, index + 1, context, location)
     requireIndex(tokens, pathIndex, "execute if data <target> <path>", location)
-    return (dataTargetNbtValues(target, location).any { JsonPaths.exists(it, tokens[pathIndex].sourceText) } to pathIndex + 1)
+    return dataTargetNbtValues(target, location).sumOf { JsonPaths.getAll(it, tokens[pathIndex].sourceText).size }
 }
 
 internal fun DatapackSandbox.executeData(
@@ -660,7 +712,7 @@ internal fun DatapackSandbox.executeDataGet(
     requireSize(tokens, 3, "data get <storage|entity|block> <target> [path] [scale]", location)
     val (target, pathIndex) = parseDataTarget(tokens, 2, context, location)
     val path = tokens.getOrNull(pathIndex)?.sourceText
-    val value = dataTargetNbtValues(target, location).firstOrNull()?.let { JsonPaths.get(it, path) }
+    val value = dataTargetNbtValues(target, location).singleOrNull()?.let { JsonPaths.getAll(it, path).singleOrNull() }
     val scale = if (path != null) tokens.getOrNull(pathIndex + 1)?.text?.let { parseDouble(it, "data get scale", location) } else null
     return if (scale == null) value else value?.let { scaleDataGetResult(it, scale, location) }
 }
@@ -671,7 +723,7 @@ internal fun DatapackSandbox.scaleDataGetResult(
     location: SourceLocation?,
 ): JsonPrimitive {
     if (!value.isJsonPrimitive || !value.asJsonPrimitive.isNumber) {
-        throw SandboxException(DiagnosticCode.COMMAND_ERROR, "data get scale requires a numeric value", location)
+        throw CommandFailure("data get scale requires a numeric value", location)
     }
     return JsonPrimitive(value.asDouble * scale)
 }
@@ -724,6 +776,7 @@ internal fun DatapackSandbox.parseDataTarget(
         "entity" -> {
             requireIndex(tokens, index + 1, "data entity <target>", location)
             val selected = EntitySelectors.select(world, tokens[index + 1].text, context, location)
+            if (selected.size > 1) throw CommandFailure("data entity requires exactly one target", location)
             DataTargetSpec.Entities(selected) to index + 2
         }
         "block" -> {

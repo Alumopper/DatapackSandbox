@@ -22,7 +22,9 @@ data class DatapackFunction(
     val id: ResourceLocation,
     /** Parsed command lines in source order. */
     val lines: List<FunctionLine>,
-)
+) {
+    internal val hasMacros = lines.any { it.command.startsWith('$') }
+}
 
 /**
  * Synthetic datapack wrapper used by single-file `.mcfunction` tests.
