@@ -41,7 +41,7 @@ jobs:
       - run: npm run docs:build
         working-directory: docs-source
         env:
-          DOCS_BASE: /DatapackSandbox/
+          DOCS_BASE: /
       - uses: actions/upload-pages-artifact@v3
         with:
           path: docs-source/.vitepress/dist
